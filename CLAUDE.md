@@ -1,6 +1,6 @@
 # BTL Portal — pravila projekta
 
-Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot, Maven wrapper), `frontend/` (React + TypeScript, Vite), `docker-compose.yml` (MySQL 8.4).
+Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot, Maven wrapper), `frontend/` (React + TypeScript, Vite), `docker-compose.yml` (PostgreSQL 18).
 
 ## Komunikacija
 
@@ -28,14 +28,14 @@ Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot
 ## Testiranje i kvalitet
 
 - Coverage prag je 100% (JaCoCo BUNDLE line+branch; Vitest thresholds). Build PADA ispod 100%. Izuzeci od pokrivenosti se dodaju samo uz obrazloženje u PR-u (tipično: čisti config/bootstrap).
-- Integracioni testovi idu protiv prave MySQL baze kroz Testcontainers (nikad H2).
+- Integracioni testovi idu protiv prave PostgreSQL baze kroz Testcontainers (nikad H2).
 - Šema baze se menja isključivo kroz Flyway migracije (`backend/src/main/resources/db/migration`), nikad ručno.
 
 ## Komande
 
 - Backend: `cd backend && ./mvnw verify` (build + testovi + coverage prag)
 - Frontend: `cd frontend && npm run test:coverage && npm run lint && npm run build`
-- Lokalna baza: `docker compose up -d mysql` (traži `.env`, kopiraj iz `.env.example`)
+- Lokalna baza: `docker compose up -d postgres` (traži `.env`, kopiraj iz `.env.example`)
 - Ceo stack u kontejnerima: `docker compose --profile full up --build`
 - Backend lokalno protiv compose baze: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 

@@ -1,17 +1,16 @@
 services:
-  mysql:
-    image: mysql:8.4
+  postgres:
+    image: postgres:18
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set it in the .env file}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-btl}
-      MYSQL_USER: ${MYSQL_USER:-btl}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set it in the .env file}
+      POSTGRES_DB: ${POSTGRES_DB:-btl}
+      POSTGRES_USER: ${POSTGRES_USER:-btl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in the .env file}
     ports:
-      - "127.0.0.1:3306:3306"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-btl} -d ${POSTGRES_DB:-btl}"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -20,12 +19,12 @@ services:
     build: ./backend
     profiles: ["full"]
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-btl}
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-btl}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-btl}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-btl}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "127.0.0.1:8080:8080"
 
@@ -38,4 +37,4 @@ services:
       - "127.0.0.1:3000:80"
 
 volumes:
-  mysql-data:
+  postgres-data:
