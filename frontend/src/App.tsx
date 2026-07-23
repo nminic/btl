@@ -1,7 +1,7 @@
 function App() {
   return (
     <main>
-      <h1>Balkanska trkačka liga</h1>
+      <h1>BALKANSKA TRKAČKA LIGA</h1>
       <p>Portal je u izgradnji.</p>
     </main>
   )

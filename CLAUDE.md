@@ -37,3 +37,4 @@ Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot
 
 - `main` grana prima izmene isključivo kroz PR sa zelenim CI (`.github/workflows/verify.yml`).
 - Pre svakog PR-a: pokrenuti oba test paketa lokalno i /code-review prolaz.
+- OBAVEZNO pre merge-a netrivijalnog PR-a: nezavisna recenzija kroz subagenta koji NIJE pisao kod. Recenzent dobija isključivo diff i opis PR-a (svež kontekst, bez konteksta autora) i vraća nalaze; kritični i visoki nalazi blokiraju merge dok se ne razreše. Za bezbednosno osetljive izmene (auth, podaci, upload) dodatno i security-reviewer agent.
