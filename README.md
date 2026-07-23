@@ -10,13 +10,13 @@ Produkcija: [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net)
 |---|---|
 | `backend/` | Java 21, Spring Boot, Spring Security, JPA, Flyway, Maven wrapper |
 | `frontend/` | React 19, TypeScript, Vite, Vitest |
-| `docker-compose.yml` | MySQL 8.4 (+ ceo stack kroz `--profile full`) |
+| `docker-compose.yml` | PostgreSQL 18 (+ ceo stack kroz `--profile full`) |
 
 ## Lokalni razvoj
 
 ```bash
 cp .env.example .env   # pa postavi lozinke
-docker compose up -d mysql
+docker compose up -d postgres
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 cd frontend && npm install && npm run dev
 ```
