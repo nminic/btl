@@ -4,16 +4,17 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Obračun BTL bodova po zvaničnoj formuli lige:
+ * BTL points calculation, per the official league formula:
  *
  * <pre>
  *   BTL = (40 × Le)^3.257 / (2 × Tsec^2.137)
  *   Le  = L + (1.25 × AP + 0.75 × AN) / 200
  * </pre>
  *
- * Jedinice: L u kilometrima, AP i AN u metrima (oba nenegativna),
- * Tsec u sekundama. Eksponent 2.137 se primenjuje isključivo na Tsec;
- * dvojka je množilac izvan stepena. Rezultat se prikazuje na 2 decimale.
+ * Units: L in kilometers, AP and AN in meters (both non-negative),
+ * Tsec in seconds. The 2.137 exponent applies to Tsec ONLY; the factor
+ * of 2 is a plain multiplier outside the power. Results are displayed
+ * with 2 decimal places.
  */
 public final class BtlScoreCalculator {
 
@@ -29,40 +30,41 @@ public final class BtlScoreCalculator {
     }
 
     /**
-     * @param lengthKm      dužina staze u kilometrima, mora biti &gt; 0
-     * @param ascentMeters  pozitivna promena nadmorske visine u metrima, mora biti &ge; 0
-     * @param descentMeters negativna promena nadmorske visine u metrima, izražena
-     *                      kao pozitivan broj, mora biti &ge; 0
-     * @param timeSeconds   vreme prelaska staze u sekundama, mora biti &gt; 0
-     * @return BTL bodovi zaokruženi na 2 decimale (HALF_UP)
+     * @param lengthKm      course length in kilometers, must be &gt; 0
+     * @param ascentMeters  positive elevation change in meters, must be &ge; 0
+     * @param descentMeters negative elevation change in meters, expressed as a
+     *                      positive number, must be &ge; 0
+     * @param timeSeconds   finish time in seconds, must be &gt; 0
+     * @return BTL points rounded to 2 decimal places (HALF_UP)
      */
     public static BigDecimal calculate(double lengthKm, double ascentMeters, double descentMeters, long timeSeconds) {
         double effectiveKm = effectiveLengthKm(lengthKm, ascentMeters, descentMeters);
-        requirePositive(timeSeconds, "Vreme (Tsec)");
+        requirePositive(timeSeconds, "Time (Tsec)");
         double numerator = Math.pow(DISTANCE_COEFFICIENT * effectiveKm, DISTANCE_EXPONENT);
         double denominator = 2.0 * Math.pow(timeSeconds, TIME_EXPONENT);
         return BigDecimal.valueOf(numerator / denominator).setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
     }
 
     /**
-     * Efektivna dužina staze: stvarna dužina uvećana za doprinos uspona i spusta.
+     * Effective course length: actual length increased by the weighted
+     * contribution of ascent and descent.
      */
     public static double effectiveLengthKm(double lengthKm, double ascentMeters, double descentMeters) {
-        requirePositive(lengthKm, "Dužina staze (L)");
-        requireNonNegative(ascentMeters, "Pozitivna promena visine (AP)");
-        requireNonNegative(descentMeters, "Negativna promena visine (AN)");
+        requirePositive(lengthKm, "Course length (L)");
+        requireNonNegative(ascentMeters, "Positive elevation change (AP)");
+        requireNonNegative(descentMeters, "Negative elevation change (AN)");
         return lengthKm + (ASCENT_WEIGHT * ascentMeters + DESCENT_WEIGHT * descentMeters) / ELEVATION_PER_KM;
     }
 
     private static void requirePositive(double value, String name) {
         if (!(value > 0)) {
-            throw new IllegalArgumentException(name + " mora biti veće od nule, dobijeno: " + value);
+            throw new IllegalArgumentException(name + " must be greater than zero, got: " + value);
         }
     }
 
     private static void requireNonNegative(double value, String name) {
         if (!(value >= 0)) {
-            throw new IllegalArgumentException(name + " ne sme biti negativno, dobijeno: " + value);
+            throw new IllegalArgumentException(name + " must not be negative, got: " + value);
         }
     }
 }

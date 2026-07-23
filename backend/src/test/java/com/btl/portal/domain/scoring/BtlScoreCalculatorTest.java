@@ -10,16 +10,17 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class BtlScoreCalculatorTest {
 
-    // Zlatni test set: zvanični rezultati trke L=62.07 km, AP=3456 m, AN=3133 m,
-    // koje je potvrdio organizator lige. Implementacija mora pogoditi svih 6 redova.
-    @ParameterizedTest(name = "vreme {0}s -> {1} bodova")
+    // Golden test set: official results of a race with L=62.07 km, AP=3456 m,
+    // AN=3133 m, confirmed by the league organizer. The implementation must
+    // reproduce all 6 rows exactly. NEVER change the expected values.
+    @ParameterizedTest(name = "time {0}s -> {1} points")
     @CsvSource({
             "26911, 79.03", // Todevski,     7:28:31
-            "34395, 46.78", // Zeljković,    9:33:15
-            "37476, 38.94", // Avramović,   10:24:36
-            "37476, 38.94", // Tabandželić, 10:24:36 (identično vreme, identični bodovi)
-            "37813, 38.21", // Lakatoš,     10:30:13
-            "37850, 38.13", // Tasić,       10:30:50
+            "34395, 46.78", // Zeljkovic,    9:33:15
+            "37476, 38.94", // Avramovic,   10:24:36
+            "37476, 38.94", // Tabandzelic, 10:24:36 (same time, same points)
+            "37813, 38.21", // Lakatos,     10:30:13
+            "37850, 38.13", // Tasic,       10:30:50
     })
     void goldenResultsFromOfficialRace(long timeSeconds, String expectedPoints) {
         BigDecimal points = BtlScoreCalculator.calculate(62.07, 3456, 3133, timeSeconds);
@@ -28,9 +29,9 @@ class BtlScoreCalculatorTest {
 
     @Test
     void effectiveLengthWeighsAscentMoreThanDescent() {
-        // 20 km sa 1000 m uspona i 1000 m spusta: 20 + (1250 + 750) / 200 = 30 km
+        // 20 km with 1000 m ascent and 1000 m descent: 20 + (1250 + 750) / 200 = 30 km
         assertThat(BtlScoreCalculator.effectiveLengthKm(20, 1000, 1000)).isEqualTo(30.0);
-        // uspon (1.25/200) doprinosi više nego spust (0.75/200)
+        // ascent (1.25/200) contributes more than descent (0.75/200)
         assertThat(BtlScoreCalculator.effectiveLengthKm(20, 1000, 0))
                 .isGreaterThan(BtlScoreCalculator.effectiveLengthKm(20, 0, 1000));
     }
@@ -54,7 +55,7 @@ class BtlScoreCalculatorTest {
 
     @Test
     void longerRaceYieldsMorePointsAtSamePace() {
-        // isti tempo (6:00 min/km): duža trka mora nositi više bodova
+        // same pace (6:00 min/km): the longer race must yield more points
         BigDecimal half = BtlScoreCalculator.calculate(21.1, 0, 0, (long) (21.1 * 360));
         BigDecimal marathon = BtlScoreCalculator.calculate(42.2, 0, 0, (long) (42.2 * 360));
         assertThat(marathon).isGreaterThan(half);
@@ -67,12 +68,12 @@ class BtlScoreCalculatorTest {
 
     @ParameterizedTest(name = "L={0}, AP={1}, AN={2}, Tsec={3} -> IllegalArgumentException")
     @CsvSource({
-            "0,     0,    0,    7200", // dužina nula
-            "-5,    0,    0,    7200", // negativna dužina
-            "21.1, -1,    0,    7200", // negativan uspon
-            "21.1,  0,   -1,    7200", // negativan spust (AN se unosi kao pozitivan broj)
-            "21.1,  0,    0,    0",    // vreme nula
-            "21.1,  0,    0,   -60",   // negativno vreme
+            "0,     0,    0,    7200", // zero length
+            "-5,    0,    0,    7200", // negative length
+            "21.1, -1,    0,    7200", // negative ascent
+            "21.1,  0,   -1,    7200", // negative descent (AN is entered as a positive number)
+            "21.1,  0,    0,    0",    // zero time
+            "21.1,  0,    0,   -60",   // negative time
     })
     void rejectsInvalidInput(double lengthKm, double ascent, double descent, long timeSeconds) {
         assertThatIllegalArgumentException()
