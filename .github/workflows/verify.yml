@@ -23,7 +23,7 @@ jobs:
         run: ./mvnw --batch-mode verify
       - name: Sačuvaj coverage izveštaj
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: backend-coverage
           path: backend/target/site/jacoco
