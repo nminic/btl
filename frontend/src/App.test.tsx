@@ -5,7 +5,7 @@ describe('App', () => {
   it('prikazuje naziv lige', () => {
     render(<App />)
     expect(
-      screen.getByRole('heading', { name: 'Balkanska trkačka liga' }),
+      screen.getByRole('heading', { name: 'BALKANSKA TRKAČKA LIGA' }),
     ).toBeInTheDocument()
   })
 })
