@@ -1,19 +1,17 @@
+# Production stack for this repository.
+#
+# TLS and public routing are NOT handled here. The host runs a shared edge
+# proxy outside this repository (/opt/edge on btl-prod) that owns ports 80
+# and 443 and reverse-proxies this frontend, so several sites can share the
+# machine. Do not add a service that binds 80/443 here: it will collide with
+# the edge proxy.
+#
+# The edge proxy reaches this service over the Compose network of this
+# project, which it joins as an external network named "deploy_default".
+# That name comes from the directory this file lives in, so renaming the
+# directory (or setting a project "name:") breaks public routing until the
+# edge proxy config is updated to match.
 services:
   frontend:
     build: ../frontend
     restart: unless-stopped
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-
-volumes:
-  caddy-data:
-  caddy-config:
