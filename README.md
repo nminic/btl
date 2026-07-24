@@ -32,6 +32,16 @@ cd frontend && npm run test:coverage   # testovi + coverage prag 100%
 
 Integracioni testovi koriste Testcontainers (potreban Docker).
 
+## Produkcija
+
+TLS i javno rutiranje drži zajednički edge proxy na hostu, van ovog repoa; odavde se isporučuje samo aplikacija. Postupak, ograničenja i kopija edge konfiguracije: [deploy/README.md](deploy/README.md).
+
+```bash
+ssh root@btl-prod
+cd /opt/btl && git pull && cd deploy
+docker compose -f compose.prod.yml up -d --build frontend
+```
+
 ## Pravila
 
 - `main` prima izmene samo kroz PR sa zelenim CI-jem.

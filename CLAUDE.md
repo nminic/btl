@@ -38,6 +38,7 @@ Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot
 - Lokalna baza: `docker compose up -d postgres` (traži `.env`, kopiraj iz `.env.example`)
 - Ceo stack u kontejnerima: `docker compose --profile full up --build`
 - Backend lokalno protiv compose baze: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
+- Produkcijski deploy: `cd /opt/btl/deploy && docker compose -f compose.prod.yml up -d --build frontend` na hostu. Portove 80/443 drži zajednički edge proxy van ovog repoa; nikad ne dodavati servis koji ih zauzima i nikad ne pokretati `docker compose down` nad tim projektom. Detalji: `deploy/README.md`.
 
 ## Proces
 

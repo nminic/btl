@@ -1,16 +1,21 @@
-# Production stack for this repository.
+# Production stack for this repository. See deploy/README.md before changing
+# anything here or deploying.
 #
 # TLS and public routing are NOT handled here. The host runs a shared edge
 # proxy outside this repository (/opt/edge on btl-prod) that owns ports 80
-# and 443 and reverse-proxies this frontend, so several sites can share the
-# machine. Do not add a service that binds 80/443 here: it will collide with
+# and 443. Never add a service that binds those ports: it will collide with
 # the edge proxy.
 #
-# The edge proxy reaches this service over the Compose network of this
-# project, which it joins as an external network named "deploy_default".
-# That name comes from the directory this file lives in, so renaming the
-# directory (or setting a project "name:") breaks public routing until the
-# edge proxy config is updated to match.
+# Hard contract with that proxy: it attaches to this project's Compose
+# network as an external network named "deploy_default", and dials this
+# service as "frontend" on port 80. The network name comes from the project
+# name, which defaults to the directory holding this file, so it changes if
+# the directory is renamed, a top-level "name:" is added, or the deploy uses
+# -p / --project-name / --project-directory / COMPOSE_PROJECT_NAME. Any of
+# those silently breaks public routing.
+#
+# Deploy with: docker compose -f compose.prod.yml up -d --build frontend
+# Never run "docker compose down" here: it deletes the shared network.
 services:
   frontend:
     build: ../frontend
