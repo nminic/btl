@@ -17,10 +17,10 @@ describe('App', () => {
   })
 
   it('shows the league name as a hover tooltip on the logo', () => {
-    const { container } = render(<App />)
-    const logo = container.querySelector('img')
-    expect(logo).toHaveAttribute('title', 'BALKANSKA TRKAČKA LIGA')
+    render(<App />)
+    const logo = screen.getByTitle('BALKANSKA TRKAČKA LIGA')
     expect(logo).toHaveAttribute('src', '/btl-logo-640.jpg')
+    expect(logo).toHaveAttribute('srcset', expect.stringContaining('btl-logo-1280.jpg'))
   })
 
   it('shows the under-construction notice', () => {
