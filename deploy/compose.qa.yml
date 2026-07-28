@@ -16,6 +16,13 @@
 # The project name is pinned below instead of being taken from the directory,
 # so the network is always "qa_default" no matter where the checkout lives.
 #
+# The port on 127.0.0.1 is for an SSH tunnel, not for the public. It is bound
+# to loopback only, so nothing outside the host can reach it, and the firewall
+# lets nothing but 22, 80 and 443 in anyway. It exists so QA can be reviewed
+# over "ssh -N -L 8080:127.0.0.1:8081 btl-prod" when TLS on the reviewer's own
+# machine is broken by antivirus or a proxy, which no server-side change can
+# fix.
+#
 # Deploy with: docker compose -f compose.qa.yml up -d --build frontend
 # Never run "docker compose down" here: it deletes the network the edge proxy
 # is attached to.
@@ -26,6 +33,8 @@ services:
     build: ../frontend
     container_name: qa-frontend
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
     networks:
       default:
         aliases:
