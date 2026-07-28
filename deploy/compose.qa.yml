@@ -1,0 +1,32 @@
+# QA stack: qa.balkanskatrkackaliga.net, everything being prepared before it
+# goes to production. Separate from compose.prod.yml on purpose, so QA and
+# production can sit on different commits.
+#
+# It runs from its own working copy, /opt/btl-qa, not from /opt/btl. Two
+# checkouts is the whole point: pulling on QA must never move production.
+#
+# Routing is the same arrangement as production. The shared edge proxy at
+# /opt/edge owns ports 80 and 443; never add a service that binds them.
+#
+# Hard contract with that proxy: it dials "qa-frontend" on port 80, so the
+# container name and the network alias must both stay "qa-frontend". The
+# production service answers to "frontend" on its own network, and the two
+# names must not collide, or Caddy resolves the wrong one.
+#
+# The project name is pinned below instead of being taken from the directory,
+# so the network is always "qa_default" no matter where the checkout lives.
+#
+# Deploy with: docker compose -f compose.qa.yml up -d --build frontend
+# Never run "docker compose down" here: it deletes the network the edge proxy
+# is attached to.
+name: qa
+
+services:
+  frontend:
+    build: ../frontend
+    container_name: qa-frontend
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - qa-frontend
