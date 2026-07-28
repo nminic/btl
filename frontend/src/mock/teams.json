@@ -1,0 +1,18 @@
+[
+  {
+    "id": "team-dunav",
+    "slug": "dunavski-trkaci",
+    "name": "Dunavski trkači",
+    "city": "Novi Sad",
+    "country": "RS",
+    "organizerMemberNumber": "M0001"
+  },
+  {
+    "id": "team-vardar",
+    "slug": "vardarski-krug",
+    "name": "Vardarski krug",
+    "city": "Skoplje",
+    "country": "MK",
+    "organizerMemberNumber": "F0002"
+  }
+]

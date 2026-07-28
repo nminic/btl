@@ -1,0 +1,149 @@
+{
+  "app": {
+    "name": "Balkanska trkačka liga",
+    "nameUppercase": "BALKANSKA TRKAČKA LIGA",
+    "short": "BTL"
+  },
+  "shell": {
+    "skipToContent": "Preskoči na sadržaj",
+    "openMenu": "Otvori meni",
+    "closeMenu": "Zatvori meni",
+    "mainNavigation": "Glavna navigacija",
+    "footerNote": "Portal je u izradi. Sve što ovde vidiš su probni podaci."
+  },
+  "nav": {
+    "home": "Naslovna",
+    "calendar": "Kalendar",
+    "rankings": "Rang liste",
+    "competitors": "Takmičari",
+    "teams": "Timovi",
+    "leagues": "Lige",
+    "badges": "Značke",
+    "pricing": "Članarina",
+    "rules": "Pravilnik",
+    "about": "O ligi",
+    "contact": "Kontakt",
+    "privacy": "Politika privatnosti",
+    "terms": "Uslovi korišćenja",
+    "login": "Prijava",
+    "register": "Registracija",
+    "myProfile": "Moj profil",
+    "myResults": "Moji rezultati",
+    "membership": "Moja članarina",
+    "messages": "Poruke",
+    "admin": "Administracija",
+    "reviewQueue": "Red za proveru"
+  },
+  "theme": {
+    "label": "Tema",
+    "toDark": "Uključi tamnu temu",
+    "toLight": "Uključi svetlu temu"
+  },
+  "language": {
+    "label": "Jezik",
+    "sr": "Srpski",
+    "en": "English"
+  },
+  "role": {
+    "label": "Uloga",
+    "hint": "Samo u razvoju, da se tokovi mogu proveriti pre nego što postoji prijava.",
+    "visitor": "Posetilac",
+    "competitor": "Takmičar",
+    "moderator": "Moderator",
+    "superadmin": "Superadmin"
+  },
+  "notFound": {
+    "title": "Ove strane nema",
+    "text": "Adresa je pogrešna ili je strana uklonjena.",
+    "back": "Nazad na naslovnu"
+  },
+  "placeholder": {
+    "title": "{name}",
+    "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
+  },
+  "home": {
+    "lead": "Rang lista rekreativnih trkača Balkana. Trčiš gde hoćeš, bodovi te prate.",
+    "countersTitle": "Sezona 2027",
+    "members": "Članova",
+    "races": "Trka",
+    "events": "Događaja",
+    "kilometers": "Kilometara",
+    "nextEvents": "Sledeći događaji",
+    "seeCalendar": "Ceo kalendar"
+  },
+  "data": {
+    "loading": "Učitavanje",
+    "error": "Podaci se ne mogu učitati.",
+    "retry": "Pokušaj ponovo",
+    "empty": "Ovde još nema ničega."
+  },
+  "form": {
+    "required": "Obavezno polje",
+    "optional": "neobavezno",
+    "submit": "Sačuvaj",
+    "hint": "Objašnjenje pravila",
+    "errors": {
+      "required": "Ovo polje je obavezno.",
+      "minLength": "Najmanje {min} znakova.",
+      "maxLength": "Najviše {max} znakova.",
+      "pattern": "Vrednost nije u očekivanom obliku.",
+      "min": "Najmanja dozvoljena vrednost je {min}.",
+      "max": "Najveća dozvoljena vrednost je {max}.",
+      "email": "Unesi ispravnu adresu elektronske pošte."
+    }
+  },
+  "registration": {
+    "title": "Registracija",
+    "submit": "Pošalji prijavu",
+    "firstName": "Ime",
+    "lastName": "Prezime",
+    "email": "Adresa elektronske pošte",
+    "emailHint": "Na nju stiže potvrda naloga. Bez potvrde nalog se ne aktivira.",
+    "birthDate": "Datum rođenja",
+    "birthDateHint": "Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj.",
+    "gender": "Pol",
+    "genderMale": "Muški",
+    "genderFemale": "Ženski",
+    "city": "Grad",
+    "country": "Država",
+    "countryHint": "Od države zavisi koji načini plaćanja ti se nude.",
+    "shirtSize": "Veličina majice",
+    "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
+    "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
+    "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga."
+  },
+  "country": {
+    "RS": "Srbija",
+    "BA": "Bosna i Hercegovina",
+    "ME": "Crna Gora",
+    "MK": "Severna Makedonija",
+    "HR": "Hrvatska"
+  },
+  "shirt": {
+    "S": "S",
+    "M": "M",
+    "L": "L",
+    "XL": "XL",
+    "XXL": "XXL"
+  },
+  "units": {
+    "kilometers": "{value} km",
+    "meters": "{value} m",
+    "points": "{value} bodova",
+    "raceCount": {
+      "one": "{count} trka",
+      "few": "{count} trke",
+      "other": "{count} trka"
+    },
+    "memberCount": {
+      "one": "{count} član",
+      "few": "{count} člana",
+      "other": "{count} članova"
+    },
+    "dayCount": {
+      "one": "{count} dan",
+      "few": "{count} dana",
+      "other": "{count} dana"
+    }
+  }
+}

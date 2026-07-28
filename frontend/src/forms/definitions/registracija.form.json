@@ -1,0 +1,87 @@
+{
+  "id": "registracija",
+  "titleKey": "registration.title",
+  "submitKey": "registration.submit",
+  "fields": [
+    {
+      "name": "firstName",
+      "type": "text",
+      "labelKey": "registration.firstName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "lastName",
+      "type": "text",
+      "labelKey": "registration.lastName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "email",
+      "type": "email",
+      "labelKey": "registration.email",
+      "hintKey": "registration.emailHint",
+      "required": true
+    },
+    {
+      "name": "birthDate",
+      "type": "date",
+      "labelKey": "registration.birthDate",
+      "hintKey": "registration.birthDateHint",
+      "required": true
+    },
+    {
+      "name": "gender",
+      "type": "select",
+      "labelKey": "registration.gender",
+      "required": true,
+      "options": [
+        { "value": "M", "labelKey": "registration.genderMale" },
+        { "value": "F", "labelKey": "registration.genderFemale" }
+      ]
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "labelKey": "registration.city",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "country",
+      "type": "select",
+      "labelKey": "registration.country",
+      "hintKey": "registration.countryHint",
+      "required": true,
+      "options": [
+        { "value": "RS", "labelKey": "country.RS" },
+        { "value": "BA", "labelKey": "country.BA" },
+        { "value": "ME", "labelKey": "country.ME" },
+        { "value": "MK", "labelKey": "country.MK" },
+        { "value": "HR", "labelKey": "country.HR" }
+      ]
+    },
+    {
+      "name": "shirtSize",
+      "type": "select",
+      "labelKey": "registration.shirtSize",
+      "hintKey": "registration.shirtSizeHint",
+      "required": true,
+      "options": [
+        { "value": "S", "labelKey": "shirt.S" },
+        { "value": "M", "labelKey": "shirt.M" },
+        { "value": "L", "labelKey": "shirt.L" },
+        { "value": "XL", "labelKey": "shirt.XL" },
+        { "value": "XXL", "labelKey": "shirt.XXL" }
+      ]
+    },
+    {
+      "name": "healthStatement",
+      "type": "checkbox",
+      "labelKey": "registration.healthStatement",
+      "hintKey": "registration.healthStatementHint",
+      "required": true
+    }
+  ]
+}

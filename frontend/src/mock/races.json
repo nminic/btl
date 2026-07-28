@@ -1,0 +1,47 @@
+[
+  {
+    "id": "race-fruskogorski-2027-42",
+    "eventId": "evt-fruskogorski-2027",
+    "name": "Maraton",
+    "distanceKm": 42.2,
+    "ascentM": 1180,
+    "descentM": 1180,
+    "category": "marathon"
+  },
+  {
+    "id": "race-fruskogorski-2027-21",
+    "eventId": "evt-fruskogorski-2027",
+    "name": "Polumaraton",
+    "distanceKm": 21.1,
+    "ascentM": 540,
+    "descentM": 540,
+    "category": "half"
+  },
+  {
+    "id": "race-beogradski-2027-42",
+    "eventId": "evt-beogradski-2027",
+    "name": "Maraton",
+    "distanceKm": 42.2,
+    "ascentM": 120,
+    "descentM": 120,
+    "category": "marathon"
+  },
+  {
+    "id": "race-beogradski-2027-05",
+    "eventId": "evt-beogradski-2027",
+    "name": "Trka zadovoljstva",
+    "distanceKm": 5.0,
+    "ascentM": 20,
+    "descentM": 20,
+    "category": "short"
+  },
+  {
+    "id": "race-round-n-around-2027-100",
+    "eventId": "evt-round-n-around-2027",
+    "name": "100 km",
+    "distanceKm": 100.0,
+    "ascentM": 2450,
+    "descentM": 2450,
+    "category": "ultra"
+  }
+]

@@ -1,0 +1,27 @@
+.role-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.role-switch__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.role-switch__select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.4rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}

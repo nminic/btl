@@ -1,0 +1,78 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 34rem;
+}
+
+.form__title {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 32px);
+  letter-spacing: -0.02em;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field__label {
+  font-weight: 600;
+}
+
+.field__optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.field__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.field__control {
+  font: inherit;
+  padding: 0.6rem 0.7rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.field__control[type='checkbox'] {
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  align-self: flex-start;
+}
+
+.field__control[aria-invalid='true'] {
+  border-color: var(--down);
+}
+
+.field__error {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--down);
+}
+
+.form__submit {
+  font: inherit;
+  font-weight: 600;
+  align-self: flex-start;
+  padding: 0.7rem 1.2rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+  transition: background var(--fast);
+}
+
+.form__submit:hover {
+  background: var(--accent-hover);
+}

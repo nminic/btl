@@ -1,0 +1,90 @@
+/* Design tokens for the BTL portal.
+ *
+ * Source: btl-produkt/dizajn/predlog-vizuelnog-pravca.html, approved by the
+ * owner. The names there are Serbian; here they are English, because all code
+ * is English (ADL A2). The values are unchanged.
+ *
+ * Two golds on purpose: gold-600 is the only gold that reaches 4.5:1 on white,
+ * gold-300 is its counterpart on dark surfaces. Gold means achievement, never
+ * decoration, so it is reserved for podium places, medals and badges.
+ */
+:root {
+  /* Blue and gold come from the league logo and are the only official colors. */
+  --blue-900: #06214a;
+  --blue-800: #0b3372;
+  --blue-700: #10459a;
+  --blue-600: #1657bd;
+  --blue-100: #e7eefb;
+
+  --gold-600: #8a6a12;
+  --gold-500: #b8901f;
+  --gold-400: #d9ab2e;
+  --gold-300: #f0c94a;
+
+  --black: #14181f;
+  --gray-700: #4a5364;
+  --gray-400: #8b95a6;
+  --gray-200: #dde2ea;
+  --gray-100: #eff2f7;
+  --white: #ffffff;
+
+  /* Semantic tokens. Components use only these, never the raw scales. */
+  --bg: var(--white);
+  --surface: var(--white);
+  --surface-hover: var(--gray-100);
+  --text: var(--black);
+  --text-muted: var(--gray-700);
+  --border: var(--gray-200);
+  --accent: var(--blue-700);
+  --accent-hover: var(--blue-600);
+  --accent-contrast: var(--white);
+  --gold-text: var(--gold-600);
+  --up: #1a7f4b;
+  --down: #b3402f;
+
+  --radius: 10px;
+  --radius-sm: 8px;
+  --fast: 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  color-scheme: light;
+}
+
+/* The dark palette is applied two ways: by system preference, and by the
+ * explicit toggle. The toggle has to win in both directions, so it is written
+ * as its own selector rather than nested inside the media query. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #070d1a;
+    --surface: #0d1628;
+    --surface-hover: #101c33;
+    --text: #eef2f8;
+    --text-muted: #a3b0c4;
+    --border: #1d2b45;
+    --accent: #5b93ec;
+    --accent-hover: #7aa8f0;
+    --accent-contrast: #06214a;
+    --gold-text: var(--gold-300);
+    --up: #4ec98a;
+    --down: #ff8a72;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #070d1a;
+  --surface: #0d1628;
+  --surface-hover: #101c33;
+  --text: #eef2f8;
+  --text-muted: #a3b0c4;
+  --border: #1d2b45;
+  --accent: #5b93ec;
+  --accent-hover: #7aa8f0;
+  --accent-contrast: #06214a;
+  --gold-text: var(--gold-300);
+  --up: #4ec98a;
+  --down: #ff8a72;
+
+  color-scheme: dark;
+}

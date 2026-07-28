@@ -1,0 +1,115 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.home__title {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.home__lead {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.counter {
+  background: linear-gradient(168deg, var(--blue-800), var(--blue-900) 62%);
+  border: 1px solid rgba(240, 201, 74, 0.28);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.counter::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240, 201, 74, 0.75), transparent);
+}
+
+.counter__title {
+  margin: 0;
+  color: #9fb4dd;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.counter__numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.9rem;
+  margin: 0.9rem 0 0;
+}
+
+.counter__numbers div {
+  margin: 0;
+}
+
+.counter__numbers dt {
+  color: #8fa6d2;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.counter__numbers dd {
+  margin: 0;
+  color: var(--gold-300);
+  font-size: clamp(19px, 3.4vw, 25px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.home__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.home__events {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.home__event {
+  display: grid;
+  gap: 0.15rem 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.home__event-date {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.home__event-name {
+  font-weight: 700;
+}
+
+.home__event-place {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@media (min-width: 700px) {
+  .home__event {
+    grid-template-columns: 12rem 1fr auto;
+    align-items: baseline;
+  }
+}

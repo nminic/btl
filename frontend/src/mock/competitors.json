@@ -1,0 +1,67 @@
+[
+  {
+    "memberNumber": "M0001",
+    "firstName": "Vladan",
+    "lastName": "Đurišić",
+    "gender": "M",
+    "city": "Beograd",
+    "country": "RS",
+    "categoryCode": "M A",
+    "firstSeason": 2014,
+    "active": true,
+    "membershipBasis": "honorary",
+    "teamId": "team-dunav"
+  },
+  {
+    "memberNumber": "M0002",
+    "firstName": "Relja",
+    "lastName": "Momčilović",
+    "gender": "M",
+    "city": "Novi Sad",
+    "country": "RS",
+    "categoryCode": "M B",
+    "firstSeason": 2017,
+    "active": true,
+    "membershipBasis": "payment",
+    "teamId": "team-dunav"
+  },
+  {
+    "memberNumber": "F0001",
+    "firstName": "Anđelija",
+    "lastName": "Vukotić",
+    "gender": "F",
+    "city": "Podgorica",
+    "country": "ME",
+    "categoryCode": "Ž A",
+    "firstSeason": 2016,
+    "active": true,
+    "membershipBasis": "honorary",
+    "teamId": null
+  },
+  {
+    "memberNumber": "F0002",
+    "firstName": "Ivona",
+    "lastName": "Stamenkovska",
+    "gender": "F",
+    "city": "Skoplje",
+    "country": "MK",
+    "categoryCode": "Ž PS",
+    "firstSeason": 2027,
+    "active": true,
+    "membershipBasis": "payment",
+    "teamId": "team-vardar"
+  },
+  {
+    "memberNumber": "M0003",
+    "firstName": "Časlav",
+    "lastName": "Radenković",
+    "gender": "M",
+    "city": "Banja Luka",
+    "country": "BA",
+    "categoryCode": "M PS",
+    "firstSeason": 2027,
+    "active": true,
+    "membershipBasis": "payment",
+    "teamId": null
+  }
+]

@@ -1,0 +1,93 @@
+[
+  {
+    "id": "res-0001",
+    "memberNumber": "M0001",
+    "raceId": "race-fruskogorski-2027-42",
+    "eventName": "Fruškogorski maraton",
+    "date": "2027-04-10",
+    "distanceKm": 42.2,
+    "ascentM": 1180,
+    "descentM": 1180,
+    "seconds": 15150,
+    "points": 42.24,
+    "category": "marathon"
+  },
+  {
+    "id": "res-0002",
+    "memberNumber": "M0002",
+    "raceId": "race-fruskogorski-2027-21",
+    "eventName": "Fruškogorski maraton",
+    "date": "2027-04-10",
+    "distanceKm": 21.1,
+    "ascentM": 540,
+    "descentM": 540,
+    "seconds": 6730,
+    "points": 23.55,
+    "category": "half"
+  },
+  {
+    "id": "res-0003",
+    "memberNumber": "F0001",
+    "raceId": "race-fruskogorski-2027-21",
+    "eventName": "Fruškogorski maraton",
+    "date": "2027-04-10",
+    "distanceKm": 21.1,
+    "ascentM": 540,
+    "descentM": 540,
+    "seconds": 7544,
+    "points": 18.45,
+    "category": "half"
+  },
+  {
+    "id": "res-0004",
+    "memberNumber": "M0001",
+    "raceId": "race-beogradski-2027-42",
+    "eventName": "Beogradski maraton",
+    "date": "2027-04-17",
+    "distanceKm": 42.2,
+    "ascentM": 120,
+    "descentM": 120,
+    "seconds": 13272,
+    "points": 27.51,
+    "category": "marathon"
+  },
+  {
+    "id": "res-0005",
+    "memberNumber": "F0001",
+    "raceId": "race-beogradski-2027-42",
+    "eventName": "Beogradski maraton",
+    "date": "2027-04-17",
+    "distanceKm": 42.2,
+    "ascentM": 120,
+    "descentM": 120,
+    "seconds": 14575,
+    "points": 22.52,
+    "category": "marathon"
+  },
+  {
+    "id": "res-0006",
+    "memberNumber": "F0002",
+    "raceId": "race-beogradski-2027-05",
+    "eventName": "Beogradski maraton",
+    "date": "2027-04-17",
+    "distanceKm": 5.0,
+    "ascentM": 20,
+    "descentM": 20,
+    "seconds": 1598,
+    "points": 2.53,
+    "category": "short"
+  },
+  {
+    "id": "res-0007",
+    "memberNumber": "M0003",
+    "raceId": "race-round-n-around-2027-100",
+    "eventName": "BTL Round 'n' Around",
+    "date": "2027-06-12",
+    "distanceKm": 100.0,
+    "ascentM": 2450,
+    "descentM": 2450,
+    "seconds": 49702,
+    "points": 50.66,
+    "category": "ultra"
+  }
+]
