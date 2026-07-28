@@ -109,6 +109,25 @@ Three things hold it together, and all three are easy to break:
 3. QA is behind basic auth, is never cached and is never indexed. Those live in
    `/opt/edge/sites/qa.caddy`.
 
+### Reviewing QA when TLS is broken on the reviewer's machine
+
+Antivirus software and corporate proxies that inspect HTTPS replace the
+certificate with one signed by their own authority. When that authority is not
+trusted, every site fails with `ERR_CERT_AUTHORITY_INVALID`, including this
+one, and no server-side change can repair it. HSTS with `includeSubDomains`
+from the apex also means the browser will not offer a way through.
+
+The way around it is a tunnel, which carries no TLS at all:
+
+```bash
+ssh -N -L 8080:127.0.0.1:8081 btl-prod
+```
+
+Then open `http://localhost:8080`. The QA container binds `127.0.0.1:8081` on
+the host for exactly this; loopback only, so nothing outside the host can reach
+it. There is no basic auth on this path, because the authentication is the SSH
+key.
+
 The same hard rules apply as in production: never bind ports 80 or 443, and
 never run `docker compose down`, because it deletes the network the edge proxy
 is attached to.
