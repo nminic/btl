@@ -1,5 +1,5 @@
 import type { FieldDef, FormDef } from './types'
-import { emptyValues, trimValues, validateField, validateForm } from './validate'
+import { emptyValues, isVisible, trimValues, validateField, validateForm } from './validate'
 
 const text = (extra: Partial<FieldDef> = {}): FieldDef => ({
   name: 'ime',
@@ -119,5 +119,67 @@ describe('validateForm', () => {
 
   it('treats a missing value as empty', () => {
     expect(validateForm(form, {}).ime).toEqual({ key: 'form.errors.required' })
+  })
+})
+
+describe('conditional fields', () => {
+  const parent: FieldDef = {
+    name: 'parentConsent',
+    type: 'text',
+    labelKey: 'x',
+    required: true,
+    showWhenYoungerThan: { field: 'birthDate', years: 16 },
+  }
+  const today = new Date(Date.UTC(2026, 6, 28))
+
+  it('is always visible without the rule', () => {
+    expect(isVisible(text(), {}, today)).toBe(true)
+  })
+
+  it('appears only once the date says the competitor is under sixteen', () => {
+    expect(isVisible(parent, {}, today)).toBe(false)
+    expect(isVisible(parent, { birthDate: 'nije datum' }, today)).toBe(false)
+    expect(isVisible(parent, { birthDate: '01/01/1990' }, today)).toBe(false)
+    expect(isVisible(parent, { birthDate: '01/01/2015' }, today)).toBe(true)
+  })
+
+  it('is not demanded while it is hidden', () => {
+    const form: FormDef = { id: 'p', titleKey: 't', submitKey: 's', fields: [parent] }
+
+    // An adult must not be blocked by a signature they cannot even see.
+    expect(validateForm(form, { birthDate: '01/01/1990' }, today)).toEqual({})
+    expect(validateForm(form, { birthDate: '01/01/2015' }, today)).toEqual({
+      parentConsent: { key: 'form.errors.required' },
+    })
+  })
+})
+
+describe('matching fields', () => {
+  const form: FormDef = {
+    id: 'p',
+    titleKey: 't',
+    submitKey: 's',
+    fields: [
+      { name: 'password', type: 'password', labelKey: 'x', required: true },
+      { name: 'repeat', type: 'password', labelKey: 'x', required: true, matches: 'password' },
+    ],
+  }
+  const today = new Date(Date.UTC(2026, 6, 28))
+
+  it('accepts two that are the same', () => {
+    expect(validateForm(form, { password: 'trkacka2027', repeat: 'trkacka2027' }, today)).toEqual({})
+  })
+
+  it('rejects two that differ', () => {
+    expect(validateForm(form, { password: 'trkacka2027', repeat: 'nesto' }, today).repeat).toEqual({
+      key: 'form.errors.matches',
+    })
+  })
+})
+
+describe('date fields', () => {
+  it('demands the dd/mm/gggg shape', () => {
+    expect(validateField(text({ type: 'date' }), '1985-04-12')).toEqual({ key: 'form.errors.date' })
+    expect(validateField(text({ type: 'date' }), '12/04/1985')).toBeNull()
   })
 })

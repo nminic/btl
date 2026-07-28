@@ -25,11 +25,35 @@
       "required": true
     },
     {
+      "name": "password",
+      "type": "password",
+      "labelKey": "registration.password",
+      "hintKey": "registration.passwordHint",
+      "required": true,
+      "minLength": 10
+    },
+    {
+      "name": "passwordRepeat",
+      "type": "password",
+      "labelKey": "registration.passwordRepeat",
+      "required": true,
+      "matches": "password"
+    },
+    {
       "name": "birthDate",
       "type": "date",
       "labelKey": "registration.birthDate",
       "hintKey": "registration.birthDateHint",
       "required": true
+    },
+    {
+      "name": "parentConsent",
+      "type": "text",
+      "labelKey": "registration.parentConsent",
+      "hintKey": "registration.parentConsentHint",
+      "required": true,
+      "maxLength": 120,
+      "showWhenYoungerThan": { "field": "birthDate", "years": 16 }
     },
     {
       "name": "gender",
@@ -69,11 +93,13 @@
       "hintKey": "registration.shirtSizeHint",
       "required": true,
       "options": [
+        { "value": "XS", "labelKey": "shirt.XS" },
         { "value": "S", "labelKey": "shirt.S" },
         { "value": "M", "labelKey": "shirt.M" },
         { "value": "L", "labelKey": "shirt.L" },
         { "value": "XL", "labelKey": "shirt.XL" },
-        { "value": "XXL", "labelKey": "shirt.XXL" }
+        { "value": "XXL", "labelKey": "shirt.XXL" },
+        { "value": "XXXL", "labelKey": "shirt.XXXL" }
       ]
     },
     {

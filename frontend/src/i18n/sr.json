@@ -91,7 +91,9 @@
       "min": "Najmanja dozvoljena vrednost je {min}.",
       "max": "Najveća dozvoljena vrednost je {max}.",
       "email": "Unesi ispravnu adresu elektronske pošte.",
-      "number": "Unesi broj."
+      "number": "Unesi broj.",
+      "date": "Unesi datum u obliku dd/mm/gggg.",
+      "matches": "Ne poklapa se sa prethodnim poljem."
     },
     "choose": "Izaberi",
     "errorSummary": "Prijava nije poslata. Popravi ova polja:"
@@ -104,7 +106,7 @@
     "email": "Adresa elektronske pošte",
     "emailHint": "Na nju stiže potvrda naloga. Bez potvrde nalog se ne aktivira.",
     "birthDate": "Datum rođenja",
-    "birthDateHint": "Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj.",
+    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj.",
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
@@ -116,7 +118,14 @@
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
     "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga.",
     "doneTitle": "Prijava je zabeležena",
-    "doneText": "Ovo je probni portal, pa prijava nigde ne odlazi. Evo šta bi bilo poslato:"
+    "doneText": "Ovo je probni portal, pa prijava nigde ne odlazi. Evo šta bi bilo poslato:",
+    "password": "Lozinka",
+    "passwordHint": "Najmanje 10 znakova. Njome se posle prijavljuješ na portal.",
+    "passwordRepeat": "Ponovi lozinku",
+    "parentConsent": "Ime i prezime roditelja ili staratelja",
+    "parentConsentHint": "Takmičar je mlađi od 16 godina, pa prijavu potpisuje roditelj. Upisivanjem imena potvrđuješ da podržavaš prijavu svog deteta sa unetim podacima.",
+    "closed": "Registracija još nije otvorena",
+    "closedText": "Portal je od 15. do 30. septembra otvoren samo za razgledanje. Učlanjenje kreće 1. oktobra, po najnižoj ceni od 35 EUR."
   },
   "country": {
     "RS": "Srbija",
@@ -126,11 +135,13 @@
     "HR": "Hrvatska"
   },
   "shirt": {
+    "XS": "XS",
     "S": "S",
     "M": "M",
     "L": "L",
     "XL": "XL",
-    "XXL": "XXL"
+    "XXL": "XXL",
+    "XXXL": "XXXL"
   },
   "units": {
     "kilometers": "{value} km",
@@ -294,17 +305,17 @@
     "priceRsd": "Iz Srbije",
     "notSold": "Ne naplaćuje se",
     "rows": {
-      "preview": "15. do 30. septembra",
-      "regular": "1. oktobra do 20. decembra",
-      "late": "21. do 31. decembra",
+      "early": "1. do 5. oktobra",
+      "regular": "6. oktobra do 30. novembra",
+      "late": "1. do 31. decembra",
       "season": "Tokom sezone, od 1. januara",
       "junior": "Uzrast do 14 godina"
     },
     "noRanking": "bez prava na rangiranje",
     "rsdNote": "Dinarska cena je fiksirana za celu sezonu i ne menja se sa kursom. Ako plaćaš iz Srbije, plaćaš dinarski iznos.",
-    "previewNote": "Od 15. do 30. septembra portal radi, ali se članarina još ne prodaje. Tada se unosi kalendar i otvaraju profili takmičara iz ranijih godina, koji su počašćeni.",
+    "previewNote": "Od 15. do 30. septembra portal je otvoren samo za razgledanje: registracija tada nije moguća. Učlanjenje kreće 1. oktobra.",
     "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
-    "reminders": "Podsetnike šaljemo tri puta: 30. septembra, 20. decembra i 30. decembra."
+    "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra."
   },
   "error": {
     "title": "Nešto je puklo",

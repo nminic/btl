@@ -13,6 +13,7 @@ const everyType: FormDef = {
     { name: 'ime', type: 'text', labelKey: 'proba.ime', required: true },
     { name: 'mejl', type: 'email', labelKey: 'proba.mejl', hintKey: 'proba.mejlPravilo' },
     { name: 'datum', type: 'date', labelKey: 'proba.datum' },
+    { name: 'lozinka', type: 'password', labelKey: 'proba.lozinka' },
     { name: 'broj', type: 'number', labelKey: 'proba.broj', min: 1 },
     {
       name: 'pol',
@@ -36,13 +37,16 @@ describe('FormRenderer', () => {
     // missing translation visible instead of silent.
     expect(screen.getByLabelText(/proba.ime/)).toHaveAttribute('type', 'text')
     expect(screen.getByLabelText(/proba.mejl/)).toHaveAttribute('type', 'email')
-    expect(screen.getByLabelText(/proba.datum/)).toHaveAttribute('type', 'date')
+    // A date is a text field on purpose: the native one follows the browser
+    // locale, so it would show mm/dd/yyyy to an English browser.
+    expect(screen.getByLabelText(/proba.datum/)).toHaveAttribute('placeholder', 'dd/mm/gggg')
     expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'number')
     expect(screen.getByLabelText(/proba.pol/).tagName).toBe('SELECT')
     expect(screen.getByLabelText(/proba.prazan/).children).toHaveLength(1)
     expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(2)
     expect(screen.getByLabelText(/proba.beleska/).tagName).toBe('TEXTAREA')
     expect(screen.getByLabelText(/proba.saglasnost/)).toHaveAttribute('type', 'checkbox')
+    expect(screen.getByLabelText(/proba.lozinka/)).toHaveAttribute('type', 'password')
   })
 
   it('puts the rule next to the field it belongs to', () => {

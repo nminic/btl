@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
-import { emptyValues, trimValues, validateForm } from './validate'
+import { maskDate } from './dateField'
+import { emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
 
 type Props = {
@@ -34,6 +35,37 @@ function Field({
     className: 'field__control',
   }
 
+  if (field.type === 'checkbox') {
+    return (
+      <div className="field field--checkbox">
+        <div className="field__confirm">
+          {/* The box stands before the words it confirms, never after them. */}
+          <input
+            {...shared}
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+          <label className="field__label" htmlFor={inputId}>
+            {t(field.labelKey)}
+          </label>
+        </div>
+
+        {field.hintKey !== undefined && (
+          <p className="field__hint" id={hintId}>
+            {t(field.hintKey)}
+          </p>
+        )}
+
+        {error !== undefined && (
+          <p className="field__error" id={errorId}>
+            {t(error.key, error.params)}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="field">
       <label className="field__label" htmlFor={inputId}>
@@ -63,18 +95,21 @@ function Field({
         <textarea {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)} />
       )}
 
-      {field.type === 'checkbox' && (
+      {field.type === 'date' && (
         <input
           {...shared}
-          type="checkbox"
-          checked={value === true}
-          onChange={(e) => onChange(e.target.checked)}
+          type="text"
+          inputMode="numeric"
+          autoComplete="bday"
+          placeholder="dd/mm/gggg"
+          value={String(value)}
+          onChange={(e) => onChange(maskDate(e.target.value))}
         />
       )}
 
       {(field.type === 'text' ||
         field.type === 'email' ||
-        field.type === 'date' ||
+        field.type === 'password' ||
         field.type === 'number') && (
         <input
           {...shared}
@@ -98,7 +133,11 @@ export function FormRenderer({ form, onSubmit }: Props) {
   const [values, setValues] = useState<FormValues>(() => emptyValues(form))
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
 
-  const broken = form.fields.filter((field) => errors[field.name] !== undefined)
+  // A field that is not on screen is neither shown nor validated. The parent
+  // signature appears the moment the date of birth says it is needed, which is
+  // why visibility is derived from the values rather than from a blur event.
+  const visible = form.fields.filter((field) => isVisible(field, values, new Date()))
+  const broken = visible.filter((field) => errors[field.name] !== undefined)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -136,7 +175,7 @@ export function FormRenderer({ form, onSubmit }: Props) {
         </div>
       )}
 
-      {form.fields.map((field) => (
+      {visible.map((field) => (
         <Field
           key={field.name}
           field={field}

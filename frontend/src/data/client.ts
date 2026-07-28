@@ -23,7 +23,7 @@ export const RESOURCE_NAMES = [
 
 export type ResourceName = (typeof RESOURCE_NAMES)[number]
 
-export async function loadResource<T>(name: ResourceName): Promise<T> {
+async function request<T>(name: ResourceName): Promise<T> {
   const response = await fetch(`${BASE}/${name}.json`)
 
   if (!response.ok) {
@@ -31,4 +31,34 @@ export async function loadResource<T>(name: ResourceName): Promise<T> {
   }
 
   return (await response.json()) as T
+}
+
+/* One request per resource per visit. Without this every screen change fetches
+ * and parses the whole result set again, and on QA the no-store header means
+ * the browser cannot help either. The promise is cached rather than the value,
+ * so two screens mounting at once share a single request.
+ *
+ * A failure is not cached: it is dropped so the next attempt can succeed. */
+const inFlight = new Map<ResourceName, Promise<unknown>>()
+
+export function loadResource<T>(name: ResourceName): Promise<T> {
+  const cached = inFlight.get(name)
+
+  if (cached !== undefined) {
+    return cached as Promise<T>
+  }
+
+  const promise = request<T>(name).catch((error: unknown) => {
+    inFlight.delete(name)
+    throw error
+  })
+
+  inFlight.set(name, promise)
+
+  return promise as Promise<T>
+}
+
+/** Tests start from an empty cache; nothing in the application calls this. */
+export function clearResourceCache(): void {
+  inFlight.clear()
 }

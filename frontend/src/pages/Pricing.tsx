@@ -5,7 +5,7 @@ import './Pricing.css'
  * in the code (ADL A12). It is spelled out here because the screen exists
  * before the backend does; it moves to the data layer with the rest. */
 const PRICES = [
-  { key: 'preview', eur: null, rsd: null },
+  { key: 'early', eur: 35, rsd: 4200 },
   { key: 'regular', eur: 40, rsd: 4800 },
   { key: 'late', eur: 50, rsd: 6000 },
   { key: 'season', eur: 40, rsd: 4800, noRanking: true },
@@ -34,18 +34,12 @@ export function Pricing() {
               <tr key={row.key}>
                 <td>{t(`pricing.rows.${row.key}`)}</td>
                 <td>
-                  {row.eur === null ? (
-                    t('pricing.notSold')
-                  ) : (
-                    <>
-                      {row.eur} EUR
-                      {row.noRanking === true && (
-                        <span className="pricing__note"> ({t('pricing.noRanking')})</span>
-                      )}
-                    </>
+                  {row.eur} EUR
+                  {row.noRanking === true && (
+                    <span className="pricing__note"> ({t('pricing.noRanking')})</span>
                   )}
                 </td>
-                <td>{row.rsd === null ? '' : `${row.rsd.toLocaleString('sr-Latn')} RSD`}</td>
+                <td>{`${row.rsd.toLocaleString('sr-Latn')} RSD`}</td>
               </tr>
             ))}
           </tbody>

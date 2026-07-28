@@ -1,7 +1,14 @@
 import '@testing-library/jest-dom'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { vi } from 'vitest'
+import { beforeEach, vi } from 'vitest'
+import { clearResourceCache } from '../data/client'
+
+// The data layer caches a resource for the whole visit. Tests are separate
+// visits, so each one starts from an empty cache.
+beforeEach(() => {
+  clearResourceCache()
+})
 
 /* The data layer fetches /mock/<name>.json, which the dev server and nginx
  * serve out of public/. In tests there is no server, so fetch reads the same

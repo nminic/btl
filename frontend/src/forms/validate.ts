@@ -1,3 +1,4 @@
+import { ageOn, parseDate } from './dateField'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -54,6 +55,10 @@ export function validateField(field: FieldDef, value: string | boolean): FieldEr
     return { key: 'form.errors.email' }
   }
 
+  if (field.type === 'date' && parseDate(text) === null) {
+    return { key: 'form.errors.date' }
+  }
+
   if (field.type === 'number') {
     const numeric = Number(text)
 
@@ -75,11 +80,41 @@ export function validateField(field: FieldDef, value: string | boolean): FieldEr
   return null
 }
 
-export function validateForm(form: FormDef, values: FormValues): Record<string, FieldError> {
+/**
+ * Whether a field is on screen at all. A hidden field is neither shown nor
+ * validated, or a member over sixteen could never submit the form because of a
+ * parent signature they cannot see.
+ */
+export function isVisible(field: FieldDef, values: FormValues, today: Date): boolean {
+  const rule = field.showWhenYoungerThan
+
+  if (rule === undefined) {
+    return true
+  }
+
+  const birth = parseDate(String(values[rule.field] ?? ''))
+
+  return birth !== null && ageOn(birth, today) < rule.years
+}
+
+export function validateForm(
+  form: FormDef,
+  values: FormValues,
+  today: Date = new Date(),
+): Record<string, FieldError> {
   const errors: Record<string, FieldError> = {}
 
   for (const field of form.fields) {
-    const error = validateField(field, values[field.name] ?? '')
+    if (!isVisible(field, values, today)) {
+      continue
+    }
+
+    const value = values[field.name] ?? ''
+    let error = validateField(field, value)
+
+    if (error === null && field.matches !== undefined && value !== values[field.matches]) {
+      error = { key: 'form.errors.matches' }
+    }
 
     if (error !== null) {
       errors[field.name] = error

@@ -45,12 +45,6 @@ export function CompetitorProfile() {
                 ) : (
                   <Link to={`/${locale}/tim/${team.slug}`}>{team.name}</Link>
                 )}
-                {competitor.membershipBasis === 'honorary' && (
-                  <>
-                    {' · '}
-                    <span className="badge">{t('profile.honorary')}</span>
-                  </>
-                )}
               </p>
             </header>
 

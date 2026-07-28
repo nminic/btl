@@ -140,6 +140,20 @@ export function rankingFor(
     )
 }
 
+/**
+ * Totals per competitor in one pass. Filtering the whole result set once per
+ * competitor is thirty times the work for the same answer, and it showed.
+ */
+export function totalsByMember(results: Result[]): Map<string, Totals> {
+  const totals = new Map<string, Totals>()
+
+  for (const result of results) {
+    totals.set(result.memberNumber, addToTotals(totals.get(result.memberNumber) ?? EMPTY_TOTALS, result))
+  }
+
+  return totals
+}
+
 export type TeamRow = {
   team: Team
   members: number
