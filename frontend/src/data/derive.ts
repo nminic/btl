@@ -1,4 +1,4 @@
-import type { BtlEvent, Competitor, Gender, Result } from './types'
+import type { BtlEvent, Competitor, Gender, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -35,6 +35,32 @@ export const EMPTY_TOTALS: Totals = {
 
 export function seasonOf(result: Result): number {
   return Number(result.date.slice(0, 4))
+}
+
+/**
+ * Which season the rankings open on: the running one, as long as it has a
+ * field to show. A standing with one person in it is not a standing, so until
+ * the season fills up the screen opens on the fullest one there is.
+ */
+export function defaultSeason(results: Result[], today: string): number {
+  const current = Number(today.slice(0, 4))
+  const fields = new Map<number, Set<string>>()
+
+  for (const result of results) {
+    const season = seasonOf(result)
+    const field = fields.get(season) ?? new Set<string>()
+
+    field.add(result.memberNumber)
+    fields.set(season, field)
+  }
+
+  if ((fields.get(current)?.size ?? 0) > 1) {
+    return current
+  }
+
+  const fullest = [...fields.entries()].sort((left, right) => right[1].size - left[1].size)[0]
+
+  return fullest === undefined ? current : fullest[0]
 }
 
 /** Newest first, and only seasons that actually have results. */
@@ -114,6 +140,33 @@ export function rankingFor(
     )
 }
 
+export type TeamRow = {
+  team: Team
+  members: number
+  totals: Totals
+}
+
+/**
+ * Teams by the plain sum of every member, never normalised: more members is
+ * meant to be an advantage, and a tie goes to the bigger team (PDL P12). A
+ * rule that rewarded the smaller team is explicitly excluded.
+ */
+export function rankTeams(teams: Team[], competitors: Competitor[], results: Result[]): TeamRow[] {
+  return teams
+    .map((team) => {
+      const numbers = new Set(
+        competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
+      )
+
+      return {
+        team,
+        members: numbers.size,
+        totals: totalsOf(results.filter((result) => numbers.has(result.memberNumber))),
+      }
+    })
+    .sort((left, right) => right.totals.points - left.totals.points || right.members - left.members)
+}
+
 /** Category codes present in a gender's field, in a stable order. */
 export function categoriesOf(competitors: Competitor[], gender: Gender): string[] {
   return [
@@ -134,4 +187,36 @@ export function eventsInMonth(events: BtlEvent[], year: number, month: number): 
 /** Every month that holds at least one event, oldest first, as "YYYY-MM". */
 export function monthsWithEvents(events: BtlEvent[]): string[] {
   return [...new Set(events.map((event) => event.date.slice(0, 7)))].sort()
+}
+
+/**
+ * Which month the calendar opens on: the first month from today onwards that
+ * holds an event, or the last month there is if the season is over. Opening on
+ * an empty month is the worst of the three.
+ */
+export function defaultMonth(events: BtlEvent[], today: string): string {
+  const months = monthsWithEvents(events)
+  const ahead = months.find((month) => month >= today.slice(0, 7))
+
+  return ahead ?? months[months.length - 1] ?? today.slice(0, 7)
+}
+
+/** Days of a month laid out Monday to Sunday, with the leading and trailing
+ *  blanks the grid needs. Null is a cell outside the month. */
+export function monthGrid(year: number, month: number): (number | null)[] {
+  const first = new Date(Date.UTC(year, month - 1, 1))
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  // getUTCDay() is 0 for Sunday; the week here starts on Monday.
+  const lead = (first.getUTCDay() + 6) % 7
+  const cells: (number | null)[] = Array.from({ length: lead }, () => null)
+
+  for (let day = 1; day <= days; day += 1) {
+    cells.push(day)
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null)
+  }
+
+  return cells
 }

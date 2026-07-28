@@ -3,6 +3,7 @@ import {
   formatDistance,
   formatDuration,
   formatElevation,
+  formatMonth,
   formatNumber,
   formatPoints,
   formatShortDate,
@@ -50,6 +51,10 @@ describe('format', () => {
 
     expect(written).toBe('10. april 2027.')
     expect(written).not.toMatch(/[Ѐ-ӿ]/)
+  })
+
+  it('names a month for the calendar heading', () => {
+    expect(formatMonth('2027-05', 'sr')).toBe('maj 2027.')
   })
 
   it('leaves an unknown locale to Intl', () => {

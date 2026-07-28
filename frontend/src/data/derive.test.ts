@@ -1,13 +1,17 @@
 import {
   categoriesOf,
+  defaultMonth,
+  defaultSeason,
+  monthGrid,
   eventsInMonth,
   monthsWithEvents,
   rankingFor,
+  rankTeams,
   resultsOf,
   seasonsWithResults,
   totalsOf,
 } from './derive'
-import type { BtlEvent, Competitor, Result } from './types'
+import type { BtlEvent, Competitor, Result, Team } from './types'
 
 const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Competitor => ({
   memberNumber,
@@ -200,5 +204,120 @@ describe('calendar helpers', () => {
 
   it('lists the months that hold something, oldest first', () => {
     expect(monthsWithEvents(events)).toEqual(['2027-03', '2027-04'])
+  })
+})
+
+describe('defaultMonth', () => {
+  const events: BtlEvent[] = [
+    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed', raceIds: [] },
+    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed', raceIds: [] },
+  ]
+
+  it('opens on the first month from today onwards that holds something', () => {
+    expect(defaultMonth(events, '2026-08-01')).toBe('2027-05')
+  })
+
+  it('opens on the current month when that month has events', () => {
+    expect(defaultMonth(events, '2026-03-15')).toBe('2026-03')
+  })
+
+  it('falls back to the last month there is once everything is past', () => {
+    expect(defaultMonth(events, '2030-01-01')).toBe('2027-05')
+  })
+
+  it('falls back to today when there are no events at all', () => {
+    expect(defaultMonth([], '2030-01-01')).toBe('2030-01')
+  })
+})
+
+describe('monthGrid', () => {
+  it('pads to whole weeks, Monday first', () => {
+    // 1 May 2027 is a Saturday, so five blanks come first.
+    const may = monthGrid(2027, 5)
+
+    expect(may.slice(0, 6)).toEqual([null, null, null, null, null, 1])
+    expect(may.length % 7).toBe(0)
+    expect(may.filter((day) => day !== null)).toHaveLength(31)
+  })
+
+  it('needs no padding when a month starts on Monday and ends on Sunday', () => {
+    // February 2027 starts on a Monday and has 28 days.
+    expect(monthGrid(2027, 2)).toHaveLength(28)
+  })
+})
+
+describe('defaultSeason', () => {
+  const results = [
+    result('M0001', '2026-01-01', 1),
+    result('M0001', '2019-01-01', 1),
+    result('M0002', '2019-02-01', 1),
+    result('M0003', '2019-03-01', 1),
+  ]
+
+  it('opens on the running season once it has a field', () => {
+    const started = [...results, result('M0002', '2026-02-02', 1)]
+
+    expect(defaultSeason(started, '2026-08-01')).toBe(2026)
+  })
+
+  it('skips a season with a single competitor in it', () => {
+    // A standing of one person is not a standing; it makes a working table
+    // look broken.
+    expect(defaultSeason(results, '2026-08-01')).toBe(2019)
+  })
+
+  it('opens on the fullest season when the running one is still empty', () => {
+    expect(defaultSeason(results, '2027-03-01')).toBe(2019)
+  })
+
+  it('falls back to the running season when there is nothing at all', () => {
+    expect(defaultSeason([], '2027-03-01')).toBe(2027)
+  })
+})
+
+describe('rankTeams', () => {
+  const team = (id: string): Team => ({
+    id,
+    slug: id,
+    name: id,
+    city: 'Beograd',
+    country: 'RS',
+    organizerMemberNumber: 'M0001',
+  })
+
+  it('sums every member, without normalising for team size', () => {
+    const teams = [team('a'), team('b')]
+    const competitors = [
+      competitor('M0001', { teamId: 'a' }),
+      competitor('M0002', { teamId: 'b' }),
+      competitor('M0003', { teamId: 'b' }),
+    ]
+    const results = [
+      result('M0001', '2027-01-01', 30),
+      result('M0002', '2027-01-01', 20),
+      result('M0003', '2027-01-01', 20),
+    ]
+
+    // b wins with 40 against 30, although its average per member is lower.
+    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual(['b', 'a'])
+  })
+
+  it('breaks a tie in favour of the bigger team', () => {
+    const teams = [team('small'), team('big')]
+    const competitors = [
+      competitor('M0001', { teamId: 'small' }),
+      competitor('M0002', { teamId: 'big' }),
+      competitor('M0003', { teamId: 'big' }),
+    ]
+    const results = [
+      result('M0001', '2027-01-01', 20),
+      result('M0002', '2027-01-01', 10),
+      result('M0003', '2027-01-01', 10),
+    ]
+
+    const ranked = rankTeams(teams, competitors, results)
+
+    expect(ranked[0].team.id).toBe('big')
+    expect(ranked[0].members).toBe(2)
   })
 })

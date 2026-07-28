@@ -1,0 +1,47 @@
+@import '../styles/counter.css';
+@import '../styles/table.css';
+
+.profile__head h1 {
+  margin: 0 0 0.4rem;
+  font-size: clamp(26px, 4.5vw, 36px);
+  letter-spacing: -0.02em;
+}
+
+.profile__meta {
+  margin: 0 0 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.profile__number {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: linear-gradient(150deg, var(--gold-400), var(--gold-600));
+  color: #241a02;
+  font-weight: 700;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.profile .counter {
+  margin: 1.25rem 0;
+}
+
+.profile__section {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.profile__empty {
+  color: var(--text-muted);
+}

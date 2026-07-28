@@ -39,6 +39,16 @@ describe('navigation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
   })
 
+  it('shows a placeholder for a screen that has not been built yet', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr')
+
+    await user.click(await screen.findByRole('link', { name: 'Značke' }))
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Značke' })).toBeVisible()
+    expect(screen.getByText(/Ovaj ekran dolazi u sledećoj fazi/)).toBeVisible()
+  })
+
   it('keeps the current screen when the language changes', async () => {
     const user = userEvent.setup()
     renderAt('/sr/rang-liste')

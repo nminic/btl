@@ -55,3 +55,11 @@ export function formatShortDate(isoDate: string, locale: string): string {
     year: 'numeric',
   }).format(new Date(isoDate))
 }
+
+/** "maj 2027." from "2027-05", for a calendar heading. */
+export function formatMonth(month: string, locale: string): string {
+  return new Intl.DateTimeFormat(intlTag(locale), {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${month}-01T00:00:00Z`))
+}
