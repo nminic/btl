@@ -86,6 +86,33 @@ balkanskatrkackaliga.net {
 Certificates are issued and renewed automatically by the edge proxy, so
 nothing here needs a certificate mount.
 
+## QA environment
+
+`qa.balkanskatrkackaliga.net` runs everything being prepared before it goes to
+production. It is a **second working copy**, `/opt/btl-qa`, with its own Compose
+project, so pulling on QA never moves production.
+
+```bash
+cd /opt/btl-qa && git pull
+cd deploy && docker compose -f compose.qa.yml up -d --build frontend
+```
+
+Three things hold it together, and all three are easy to break:
+
+1. The edge proxy dials `qa-frontend:80`. That name is both the container name
+   and a network alias in `compose.qa.yml`; production answers to `frontend` on
+   its own network, and the two must not collide.
+2. The edge container is attached to the `qa_default` network as well as
+   `deploy_default`. It is declared in `/opt/edge/compose.yml`; attaching a
+   running container with `docker network connect` avoids restarting the edge
+   and taking production down for a few seconds.
+3. QA is behind basic auth, is never cached and is never indexed. Those live in
+   `/opt/edge/sites/qa.caddy`.
+
+The same hard rules apply as in production: never bind ports 80 or 443, and
+never run `docker compose down`, because it deletes the network the edge proxy
+is attached to.
+
 ## Known gaps
 
 - `frontend/nginx.conf` proxies `/api/` to `backend:8080`, which no service in
