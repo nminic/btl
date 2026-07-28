@@ -1,4 +1,4 @@
-import type { BtlEvent, Competitor, Gender, Result, Team } from './types'
+import type { BtlEvent, Competitor, Gender, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -37,10 +37,13 @@ export function seasonOf(result: Result): number {
   return Number(result.date.slice(0, 4))
 }
 
+/** A standing that cannot fill a podium is not a standing. */
+const SMALLEST_FIELD = 3
+
 /**
  * Which season the rankings open on: the running one, as long as it has a
- * field to show. A standing with one person in it is not a standing, so until
- * the season fills up the screen opens on the fullest one there is.
+ * field to show. Until the season fills up, the screen opens on the fullest one
+ * there is, so nobody judges the table by a season with two people in it.
  */
 export function defaultSeason(results: Result[], today: string): number {
   const current = Number(today.slice(0, 4))
@@ -54,7 +57,7 @@ export function defaultSeason(results: Result[], today: string): number {
     fields.set(season, field)
   }
 
-  if ((fields.get(current)?.size ?? 0) > 1) {
+  if ((fields.get(current)?.size ?? 0) >= SMALLEST_FIELD) {
     return current
   }
 
@@ -233,4 +236,80 @@ export function monthGrid(year: number, month: number): (number | null)[] {
   }
 
   return cells
+}
+
+export type SeriesEntry = {
+  name: string
+  next: BtlEvent
+  /** How many more times the same event runs after this one. */
+  more: number
+}
+
+/**
+ * The calendar extract for the front page. A recurring event takes one row and
+ * says when it runs next, instead of five consecutive Wednesdays taking five of
+ * the few places there are.
+ */
+export function upcomingSeries(events: BtlEvent[], today: string, limit: number): SeriesEntry[] {
+  const ahead = events
+    .filter((event) => event.date >= today && event.status !== 'cancelled')
+    .sort((left, right) => left.date.localeCompare(right.date))
+
+  const byName = new Map<string, BtlEvent[]>()
+
+  for (const event of ahead) {
+    byName.set(event.name, [...(byName.get(event.name) ?? []), event])
+  }
+
+  return [...byName.values()]
+    .map((runs) => ({ name: runs[0].name, next: runs[0], more: runs.length - 1 }))
+    .sort((left, right) => left.next.date.localeCompare(right.next.date))
+    .slice(0, limit)
+}
+
+/**
+ * The ten to show on the front page. Once a season has results this is simply
+ * its standing. Before that it lists the members who have joined, oldest
+ * membership first, because in a preparation year who is already in the league
+ * is the only interesting thing there is (PDL P14).
+ */
+export function topTen(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  gender: Gender,
+): RankingRow[] {
+  const ranked = rankingFor(competitors, results, { season, gender }).slice(0, 10)
+
+  if (ranked.length > 0) {
+    return ranked
+  }
+
+  return competitors
+    .filter((competitor) => competitor.gender === gender)
+    // The member number is handed out on activation, so its order is the order
+    // people joined in.
+    .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
+    .slice(0, 10)
+    .map((competitor, index) => ({ competitor, position: index + 1, ...EMPTY_TOTALS }))
+}
+
+/** How many races of each length category, for the rotating chart. */
+export function racesByCategory(results: Result[], season: number): Map<RaceCategory, number> {
+  const counts = new Map<RaceCategory, number>()
+
+  for (const result of results) {
+    if (seasonOf(result) === season) {
+      counts.set(result.category, (counts.get(result.category) ?? 0) + 1)
+    }
+  }
+
+  return counts
+}
+
+/** The most recently joined members, for "the community in numbers". */
+export function newestMembers(competitors: Competitor[], count: number): Competitor[] {
+  return [...competitors]
+    .sort((left, right) => right.memberNumber.localeCompare(left.memberNumber))
+    .slice(0, count)
 }

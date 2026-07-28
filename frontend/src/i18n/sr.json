@@ -64,13 +64,73 @@
   },
   "home": {
     "lead": "Rang lista rekreativnih trkača Balkana. Trčiš gde hoćeš, bodovi te prate.",
-    "countersTitle": "Liga u brojkama",
-    "members": "Članova",
-    "races": "Odtrčanih trka",
-    "events": "Događaja",
+    "untilSeason": "do početka sezone {season}.",
+    "toCalendar": "Kalendar trka",
+    "toRegistration": "Učlani se",
+    "toPricing": "Vidi članarinu",
+    "season": "Sezona {season}.",
+    "seasonSample": "Sezona {season}, probni podaci",
+    "countersNote": "Brojači kreću od nule u ponoć na Novu godinu.",
     "kilometers": "Kilometara",
-    "nextEvents": "Sledeći događaji",
-    "seeCalendar": "Ceo kalendar"
+    "ascent": "Uspona",
+    "descent": "Spusta",
+    "onCourse": "Na stazi",
+    "points": "BTL points",
+    "readySetGo": "Priprema, pozor, SAD!",
+    "moreRuns": {
+      "one": "i još {count} termin",
+      "few": "i još {count} termina",
+      "other": "i još {count} termina"
+    },
+    "seeCalendar": "Ceo kalendar",
+    "enrolment": "Članarina za BTL {season}.",
+    "opensIn": {
+      "one": "Otvara se za {count} dan.",
+      "few": "Otvara se za {count} dana.",
+      "other": "Otvara se za {count} dana."
+    },
+    "priceRises": {
+      "one": "Cena raste na {price} EUR za {count} dan.",
+      "few": "Cena raste na {price} EUR za {count} dana.",
+      "other": "Cena raste na {price} EUR za {count} dana."
+    },
+    "topMen": "Top 10 muškarci",
+    "topWomen": "Top 10 žene",
+    "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
+    "wholeStanding": "Cela rang lista",
+    "byCategory": "Trke po dužini",
+    "previousCategory": "Prethodna kategorija",
+    "nextCategory": "Sledeća kategorija",
+    "calculator": "BTL kalkulator",
+    "calcLength": "Dužina staze (km)",
+    "calcAscent": "Uspon (m)",
+    "calcDescent": "Spust (m)",
+    "calcTime": "Vreme prelaska",
+    "hours": "h",
+    "minutes": "min",
+    "seconds": "s",
+    "calcWaiting": "Unesi dužinu i vreme.",
+    "howTitle": "Kako radi BTL u tri koraka",
+    "how": {
+      "one": {
+        "title": "Trčiš gde hoćeš.",
+        "text": "Bilo koja trka, bilo gde, bilo kada u sezoni."
+      },
+      "two": {
+        "title": "Uneseš rezultat.",
+        "text": "Dužinu, uspon, spust i vreme, uz link ka zvaničnim rezultatima."
+      },
+      "three": {
+        "title": "Dobijaš bodove.",
+        "text": "Duža i teža staza nosi više, brže vreme nosi više. Bodovi se sabiraju kroz celu sezonu."
+      }
+    },
+    "news": "Vesti",
+    "sponsorOfTheDay": "Sponzor dana",
+    "partners": "Sponzori i partneri",
+    "community": "Zajednica u brojkama",
+    "newest": "Poslednji koji su se učlanili",
+    "membersInSeason": "članova u ligi"
   },
   "data": {
     "loading": "Učitavanje",

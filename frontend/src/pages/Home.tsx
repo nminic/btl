@@ -1,79 +1,78 @@
-import { Link } from 'react-router'
 import { Resource } from '../components/Resource'
+import { defaultSeason, totalsOf } from '../data/derive'
 import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
-import { formatDate, formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { CalendarExtract } from './home/CalendarExtract'
+import { Calculator } from './home/Calculator'
+import { CategoryChart } from './home/CategoryChart'
+import { CommunityNumbers } from './home/CommunityNumbers'
+import { Counters } from './home/Counters'
+import { EnrolmentSlot } from './home/EnrolmentSlot'
+import { Hero } from './home/Hero'
+import { HowItWorks } from './home/HowItWorks'
+import { NEWS, seasonLabelKey, SPONSORS } from './home/content'
+import { News } from './home/News'
+import { Sponsor, SponsorStrip } from './home/Sponsor'
+import { TopTen } from './home/TopTen'
 import './Home.css'
 
-const UPCOMING_ON_HOME = 3
-
+/* The widget order is the one fixed in PDL P14, top to bottom:
+ *
+ *   hero with the season counters
+ *   "Priprema, pozor, SAD!" (2/3) beside the seasonal slot (1/3)
+ *   Top 10 men (1/4) | Top 10 women (1/4) | rotating chart (1/2)
+ *   calculator (1/2) beside how it works (1/2)
+ *   news (2/3) beside sponsor of the day (1/3)
+ *   the strip of partner logos
+ *
+ * On a phone it is the same order in one column. News, sponsor and strip
+ * disappear entirely when they have nothing fresh to say.
+ */
 export function Home() {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const state = combineResources(useCompetitors(), useEvents(), useResults())
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <div className="home">
-      <h1 className="home__title">{t('app.name')}</h1>
-      <p className="home__lead">{t('home.lead')}</p>
-
       <Resource state={state}>
         {([competitors, events, results]) => {
-          const kilometers = results.reduce((sum, result) => sum + result.distanceKm, 0)
-          // Only what is still ahead. The data reaches back to 2014, so sorting
-          // by date without this shows the oldest race in the league.
-          const today = new Date().toISOString().slice(0, 10)
-          const upcoming = events
-            .filter((event) => event.date >= today)
-            .sort((left, right) => left.date.localeCompare(right.date))
-            .slice(0, UPCOMING_ON_HOME)
+          // The running season once it has results; until then the fullest one
+          // there is, so the widgets can be judged before the first race.
+          const season = defaultSeason(results, today)
+          const totals = totalsOf(results.filter((one) => one.date.startsWith(String(season))))
+          // The running season is the calendar year, not the year the
+          // membership is sold for.
+          const label = t(seasonLabelKey(season, Number(today.slice(0, 4))), { season })
 
           return (
             <>
-              {/* The counter is the one place where gold carries a surface,
-                  because it is the scoreboard of the whole league. */}
-              <section className="counter" aria-labelledby="counters-heading">
-                <h2 className="counter__title" id="counters-heading">
-                  {t('home.countersTitle')}
-                </h2>
-                <dl className="counter__numbers">
-                  <div>
-                    <dt>{t('home.members')}</dt>
-                    <dd>{formatNumber(competitors.length, locale)}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.races')}</dt>
-                    <dd>{formatNumber(results.length, locale)}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.events')}</dt>
-                    <dd>{formatNumber(events.length, locale)}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('home.kilometers')}</dt>
-                    <dd>{formatNumber(kilometers, locale)}</dd>
-                  </div>
-                </dl>
-              </section>
+              <Hero today={today} />
+              <Counters totals={totals} seasonLabel={label} />
 
-              <section className="home__upcoming" aria-labelledby="upcoming-heading">
-                <h2 className="home__section-title" id="upcoming-heading">
-                  {t('home.nextEvents')}
-                </h2>
-                <ul className="home__events" aria-labelledby="upcoming-heading">
-                  {upcoming.map((event) => (
-                    <li key={event.id} className="home__event">
-                      <span className="home__event-date">{formatDate(event.date, locale)}</span>
-                      <span className="home__event-name">{event.name}</span>
-                      <span className="home__event-place">
-                        {event.city}
-                        {', '}
-                        {t('units.raceCount', { count: event.raceIds.length })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Link to={`/${locale}/kalendar`}>{t('home.seeCalendar')}</Link>
-              </section>
+              <div className="home__row home__row--calendar">
+                <CalendarExtract events={events} today={today} />
+                <EnrolmentSlot today={today} />
+              </div>
+
+              <div className="home__row home__row--standing">
+                <TopTen competitors={competitors} results={results} season={season} gender="M" />
+                <TopTen competitors={competitors} results={results} season={season} gender="F" />
+                <CategoryChart results={results} season={season} />
+              </div>
+
+              <div className="home__row home__row--halves">
+                <Calculator />
+                <HowItWorks />
+              </div>
+
+              <div className="home__row home__row--calendar">
+                <News items={NEWS} today={today} />
+                <Sponsor sponsors={SPONSORS} />
+              </div>
+
+              <CommunityNumbers competitors={competitors} />
+              <SponsorStrip sponsors={SPONSORS} />
             </>
           )
         }}
