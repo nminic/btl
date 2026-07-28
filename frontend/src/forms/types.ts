@@ -4,7 +4,15 @@
  * on purpose.
  */
 
-export type FieldType = 'text' | 'email' | 'date' | 'number' | 'select' | 'checkbox' | 'textarea'
+export type FieldType =
+  | 'text'
+  | 'email'
+  | 'password'
+  | 'date'
+  | 'number'
+  | 'select'
+  | 'checkbox'
+  | 'textarea'
 
 export type FieldOption = {
   value: string
@@ -25,6 +33,15 @@ export type FieldDef = {
   max?: number
   pattern?: string
   options?: FieldOption[]
+  /** Must hold the same value as this field. Used by the password repeat. */
+  matches?: string
+  /**
+   * Shown only when the date in `field` says the person is younger than
+   * `years`. The one rule of its kind, and named rather than general on
+   * purpose: a general condition language in a JSON file is a small
+   * programming language, and those grow teeth.
+   */
+  showWhenYoungerThan?: { field: string; years: number }
 }
 
 export type FormDef = {

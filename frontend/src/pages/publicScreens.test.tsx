@@ -133,6 +133,14 @@ describe('CompetitorProfile', () => {
     expect(await screen.findByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
     expect(screen.getByText('Bez tima')).toBeInTheDocument()
   })
+
+  it('never tells a visitor who is an honorary member', async () => {
+    // It is a fact about money, not about running, and it is nobody's business.
+    renderAt('/sr/takmicar/M0005')
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.queryByText('Počasno članstvo')).not.toBeInTheDocument()
+  })
 })
 
 describe('EventDetail', () => {
@@ -148,10 +156,14 @@ describe('Pricing', () => {
     renderAt('/sr/clanarina')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Članarina' })).toBeVisible()
+    expect(screen.getByText('1. do 5. oktobra')).toBeInTheDocument()
+    expect(screen.getByText(/35 EUR/)).toBeInTheDocument()
     expect(screen.getAllByText(/40 EUR/)).toHaveLength(2)
     expect(screen.getByText('6.000 RSD')).toBeInTheDocument()
-    expect(screen.getByText('Ne naplaćuje se')).toBeInTheDocument()
     expect(screen.getByText('(bez prava na rangiranje)')).toBeInTheDocument()
+    // The preview period is not a price, so it has no row in the table. It is
+    // still explained underneath it.
+    expect(within(screen.getByRole('table')).queryByText(/septembra/)).not.toBeInTheDocument()
   })
 
   it('states that the fee is not refunded', async () => {

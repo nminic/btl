@@ -93,3 +93,19 @@
   margin: 0;
   padding-left: 1.2rem;
 }
+
+.field--checkbox {
+  gap: 0.4rem;
+}
+
+/* The box first, then the words. A confirmation that trails its own text reads
+   as a different question. */
+.field__confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.field__confirm .field__label {
+  font-weight: 400;
+}
