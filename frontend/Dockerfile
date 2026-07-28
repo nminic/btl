@@ -3,6 +3,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-fund --no-audit
 COPY . .
+# Shows the role switch. The QA compose file sets it to 1; production sets
+# nothing, and the switch is then absent from the bundle's behaviour.
+ARG VITE_ROLE_SWITCH
+ENV VITE_ROLE_SWITCH=$VITE_ROLE_SWITCH
 RUN npm run build
 
 FROM nginx:1.29-alpine

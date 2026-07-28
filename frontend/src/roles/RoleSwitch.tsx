@@ -1,17 +1,18 @@
 import { useI18n } from '../i18n/useI18n'
 import { ROLES, type Role } from './context'
+import { roleSwitchEnabled } from './devTools'
 import { useRole } from './useRole'
 import './RoleSwitch.css'
 
-/* A development-only control. It exists because the member and administration
- * flows have to be walked through and approved before authentication is built,
- * and there is otherwise no way to reach them. It is not rendered in a
- * production build. */
+/* A control for development and for QA. It exists because the member and
+ * administration flows have to be walked through and approved before
+ * authentication is built, and there is otherwise no way to reach them. It is
+ * never rendered in the production build; see devTools.ts. */
 export function RoleSwitch() {
   const { t } = useI18n()
   const { role, setRole } = useRole()
 
-  if (!import.meta.env.DEV) {
+  if (!roleSwitchEnabled()) {
     return null
   }
 
