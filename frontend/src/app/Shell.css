@@ -90,7 +90,7 @@
   color: var(--text-muted);
 }
 
-.shell__language[aria-current='true'] {
+.shell__language[aria-current='page'] {
   color: var(--text);
   font-weight: 700;
   background: var(--surface-hover);

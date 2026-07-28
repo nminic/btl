@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithI18n } from '../test/render'
 import registracija from './definitions/registracija.form.json'
@@ -40,6 +40,7 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'number')
     expect(screen.getByLabelText(/proba.pol/).tagName).toBe('SELECT')
     expect(screen.getByLabelText(/proba.prazan/).children).toHaveLength(1)
+    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(2)
     expect(screen.getByLabelText(/proba.beleska/).tagName).toBe('TEXTAREA')
     expect(screen.getByLabelText(/proba.saglasnost/)).toHaveAttribute('type', 'checkbox')
   })
@@ -76,6 +77,37 @@ describe('FormRenderer', () => {
     expect(broken.getAttribute('aria-describedby')).toBe('field-ime-error')
   })
 
+  it('announces the failure and links to every broken field', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    // Without this, pressing the button with a broken form is silent for
+    // anyone who cannot see the red text appear.
+    const summary = screen.getByRole('alert')
+    expect(summary).toHaveTextContent('Prijava nije poslata')
+    expect(within(summary).getByRole('link', { name: /proba.ime/ })).toHaveAttribute(
+      'href',
+      '#field-ime',
+    )
+  })
+
+  it('clears a field error as soon as the field is touched', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    expect(screen.getByLabelText(/proba.ime/)).toHaveAttribute('aria-invalid', 'true')
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'V')
+
+    expect(screen.getByLabelText(/proba.ime/)).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(1)
+  })
+
   it('submits the values once the form is correct', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
@@ -90,6 +122,18 @@ describe('FormRenderer', () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ ime: 'Vladan', saglasnost: true, pol: 'M', beleska: 'beleška' }),
     )
+  })
+
+  it('submits trimmed values', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText(/proba.ime/), '  Vladan  ')
+    await user.click(screen.getByLabelText(/proba.saglasnost/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ ime: 'Vladan' }))
   })
 
   it('renders the registration definition straight from JSON', () => {

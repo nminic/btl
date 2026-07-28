@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { dictionaryFor, isLocale } from './config'
+import { dictionaryFor, dictionaryLocale, isLocale, LOCALES } from './config'
 import { I18nProvider } from './I18nProvider'
 import { useI18n } from './useI18n'
 
@@ -24,8 +24,18 @@ describe('config', () => {
   })
 
   it('has a dictionary for every locale', () => {
-    expect(dictionaryFor('sr')).toBeTruthy()
-    expect(dictionaryFor('en')).toBeTruthy()
+    expect(dictionaryFor('sr')['app']).toBeDefined()
+    expect(dictionaryFor('en')['app']).toBeDefined()
+  })
+
+  it('declares the language each address is really written in', () => {
+    // While a locale still falls back to the Serbian dictionary, its declared
+    // language has to say Serbian. These two tables drift apart silently.
+    for (const locale of LOCALES) {
+      const fallsBackToSerbian = dictionaryFor(locale) === dictionaryFor('sr')
+
+      expect(dictionaryLocale(locale)).toBe(fallsBackToSerbian ? 'sr' : locale)
+    }
   })
 })
 

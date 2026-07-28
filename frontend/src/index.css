@@ -7,7 +7,11 @@
 }
 
 :root {
-  font: 16px/1.55 var(--sans);
+  /* A size, not the shorthand: the shorthand would pin the root size and
+     ignore a visitor who raised the browser default. */
+  font-family: var(--sans);
+  font-size: 100%;
+  line-height: 1.55;
   color: var(--text);
   background: var(--bg);
   /* Times, distances and points sit in columns everywhere on this portal, so

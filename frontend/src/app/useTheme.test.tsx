@@ -31,6 +31,26 @@ describe('useTheme', () => {
     expect(document.documentElement.dataset.theme).toBe('dark')
   })
 
+  it('does not store a preference nobody chose', () => {
+    setSystemDark(true)
+    render(<Probe />)
+
+    // Storing the detected value would pin the theme forever: the visitor
+    // would switch the system to light and the site would stay dark.
+    expect(localStorage.getItem('btl-theme')).toBeNull()
+  })
+
+  it('keeps following the system on a second visit', () => {
+    setSystemDark(true)
+    const first = render(<Probe />)
+    first.unmount()
+
+    setSystemDark(false)
+    render(<Probe />)
+
+    expect(screen.getByRole('button')).toHaveTextContent('light')
+  })
+
   it('falls back to light when the system says nothing', () => {
     render(<Probe />)
 

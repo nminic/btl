@@ -1,35 +1,34 @@
 /* The only module that knows where data comes from.
  *
- * Today it reads generated JSON from src/mock. When the backend exists this
- * file starts calling /api and nothing else in the application changes. That
- * is the whole point of it: no component ever imports a mock file, and no
- * component ever calls fetch.
+ * Today it fetches generated JSON from /mock. When the backend exists, BASE
+ * becomes '/api' and nothing else in the application changes. That is the whole
+ * point of this file: no component calls fetch, and no component knows that
+ * mock data exists at all.
+ *
+ * The files are served rather than imported so a million and a half bytes of
+ * results stay out of the JavaScript bundle, and so the screens go through a
+ * real request with a real loading state.
  */
 
-import competitors from '../mock/competitors.json'
-import events from '../mock/events.json'
-import leagues from '../mock/leagues.json'
-import races from '../mock/races.json'
-import results from '../mock/results.json'
-import teams from '../mock/teams.json'
+const BASE = '/mock'
 
-const MOCK_DATA = {
-  competitors,
-  events,
-  leagues,
-  races,
-  results,
-  teams,
-} as const
+export const RESOURCE_NAMES = [
+  'competitors',
+  'events',
+  'leagues',
+  'races',
+  'results',
+  'teams',
+] as const
 
-export type ResourceName = keyof typeof MOCK_DATA
+export type ResourceName = (typeof RESOURCE_NAMES)[number]
 
-export function loadResource<T>(name: ResourceName): Promise<T> {
-  const data = MOCK_DATA[name] as T | undefined
+export async function loadResource<T>(name: ResourceName): Promise<T> {
+  const response = await fetch(`${BASE}/${name}.json`)
 
-  if (data === undefined) {
-    return Promise.reject(new Error(`Unknown resource: ${name}`))
+  if (!response.ok) {
+    throw new Error(`Cannot load ${name}: ${response.status}`)
   }
 
-  return Promise.resolve(data)
+  return (await response.json()) as T
 }

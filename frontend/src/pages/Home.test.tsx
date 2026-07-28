@@ -1,25 +1,28 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 
 describe('Home', () => {
-  it('shows the season counters from the data layer', async () => {
+  it('shows the league counters from the data layer', async () => {
     renderAt('/sr')
 
-    expect(await screen.findByRole('heading', { name: 'Sezona 2027' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Liga u brojkama' })).toBeVisible()
     expect(screen.getByText('Članova')).toBeInTheDocument()
     expect(screen.getByText('Kilometara')).toBeInTheDocument()
   })
 
-  it('lists the nearest events in date order, with the race count', async () => {
+  it('lists only events that are still ahead, in date order', async () => {
     renderAt('/sr')
 
-    const items = await screen.findAllByRole('listitem')
-    const events = items.filter((item) => item.className === 'home__event')
+    const list = await screen.findByRole('list', { name: 'Sledeći događaji' })
+    const dates = within(list)
+      .getAllByRole('listitem')
+      .map((item) => item.firstElementChild!.textContent!)
 
-    expect(events).toHaveLength(3)
-    expect(events[0]).toHaveTextContent('Fruškogorski maraton')
-    expect(events[0]).toHaveTextContent('2 trke')
-    expect(events[2]).toHaveTextContent('BTL Round')
+    expect(dates).toHaveLength(3)
+    // The data reaches back to 2014, so the oldest race must not surface here.
+    const years = dates.map((date) => Number(date.match(/\d{4}/)![0]))
+    expect(years.every((year) => year >= new Date().getFullYear())).toBe(true)
+    expect([...dates].sort()).toEqual(dates)
   })
 
   it('links to the full calendar', async () => {

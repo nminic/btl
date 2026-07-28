@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
-import { emptyValues, validateForm } from './validate'
+import { emptyValues, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
 
 type Props = {
@@ -50,7 +50,7 @@ function Field({
 
       {field.type === 'select' && (
         <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
-          <option value="">{'-'}</option>
+          <option value="">{t('form.choose')}</option>
           {(field.options ?? []).map((option) => (
             <option key={option.value} value={option.value}>
               {t(option.labelKey)}
@@ -98,19 +98,43 @@ export function FormRenderer({ form, onSubmit }: Props) {
   const [values, setValues] = useState<FormValues>(() => emptyValues(form))
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
 
+  const broken = form.fields.filter((field) => errors[field.name] !== undefined)
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const found = validateForm(form, values)
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
-      onSubmit(values)
+      onSubmit(trimValues(values))
     }
+  }
+
+  function handleChange(field: FieldDef, next: string | boolean) {
+    setValues((current) => ({ ...current, [field.name]: next }))
+    // The message goes away as soon as the field is touched. Leaving it up
+    // tells a screen reader the field is still wrong after it was fixed.
+    setErrors(({ [field.name]: _fixed, ...rest }) => rest)
   }
 
   return (
     <form className="form" onSubmit={handleSubmit} noValidate>
       <h1 className="form__title">{t(form.titleKey)}</h1>
+
+      {/* Announced the moment it appears. Without it, pressing the button with
+          a broken form does nothing perceivable for a blind visitor. */}
+      {broken.length > 0 && (
+        <div className="form__summary" role="alert">
+          <p className="form__summary-title">{t('form.errorSummary')}</p>
+          <ul>
+            {broken.map((field) => (
+              <li key={field.name}>
+                <a href={`#field-${field.name}`}>{t(field.labelKey)}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {form.fields.map((field) => (
         <Field
@@ -118,7 +142,7 @@ export function FormRenderer({ form, onSubmit }: Props) {
           field={field}
           value={values[field.name]}
           error={errors[field.name]}
-          onChange={(next) => setValues((current) => ({ ...current, [field.name]: next }))}
+          onChange={(next) => handleChange(field, next)}
         />
       ))}
 

@@ -76,3 +76,20 @@
 .form__submit:hover {
   background: var(--accent-hover);
 }
+
+.form__summary {
+  border: 2px solid var(--down);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+}
+
+.form__summary-title {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+  color: var(--down);
+}
+
+.form__summary ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}

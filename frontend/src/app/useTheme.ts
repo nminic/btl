@@ -22,11 +22,17 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    localStorage.setItem(STORAGE_KEY, theme)
   }, [theme])
 
   const toggle = useCallback(() => {
-    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+    setTheme((current) => {
+      const next = current === 'dark' ? 'light' : 'dark'
+      // Only a deliberate choice is stored. Storing the detected value would
+      // pin the theme after the first visit ever, and the system preference
+      // would never be honoured again.
+      localStorage.setItem(STORAGE_KEY, next)
+      return next
+    })
   }, [])
 
   return { theme, toggle }

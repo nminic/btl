@@ -20,6 +20,22 @@ export function isLocale(value: string | undefined): value is Locale {
   return LOCALES.includes(value as Locale)
 }
 
+/* The language each address is actually written in, which is not always the
+ * language in the address. `/en` shows Serbian words until an English
+ * dictionary exists, and `lang="en"` over Serbian text makes a screen reader
+ * read it with English phonetics, which is unintelligible.
+ *
+ * This table moves together with DICTIONARIES above; a test holds the two to
+ * each other. */
+const TEXT_LOCALES: Record<Locale, Locale> = {
+  sr: 'sr',
+  en: 'sr',
+}
+
+export function dictionaryLocale(locale: Locale): Locale {
+  return TEXT_LOCALES[locale]
+}
+
 export function dictionaryFor(locale: Locale): Dictionary {
   return DICTIONARIES[locale]
 }

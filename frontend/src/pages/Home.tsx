@@ -19,7 +19,11 @@ export function Home() {
       <Resource state={state}>
         {([competitors, events, results]) => {
           const kilometers = results.reduce((sum, result) => sum + result.distanceKm, 0)
-          const upcoming = [...events]
+          // Only what is still ahead. The data reaches back to 2014, so sorting
+          // by date without this shows the oldest race in the league.
+          const today = new Date().toISOString().slice(0, 10)
+          const upcoming = events
+            .filter((event) => event.date >= today)
             .sort((left, right) => left.date.localeCompare(right.date))
             .slice(0, UPCOMING_ON_HOME)
 
@@ -27,8 +31,8 @@ export function Home() {
             <>
               {/* The counter is the one place where gold carries a surface,
                   because it is the scoreboard of the whole league. */}
-              <section className="counter" aria-labelledby="brojac-naslov">
-                <h2 className="counter__title" id="brojac-naslov">
+              <section className="counter" aria-labelledby="counters-heading">
+                <h2 className="counter__title" id="counters-heading">
                   {t('home.countersTitle')}
                 </h2>
                 <dl className="counter__numbers">
@@ -51,11 +55,11 @@ export function Home() {
                 </dl>
               </section>
 
-              <section className="home__upcoming" aria-labelledby="sledeci-naslov">
-                <h2 className="home__section-title" id="sledeci-naslov">
+              <section className="home__upcoming" aria-labelledby="upcoming-heading">
+                <h2 className="home__section-title" id="upcoming-heading">
                   {t('home.nextEvents')}
                 </h2>
-                <ul className="home__events">
+                <ul className="home__events" aria-labelledby="upcoming-heading">
                   {upcoming.map((event) => (
                     <li key={event.id} className="home__event">
                       <span className="home__event-date">{formatDate(event.date, locale)}</span>

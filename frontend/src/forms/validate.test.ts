@@ -1,5 +1,5 @@
 import type { FieldDef, FormDef } from './types'
-import { emptyValues, validateField, validateForm } from './validate'
+import { emptyValues, trimValues, validateField, validateForm } from './validate'
 
 const text = (extra: Partial<FieldDef> = {}): FieldDef => ({
   name: 'ime',
@@ -53,12 +53,38 @@ describe('validateField', () => {
     expect(validateField(text({ min: 1 }), '0')).toBeNull()
   })
 
+  it('rejects a number field that is not a number', () => {
+    // Number('abc') is NaN and every comparison against NaN is false, so
+    // without an explicit check the bounds silently pass anything.
+    expect(validateField(text({ type: 'number', min: 1, max: 300 }), 'abc')).toEqual({
+      key: 'form.errors.number',
+    })
+  })
+
+  it('survives a pattern that does not compile', () => {
+    // The owner edits these JSON files by hand, so a broken pattern is a
+    // question of when. It must reject the value, never throw out of submit.
+    const field = text({ pattern: '([a-z' })
+
+    expect(() => validateField(field, 'bilo sta')).not.toThrow()
+    expect(validateField(field, 'bilo sta')).toEqual({ key: 'form.errors.pattern' })
+  })
+
   it('handles a checkbox as agreed or not agreed', () => {
     const field = text({ type: 'checkbox', required: true })
 
     expect(validateField(field, true)).toBeNull()
     expect(validateField(field, false)).toEqual({ key: 'form.errors.required' })
     expect(validateField(text({ type: 'checkbox' }), false)).toBeNull()
+  })
+})
+
+describe('trimValues', () => {
+  it('trims text and leaves everything else alone', () => {
+    expect(trimValues({ ime: '  Vladan  ', saglasnost: true })).toEqual({
+      ime: 'Vladan',
+      saglasnost: true,
+    })
   })
 })
 

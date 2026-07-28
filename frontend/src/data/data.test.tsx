@@ -48,8 +48,8 @@ describe('loadResource', () => {
     expect(competitors[0].memberNumber).toMatch(/^[MF]\d{4}$/)
   })
 
-  it('rejects an unknown resource', async () => {
-    await expect(loadResource('nepostoji' as ResourceName)).rejects.toThrow('Unknown resource')
+  it('rejects when the resource is not served', async () => {
+    await expect(loadResource('nepostoji' as ResourceName)).rejects.toThrow('Cannot load')
   })
 })
 
@@ -67,22 +67,32 @@ describe('useResource', () => {
     await waitFor(() => expect(screen.getByText(/greska:/)).toBeInTheDocument())
   })
 
-  it('ignores a result that arrives after unmount', async () => {
-    const { unmount } = render(<Probe name="events" />)
-    unmount()
+  it('keeps the answer to the question it is asking now', async () => {
+    // The race the cleanup exists for: the name changes while the first
+    // request is still open. If the stale answer wins, the screen shows the
+    // wrong resource with no error anywhere.
+    const { rerender } = render(<Probe name="competitors" />)
+    rerender(<Probe name="teams" />)
 
-    // Lets the pending promise settle against an unmounted component. React
-    // would warn on a state update here, and the guard is what prevents it.
-    await Promise.resolve()
-    await Promise.resolve()
+    await waitFor(() => expect(screen.getByText(/stavki:/)).toBeInTheDocument())
+
+    const teams = await loadResource<unknown[]>('teams')
+    expect(screen.getByText(`stavki: ${teams.length}`)).toBeInTheDocument()
   })
 
-  it('ignores a failure that arrives after unmount', async () => {
+  it('drops a failure that arrives after unmount', async () => {
+    const onError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { unmount } = render(<Probe name={'nepostoji' as ResourceName} />)
     unmount()
 
     await Promise.resolve()
     await Promise.resolve()
+
+    // Nothing was rendered and nothing complained: the guard swallowed the
+    // late rejection instead of setting state on a dead component.
+    expect(screen.queryByText(/greska:/)).not.toBeInTheDocument()
+    expect(onError).not.toHaveBeenCalled()
+    onError.mockRestore()
   })
 
   it('exposes one hook per resource', async () => {

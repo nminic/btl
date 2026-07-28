@@ -9,7 +9,8 @@
     "openMenu": "Otvori meni",
     "closeMenu": "Zatvori meni",
     "mainNavigation": "Glavna navigacija",
-    "footerNote": "Portal je u izradi. Sve što ovde vidiš su probni podaci."
+    "footerNote": "Portal je u izradi. Sve što ovde vidiš su probni podaci.",
+    "footerNavigation": "Uslovi i pravila"
   },
   "nav": {
     "home": "Naslovna",
@@ -63,9 +64,9 @@
   },
   "home": {
     "lead": "Rang lista rekreativnih trkača Balkana. Trčiš gde hoćeš, bodovi te prate.",
-    "countersTitle": "Sezona 2027",
+    "countersTitle": "Liga u brojkama",
     "members": "Članova",
-    "races": "Trka",
+    "races": "Odtrčanih trka",
     "events": "Događaja",
     "kilometers": "Kilometara",
     "nextEvents": "Sledeći događaji",
@@ -89,8 +90,11 @@
       "pattern": "Vrednost nije u očekivanom obliku.",
       "min": "Najmanja dozvoljena vrednost je {min}.",
       "max": "Najveća dozvoljena vrednost je {max}.",
-      "email": "Unesi ispravnu adresu elektronske pošte."
-    }
+      "email": "Unesi ispravnu adresu elektronske pošte.",
+      "number": "Unesi broj."
+    },
+    "choose": "Izaberi",
+    "errorSummary": "Prijava nije poslata. Popravi ova polja:"
   },
   "registration": {
     "title": "Registracija",
@@ -110,7 +114,9 @@
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
-    "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga."
+    "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga.",
+    "doneTitle": "Prijava je zabeležena",
+    "doneText": "Ovo je probni portal, pa prijava nigde ne odlazi. Evo šta bi bilo poslato:"
   },
   "country": {
     "RS": "Srbija",
@@ -145,5 +151,163 @@
       "few": "{count} dana",
       "other": "{count} dana"
     }
+  },
+  "rankings": {
+    "title": "Rang liste",
+    "men": "Muškarci",
+    "women": "Žene",
+    "season": "Sezona",
+    "allCategories": "Sve kategorije",
+    "search": "Pretraga po imenu ili članskom broju",
+    "searchPlaceholder": "Ime, prezime ili M0001",
+    "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
+    "columns": {
+      "position": "#",
+      "delta": "Δ",
+      "member": "Član",
+      "category": "Kat.",
+      "races": "Trke",
+      "distance": "d (km)",
+      "ascent": "+ (m)",
+      "descent": "− (m)",
+      "time": "Vreme",
+      "points": "Bodovi"
+    },
+    "rowCount": {
+      "one": "{count} takmičar",
+      "few": "{count} takmičara",
+      "other": "{count} takmičara"
+    },
+    "historyNote": "Sezona 2027. još nije počela. Prikazani su probni podaci iz ranijih godina, da bi se tabela mogla proceniti."
+  },
+  "calendar": {
+    "title": "Kalendar",
+    "previousMonth": "Prethodni mesec",
+    "nextMonth": "Sledeći mesec",
+    "today": "Danas",
+    "empty": "U ovom mesecu nema nijednog događaja.",
+    "more": "Još {count}",
+    "showDay": "Prikaži ceo dan",
+    "closeDay": "Zatvori dan",
+    "weekdays": {
+      "1": "Pon",
+      "2": "Uto",
+      "3": "Sre",
+      "4": "Čet",
+      "5": "Pet",
+      "6": "Sub",
+      "7": "Ned"
+    },
+    "status": {
+      "announced": "Najavljeno",
+      "confirmed": "Potvrđeno",
+      "checking": "U proveri",
+      "cancelled": "Otkazano"
+    }
+  },
+  "event": {
+    "backToCalendar": "Nazad na kalendar",
+    "organizer": "Organizator",
+    "place": "Mesto",
+    "races": "Trke",
+    "raceName": "Trka",
+    "distance": "Dužina",
+    "ascent": "Uspon",
+    "descent": "Spust",
+    "category": "Kategorija",
+    "results": "Rezultati članova",
+    "noResults": "Sa ovog događaja nema unetih rezultata.",
+    "notFound": "Ovog događaja nema."
+  },
+  "category": {
+    "short": "Kraća trka",
+    "long": "Duža trka",
+    "half": "Polumaraton",
+    "marathon": "Maraton",
+    "ultra": "Ultramaraton"
+  },
+  "competitors": {
+    "title": "Takmičari",
+    "search": "Pretraga",
+    "searchPlaceholder": "Ime, prezime ili članski broj",
+    "empty": "Nema takmičara koji odgovara pretrazi.",
+    "columns": {
+      "member": "Član",
+      "category": "Kat.",
+      "city": "Mesto",
+      "races": "Trke",
+      "points": "Bodovi"
+    },
+    "count": {
+      "one": "{count} takmičar",
+      "few": "{count} takmičara",
+      "other": "{count} takmičara"
+    }
+  },
+  "profile": {
+    "memberSince": "U ligi od {season}.",
+    "honorary": "Počasno članstvo",
+    "team": "Tim",
+    "noTeam": "Bez tima",
+    "allTime": "Sve sezone",
+    "totals": "Zbirno",
+    "races": "Trka",
+    "kilometers": "Kilometara",
+    "ascent": "Uspon",
+    "descent": "Spust",
+    "time": "Vreme na stazi",
+    "points": "Bodova",
+    "results": "Rezultati",
+    "noResults": "Ovaj takmičar još nema nijedan rezultat.",
+    "columns": {
+      "date": "Datum",
+      "event": "Događaj",
+      "distance": "d (km)",
+      "time": "Vreme",
+      "points": "Bodovi"
+    },
+    "notFound": "Ovog takmičara nema."
+  },
+  "teams": {
+    "title": "Timovi",
+    "columns": {
+      "team": "Tim",
+      "city": "Mesto",
+      "members": "Članova",
+      "points": "Bodovi"
+    },
+    "note": "Poredak timova je čist zbir bodova svih članova, bez normalizacije.",
+    "empty": "Nema timova."
+  },
+  "leagues": {
+    "title": "Lige",
+    "season": "Sezona {season}.",
+    "events": "Događaja",
+    "byCategory": "Grupisanje po kategorijama",
+    "byGenderOnly": "Grupisanje samo po polu"
+  },
+  "pricing": {
+    "title": "Članarina",
+    "lead": "Članarina se plaća za sezonu, a sezona 2027. traje od 1. januara do 31. decembra 2027.",
+    "period": "Period uplate",
+    "priceEur": "Cena",
+    "priceRsd": "Iz Srbije",
+    "notSold": "Ne naplaćuje se",
+    "rows": {
+      "preview": "15. do 30. septembra",
+      "regular": "1. oktobra do 20. decembra",
+      "late": "21. do 31. decembra",
+      "season": "Tokom sezone, od 1. januara",
+      "junior": "Uzrast do 14 godina"
+    },
+    "noRanking": "bez prava na rangiranje",
+    "rsdNote": "Dinarska cena je fiksirana za celu sezonu i ne menja se sa kursom. Ako plaćaš iz Srbije, plaćaš dinarski iznos.",
+    "previewNote": "Od 15. do 30. septembra portal radi, ali se članarina još ne prodaje. Tada se unosi kalendar i otvaraju profili takmičara iz ranijih godina, koji su počašćeni.",
+    "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
+    "reminders": "Podsetnike šaljemo tri puta: 30. septembra, 20. decembra i 30. decembra."
+  },
+  "error": {
+    "title": "Nešto je puklo",
+    "text": "Ovaj deo strane se nije učitao kako treba. Osveži stranu, pa ako se ponovi, javi nam."
   }
 }

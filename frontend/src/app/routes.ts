@@ -1,6 +1,6 @@
 import { isMember, isStaff, type Role } from '../roles/context'
 
-export type NavGroup = 'main' | 'member' | 'staff' | 'footer'
+export type NavGroup = 'main' | 'guest' | 'member' | 'staff' | 'footer'
 
 export type RouteDef = {
   /** Path relative to the locale segment, so "kalendar" becomes /sr/kalendar. */
@@ -20,6 +20,8 @@ export const ROUTES: RouteDef[] = [
   { path: 'znacke', labelKey: 'nav.badges', group: 'main' },
   { path: 'clanarina', labelKey: 'nav.pricing', group: 'main' },
 
+  { path: 'registracija', labelKey: 'nav.register', group: 'guest' },
+
   { path: 'moj-profil', labelKey: 'nav.myProfile', group: 'member' },
   { path: 'moji-rezultati', labelKey: 'nav.myResults', group: 'member' },
   { path: 'moja-clanarina', labelKey: 'nav.membership', group: 'member' },
@@ -36,6 +38,11 @@ export const ROUTES: RouteDef[] = [
 ]
 
 export function routesForRole(group: NavGroup, role: Role): RouteDef[] {
+  // Registering is offered to whoever is not a member yet, and to nobody else.
+  if (group === 'guest' && isMember(role)) {
+    return []
+  }
+
   if (group === 'member' && !isMember(role)) {
     return []
   }

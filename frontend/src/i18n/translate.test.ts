@@ -40,6 +40,15 @@ describe('translate', () => {
     expect(translate(dictionary, 'sr', 'races', { count: 7 })).toBe('7 trka')
   })
 
+  it('gets the awkward Serbian numbers right', () => {
+    // These are the cases a refactor breaks first: 21 is "one", 22 is "few",
+    // and zero is "other".
+    expect(translate(dictionary, 'sr', 'races', { count: 0 })).toBe('0 trka')
+    expect(translate(dictionary, 'sr', 'races', { count: 21 })).toBe('21 trka')
+    expect(translate(dictionary, 'sr', 'races', { count: 22 })).toBe('22 trke')
+    expect(translate(dictionary, 'sr', 'races', { count: 25 })).toBe('25 trka')
+  })
+
   it('falls back to the other form when the category is missing', () => {
     expect(translate(dictionary, 'sr', 'onlyOther', { count: 1 })).toBe('nešto')
   })

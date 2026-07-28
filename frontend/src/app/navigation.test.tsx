@@ -45,8 +45,61 @@ describe('navigation', () => {
 
     await user.click(screen.getByRole('link', { name: 'English' }))
 
-    await waitFor(() => expect(document.documentElement.lang).toBe('en'))
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      ),
+    )
     expect(screen.getByRole('heading', { level: 1, name: 'Rang liste' })).toBeVisible()
+  })
+
+  it('declares the language the text is actually written in', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr')
+
+    await user.click(await screen.findByRole('link', { name: 'English' }))
+
+    // /en still shows Serbian words until an English dictionary exists, and
+    // lang="en" over Serbian text is read out with English phonetics.
+    await waitFor(() => expect(document.documentElement.lang).toBe('sr'))
+  })
+
+  it('names every screen in the document title', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr')
+
+    await waitFor(() => expect(document.title).toBe('Naslovna · Balkanska trkačka liga'))
+
+    await user.click(screen.getByRole('link', { name: 'Kalendar' }))
+    await waitFor(() => expect(document.title).toBe('Kalendar · Balkanska trkačka liga'))
+  })
+
+  it('titles an unknown address as not found', async () => {
+    renderAt('/sr/ovoga-nema')
+
+    await waitFor(() =>
+      expect(document.title).toBe('Ove strane nema · Balkanska trkačka liga'),
+    )
+  })
+
+  it('says out loud which screen opened', async () => {
+    renderAt('/sr/timovi')
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Timovi')
+  })
+
+  it('offers registration to a visitor', async () => {
+    renderAt('/sr')
+
+    expect(await screen.findByRole('link', { name: 'Registracija' })).toBeVisible()
+  })
+
+  it('hides registration from someone who is already a member', async () => {
+    renderAt('/sr', 'competitor')
+
+    await screen.findByRole('link', { name: 'Kalendar' })
+    expect(screen.queryByRole('link', { name: 'Registracija' })).not.toBeInTheDocument()
   })
 
   it('hides member and administration links from a visitor', async () => {
@@ -108,7 +161,7 @@ describe('navigation', () => {
     renderAt('/sr')
 
     const skip = await screen.findByRole('link', { name: 'Preskoči na sadržaj' })
-    expect(skip).toHaveAttribute('href', '#sadrzaj')
-    expect(screen.getByRole('main')).toHaveAttribute('id', 'sadrzaj')
+    expect(skip).toHaveAttribute('href', '#content')
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'content')
   })
 })
