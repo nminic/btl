@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { isMember, isStaff } from './context'
+import { roleSwitchEnabled } from './devTools'
 import { RoleProvider } from './RoleProvider'
 import { RoleSwitch } from './RoleSwitch'
 import { useRole } from './useRole'
@@ -76,5 +77,38 @@ describe('RoleSwitch', () => {
     expect(screen.queryByLabelText('Uloga')).not.toBeInTheDocument()
 
     vi.unstubAllEnvs()
+  })
+
+  it('exists in the QA build, which is a production build with the flag set', () => {
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_ROLE_SWITCH', '1')
+
+    renderSwitch()
+    expect(screen.getByLabelText('Uloga')).toBeVisible()
+
+    vi.unstubAllEnvs()
+  })
+})
+
+describe('roleSwitchEnabled', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('is on in development', () => {
+    vi.stubEnv('DEV', true)
+    expect(roleSwitchEnabled()).toBe(true)
+  })
+
+  it('is on when the build asked for it', () => {
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_ROLE_SWITCH', '1')
+    expect(roleSwitchEnabled()).toBe(true)
+  })
+
+  it('is off in a production build that did not ask for it', () => {
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_ROLE_SWITCH', '')
+    expect(roleSwitchEnabled()).toBe(false)
   })
 })
