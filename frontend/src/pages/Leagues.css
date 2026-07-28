@@ -1,0 +1,41 @@
+.leagues h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: -0.02em;
+}
+
+.leagues__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.leagues__item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.leagues__item h2 {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+}
+
+.leagues__item p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.leagues__grouping {
+  margin-top: 0.3rem;
+}
+
+@media (min-width: 700px) {
+  .leagues__list {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "team-dunav",
+    "slug": "dunavski-trkaci",
+    "name": "Dunavski trkači",
+    "city": "Novi Sad",
+    "country": "RS",
+    "organizerMemberNumber": "M0001"
+  },
+  {
+    "id": "team-nisava",
+    "slug": "nisavski-maraton-klub",
+    "name": "Nišavski maraton klub",
+    "city": "Niš",
+    "country": "RS",
+    "organizerMemberNumber": "M0004"
+  },
+  {
+    "id": "team-vardar",
+    "slug": "vardarski-krug",
+    "name": "Vardarski krug",
+    "city": "Skoplje",
+    "country": "MK",
+    "organizerMemberNumber": "F0001"
+  }
+]

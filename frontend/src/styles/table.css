@@ -1,0 +1,78 @@
+/* One table style for every table on the portal: rankings, results, teams.
+ * Numbers are tabular everywhere (set on :root), so columns line up.
+ */
+
+.table-scroll {
+  /* Wide tables scroll inside their own box. The page body never scrolls
+     sideways, which is a hard rule on this portal. */
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: right;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.6rem 0.5rem;
+  border-bottom: 2px solid var(--border);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.8rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+/* The first three columns are words, so they read from the left. */
+.table th:nth-child(-n + 3),
+.table td:nth-child(-n + 3) {
+  text-align: left;
+}
+
+.table tbody tr {
+  transition: background var(--fast);
+}
+
+.table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.table__position {
+  font-weight: 700;
+  width: 2.2rem;
+  color: var(--text-muted);
+}
+
+.table__member-number {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.table__points {
+  font-weight: 700;
+}
+
+/* Gold on the podium, and only there. */
+.podium .table__position {
+  color: var(--gold-text);
+}
+
+.podium .table__points {
+  color: var(--gold-text);
+}
+
+/* On a phone the table keeps four columns: position, name, category, points.
+   Everything else would force a horizontal scroll nobody reads. */
+@media (max-width: 700px) {
+  .table__hide-phone {
+    display: none;
+  }
+}

@@ -1,0 +1,186 @@
+.calendar h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: -0.02em;
+}
+
+.calendar__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.calendar__month {
+  margin: 0;
+  font-size: 1.05rem;
+  text-transform: capitalize;
+}
+
+.calendar__step {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.8rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--fast);
+}
+
+.calendar__step:hover {
+  background: var(--surface-hover);
+}
+
+.calendar__empty {
+  color: var(--text-muted);
+}
+
+/* On a phone the month grid is unreadable, so the days stack. The grid appears
+   from tablet width up. */
+.calendar__grid {
+  display: grid;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.calendar__weekday {
+  display: none;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-bottom: 0.25rem;
+}
+
+.day {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  background: var(--surface);
+}
+
+/* A cell outside the month keeps its column width so nothing jumps between
+   months, but takes no height it does not need. */
+.day--outside {
+  display: none;
+}
+
+.day__number {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.05rem 0.2rem;
+  margin: -0.05rem -0.2rem;
+  cursor: pointer;
+  transition: background var(--fast);
+}
+
+.day__number:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.chip {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background: var(--blue-100);
+  color: var(--blue-800);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-left: 3px solid var(--blue-700);
+  transition: transform var(--fast);
+}
+
+:root[data-theme='dark'] .chip {
+  background: #10203c;
+  color: #cfe0ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .chip {
+    background: #10203c;
+    color: #cfe0ff;
+  }
+}
+
+.chip:hover {
+  transform: translateX(2px);
+}
+
+.chip i {
+  display: block;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.day__more {
+  display: block;
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font: 700 0.75rem/1.2 inherit;
+  transition:
+    border-color var(--fast),
+    color var(--fast);
+}
+
+.day__more:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.calendar__day-detail {
+  margin-top: 1.25rem;
+  border-left: 3px solid var(--gold-500);
+  padding: 0.25rem 0 0.25rem 0.9rem;
+}
+
+.calendar__day-detail h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.calendar__day-detail ul {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+}
+
+@media (min-width: 780px) {
+  /* Working days are all the same width and the weekend is wider. The widths
+     stay the same from month to month, so they are learned once. */
+  .calendar__grid {
+    grid-template-columns: repeat(5, 1fr) 2.1fr 2.1fr;
+  }
+
+  .calendar__weekday {
+    display: block;
+  }
+
+  .day {
+    min-height: 5.75rem;
+  }
+
+  .day--outside {
+    display: block;
+    border-style: dashed;
+    min-height: 2.75rem;
+    opacity: 0.5;
+  }
+}

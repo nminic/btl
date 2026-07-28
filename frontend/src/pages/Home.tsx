@@ -1,0 +1,83 @@
+import { Link } from 'react-router'
+import { Resource } from '../components/Resource'
+import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
+import { formatDate, formatNumber } from '../i18n/format'
+import { useI18n } from '../i18n/useI18n'
+import './Home.css'
+
+const UPCOMING_ON_HOME = 3
+
+export function Home() {
+  const { locale, t } = useI18n()
+  const state = combineResources(useCompetitors(), useEvents(), useResults())
+
+  return (
+    <div className="home">
+      <h1 className="home__title">{t('app.name')}</h1>
+      <p className="home__lead">{t('home.lead')}</p>
+
+      <Resource state={state}>
+        {([competitors, events, results]) => {
+          const kilometers = results.reduce((sum, result) => sum + result.distanceKm, 0)
+          // Only what is still ahead. The data reaches back to 2014, so sorting
+          // by date without this shows the oldest race in the league.
+          const today = new Date().toISOString().slice(0, 10)
+          const upcoming = events
+            .filter((event) => event.date >= today)
+            .sort((left, right) => left.date.localeCompare(right.date))
+            .slice(0, UPCOMING_ON_HOME)
+
+          return (
+            <>
+              {/* The counter is the one place where gold carries a surface,
+                  because it is the scoreboard of the whole league. */}
+              <section className="counter" aria-labelledby="counters-heading">
+                <h2 className="counter__title" id="counters-heading">
+                  {t('home.countersTitle')}
+                </h2>
+                <dl className="counter__numbers">
+                  <div>
+                    <dt>{t('home.members')}</dt>
+                    <dd>{formatNumber(competitors.length, locale)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.races')}</dt>
+                    <dd>{formatNumber(results.length, locale)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.events')}</dt>
+                    <dd>{formatNumber(events.length, locale)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('home.kilometers')}</dt>
+                    <dd>{formatNumber(kilometers, locale)}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="home__upcoming" aria-labelledby="upcoming-heading">
+                <h2 className="home__section-title" id="upcoming-heading">
+                  {t('home.nextEvents')}
+                </h2>
+                <ul className="home__events" aria-labelledby="upcoming-heading">
+                  {upcoming.map((event) => (
+                    <li key={event.id} className="home__event">
+                      <span className="home__event-date">{formatDate(event.date, locale)}</span>
+                      <span className="home__event-name">{event.name}</span>
+                      <span className="home__event-place">
+                        {event.city}
+                        {', '}
+                        {t('units.raceCount', { count: event.raceIds.length })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Link to={`/${locale}/kalendar`}>{t('home.seeCalendar')}</Link>
+              </section>
+            </>
+          )
+        }}
+      </Resource>
+    </div>
+  )
+}

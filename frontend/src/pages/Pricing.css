@@ -1,0 +1,44 @@
+@import '../styles/table.css';
+
+.pricing h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: -0.02em;
+}
+
+.pricing__lead {
+  margin: 0 0 1.25rem;
+  max-width: 62ch;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.pricing .table td:nth-child(2),
+.pricing .table td:nth-child(3),
+.pricing .table th:nth-child(2),
+.pricing .table th:nth-child(3) {
+  text-align: right;
+  font-weight: 700;
+}
+
+.pricing__note {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.pricing__notes {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 62ch;
+}
+
+.pricing__notes p {
+  margin: 0;
+  padding-left: 0.8rem;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

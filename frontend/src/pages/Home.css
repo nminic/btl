@@ -1,0 +1,66 @@
+@import '../styles/counter.css';
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.home__title {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.home__lead {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.home__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.home__events {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.home__event {
+  display: grid;
+  gap: 0.15rem 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.home__event-date {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.home__event-name {
+  font-weight: 700;
+}
+
+.home__event-place {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@media (min-width: 700px) {
+  .home__event {
+    grid-template-columns: 12rem 1fr auto;
+    align-items: baseline;
+  }
+}

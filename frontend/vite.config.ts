@@ -21,7 +21,10 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
+      // Bootstrap only: main.tsx mounts React, App.tsx builds the browser
+      // router from routeObjects. The route table itself is covered through
+      // src/app/navigation.test.tsx, which mounts it in a memory router.
+      exclude: ['src/main.tsx', 'src/app/App.tsx', 'src/vite-env.d.ts', 'src/test/**'],
       thresholds: {
         statements: 100,
         branches: 100,
