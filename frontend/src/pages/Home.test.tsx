@@ -1,36 +1,140 @@
 import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
-  it('shows the league counters from the data layer', async () => {
+  it('lays the widgets out in the order the rulebook fixes', async () => {
     renderAt('/sr')
 
-    expect(await screen.findByRole('heading', { name: 'Liga u brojkama' })).toBeVisible()
-    expect(screen.getByText('Članova')).toBeInTheDocument()
-    expect(screen.getByText('Kilometara')).toBeInTheDocument()
+    await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((heading) => heading.textContent)
+
+    expect(headings).toEqual([
+      expect.stringContaining('Sezona'),
+      'Priprema, pozor, SAD!',
+      expect.stringContaining('Članarina za BTL'),
+      'Top 10 muškarci',
+      'Top 10 žene',
+      'Trke po dužini',
+      'BTL kalkulator',
+      'Kako radi BTL u tri koraka',
+      'Zajednica u brojkama',
+    ])
   })
 
-  it('lists only events that are still ahead, in date order', async () => {
+  it('counts down to the start of the season', async () => {
     renderAt('/sr')
 
-    const list = await screen.findByRole('list', { name: 'Sledeći događaji' })
-    const dates = within(list)
+    expect(await screen.findByText(/do početka sezone 2027/)).toBeVisible()
+  })
+
+  it('groups a recurring event into one row instead of five', async () => {
+    renderAt('/sr')
+
+    const card = (await screen.findByRole('heading', { name: 'Priprema, pozor, SAD!' })).closest(
+      'section',
+    )!
+    const titles = within(card)
       .getAllByRole('listitem')
-      .map((item) => item.firstElementChild!.textContent!)
+      .map((row) => row.textContent!.replace(/[\d./]/g, ''))
 
-    expect(dates).toHaveLength(3)
-    // The data reaches back to 2014, so the oldest race must not surface here.
-    const years = dates.map((date) => Number(date.match(/\d{4}/)![0]))
-    expect(years.every((year) => year >= new Date().getFullYear())).toBe(true)
-    expect([...dates].sort()).toEqual(dates)
+    // No event name appears twice: repeats collapse into a single row.
+    expect(new Set(titles).size).toBe(titles.length)
   })
 
-  it('links to the full calendar', async () => {
+  it('says what membership costs and when that changes', async () => {
     renderAt('/sr')
 
-    expect(await screen.findByRole('link', { name: 'Ceo kalendar' })).toHaveAttribute(
+    const slot = (await screen.findByRole('heading', { name: /Članarina za BTL/ })).closest(
+      'section',
+    )!
+
+    expect(within(slot).getByText(/Otvara se za|Cena raste/)).toBeVisible()
+  })
+
+  it('shows both top tens and links to the whole standing', async () => {
+    renderAt('/sr')
+
+    const men = (await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section')!
+
+    expect(within(men).getAllByRole('listitem').length).toBeGreaterThan(0)
+    expect(within(men).getByRole('link', { name: 'Cela rang lista' })).toHaveAttribute(
       'href',
-      '/sr/kalendar',
+      '/sr/rang-liste?pol=m',
     )
+  })
+
+  it('rotates the chart through the five length categories, and wraps around', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr')
+
+    const chart = (await screen.findByRole('heading', { name: 'Trke po dužini' })).closest(
+      'section',
+    )!
+    const current = () => chart.querySelector('.chart__current')!.textContent
+
+    const first = current()
+    await user.click(within(chart).getByRole('button', { name: 'Sledeća kategorija' }))
+    expect(current()).not.toBe(first)
+
+    await user.click(within(chart).getByRole('button', { name: 'Prethodna kategorija' }))
+    expect(current()).toBe(first)
+
+    await user.click(within(chart).getByRole('button', { name: 'Prethodna kategorija' }))
+    expect(current()).not.toBe(first)
+  })
+
+  it('works the calculator, and waits quietly until it can answer', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr')
+
+    const calc = (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest(
+      'section',
+    )!
+    expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
+
+    // The golden race: 62.07 km, 3456 m up, 3133 m down, 7:28:31 gives 79.03.
+    await user.type(within(calc).getByLabelText('Dužina staze (km)'), '62.07')
+    await user.type(within(calc).getByLabelText('Uspon (m)'), '3456')
+    await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
+    await user.type(within(calc).getByLabelText('h'), '7')
+    await user.type(within(calc).getByLabelText('min'), '28')
+    await user.type(within(calc).getByLabelText('s'), '31')
+
+    expect(within(calc).getByText('79,03')).toBeVisible()
+  })
+
+  it('hides the news and the sponsor while they have nothing fresh to say', async () => {
+    renderAt('/sr')
+
+    await screen.findByRole('heading', { name: 'Zajednica u brojkama' })
+    expect(screen.queryByRole('heading', { name: 'Vesti' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Sponzor dana' })).not.toBeInTheDocument()
+  })
+})
+
+describe('freshNews', () => {
+  const item = (id: string, date: string): NewsItem => ({ id, date, titleKey: 'x', textKey: 'y' })
+
+  it('drops anything older than sixty days', () => {
+    const items = [item('staro', '2026-01-01'), item('novo', '2026-07-01')]
+
+    expect(freshNews(items, '2026-07-29').map((one) => one.id)).toEqual(['novo'])
+  })
+
+  it('takes the three newest, newest first', () => {
+    const items = ['2026-07-01', '2026-07-20', '2026-07-10', '2026-07-25'].map((date) =>
+      item(date, date),
+    )
+
+    expect(freshNews(items, '2026-07-29').map((one) => one.id)).toEqual([
+      '2026-07-25',
+      '2026-07-20',
+      '2026-07-10',
+    ])
   })
 })

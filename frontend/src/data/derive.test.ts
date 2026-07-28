@@ -255,15 +255,21 @@ describe('defaultSeason', () => {
   ]
 
   it('opens on the running season once it has a field', () => {
-    const started = [...results, result('M0002', '2026-02-02', 1)]
+    const started = [
+      ...results,
+      result('M0002', '2026-02-02', 1),
+      result('M0003', '2026-03-03', 1),
+    ]
 
     expect(defaultSeason(started, '2026-08-01')).toBe(2026)
   })
 
-  it('skips a season with a single competitor in it', () => {
-    // A standing of one person is not a standing; it makes a working table
-    // look broken.
+  it('skips a season too thin to fill a podium', () => {
+    // Two people are not a standing, and a table judged on them looks broken.
+    const two = [...results, result('M0002', '2026-02-02', 1)]
+
     expect(defaultSeason(results, '2026-08-01')).toBe(2019)
+    expect(defaultSeason(two, '2026-08-01')).toBe(2019)
   })
 
   it('opens on the fullest season when the running one is still empty', () => {
