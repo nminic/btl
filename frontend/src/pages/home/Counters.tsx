@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Totals } from '../../data/derive'
-import { formatDuration, formatNumber } from '../../i18n/format'
+import { formatCourseTime, formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useCountUp } from './useCountUp'
 
@@ -31,10 +31,12 @@ function Flag() {
   )
 }
 
+/* The two wedges were the wrong way round: the climb has to rise to the right,
+   the descent has to fall away from the left (owner, 29.07.2026). */
 function Ascent() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <path d="M4 18h16L4 6z" strokeLinejoin="round" />
+      <path d="M4 18h16L20 6z" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -42,7 +44,7 @@ function Ascent() {
 function Descent() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <path d="M4 18h16L20 6z" strokeLinejoin="round" />
+      <path d="M4 18h16L4 6z" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -69,7 +71,8 @@ function Row({
   label,
   value,
   text,
-  unit,
+  unit = '',
+  counted,
   decimals = 0,
 }: {
   icon: ReactNode
@@ -77,10 +80,24 @@ function Row({
   value: number
   text?: string
   unit?: string
+  /** Key of a counted phrase, for the one row whose unit declines: trka, trke. */
+  counted?: string
   decimals?: number
 }) {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
   const shown = useCountUp(value)
+
+  function reading(): string {
+    if (text !== undefined) {
+      return text
+    }
+
+    if (counted !== undefined) {
+      return t(counted, { count: shown })
+    }
+
+    return `${formatNumber(shown, locale, decimals)}${unit}`
+  }
 
   return (
     <div className="score">
@@ -89,7 +106,7 @@ function Row({
       </span>
       <span className="score__pill">
         <span className="visually-hidden">{label}: </span>
-        {text ?? `${formatNumber(shown, locale, decimals)}${unit ?? ''}`}
+        {reading()}
       </span>
     </div>
   )
@@ -104,7 +121,9 @@ export function Counters({ totals, seasonLabel }: { totals: Totals; seasonLabel:
         {seasonLabel}
       </h2>
 
-      <Row icon={<Flag />} label={t('home.races')} value={totals.races} />
+      {/* Every row carries its own unit, so a number never stands there
+          meaning whatever the reader guesses (owner, 29.07.2026). */}
+      <Row icon={<Flag />} label={t('home.races')} value={totals.races} counted="home.raceCount" />
       <Row
         icon={<Runner />}
         label={t('home.kilometers')}
@@ -112,23 +131,31 @@ export function Counters({ totals, seasonLabel }: { totals: Totals; seasonLabel:
         unit=" km"
         decimals={2}
       />
-      <Row icon={<Ascent />} label={t('home.ascent')} value={totals.ascent} unit=" m" />
-      <Row icon={<Descent />} label={t('home.descent')} value={totals.descent} unit=" m" />
+      <Row
+        icon={<Ascent />}
+        label={t('home.ascent')}
+        value={totals.ascent}
+        unit={t('home.ascentUnit')}
+      />
+      <Row
+        icon={<Descent />}
+        label={t('home.descent')}
+        value={totals.descent}
+        unit={t('home.descentUnit')}
+      />
       <Row
         icon={<Clock />}
         label={t('home.onCourse')}
         value={totals.seconds}
-        text={formatDuration(totals.seconds)}
+        text={formatCourseTime(totals.seconds)}
       />
       <Row
         icon={<Star />}
         label={t('home.points')}
         value={totals.points}
-        unit=" BTL points"
+        unit={t('home.pointsUnit')}
         decimals={2}
       />
-
-      <p className="scoreboard__note">{t('home.countersNote')}</p>
     </section>
   )
 }

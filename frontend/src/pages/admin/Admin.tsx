@@ -10,11 +10,9 @@ import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 const SCREENS = [
-  { path: 'administracija/red-za-proveru', key: 'nav.reviewQueue' },
-  { path: 'administracija/clanovi', key: 'admin.members' },
-  { path: 'administracija/dogadjaji', key: 'admin.events' },
+  { path: 'administracija/verifikacija', key: 'nav.verification' },
+  { path: 'administracija/entiteti', key: 'nav.entities' },
   { path: 'administracija/znacke', key: 'admin.badges' },
-  { path: 'administracija/cenovnik', key: 'admin.pricing' },
 ]
 
 export function Admin() {

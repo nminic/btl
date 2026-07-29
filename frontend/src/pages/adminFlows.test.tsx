@@ -1,14 +1,63 @@
-import { screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
+import { I18nProvider } from '../i18n/I18nProvider'
+import { RoleProvider } from '../roles/RoleProvider'
+import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
 import { renderAt } from '../test/render'
+import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from './admin/badgeRule'
+import { ENTITIES } from './admin/entityList'
+import { countsFor, QUEUES } from './admin/queues'
 import { categoryOf } from '../data/raceCategory'
 import { epcPayload, ipsPayload, methodsFor } from '../data/paymentQr'
+import type { BtlEvent, Competitor } from '../data/types'
+
+/** A session holding results in the states the panel has to tell apart. */
+function sessionWith(states: SubmissionStatus[]): SessionValue {
+  return {
+    memberNumber: 'M0005',
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    submissions: states.map((status, index) => ({
+      id: `sub-${index}`,
+      memberNumber: 'M0005',
+      eventName: 'Probna trka',
+      date: '2026-05-10',
+      distanceKm: 10,
+      ascentM: 0,
+      descentM: 0,
+      startTime: '09:00',
+      seconds: 2700,
+      points: 12,
+      photo: '',
+      category: 'short' as const,
+      link: 'https://primer.rs/r',
+      status,
+      note: '',
+    })),
+    submit: vi.fn(),
+    decide: vi.fn(),
+    messages: [],
+    markRead: vi.fn(),
+    notifications: {
+      resultApproved: true,
+      resultChanged: true,
+      upcomingEvent: true,
+      newsletter: false,
+    },
+    setNotification: vi.fn(),
+    edits: {},
+    edit: vi.fn(),
+  }
+}
 
 describe('administration is closed to everyone else', () => {
   it.each([
     ['/sr/administracija'],
-    ['/sr/administracija/red-za-proveru'],
+    ['/sr/administracija/verifikacija'],
+    ['/sr/administracija/verifikacija/rezultati'],
+    ['/sr/administracija/entiteti'],
     ['/sr/administracija/clanovi'],
     ['/sr/administracija/dogadjaji'],
     ['/sr/administracija/znacke'],
@@ -27,6 +76,23 @@ describe('the panel', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Administracija' })).toBeVisible()
     expect(screen.getByText('Čeka proveru')).toBeVisible()
     expect(screen.getAllByRole('link', { name: 'Značke' }).length).toBeGreaterThan(0)
+  })
+
+  it('counts only what has not been decided yet', async () => {
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <RoleProvider initialRole="moderator">
+            <SessionContext.Provider value={sessionWith(['pending', 'pending', 'approved'])}>
+              <Admin />
+            </SessionContext.Provider>
+          </RoleProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    const waiting = (await screen.findByText('Čeka proveru')).closest('div')!
+    expect(within(waiting).getByText('2')).toBeVisible()
   })
 })
 
@@ -223,7 +289,7 @@ describe('the badge rule dates', () => {
 
 describe('an empty queue', () => {
   it('says so and offers no decisions', async () => {
-    renderAt('/sr/administracija/red-za-proveru', 'moderator')
+    renderAt('/sr/administracija/verifikacija/rezultati', 'moderator')
 
     // Nothing is waiting, so the queue says so and offers no decisions.
     expect(await screen.findByText('Nema nijednog rezultata na čekanju.')).toBeVisible()
@@ -231,8 +297,32 @@ describe('an empty queue', () => {
   })
 })
 
-describe('the panel counts a waiting result', () => {
-  it('rises from zero once something is sent in', async () => {
+describe('verification', () => {
+  it('lists every queue, with the count each one holds', async () => {
+    renderAt('/sr/administracija/verifikacija', 'moderator')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Verifikacija' })).toBeVisible()
+
+    // Results is the only queue with a screen behind it so far; the rest are
+    // listed so the work is visible and countable before the database has it.
+    const results = screen.getByRole('link', { name: /Rezultati/ })
+    expect(results).toHaveAttribute('href', '/sr/administracija/verifikacija/rezultati')
+    expect(within(results).getByText('0')).toBeVisible()
+    expect(screen.getAllByText('Radi se')).toHaveLength(QUEUES.length - 1)
+  })
+
+  it('leads to the queue of results', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr/administracija/verifikacija', 'superadmin')
+
+    await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Red za proveru rezultata' }),
+    ).toBeVisible()
+  })
+
+  it('counts a result from the moment it is sent in', async () => {
     const user = userEvent.setup()
     renderAt('/sr/rezultat/novi', 'superadmin', 'M0005')
 
@@ -248,9 +338,72 @@ describe('the panel counts a waiting result', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    await user.click(await screen.findByRole('link', { name: 'Administracija' }))
+    await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+    await user.click(screen.getByRole('link', { name: 'Verifikacija' }))
 
-    const counts = (await screen.findByText('Čeka proveru')).closest('div')!
-    expect(within(counts).getByText('1')).toBeVisible()
+    const results = await screen.findByRole('link', { name: /Rezultati/ })
+    expect(within(results).getByText('1')).toBeVisible()
+  })
+})
+
+describe('countsFor', () => {
+  const competitor = (memberNumber: string, active: boolean) =>
+    ({ memberNumber, active }) as Competitor
+  const event = (status: BtlEvent['status']) => ({ status }) as BtlEvent
+
+  it('counts what the prototype can already count', () => {
+    const counts = countsFor(
+      3,
+      [competitor('M0001', true), competitor('M0002', false)],
+      [event('checking'), event('confirmed'), event('checking')],
+    )
+
+    expect(counts.results).toBe(3)
+    expect(counts.payments).toBe(1)
+    expect(counts.schedule).toBe(2)
+  })
+
+  it('reports zero for the queues whose tables do not exist yet', () => {
+    const counts = countsFor(0, [], [])
+
+    expect(QUEUES.every((queue) => counts[queue.id] === 0)).toBe(true)
+  })
+})
+
+describe('the list of entities', () => {
+  it('offers every entity administration owns, screen or not', async () => {
+    renderAt('/sr/administracija/entiteti', 'superadmin')
+
+    const names = [
+      'Članovi',
+      'Događaji',
+      'Trke',
+      'Timovi',
+      'Lige',
+      'Značke',
+      'Cenovnik',
+      'Statične strane',
+    ]
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Entiteti' })).toBeVisible()
+    expect(names).toHaveLength(ENTITIES.length)
+
+    for (const name of names) {
+      expect(screen.getByRole('link', { name })).toBeVisible()
+    }
+
+    expect(screen.getByRole('link', { name: 'Članovi' })).toHaveAttribute(
+      'href',
+      '/sr/administracija/clanovi',
+    )
+  })
+
+  it('opens an entity that has no screen yet as a placeholder', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr/administracija/entiteti', 'superadmin')
+
+    await user.click(await screen.findByRole('link', { name: 'Statične strane' }))
+
+    expect(screen.getByText(/Ovaj ekran dolazi u sledećoj fazi/)).toBeVisible()
   })
 })

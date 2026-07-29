@@ -159,16 +159,28 @@
       }
     ]
   },
-  "kontakt": {
-    "title": "Kontakt",
+  "istorijat": {
+    "title": "Istorijat",
     "sections": [
       {
-        "heading": "Kako do nas",
-        "body": "Za sva pitanja o članstvu, rezultatima i portalu piši na adresu koja stoji u podnožju strane. Odgovaramo u roku od dva radna dana.\n\nZa pitanja o ličnim podacima važi ista adresa; rok za odgovor je 30 dana i objašnjen je u politici privatnosti."
+        "heading": "Kako je počelo",
+        "body": "Liga je nastala 2014. iz jednostavne potrebe: rekreativci u regionu trčali su iste trke, a nisu imali gde da uporede šta su uradili tokom godine.\n\n`[TREBA POPUNITI: priča osnivača, kako je došlo do ideje]`"
       },
       {
-        "heading": "Za organizatore trka",
-        "body": "Ako organizuješ trku i želiš da bude u kalendaru, javi se sa nazivom, datumom, mestom, distancama i linkom ka zvaničnoj prijavi.\n\nAko je tvoja trka već u kalendaru a podatak nije tačan, ili ne želiš da bude tu, javi se i ispravljamo ili uklanjamo u roku od pet radnih dana, bez objašnjenja i bez rasprave."
+        "heading": "Prve sezone, 2014 do 2016",
+        "body": "Rezultati su se javljali mejlom, a tabela se vodila ručno. Broj trka po sezoni rastao je iz godine u godinu.\n\n`[TREBA POPUNITI: najvažnije trke i imena iz tih sezona]`"
+      },
+      {
+        "heading": "Godine uspona, 2017 do 2019",
+        "body": "Najjače sezone stare lige. Kalendar je pokrivao celu godinu, a takmičari su putovali na trke po celom regionu.\n\n`[TREBA POPUNITI: rekordi, brojke, priče]`"
+      },
+      {
+        "heading": "Prekid, 2020 do 2026",
+        "body": "Sezona 2020. prekinuta je zabranama okupljanja. Posle nje liga više nije vraćena u redovan ritam, iako su pojedinačni rezultati nastavili da se beleže.\n\n`[TREBA POPUNITI: šta se tačno dešavalo i zašto je stalo]`"
+      },
+      {
+        "heading": "Šta sada",
+        "body": "Sezona 2027. je novi početak, sa portalom koji vodi evidenciju umesto tabele u tabelarnom programu. Pravila su ostala ista u srcu: svaka trka se broji."
       }
     ]
   }

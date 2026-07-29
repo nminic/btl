@@ -151,7 +151,15 @@ describe('Counters', () => {
     renderWidget(<Counters totals={totals} seasonLabel="Sezona 2027." />)
 
     expect(await screen.findByText(/1\.234,00 km/, {}, { timeout: 3000 })).toBeVisible()
-    expect(screen.getByText('10:00:00')).toBeVisible()
+    // Every row carries its unit now, and time on the course is a quantity
+    // rather than a clock reading (owner, 29.07.2026).
+    // Each label sits in the same pill as its number, so these match on a part
+    // of the line rather than the whole of it.
+    expect(await screen.findByText(/10 h 00' 00''/, {}, { timeout: 3000 })).toBeVisible()
+    expect(await screen.findByText(/3 trke/, {}, { timeout: 3000 })).toBeVisible()
+    expect(await screen.findByText(/5\.678 m\+/, {}, { timeout: 3000 })).toBeVisible()
+    expect(await screen.findByText(/5\.000 m-/, {}, { timeout: 3000 })).toBeVisible()
+    expect(await screen.findByText(/42,00 BTL poena/, {}, { timeout: 3000 })).toBeVisible()
   })
 
   it('gives the numbers straight away to anyone who asked for less motion', () => {

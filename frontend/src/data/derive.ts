@@ -351,3 +351,34 @@ export function topByCategory(
     .sort((left, right) => right.count - left.count)
     .slice(0, limit)
 }
+
+/**
+ * The BTL table: one standing for a season with everybody in it, men and women
+ * together, which is what the league's own table always was. The rankings
+ * screen splits by gender and category; this one deliberately does not.
+ */
+export function overallStanding(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+): RankingRow[] {
+  const totals = new Map<string, Totals>()
+
+  for (const result of results) {
+    if (seasonOf(result) === season) {
+      totals.set(
+        result.memberNumber,
+        addToTotals(totals.get(result.memberNumber) ?? EMPTY_TOTALS, result),
+      )
+    }
+  }
+
+  return competitors
+    .map((competitor) => ({
+      competitor,
+      ...(totals.get(competitor.memberNumber) ?? EMPTY_TOTALS),
+    }))
+    .filter((row) => row.races > 0)
+    .sort((left, right) => right.points - left.points || right.races - left.races)
+    .map((row, index) => ({ ...row, position: index + 1 }))
+}

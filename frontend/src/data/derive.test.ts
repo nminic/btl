@@ -6,6 +6,7 @@ import {
   monthGrid,
   eventsInMonth,
   monthsWithEvents,
+  overallStanding,
   rankingFor,
   rankTeams,
   resultsOf,
@@ -363,5 +364,43 @@ describe('topByCategory', () => {
 
   it('stops at the limit it is given', () => {
     expect(topByCategory(competitors, results, 2027, 'short', 1)).toHaveLength(1)
+  })
+})
+
+describe('overallStanding', () => {
+  const competitors = [competitor('M0001'), competitor('F0001'), competitor('M0002')]
+  const results = [
+    result('M0001', '2027-01-01', 10),
+    result('F0001', '2027-02-01', 20),
+    result('F0001', '2027-03-01', 5),
+    result('M0002', '2026-01-01', 100),
+  ]
+
+  it('puts men and women in one table, which is what the BTL table always was', () => {
+    const rows = overallStanding(competitors, results, 2027)
+
+    expect(rows.map((row) => row.competitor.memberNumber)).toEqual(['F0001', 'M0001'])
+    expect(rows.map((row) => row.position)).toEqual([1, 2])
+    expect(rows[0].points).toBe(25)
+    expect(rows[0].races).toBe(2)
+  })
+
+  it('counts one season only, and leaves out anyone who did not race in it', () => {
+    // M0002 raced in 2026 only, so the 2027 table does not know them.
+    expect(
+      overallStanding(competitors, results, 2027).map((row) => row.competitor.memberNumber),
+    ).not.toContain('M0002')
+    expect(overallStanding(competitors, results, 2025)).toEqual([])
+  })
+
+  it('breaks a tie in favour of the larger volume, never efficiency', () => {
+    const tied = [
+      result('M0001', '2027-01-01', 6),
+      result('M0001', '2027-02-01', 4),
+      result('F0001', '2027-01-01', 10),
+    ]
+
+    // The same ten points, but M0001 ran twice for them.
+    expect(overallStanding(competitors, tied, 2027)[0].competitor.memberNumber).toBe('M0001')
   })
 })

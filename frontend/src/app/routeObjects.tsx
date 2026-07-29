@@ -16,14 +16,19 @@ import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
 import { Registration } from '../pages/Registration'
 import { StaticPage } from '../pages/StaticPage'
+import { BtlTable } from '../pages/BtlTable'
 import { Admin } from '../pages/admin/Admin'
+import { Entities } from '../pages/admin/Entities'
+import { Verification } from '../pages/admin/Verification'
 import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
 import { AdminMembers } from '../pages/admin/AdminMembers'
 import { AdminPricing } from '../pages/admin/AdminPricing'
 import { ReviewQueue } from '../pages/admin/ReviewQueue'
 import { Membership } from '../pages/member/Membership'
+import { MessageDetail } from '../pages/member/MessageDetail'
 import { Messages } from '../pages/member/Messages'
+import { Settings } from '../pages/member/Settings'
 import { MyProfile } from '../pages/member/MyProfile'
 import { MyResults } from '../pages/member/MyResults'
 import { NewResult } from '../pages/member/NewResult'
@@ -46,15 +51,18 @@ const SCREENS: Record<string, ReactElement> = {
   'moji-rezultati': <MyResults />,
   'moja-clanarina': <Membership />,
   poruke: <Messages />,
+  podesavanja: <Settings />,
+  'btl-tabela': <BtlTable />,
   administracija: <Admin />,
-  'administracija/red-za-proveru': <ReviewQueue />,
+  'administracija/entiteti': <Entities />,
+  'administracija/verifikacija': <Verification />,
   'administracija/clanovi': <AdminMembers />,
   'administracija/dogadjaji': <AdminEvents />,
   'administracija/znacke': <AdminBadges />,
   'administracija/cenovnik': <AdminPricing />,
   'o-ligi': <StaticPage slug="o-ligi" />,
   pravilnik: <StaticPage slug="pravilnik" />,
-  kontakt: <StaticPage slug="kontakt" />,
+  istorijat: <StaticPage slug="istorijat" />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
 }
@@ -67,6 +75,8 @@ const DETAILS: RouteObject[] = [
   { path: 'tim/:slug', element: <TeamDetail /> },
   { path: 'liga/:slug', element: <LeagueDetail /> },
   { path: 'rezultat/novi', element: <NewResult /> },
+  { path: 'poruke/:id', element: <MessageDetail /> },
+  { path: 'administracija/verifikacija/rezultati', element: <ReviewQueue /> },
 ]
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */

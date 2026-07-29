@@ -1,6 +1,5 @@
 import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
-import { NOTIFICATION_KEYS } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { CompetitorProfile } from '../CompetitorProfile'
 import { SignedOut } from './SignedOut'
@@ -11,7 +10,7 @@ import './Member.css'
  * different profile; the difference is what sits below (PDL P14). */
 export function MyProfile() {
   const { locale, t } = useI18n()
-  const { memberNumber, signOut, notifications, setNotification } = useSession()
+  const { memberNumber, signOut } = useSession()
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -35,34 +34,15 @@ export function MyProfile() {
           <Link className="button button--secondary" to={`/${locale}/poruke`}>
             {t('nav.messages')}
           </Link>
+          {/* Notifications and the theme moved to their own screen behind the
+              cog in the header (PDL P28a). */}
+          <Link className="button button--secondary" to={`/${locale}/podesavanja`}>
+            {t('nav.settings')}
+          </Link>
           <button type="button" className="button button--secondary" onClick={signOut}>
             {t('myProfile.signOut')}
           </button>
         </div>
-      </section>
-
-      <section className="member__panel" aria-labelledby="my-notifications">
-        <h2 className="profile__section" id="my-notifications">
-          {t('myProfile.notifications')}
-        </h2>
-        <p className="member__note">{t('myProfile.notificationsNote')}</p>
-
-        {NOTIFICATION_KEYS.map((key) => (
-          <div key={key} className="field field--checkbox">
-            <div className="field__confirm">
-              <input
-                className="field__control"
-                type="checkbox"
-                id={`notify-${key}`}
-                checked={notifications[key]}
-                onChange={(event) => setNotification(key, event.target.checked)}
-              />
-              <label className="field__label" htmlFor={`notify-${key}`}>
-                {t(`myProfile.notify.${key}`)}
-              </label>
-            </div>
-          </div>
-        ))}
       </section>
     </div>
   )

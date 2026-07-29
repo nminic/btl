@@ -3,10 +3,15 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useI18n } from '../i18n/useI18n'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
+import { isMember } from '../roles/context'
+import { AccountMenu } from './AccountMenu'
+import { Brand } from './Brand'
+import { Dropdown } from './Dropdown'
 import { ErrorBoundary } from './ErrorBoundary'
+import { GearIcon } from './icons'
 import { LanguageMenu } from './LanguageMenu'
-import { routesForRole, type NavGroup } from './routes'
-import { ThemeToggle } from './ThemeToggle'
+import { MessagesMenu } from './MessagesMenu'
+import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './routes'
 import { useRouteChrome } from './useRouteChrome'
 import './Shell.css'
 
@@ -20,32 +25,56 @@ function useRestOfPath(): string {
   return `${rest}${location.search}${location.hash}`
 }
 
-function NavGroupLinks({ group, onNavigate }: { group: NavGroup; onNavigate: () => void }) {
+function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
   const { locale, t } = useI18n()
-  const { role } = useRole()
+  const label = t(section.labelKey)
+
+  // A group with one screen behind it would be a menu that opens onto a single
+  // choice, so those stay plain links.
+  if (section.path !== undefined) {
+    return (
+      <NavLink to={`/${locale}/${section.path}`} className="shell__link" onClick={onNavigate}>
+        {label}
+      </NavLink>
+    )
+  }
 
   return (
-    <>
-      {routesForRole(group, role).map((route) => (
-        <NavLink
-          key={route.path}
-          to={`/${locale}/${route.path}`}
-          className="shell__link"
-          onClick={onNavigate}
-        >
-          {t(route.labelKey)}
-        </NavLink>
-      ))}
-    </>
+    <Dropdown
+      id={`nav-${section.id}`}
+      className="navgroup"
+      label={label}
+      trigger={<span className="navgroup__label">{label}</span>}
+    >
+      {(close) => (
+        <>
+          {section.items.map((item) => (
+            <NavLink
+              key={item.path}
+              to={`/${locale}/${item.path}`}
+              className="navgroup__link"
+              onClick={() => {
+                close()
+                onNavigate()
+              }}
+            >
+              {t(item.labelKey)}
+            </NavLink>
+          ))}
+        </>
+      )}
+    </Dropdown>
   )
 }
 
 export function Shell() {
   const { locale, t } = useI18n()
+  const { role } = useRole()
   const rest = useRestOfPath()
   const pageTitle = useRouteChrome()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
+  const signedIn = isMember(role)
 
   return (
     <div className="shell">
@@ -55,14 +84,22 @@ export function Shell() {
 
       <header className="shell__header">
         <div className="shell__bar">
-          <Link to={`/${locale}`} className="shell__brand" onClick={closeMenu}>
-            <img src="/icon-192.png" alt="" aria-hidden="true" width={32} height={32} />
-            <span>{t('app.short')}</span>
-          </Link>
+          <Brand onNavigate={closeMenu} />
 
           <div className="shell__tools">
             <RoleSwitch />
-            <ThemeToggle />
+            {signedIn && <MessagesMenu />}
+            <AccountMenu />
+            {signedIn && (
+              <Link
+                className="icon-link"
+                to={`/${locale}/podesavanja`}
+                aria-label={t('shell.settings')}
+                onClick={closeMenu}
+              >
+                <GearIcon className="icon-link__glyph" />
+              </Link>
+            )}
             <LanguageMenu restOfPath={rest} />
             <button
               type="button"
@@ -81,10 +118,9 @@ export function Shell() {
           className={menuOpen ? 'shell__nav shell__nav--open' : 'shell__nav'}
           aria-label={t('shell.mainNavigation')}
         >
-          <NavGroupLinks group="main" onNavigate={closeMenu} />
-          <NavGroupLinks group="guest" onNavigate={closeMenu} />
-          <NavGroupLinks group="member" onNavigate={closeMenu} />
-          <NavGroupLinks group="staff" onNavigate={closeMenu} />
+          {navForRole(role).map((section) => (
+            <NavEntry key={section.id} section={section} onNavigate={closeMenu} />
+          ))}
         </nav>
       </header>
 
@@ -109,7 +145,22 @@ export function Shell() {
 
       <footer className="shell__footer">
         <nav className="shell__footer-links" aria-label={t('shell.footerNavigation')}>
-          <NavGroupLinks group="footer" onNavigate={closeMenu} />
+          {FOOTER_ROUTES.map((route) => (
+            <NavLink
+              key={route.path}
+              to={`/${locale}/${route.path}`}
+              className="shell__link"
+              onClick={closeMenu}
+            >
+              {t(route.labelKey)}
+            </NavLink>
+          ))}
+          {/* Contact is an address, not a screen (PDL P28a). A form would need
+              robot protection, storage and one more queue to answer the same
+              question a mail client already answers. */}
+          <a className="shell__link" href={`mailto:${CONTACT_ADDRESS}`}>
+            {t('shell.contact')}
+          </a>
         </nav>
         <p className="shell__note">{t('shell.footerNote')}</p>
       </footer>

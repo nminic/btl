@@ -2,7 +2,8 @@
   "app": {
     "name": "Balkanska trkačka liga",
     "nameUppercase": "BALKANSKA TRKAČKA LIGA",
-    "short": "BTL"
+    "short": "BTL",
+    "slogan": "Svaka trka se broji."
   },
   "shell": {
     "skipToContent": "Preskoči na sadržaj",
@@ -10,7 +11,23 @@
     "closeMenu": "Zatvori meni",
     "mainNavigation": "Glavna navigacija",
     "footerNote": "Portal je u izradi. Sve što ovde vidiš su probni podaci.",
-    "footerNavigation": "Uslovi i pravila"
+    "footerNavigation": "Uslovi i pravila",
+    "messages": "Poruke",
+    "openMessages": "Otvori poruke",
+    "closeMessages": "Zatvori poruke",
+    "unread": {
+      "one": "{count} nepročitana",
+      "few": "{count} nepročitane",
+      "other": "{count} nepročitanih"
+    },
+    "noMessages": "Nema poruka.",
+    "allMessages": "Sve poruke",
+    "account": "Nalog",
+    "openAccount": "Otvori nalog",
+    "settings": "Podešavanja",
+    "signIn": "Prijavi se",
+    "contact": "Kontakt",
+    "home": "Naslovna strana"
   },
   "nav": {
     "home": "Naslovna",
@@ -33,7 +50,14 @@
     "membership": "Moja članarina",
     "messages": "Poruke",
     "admin": "Administracija",
-    "reviewQueue": "Red za proveru"
+    "aboutLeague": "Priča o ligi",
+    "history": "Istorijat",
+    "tables": "Tabele",
+    "btlTable": "BTL tabela",
+    "competitions": "Takmičenja",
+    "entities": "Entiteti",
+    "verification": "Verifikacija",
+    "settings": "Podešavanja"
   },
   "theme": {
     "label": "Tema",
@@ -70,12 +94,11 @@
     "toPricing": "Vidi članarinu",
     "season": "Sezona {season}.",
     "seasonSample": "Sezona {season}, probni podaci",
-    "countersNote": "Brojači kreću od nule u ponoć na Novu godinu.",
     "kilometers": "Kilometara",
     "ascent": "Uspona",
     "descent": "Spusta",
     "onCourse": "Na stazi",
-    "points": "BTL points",
+    "points": "BTL poeni",
     "readySetGo": "Priprema, pozor, SAD!",
     "moreRuns": {
       "one": "i još {count} termin",
@@ -139,7 +162,15 @@
       "marathon": "Najviše maratona",
       "ultra": "Najviše ultramaratona"
     },
-    "races": "Odtrčanih trka"
+    "races": "Odtrčanih trka",
+    "raceCount": {
+      "one": "{count} trka",
+      "few": "{count} trke",
+      "other": "{count} trka"
+    },
+    "pointsUnit": " BTL poena",
+    "ascentUnit": " m+",
+    "descentUnit": " m-"
   },
   "data": {
     "loading": "Učitavanje",
@@ -563,7 +594,11 @@
     "showing": "Prikazano: {count}",
     "state": "Stanje",
     "change": "Izmeni",
-    "editNote": "Podaci u tabeli se menjaju klikom na samu vrednost. Izmena se pamti dok traje ova poseta; kad baza bude tu, pamtiće se trajno."
+    "editNote": "Podaci u tabeli se menjaju klikom na samu vrednost. Izmena se pamti dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
+    "races": "Trke",
+    "teams": "Timovi",
+    "leagues": "Lige",
+    "pages": "Statične strane"
   },
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
@@ -597,5 +632,43 @@
       "atLeast": "najmanje",
       "moreThan": "više od"
     }
+  },
+  "settings": {
+    "title": "Podešavanja",
+    "intro": "Podešavanja važe za tvoj nalog na svim uređajima.",
+    "appearance": "Izgled",
+    "themeLabel": "Tema",
+    "themeDark": "Tamna",
+    "themeLight": "Svetla",
+    "themeHint": "Tamna tema je podrazumevana.",
+    "notifications": "Obaveštenja"
+  },
+  "btlTable": {
+    "intro": "Jedna tabela za celu sezonu, svi članovi zajedno. Rang liste su te koje dele po polu i kategoriji."
+  },
+  "entities": {
+    "title": "Entiteti",
+    "intro": "Sve što administracija kreira, menja i briše, na jednom mestu."
+  },
+  "verification": {
+    "title": "Verifikacija",
+    "intro": "Sve što čeka odobrenje moderatora ili superadmina, na jednom mestu.",
+    "soon": "Radi se",
+    "results": "Rezultati",
+    "payments": "Uplate i aktivacija članova",
+    "leagues": "Predložene lige",
+    "teams": "Novi timovi",
+    "bios": "Trkačke biografije",
+    "photos": "Profilne slike",
+    "comments": "Komentari",
+    "schedule": "Prijave promene termina",
+    "fromResults": "Rezultat ulazi u tabele tek posle odobrenja",
+    "fromPayments": "Član postaje punopravan kad se evidentira uplata",
+    "fromLeagues": "Nova liga se objavljuje tek kad je odobrena",
+    "fromTeams": "Svaki nov tim odobrava superadministrator",
+    "fromBios": "Biografiju piše član, administrator je odobrava pre objave",
+    "fromPhotos": "Profilnu sliku administrator odobrava pre objave",
+    "fromComments": "Komentari se odobravaju pre objave, za sve",
+    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine"
   }
 }
