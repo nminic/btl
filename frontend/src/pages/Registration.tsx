@@ -2,14 +2,31 @@ import { useState } from 'react'
 import registracija from '../forms/definitions/registracija.form.json'
 import { FormRenderer } from '../forms/FormRenderer'
 import type { FormDef, FormValues } from '../forms/types'
+import { REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
+import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 
 /* The form itself is the JSON definition; this screen only decides what
  * happens with the values. Until the backend exists, it shows what was
  * captured, which is what makes the flow reviewable. */
-export function Registration() {
-  const { t } = useI18n()
+export function Registration({ today = new Date().toISOString().slice(0, 10) }: { today?: string }) {
+  const { locale, t } = useI18n()
   const [sent, setSent] = useState<FormValues | null>(null)
+
+  // Between 15 and 30 September the portal is open for looking only: nobody can
+  // even begin to register, which is a decision and not a missing screen.
+  if (!registrationOpen(today)) {
+    return (
+      <div className="registration-closed">
+        <h1>{t('registration.closed')}</h1>
+        <p>{t('registration.closedText')}</p>
+        <p>
+          {t('registration.opensOn', { date: formatDate(REGISTRATION_OPENS, locale) })}{' '}
+          {t('home.opensIn', { count: daysBetween(today, REGISTRATION_OPENS) })}
+        </p>
+      </div>
+    )
+  }
 
   if (sent !== null) {
     return (

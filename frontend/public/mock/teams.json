@@ -22,5 +22,13 @@
     "city": "Skoplje",
     "country": "MK",
     "organizerMemberNumber": "F0001"
+  },
+  {
+    "id": "team-novi",
+    "slug": "novoosnovani-tim",
+    "name": "Novoosnovani tim",
+    "city": "Subotica",
+    "country": "RS",
+    "organizerMemberNumber": ""
   }
 ]

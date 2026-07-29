@@ -5,6 +5,8 @@
     "name": "Balkanska trkačka liga 2027",
     "season": 2027,
     "groupsByCategory": true,
+    "rules": "Boduju se svi rezultati sa dogadjaja koji ulaze u ligu. Plasman je zbir svih trka, ne najboljih N. Pune propozicije objavljuju se uz pravilnik za sezonu.",
+    "prizes": "Medalje za prva tri mesta u svakoj kategoriji, po polu. Priznanja za najvise kilometara, najduze na stazi i najbolju trku. Sve se dodeljuje na kraju sezone.",
     "eventIds": [
       "evt-beogradski-maraton-2027-04-03",
       "evt-podgoricka-desetka-2027-01-30",
@@ -59,6 +61,8 @@
     "name": "RunTrace liga 2027",
     "season": 2027,
     "groupsByCategory": false,
+    "rules": "",
+    "prizes": "",
     "eventIds": [
       "evt-beogradski-maraton-2027-04-03",
       "evt-podgoricka-desetka-2027-01-30",
@@ -69,5 +73,15 @@
       "evt-radmilovac-trail-2027-10-09",
       "evt-zajedno-za-vasilija-2027-11-06"
     ]
+  },
+  {
+    "id": "league-planinska-2027",
+    "slug": "planinska-2027",
+    "name": "Planinska liga 2027",
+    "season": 2027,
+    "groupsByCategory": true,
+    "rules": "",
+    "prizes": "",
+    "eventIds": []
   }
 ]

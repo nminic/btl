@@ -53,12 +53,13 @@ describe('navigation', () => {
     const user = userEvent.setup()
     renderAt('/sr/rang-liste')
 
-    await user.click(screen.getByRole('link', { name: 'English' }))
+    await user.click(screen.getByRole('button', { name: 'Jezik' }))
+    await user.click(screen.getByRole('option', { name: 'English' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
-        'aria-current',
-        'page',
+      expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute(
+        'aria-selected',
+        'true',
       ),
     )
     expect(screen.getByRole('heading', { level: 1, name: 'Rang liste' })).toBeVisible()
@@ -68,7 +69,8 @@ describe('navigation', () => {
     const user = userEvent.setup()
     renderAt('/sr')
 
-    await user.click(await screen.findByRole('link', { name: 'English' }))
+    await user.click(await screen.findByRole('button', { name: 'Jezik' }))
+    await user.click(screen.getByRole('option', { name: 'English' }))
 
     // /en still shows Serbian words until an English dictionary exists, and
     // lang="en" over Serbian text is read out with English phonetics.

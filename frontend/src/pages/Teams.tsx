@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Resource } from '../components/Resource'
 import { rankTeams } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
@@ -36,7 +37,9 @@ export function Teams() {
                     {rows.map((row, index) => (
                       <tr key={row.team.id} className={index === 0 ? 'podium' : undefined}>
                         <td className="table__position">{index + 1}</td>
-                        <td>{row.team.name}</td>
+                        <td>
+                          <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
+                        </td>
                         <td>{row.team.city}</td>
                         <td>{formatNumber(row.members, locale)}</td>
                         <td className="table__points">{formatPoints(row.totals.points, locale)}</td>

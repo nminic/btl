@@ -10,6 +10,9 @@ import type { BtlEvent, Competitor, Gender, RaceCategory, Result, Team } from '.
  * - every tie is broken in favour of the larger volume, never efficiency.
  */
 
+/** The five length categories, in the order they are always shown. */
+export const CATEGORIES: RaceCategory[] = ['short', 'long', 'half', 'marathon', 'ultra']
+
 export type Totals = {
   races: number
   kilometers: number

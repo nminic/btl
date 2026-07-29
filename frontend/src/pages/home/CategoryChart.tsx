@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { racesByCategory } from '../../data/derive'
-import type { RaceCategory, Result } from '../../data/types'
-import { formatNumber } from '../../i18n/format'
+import { CategoryBars } from '../../components/CategoryBars'
+import { CATEGORIES, racesByCategory } from '../../data/derive'
+import type { Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
-
-const CATEGORIES: RaceCategory[] = ['short', 'long', 'half', 'marathon', 'ultra']
 
 /* The bar chart from the old portal, which rotated through the five length
  * categories on every page load. It still rotates, but the arrows mean nobody
@@ -15,11 +13,10 @@ const CATEGORIES: RaceCategory[] = ['short', 'long', 'half', 'marathon', 'ultra'
  * reader, which no canvas would be.
  */
 export function CategoryChart({ results, season }: { results: Result[]; season: number }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const [shown, setShown] = useState(0)
   const counts = racesByCategory(results, season)
   const category = CATEGORIES[shown]
-  const highest = Math.max(1, ...CATEGORIES.map((one) => counts.get(one) ?? 0))
 
   const step = (by: number) => setShown((current) => (current + by + CATEGORIES.length) % CATEGORIES.length)
 
@@ -41,24 +38,8 @@ export function CategoryChart({ results, season }: { results: Result[]; season: 
 
       <p className="chart__current">{t(`category.${category}`)}</p>
 
-      <table className="chart">
-        <caption className="visually-hidden">{t('home.byCategory')}</caption>
-        <tbody>
-          {CATEGORIES.map((one) => {
-            const value = counts.get(one) ?? 0
+      <CategoryBars counts={counts} caption={t('home.byCategory')} highlight={category} />
 
-            return (
-              <tr key={one} className={one === category ? 'chart__row chart__row--on' : 'chart__row'}>
-                <th scope="row">{t(`category.${one}`)}</th>
-                <td>
-                  <span className="chart__fill" style={{ inlineSize: `${(value / highest) * 100}%` }} />
-                </td>
-                <td className="chart__value">{formatNumber(value, locale)}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
     </section>
   )
 }

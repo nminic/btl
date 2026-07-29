@@ -1,10 +1,11 @@
+import { Link } from 'react-router'
 import { Resource } from '../components/Resource'
 import { useLeagues } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import './Leagues.css'
 
 export function Leagues() {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const state = useLeagues()
 
   return (
@@ -16,7 +17,9 @@ export function Leagues() {
           <ul className="leagues__list">
             {leagues.map((league) => (
               <li key={league.id} className="leagues__item">
-                <h2>{league.name}</h2>
+                <h2>
+                  <Link to={`/${locale}/liga/${league.slug}`}>{league.name}</Link>
+                </h2>
                 <p>
                   {t('leagues.season', { season: league.season })}
                   {' · '}

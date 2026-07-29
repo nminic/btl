@@ -5,6 +5,8 @@ import { Calendar } from '../pages/Calendar'
 import { Competitors } from '../pages/Competitors'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
 import { EventDetail } from '../pages/EventDetail'
+import { LeagueDetail } from '../pages/LeagueDetail'
+import { TeamDetail } from '../pages/TeamDetail'
 import { Home } from '../pages/Home'
 import { Leagues } from '../pages/Leagues'
 import { Pricing } from '../pages/Pricing'
@@ -33,6 +35,8 @@ const SCREENS: Record<string, ReactElement> = {
 const DETAILS: RouteObject[] = [
   { path: 'kalendar/:slug', element: <EventDetail /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
+  { path: 'tim/:slug', element: <TeamDetail /> },
+  { path: 'liga/:slug', element: <LeagueDetail /> },
 ]
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */

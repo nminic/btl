@@ -77,25 +77,6 @@
   background: var(--surface-hover);
 }
 
-.shell__languages {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.shell__language {
-  font-size: 0.85rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  color: var(--text-muted);
-}
-
-.shell__language[aria-current='page'] {
-  color: var(--text);
-  font-weight: 700;
-  background: var(--surface-hover);
-}
-
 .shell__nav {
   display: none;
   flex-direction: column;
@@ -164,4 +145,192 @@
   .shell__menu-button {
     display: none;
   }
+}
+
+/* Language menu and theme toggle, in the shape they have on the owner's own
+   site: a button with a flag and a code, a list with a tick against the one in
+   use, and one button holding both the sun and the moon. */
+
+.lang {
+  position: relative;
+}
+
+.lang__btn,
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.4rem;
+  padding: 0 0.6rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--fast),
+    background var(--fast),
+    transform var(--fast);
+}
+
+.lang__btn:hover,
+.theme-toggle:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.lang__flag {
+  width: 21px;
+  height: 14px;
+  flex: 0 0 21px;
+  border-radius: 2.5px;
+  display: block;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.lang__btnflag {
+  display: flex;
+}
+
+.lang__code {
+  letter-spacing: 0.5px;
+}
+
+.lang__caret {
+  width: 13px;
+  height: 13px;
+  opacity: 0.6;
+  transition: transform var(--fast);
+}
+
+.lang.is-open .lang__caret {
+  transform: rotate(180deg);
+}
+
+.lang.is-open .lang__btn {
+  border-color: var(--accent);
+}
+
+.lang__menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 5;
+  min-width: 11rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity var(--fast),
+    transform var(--fast),
+    visibility var(--fast);
+}
+
+.lang.is-open .lang__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.lang__menu li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  /* The items step in one after another while the menu opens. */
+  opacity: 0;
+  transform: translateX(6px);
+  transition:
+    opacity var(--fast),
+    transform var(--fast),
+    background var(--fast);
+}
+
+.lang.is-open .lang__menu li {
+  opacity: 1;
+  transform: none;
+}
+
+.lang.is-open .lang__menu li:nth-child(2) {
+  transition-delay: 0.04s;
+}
+
+.lang__menu li:hover,
+.lang__menu li:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.lang__menu li[aria-selected='true'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.lang__name {
+  flex: 1;
+}
+
+.lang__check {
+  width: 15px;
+  height: 15px;
+  opacity: 0;
+  color: var(--accent);
+}
+
+.lang__menu li[aria-selected='true'] .lang__check {
+  opacity: 1;
+}
+
+/* Theme toggle: the two marks share one square and turn past each other. */
+
+.theme-toggle {
+  position: relative;
+  width: 2.4rem;
+  padding: 0;
+  justify-content: center;
+}
+
+.theme-toggle__icon {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  transition:
+    opacity var(--fast),
+    transform var(--fast);
+}
+
+.theme-toggle__sun {
+  opacity: 1;
+  transform: none;
+}
+
+.theme-toggle__moon {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+
+:root[data-theme='dark'] .theme-toggle__sun {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.6);
+}
+
+:root[data-theme='dark'] .theme-toggle__moon {
+  opacity: 1;
+  transform: none;
 }

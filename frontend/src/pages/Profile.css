@@ -1,3 +1,4 @@
+@import 'Rankings.css';
 @import '../styles/counter.css';
 @import '../styles/table.css';
 
@@ -43,5 +44,24 @@
 }
 
 .profile__empty {
+  color: var(--text-muted);
+}
+
+.profile__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 1rem 0 0;
+}
+
+.profile__count {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.profile__text {
+  margin: 0;
+  max-width: 70ch;
   color: var(--text-muted);
 }
