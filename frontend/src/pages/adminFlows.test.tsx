@@ -238,6 +238,7 @@ describe('the panel counts a waiting result', () => {
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText(/Vreme starta/), '09:00')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')

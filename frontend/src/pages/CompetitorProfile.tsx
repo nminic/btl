@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { CategoryBars } from '../components/CategoryBars'
+import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
-import { CATEGORIES, resultsOf, seasonsWithResults, totalsOf } from '../data/derive'
+import { Counters } from './home/Counters'
+import { CATEGORIES, categoryOfMember, resultsOf, seasonsWithResults, totalsOf } from '../data/derive'
+import { SEASON } from '../data/pricing'
 import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
@@ -76,7 +78,7 @@ function ProfileBody({
         <p className="profile__meta">
           <span className="profile__number">{competitor.memberNumber}</span>
           {' · '}
-          {competitor.categoryCode}
+          {categoryOfMember(competitor, SEASON)}
           {' · '}
           {competitor.city}
           {' · '}
@@ -117,39 +119,13 @@ function ProfileBody({
         </label>
       </div>
 
-      <section className="counter" aria-labelledby="profile-totals">
-        <h2 className="counter__title" id="profile-totals">
-          {season === ALL ? t('profile.allTime') : t('home.season', { season })}
-        </h2>
-        <dl className="counter__numbers">
-          <div>
-            <dt>{t('profile.races')}</dt>
-            <dd>{formatNumber(totals.races, locale)}</dd>
-          </div>
-          <div>
-            <dt>{t('profile.kilometers')}</dt>
-            <dd>{formatNumber(totals.kilometers, locale)}</dd>
-          </div>
-          <div>
-            <dt>{t('profile.ascent')}</dt>
-            <dd>{formatNumber(totals.ascent, locale)}</dd>
-          </div>
-          <div>
-            <dt>{t('profile.time')}</dt>
-            <dd>{formatDuration(totals.seconds)}</dd>
-          </div>
-          <div>
-            <dt>{t('profile.points')}</dt>
-            <dd>{formatPoints(totals.points, locale)}</dd>
-          </div>
-        </dl>
-      </section>
+      <Counters totals={totals} seasonLabel={season === ALL ? t('profile.allTime') : t('home.season', { season })} />
 
       <section aria-labelledby="profile-chart-heading">
         <h2 className="profile__section" id="profile-chart-heading">
           {t('profile.byCategory')}
         </h2>
-        <CategoryBars counts={countsOf(shown)} caption={t('profile.byCategory')} />
+        <CategoryDonut counts={countsOf(shown)} caption={t('profile.byCategory')} />
       </section>
 
       <h2 className="profile__section">
@@ -173,6 +149,12 @@ function ProfileBody({
                   {t('profile.columns.distance')}
                 </th>
                 <th scope="col" className="table__hide-phone">
+                  {t('rankings.columns.ascent')}
+                </th>
+                <th scope="col" className="table__hide-phone">
+                  {t('rankings.columns.descent')}
+                </th>
+                <th scope="col" className="table__hide-phone">
                   {t('profile.columns.time')}
                 </th>
                 <th scope="col">{t('profile.columns.points')}</th>
@@ -187,6 +169,8 @@ function ProfileBody({
                   <td className="table__hide-phone">
                     {formatNumber(result.distanceKm, locale, 2)}
                   </td>
+                  <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
+                  <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
                   <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
                   <td className="table__points">{formatPoints(result.points, locale)}</td>
                 </tr>

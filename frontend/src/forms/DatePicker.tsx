@@ -1,0 +1,175 @@
+import { useEffect, useRef, useState } from 'react'
+import { monthGrid } from '../data/derive'
+import { formatMonth } from '../i18n/format'
+import { useI18n } from '../i18n/useI18n'
+import { maskDate, parseDate } from './dateField'
+import './DatePicker.css'
+
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
+
+function monthOf(value: string, today: Date): string {
+  const parsed = parseDate(value)
+  const base = parsed ?? today
+
+  return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function shiftMonth(month: string, by: number): string {
+  const [year, index] = month.split('-').map(Number)
+  const moved = new Date(Date.UTC(year, index - 1 + by, 1))
+
+  return `${moved.getUTCFullYear()}-${String(moved.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * A date is typed as dd/mm/gggg, and can also be picked out of a month.
+ *
+ * Typing stays the main way in, because a date of birth is forty years back and
+ * nobody wants to click through four hundred months to reach it. The calendar
+ * is for dates near today, which is what a race date usually is.
+ *
+ * The native date input is not used: it follows the browser's locale, so an
+ * English browser shows mm/dd/yyyy and 04/03 means two different days to two
+ * members.
+ */
+export function DatePicker({
+  id,
+  name,
+  value,
+  invalid,
+  describedBy,
+  onChange,
+}: {
+  id: string
+  name: string
+  value: string
+  invalid: boolean
+  describedBy: string | undefined
+  onChange: (value: string) => void
+}) {
+  const { locale, t } = useI18n()
+  const today = new Date()
+  const [open, setOpen] = useState(false)
+  const [month, setMonth] = useState(() => monthOf(value, today))
+  const box = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    function onPointerDown(event: MouseEvent) {
+      if (!box.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const [year, index] = month.split('-').map(Number)
+  const chosen = parseDate(value)
+
+  function pick(day: number) {
+    onChange(`${String(day).padStart(2, '0')}/${String(index).padStart(2, '0')}/${year}`)
+    setOpen(false)
+  }
+
+  return (
+    <div className="datepicker" ref={box}>
+      <input
+        id={id}
+        name={name}
+        className="field__control"
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="dd/mm/gggg"
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        value={value}
+        onChange={(event) => onChange(maskDate(event.target.value))}
+      />
+
+      <button
+        type="button"
+        className="datepicker__open"
+        aria-expanded={open}
+        aria-label={t('form.openCalendar')}
+        onClick={() => {
+          setMonth(monthOf(value, today))
+          setOpen((was) => !was)
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="datepicker__pop">
+          <div className="datepicker__bar">
+            <button
+              type="button"
+              onClick={() => setMonth(shiftMonth(month, -1))}
+              aria-label={t('calendar.previousMonth')}
+            >
+              {'‹'}
+            </button>
+            <strong>{formatMonth(month, locale)}</strong>
+            <button
+              type="button"
+              onClick={() => setMonth(shiftMonth(month, 1))}
+              aria-label={t('calendar.nextMonth')}
+            >
+              {'›'}
+            </button>
+          </div>
+
+          <div className="datepicker__grid">
+            {WEEKDAYS.map((weekday) => (
+              <span key={weekday} className="datepicker__weekday">
+                {t(`calendar.weekdays.${weekday}`)}
+              </span>
+            ))}
+
+            {monthGrid(year, index).map((day, cell) =>
+              day === null ? (
+                <span key={cell} />
+              ) : (
+                <button
+                  key={cell}
+                  type="button"
+                  className={
+                    chosen !== null &&
+                    chosen.getUTCDate() === day &&
+                    chosen.getUTCMonth() === index - 1 &&
+                    chosen.getUTCFullYear() === year
+                      ? 'datepicker__day datepicker__day--on'
+                      : 'datepicker__day'
+                  }
+                  onClick={() => pick(day)}
+                >
+                  {day}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

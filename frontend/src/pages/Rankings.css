@@ -8,7 +8,6 @@
 
 .rankings__note {
   margin: 0 0 1rem;
-  max-width: 62ch;
   color: var(--text-muted);
   font-size: 0.85rem;
   border-left: 3px solid var(--gold-500);

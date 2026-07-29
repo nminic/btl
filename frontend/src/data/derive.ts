@@ -1,3 +1,4 @@
+import { categoryCodeFor } from './categories'
 import type { BtlEvent, Competitor, Gender, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
@@ -128,7 +129,8 @@ export function rankingFor(
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
-        filter.categoryCode === undefined || competitor.categoryCode === filter.categoryCode,
+        filter.categoryCode === undefined ||
+        categoryOfMember(competitor, filter.season) === filter.categoryCode,
     )
     .map((competitor) => ({
       competitor,
@@ -187,11 +189,28 @@ export function rankTeams(teams: Team[], competitors: Competitor[], results: Res
     .sort((left, right) => right.totals.points - left.totals.points || right.members - left.members)
 }
 
+/** The category a member competes in for a season, derived rather than stored:
+ *  the age band moves with the year, so storing it would go stale. */
+export function categoryOfMember(competitor: Competitor, season: number): string {
+  return categoryCodeFor(
+    competitor.gender,
+    competitor.birthYear,
+    season,
+    competitor.firstSeason2027,
+  )
+}
+
 /** Category codes present in a gender's field, in a stable order. */
-export function categoriesOf(competitors: Competitor[], gender: Gender): string[] {
+export function categoriesOf(
+  competitors: Competitor[],
+  gender: Gender,
+  season: number,
+): string[] {
   return [
     ...new Set(
-      competitors.filter((competitor) => competitor.gender === gender).map((c) => c.categoryCode),
+      competitors
+        .filter((competitor) => competitor.gender === gender)
+        .map((competitor) => categoryOfMember(competitor, season)),
     ),
   ].sort()
 }
@@ -297,22 +316,38 @@ export function topTen(
     .map((competitor, index) => ({ competitor, position: index + 1, ...EMPTY_TOTALS }))
 }
 
-/** How many races of each length category, for the rotating chart. */
-export function racesByCategory(results: Result[], season: number): Map<RaceCategory, number> {
-  const counts = new Map<RaceCategory, number>()
-
-  for (const result of results) {
-    if (seasonOf(result) === season) {
-      counts.set(result.category, (counts.get(result.category) ?? 0) + 1)
-    }
-  }
-
-  return counts
-}
-
 /** The most recently joined members, for "the community in numbers". */
 export function newestMembers(competitors: Competitor[], count: number): Competitor[] {
   return [...competitors]
     .sort((left, right) => right.memberNumber.localeCompare(left.memberNumber))
     .slice(0, count)
+}
+
+export type CategoryColumn = {
+  competitor: Competitor
+  count: number
+}
+
+/** Who ran the most races of one length in a season, tallest first. Anyone who
+ *  ran none of that length is left out rather than shown as a zero. */
+export function topByCategory(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  category: RaceCategory,
+  limit: number,
+): CategoryColumn[] {
+  const counts = new Map<string, number>()
+
+  for (const result of results) {
+    if (seasonOf(result) === season && result.category === category) {
+      counts.set(result.memberNumber, (counts.get(result.memberNumber) ?? 0) + 1)
+    }
+  }
+
+  return competitors
+    .map((competitor) => ({ competitor, count: counts.get(competitor.memberNumber) ?? 0 }))
+    .filter((column) => column.count > 0)
+    .sort((left, right) => right.count - left.count)
+    .slice(0, limit)
 }

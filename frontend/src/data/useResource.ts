@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { loadResource, type ResourceName } from './client'
-import type { BtlEvent, Competitor, League, Race, Result, Team } from './types'
+import type { BtlEvent, Competitor, League, Race, Result, StaticPage, Team } from './types'
 
 export type ResourceState<T> =
   | { status: 'loading' }
@@ -60,6 +60,7 @@ export function combineResources<A, B, C>(
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useResource<BtlEvent[]>('events')
 export const useLeagues = () => useResource<League[]>('leagues')
+export const usePages = () => useResource<Record<string, StaticPage>>('pages')
 export const useRaces = () => useResource<Race[]>('races')
 export const useResults = () => useResource<Result[]>('results')
 export const useTeams = () => useResource<Team[]>('teams')

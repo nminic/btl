@@ -40,6 +40,8 @@ export function NewResult() {
       distanceKm,
       ascentM,
       descentM,
+      startTime: String(values.startTime),
+      photo: String(values.photo),
       seconds: total,
       points: btlPoints(distanceKm, ascentM, descentM, total) ?? 0,
       category: categoryOf(distanceKm),

@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { useEvents } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
+import { EditableCell } from './EditableCell'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -27,6 +27,7 @@ export function AdminEvents() {
     <div className="member">
       <h1>{t('admin.events')}</h1>
       <p className="member__note">{t('admin.eventsNote')}</p>
+      <p className="member__note">{t('admin.editNote')}</p>
 
       <Resource state={state}>
         {(events) => {
@@ -70,9 +71,21 @@ export function AdminEvents() {
                       <tr key={one.id}>
                         <td>{formatShortDate(one.date, locale)}</td>
                         <td>
-                          <Link to={`/${locale}/kalendar/${one.slug}`}>{one.name}</Link>
+                          <EditableCell
+                            id={one.id}
+                            field="name"
+                            value={one.name}
+                            label={t('profile.columns.event')}
+                          />
                         </td>
-                        <td>{one.city}</td>
+                        <td>
+                          <EditableCell
+                            id={one.id}
+                            field="city"
+                            value={one.city}
+                            label={t('event.place')}
+                          />
+                        </td>
                         <td>{one.raceIds.length}</td>
                         <td>
                           <span className={`tag tag--${one.status}`}>

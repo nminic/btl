@@ -1,7 +1,13 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Resource } from '../components/Resource'
-import { categoriesOf, defaultSeason, rankingFor, seasonsWithResults } from '../data/derive'
+import {
+  categoriesOf,
+  categoryOfMember,
+  defaultSeason,
+  rankingFor,
+  seasonsWithResults,
+} from '../data/derive'
 import type { Competitor, Gender, Result } from '../data/types'
 import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
@@ -96,7 +102,7 @@ function Standing({
           <span>{t('rankings.columns.category')}</span>
           <select value={category ?? ''} onChange={(e) => onChange({ kategorija: e.target.value })}>
             <option value="">{t('rankings.allCategories')}</option>
-            {categoriesOf(competitors, gender).map((code) => (
+            {categoriesOf(competitors, gender, season).map((code) => (
               <option key={code} value={code}>
                 {code}
               </option>
@@ -158,7 +164,7 @@ function Standing({
                     </Link>{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
-                  <td>{row.competitor.categoryCode}</td>
+                  <td>{categoryOfMember(row.competitor, season)}</td>
                   <td className="table__hide-phone">{row.races}</td>
                   <td className="table__hide-phone">{formatNumber(row.kilometers, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(row.ascent, locale)}</td>

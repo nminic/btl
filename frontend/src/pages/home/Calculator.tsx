@@ -35,7 +35,7 @@ export function Calculator() {
         {t('home.calculator')}
       </h2>
 
-      <div className="calc">
+      <div className="calc calc--grid">
         <label className="calc__field">
           <span>{t('home.calcLength')}</span>
           <input
@@ -70,7 +70,7 @@ export function Calculator() {
       </div>
 
       <fieldset className="calc__time">
-        <legend>{t('home.calcTime')}</legend>
+        <legend className="visually-hidden">{t('home.calcTime')}</legend>
         <label className="calc__field">
           <span>{t('home.hours')}</span>
           <input type="number" min="0" value={hours} onChange={(e) => setHours(e.target.value)} />

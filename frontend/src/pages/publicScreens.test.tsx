@@ -59,7 +59,7 @@ describe('Rankings', () => {
     renderAt('/sr/rang-liste?sezona=2020')
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
-    await user.selectOptions(screen.getByLabelText('Kat.'), 'M B')
+    await user.selectOptions(screen.getByLabelText('Kat.'), 'M40-54')
     expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeLessThan(all)
 
     await user.selectOptions(screen.getByLabelText('Kat.'), '')
@@ -249,11 +249,12 @@ describe('Teams', () => {
 })
 
 describe('Leagues', () => {
-  it('lists the leagues and how each one groups its field', async () => {
+  it('lists what runs alongside the league, and never the league itself', async () => {
     renderAt('/sr/lige')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
-    expect(screen.getAllByText('Grupisanje po kategorijama').length).toBeGreaterThan(0)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dodatna takmičenja' })).toBeVisible()
     expect(screen.getByText('Grupisanje samo po polu')).toBeInTheDocument()
+    // The league the portal exists for is implied, not listed.
+    expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })
 })

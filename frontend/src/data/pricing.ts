@@ -50,3 +50,7 @@ export function daysBetween(from: string, to: string): number {
 export function registrationOpen(today: string): boolean {
   return today >= REGISTRATION_OPENS
 }
+
+/** The league the portal exists for. It is implied everywhere and is never
+ *  listed among the competitions that run alongside it. */
+export const MAIN_LEAGUE_SLUG = `btl-${SEASON}`

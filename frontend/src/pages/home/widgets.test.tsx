@@ -1,10 +1,10 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
-import { CategoryChart } from './CategoryChart'
+import { TopByCategory } from './TopByCategory'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
 import type { NewsItem, SponsorEntry } from './content'
@@ -24,7 +24,8 @@ const competitor = (memberNumber: string): Competitor => ({
   gender: memberNumber.startsWith('F') ? 'F' : 'M',
   city: 'Beograd',
   country: 'RS',
-  categoryCode: 'M A',
+  birthYear: 1985,
+  firstSeason2027: false,
   firstSeason: 2027,
   active: true,
   membershipBasis: 'payment',
@@ -149,7 +150,7 @@ describe('Counters', () => {
   it('unrolls the numbers, and lands on the real ones', async () => {
     renderWidget(<Counters totals={totals} seasonLabel="Sezona 2027." />)
 
-    expect(await screen.findByText('1.234', {}, { timeout: 3000 })).toBeVisible()
+    expect(await screen.findByText(/1\.234,00 km/, {}, { timeout: 3000 })).toBeVisible()
     expect(screen.getByText('10:00:00')).toBeVisible()
   })
 
@@ -162,26 +163,46 @@ describe('Counters', () => {
 
     renderWidget(<Counters totals={totals} seasonLabel="Sezona 2027." />)
 
-    expect(screen.getByText('1.234')).toBeVisible()
+    expect(screen.getByText(/1\.234,00 km/)).toBeVisible()
     window.matchMedia = previous
   })
 })
 
-describe('CategoryChart', () => {
-  it('shows a category nobody ran as zero rather than leaving it out', () => {
-    renderWidget(<CategoryChart results={[result('M0001', 5)]} season={2027} />)
+describe('TopByCategory', () => {
+  it('ranks by how many races of one length, tallest first', () => {
+    const competitors = [competitor('M0001'), competitor('M0002'), competitor('M0003')]
+    const results = [
+      result('M0001', 1),
+      result('M0001', 2),
+      result('M0002', 3),
+    ]
 
-    const rows = screen.getAllByRole('row')
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} />,
+    )
 
-    // All five lengths are always there, so the shape of the season is
-    // readable: an empty category is information too.
-    expect(rows).toHaveLength(5)
-    expect(rows.filter((row) => row.textContent!.endsWith('0'))).toHaveLength(4)
+    const columns = screen.getAllByRole('listitem')
+    expect(columns).toHaveLength(2)
+    expect(columns[0]).toHaveTextContent('2')
+    // Anyone who ran none of this length is left out rather than shown as zero.
+    expect(screen.queryByText('M0003')).not.toBeInTheDocument()
   })
 
-  it('survives a season in which nothing was run at all', () => {
-    renderWidget(<CategoryChart results={[]} season={2027} />)
+  it('turns to the next length by itself', async () => {
+    renderWidget(
+      <TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />,
+    )
 
-    expect(screen.getAllByRole('row')).toHaveLength(5)
+    const first = screen.getByText(/^Najviše/).textContent
+
+    // It turns on its own: there is nothing to click and no heading above it.
+    await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(first))
+  })
+
+  it('names the length underneath, and says so when nobody ran one', () => {
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} />)
+
+    expect(screen.getByText('Najviše kraćih trka')).toBeVisible()
+    expect(screen.getByText('U ovoj sezoni još nema odtrčanih trka ove dužine.')).toBeVisible()
   })
 })

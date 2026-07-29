@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Resource } from '../components/Resource'
-import { EMPTY_TOTALS, totalsByMember } from '../data/derive'
+import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
+import { SEASON } from '../data/pricing'
 import type { Competitor, Result } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
@@ -81,7 +82,7 @@ function CompetitorTable({
                     </Link>{' '}
                     <span className="table__member-number">{competitor.memberNumber}</span>
                   </td>
-                  <td>{competitor.categoryCode}</td>
+                  <td>{categoryOfMember(competitor, SEASON)}</td>
                   <td>{competitor.city}</td>
                   <td className="table__hide-phone">{formatNumber(own.races, locale)}</td>
                   <td className="table__points">{formatPoints(own.points, locale)}</td>

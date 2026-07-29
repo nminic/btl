@@ -22,8 +22,14 @@ export type Submission = {
   distanceKm: number
   ascentM: number
   descentM: number
+  /** When the race started, hh:mm. Not the time it took to finish it. */
+  startTime: string
   seconds: number
   points: number
+  /** File name of the picture attached as proof, or empty. Deleted from the
+   *  server once the result has been checked, so the disc does not fill with
+   *  photographs of watches (ADL A12). */
+  photo: string
   category: RaceCategory
   link: string
   status: SubmissionStatus
@@ -39,6 +45,15 @@ export type Message = {
   date: string
   read: boolean
 }
+
+/* What administration has changed, kept apart from the data it changes.
+ *
+ * The prototype has no database to write to, so an edit is remembered as an
+ * overlay: the generated record underneath stays as it is, and the screens read
+ * the record with the overlay applied. When the backend arrives the overlay
+ * becomes a PATCH and the screens do not notice.
+ */
+export type Edits = Record<string, Record<string, string>>
 
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'upcomingEvent' | 'newsletter'
 
@@ -57,6 +72,9 @@ export type SessionValue = {
 
   notifications: Record<NotificationKey, boolean>
   setNotification: (key: NotificationKey, on: boolean) => void
+
+  edits: Edits
+  edit: (id: string, field: string, value: string) => void
 }
 
 export const NOTIFICATION_KEYS: NotificationKey[] = [

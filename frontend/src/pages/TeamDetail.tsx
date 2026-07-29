@@ -1,8 +1,10 @@
 import { Link, useParams } from 'react-router'
 import { Resource } from '../components/Resource'
-import { EMPTY_TOTALS, totalsByMember, totalsOf } from '../data/derive'
+import { Counters } from './home/Counters'
+import { categoryOfMember, EMPTY_TOTALS, totalsByMember, totalsOf } from '../data/derive'
+import { SEASON } from '../data/pricing'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
-import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
+import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Profile.css'
 
@@ -49,33 +51,7 @@ export function TeamDetail() {
               </p>
             </header>
 
-            <section className="counter" aria-labelledby="team-totals">
-              <h2 className="counter__title" id="team-totals">
-                {t('teams.together')}
-              </h2>
-              <dl className="counter__numbers">
-                <div>
-                  <dt>{t('profile.races')}</dt>
-                  <dd>{formatNumber(totals.races, locale)}</dd>
-                </div>
-                <div>
-                  <dt>{t('profile.kilometers')}</dt>
-                  <dd>{formatNumber(totals.kilometers, locale)}</dd>
-                </div>
-                <div>
-                  <dt>{t('profile.ascent')}</dt>
-                  <dd>{formatNumber(totals.ascent, locale)}</dd>
-                </div>
-                <div>
-                  <dt>{t('profile.time')}</dt>
-                  <dd>{formatDuration(totals.seconds)}</dd>
-                </div>
-                <div>
-                  <dt>{t('profile.points')}</dt>
-                  <dd>{formatPoints(totals.points, locale)}</dd>
-                </div>
-              </dl>
-            </section>
+            <Counters totals={totals} seasonLabel={t('teams.together')} />
 
             <h2 className="profile__section">{t('teams.members')}</h2>
 
@@ -105,7 +81,7 @@ export function TeamDetail() {
                           </Link>{' '}
                           <span className="table__member-number">{row.member.memberNumber}</span>
                         </td>
-                        <td>{row.member.categoryCode}</td>
+                        <td>{categoryOfMember(row.member, SEASON)}</td>
                         <td className="table__hide-phone">
                           {formatNumber(row.totals.races, locale)}
                         </td>

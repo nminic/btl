@@ -18,7 +18,7 @@
     "rankings": "Rang liste",
     "competitors": "Takmičari",
     "teams": "Timovi",
-    "leagues": "Lige",
+    "leagues": "Dodatna takmičenja",
     "badges": "Značke",
     "pricing": "Članarina",
     "rules": "Pravilnik",
@@ -130,7 +130,16 @@
     "partners": "Sponzori i partneri",
     "community": "Zajednica u brojkama",
     "newest": "Poslednji koji su se učlanili",
-    "membersInSeason": "članova u ligi"
+    "membersInSeason": "članova u ligi",
+    "noneYet": "U ovoj sezoni još nema odtrčanih trka ove dužine.",
+    "mostOf": {
+      "short": "Najviše kraćih trka",
+      "long": "Najviše dužih trka",
+      "half": "Najviše polumaratona",
+      "marathon": "Najviše maratona",
+      "ultra": "Najviše ultramaratona"
+    },
+    "races": "Odtrčanih trka"
   },
   "data": {
     "loading": "Učitavanje",
@@ -156,7 +165,10 @@
       "matches": "Ne poklapa se sa prethodnim poljem."
     },
     "choose": "Izaberi",
-    "errorSummary": "Prijava nije poslata. Popravi ova polja:"
+    "errorSummary": "Prijava nije poslata. Popravi ova polja:",
+    "region": "Region",
+    "restOfWorld": "Ostatak sveta",
+    "openCalendar": "Otvori kalendar"
   },
   "registration": {
     "title": "Registracija",
@@ -186,7 +198,9 @@
     "parentConsentHint": "Takmičar je mlađi od 16 godina, pa prijavu potpisuje roditelj. Upisivanjem imena potvrđuješ da podržavaš prijavu svog deteta sa unetim podacima.",
     "closed": "Registracija još nije otvorena",
     "closedText": "Od 15. do 30. septembra portal je otvoren samo za razgledanje. Kalendar i rang liste rade, ali se članstvo tada ne prodaje.",
-    "opensOn": "Otvara se {date}."
+    "opensOn": "Otvara se {date}.",
+    "firstSeason": "Takmičim se u kategoriji Prva sezona",
+    "firstSeasonHint": "Za one koji su nov u ligi. U toj kategoriji se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan. Ako je ne izabereš, takmičiš se u svojoj starosnoj kategoriji."
   },
   "country": {
     "RS": "Srbija",
@@ -341,7 +355,8 @@
     "notFound": "Ovog takmičara nema.",
     "allCategories": "Sve dužine",
     "byCategory": "Trke po dužini",
-    "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata."
+    "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata.",
+    "racesTotal": "trka"
   },
   "teams": {
     "title": "Timovi",
@@ -360,7 +375,7 @@
     "notFound": "Ovog tima nema."
   },
   "leagues": {
-    "title": "Lige",
+    "title": "Dodatna takmičenja",
     "season": "Sezona {season}.",
     "events": "Događaja",
     "byCategory": "Grupisanje po kategorijama",
@@ -370,7 +385,10 @@
     "rules": "Propozicije",
     "prizes": "Nagrade",
     "countingEvents": "Događaji koji ulaze u ligu",
-    "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj."
+    "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
+    "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze i kako se poredak grupiše.",
+    "none": "Trenutno nema nijednog dodatnog takmičenja.",
+    "notWritten": "Još nije napisano."
   },
   "pricing": {
     "title": "Članarina",
@@ -439,7 +457,11 @@
     "minutes": "Minuta",
     "seconds": "Sekundi",
     "link": "Link ka zvaničnim rezultatima",
-    "linkHint": "Obavezno. Bez njega rezultat ne može da se proveri."
+    "linkHint": "Obavezno. Bez njega rezultat ne može da se proveri.",
+    "startTime": "Vreme starta",
+    "startTimeHint": "Kad je trka krenula. Ne vreme koje si istrčao.",
+    "photo": "Fotografija kao dokaz",
+    "photoHint": "Neobavezno, na primer slika sata ili tablice sa vremenom. Briše se sa servera čim rezultat bude proveren."
   },
   "status": {
     "pending": "Čeka proveru",
@@ -467,9 +489,9 @@
     "howToPay": "Kako se plaća",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
-    "ipsNote": "Ovo je sadržaj IPS QR koda po standardu Narodne banke Srbije. Slika koda dolazi uz generator; tekst je deo koji mora biti tačan.",
+    "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
     "epc": "SEPA uplata sa EPC QR kodom",
-    "epcNote": "Sadržaj EPC koda. Jeftinije od PayPala za zemlje u SEPA području.",
+    "epcNote": "Skeniraj kod u aplikaciji svoje banke. Jeftinije od PayPala za zemlje u SEPA području.",
     "card": "Kartica",
     "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
     "paypal": "PayPal",
@@ -478,7 +500,25 @@
     "referral": "Program preporuke",
     "referralNote": "Svako ko se učlani preko tvog linka donosi ti {eur} EUR na balans, u trenutku kad mu se članarina aktivira.",
     "balance": "na balansu",
-    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu, ne prenosi se drugom članu, i briše se posle prve godine bez aktivne članarine."
+    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu, ne prenosi se drugom članu, i briše se posle prve godine bez aktivne članarine.",
+    "ipsQrLabel": "IPS QR kod za uplatnicu",
+    "epcQrLabel": "EPC QR kod za SEPA uplatu",
+    "showPayload": "Prikaži sadržaj koda",
+    "renewal": "Obnova članarine za {season}.",
+    "renewalOpen": "Obnova je otvorena. Ne registruješ se ponovo: članski broj, profil i istorija ostaju tvoji.",
+    "renewalShut": "Obnova se otvara 1. oktobra i traje do 31. decembra.",
+    "chooseCategory": "U kojoj kategoriji se takmičiš {season}.",
+    "ageBand": "U svojoj starosnoj kategoriji",
+    "firstSeasonBand": "U kategoriji Prva sezona",
+    "firstSeasonOpen": "Prva sezona ti je još otvorena, jer imaš manje od {points} bodova.",
+    "firstSeasonClosed": "Prva sezona ti je zatvorena, jer si prešao {points} bodova. Izlazak iz te kategorije je nepovratan.",
+    "renew": "Obnovi za {season}.",
+    "transferWindow": "Prelazni rok",
+    "noTeam": "Trenutno nisi ni u jednom timu.",
+    "inTeam": "Trenutno si u timu {team}.",
+    "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
+    "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
+    "askToJoin": "Pošalji zahtev timu"
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -490,7 +530,12 @@
     "sendBack": "Vrati na doradu",
     "reason": "Razlog vraćanja",
     "reasonPlaceholder": "Bez razloga se ne vraća.",
-    "officialResults": "Zvanični rezultati"
+    "officialResults": "Zvanični rezultati",
+    "decision": "Odluka",
+    "confirmSendBack": "Vrati uz ovaj razlog",
+    "cancel": "Odustani",
+    "correctionNote": "Odbijanje rezultata i izmena vremena nose obrazloženje, jer diraju ono što je član prijavio da je uradio. Ispravka dužine, naziva ili visinske razlike ne nosi: te podatke administracija usklađuje sa zvaničnim izvorom, i to je najavljeno u uslovima korišćenja.",
+    "explanation": "Obrazloženje"
   },
   "admin": {
     "title": "Administracija",
@@ -516,7 +561,9 @@
     "eventsNote": "Bez pretrage prikazani su samo događaji koji tek dolaze. Pretraga gleda ceo kalendar.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
-    "state": "Stanje"
+    "state": "Stanje",
+    "change": "Izmeni",
+    "editNote": "Podaci u tabeli se menjaju klikom na samu vrednost. Izmena se pamti dok traje ova poseta; kad baza bude tu, pamtiće se trajno."
   },
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   SessionContext,
+  type Edits,
   type Message,
   type NotificationKey,
   type SessionValue,
@@ -39,6 +40,7 @@ export function SessionProvider({
   const [memberNumber, setMemberNumber] = useState<string | null>(initialMemberNumber)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [messages, setMessages] = useState<Message[]>(FIRST_MESSAGES)
+  const [edits, setEdits] = useState<Edits>({})
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -63,6 +65,10 @@ export function SessionProvider({
     setMessages((current) => current.map((one) => (one.id === id ? { ...one, read: true } : one)))
   }, [])
 
+  const edit = useCallback((id: string, field: string, value: string) => {
+    setEdits((current) => ({ ...current, [id]: { ...current[id], [field]: value } }))
+  }, [])
+
   const setNotification = useCallback((key: NotificationKey, on: boolean) => {
     setNotifications((current) => ({ ...current, [key]: on }))
   }, [])
@@ -79,8 +85,21 @@ export function SessionProvider({
       markRead,
       notifications,
       setNotification,
+      edits,
+      edit,
     }),
-    [memberNumber, submissions, submit, decide, messages, markRead, notifications, setNotification],
+    [
+      memberNumber,
+      submissions,
+      submit,
+      decide,
+      messages,
+      markRead,
+      notifications,
+      setNotification,
+      edits,
+      edit,
+    ],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

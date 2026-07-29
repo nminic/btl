@@ -1,0 +1,103 @@
+/* The bar chart from the old portal: faces on top, blue columns, the number in
+ * a circle at the foot of each, and a gold band underneath naming the length.
+ */
+.top-cat {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.top-cat__columns {
+  list-style: none;
+  margin: 0;
+  padding: 0.8rem 0.6rem 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0.3rem;
+  align-items: end;
+  block-size: 15rem;
+}
+
+.top-cat__column {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  block-size: 100%;
+  min-inline-size: 0;
+}
+
+.top-cat__face {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 0.25rem;
+  border-radius: 4px;
+  background: linear-gradient(160deg, var(--blue-600), var(--blue-900));
+  color: var(--white);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.top-cat__bar {
+  position: relative;
+  display: block;
+  min-block-size: 2.4rem;
+  border-radius: 2px 2px 0 0;
+  background: #1f7ad6;
+  text-decoration: none;
+  transition: background var(--fast);
+}
+
+.top-cat__bar:hover {
+  background: var(--blue-600);
+}
+
+.top-cat__count {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0.55rem;
+  margin-inline: auto;
+  inline-size: 1.7rem;
+  block-size: 1.7rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blue-800);
+  color: var(--white);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.top-cat__caption {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+  color: #3a2a02;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.top-cat .card__empty {
+  padding: 1.5rem 0.8rem;
+  text-align: center;
+}
+
+/* On a phone ten columns are unreadable, so the last four drop away. */
+@media (max-width: 560px) {
+  .top-cat__column:nth-child(n + 7) {
+    display: none;
+  }
+
+  .top-cat__face {
+    font-size: 0.6rem;
+  }
+}

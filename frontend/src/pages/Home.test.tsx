@@ -19,7 +19,6 @@ describe('Home', () => {
       expect.stringContaining('Članarina za BTL'),
       'Top 10 muškarci',
       'Top 10 žene',
-      'Trke po dužini',
       'BTL kalkulator',
       'Kako radi BTL u tri koraka',
       'Zajednica u brojkama',
@@ -68,24 +67,12 @@ describe('Home', () => {
     )
   })
 
-  it('rotates the chart through the five length categories, and wraps around', async () => {
-    const user = userEvent.setup()
+  it('carries no heading of its own and nothing to click', async () => {
     renderAt('/sr')
 
-    const chart = (await screen.findByRole('heading', { name: 'Trke po dužini' })).closest(
-      'section',
-    )!
-    const current = () => chart.querySelector('.chart__current')!.textContent
-
-    const first = current()
-    await user.click(within(chart).getByRole('button', { name: 'Sledeća kategorija' }))
-    expect(current()).not.toBe(first)
-
-    await user.click(within(chart).getByRole('button', { name: 'Prethodna kategorija' }))
-    expect(current()).toBe(first)
-
-    await user.click(within(chart).getByRole('button', { name: 'Prethodna kategorija' }))
-    expect(current()).not.toBe(first)
+    await screen.findByText(/^Najviše/)
+    expect(screen.queryByRole('heading', { name: /Trke po dužini/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /kategorija/ })).not.toBeInTheDocument()
   })
 
   it('works the calculator, and waits quietly until it can answer', async () => {
