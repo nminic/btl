@@ -1,0 +1,229 @@
+@import '../Profile.css';
+
+.member {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.member h1 {
+  margin: 0;
+  font-size: clamp(26px, 4.5vw, 36px);
+  letter-spacing: -0.02em;
+}
+
+.member__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.member__note {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.member__panel {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.member__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.member__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  align-items: flex-start;
+  max-width: 32rem;
+}
+
+.member__form .rankings__field {
+  width: 100%;
+}
+
+.button[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Submissions and messages share a card shape. */
+
+.submissions,
+.messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.submissions__item,
+.messages__item {
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.submissions__item--approved {
+  border-left-color: var(--up);
+}
+
+.submissions__item--rejected {
+  border-left-color: var(--down);
+}
+
+.messages__item--unread {
+  border-left-color: var(--accent);
+}
+
+.submissions__head,
+.messages__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.submissions__meta,
+.messages__from,
+.messages__body,
+.messages__date {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.messages__body {
+  color: var(--text);
+}
+
+.submissions__note {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--down);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.tag--approved,
+.tag--confirmed {
+  color: var(--up);
+}
+
+.tag--rejected,
+.tag--cancelled {
+  color: var(--down);
+}
+
+.tag--honorary {
+  color: var(--gold-text);
+}
+
+/* Membership */
+
+.membership__state {
+  margin: 0;
+  font-weight: 700;
+}
+
+.membership__balance {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.membership__balance strong {
+  font-size: clamp(22px, 3.5vw, 28px);
+  color: var(--gold-text);
+}
+
+.pay {
+  border-top: 1px dashed var(--border);
+  padding-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pay h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.pay__payload {
+  margin: 0;
+  padding: 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Administration */
+
+.admin__counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.9rem;
+  margin: 0;
+}
+
+.admin__counts div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem;
+}
+
+.admin__counts dt {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+}
+
+.admin__counts dd {
+  margin: 0.2rem 0 0;
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 700;
+}
+
+.badges__sentence {
+  margin: 0;
+  padding: 0.8rem;
+  border-left: 3px solid var(--gold-500);
+  background: var(--surface);
+  font-size: 1rem;
+}

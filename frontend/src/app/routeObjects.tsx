@@ -15,6 +15,18 @@ import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
 import { Registration } from '../pages/Registration'
+import { Admin } from '../pages/admin/Admin'
+import { AdminBadges } from '../pages/admin/AdminBadges'
+import { AdminEvents } from '../pages/admin/AdminEvents'
+import { AdminMembers } from '../pages/admin/AdminMembers'
+import { AdminPricing } from '../pages/admin/AdminPricing'
+import { ReviewQueue } from '../pages/admin/ReviewQueue'
+import { Membership } from '../pages/member/Membership'
+import { Messages } from '../pages/member/Messages'
+import { MyProfile } from '../pages/member/MyProfile'
+import { MyResults } from '../pages/member/MyResults'
+import { NewResult } from '../pages/member/NewResult'
+import { SignIn } from '../pages/member/SignIn'
 import { LocaleLayout } from './LocaleLayout'
 import { ROUTES } from './routes'
 
@@ -28,6 +40,17 @@ const SCREENS: Record<string, ReactElement> = {
   lige: <Leagues />,
   clanarina: <Pricing />,
   registracija: <Registration />,
+  prijava: <SignIn />,
+  'moj-profil': <MyProfile />,
+  'moji-rezultati': <MyResults />,
+  'moja-clanarina': <Membership />,
+  poruke: <Messages />,
+  administracija: <Admin />,
+  'administracija/red-za-proveru': <ReviewQueue />,
+  'administracija/clanovi': <AdminMembers />,
+  'administracija/dogadjaji': <AdminEvents />,
+  'administracija/znacke': <AdminBadges />,
+  'administracija/cenovnik': <AdminPricing />,
 }
 
 /* Detail screens. They are addresses, not navigation entries, so they are not
@@ -37,6 +60,7 @@ const DETAILS: RouteObject[] = [
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
   { path: 'liga/:slug', element: <LeagueDetail /> },
+  { path: 'rezultat/novi', element: <NewResult /> },
 ]
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */

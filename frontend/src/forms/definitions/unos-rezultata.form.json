@@ -1,0 +1,79 @@
+{
+  "id": "unos-rezultata",
+  "titleKey": "newResult.title",
+  "submitKey": "newResult.submit",
+  "fields": [
+    {
+      "name": "eventName",
+      "type": "text",
+      "labelKey": "newResult.eventName",
+      "hintKey": "newResult.eventNameHint",
+      "required": true,
+      "maxLength": 120
+    },
+    {
+      "name": "date",
+      "type": "date",
+      "labelKey": "newResult.date",
+      "required": true
+    },
+    {
+      "name": "distanceKm",
+      "type": "number",
+      "labelKey": "newResult.distanceKm",
+      "hintKey": "newResult.distanceHint",
+      "required": true,
+      "min": 0.1,
+      "max": 1000
+    },
+    {
+      "name": "ascentM",
+      "type": "number",
+      "labelKey": "newResult.ascentM",
+      "hintKey": "newResult.climbHint",
+      "required": true,
+      "min": 0,
+      "max": 30000
+    },
+    {
+      "name": "descentM",
+      "type": "number",
+      "labelKey": "newResult.descentM",
+      "required": true,
+      "min": 0,
+      "max": 30000
+    },
+    {
+      "name": "hours",
+      "type": "number",
+      "labelKey": "newResult.hours",
+      "required": true,
+      "min": 0,
+      "max": 200
+    },
+    {
+      "name": "minutes",
+      "type": "number",
+      "labelKey": "newResult.minutes",
+      "required": true,
+      "min": 0,
+      "max": 59
+    },
+    {
+      "name": "seconds",
+      "type": "number",
+      "labelKey": "newResult.seconds",
+      "required": true,
+      "min": 0,
+      "max": 59
+    },
+    {
+      "name": "link",
+      "type": "text",
+      "labelKey": "newResult.link",
+      "hintKey": "newResult.linkHint",
+      "required": true,
+      "pattern": "^https?://.+"
+    }
+  ]
+}

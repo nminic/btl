@@ -395,5 +395,160 @@
   "error": {
     "title": "Nešto je puklo",
     "text": "Ovaj deo strane se nije učitao kako treba. Osveži stranu, pa ako se ponovi, javi nam."
+  },
+  "signIn": {
+    "title": "Prijava",
+    "prototypeNote": "Ovo je probni portal. Prava prijava sa lozinkom, potvrdom mejla i dvofaktorskom potvrdom za Superadmina radi se sa bazom. Do tada biraš ko si i portal ti veruje na reč.",
+    "whoAreYou": "Ko si?",
+    "submit": "Prijavi se",
+    "needed": "Za ovo treba prijava",
+    "neededText": "Ovaj deo portala vide samo članovi."
+  },
+  "myProfile": {
+    "actions": "Moje stvari",
+    "signOut": "Odjavi se",
+    "notifications": "Obaveštenja",
+    "notificationsNote": "Sedam obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru, krupna izmena na portalu i najava događaja. Ispod je sve ostalo.",
+    "notify": {
+      "resultApproved": "Kad mi rezultat bude odobren",
+      "resultChanged": "Kad mi neko izmeni rezultat",
+      "upcomingEvent": "Podsetnik pred događaj na koji sam se prijavio",
+      "newsletter": "Povremene vesti iz lige"
+    }
+  },
+  "myResults": {
+    "title": "Moji rezultati",
+    "add": "Unesi rezultat",
+    "sentIn": "Poslato na proveru",
+    "noneSent": "Nisi poslao nijedan rezultat na proveru.",
+    "counted": "Uračunato"
+  },
+  "newResult": {
+    "title": "Unos rezultata",
+    "submit": "Pošalji na proveru",
+    "note": "Rezultat ulazi u rang liste tek kad ga administrator odobri. Dok čeka, vidiš ga samo ti.",
+    "eventName": "Naziv događaja",
+    "eventNameHint": "Onako kako ga je organizator nazvao.",
+    "date": "Datum trke",
+    "distanceKm": "Dužina (km)",
+    "distanceHint": "Maraton je tačno 42.2, polumaraton tačno 21.1. Bez zaokruživanja, jer od toga zavisi kategorija.",
+    "ascentM": "Uspon (m)",
+    "climbHint": "Ako staza nema nagib, upiši nulu.",
+    "descentM": "Spust (m)",
+    "hours": "Sati",
+    "minutes": "Minuta",
+    "seconds": "Sekundi",
+    "link": "Link ka zvaničnim rezultatima",
+    "linkHint": "Obavezno. Bez njega rezultat ne može da se proveri."
+  },
+  "status": {
+    "pending": "Čeka proveru",
+    "approved": "Odobreno",
+    "rejected": "Vraćeno"
+  },
+  "messages": {
+    "title": "Poruke",
+    "unread": {
+      "one": "{count} nepročitana",
+      "few": "{count} nepročitane",
+      "other": "{count} nepročitanih"
+    },
+    "empty": "Nemaš nijednu poruku.",
+    "markRead": "Označi kao pročitano"
+  },
+  "membership": {
+    "title": "Moja članarina",
+    "status": "Stanje",
+    "active": "Član od {season}. sezone.",
+    "honorary": "Počasno članstvo. Za sezonu 2027. ne plaćaš članarinu.",
+    "priceNow": "Danas članarina košta {eur} EUR, odnosno {rsd} RSD.",
+    "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
+    "junior": "Do 14 godina članarina je {eur} EUR, bez obzira na datum.",
+    "howToPay": "Kako se plaća",
+    "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
+    "ips": "Uplatnica sa QR kodom",
+    "ipsNote": "Ovo je sadržaj IPS QR koda po standardu Narodne banke Srbije. Slika koda dolazi uz generator; tekst je deo koji mora biti tačan.",
+    "epc": "SEPA uplata sa EPC QR kodom",
+    "epcNote": "Sadržaj EPC koda. Jeftinije od PayPala za zemlje u SEPA području.",
+    "card": "Kartica",
+    "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
+    "paypal": "PayPal",
+    "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
+    "feesOnPayer": "Svi troškovi i provizije padaju na uplatioca. Na račun udruženja mora leći pun iznos članarine.",
+    "referral": "Program preporuke",
+    "referralNote": "Svako ko se učlani preko tvog linka donosi ti {eur} EUR na balans, u trenutku kad mu se članarina aktivira.",
+    "balance": "na balansu",
+    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu, ne prenosi se drugom članu, i briše se posle prve godine bez aktivne članarine."
+  },
+  "review": {
+    "title": "Red za proveru rezultata",
+    "note": "Rezultat ulazi u rang liste tek kad se odobri. Dok čeka, ne postoji ni za koga osim za onog ko ga je uneo.",
+    "waiting": "Čeka proveru",
+    "empty": "Nema nijednog rezultata na čekanju.",
+    "decided": "Rešeno",
+    "approve": "Odobri",
+    "sendBack": "Vrati na doradu",
+    "reason": "Razlog vraćanja",
+    "reasonPlaceholder": "Bez razloga se ne vraća.",
+    "officialResults": "Zvanični rezultati"
+  },
+  "admin": {
+    "title": "Administracija",
+    "notAllowed": "Ovo nije za tebe",
+    "notAllowedText": "Administrativni deo vide samo moderatori i Superadmin.",
+    "waiting": "Čeka proveru",
+    "members": "Članovi",
+    "events": "Događaji",
+    "results": "Rezultata",
+    "basis": "Osnov članstva",
+    "basisValue": {
+      "payment": "Uplata",
+      "honorary": "Počasno"
+    },
+    "pricing": "Cenovnik",
+    "pricingNote": "Cenovnik se čuva kao redovi sa periodom važenja. Cena je obaveza prema članu, pa se ne menja usred sezone.",
+    "from": "Od",
+    "to": "Do",
+    "ranking": "Pravo rangiranja",
+    "yes": "Da",
+    "no": "Ne",
+    "badges": "Značke",
+    "eventsNote": "Bez pretrage prikazani su samo događaji koji tek dolaze. Pretraga gleda ceo kalendar.",
+    "searchEvents": "Naziv ili mesto",
+    "showing": "Prikazano: {count}",
+    "state": "Stanje"
+  },
+  "badges": {
+    "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
+    "quantityLabel": "Veličina",
+    "operatorLabel": "Uslov",
+    "valueLabel": "Vrednost",
+    "from": "Od datuma",
+    "to": "Do datuma",
+    "sentence": "Značka se dodeljuje kad {quantity} bude {operator} {value}",
+    "everSince": ", računato kroz sve sezone.",
+    "between": ", računato od {from} do {to}, oba dana uključena.",
+    "after": ", računato od {from}, bez kraja.",
+    "before": ", računato do {to}, oba dana uključena.",
+    "closedList": "Spisak veličina je deo ugovora i menja se samo izmenom portala. Uslov može biti samo najmanje ili više od, da značka koja je osvojena ne može kasnije da se izgubi.",
+    "quantity": {
+      "raceCount": "broj trka",
+      "marathonCount": "broj maratona",
+      "halfCount": "broj polumaratona",
+      "longCount": "broj dužih trka",
+      "shortCount": "broj kraćih trka",
+      "ultraCount": "broj ultramaratona",
+      "totalKm": "ukupno kilometara",
+      "totalAscent": "ukupan uspon",
+      "totalDescent": "ukupan spust",
+      "totalTime": "ukupno vreme na stazi",
+      "points": "broj bodova",
+      "countryCount": "broj zemalja",
+      "seasonCount": "broj sezona"
+    },
+    "operator": {
+      "atLeast": "najmanje",
+      "moreThan": "više od"
+    }
   }
 }

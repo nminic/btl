@@ -6,14 +6,17 @@ import { DEFAULT_LOCALE, type Locale } from '../i18n/config'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import type { Role } from '../roles/context'
+import { SessionProvider } from '../session/SessionProvider'
 
 /** Mounts the real route table at a real address, in a memory router. */
-export function renderAt(path: string, role: Role = 'visitor') {
+export function renderAt(path: string, role: Role = 'visitor', memberNumber: string | null = null) {
   const router = createMemoryRouter(routeObjects, { initialEntries: [path] })
 
   return render(
     <RoleProvider initialRole={role}>
-      <RouterProvider router={router} />
+      <SessionProvider initialMemberNumber={memberNumber}>
+        <RouterProvider router={router} />
+      </SessionProvider>
     </RoleProvider>,
   )
 }
