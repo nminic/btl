@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Markdown } from '../components/Markdown'
+import { Resource } from '../components/Resource'
+import { usePages } from '../data/useResource'
+import type { StaticPage } from '../data/types'
+import { useI18n } from '../i18n/useI18n'
+import { tableOfContents } from './rulebookToc'
+import './Rulebook.css'
+
+const SLUG = 'pravilnik'
+
+/* The band the reader is actually looking at: everything under the top of the
+ * window and above the last third of it. Without it the section that is barely
+ * peeking in from the bottom would count as the one being read. */
+const READING_BAND = '0px 0px -66% 0px'
+
+/**
+ * Which section is on screen, so the side navigation can say so.
+ *
+ * The observer is the only way to know this without measuring on every scroll
+ * event. Where it is missing, the first section stands as the current one:
+ * a marker that never moves is better than no marker at all.
+ */
+function useCurrentSection(ids: string[]): string {
+  const [current, setCurrent] = useState('')
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setCurrent(ids[0])
+      return
+    }
+
+    const onScreen = new Set<string>()
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            onScreen.add(entry.target.id)
+          } else {
+            onScreen.delete(entry.target.id)
+          }
+        }
+
+        const first = ids.find((id) => onScreen.has(id))
+
+        // Between two sections nothing is in the band. The marker then stays
+        // where it was rather than blinking off and back on.
+        setCurrent((previous) => first ?? previous)
+      },
+      { rootMargin: READING_BAND },
+    )
+
+    const sections = ids
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null)
+
+    for (const section of sections) {
+      observer.observe(section)
+    }
+
+    return () => observer.disconnect()
+  }, [ids])
+
+  return current
+}
+
+function RulebookPage({ page }: { page: StaticPage }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+
+  const entries = useMemo(
+    () => tableOfContents(page.sections.map((section) => section.heading)),
+    [page.sections],
+  )
+  const ids = useMemo(() => entries.map((entry) => entry.id), [entries])
+  const current = useCurrentSection(ids)
+
+  return (
+    <article className="rulebook">
+      <h1>{page.title}</h1>
+
+      <div className="rulebook__layout">
+        {/* On a phone the list of sections would push the text off the first
+            screen, so there it sits behind a button. From tablet up the button
+            goes away and the list stands beside the text and follows it down. */}
+        <nav className="rulebook__toc" aria-label={t('rulebook.onThisPage')}>
+          <button
+            type="button"
+            className="rulebook__toggle"
+            aria-expanded={open}
+            aria-controls="rulebook-sections"
+            onClick={() => setOpen((wasOpen) => !wasOpen)}
+          >
+            {t('rulebook.openSections')}
+          </button>
+
+          <div
+            id="rulebook-sections"
+            className={open ? 'rulebook__panel rulebook__panel--open' : 'rulebook__panel'}
+          >
+            <p className="rulebook__toc-title">{t('rulebook.onThisPage')}</p>
+
+            <ol className="rulebook__toc-list">
+              {entries.map((entry) => (
+                <li key={entry.id}>
+                  <a
+                    className="rulebook__toc-link"
+                    href={`#${entry.id}`}
+                    /* Colour alone would leave the reader who cannot see it
+                       without the answer, so the state is in the markup too. */
+                    aria-current={current === entry.id ? 'location' : undefined}
+                    onClick={() => setOpen(false)}
+                  >
+                    {entry.heading}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </nav>
+
+        <div className="rulebook__body">
+          {page.sections.map((section, index) => (
+            <section
+              key={entries[index].id}
+              id={entries[index].id}
+              /* Following a link has to move the reading position as well as
+                 the scroll position, and only a focusable element does that. */
+              tabIndex={-1}
+            >
+              <h2>{section.heading}</h2>
+              <Markdown text={section.body} />
+            </section>
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+/** The rulebook of the season, written out in full, with its own contents. */
+export function Rulebook() {
+  const { t } = useI18n()
+  const state = usePages()
+
+  return (
+    <Resource state={state}>
+      {(pages) => {
+        const page = pages[SLUG]
+
+        if (page === undefined) {
+          return <h1>{t('notFound.title')}</h1>
+        }
+
+        return <RulebookPage page={page} />
+      }}
+    </Resource>
+  )
+}

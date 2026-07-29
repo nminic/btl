@@ -147,16 +147,14 @@
   }
 }
 
-/* Language menu and theme toggle, in the shape they have on the owner's own
-   site: a button with a flag and a code, a list with a tick against the one in
-   use, and one button holding both the sun and the moon. */
+/* The language menu, in the shape it has on the owner's own site: a button with
+   a flag and a code, and a list with a tick against the one in use. */
 
 .lang {
   position: relative;
 }
 
-.lang__btn,
-.theme-toggle {
+.lang__btn {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -176,8 +174,7 @@
     transform var(--fast);
 }
 
-.lang__btn:hover,
-.theme-toggle:hover {
+.lang__btn:hover {
   border-color: var(--accent);
   transform: translateY(-1px);
 }
@@ -297,40 +294,353 @@
   opacity: 1;
 }
 
-/* Theme toggle: the two marks share one square and turn past each other. */
+/* Brand: the mark, the full name, and the slogan under it (PDL P28a). */
 
-.theme-toggle {
-  position: relative;
-  width: 2.4rem;
-  padding: 0;
-  justify-content: center;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
 }
 
-.theme-toggle__icon {
-  position: absolute;
-  width: 17px;
-  height: 17px;
+.brand__mark {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+}
+
+.brand__words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brand__name {
+  font-weight: 800;
+  font-size: clamp(1.15rem, 3.4vw, 1.75rem);
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+
+.brand__slogan {
+  color: var(--text-muted);
+  font-size: clamp(0.8rem, 1.8vw, 1rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+@media (min-width: 560px) {
+  .brand__mark {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+  }
+}
+
+/* Header controls share the height and rounding of the language button, so the
+   row reads as one strip rather than four unrelated widgets. */
+
+.icon-link,
+.account__btn,
+.inbox__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 2.4rem;
+  min-width: 2.4rem;
+  padding: 0 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
   transition:
-    opacity var(--fast),
+    border-color var(--fast),
     transform var(--fast);
 }
 
-.theme-toggle__sun {
-  opacity: 1;
-  transform: none;
+.icon-link:hover,
+.account__btn:hover,
+.inbox__btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
-.theme-toggle__moon {
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.6);
+.icon-link__glyph,
+.inbox__glyph {
+  width: 18px;
+  height: 18px;
 }
 
-:root[data-theme='dark'] .theme-toggle__sun {
-  opacity: 0;
-  transform: rotate(90deg) scale(0.6);
+.account__monogram {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
-:root[data-theme='dark'] .theme-toggle__moon {
-  opacity: 1;
-  transform: none;
+.inbox__badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.68rem;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+/* Panels under the header: the account menu, the inbox, and a navigation
+   group. One shape, three uses. */
+
+.account,
+.inbox,
+.navgroup {
+  position: relative;
+}
+
+.account__panel,
+.inbox__panel,
+.navgroup__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 6;
+  min-width: 14rem;
+  padding: 0.35rem;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+}
+
+.navgroup__panel {
+  left: 0;
+  right: auto;
+}
+
+.account__who,
+.inbox__title {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.account__link,
+.inbox__link,
+.inbox__all,
+.navgroup__link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 10px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.account__link:hover,
+.inbox__link:hover,
+.inbox__all:hover,
+.navgroup__link:hover,
+.navgroup__link.active {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.account__link--button {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inbox__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.inbox__link {
+  justify-content: space-between;
+}
+
+.inbox__item--unread .inbox__subject {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.inbox__date {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.inbox__empty {
+  margin: 0;
+  padding: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.inbox__all {
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
+  justify-content: center;
+  color: var(--accent);
+}
+
+/* How much is waiting behind Verification (PDL P28a). The number is only the
+   picture of it; the name of the link is what carries it to a screen reader. */
+.navgroup__waiting {
+  margin-inline-start: auto;
+  min-width: 1.05rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.68rem;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+.navgroup__btn {
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.navgroup__btn:hover,
+.navgroup.is-open .navgroup__btn {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* On a phone the navigation is already a stack, so a group opens in place
+   instead of floating over the screen it is sitting on. */
+@media (max-width: 819px) {
+  .account__panel,
+  .inbox__panel {
+    right: -0.5rem;
+    min-width: min(20rem, calc(100vw - 2rem));
+  }
+
+  .navgroup__panel {
+    position: static;
+    box-shadow: none;
+    border: 0;
+    padding-left: 0.75rem;
+    min-width: 0;
+  }
+}
+
+/* The verification queues (PDL P28a). */
+
+.queues {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.queues__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.queues__row:hover {
+  border-color: var(--accent);
+}
+
+.queues__row--flat:hover {
+  border-color: var(--border);
+}
+
+.queues__name {
+  font-weight: 700;
+}
+
+.queues__count {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 2rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.queues__count--waiting {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.queues__source {
+  grid-column: 1;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.queues__soon {
+  grid-column: 2;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* The two things a visitor is here to do. Joining is the loud one: it is the
+   only control in the header that brings the league any money. */
+.button--compact {
+  height: 2.4rem;
+  padding-inline: 0.85rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }

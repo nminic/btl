@@ -7,8 +7,10 @@ import { StaticPage } from './StaticPage'
 describe('the written pages', () => {
   it.each([
     ['/sr/o-ligi', 'O ligi'],
-    ['/sr/pravilnik', 'Pravilnik'],
-    ['/sr/kontakt', 'Kontakt'],
+    ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027'],
+    // Contact left the written pages: it is a mail address in the footer now,
+    // and the history of the league took its place (PDL P28a).
+    ['/sr/istorijat', 'Istorijat'],
     ['/sr/politika-privatnosti', 'Politika privatnosti'],
     ['/sr/uslovi-koriscenja', 'Uslovi korišćenja'],
   ])('%s carries written text, not a placeholder', async (path, title) => {

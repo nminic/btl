@@ -114,7 +114,7 @@ describe('Registration once it is open', () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="M0005">
+          <SessionProvider initialMemberNumber="000007">
             <NewResult />
           </SessionProvider>
         </MemoryRouter>

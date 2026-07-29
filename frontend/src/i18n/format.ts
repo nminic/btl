@@ -40,6 +40,18 @@ export function formatDuration(totalSeconds: number): string {
   return hours > 0 ? `${hours}:${padded}` : padded
 }
 
+/* Time on the course, in the shape the owner asked for: 299 h 49' 43''. Not the
+ * same as a race time, which is a clock reading and stays hh:mm:ss; this is a
+ * quantity of time, and the marks say so. */
+export function formatCourseTime(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds))
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const rest = seconds % 60
+
+  return `${hours} h ${String(minutes).padStart(2, '0')}' ${String(rest).padStart(2, '0')}''`
+}
+
 export function formatDate(isoDate: string, locale: string): string {
   return new Intl.DateTimeFormat(intlTag(locale), {
     day: 'numeric',

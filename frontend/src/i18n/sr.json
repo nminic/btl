@@ -2,7 +2,8 @@
   "app": {
     "name": "Balkanska trkačka liga",
     "nameUppercase": "BALKANSKA TRKAČKA LIGA",
-    "short": "BTL"
+    "short": "BTL",
+    "slogan": "Svaka trka se broji"
   },
   "shell": {
     "skipToContent": "Preskoči na sadržaj",
@@ -10,7 +11,25 @@
     "closeMenu": "Zatvori meni",
     "mainNavigation": "Glavna navigacija",
     "footerNote": "Portal je u izradi. Sve što ovde vidiš su probni podaci.",
-    "footerNavigation": "Uslovi i pravila"
+    "footerNavigation": "Uslovi i pravila",
+    "messages": "Poruke",
+    "openMessages": "Otvori poruke",
+    "closeMessages": "Zatvori poruke",
+    "unread": {
+      "one": "{count} nepročitana",
+      "few": "{count} nepročitane",
+      "other": "{count} nepročitanih"
+    },
+    "noMessages": "Nema poruka.",
+    "allMessages": "Sve poruke",
+    "waiting": "{count} na čekanju",
+    "account": "Nalog",
+    "settings": "Podešavanja",
+    "signIn": "Prijavi se",
+    "contact": "Kontakt",
+    "home": "Naslovna strana",
+    "join": "Učlani se",
+    "openAccount": "Otvori nalog"
   },
   "nav": {
     "home": "Naslovna",
@@ -33,7 +52,14 @@
     "membership": "Moja članarina",
     "messages": "Poruke",
     "admin": "Administracija",
-    "reviewQueue": "Red za proveru"
+    "aboutLeague": "Priča o ligi",
+    "history": "Istorijat",
+    "competitions": "Takmičenja",
+    "entities": "Entiteti",
+    "verification": "Verifikacija",
+    "settings": "Podešavanja",
+    "stats": "Statistike",
+    "table": "Tabela"
   },
   "theme": {
     "label": "Tema",
@@ -70,12 +96,11 @@
     "toPricing": "Vidi članarinu",
     "season": "Sezona {season}.",
     "seasonSample": "Sezona {season}, probni podaci",
-    "countersNote": "Brojači kreću od nule u ponoć na Novu godinu.",
     "kilometers": "Kilometara",
     "ascent": "Uspona",
     "descent": "Spusta",
     "onCourse": "Na stazi",
-    "points": "BTL points",
+    "points": "BTL poeni",
     "readySetGo": "Priprema, pozor, SAD!",
     "moreRuns": {
       "one": "i još {count} termin",
@@ -97,7 +122,7 @@
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
-    "wholeStanding": "Cela rang lista",
+    "wholeStanding": "Cela tabela",
     "byCategory": "Trke po dužini",
     "previousCategory": "Prethodna kategorija",
     "nextCategory": "Sledeća kategorija",
@@ -139,7 +164,15 @@
       "marathon": "Najviše maratona",
       "ultra": "Najviše ultramaratona"
     },
-    "races": "Odtrčanih trka"
+    "races": "Odtrčanih trka",
+    "raceCount": {
+      "one": "{count} trka",
+      "few": "{count} trke",
+      "other": "{count} trka"
+    },
+    "pointsUnit": " BTL poena",
+    "ascentUnit": " m+",
+    "descentUnit": " m-"
   },
   "data": {
     "loading": "Učitavanje",
@@ -239,13 +272,13 @@
     }
   },
   "rankings": {
-    "title": "Rang liste",
+    "title": "Tabela",
     "men": "Muškarci",
     "women": "Žene",
     "season": "Sezona",
     "allCategories": "Sve kategorije",
     "search": "Pretraga po imenu ili članskom broju",
-    "searchPlaceholder": "Ime, prezime ili M0001",
+    "searchPlaceholder": "Ime, prezime ili 000001",
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
     "columns": {
       "position": "#",
@@ -265,6 +298,33 @@
       "other": "{count} takmičara"
     },
     "historyNote": "Sezona 2027. još nije počela. Prikazani su probni podaci iz ranijih godina, da bi se tabela mogla proceniti."
+  },
+  "topBoards": {
+    "title": "Rang liste",
+    "intro": "Svaka lista drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
+    "season": "Sezona",
+    "byLength": {
+      "short": "Najviše kraćih trka",
+      "long": "Najviše dužih trka",
+      "half": "Najviše polumaratona",
+      "marathon": "Najviše maratona",
+      "ultra": "Najviše ultramaratona"
+    },
+    "pairs": "Najbolji parovi",
+    "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
+    "bestRaces": "Najbolje pojedinačne trke",
+    "kilometers": "Najviše kilometara",
+    "onCourse": "Najduže na stazi",
+    "columns": {
+      "position": "#",
+      "member": "Član",
+      "races": "Trke",
+      "event": "Događaj",
+      "points": "Bodovi",
+      "distance": "d (km)",
+      "time": "Vreme na stazi"
+    },
+    "empty": "U ovoj sezoni nema nijednog rezultata."
   },
   "calendar": {
     "title": "Kalendar",
@@ -372,7 +432,8 @@
     "together": "Zbirno, ceo tim",
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
-    "notFound": "Ovog tima nema."
+    "notFound": "Ovog tima nema.",
+    "name": "Tim"
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -388,7 +449,8 @@
     "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
     "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze i kako se poredak grupiše.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
-    "notWritten": "Još nije napisano."
+    "notWritten": "Još nije napisano.",
+    "name": "Liga"
   },
   "pricing": {
     "title": "Članarina",
@@ -561,9 +623,28 @@
     "eventsNote": "Bez pretrage prikazani su samo događaji koji tek dolaze. Pretraga gleda ceo kalendar.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
+    "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
     "state": "Stanje",
     "change": "Izmeni",
-    "editNote": "Podaci u tabeli se menjaju klikom na samu vrednost. Izmena se pamti dok traje ova poseta; kad baza bude tu, pamtiće se trajno."
+    "editNote": "Podaci u tabeli se menjaju klikom na samu vrednost. Izmena se pamti dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
+    "races": "Trke",
+    "teams": "Timovi",
+    "leagues": "Lige",
+    "pages": "Statične strane",
+    "racesNote": "Trke koje pripadaju događajima. Naziv se menja klikom na njega.",
+    "searchRaces": "Traži po nazivu trke ili događaja",
+    "raceName": "Naziv trke",
+    "noEvent": "Bez događaja",
+    "teamsNote": "Timovi, sa organizatorom i brojem članova.",
+    "organizer": "Organizator",
+    "noOrganizer": "Nema organizatora",
+    "leaguesNote": "Lige i broj događaja koje nose.",
+    "byCategory": "Po kategorijama",
+    "noEvents": "Bez događaja",
+    "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
+    "pageTitle": "Naslov",
+    "address": "Adresa",
+    "sections": "Sekcija"
   },
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
@@ -597,5 +678,44 @@
       "atLeast": "najmanje",
       "moreThan": "više od"
     }
+  },
+  "settings": {
+    "title": "Podešavanja",
+    "intro": "Podešavanja važe za tvoj nalog na svim uređajima.",
+    "appearance": "Izgled",
+    "themeLabel": "Tema",
+    "themeDark": "Tamna",
+    "themeLight": "Svetla",
+    "themeHint": "Tamna tema je podrazumevana.",
+    "notifications": "Obaveštenja"
+  },
+  "entities": {
+    "title": "Entiteti",
+    "intro": "Sve što administracija kreira, menja i briše, na jednom mestu."
+  },
+  "verification": {
+    "title": "Verifikacija",
+    "intro": "Sve što čeka odobrenje moderatora ili superadmina, na jednom mestu.",
+    "soon": "Radi se",
+    "results": "Rezultati",
+    "payments": "Uplate i aktivacija članova",
+    "leagues": "Predložene lige",
+    "teams": "Novi timovi",
+    "bios": "Trkačke biografije",
+    "photos": "Profilne slike",
+    "comments": "Komentari",
+    "schedule": "Prijave promene termina",
+    "fromResults": "Rezultat ulazi u tabele tek posle odobrenja",
+    "fromPayments": "Član postaje punopravan kad se evidentira uplata",
+    "fromLeagues": "Nova liga se objavljuje tek kad je odobrena",
+    "fromTeams": "Svaki nov tim odobrava superadministrator",
+    "fromBios": "Biografiju piše član, administrator je odobrava pre objave",
+    "fromPhotos": "Profilnu sliku administrator odobrava pre objave",
+    "fromComments": "Komentari se odobravaju pre objave, za sve",
+    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine"
+  },
+  "rulebook": {
+    "onThisPage": "Na ovoj strani",
+    "openSections": "Sekcije pravilnika"
   }
 }

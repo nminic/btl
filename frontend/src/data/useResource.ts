@@ -57,6 +57,24 @@ export function combineResources<A, B, C>(
   return { status: 'ready', data: [first.data, second.data, third.data] }
 }
 
+/** The same idea for the common case of exactly two resources. */
+export function combinePair<A, B>(
+  first: ResourceState<A>,
+  second: ResourceState<B>,
+): ResourceState<[A, B]> {
+  const failed = [first, second].find((state) => state.status === 'error')
+
+  if (failed !== undefined) {
+    return failed as ResourceState<[A, B]>
+  }
+
+  if (first.status !== 'ready' || second.status !== 'ready') {
+    return { status: 'loading' }
+  }
+
+  return { status: 'ready', data: [first.data, second.data] }
+}
+
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useResource<BtlEvent[]>('events')
 export const useLeagues = () => useResource<League[]>('leagues')

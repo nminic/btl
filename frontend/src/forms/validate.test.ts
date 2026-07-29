@@ -31,9 +31,9 @@ describe('validateField', () => {
   })
 
   it('checks a pattern', () => {
-    const field = text({ pattern: '^[MF]\\d{4}$' })
+    const field = text({ pattern: '^\\d{6}$' })
 
-    expect(validateField(field, 'M0001')).toBeNull()
+    expect(validateField(field, '000001')).toBeNull()
     expect(validateField(field, 'X1')).toEqual({ key: 'form.errors.pattern' })
   })
 

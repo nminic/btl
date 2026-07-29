@@ -93,7 +93,7 @@ describe('the text of a competition', () => {
 describe('the last few branches these screens have', () => {
   it('cancels sending a result back', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rezultat/novi', 'superadmin', 'M0005')
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
@@ -107,7 +107,10 @@ describe('the last few branches these screens have', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    await user.click(await screen.findByRole('link', { name: 'Red za proveru' }))
+    await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+    // The entry carries the number waiting in its name (PDL P28a).
+    await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
+    await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
     await user.click(await screen.findByRole('button', { name: 'Vrati na doradu' }))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 

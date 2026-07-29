@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { loadResource, type ResourceName } from './client'
 import type { Competitor } from './types'
 import {
+  combinePair,
   combineResources,
   useCompetitors,
   useEvents,
@@ -45,7 +46,7 @@ describe('loadResource', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
 
     expect(competitors.length).toBeGreaterThan(0)
-    expect(competitors[0].memberNumber).toMatch(/^[MF]\d{4}$/)
+    expect(competitors[0].memberNumber).toMatch(/^\d{6}$/)
   })
 
   it('rejects when the resource is not served', async () => {
@@ -122,5 +123,25 @@ describe('combineResources', () => {
 
   it('lets an error win over loading', () => {
     expect(combineResources(loading, failed, ready(1))).toBe(failed)
+  })
+})
+
+describe('combinePair', () => {
+  const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
+  const loading: ResourceState<never> = { status: 'loading' }
+  const failed: ResourceState<never> = { status: 'error', error: new Error('pukla veza') }
+
+  it('is ready only when both are ready', () => {
+    expect(combinePair(ready(1), ready('dva'))).toEqual({ status: 'ready', data: [1, 'dva'] })
+  })
+
+  it('is loading while either is loading', () => {
+    expect(combinePair(loading, ready(1)).status).toBe('loading')
+    expect(combinePair(ready(1), loading).status).toBe('loading')
+  })
+
+  it('lets an error win over loading, because half a screen is a broken screen', () => {
+    expect(combinePair(loading, failed)).toBe(failed)
+    expect(combinePair(failed, ready(1))).toBe(failed)
   })
 })
