@@ -21,6 +21,7 @@ export const ROUTES: RouteDef[] = [
   { path: 'clanarina', labelKey: 'nav.pricing', group: 'main' },
 
   { path: 'registracija', labelKey: 'nav.register', group: 'guest' },
+  { path: 'prijava', labelKey: 'nav.login', group: 'guest' },
 
   { path: 'moj-profil', labelKey: 'nav.myProfile', group: 'member' },
   { path: 'moji-rezultati', labelKey: 'nav.myResults', group: 'member' },
@@ -29,6 +30,10 @@ export const ROUTES: RouteDef[] = [
 
   { path: 'administracija', labelKey: 'nav.admin', group: 'staff' },
   { path: 'administracija/red-za-proveru', labelKey: 'nav.reviewQueue', group: 'staff' },
+  { path: 'administracija/clanovi', labelKey: 'admin.members', group: 'staff' },
+  { path: 'administracija/dogadjaji', labelKey: 'admin.events', group: 'staff' },
+  { path: 'administracija/znacke', labelKey: 'admin.badges', group: 'staff' },
+  { path: 'administracija/cenovnik', labelKey: 'admin.pricing', group: 'staff' },
 
   { path: 'pravilnik', labelKey: 'nav.rules', group: 'footer' },
   { path: 'o-ligi', labelKey: 'nav.about', group: 'footer' },

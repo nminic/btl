@@ -19,10 +19,11 @@ describe('routesForRole', () => {
     expect(routesForRole('footer', 'visitor').length).toBeGreaterThan(0)
   })
 
-  it('gives every route a translation key and a unique path', () => {
+  it('gives every route a unique path and a key that is not empty', () => {
     const paths = ROUTES.map((route) => route.path)
 
     expect(new Set(paths).size).toBe(paths.length)
-    expect(ROUTES.every((route) => route.labelKey.startsWith('nav.'))).toBe(true)
+    expect(ROUTES.every((route) => route.labelKey.includes('.'))).toBe(true)
+    // That each of those keys resolves is guarded in src/i18n/keys.test.ts.
   })
 })

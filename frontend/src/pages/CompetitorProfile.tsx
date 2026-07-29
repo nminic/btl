@@ -199,9 +199,10 @@ function ProfileBody({
   )
 }
 
-export function CompetitorProfile() {
+export function CompetitorProfile({ memberNumber: given }: { memberNumber?: string } = {}) {
   const { t } = useI18n()
-  const { memberNumber } = useParams()
+  const params = useParams()
+  const memberNumber = given ?? params.memberNumber
   const state = combineResources(useCompetitors(), useResults(), useTeams())
 
   return (
