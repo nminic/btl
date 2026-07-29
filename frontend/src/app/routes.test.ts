@@ -9,12 +9,13 @@ import {
 } from './routes'
 
 describe('navForRole', () => {
-  it('shows the five sections in the order the design fixes', () => {
+  it('shows the sections in the order the design fixes', () => {
     expect(navForRole('superadmin').map((section) => section.id)).toEqual([
       'about',
       'people',
+      'teams',
+      'stats',
       'calendar',
-      'tables',
       'admin',
     ])
   })
@@ -42,8 +43,10 @@ describe('the shape of the navigation', () => {
 
   it('opens a group only where there is more than one screen behind it', () => {
     // A menu that opens onto a single choice is a link with an extra click, so
-    // the calendar is deliberately the only entry that is not a group.
+    // an entry with one screen behind it stays a plain link.
     expect(NAV.filter((section) => section.path !== undefined).map((section) => section.path)).toEqual([
+      'takmicari',
+      'timovi',
       'kalendar',
     ])
     expect(

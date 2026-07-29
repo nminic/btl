@@ -16,12 +16,12 @@ import type { BtlEvent, Competitor } from '../data/types'
 /** A session holding results in the states the panel has to tell apart. */
 function sessionWith(states: SubmissionStatus[]): SessionValue {
   return {
-    memberNumber: 'M0005',
+    memberNumber: '000007',
     signIn: vi.fn(),
     signOut: vi.fn(),
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,
-      memberNumber: 'M0005',
+      memberNumber: '000007',
       eventName: 'Probna trka',
       date: '2026-05-10',
       distanceKm: 10,
@@ -108,7 +108,7 @@ describe('members', () => {
     const user = userEvent.setup()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
-    await user.type(await screen.findByLabelText('Pretraga'), 'M0001')
+    await user.type(await screen.findByLabelText('Pretraga'), '000001')
 
     expect(within(screen.getByRole('table', { name: 'Članovi' })).getAllByRole('row')).toHaveLength(
       2,
@@ -324,7 +324,7 @@ describe('verification', () => {
 
   it('counts a result from the moment it is sent in', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rezultat/novi', 'superadmin', 'M0005')
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
@@ -354,7 +354,7 @@ describe('countsFor', () => {
   it('counts what the prototype can already count', () => {
     const counts = countsFor(
       3,
-      [competitor('M0001', true), competitor('M0002', false)],
+      [competitor('000001', true), competitor('000002', false)],
       [event('checking'), event('confirmed'), event('checking')],
     )
 
@@ -388,22 +388,28 @@ describe('the list of entities', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Entiteti' })).toBeVisible()
     expect(names).toHaveLength(ENTITIES.length)
 
+    // Inside the screen, not the whole page: the navigation carries entries of
+    // its own with the same words on them, Timovi among them.
+    const page = within(screen.getByRole('main'))
+
     for (const name of names) {
-      expect(screen.getByRole('link', { name })).toBeVisible()
+      expect(page.getByRole('link', { name })).toBeVisible()
     }
 
-    expect(screen.getByRole('link', { name: 'Članovi' })).toHaveAttribute(
+    expect(page.getByRole('link', { name: 'Članovi' })).toHaveAttribute(
       'href',
       '/sr/administracija/clanovi',
     )
   })
 
-  it('opens an entity that has no screen yet as a placeholder', async () => {
+  it('opens an entity from the list', async () => {
     const user = userEvent.setup()
     renderAt('/sr/administracija/entiteti', 'superadmin')
 
     await user.click(await screen.findByRole('link', { name: 'Statične strane' }))
 
-    expect(screen.getByText(/Ovaj ekran dolazi u sledećoj fazi/)).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Statične strane' }),
+    ).toBeVisible()
   })
 })

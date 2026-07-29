@@ -17,7 +17,7 @@ describe('signing in', () => {
     const user = userEvent.setup()
     renderAt('/sr/prijava')
 
-    await user.selectOptions(await screen.findByLabelText('Ko si?'), 'M0005')
+    await user.selectOptions(await screen.findByLabelText('Ko si?'), '000007')
     await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
 
     expect(await screen.findByRole('heading', { name: 'Moje stvari' })).toBeVisible()
@@ -51,7 +51,7 @@ describe('member screens without a session', () => {
 
 describe('my profile', () => {
   it('shows the profile with the things only its owner can do', async () => {
-    renderAt('/sr/moj-profil', 'competitor', 'M0005')
+    renderAt('/sr/moj-profil', 'competitor', '000007')
 
     expect(await screen.findByRole('heading', { name: 'Moje stvari' })).toBeVisible()
     // The profile itself is the same one everyone else sees.
@@ -65,7 +65,7 @@ describe('my profile', () => {
 
   it('signs out again', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/moj-profil', 'competitor', 'M0005')
+    renderAt('/sr/moj-profil', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Odjavi se' }))
 
@@ -75,7 +75,7 @@ describe('my profile', () => {
 
 describe('membership', () => {
   it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
-    renderAt('/sr/moja-clanarina', 'competitor', 'M0001')
+    renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' })).toBeVisible()
@@ -85,8 +85,8 @@ describe('membership', () => {
   })
 
   it('offers a member abroad SEPA and PayPal, never the Serbian slip', async () => {
-    // F0001 is in Montenegro in the generated data.
-    renderAt('/sr/moja-clanarina', 'competitor', 'F0003')
+    // 000003 is in Montenegro in the generated data.
+    renderAt('/sr/moja-clanarina', 'competitor', '000009')
 
     expect(await screen.findByRole('heading', { level: 3, name: /SEPA/ })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'PayPal' })).toBeVisible()
@@ -96,14 +96,14 @@ describe('membership', () => {
   })
 
   it('carries the referral link and the balance', async () => {
-    renderAt('/sr/moja-clanarina', 'competitor', 'M0001')
+    renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-    expect(await screen.findByText(/registracija\?preporuka=M0001/)).toBeVisible()
+    expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()
     expect(screen.getByText('na balansu')).toBeVisible()
   })
 
   it('tells a paying member since when they have been one', async () => {
-    renderAt('/sr/moja-clanarina', 'competitor', 'M0021')
+    renderAt('/sr/moja-clanarina', 'competitor', '000031')
 
     expect(await screen.findByText(/Član od .* sezone/)).toBeVisible()
   })
@@ -117,7 +117,7 @@ describe('membership', () => {
 
 describe('settings', () => {
   it('says what it is for, and opens on the theme', async () => {
-    renderAt('/sr/podesavanja', 'competitor', 'M0005')
+    renderAt('/sr/podesavanja', 'competitor', '000007')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Podešavanja' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Izgled' })).toBeVisible()
@@ -126,7 +126,7 @@ describe('settings', () => {
 
   it('switches an optional notification off and on', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/podesavanja', 'competitor', 'M0005')
+    renderAt('/sr/podesavanja', 'competitor', '000007')
 
     const box = await screen.findByRole('checkbox', { name: 'Kad mi rezultat bude odobren' })
     expect(box).toBeChecked()
@@ -139,7 +139,7 @@ describe('settings', () => {
   })
 
   it('offers every optional notification and no obligatory one', async () => {
-    renderAt('/sr/podesavanja', 'competitor', 'M0005')
+    renderAt('/sr/podesavanja', 'competitor', '000007')
 
     expect(await screen.findAllByRole('checkbox')).toHaveLength(NOTIFICATION_KEYS.length)
     expect(screen.getByRole('checkbox', { name: 'Povremene vesti iz lige' })).not.toBeChecked()
@@ -149,7 +149,7 @@ describe('settings', () => {
 describe('messages', () => {
   it('lists the inbox and marks one read', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/poruke', 'competitor', 'M0005')
+    renderAt('/sr/poruke', 'competitor', '000007')
 
     expect(await screen.findByText('1 nepročitana')).toBeVisible()
 
@@ -159,7 +159,7 @@ describe('messages', () => {
   })
 
   it('opens one message on its own address, and reading it is what marks it read', async () => {
-    renderAt('/sr/poruke/msg-1', 'competitor', 'M0005')
+    renderAt('/sr/poruke/msg-1', 'competitor', '000007')
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Dobro došao u pripremu sezone 2027' }),
@@ -170,7 +170,7 @@ describe('messages', () => {
   })
 
   it('leaves a message that was already read alone', async () => {
-    renderAt('/sr/poruke/msg-2', 'competitor', 'M0005')
+    renderAt('/sr/poruke/msg-2', 'competitor', '000007')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Rezultat je odobren' })).toBeVisible()
     // msg-1 is still unread, so opening a read message changed nothing.
@@ -179,7 +179,7 @@ describe('messages', () => {
 
   it('leads back to the whole inbox', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/poruke/msg-2', 'competitor', 'M0005')
+    renderAt('/sr/poruke/msg-2', 'competitor', '000007')
 
     await user.click(await within(screen.getByRole('main')).findByRole('link', { name: 'Sve poruke' }))
 
@@ -187,7 +187,7 @@ describe('messages', () => {
   })
 
   it('says the message is not there when the address is wrong', async () => {
-    renderAt('/sr/poruke/nema-ovakve', 'competitor', 'M0005')
+    renderAt('/sr/poruke/nema-ovakve', 'competitor', '000007')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Ove strane nema' })).toBeVisible()
   })
@@ -219,7 +219,7 @@ describe('a result from entry to decision', () => {
 
   it('refuses a result with no link to official results', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rezultat/novi', 'competitor', 'M0005')
+    renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
@@ -230,7 +230,7 @@ describe('a result from entry to decision', () => {
 
   it('goes in, waits, is approved, and the member sees it', async () => {
     const user = userEvent.setup()
-    const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', 'M0005')
+    const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await enterResult(user)
 
@@ -253,7 +253,7 @@ describe('a result from entry to decision', () => {
 
   it('scores nothing when the time entered is zero', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rezultat/novi', 'competitor', 'M0005')
+    renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka bez vremena')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
@@ -273,7 +273,7 @@ describe('a result from entry to decision', () => {
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rezultat/novi', 'superadmin', 'M0005')
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await enterResult(user)
     await openTheQueue(user)
@@ -305,7 +305,7 @@ describe('the transfer window and renewal', () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="M0001">
+          <SessionProvider initialMemberNumber="000001">
             <Membership today={today} />
           </SessionProvider>
         </MemoryRouter>
@@ -327,7 +327,7 @@ describe('the transfer window and renewal', () => {
 
     await screen.findByRole('heading', { name: /Obnova članarine/ })
 
-    // M0001 has raced for years and is far past twelve points.
+    // 000001 has raced for years and is far past twelve points.
     expect(screen.getByLabelText('U kategoriji Prva sezona')).toBeDisabled()
     expect(screen.getByText(/Prva sezona ti je zatvorena/)).toBeVisible()
   })
@@ -344,7 +344,7 @@ describe('the transfer window and renewal', () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="F0002">
+          <SessionProvider initialMemberNumber="000006">
             <Membership today="2026-11-01" />
           </SessionProvider>
         </MemoryRouter>
@@ -355,11 +355,11 @@ describe('the transfer window and renewal', () => {
   })
 
   it('keeps a first season member in that choice while it is still open', async () => {
-    // M0021 has never raced, so nothing bars them.
+    // 000031 has never raced, so nothing bars them.
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="M0021">
+          <SessionProvider initialMemberNumber="000031">
             <Membership today="2026-11-01" />
           </SessionProvider>
         </MemoryRouter>
@@ -376,7 +376,7 @@ describe('screens that depend on the date', () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="M0001">
+          <SessionProvider initialMemberNumber="000001">
             <Membership today="2026-10-02" />
           </SessionProvider>
         </MemoryRouter>
@@ -391,9 +391,9 @@ describe('screens that depend on the date', () => {
 
 describe('an empty inbox and an empty result list', () => {
   it('says so rather than showing nothing', async () => {
-    renderAt('/sr/moji-rezultati', 'competitor', 'M0021')
+    renderAt('/sr/moji-rezultati', 'competitor', '000031')
 
-    // M0021 has never raced, so nothing is counted and nothing is waiting.
+    // 000031 has never raced, so nothing is counted and nothing is waiting.
     expect(await screen.findByText('Nisi poslao nijedan rezultat na proveru.')).toBeVisible()
     expect(screen.getByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
   })
@@ -404,7 +404,7 @@ describe('an inbox with nothing in it', () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="M0001">
+          <SessionProvider initialMemberNumber="000001">
             <Messages only={[]} />
           </SessionProvider>
         </MemoryRouter>

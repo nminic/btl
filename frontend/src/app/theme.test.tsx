@@ -53,7 +53,7 @@ describe('the theme on the page', () => {
 
   it('is changed from settings, and the choice is remembered', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/podesavanja', 'competitor', 'M0005')
+    renderAt('/sr/podesavanja', 'competitor', '000007')
 
     expect(await screen.findByRole('radio', { name: 'Tamna' })).toBeChecked()
 

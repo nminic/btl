@@ -11,19 +11,24 @@ import { Home } from '../pages/Home'
 import { Leagues } from '../pages/Leagues'
 import { Pricing } from '../pages/Pricing'
 import { Rankings } from '../pages/Rankings'
+import { Rulebook } from '../pages/Rulebook'
+import { TopBoards } from '../pages/TopBoards'
 import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
 import { Registration } from '../pages/Registration'
 import { StaticPage } from '../pages/StaticPage'
-import { BtlTable } from '../pages/BtlTable'
 import { Admin } from '../pages/admin/Admin'
 import { Entities } from '../pages/admin/Entities'
 import { Verification } from '../pages/admin/Verification'
 import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
 import { AdminMembers } from '../pages/admin/AdminMembers'
+import { AdminLeagues } from '../pages/admin/AdminLeagues'
+import { AdminPages } from '../pages/admin/AdminPages'
 import { AdminPricing } from '../pages/admin/AdminPricing'
+import { AdminRaces } from '../pages/admin/AdminRaces'
+import { AdminTeams } from '../pages/admin/AdminTeams'
 import { ReviewQueue } from '../pages/admin/ReviewQueue'
 import { Membership } from '../pages/member/Membership'
 import { MessageDetail } from '../pages/member/MessageDetail'
@@ -40,7 +45,8 @@ import { ROUTES } from './routes'
  * so the navigation can be walked end to end from the first day. */
 const SCREENS: Record<string, ReactElement> = {
   kalendar: <Calendar />,
-  'rang-liste': <Rankings />,
+  tabela: <Rankings />,
+  'rang-liste': <TopBoards />,
   takmicari: <Competitors />,
   timovi: <Teams />,
   lige: <Leagues />,
@@ -52,7 +58,6 @@ const SCREENS: Record<string, ReactElement> = {
   'moja-clanarina': <Membership />,
   poruke: <Messages />,
   podesavanja: <Settings />,
-  'btl-tabela': <BtlTable />,
   administracija: <Admin />,
   'administracija/entiteti': <Entities />,
   'administracija/verifikacija': <Verification />,
@@ -60,8 +65,12 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/dogadjaji': <AdminEvents />,
   'administracija/znacke': <AdminBadges />,
   'administracija/cenovnik': <AdminPricing />,
+  'administracija/trke': <AdminRaces />,
+  'administracija/timovi': <AdminTeams />,
+  'administracija/lige': <AdminLeagues />,
+  'administracija/strane': <AdminPages />,
   'o-ligi': <StaticPage slug="o-ligi" />,
-  pravilnik: <StaticPage slug="pravilnik" />,
+  pravilnik: <Rulebook />,
   istorijat: <StaticPage slug="istorijat" />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,

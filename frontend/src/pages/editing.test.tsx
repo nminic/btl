@@ -93,7 +93,7 @@ describe('the text of a competition', () => {
 describe('the last few branches these screens have', () => {
   it('cancels sending a result back', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rezultat/novi', 'superadmin', 'M0005')
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')

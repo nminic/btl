@@ -49,10 +49,10 @@ describe('navigation', () => {
     const user = userEvent.setup()
     renderAt('/sr')
 
-    await openGroup(user, 'Tabele')
-    await user.click(screen.getByRole('link', { name: 'BTL tabela' }))
+    await openGroup(user, 'Statistike')
+    await user.click(screen.getByRole('link', { name: 'Tabela' }))
 
-    expect(screen.getByRole('heading', { level: 1, name: 'BTL tabela' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Tabela' })).toBeVisible()
   })
 
   /* Badges left the navigation on 29.07.2026 and kept their address, which is
@@ -130,7 +130,7 @@ describe('navigation', () => {
   })
 
   it('gives a signed-in member the account menu in place of the sign-in symbol', async () => {
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     expect(await screen.findByRole('button', { name: 'Otvori nalog' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Prijavi se' })).not.toBeInTheDocument()
@@ -139,7 +139,7 @@ describe('navigation', () => {
   it.each([['visitor'], ['competitor']] as const)(
     'hides administration from a %s',
     async (role) => {
-      renderAt('/sr', role, 'M0005')
+      renderAt('/sr', role, '000007')
 
       await screen.findByRole('link', { name: 'Kalendar' })
       expect(screen.queryByRole('button', { name: 'Administracija' })).not.toBeInTheDocument()
@@ -148,7 +148,7 @@ describe('navigation', () => {
 
   it('shows the account screens to a member', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
 
@@ -158,7 +158,7 @@ describe('navigation', () => {
 
   it('shows administration to staff', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'moderator', 'M0005')
+    renderAt('/sr', 'moderator', '000007')
 
     await openGroup(user, 'Administracija')
 
@@ -188,11 +188,11 @@ describe('navigation', () => {
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
-    await openGroup(user, 'Takmičari')
-    await user.click(screen.getByRole('link', { name: 'Timovi' }))
+    await openGroup(user, 'Statistike')
+    await user.click(screen.getByRole('link', { name: 'Rang liste' }))
 
     expect(screen.getByRole('button', { name: 'Otvori meni' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Timovi' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Rang liste' })).toBeVisible()
   })
 
   it('closes the menu after following a link that is not in a group', async () => {
@@ -206,11 +206,13 @@ describe('navigation', () => {
   })
 
   it('no longer switches the theme from the header, and sends the cog to settings', async () => {
-    renderAt('/sr', 'competitor', 'M0005')
+    const user = userEvent.setup()
+    renderAt('/sr', 'competitor', '000007')
 
     // The switch moved to the settings screen (PDL P28a); the header only leads
-    // there now.
-    expect(await screen.findByRole('link', { name: 'Podešavanja' })).toHaveAttribute(
+    // there now, from behind the account picture.
+    await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+    expect(screen.getByRole('link', { name: 'Podešavanja' })).toHaveAttribute(
       'href',
       '/sr/podesavanja',
     )

@@ -3,12 +3,11 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useI18n } from '../i18n/useI18n'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
-import { isMember } from '../roles/context'
+import { useSession } from '../session/useSession'
 import { AccountMenu } from './AccountMenu'
 import { Brand } from './Brand'
 import { Dropdown } from './Dropdown'
 import { ErrorBoundary } from './ErrorBoundary'
-import { GearIcon } from './icons'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './routes'
@@ -74,7 +73,10 @@ export function Shell() {
   const pageTitle = useRouteChrome()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
-  const signedIn = isMember(role)
+  /* Signing out has to empty the header. This used to read the role, which the
+     development role switch also sets, so the inbox and the cog stayed on
+     screen after a member signed out. The session is the one that knows. */
+  const { memberNumber } = useSession()
 
   return (
     <div className="shell">
@@ -88,19 +90,30 @@ export function Shell() {
 
           <div className="shell__tools">
             <RoleSwitch />
-            {signedIn && <MessagesMenu />}
-            <AccountMenu />
-            {signedIn && (
-              <Link
-                className="icon-link"
-                to={`/${locale}/podesavanja`}
-                aria-label={t('shell.settings')}
-                onClick={closeMenu}
-              >
-                <GearIcon className="icon-link__glyph" />
-              </Link>
-            )}
             <LanguageMenu restOfPath={rest} />
+
+            {/* Signed in: the inbox, then the picture whose menu holds settings
+                and signing out. That is where nearly every portal keeps them,
+                and a separate cog would be a second door to the same room.
+
+                Signed out: the two things a visitor is here to do, with joining
+                as the loud one. It is the only control on this page that brings
+                the league any money. */}
+            {memberNumber !== null ? (
+              <>
+                <MessagesMenu />
+                <AccountMenu memberNumber={memberNumber} />
+              </>
+            ) : (
+              <>
+                <Link className="button button--secondary button--compact" to={`/${locale}/prijava`}>
+                  {t('shell.signIn')}
+                </Link>
+                <Link className="button button--compact" to={`/${locale}/registracija`}>
+                  {t('shell.join')}
+                </Link>
+              </>
+            )}
             <button
               type="button"
               className="shell__icon-button shell__menu-button"

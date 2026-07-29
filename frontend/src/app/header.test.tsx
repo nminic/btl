@@ -31,7 +31,9 @@ describe('the brand', () => {
 
     const brand = await screen.findByRole('link', { name: 'Naslovna strana' })
     expect(within(brand).getByText('Balkanska trkačka liga')).toBeVisible()
-    expect(within(brand).getByText('Svaka trka se broji.')).toBeVisible()
+    // No full stop in the mark: as part of the brand it is a legend, not a
+    // sentence (PDL P28a). The legal texts keep the one from P1.
+    expect(within(brand).getByText('Svaka trka se broji')).toBeVisible()
 
     await user.click(brand)
 
@@ -44,14 +46,14 @@ describe('a panel that opens under a button', () => {
     const user = userEvent.setup()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Tabele' })
+    const button = await screen.findByRole('button', { name: 'Statistike' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(button).toHaveAttribute('aria-controls', 'nav-tables')
-    expect(screen.queryByRole('link', { name: 'BTL tabela' })).not.toBeInTheDocument()
+    expect(button).toHaveAttribute('aria-controls', 'nav-stats')
+    expect(screen.queryByRole('link', { name: 'Tabela' })).not.toBeInTheDocument()
 
     await user.click(button)
     expect(button).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('link', { name: 'BTL tabela' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Tabela' })).toBeVisible()
 
     await user.click(button)
     expect(button).toHaveAttribute('aria-expanded', 'false')
@@ -61,7 +63,7 @@ describe('a panel that opens under a button', () => {
     const user = userEvent.setup()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Tabele' })
+    const button = await screen.findByRole('button', { name: 'Statistike' })
     await user.click(button)
     await user.keyboard('{Escape}')
 
@@ -72,7 +74,7 @@ describe('a panel that opens under a button', () => {
     const user = userEvent.setup()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Tabele' })
+    const button = await screen.findByRole('button', { name: 'Statistike' })
     await user.click(button)
     await user.keyboard('{ArrowDown}')
 
@@ -83,7 +85,7 @@ describe('a panel that opens under a button', () => {
     const user = userEvent.setup()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Tabele' })
+    const button = await screen.findByRole('button', { name: 'Statistike' })
     await user.click(button)
     await user.click(screen.getByRole('main'))
 
@@ -92,7 +94,7 @@ describe('a panel that opens under a button', () => {
 
   it('stays open while something inside it is clicked', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
     await user.click(button)
@@ -104,7 +106,7 @@ describe('a panel that opens under a button', () => {
 
 describe('monogramFor', () => {
   const member: Competitor = {
-    memberNumber: 'M0005',
+    memberNumber: '000007',
     firstName: 'strahinja',
     lastName: 'vukićević',
     gender: 'M',
@@ -119,11 +121,11 @@ describe('monogramFor', () => {
   }
 
   it('takes the initials of whoever is signed in', () => {
-    expect(monogramFor(member, 'M0005')).toBe('SV')
+    expect(monogramFor(member, '000007')).toBe('SV')
   })
 
   it('falls back to the end of the member number until the name is there', () => {
-    expect(monogramFor(undefined, 'M0005')).toBe('05')
+    expect(monogramFor(undefined, '000007')).toBe('07')
   })
 })
 
@@ -139,7 +141,7 @@ describe('the account menu', () => {
 
   it('shows the monogram and the name of whoever is signed in', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
     expect(button).toHaveTextContent('SV')
@@ -161,7 +163,7 @@ describe('the account menu', () => {
 
   it('closes itself when one of its links is followed', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
     await user.click(button)
@@ -173,7 +175,7 @@ describe('the account menu', () => {
 
   it('signs out from the menu', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/moj-profil', 'competitor', 'M0005')
+    renderAt('/sr/moj-profil', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
     await user.click(panelOf('Otvori nalog').getByRole('button', { name: 'Odjavi se' }))
@@ -185,7 +187,7 @@ describe('the account menu', () => {
 
 describe('the inbox in the header', () => {
   it('carries the number of unread messages in the name of the button', async () => {
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     // The count is part of the name, not a badge nobody hears: an aria-label
     // replaces the contents of the button.
@@ -194,7 +196,7 @@ describe('the inbox in the header', () => {
 
   it('lists what arrived, newest first, and opens one of them', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
     await user.click(screen.getByRole('link', { name: /Dobro došao u pripremu sezone 2027/ }))
@@ -208,7 +210,7 @@ describe('the inbox in the header', () => {
 
   it('leads to the whole inbox', async () => {
     const user = userEvent.setup()
-    renderAt('/sr', 'competitor', 'M0005')
+    renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
     await user.click(screen.getByRole('link', { name: 'Sve poruke' }))
@@ -247,7 +249,7 @@ describe('the icons', () => {
 
 function renderInbox(messages: Message[]) {
   const session: SessionValue = {
-    memberNumber: 'M0005',
+    memberNumber: '000007',
     signIn: vi.fn(),
     signOut: vi.fn(),
     submissions: [],

@@ -1,0 +1,83 @@
+@import '../styles/table.css';
+
+.markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.markdown p,
+.markdown li {
+  margin: 0;
+  /* A written line break inside a paragraph is kept, runs of spaces are not.
+     Addresses and signatures depend on it. */
+  white-space: pre-line;
+  /* Long prose gets a measure: past about eighty characters the eye loses the
+     start of the next line. Tables do not, and they set their own width. */
+  max-width: 78ch;
+  color: var(--text-muted);
+}
+
+.markdown h3,
+.markdown h4 {
+  margin: 0.75rem 0 0;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.markdown h3 {
+  font-size: 1rem;
+}
+
+.markdown h4 {
+  font-size: 0.92rem;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.markdown strong {
+  color: var(--text);
+}
+
+.markdown code {
+  font-size: 0.88em;
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.markdown hr {
+  width: 100%;
+  margin: 0.5rem 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Written tables are words, not numbers, so every column reads from the left,
+   unlike the ranking tables that table.css is built for. */
+.markdown__table th,
+.markdown__table td {
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown__table td {
+  padding-block: 0.6rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.markdown__table tbody tr:hover {
+  background: transparent;
+}

@@ -21,7 +21,7 @@ const competitor = (memberNumber: string): Competitor => ({
   memberNumber,
   firstName: 'Ime',
   lastName: memberNumber,
-  gender: memberNumber.startsWith('F') ? 'F' : 'M',
+  gender: 'M',
   city: 'Beograd',
   country: 'RS',
   birthYear: 1985,
@@ -99,10 +99,10 @@ describe('TopTen', () => {
   // Four, so that the fourth row is not on the podium and both sides of that
   // decision are exercised.
   const competitors = [
-    competitor('M0001'),
-    competitor('M0002'),
-    competitor('M0003'),
-    competitor('M0004'),
+    competitor('000001'),
+    competitor('000002'),
+    competitor('000004'),
+    competitor('000005'),
   ]
 
   it('shows points once the season has been run', () => {
@@ -110,10 +110,10 @@ describe('TopTen', () => {
       <TopTen
         competitors={competitors}
         results={[
-          result('M0001', 30),
-          result('M0002', 20),
-          result('M0003', 10),
-          result('M0004', 5),
+          result('000001', 30),
+          result('000002', 20),
+          result('000004', 10),
+          result('000005', 5),
         ]}
         season={2027}
         gender="M"
@@ -178,11 +178,11 @@ describe('Counters', () => {
 
 describe('TopByCategory', () => {
   it('ranks by how many races of one length, tallest first', () => {
-    const competitors = [competitor('M0001'), competitor('M0002'), competitor('M0003')]
+    const competitors = [competitor('000001'), competitor('000002'), competitor('000004')]
     const results = [
-      result('M0001', 1),
-      result('M0001', 2),
-      result('M0002', 3),
+      result('000001', 1),
+      result('000001', 2),
+      result('000002', 3),
     ]
 
     renderWidget(
@@ -193,7 +193,7 @@ describe('TopByCategory', () => {
     expect(columns).toHaveLength(2)
     expect(columns[0]).toHaveTextContent('2')
     // Anyone who ran none of this length is left out rather than shown as zero.
-    expect(screen.queryByText('M0003')).not.toBeInTheDocument()
+    expect(screen.queryByText('000004')).not.toBeInTheDocument()
   })
 
   it('turns to the next length by itself', async () => {

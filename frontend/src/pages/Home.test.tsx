@@ -61,9 +61,10 @@ describe('Home', () => {
     const men = (await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section')!
 
     expect(within(men).getAllByRole('listitem').length).toBeGreaterThan(0)
-    expect(within(men).getByRole('link', { name: 'Cela rang lista' })).toHaveAttribute(
+    // The standing moved to /tabela; /rang-liste is the page of top boards now.
+    expect(within(men).getByRole('link', { name: 'Cela tabela' })).toHaveAttribute(
       'href',
-      '/sr/rang-liste?pol=m',
+      '/sr/tabela?pol=m',
     )
   })
 

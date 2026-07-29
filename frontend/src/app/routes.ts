@@ -37,24 +37,21 @@ export const NAV: NavSection[] = [
       { path: 'istorijat', labelKey: 'nav.history' },
     ],
   },
+  { id: 'people', labelKey: 'nav.competitors', path: 'takmicari' },
+  { id: 'teams', labelKey: 'nav.teams', path: 'timovi' },
+  /* "Statistike" rather than "Tabele", because the group holds three different
+     kinds of thing and only one of them is a table. The standing itself is then
+     free to be called what it is: the table. */
   {
-    id: 'people',
-    labelKey: 'nav.competitors',
+    id: 'stats',
+    labelKey: 'nav.stats',
     items: [
-      { path: 'takmicari', labelKey: 'nav.competitors' },
-      { path: 'timovi', labelKey: 'nav.teams' },
-    ],
-  },
-  { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar' },
-  {
-    id: 'tables',
-    labelKey: 'nav.tables',
-    items: [
-      { path: 'btl-tabela', labelKey: 'nav.btlTable' },
+      { path: 'tabela', labelKey: 'nav.table' },
       { path: 'rang-liste', labelKey: 'nav.rankings' },
       { path: 'lige', labelKey: 'nav.competitions' },
     ],
   },
+  { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar' },
   {
     id: 'admin',
     labelKey: 'nav.admin',

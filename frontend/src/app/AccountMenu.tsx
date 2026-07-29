@@ -3,27 +3,19 @@ import { useCompetitors } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
 import { Dropdown } from './Dropdown'
-import { SignInIcon } from './icons'
 import { monogramFor } from './monogram'
 import { ACCOUNT_ROUTES } from './routes'
 
-/* The picture and, next to it, the cog (PDL P28a). The picture opens the member
- * area; the cog goes straight to settings, because a setting you have to hunt
- * for through a menu is a setting nobody changes.
+/* The picture, and behind it everything that belongs to one person: the member
+ * area, settings, and signing out. The cog that used to sit beside it is gone;
+ * a second door to the same room is one more thing in a header that already has
+ * enough (PDL P28a).
  *
- * A visitor gets the sign-in symbol in place of both. */
-export function AccountMenu() {
+ * The shell only renders this when somebody is signed in. */
+export function AccountMenu({ memberNumber }: { memberNumber: string }) {
   const { locale, t } = useI18n()
-  const { memberNumber, signOut } = useSession()
+  const { signOut } = useSession()
   const competitors = useCompetitors()
-
-  if (memberNumber === null) {
-    return (
-      <Link className="icon-link" to={`/${locale}/prijava`} aria-label={t('shell.signIn')}>
-        <SignInIcon className="icon-link__glyph" />
-      </Link>
-    )
-  }
 
   const member =
     competitors.status === 'ready'

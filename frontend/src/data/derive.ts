@@ -352,26 +352,40 @@ export function topByCategory(
     .slice(0, limit)
 }
 
-/**
- * The BTL table: one standing for a season with everybody in it, men and women
- * together, which is what the league's own table always was. The rankings
- * screen splits by gender and category; this one deliberately does not.
+/* The top boards (PDL P12). Each one keeps ten places and each one is ordered
+ * down a ladder of measures: volume decides first, and efficiency is only ever
+ * allowed to settle a complete tie. The ladders are written out per board
+ * below, straight from the table in P12.
  */
-export function overallStanding(
-  competitors: Competitor[],
-  results: Result[],
-  season: number,
-): RankingRow[] {
-  const totals = new Map<string, Totals>()
 
-  for (const result of results) {
-    if (seasonOf(result) === season) {
-      totals.set(
-        result.memberNumber,
-        addToTotals(totals.get(result.memberNumber) ?? EMPTY_TOTALS, result),
-      )
+export type TotalsRow = Totals & { competitor: Competitor }
+
+/** One rung of a ladder: the number a board compares two rows by. */
+type Measure<T> = (row: T) => number
+
+/**
+ * Orders by the given measures in turn, highest first, taking the next one only
+ * when the one before it leaves the two rows level. Written once because every
+ * board has a ladder and none of them has the same one.
+ */
+function byLadder<T>(measures: Measure<T>[]): (left: T, right: T) => number {
+  return (left, right) => {
+    for (const measure of measures) {
+      const difference = measure(right) - measure(left)
+
+      if (difference !== 0) {
+        return difference
+      }
     }
+
+    return 0
   }
+}
+
+/** Everyone who raced in one season, with their totals for it. Nobody who did
+ *  not race is in it, because a board of zeroes is not a board. */
+function seasonRows(competitors: Competitor[], results: Result[], season: number): TotalsRow[] {
+  const totals = totalsByMember(results.filter((result) => seasonOf(result) === season))
 
   return competitors
     .map((competitor) => ({
@@ -379,6 +393,94 @@ export function overallStanding(
       ...(totals.get(competitor.memberNumber) ?? EMPTY_TOTALS),
     }))
     .filter((row) => row.races > 0)
-    .sort((left, right) => right.points - left.points || right.races - left.races)
-    .map((row, index) => ({ ...row, position: index + 1 }))
+}
+
+const VERTICAL: Measure<TotalsRow> = (row) => row.ascent + row.descent
+
+/** Most kilometres in a season. Ladder: kilometres, more races, vertical,
+ *  points. */
+export function topByKilometers(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): TotalsRow[] {
+  return seasonRows(competitors, results, season)
+    .sort(
+      byLadder<TotalsRow>([
+        (row) => row.kilometers,
+        (row) => row.races,
+        VERTICAL,
+        (row) => row.points,
+      ]),
+    )
+    .slice(0, limit)
+}
+
+/** Longest on the course in a season. Ladder: time, kilometres, more races,
+ *  vertical. */
+export function topByTimeOnCourse(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): TotalsRow[] {
+  return seasonRows(competitors, results, season)
+    .sort(
+      byLadder<TotalsRow>([
+        (row) => row.seconds,
+        (row) => row.kilometers,
+        (row) => row.races,
+        VERTICAL,
+      ]),
+    )
+    .slice(0, limit)
+}
+
+export type RaceRow = {
+  competitor: Competitor
+  result: Result
+}
+
+/**
+ * The best single races of a season, by the points of one result. Ladder:
+ * points, the longer race, then the runner's kilometres and races in the
+ * season. The earlier date is deliberately not a rung: the usual tie is two
+ * people crossing the line together, which is the same race on the same day.
+ */
+export function bestSingleRaces(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): RaceRow[] {
+  const byNumber = new Map(competitors.map((competitor) => [competitor.memberNumber, competitor]))
+  const inSeason = results.filter((result) => seasonOf(result) === season)
+  const totals = totalsByMember(inSeason)
+
+  /* The season behind the race, carried on the row: the last two rungs need it,
+   * and looking it up inside a comparator means looking it up again for every
+   * comparison. */
+  const rows = inSeason.flatMap((result) => {
+    const competitor = byNumber.get(result.memberNumber)
+    const seasonTotals = totals.get(result.memberNumber)
+
+    // A result whose member is not in the list is nobody's place. The totals
+    // are there for every result of the season; saying so out loud is what
+    // lets the rungs below read them without a fallback.
+    return competitor === undefined || seasonTotals === undefined
+      ? []
+      : [{ competitor, result, seasonTotals }]
+  })
+
+  return rows
+    .sort(
+      byLadder<(typeof rows)[number]>([
+        (row) => row.result.points,
+        (row) => row.result.distanceKm,
+        (row) => row.seasonTotals.kilometers,
+        (row) => row.seasonTotals.races,
+      ]),
+    )
+    .slice(0, limit)
 }

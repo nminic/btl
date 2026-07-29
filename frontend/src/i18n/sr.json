@@ -3,7 +3,7 @@
     "name": "Balkanska trkačka liga",
     "nameUppercase": "BALKANSKA TRKAČKA LIGA",
     "short": "BTL",
-    "slogan": "Svaka trka se broji."
+    "slogan": "Svaka trka se broji"
   },
   "shell": {
     "skipToContent": "Preskoči na sadržaj",
@@ -23,11 +23,12 @@
     "noMessages": "Nema poruka.",
     "allMessages": "Sve poruke",
     "account": "Nalog",
-    "openAccount": "Otvori nalog",
     "settings": "Podešavanja",
     "signIn": "Prijavi se",
     "contact": "Kontakt",
-    "home": "Naslovna strana"
+    "home": "Naslovna strana",
+    "join": "Učlani se",
+    "openAccount": "Otvori nalog"
   },
   "nav": {
     "home": "Naslovna",
@@ -52,12 +53,12 @@
     "admin": "Administracija",
     "aboutLeague": "Priča o ligi",
     "history": "Istorijat",
-    "tables": "Tabele",
-    "btlTable": "BTL tabela",
     "competitions": "Takmičenja",
     "entities": "Entiteti",
     "verification": "Verifikacija",
-    "settings": "Podešavanja"
+    "settings": "Podešavanja",
+    "stats": "Statistike",
+    "table": "Tabela"
   },
   "theme": {
     "label": "Tema",
@@ -120,7 +121,7 @@
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
-    "wholeStanding": "Cela rang lista",
+    "wholeStanding": "Cela tabela",
     "byCategory": "Trke po dužini",
     "previousCategory": "Prethodna kategorija",
     "nextCategory": "Sledeća kategorija",
@@ -270,13 +271,13 @@
     }
   },
   "rankings": {
-    "title": "Rang liste",
+    "title": "Tabela",
     "men": "Muškarci",
     "women": "Žene",
     "season": "Sezona",
     "allCategories": "Sve kategorije",
     "search": "Pretraga po imenu ili članskom broju",
-    "searchPlaceholder": "Ime, prezime ili M0001",
+    "searchPlaceholder": "Ime, prezime ili 000001",
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
     "columns": {
       "position": "#",
@@ -296,6 +297,33 @@
       "other": "{count} takmičara"
     },
     "historyNote": "Sezona 2027. još nije počela. Prikazani su probni podaci iz ranijih godina, da bi se tabela mogla proceniti."
+  },
+  "topBoards": {
+    "title": "Rang liste",
+    "intro": "Svaka lista drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
+    "season": "Sezona",
+    "byLength": {
+      "short": "Najviše kraćih trka",
+      "long": "Najviše dužih trka",
+      "half": "Najviše polumaratona",
+      "marathon": "Najviše maratona",
+      "ultra": "Najviše ultramaratona"
+    },
+    "pairs": "Najbolji parovi",
+    "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
+    "bestRaces": "Najbolje pojedinačne trke",
+    "kilometers": "Najviše kilometara",
+    "onCourse": "Najduže na stazi",
+    "columns": {
+      "position": "#",
+      "member": "Član",
+      "races": "Trke",
+      "event": "Događaj",
+      "points": "Bodovi",
+      "distance": "d (km)",
+      "time": "Vreme na stazi"
+    },
+    "empty": "U ovoj sezoni nema nijednog rezultata."
   },
   "calendar": {
     "title": "Kalendar",
@@ -403,7 +431,8 @@
     "together": "Zbirno, ceo tim",
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
-    "notFound": "Ovog tima nema."
+    "notFound": "Ovog tima nema.",
+    "name": "Tim"
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -419,7 +448,8 @@
     "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
     "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze i kako se poredak grupiše.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
-    "notWritten": "Još nije napisano."
+    "notWritten": "Još nije napisano.",
+    "name": "Liga"
   },
   "pricing": {
     "title": "Članarina",
@@ -598,7 +628,21 @@
     "races": "Trke",
     "teams": "Timovi",
     "leagues": "Lige",
-    "pages": "Statične strane"
+    "pages": "Statične strane",
+    "racesNote": "Trke koje pripadaju događajima. Naziv se menja klikom na njega.",
+    "searchRaces": "Traži po nazivu trke ili događaja",
+    "raceName": "Naziv trke",
+    "noEvent": "Bez događaja",
+    "teamsNote": "Timovi, sa organizatorom i brojem članova.",
+    "organizer": "Organizator",
+    "noOrganizer": "Nema organizatora",
+    "leaguesNote": "Lige i broj događaja koje nose.",
+    "byCategory": "Po kategorijama",
+    "noEvents": "Bez događaja",
+    "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
+    "pageTitle": "Naslov",
+    "address": "Adresa",
+    "sections": "Sekcija"
   },
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
@@ -643,9 +687,6 @@
     "themeHint": "Tamna tema je podrazumevana.",
     "notifications": "Obaveštenja"
   },
-  "btlTable": {
-    "intro": "Jedna tabela za celu sezonu, svi članovi zajedno. Rang liste su te koje dele po polu i kategoriji."
-  },
   "entities": {
     "title": "Entiteti",
     "intro": "Sve što administracija kreira, menja i briše, na jednom mestu."
@@ -670,5 +711,9 @@
     "fromPhotos": "Profilnu sliku administrator odobrava pre objave",
     "fromComments": "Komentari se odobravaju pre objave, za sve",
     "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine"
+  },
+  "rulebook": {
+    "onThisPage": "Na ovoj strani",
+    "openSections": "Sekcije pravilnika"
   }
 }

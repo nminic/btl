@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { monogramFor } from '../app/monogram'
 import { Resource } from '../components/Resource'
+import { hueFor } from './competitorFace'
 import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
 import { SEASON } from '../data/pricing'
 import type { Competitor, Result } from '../data/types'
@@ -8,11 +10,13 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
+import './Competitors.css'
 
-/* Split out and memoised: totals used to be recomputed by filtering the whole
- * result set once per competitor, which is thirty passes over three thousand
- * rows for one screen. */
-function CompetitorTable({
+/* Cards, not a table (PDL P28a). The league is about people, and a row in a
+ * table does not show a person. The picture is the point of the card, so the
+ * layout is built around it; until the database holds real pictures, the
+ * initials stand in the same space a photograph will take. */
+function CompetitorCards({
   competitors,
   results,
   search,
@@ -26,7 +30,7 @@ function CompetitorTable({
   const { locale, t } = useI18n()
   const totals = useMemo(() => totalsByMember(results), [results])
 
-  const rows = useMemo(() => {
+  const cards = useMemo(() => {
     const needle = search.trim().toLowerCase()
 
     return competitors
@@ -55,42 +59,47 @@ function CompetitorTable({
         </label>
       </div>
 
-      <p className="rankings__count">{t('competitors.count', { count: rows.length })}</p>
+      <p className="rankings__count">{t('competitors.count', { count: cards.length })}</p>
 
-      {rows.length === 0 ? (
+      {cards.length === 0 ? (
         <p className="rankings__empty">{t('competitors.empty')}</p>
       ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th scope="col">{t('competitors.columns.member')}</th>
-                <th scope="col">{t('competitors.columns.category')}</th>
-                <th scope="col">{t('competitors.columns.city')}</th>
-                <th scope="col" className="table__hide-phone">
-                  {t('competitors.columns.races')}
-                </th>
-                <th scope="col">{t('competitors.columns.points')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ competitor, totals: own }) => (
-                <tr key={competitor.memberNumber}>
-                  <td>
-                    <Link to={`/${locale}/takmicar/${competitor.memberNumber}`}>
-                      {competitor.firstName} {competitor.lastName}
-                    </Link>{' '}
-                    <span className="table__member-number">{competitor.memberNumber}</span>
-                  </td>
-                  <td>{categoryOfMember(competitor, SEASON)}</td>
-                  <td>{competitor.city}</td>
-                  <td className="table__hide-phone">{formatNumber(own.races, locale)}</td>
-                  <td className="table__points">{formatPoints(own.points, locale)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="cards">
+          {cards.map(({ competitor, totals: own }) => (
+            <li key={competitor.memberNumber} className="cards__item">
+              <Link className="card" to={`/${locale}/takmicar/${competitor.memberNumber}`}>
+                <span
+                  className="card__face"
+                  style={{ '--face-hue': hueFor(competitor.memberNumber) } as React.CSSProperties}
+                  aria-hidden="true"
+                >
+                  {monogramFor(competitor, competitor.memberNumber)}
+                </span>
+
+                <span className="card__name">
+                  {competitor.firstName} {competitor.lastName}
+                </span>
+                <span className="card__number">{competitor.memberNumber}</span>
+
+                <span className="card__meta">
+                  <span className="card__chip">{categoryOfMember(competitor, SEASON)}</span>
+                  <span className="card__city">{competitor.city}</span>
+                </span>
+
+                <span className="card__figures">
+                  <span className="card__figure">
+                    <span className="card__value">{formatNumber(own.races, locale)}</span>
+                    <span className="card__label">{t('competitors.columns.races')}</span>
+                  </span>
+                  <span className="card__figure">
+                    <span className="card__value">{formatPoints(own.points, locale)}</span>
+                    <span className="card__label">{t('competitors.columns.points')}</span>
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
     </>
   )
@@ -108,7 +117,7 @@ export function Competitors() {
 
       <Resource state={state}>
         {([competitors, results]) => (
-          <CompetitorTable
+          <CompetitorCards
             competitors={competitors}
             results={results}
             search={search}

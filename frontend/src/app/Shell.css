@@ -347,9 +347,9 @@
 }
 
 .brand__mark {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
 }
 
 .brand__words {
@@ -360,23 +360,23 @@
 
 .brand__name {
   font-weight: 800;
-  font-size: clamp(0.95rem, 2.6vw, 1.2rem);
+  font-size: clamp(1.15rem, 3.4vw, 1.75rem);
   letter-spacing: 0.02em;
   line-height: 1.15;
 }
 
 .brand__slogan {
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: clamp(0.8rem, 1.8vw, 1rem);
   font-weight: 500;
   letter-spacing: 0.01em;
 }
 
 @media (min-width: 560px) {
   .brand__mark {
-    width: 56px;
-    height: 56px;
-    flex-basis: 56px;
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
   }
 }
 
@@ -661,4 +661,13 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* The two things a visitor is here to do. Joining is the loud one: it is the
+   only control in the header that brings the league any money. */
+.button--compact {
+  height: 2.4rem;
+  padding-inline: 0.85rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }

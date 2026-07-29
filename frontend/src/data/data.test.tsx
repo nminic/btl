@@ -46,7 +46,7 @@ describe('loadResource', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
 
     expect(competitors.length).toBeGreaterThan(0)
-    expect(competitors[0].memberNumber).toMatch(/^[MF]\d{4}$/)
+    expect(competitors[0].memberNumber).toMatch(/^\d{6}$/)
   })
 
   it('rejects when the resource is not served', async () => {
