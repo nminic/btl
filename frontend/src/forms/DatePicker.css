@@ -1,0 +1,115 @@
+.datepicker {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.datepicker .field__control {
+  flex: 1;
+  min-width: 0;
+}
+
+.datepicker__open {
+  flex: 0 0 auto;
+  width: 2.6rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--fast),
+    color var(--fast);
+}
+
+.datepicker__open:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.datepicker__open svg {
+  width: 17px;
+  height: 17px;
+}
+
+.datepicker__pop {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  padding: 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+}
+
+.datepicker__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.datepicker__bar strong {
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.datepicker__bar button {
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  width: 1.7rem;
+  height: 1.7rem;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.datepicker__bar button:hover {
+  background: var(--surface-hover);
+}
+
+.datepicker__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 2rem);
+  gap: 0.15rem;
+  text-align: center;
+}
+
+.datepicker__weekday {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding-bottom: 0.2rem;
+}
+
+.datepicker__day {
+  font: inherit;
+  font-size: 0.82rem;
+  height: 2rem;
+  cursor: pointer;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.datepicker__day:hover {
+  background: var(--surface-hover);
+}
+
+.datepicker__day--on {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}

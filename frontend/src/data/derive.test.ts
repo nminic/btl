@@ -1,5 +1,6 @@
 import {
   categoriesOf,
+  topByCategory,
   defaultMonth,
   defaultSeason,
   monthGrid,
@@ -20,7 +21,8 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   gender: memberNumber.startsWith('F') ? 'F' : 'M',
   city: 'Beograd',
   country: 'RS',
-  categoryCode: memberNumber.startsWith('F') ? 'Ž A' : 'M A',
+  birthYear: 1985,
+  firstSeason2027: false,
   firstSeason: 2027,
   active: true,
   membershipBasis: 'payment',
@@ -92,7 +94,7 @@ describe('rankingFor', () => {
   const competitors = [
     competitor('M0001'),
     competitor('M0002'),
-    competitor('M0003', { categoryCode: 'M B', firstName: 'Vukašin' }),
+    competitor('M0003', { birthYear: 1960, firstName: 'Vukašin' }),
     competitor('F0001'),
   ]
 
@@ -139,7 +141,8 @@ describe('rankingFor', () => {
     const rows = rankingFor(competitors, results, {
       season: 2027,
       gender: 'M',
-      categoryCode: 'M B',
+      // Born in 1960, so in the oldest band in 2027 while the rest are 40-54.
+      categoryCode: 'M55+',
     })
 
     expect(rows.map((row) => row.competitor.memberNumber)).toEqual(['M0003'])
@@ -169,15 +172,22 @@ describe('rankingFor', () => {
 })
 
 describe('categoriesOf', () => {
-  it('lists the categories of one gender, sorted', () => {
+  it('lists the categories of one gender for a season, sorted', () => {
     const competitors = [
-      competitor('M0001', { categoryCode: 'M B' }),
-      competitor('M0002', { categoryCode: 'M A' }),
-      competitor('M0003', { categoryCode: 'M A' }),
+      competitor('M0001', { birthYear: 1960 }),
+      competitor('M0002', { birthYear: 1990 }),
+      competitor('M0003', { birthYear: 1990 }),
       competitor('F0001'),
     ]
 
-    expect(categoriesOf(competitors, 'M')).toEqual(['M A', 'M B'])
+    expect(categoriesOf(competitors, 'M', 2027)).toEqual(['M25-39', 'M55+'])
+  })
+
+  it('moves a member into the next band as the season turns', () => {
+    const competitors = [competitor('M0001', { birthYear: 1987 })]
+
+    expect(categoriesOf(competitors, 'M', 2026)).toEqual(['M25-39'])
+    expect(categoriesOf(competitors, 'M', 2027)).toEqual(['M40-54'])
   })
 })
 
@@ -325,5 +335,33 @@ describe('rankTeams', () => {
 
     expect(ranked[0].team.id).toBe('big')
     expect(ranked[0].members).toBe(2)
+  })
+})
+
+describe('topByCategory', () => {
+  const competitors = [competitor('M0001'), competitor('M0002'), competitor('M0003')]
+  const results = [
+    result('M0001', '2027-01-01', 1),
+    result('M0001', '2027-02-01', 1),
+    result('M0002', '2027-03-01', 1),
+    result('M0003', '2026-01-01', 1),
+    { ...result('M0002', '2027-04-01', 1), category: 'marathon' as const },
+  ]
+
+  it('counts one length, in one season, tallest first', () => {
+    const columns = topByCategory(competitors, results, 2027, 'short', 10)
+
+    expect(columns.map((one) => one.competitor.memberNumber)).toEqual(['M0001', 'M0002'])
+    expect(columns[0].count).toBe(2)
+  })
+
+  it('leaves out anyone who ran none of that length', () => {
+    // M0003 ran, but in another season, and M0002 ran only one marathon.
+    expect(topByCategory(competitors, results, 2027, 'marathon', 10)).toHaveLength(1)
+    expect(topByCategory(competitors, results, 2027, 'ultra', 10)).toEqual([])
+  })
+
+  it('stops at the limit it is given', () => {
+    expect(topByCategory(competitors, results, 2027, 'short', 1)).toHaveLength(1)
   })
 })

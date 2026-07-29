@@ -1,7 +1,12 @@
+import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
+import { totalsByMember, EMPTY_TOTALS } from '../../data/derive'
+import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
+import { inYearlyWindow, seasonOnSale } from '../../data/season'
+import { useResults } from '../../data/useResource'
 import { epcPayload, ipsPayload, methodsFor } from '../../data/paymentQr'
 import { JUNIOR, SEASON, priceOn, registrationOpen } from '../../data/pricing'
-import { useCompetitors } from '../../data/useResource'
+import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
@@ -22,7 +27,7 @@ export function Membership({
 }: { today?: string } = {}) {
   const { locale, t } = useI18n()
   const { memberNumber } = useSession()
-  const state = useCompetitors()
+  const state = combineResources(useCompetitors(), useResults(), useTeams())
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -30,13 +35,17 @@ export function Membership({
 
   return (
     <Resource state={state}>
-      {(competitors) => {
+      {([competitors, results, teams]) => {
         const me = competitors.find((one) => one.memberNumber === memberNumber)
 
         if (me === undefined) {
           return <h1>{t('profile.notFound')}</h1>
         }
 
+        const points = (totalsByMember(results).get(me.memberNumber) ?? EMPTY_TOTALS).points
+        const nextSeason = seasonOnSale(today)
+        const windowOpen = inYearlyWindow(today)
+        const team = teams.find((one) => one.id === me.teamId)
         const price = priceOn(today)
         const methods = methodsFor(me.country)
         const purpose = `Clanarina BTL ${SEASON} ${me.memberNumber}`
@@ -62,6 +71,85 @@ export function Membership({
               <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>
             </section>
 
+            <section className="member__panel" aria-labelledby="membership-renewal">
+              <h2 className="profile__section" id="membership-renewal">
+                {t('membership.renewal', { season: nextSeason })}
+              </h2>
+
+              {windowOpen ? (
+                <>
+                  <p className="member__note">{t('membership.renewalOpen')}</p>
+
+                  <fieldset className="renewal">
+                    <legend>{t('membership.chooseCategory', { season: nextSeason })}</legend>
+
+                    <div className="field field--checkbox">
+                      <div className="field__confirm">
+                        <input
+                          className="field__control"
+                          type="radio"
+                          id="cat-age"
+                          name="category"
+                          defaultChecked
+                        />
+                        <label className="field__label" htmlFor="cat-age">
+                          {t('membership.ageBand')}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="field field--checkbox">
+                      <div className="field__confirm">
+                        <input
+                          className="field__control"
+                          type="radio"
+                          id="cat-first"
+                          name="category"
+                          disabled={!firstSeasonAllowed(points)}
+                        />
+                        <label className="field__label" htmlFor="cat-first">
+                          {t('membership.firstSeasonBand')}
+                        </label>
+                      </div>
+                    </div>
+
+                    <p className="member__note">
+                      {firstSeasonAllowed(points)
+                        ? t('membership.firstSeasonOpen', { points: FIRST_SEASON_POINTS })
+                        : t('membership.firstSeasonClosed', { points: FIRST_SEASON_POINTS })}
+                    </p>
+                  </fieldset>
+
+                  <button type="button" className="button button--primary">
+                    {t('membership.renew', { season: nextSeason })}
+                  </button>
+                </>
+              ) : (
+                <p className="member__note">{t('membership.renewalShut')}</p>
+              )}
+            </section>
+
+            <section className="member__panel" aria-labelledby="membership-transfer">
+              <h2 className="profile__section" id="membership-transfer">
+                {t('membership.transferWindow')}
+              </h2>
+              <p className="member__note">
+                {team === undefined
+                  ? t('membership.noTeam')
+                  : t('membership.inTeam', { team: team.name })}
+              </p>
+              <p className="member__note">
+                {windowOpen
+                  ? t('membership.transferOpen', { season: nextSeason })
+                  : t('membership.transferShut')}
+              </p>
+              {windowOpen && (
+                <button type="button" className="button button--secondary">
+                  {t('membership.askToJoin')}
+                </button>
+              )}
+            </section>
+
             <section className="member__panel" aria-labelledby="membership-pay">
               <h2 className="profile__section" id="membership-pay">
                 {t('membership.howToPay')}
@@ -72,15 +160,30 @@ export function Membership({
                 <div className="pay">
                   <h3>{t('membership.ips')}</h3>
                   <p className="member__note">{t('membership.ipsNote')}</p>
-                  <pre className="pay__payload">
-                    {ipsPayload({
-                      account: ACCOUNT,
-                      recipient: RECIPIENT,
-                      amountRsd: price?.rsd ?? 0,
-                      purpose,
-                      reference: '',
-                    })}
-                  </pre>
+                  <div className="pay__code">
+                    <QrCode
+                      text={ipsPayload({
+                        account: ACCOUNT,
+                        recipient: RECIPIENT,
+                        amountRsd: price?.rsd ?? 0,
+                        purpose,
+                        reference: '',
+                      })}
+                      label={t('membership.ipsQrLabel')}
+                    />
+                    <details>
+                      <summary>{t('membership.showPayload')}</summary>
+                      <pre className="pay__payload">
+                        {ipsPayload({
+                          account: ACCOUNT,
+                          recipient: RECIPIENT,
+                          amountRsd: price?.rsd ?? 0,
+                          purpose,
+                          reference: '',
+                        })}
+                      </pre>
+                    </details>
+                  </div>
                 </div>
               )}
 
@@ -88,15 +191,30 @@ export function Membership({
                 <div className="pay">
                   <h3>{t('membership.epc')}</h3>
                   <p className="member__note">{t('membership.epcNote')}</p>
-                  <pre className="pay__payload">
-                    {epcPayload({
-                      iban: IBAN,
-                      bic: BIC,
-                      recipient: RECIPIENT,
-                      amountEur: price?.eur ?? 0,
-                      purpose,
-                    })}
-                  </pre>
+                  <div className="pay__code">
+                    <QrCode
+                      text={epcPayload({
+                        iban: IBAN,
+                        bic: BIC,
+                        recipient: RECIPIENT,
+                        amountEur: price?.eur ?? 0,
+                        purpose,
+                      })}
+                      label={t('membership.epcQrLabel')}
+                    />
+                    <details>
+                      <summary>{t('membership.showPayload')}</summary>
+                      <pre className="pay__payload">
+                        {epcPayload({
+                          iban: IBAN,
+                          bic: BIC,
+                          recipient: RECIPIENT,
+                          amountEur: price?.eur ?? 0,
+                          purpose,
+                        })}
+                      </pre>
+                    </details>
+                  </div>
                 </div>
               )}
 

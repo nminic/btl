@@ -1,0 +1,109 @@
+.donut-block {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+}
+
+@media (min-width: 620px) {
+  .donut-block {
+    grid-template-columns: auto 1fr;
+  }
+}
+
+.donut-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 190px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+}
+
+.donut {
+  width: 100%;
+  height: 100%;
+  /* Starts at twelve o'clock rather than at three. */
+  transform: rotate(-90deg);
+}
+
+.donut__track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 20;
+}
+
+.donut__seg {
+  fill: none;
+  stroke-width: 20;
+  transition:
+    opacity var(--fast),
+    stroke-width var(--fast);
+}
+
+.donut__seg--dim {
+  opacity: 0.2;
+}
+
+.donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donut__center strong {
+  font-size: clamp(1.7rem, 5vw, 2.2rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.donut__center span {
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.donut__legend {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.donut__legend th {
+  text-align: left;
+  font-weight: 400;
+  font-size: 0.88rem;
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  white-space: nowrap;
+}
+
+.donut__legend td {
+  text-align: right;
+  padding: 0.3rem 0;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.donut__share {
+  color: var(--text-muted);
+  font-weight: 400;
+  padding-left: 0.7rem;
+  width: 1%;
+}
+
+.donut__dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 3px;
+  margin-right: 0.5rem;
+  vertical-align: -1px;
+}
+
+.donut__legend tr:hover th {
+  color: var(--text);
+  font-weight: 600;
+}

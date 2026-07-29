@@ -18,6 +18,13 @@
       "required": true
     },
     {
+      "name": "startTime",
+      "type": "time",
+      "labelKey": "newResult.startTime",
+      "hintKey": "newResult.startTimeHint",
+      "required": true
+    },
+    {
       "name": "distanceKm",
       "type": "number",
       "labelKey": "newResult.distanceKm",
@@ -66,6 +73,12 @@
       "required": true,
       "min": 0,
       "max": 59
+    },
+    {
+      "name": "photo",
+      "type": "photo",
+      "labelKey": "newResult.photo",
+      "hintKey": "newResult.photoHint"
     },
     {
       "name": "link",

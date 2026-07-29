@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { renderAt } from '../test/render'
+import { NewResult } from './member/NewResult'
+import { SessionProvider } from '../session/SessionProvider'
 import { Registration } from './Registration'
 
 /** After registration opens, so the form itself is on screen. */
@@ -105,6 +107,29 @@ describe('Registration once it is open', () => {
 
     expect(screen.getByText('Ne poklapa se sa prethodnim poljem.')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
+  })
+
+  it('takes a photograph as proof, and lets it be taken back', async () => {
+    const user = userEvent.setup()
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber="M0005">
+            <NewResult />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    const field = screen.getByLabelText(/Fotografija kao dokaz/) as HTMLInputElement
+    const file = new File(['sadržaj'], 'sat.jpg', { type: 'image/jpeg' })
+
+    await user.upload(field, file)
+    expect(field.files?.[0].name).toBe('sat.jpg')
+
+    // Clearing it must leave nothing behind rather than the word undefined.
+    await user.upload(field, [])
+    expect(field.files).toHaveLength(0)
   })
 
   it('puts the confirmation box before the words it confirms', () => {

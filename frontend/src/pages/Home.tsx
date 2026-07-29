@@ -4,7 +4,7 @@ import { combineResources, useCompetitors, useEvents, useResults } from '../data
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
-import { CategoryChart } from './home/CategoryChart'
+import { TopByCategory } from './home/TopByCategory'
 import { CommunityNumbers } from './home/CommunityNumbers'
 import { Counters } from './home/Counters'
 import { EnrolmentSlot } from './home/EnrolmentSlot'
@@ -58,7 +58,7 @@ export function Home() {
               <div className="home__row home__row--standing">
                 <TopTen competitors={competitors} results={results} season={season} gender="M" />
                 <TopTen competitors={competitors} results={results} season={season} gender="F" />
-                <CategoryChart results={results} season={season} />
+                <TopByCategory competitors={competitors} results={results} season={season} />
               </div>
 
               <div className="home__row home__row--halves">

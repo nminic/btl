@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
-import { maskDate } from './dateField'
+import countries from '../data/countries.json'
+import { DatePicker } from './DatePicker'
 import { emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
 
@@ -80,6 +81,36 @@ function Field({
         </p>
       )}
 
+      {field.type === 'country' && (
+        <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
+          <option value="">{t('form.choose')}</option>
+          {/* The region first, because nine members in ten pick one of these. */}
+          <optgroup label={t('form.region')}>
+            {countries.region.map((one) => (
+              <option key={one.code} value={one.code}>
+                {one.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={t('form.restOfWorld')}>
+            {countries.rest.map((one) => (
+              <option key={one.code} value={one.code}>
+                {one.name}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+      )}
+
+      {field.type === 'photo' && (
+        <input
+          {...shared}
+          type="file"
+          accept="image/*"
+          onChange={(e) => onChange(e.target.files?.[0]?.name ?? '')}
+        />
+      )}
+
       {field.type === 'select' && (
         <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('form.choose')}</option>
@@ -96,15 +127,18 @@ function Field({
       )}
 
       {field.type === 'date' && (
-        <input
-          {...shared}
-          type="text"
-          inputMode="numeric"
-          autoComplete="bday"
-          placeholder="dd/mm/gggg"
+        <DatePicker
+          id={inputId}
+          name={field.name}
           value={String(value)}
-          onChange={(e) => onChange(maskDate(e.target.value))}
+          invalid={error !== undefined}
+          describedBy={describedBy === '' ? undefined : describedBy}
+          onChange={onChange}
         />
+      )}
+
+      {field.type === 'time' && (
+        <input {...shared} type="time" value={String(value)} onChange={(e) => onChange(e.target.value)} />
       )}
 
       {(field.type === 'text' ||

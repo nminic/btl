@@ -136,6 +136,7 @@ describe('a result from entry to decision', () => {
   async function enterResult(user: ReturnType<typeof userEvent.setup>) {
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText(/Vreme starta/), '09:00')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
@@ -186,6 +187,7 @@ describe('a result from entry to decision', () => {
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka bez vremena')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText(/Vreme starta/), '09:00')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
@@ -206,19 +208,94 @@ describe('a result from entry to decision', () => {
     await enterResult(user)
     await user.click(await screen.findByRole('link', { name: 'Red za proveru' }))
 
-    const sendBack = await screen.findByRole('button', { name: 'Vrati na doradu' })
-    expect(sendBack).toBeDisabled()
+    // The reason is asked for after the decision to send back, and the
+    // confirmation stays shut until it is written.
+    await user.click(await screen.findByRole('button', { name: 'Vrati na doradu' }))
+
+    const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
+    expect(confirm).toBeDisabled()
 
     await user.type(screen.getByLabelText('Razlog vraćanja'), 'Link ne otvara rezultate.')
-    expect(sendBack).toBeEnabled()
+    expect(confirm).toBeEnabled()
 
-    await user.click(sendBack)
+    await user.click(confirm)
     expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
 
     // And the member finds the same sentence on their own screen.
     await user.click(screen.getAllByRole('link', { name: 'Moji rezultati' })[0])
     expect(await screen.findByText('Vraćeno')).toBeVisible()
     expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
+  })
+})
+
+describe('the transfer window and renewal', () => {
+  function renderMembership(today: string) {
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber="M0001">
+            <Membership today={today} />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+  }
+
+  it('opens both on the first of October', async () => {
+    renderMembership('2026-11-01')
+
+    expect(await screen.findByRole('heading', { name: /Obnova članarine/ })).toBeVisible()
+    expect(screen.getByText(/Obnova je otvorena/)).toBeVisible()
+    expect(screen.getByText(/Prelazni rok je otvoren do 31. decembra/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Pošalji zahtev timu' })).toBeVisible()
+  })
+
+  it('offers the first season category only to somebody still under the threshold', async () => {
+    renderMembership('2026-11-01')
+
+    await screen.findByRole('heading', { name: /Obnova članarine/ })
+
+    // M0001 has raced for years and is far past twelve points.
+    expect(screen.getByLabelText('U kategoriji Prva sezona')).toBeDisabled()
+    expect(screen.getByText(/Prva sezona ti je zatvorena/)).toBeVisible()
+  })
+
+  it('shuts both outside the window, and says when they open', async () => {
+    renderMembership('2026-07-29')
+
+    expect(await screen.findByText(/Obnova se otvara 1. oktobra/)).toBeVisible()
+    expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Pošalji zahtev timu' })).not.toBeInTheDocument()
+  })
+
+  it('says plainly when somebody is in no team at all', async () => {
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber="F0002">
+            <Membership today="2026-11-01" />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(await screen.findByText('Trenutno nisi ni u jednom timu.')).toBeVisible()
+  })
+
+  it('keeps a first season member in that choice while it is still open', async () => {
+    // M0021 has never raced, so nothing bars them.
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber="M0021">
+            <Membership today="2026-11-01" />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(await screen.findByLabelText('U kategoriji Prva sezona')).toBeEnabled()
+    expect(screen.getByText(/Prva sezona ti je još otvorena/)).toBeVisible()
   })
 })
 

@@ -9,10 +9,19 @@ export type FieldType =
   | 'email'
   | 'password'
   | 'date'
+  /** Time of day, hh:mm on a 24 hour clock, which reads the same everywhere. */
+  | 'time'
   | 'number'
   | 'select'
+  /** The whole world, with the region the league runs in on top. Its own type
+   *  because a list of 252 countries has no business being copied into a form
+   *  definition. */
+  | 'country'
   | 'checkbox'
   | 'textarea'
+  /** A picture attached as proof. Optional, and deleted once the result has
+   *  been checked, so the disc does not fill with photographs of watches. */
+  | 'photo'
 
 export type FieldOption = {
   value: string

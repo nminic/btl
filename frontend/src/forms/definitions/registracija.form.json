@@ -74,17 +74,10 @@
     },
     {
       "name": "country",
-      "type": "select",
+      "type": "country",
       "labelKey": "registration.country",
       "hintKey": "registration.countryHint",
-      "required": true,
-      "options": [
-        { "value": "RS", "labelKey": "country.RS" },
-        { "value": "BA", "labelKey": "country.BA" },
-        { "value": "ME", "labelKey": "country.ME" },
-        { "value": "MK", "labelKey": "country.MK" },
-        { "value": "HR", "labelKey": "country.HR" }
-      ]
+      "required": true
     },
     {
       "name": "shirtSize",
@@ -101,6 +94,12 @@
         { "value": "XXL", "labelKey": "shirt.XXL" },
         { "value": "XXXL", "labelKey": "shirt.XXXL" }
       ]
+    },
+    {
+      "name": "firstSeason",
+      "type": "checkbox",
+      "labelKey": "registration.firstSeason",
+      "hintKey": "registration.firstSeasonHint"
     },
     {
       "name": "healthStatement",

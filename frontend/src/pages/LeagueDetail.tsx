@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { Resource } from '../components/Resource'
+import { isStaff } from '../roles/context'
+import { useRole } from '../roles/useRole'
+import { useSession } from '../session/useSession'
 import { combineResources, useEvents, useLeagues, useRaces } from '../data/useResource'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -9,9 +13,63 @@ import './Profile.css'
  * different scoring formula. Its own page is therefore mostly the list of
  * events that count towards it, plus the rules and prizes that are written for
  * it. Both of those hide themselves while nobody has written them. */
+function EditableText({
+  value,
+  headingId,
+  heading,
+  canEdit,
+  onSave,
+}: {
+  id: string
+  field: string
+  value: string
+  headingId: string
+  heading: string
+  canEdit: boolean
+  onSave: (text: string) => void
+}) {
+  const { t } = useI18n()
+  const [editing, setEditing] = useState(false)
+
+  if (value === '' && !canEdit) {
+    return null
+  }
+
+  return (
+    <section aria-labelledby={headingId}>
+      <h2 className="profile__section" id={headingId}>
+        {heading}
+      </h2>
+
+      {editing ? (
+        <textarea
+          className="field__control league__editor"
+          autoFocus
+          aria-label={heading}
+          defaultValue={value}
+          onBlur={(event) => {
+            onSave(event.target.value)
+            setEditing(false)
+          }}
+        />
+      ) : (
+        <p className="profile__text">{value === '' ? t('leagues.notWritten') : value}</p>
+      )}
+
+      {canEdit && !editing && (
+        <button type="button" className="button button--secondary" onClick={() => setEditing(true)}>
+          {t('admin.change')}
+        </button>
+      )}
+    </section>
+  )
+}
+
 export function LeagueDetail() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
+  const { role } = useRole()
+  const { edits, edit } = useSession()
   const state = combineResources(useLeagues(), useEvents(), useRaces())
 
   return (
@@ -41,23 +99,27 @@ export function LeagueDetail() {
               </p>
             </header>
 
-            {league.rules !== '' && (
-              <section aria-labelledby="league-rules">
-                <h2 className="profile__section" id="league-rules">
-                  {t('leagues.rules')}
-                </h2>
-                <p className="profile__text">{league.rules}</p>
-              </section>
-            )}
+            {/* The competition's own administrator writes this; until somebody
+                does, the section is not there at all. */}
+            <EditableText
+              id={league.id}
+              field="rules"
+              value={edits[league.id]?.rules ?? league.rules}
+              headingId="league-rules"
+              heading={t('leagues.rules')}
+              canEdit={isStaff(role)}
+              onSave={(text) => edit(league.id, 'rules', text)}
+            />
 
-            {league.prizes !== '' && (
-              <section aria-labelledby="league-prizes">
-                <h2 className="profile__section" id="league-prizes">
-                  {t('leagues.prizes')}
-                </h2>
-                <p className="profile__text">{league.prizes}</p>
-              </section>
-            )}
+            <EditableText
+              id={league.id}
+              field="prizes"
+              value={edits[league.id]?.prizes ?? league.prizes}
+              headingId="league-prizes"
+              heading={t('leagues.prizes')}
+              canEdit={isStaff(role)}
+              onSave={(text) => edit(league.id, 'prizes', text)}
+            />
 
             <h2 className="profile__section">
               {t('leagues.countingEvents')}{' '}

@@ -15,6 +15,7 @@ import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
 import { Registration } from '../pages/Registration'
+import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
 import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
@@ -51,6 +52,11 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/dogadjaji': <AdminEvents />,
   'administracija/znacke': <AdminBadges />,
   'administracija/cenovnik': <AdminPricing />,
+  'o-ligi': <StaticPage slug="o-ligi" />,
+  pravilnik: <StaticPage slug="pravilnik" />,
+  kontakt: <StaticPage slug="kontakt" />,
+  'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
+  'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
 }
 
 /* Detail screens. They are addresses, not navigation entries, so they are not

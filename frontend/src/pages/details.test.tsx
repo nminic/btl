@@ -89,6 +89,34 @@ describe('LeagueDetail', () => {
     expect(screen.getByText('Ovoj ligi još nije dodeljen nijedan događaj.')).toBeVisible()
   })
 
+  it('says so when nothing runs alongside the league', async () => {
+    // Only the main league exists, and that one is never listed.
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/leagues.json')
+        ? new Response(
+            JSON.stringify([
+              {
+                id: 'league-btl-2027',
+                slug: 'btl-2027',
+                name: 'Balkanska trkačka liga 2027',
+                season: 2027,
+                groupsByCategory: true,
+                rules: '',
+                prizes: '',
+                eventIds: [],
+              },
+            ]),
+            { status: 200 },
+          )
+        : real(input)) as typeof fetch
+
+    renderAt('/sr/lige')
+
+    expect(await screen.findByText('Trenutno nema nijednog dodatnog takmičenja.')).toBeVisible()
+    globalThis.fetch = real
+  })
+
   it('says so when the league does not exist', async () => {
     renderAt('/sr/liga/nepostojeca')
 

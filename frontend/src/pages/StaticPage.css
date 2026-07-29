@@ -1,0 +1,32 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.page h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(26px, 4.5vw, 36px);
+  letter-spacing: -0.02em;
+}
+
+.page section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+}
+
+.page h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.page p {
+  margin: 0;
+  /* Long prose does get a measure: past about eighty characters the eye loses
+     the start of the next line. Tables and widgets do not, and this is the only
+     place on the portal where it applies. */
+  max-width: 78ch;
+  color: var(--text-muted);
+}

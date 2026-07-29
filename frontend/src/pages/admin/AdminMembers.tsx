@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
+import { categoryOfMember } from '../../data/derive'
+import { SEASON } from '../../data/pricing'
 import { useCompetitors } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
+import { EditableCell } from './EditableCell'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -24,6 +27,7 @@ export function AdminMembers() {
   return (
     <div className="member">
       <h1>{t('admin.members')}</h1>
+      <p className="member__note">{t('admin.editNote')}</p>
 
       <Resource state={state}>
         {(competitors) => {
@@ -69,8 +73,15 @@ export function AdminMembers() {
                           </Link>{' '}
                           <span className="table__member-number">{one.memberNumber}</span>
                         </td>
-                        <td>{one.categoryCode}</td>
-                        <td>{one.city}</td>
+                        <td>{categoryOfMember(one, SEASON)}</td>
+                        <td>
+                          <EditableCell
+                            id={one.memberNumber}
+                            field="city"
+                            value={one.city}
+                            label={t('competitors.columns.city')}
+                          />
+                        </td>
                         <td>
                           <span className={`tag tag--${one.membershipBasis}`}>
                             {t(`admin.basisValue.${one.membershipBasis}`)}

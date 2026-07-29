@@ -20,8 +20,11 @@ export type Competitor = {
   gender: Gender
   city: string
   country: string
-  /** Competition category code, for example "M A" or "Ž PS". */
-  categoryCode: string
+  /** Never shown publicly (PDL P23); the age band is derived from it. */
+  birthYear: number
+  /** Whether this member is spending the 2027 season in the first season
+   *  category rather than in their age band. */
+  firstSeason2027: boolean
   firstSeason: number
   active: boolean
   membershipBasis: MembershipBasis
@@ -85,4 +88,12 @@ export type League = {
    *  section does not appear at all. */
   rules: string
   prizes: string
+}
+
+/** A page of written text: the rulebook, the terms, the page about the league.
+ *  Kept as data rather than in the translation dictionary because these run to
+ *  thousands of words and are written and revised on their own schedule. */
+export type StaticPage = {
+  title: string
+  sections: { heading: string; body: string }[]
 }
