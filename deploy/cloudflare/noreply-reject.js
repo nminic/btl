@@ -1,30 +1,32 @@
-/* Cloudflare Email Worker za noreply@balkanskatrkackaliga.net
+/* Cloudflare Email Worker for noreply@balkanskatrkackaliga.net
  *
- * Portal sa te adrese samo salje. Niko ne treba da pise na nju, a onaj ko
- * ipak pokusa mora da dobije jasan odgovor, ne cutanje.
+ * The portal only sends from that address. Nobody is meant to write to it, and
+ * whoever tries anyway has to get a clear answer rather than silence.
  *
- * Zato se poruka odbija na SMTP nivou umesto da se prosledi ili tiho baci.
- * Razlog ispod ulazi u obavestenje o neisporucenoj posti koje posiljaocev
- * server sam napravi, pa odgovor stize automatski a da mi ne posaljemo nista.
+ * So the message is rejected at the SMTP level instead of being forwarded or
+ * quietly dropped. The reason below goes into the bounce notice the sender's own
+ * server writes, so the answer arrives automatically without us sending
+ * anything.
  *
- * Zasto ne pravi autoresponder: odgovor bi isao na adresu iz zaglavlja, koja
- * kod nezeljene poste skoro uvek nije prava. To se zove backscatter, kvari
- * ugled domena sa kog portal salje potvrde uplata, i udvostrucuje odlazni
- * saobracaj bez ikakve koristi.
+ * Why this is not an autoresponder: the reply would go to the address in the
+ * header, which on junk mail is almost never the real one. That is called
+ * backscatter, it ruins the reputation of the domain the portal sends payment
+ * confirmations from, and it doubles the outgoing traffic for no gain at all.
  *
- * Vezuje se u Cloudflare panelu: Email > Routing > Routes, pravilo za
- * noreply@, akcija "Send to a Worker", ovaj Worker.
+ * Wired up in the Cloudflare panel: Email > Routing > Routes, a rule for
+ * noreply@, action "Send to a Worker", this Worker.
  *
- * Prva odbrana nije ovaj Worker nego zaglavlje Reply-To: info@ na svakoj
- * poruci koju portal salje. Ovo hvata samo one koji ipak dodju dovde.
+ * The first line of defence is not this Worker but the Reply-To: info@ header on
+ * every message the portal sends. This only catches those who get here anyway.
  */
 
-const RAZLOG =
+/* The text a human reads, so it stays in both languages exactly as written. */
+const REASON =
   'Ova adresa ne prima postu. Pisite na info@balkanskatrkackaliga.net. ' +
   'This address does not accept incoming mail. Please write to info@balkanskatrkackaliga.net'
 
 export default {
   email(message) {
-    message.setReject(RAZLOG)
+    message.setReject(REASON)
   },
 }

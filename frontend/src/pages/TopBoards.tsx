@@ -34,6 +34,10 @@ type Place = {
   /** Unique within one board, which a member number is not on the race board:
    *  the same runner can hold two of the ten best races. */
   key: string
+  /** Not the row number: a tie nothing separates is a shared place, so a board
+   *  can read 1, 1, 3 (PDL P12). The numbering is done in src/data/derive.ts,
+   *  where the ladder of each board is. */
+  position: number
   name: string
   /** The middle column, on the boards that have one. */
   detail?: string
@@ -78,9 +82,9 @@ function Board({
               </tr>
             </thead>
             <tbody>
-              {places.map((place, index) => (
-                <tr key={place.key} className={index < PODIUM ? 'podium' : undefined}>
-                  <td className="table__position">{index + 1}</td>
+              {places.map((place) => (
+                <tr key={place.key} className={place.position <= PODIUM ? 'podium' : undefined}>
+                  <td className="table__position">{place.position}</td>
                   <td>
                     <Link to={`/${locale}/takmicar/${place.memberNumber}`}>{place.name}</Link>
                   </td>
@@ -130,8 +134,9 @@ function Boards({
       places: topByCategory(competitors, results, season, category, PLACES).map((column) => ({
         memberNumber: column.competitor.memberNumber,
         key: column.competitor.memberNumber,
+        position: column.position,
         name: nameOf(column.competitor),
-        value: formatNumber(column.count, locale),
+        value: formatNumber(column.races, locale),
       })),
     }))
 
@@ -145,6 +150,7 @@ function Boards({
         places: bestSingleRaces(competitors, results, season, PLACES).map((row) => ({
           memberNumber: row.competitor.memberNumber,
           key: row.result.id,
+          position: row.position,
           name: nameOf(row.competitor),
           detail: row.result.eventName,
           value: formatPoints(row.result.points, locale),
@@ -157,6 +163,7 @@ function Boards({
         places: topByKilometers(competitors, results, season, PLACES).map((row) => ({
           memberNumber: row.competitor.memberNumber,
           key: row.competitor.memberNumber,
+          position: row.position,
           name: nameOf(row.competitor),
           value: formatNumber(row.kilometers, locale, 2),
         })),
@@ -168,6 +175,7 @@ function Boards({
         places: topByTimeOnCourse(competitors, results, season, PLACES).map((row) => ({
           memberNumber: row.competitor.memberNumber,
           key: row.competitor.memberNumber,
+          position: row.position,
           name: nameOf(row.competitor),
           value: formatCourseTime(row.seconds),
         })),

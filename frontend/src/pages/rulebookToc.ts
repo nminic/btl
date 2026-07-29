@@ -32,7 +32,15 @@ export function tableOfContents(headings: string[]): TocEntry[] {
 
   return headings.map((heading, index) => {
     const slug = slugify(heading)
-    const id = slug === '' || taken.has(slug) ? `sekcija-${index + 1}` : slug
+    let id = slug === '' || taken.has(slug) ? `sekcija-${index + 1}` : slug
+
+    /* The fallback is not safe on its own either: a heading that reads
+     * "Sekcija 3" slugifies to exactly what the third heading falls back to. A
+     * number is added until the id is free, because two links onto one anchor is
+     * the very fault this function exists to prevent. */
+    for (let attempt = 2; taken.has(id); attempt += 1) {
+      id = `sekcija-${index + 1}-${attempt}`
+    }
 
     taken.add(id)
 

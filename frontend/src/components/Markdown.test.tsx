@@ -27,6 +27,17 @@ describe('Markdown', () => {
     expect(screen.getByText('42.2').tagName).toBe('CODE')
   })
 
+  it('leaves an unclosed marker as the text it is', () => {
+    render(<Markdown text={'**Važno: ovo nije kraj\n\nCena je `35 EUR bez zatvaranja'} />)
+
+    // Nothing may be cut off: slicing the markers off a segment that never
+    // closed ate the last two characters of the sentence.
+    expect(screen.getByText('**Važno: ovo nije kraj')).toBeVisible()
+    expect(screen.getByText('Cena je `35 EUR bez zatvaranja')).toBeVisible()
+    expect(document.querySelector('strong')).toBeNull()
+    expect(document.querySelector('code')).toBeNull()
+  })
+
   it('renders a list of bullets and a numbered list', () => {
     render(<Markdown text={'- prvo\n- drugo\n\n1. korak\n2. korak dva'} />)
 
@@ -70,5 +81,27 @@ describe('Markdown', () => {
     const { container } = render(<Markdown text="" />)
 
     expect(container.textContent).toBe('')
+  })
+
+  /* The central promise of this component. The written pages are content, and
+   * tomorrow an administrator edits them through the database, so a body of text
+   * must never be able to put an element of its own on the page. */
+  it('keeps raw HTML in the body as text, and runs nothing that is in it', () => {
+    const { container } = render(
+      <Markdown
+        text={
+          '<script>window.btlRanAScript = true</script>\n\n' +
+          '<b>ne podebljano</b> <img src="x" onerror="window.btlRanAScript = true">'
+        }
+      />,
+    )
+
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.querySelector('b')).toBeNull()
+    expect(container.querySelector('img')).toBeNull()
+    // React escaped it instead of parsing it, so there was never anything to run.
+    expect(container.innerHTML).toContain('&lt;script&gt;')
+    expect((window as unknown as { btlRanAScript?: boolean }).btlRanAScript).toBeUndefined()
+    expect(screen.getByText(/<b>ne podebljano<\/b>/)).toBeVisible()
   })
 })

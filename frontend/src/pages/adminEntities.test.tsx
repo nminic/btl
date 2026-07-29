@@ -30,6 +30,20 @@ describe('races', () => {
     expect((await table('Trke')).getAllByRole('row').length).toBeLessThan(before)
   })
 
+  it('says out loud that the list is cut off, and stops saying it once it is not', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr/administracija/trke', 'superadmin')
+
+    await table('Trke')
+    // Over a thousand races and sixty rows drawn: read as the whole list, that
+    // is an administrator concluding a race was never entered.
+    expect(screen.getByText(/od \d+ ukupno/)).toBeVisible()
+
+    await user.type(screen.getByRole('searchbox', { name: 'Pretraga' }), 'zzzzz')
+
+    expect(screen.queryByText(/od \d+ ukupno/)).not.toBeInTheDocument()
+  })
+
   it('turns a moderator away when the role has no rights', async () => {
     renderAt('/sr/administracija/trke', 'competitor')
 

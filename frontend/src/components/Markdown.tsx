@@ -26,6 +26,12 @@ const NUMBERED = /^\d+\.\s+(.+)$/
 const ROW = /^\|(.*)\|$/
 const SEPARATOR = /^:?-{2,}:?$/
 const INLINE = /(\*\*[^*]+\*\*|`[^`]+`)/g
+/* The same two shapes, anchored. Splitting on INLINE hands back the marked
+ * segments and the plain text between them in one array, and only a segment that
+ * matches from end to end is markup: "**Važno" is a pair of stars somebody
+ * wrote and never closed, and cutting two characters off it eats the text. */
+const BOLD = /^\*\*[^*]+\*\*$/
+const CODE = /^`[^`]+`$/
 
 function cellsOf(line: string): string[] {
   return line
@@ -116,14 +122,15 @@ function parseBlocks(text: string): Block[] {
   return blocks
 }
 
-/** Bold and code inside a line of text. Everything else stays literal. */
+/** Bold and code inside a line of text. Everything else stays literal, an
+ *  unclosed marker included. */
 function inline(text: string): ReactNode[] {
   return text.split(INLINE).map((part, index) => {
-    if (part.startsWith('**')) {
+    if (BOLD.test(part)) {
       return <strong key={index}>{part.slice(2, -2)}</strong>
     }
 
-    if (part.startsWith('`')) {
+    if (CODE.test(part)) {
       return <code key={index}>{part.slice(1, -1)}</code>
     }
 

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { useCompetitors, useEvents } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { countsFor, QUEUES } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
@@ -24,6 +26,59 @@ function useRestOfPath(): string {
   return `${rest}${location.search}${location.hash}`
 }
 
+/** The one navigation entry that carries a number beside it (PDL P28a). */
+const VERIFICATION = 'administracija/verifikacija'
+
+/**
+ * How much work is waiting for a moderator: the sum of the queues on the
+ * verification screen, counted from the same place that screen counts it, so the
+ * two can never disagree.
+ *
+ * The two files are asked for here as well as there, and the data layer keeps a
+ * resource for the whole visit, so this costs one request. A header that waited
+ * for them would hold up every screen behind it, so until they arrive the number
+ * says what the session alone knows.
+ */
+function useWaiting(): number {
+  const { submissions } = useSession()
+  const competitors = useCompetitors()
+  const events = useEvents()
+
+  const counts = countsFor(
+    submissions.filter((one) => one.status === 'pending').length,
+    competitors.status === 'ready' ? competitors.data : [],
+    events.status === 'ready' ? events.data : [],
+  )
+
+  return QUEUES.reduce((sum, queue) => sum + counts[queue.id], 0)
+}
+
+/* Verification, with the number of items waiting behind it. The count goes into
+ * the name of the link and not only into the badge, because an aria-label
+ * replaces everything inside the element: a badge described by nothing is a
+ * badge a screen reader never reads out. The inbox in MessagesMenu does the
+ * same. Nothing at all is shown while nothing is waiting. */
+function VerificationLink({ label, onFollow }: { label: string; onFollow: () => void }) {
+  const { locale, t } = useI18n()
+  const waiting = useWaiting()
+
+  return (
+    <NavLink
+      to={`/${locale}/${VERIFICATION}`}
+      className="navgroup__link"
+      aria-label={waiting === 0 ? undefined : `${label}, ${t('shell.waiting', { count: waiting })}`}
+      onClick={onFollow}
+    >
+      {label}
+      {waiting > 0 && (
+        <span className="navgroup__waiting" aria-hidden="true">
+          {waiting}
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
 function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
   const { locale, t } = useI18n()
   const label = t(section.labelKey)
@@ -45,23 +100,31 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
       label={label}
       trigger={<span className="navgroup__label">{label}</span>}
     >
-      {(close) => (
-        <>
-          {section.items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={`/${locale}/${item.path}`}
-              className="navgroup__link"
-              onClick={() => {
-                close()
-                onNavigate()
-              }}
-            >
-              {t(item.labelKey)}
-            </NavLink>
-          ))}
-        </>
-      )}
+      {(close) => {
+        const follow = () => {
+          close()
+          onNavigate()
+        }
+
+        return (
+          <>
+            {section.items.map((item) =>
+              item.path === VERIFICATION ? (
+                <VerificationLink key={item.path} label={t(item.labelKey)} onFollow={follow} />
+              ) : (
+                <NavLink
+                  key={item.path}
+                  to={`/${locale}/${item.path}`}
+                  className="navgroup__link"
+                  onClick={follow}
+                >
+                  {t(item.labelKey)}
+                </NavLink>
+              ),
+            )}
+          </>
+        )
+      }}
     </Dropdown>
   )
 }

@@ -85,7 +85,7 @@ describe('membership', () => {
   })
 
   it('offers a member abroad SEPA and PayPal, never the Serbian slip', async () => {
-    // 000003 is in Montenegro in the generated data.
+    // 000009 is in Montenegro in the generated data.
     renderAt('/sr/moja-clanarina', 'competitor', '000009')
 
     expect(await screen.findByRole('heading', { level: 3, name: /SEPA/ })).toBeVisible()
@@ -213,7 +213,9 @@ describe('a result from entry to decision', () => {
    * queue of results. */
   async function openTheQueue(user: ReturnType<typeof userEvent.setup>) {
     await user.click(await screen.findByRole('button', { name: 'Administracija' }))
-    await user.click(screen.getByRole('link', { name: 'Verifikacija' }))
+    // The entry carries the number waiting in its name (PDL P28a), so the name
+    // is matched on the words rather than in full.
+    await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
     await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
   }
 

@@ -32,4 +32,12 @@ describe('tableOfContents', () => {
   it('falls back to the position when a heading holds no letters', () => {
     expect(tableOfContents(['***'])[0].id).toBe('sekcija-1')
   })
+
+  it('goes past the fallback when a heading already reads like one', () => {
+    // "Sekcija 3" slugifies to the very id the third heading falls back to.
+    const entries = tableOfContents(['Sekcija 3', 'x', 'x'])
+
+    expect(entries.map((one) => one.id)).toEqual(['sekcija-3', 'x', 'sekcija-3-2'])
+    expect(new Set(entries.map((one) => one.id)).size).toBe(entries.length)
+  })
 })

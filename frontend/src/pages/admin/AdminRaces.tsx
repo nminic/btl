@@ -12,6 +12,11 @@ import '../member/Member.css'
 /* Races, the level below an event. They are listed with the event they belong
  * to, because a race called "21 km" means nothing on its own and there are
  * dozens of them. */
+
+/** How many rows the screen draws at once. There are well over a thousand races,
+ *  and the browser is the one that suffers. */
+const SHOWN = 60
+
 export function AdminRaces() {
   const { locale, t } = useI18n()
   const { role } = useRole()
@@ -32,11 +37,10 @@ export function AdminRaces() {
         {([races, events]) => {
           const eventNames = new Map(events.map((one) => [one.id, one.name]))
           const needle = search.trim().toLowerCase()
-          const rows = races
-            .filter((one) =>
-              `${one.name} ${eventNames.get(one.eventId) ?? ''}`.toLowerCase().includes(needle),
-            )
-            .slice(0, 60)
+          const found = races.filter((one) =>
+            `${one.name} ${eventNames.get(one.eventId) ?? ''}`.toLowerCase().includes(needle),
+          )
+          const rows = found.slice(0, SHOWN)
 
           return (
             <>
@@ -52,7 +56,12 @@ export function AdminRaces() {
                 </label>
               </div>
 
-              <p className="rankings__count">{t('admin.showing', { count: rows.length })}</p>
+              <p className="rankings__count">
+                {t('admin.showing', { count: rows.length })}
+                {/* Said out loud, or an administrator reads a cut list as the
+                    whole list and concludes a race is missing. */}
+                {found.length > rows.length && ` ${t('admin.ofMany', { count: found.length })}`}
+              </p>
 
               <div className="table-scroll">
                 <table className="table">

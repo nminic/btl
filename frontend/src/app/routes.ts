@@ -1,4 +1,4 @@
-import { isMember, isStaff, type Role } from '../roles/context'
+import { isStaff, type Role } from '../roles/context'
 
 export type RouteDef = {
   /** Path relative to the locale segment, so "kalendar" becomes /sr/kalendar. */
@@ -115,9 +115,4 @@ export const ROUTES: RouteDef[] = [
 /** Sections the given role is allowed to see, in navigation order. */
 export function navForRole(role: Role): NavSection[] {
   return NAV.filter((section) => !section.staffOnly || isStaff(role))
-}
-
-/** The account menu is empty for anyone who is not signed in. */
-export function accountRoutesForRole(role: Role): RouteDef[] {
-  return isMember(role) ? ACCOUNT_ROUTES : []
 }

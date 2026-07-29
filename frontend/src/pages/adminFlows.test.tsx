@@ -339,10 +339,27 @@ describe('verification', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
     await user.click(await screen.findByRole('button', { name: 'Administracija' }))
-    await user.click(screen.getByRole('link', { name: 'Verifikacija' }))
+
+    /* The navigation carries the sum of everything waiting (PDL P28a), and it
+       says so in the name of the link rather than only in the badge, so a screen
+       reader hears the number too. */
+    const verification = await screen.findByRole('link', {
+      name: 'Verifikacija, 1 na čekanju',
+    })
+    await user.click(verification)
 
     const results = await screen.findByRole('link', { name: /Rezultati/ })
     expect(within(results).getByText('1')).toBeVisible()
+  })
+
+  it('says nothing beside Verification while nothing is waiting', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr', 'moderator', '000007')
+
+    await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+
+    // A zero is noise: an empty queue has nothing to report.
+    expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
   })
 })
 

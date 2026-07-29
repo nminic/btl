@@ -22,6 +22,7 @@ export function Dropdown({
 }) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) {
@@ -37,6 +38,10 @@ export function Dropdown({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setOpen(false)
+        /* Escape has to put the focus back on the button that opened the panel.
+         * The panel it was in has just been hidden, so without this the focus
+         * falls to the body and the next Tab starts the page from the top. */
+        button.current?.focus()
       }
     }
 
@@ -52,9 +57,12 @@ export function Dropdown({
   return (
     <div className={open ? `${className} is-open` : className} ref={box}>
       <button
+        ref={button}
         type="button"
         className={`${className}__btn`}
-        aria-haspopup="true"
+        /* No aria-haspopup: it announces a menu widget, and what opens here is a
+         * panel of ordinary links. aria-expanded and aria-controls say all there
+         * is to say about a disclosure. */
         aria-expanded={open}
         aria-controls={id}
         aria-label={label}

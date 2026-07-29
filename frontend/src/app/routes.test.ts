@@ -1,5 +1,4 @@
 import {
-  accountRoutesForRole,
   ACCOUNT_ROUTES,
   CONTACT_ADDRESS,
   FOOTER_ROUTES,
@@ -57,14 +56,8 @@ describe('the shape of the navigation', () => {
   })
 })
 
-describe('accountRoutesForRole', () => {
-  it('gives a visitor nothing, because there is no account to open', () => {
-    expect(accountRoutesForRole('visitor')).toEqual([])
-  })
-
-  it('gives a member the whole of their own area', () => {
-    expect(accountRoutesForRole('competitor')).toEqual(ACCOUNT_ROUTES)
-    expect(accountRoutesForRole('superadmin')).toEqual(ACCOUNT_ROUTES)
+describe('ACCOUNT_ROUTES', () => {
+  it('holds settings, which no longer hang off a cog of their own (PDL P28a)', () => {
     expect(ACCOUNT_ROUTES.map((route) => route.path)).toContain('podesavanja')
   })
 })

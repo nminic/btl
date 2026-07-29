@@ -34,8 +34,9 @@ export function MyProfile() {
           <Link className="button button--secondary" to={`/${locale}/poruke`}>
             {t('nav.messages')}
           </Link>
-          {/* Notifications and the theme moved to their own screen behind the
-              cog in the header (PDL P28a). */}
+          {/* Notifications and the theme moved to their own screen, which hangs
+              off the account picture in the header (PDL P28a). There is no cog
+              of its own any more. */}
           <Link className="button button--secondary" to={`/${locale}/podesavanja`}>
             {t('nav.settings')}
           </Link>

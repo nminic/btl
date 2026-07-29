@@ -6,7 +6,7 @@ import { hueFor } from './competitorFace'
 import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
 import { SEASON } from '../data/pricing'
 import type { Competitor, Result } from '../data/types'
-import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
+import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
@@ -109,7 +109,10 @@ export function Competitors() {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
   const search = params.get('trazi') ?? ''
-  const state = combineResources(useCompetitors(), useResults(), useTeams())
+  /* Only what the cards show. Waiting on the teams as well meant the whole page
+   * turned into an error message if that one file failed, over data no card on
+   * it has ever read. */
+  const state = combinePair(useCompetitors(), useResults())
 
   return (
     <div className="rankings">

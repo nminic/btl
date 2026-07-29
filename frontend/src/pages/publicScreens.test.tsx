@@ -13,8 +13,10 @@ describe('Rankings', () => {
     renderAt('/sr/tabela')
 
     expect(await screen.findByRole('table')).toBeVisible()
-    // The two vertical columns stand beside the distance; PDL P12 lists all of
-    // them, and none of them is left out of the markup at any width.
+    // The two vertical columns stand beside the distance, and no column below is
+    // left out of the markup at any width. Δ from PDL P12 is not among them: it
+    // needs the standing as it stood at the end of last month, which the
+    // prototype has nothing to compute from yet.
     for (const column of ['#', 'Član', 'Kat.', 'Trke', 'd (km)', '+ (m)', '− (m)', 'Vreme', 'Bodovi']) {
       expect(screen.getByRole('columnheader', { name: column })).toBeInTheDocument()
     }

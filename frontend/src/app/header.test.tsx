@@ -1,18 +1,17 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { SessionContext, type Message, type SessionValue } from '../session/context'
 import { renderAt } from '../test/render'
 import { monogramFor } from './monogram'
-import { CaretIcon, GearIcon, MailIcon, SignInIcon } from './icons'
+import { MailIcon } from './icons'
 import { MessagesMenu } from './MessagesMenu'
 import type { Competitor } from '../data/types'
 
-/* The header: the mark, the groups that open, the inbox, the account picture
- * and the cog. Everything here is reached by role and by name, because that is
- * how it is reached with a keyboard and a screen reader too. */
+/* The header: the mark, the groups that open, the inbox and the account
+ * picture. Everything here is reached by role and by name, because that is how
+ * it is reached with a keyboard and a screen reader too. */
 
 /** The panel a trigger opens, found the way a screen reader finds it: through
  *  the aria-controls of the button. Several member screens repeat the same
@@ -68,6 +67,32 @@ describe('a panel that opens under a button', () => {
     await user.keyboard('{Escape}')
 
     expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('hands the focus back to its own button on Escape', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr')
+
+    const button = await screen.findByRole('button', { name: 'Statistike' })
+    await user.click(button)
+    screen.getByRole('link', { name: 'Tabela' }).focus()
+
+    await user.keyboard('{Escape}')
+
+    // The panel the focus was in has just been hidden. Left alone the focus ends
+    // up on the body, and the next Tab starts the page again from the skip link.
+    expect(button).toHaveFocus()
+  })
+
+  it('says it opens a panel rather than a menu of commands', async () => {
+    renderAt('/sr')
+
+    const button = await screen.findByRole('button', { name: 'Statistike' })
+
+    // A disclosure over a list of links: aria-haspopup would announce a menu
+    // widget, and with it the arrow keys a menu is expected to answer to.
+    expect(button).not.toHaveAttribute('aria-haspopup')
+    expect(button).toHaveAttribute('aria-controls', 'nav-stats')
   })
 
   it('leaves a key it does not handle alone', async () => {
@@ -228,16 +253,9 @@ describe('the inbox in the header', () => {
   })
 })
 
-const ICONS: [string, ReactElement][] = [
-  ['the cog', <GearIcon key="gear" />],
-  ['the way in', <SignInIcon key="signin" />],
-  ['the envelope', <MailIcon key="mail" className="inbox__glyph" />],
-  ['the caret', <CaretIcon key="caret" />],
-]
-
 describe('the icons', () => {
-  it.each(ICONS)('draws %s as a picture that carries no name of its own', (_name, icon) => {
-    const { container } = render(icon)
+  it('draws the envelope as a picture that carries no name of its own', () => {
+    const { container } = render(<MailIcon className="inbox__glyph" />)
     const drawing = container.firstElementChild
 
     expect(drawing?.tagName).toBe('svg')

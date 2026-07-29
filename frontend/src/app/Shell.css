@@ -147,16 +147,14 @@
   }
 }
 
-/* Language menu and theme toggle, in the shape they have on the owner's own
-   site: a button with a flag and a code, a list with a tick against the one in
-   use, and one button holding both the sun and the moon. */
+/* The language menu, in the shape it has on the owner's own site: a button with
+   a flag and a code, and a list with a tick against the one in use. */
 
 .lang {
   position: relative;
 }
 
-.lang__btn,
-.theme-toggle {
+.lang__btn {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -176,8 +174,7 @@
     transform var(--fast);
 }
 
-.lang__btn:hover,
-.theme-toggle:hover {
+.lang__btn:hover {
   border-color: var(--accent);
   transform: translateY(-1px);
 }
@@ -295,44 +292,6 @@
 
 .lang__menu li[aria-selected='true'] .lang__check {
   opacity: 1;
-}
-
-/* Theme toggle: the two marks share one square and turn past each other. */
-
-.theme-toggle {
-  position: relative;
-  width: 2.4rem;
-  padding: 0;
-  justify-content: center;
-}
-
-.theme-toggle__icon {
-  position: absolute;
-  width: 17px;
-  height: 17px;
-  transition:
-    opacity var(--fast),
-    transform var(--fast);
-}
-
-.theme-toggle__sun {
-  opacity: 1;
-  transform: none;
-}
-
-.theme-toggle__moon {
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.6);
-}
-
-:root[data-theme='dark'] .theme-toggle__sun {
-  opacity: 0;
-  transform: rotate(90deg) scale(0.6);
-}
-
-:root[data-theme='dark'] .theme-toggle__moon {
-  opacity: 1;
-  transform: none;
 }
 
 /* Brand: the mark, the full name, and the slogan under it (PDL P28a). */
@@ -557,6 +516,20 @@
   margin-top: 0.25rem;
   justify-content: center;
   color: var(--accent);
+}
+
+/* How much is waiting behind Verification (PDL P28a). The number is only the
+   picture of it; the name of the link is what carries it to a screen reader. */
+.navgroup__waiting {
+  margin-inline-start: auto;
+  min-width: 1.05rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.68rem;
+  line-height: 1.05rem;
+  text-align: center;
 }
 
 .navgroup__btn {
