@@ -281,51 +281,6 @@
   font-weight: 700;
 }
 
-.chart {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.chart th {
-  text-align: left;
-  font-weight: 400;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  padding: 0.25rem 0.5rem 0.25rem 0;
-  white-space: nowrap;
-}
-
-.chart td {
-  padding: 0.25rem 0;
-  width: 100%;
-}
-
-.chart__fill {
-  display: block;
-  height: 0.75rem;
-  border-radius: 3px;
-  background: var(--blue-600);
-  min-inline-size: 2px;
-  transition: background var(--fast);
-}
-
-.chart__row--on th {
-  color: var(--text);
-  font-weight: 700;
-}
-
-.chart__row--on .chart__fill {
-  background: var(--gold-500);
-}
-
-.chart__value {
-  width: 1%;
-  padding-left: 0.6rem;
-  text-align: right;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
 /* Calculator */
 
 .calc {

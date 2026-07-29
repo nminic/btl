@@ -1,9 +1,25 @@
-import { screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
+import { I18nProvider } from '../i18n/I18nProvider'
 import { renderAt } from '../test/render'
+import { Registration } from './Registration'
+
+/** After registration opens, so the form itself is on screen. */
+const OPEN = '2026-10-02'
+
+function renderForm(today = OPEN) {
+  return render(
+    <I18nProvider locale="sr">
+      <MemoryRouter>
+        <Registration today={today} />
+      </MemoryRouter>
+    </I18nProvider>,
+  )
+}
 
 async function fillEverythingExceptBirthDate(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(await screen.findByLabelText(/^Ime$/), 'Vladan')
+  await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
   await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
   await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
@@ -15,20 +31,38 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof userEvent.s
   await user.click(screen.getByLabelText(/zdravstveno sposoban/))
 }
 
-describe('Registration', () => {
-  it('renders the JSON definition, with sizes from XS to XXXL', async () => {
+describe('Registration while it is shut', () => {
+  it('offers no form at all during the period of looking around', () => {
+    renderForm('2026-09-20')
+
+    expect(screen.getByRole('heading', { name: 'Registracija još nije otvorena' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Otvara se za 11 dana/)).toBeVisible()
+  })
+
+  it('is shut on the route today, since October has not come', async () => {
     renderAt('/sr/registracija')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Registracija' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
+    ).toBeVisible()
+  })
+})
+
+describe('Registration once it is open', () => {
+  it('renders the JSON definition, with sizes from XS to XXXL', () => {
+    renderForm()
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Registracija' })).toBeVisible()
     expect(screen.getByRole('option', { name: 'XS' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'XXXL' })).toBeInTheDocument()
   })
 
   it('writes the date of birth as dd/mm/gggg and puts the slashes in itself', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/registracija')
+    renderForm()
 
-    const birth = await screen.findByLabelText(/Datum rođenja/)
+    const birth = screen.getByLabelText(/Datum rođenja/)
     await user.type(birth, '12041985')
 
     expect(birth).toHaveValue('12/04/1985')
@@ -36,9 +70,9 @@ describe('Registration', () => {
 
   it('refuses a date that does not exist', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/registracija')
+    renderForm()
 
-    await user.type(await screen.findByLabelText(/Datum rođenja/), '31022027')
+    await user.type(screen.getByLabelText(/Datum rođenja/), '31022027')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByText('Unesi datum u obliku dd/mm/gggg.')).toBeVisible()
@@ -46,15 +80,14 @@ describe('Registration', () => {
 
   it('asks for a parent as soon as the date says the competitor is under sixteen', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/registracija')
+    renderForm()
 
-    const birth = await screen.findByLabelText(/Datum rođenja/)
+    const birth = screen.getByLabelText(/Datum rođenja/)
     expect(screen.queryByLabelText(/roditelja ili staratelja/)).not.toBeInTheDocument()
 
     await user.type(birth, '01012015')
     expect(screen.getByLabelText(/roditelja ili staratelja/)).toBeVisible()
 
-    // And it goes away again once the date says otherwise.
     await user.clear(birth)
     await user.type(birth, '01011990')
     expect(screen.queryByLabelText(/roditelja ili staratelja/)).not.toBeInTheDocument()
@@ -62,7 +95,7 @@ describe('Registration', () => {
 
   it('will not submit when the two passwords differ', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/registracija')
+    renderForm()
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
@@ -74,10 +107,10 @@ describe('Registration', () => {
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
   })
 
-  it('puts the confirmation box before the words it confirms', async () => {
-    renderAt('/sr/registracija')
+  it('puts the confirmation box before the words it confirms', () => {
+    renderForm()
 
-    const box = await screen.findByLabelText(/zdravstveno sposoban/)
+    const box = screen.getByLabelText(/zdravstveno sposoban/)
     const label = box.parentElement!.querySelector('label')!
 
     expect(box.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -85,7 +118,7 @@ describe('Registration', () => {
 
   it('shows what would be sent once the form is correct', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/registracija')
+    renderForm()
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')

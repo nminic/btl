@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { LOCALES } from '../i18n/config'
 import { useI18n } from '../i18n/useI18n'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { ErrorBoundary } from './ErrorBoundary'
+import { LanguageMenu } from './LanguageMenu'
 import { routesForRole, type NavGroup } from './routes'
+import { ThemeToggle } from './ThemeToggle'
 import { useRouteChrome } from './useRouteChrome'
-import { useTheme } from './useTheme'
 import './Shell.css'
 
 function useRestOfPath(): string {
@@ -18,39 +18,6 @@ function useRestOfPath(): string {
   const rest = location.pathname.split('/').slice(2).join('/')
 
   return `${rest}${location.search}${location.hash}`
-}
-
-function LanguageSwitch() {
-  const { locale, t } = useI18n()
-  const rest = useRestOfPath()
-
-  return (
-    <nav className="shell__languages" aria-label={t('language.label')}>
-      {LOCALES.map((option) => (
-        <Link
-          key={option}
-          to={`/${option}/${rest}`}
-          className="shell__language"
-          aria-current={option === locale ? 'page' : undefined}
-          lang={option}
-        >
-          {t(`language.${option}`)}
-        </Link>
-      ))}
-    </nav>
-  )
-}
-
-function ThemeToggle() {
-  const { t } = useI18n()
-  const { theme, toggle } = useTheme()
-  const label = theme === 'dark' ? t('theme.toLight') : t('theme.toDark')
-
-  return (
-    <button type="button" className="shell__icon-button" onClick={toggle} aria-label={label}>
-      <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
-    </button>
-  )
 }
 
 function NavGroupLinks({ group, onNavigate }: { group: NavGroup; onNavigate: () => void }) {
@@ -75,6 +42,7 @@ function NavGroupLinks({ group, onNavigate }: { group: NavGroup; onNavigate: () 
 
 export function Shell() {
   const { locale, t } = useI18n()
+  const rest = useRestOfPath()
   const pageTitle = useRouteChrome()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
@@ -95,7 +63,7 @@ export function Shell() {
           <div className="shell__tools">
             <RoleSwitch />
             <ThemeToggle />
-            <LanguageSwitch />
+            <LanguageMenu restOfPath={rest} />
             <button
               type="button"
               className="shell__icon-button shell__menu-button"

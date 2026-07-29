@@ -114,7 +114,56 @@ describe('CompetitorProfile', () => {
 
     expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Sve sezone' })).toBeVisible()
-    expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeGreaterThan(2)
+
+    const results = screen.getByRole('table', { name: 'Rezultati' })
+    expect(within(results).getAllByRole('row').length).toBeGreaterThan(2)
+  })
+
+  it('narrows the table, the totals and the bars with one filter', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr/takmicar/M0005')
+
+    await screen.findByRole('heading', { level: 1 })
+    const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
+
+    await user.selectOptions(screen.getByLabelText('Kategorija'), 'marathon')
+
+    const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
+    expect(narrowed.length).toBeLessThan(all)
+    // The heading over the totals follows the same filter, not the whole career.
+    expect(screen.getByRole('heading', { name: 'Sve sezone' })).toBeVisible()
+  })
+
+  it('lets a filter go again', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr/takmicar/M0005')
+
+    await screen.findByRole('heading', { level: 1 })
+    const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
+
+    await user.selectOptions(screen.getByLabelText('Sezona'), '2020')
+    expect(screen.getByRole('heading', { name: 'Sezona 2020.' })).toBeVisible()
+
+    await user.selectOptions(screen.getByLabelText('Sezona'), 'sve')
+    expect(screen.getByRole('heading', { name: 'Sve sezone' })).toBeVisible()
+    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')).toHaveLength(
+      all,
+    )
+  })
+
+  it('shows the five lengths as bars, including the ones never run', async () => {
+    renderAt('/sr/takmicar/M0005')
+
+    const chart = await screen.findByRole('table', { name: 'Trke po dužini' })
+    expect(within(chart).getAllByRole('row')).toHaveLength(5)
+  })
+
+  it('says so when the filter leaves nothing', async () => {
+    renderAt('/sr/takmicar/M0005?sezona=2010')
+
+    expect(
+      await screen.findByText('Za izabranu sezonu i dužinu nema nijednog rezultata.'),
+    ).toBeVisible()
   })
 
   it('says so when the competitor does not exist', async () => {
@@ -125,13 +174,28 @@ describe('CompetitorProfile', () => {
     ).toBeVisible()
   })
 
-  it('handles a competitor with no results and no team', async () => {
-    // M0021 is the deliberately empty profile in the generated data: a member
-    // who has never raced.
+  it('handles a competitor who has never raced', async () => {
+    // M0021 is the deliberately empty profile in the generated data.
     renderAt('/sr/takmicar/M0021')
 
     expect(await screen.findByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
+  })
+
+  it('says plainly when somebody is in no team', async () => {
+    renderAt('/sr/takmicar/F0002')
+
+    await screen.findByRole('heading', { level: 1 })
     expect(screen.getByText('Bez tima')).toBeInTheDocument()
+  })
+
+  it('leads to the team page', async () => {
+    renderAt('/sr/takmicar/M0005')
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.getByRole('link', { name: /trkači|klub|krug/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/sr/tim/'),
+    )
   })
 
   it('never tells a visitor who is an honorary member', async () => {
@@ -189,7 +253,7 @@ describe('Leagues', () => {
     renderAt('/sr/lige')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
-    expect(screen.getByText('Grupisanje po kategorijama')).toBeInTheDocument()
+    expect(screen.getAllByText('Grupisanje po kategorijama').length).toBeGreaterThan(0)
     expect(screen.getByText('Grupisanje samo po polu')).toBeInTheDocument()
   })
 })

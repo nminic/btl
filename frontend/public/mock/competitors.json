@@ -400,6 +400,6 @@
     "firstSeason": 2027,
     "active": true,
     "membershipBasis": "payment",
-    "teamId": null
+    "teamId": "team-dunav"
   }
 ]

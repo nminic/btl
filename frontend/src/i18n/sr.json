@@ -185,7 +185,8 @@
     "parentConsent": "Ime i prezime roditelja ili staratelja",
     "parentConsentHint": "Takmičar je mlađi od 16 godina, pa prijavu potpisuje roditelj. Upisivanjem imena potvrđuješ da podržavaš prijavu svog deteta sa unetim podacima.",
     "closed": "Registracija još nije otvorena",
-    "closedText": "Portal je od 15. do 30. septembra otvoren samo za razgledanje. Učlanjenje kreće 1. oktobra, po najnižoj ceni od 35 EUR."
+    "closedText": "Od 15. do 30. septembra portal je otvoren samo za razgledanje. Kalendar i rang liste rade, ali se članstvo tada ne prodaje.",
+    "opensOn": "Otvara se {date}."
   },
   "country": {
     "RS": "Srbija",
@@ -337,7 +338,10 @@
       "time": "Vreme",
       "points": "Bodovi"
     },
-    "notFound": "Ovog takmičara nema."
+    "notFound": "Ovog takmičara nema.",
+    "allCategories": "Sve dužine",
+    "byCategory": "Trke po dužini",
+    "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata."
   },
   "teams": {
     "title": "Timovi",
@@ -348,14 +352,25 @@
       "points": "Bodovi"
     },
     "note": "Poredak timova je čist zbir bodova svih članova, bez normalizacije.",
-    "empty": "Nema timova."
+    "empty": "Nema timova.",
+    "backToTeams": "Nazad na timove",
+    "together": "Zbirno, ceo tim",
+    "members": "Članovi",
+    "noMembers": "Ovaj tim još nema članova.",
+    "notFound": "Ovog tima nema."
   },
   "leagues": {
     "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
     "byCategory": "Grupisanje po kategorijama",
-    "byGenderOnly": "Grupisanje samo po polu"
+    "byGenderOnly": "Grupisanje samo po polu",
+    "backToLeagues": "Nazad na lige",
+    "notFound": "Ove lige nema.",
+    "rules": "Propozicije",
+    "prizes": "Nagrade",
+    "countingEvents": "Događaji koji ulaze u ligu",
+    "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj."
   },
   "pricing": {
     "title": "Članarina",
