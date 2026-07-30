@@ -4,7 +4,7 @@ import { PageMetaContext } from '../app/pageMetaContext'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
-import { renderAt } from '../test/render'
+import { moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from '../data/badgeRule'
@@ -79,6 +79,39 @@ describe('administration is closed to everyone else', () => {
     renderAt(path, 'competitor')
 
     expect(await screen.findByRole('heading', { name: 'Ovo nije za tebe' })).toBeVisible()
+
+    /* And with nothing of the section around the refusal. The door is fitted
+       outside the section on purpose (routeObjects.tsx): drawn inside it, a
+       competitor at a queue would be refused the work and handed the column
+       beside it, which names all eight queues and says how much is waiting in
+       every one of them. Nothing said so until this line, and swapping the two
+       wrappers left all 766 tests passing. */
+    expect(
+      screen.queryByRole('navigation', { name: 'Odeljak Verifikacija' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
+  })
+
+  it('turns a moderator away from a queue he has no right to, section and all', async () => {
+    /* The other half of the same rule, and the one that is not about a stranger:
+       a moderator is staff, so it is only the right that stops him. He gets the
+       sentence naming the right to ask for (ADL A8), and not the column of
+       everything he may not open. */
+    renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, moderatorWith(['queue:results']))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Za ovo ti treba pravo koje nemaš' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('navigation', { name: 'Odeljak Verifikacija' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('turns a moderator away from the entity of moderators, section and all', async () => {
+    renderAt('/sr/administracija/moderatori', 'moderator')
+
+    expect(await screen.findByRole('heading', { name: 'Ovo nije za tebe' })).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
   })
 })
 
@@ -440,7 +473,7 @@ describe('verification', () => {
        what the section is, then the eight in the order of QUEUES. Every one of
        them leads somewhere: a queue nobody can open is a list of complaints
        rather than a place of work. */
-    const nav = within(screen.getByRole('navigation', { name: 'Verifikacija' }))
+    const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
     const rows = nav.getAllByRole('listitem')
     expect(rows).toHaveLength(QUEUES.length + 1)
 
@@ -574,6 +607,29 @@ describe('verification', () => {
     }
   })
 
+  it('says the numbers may be short wherever the numbers are, not only on the way in', async () => {
+    const served = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/verification.json')
+        ? new Response('nema', { status: 500 })
+        : served(input)) as typeof fetch
+
+    try {
+      /* The alarm used to stand on the way into the section, which was the only
+         screen the numbers were on. They are on all nine now: a moderator who
+         opens a queue directly sees eight quiet noughts in the column beside him
+         and reads them as an afternoon's work already done. */
+      renderAt(`/sr/${QUEUE.leagues.path}`, 'moderator')
+
+      const nav = within(
+        await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }),
+      )
+      expect(nav.getByRole('alert')).toHaveTextContent(/nije dostupan/)
+    } finally {
+      globalThis.fetch = served
+    }
+  })
+
   it('raises no alarm over a file none of the numbers come from', async () => {
     const served = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
@@ -609,7 +665,7 @@ describe('verification', () => {
       expect(document.title).toContain('Uplate i aktivacija članova (administracija)'),
     )
 
-    const nav = within(screen.getByRole('navigation', { name: 'Verifikacija' }))
+    const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
     await user.click(nav.getByRole('link', { name: /Rezultati/ }))
 
     await waitFor(() => expect(document.title).toContain('Rezultati (administracija)'))
@@ -873,7 +929,7 @@ describe('the six queues read from the file', () => {
   const waitingList = () => screen.getByRole('list', { name: /Čeka proveru/ })
 
   /** The section standing beside the work, and the counts on it. */
-  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Verifikacija' }))
+  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
   it.each([
     ['leagues', 'Predložene lige', 2],
@@ -1127,6 +1183,31 @@ describe('the six queues read from the file', () => {
     )
   })
 
+  it('hands the next queue a clean screen, not what the last one was in the middle of', async () => {
+    /* Going from one queue straight to another is new: before this it went
+       through the way into the section, which built a different screen and took
+       this one down with it. Now both are the same element in the same place in
+       the tree, and React Router does not key what it renders, so the state of
+       one would be waiting on the next. */
+    const user = await open('leagues', 'Predložene lige')
+
+    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    expect(screen.getByLabelText('Razlog vraćanja')).toBeVisible()
+
+    // Away without cancelling, then back.
+    await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
+    await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
+
+    // The box must not be standing open on a screen just arrived at, with the
+    // focus taken into it (SendBack takes the focus as it appears).
+    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+
+    await user.click(sectionNav().getByRole('link', { name: /Predložene lige/ }))
+    await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
+
+    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+  })
+
   it('will not send anything back without a reason', async () => {
     // A team rather than a biography: biographies stopped going back at all
     // (PDL P22, 30.07.2026), so there is nothing to refuse on that queue.
@@ -1308,7 +1389,7 @@ describe('countsFor', () => {
 describe('the section of entities', () => {
   /** The section standing beside the work, which is where the entities are now
    *  (owner, 30.07.2026). */
-  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Entiteti' }))
+  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Entiteti' }))
 
   it('offers every entity administration owns, screen or not', async () => {
     renderAt('/sr/administracija/entiteti', 'superadmin')
@@ -1402,7 +1483,36 @@ describe('the section of entities', () => {
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
+    // Pressing it again puts it away, without going anywhere.
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
     await user.click(sectionNav().getByRole('link', { name: 'Cenovnik' }))
+    expect(screen.getByRole('button', { name: 'Entiteti' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('puts the list away when the section is left by any other road', async () => {
+    /* Following an entry used to be the only thing that closed it, so leaving by
+       the header menu or by the browser's back button left the panel standing
+       over whatever came next. It is now open at an address rather than open,
+       so going anywhere at all closes it. */
+    const user = setupUser()
+    renderAt('/sr/administracija/entiteti', 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+    await user.click(screen.getByRole('button', { name: 'Entiteti' }))
+
+    // Through the header rather than through the panel, which is the road that
+    // used to leave it standing open.
+    const header = within(screen.getByRole('navigation', { name: 'Glavna navigacija' }))
+    await user.click(header.getByRole('button', { name: 'Administracija' }))
+    await user.click(header.getByRole('link', { name: 'Značke' }))
+    await screen.findByRole('heading', { level: 1, name: 'Značke' })
+
     expect(screen.getByRole('button', { name: 'Entiteti' })).toHaveAttribute(
       'aria-expanded',
       'false',

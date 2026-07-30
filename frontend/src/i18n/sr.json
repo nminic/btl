@@ -790,6 +790,7 @@
   },
   "admin": {
     "title": "Administracija",
+    "sectionNav": "Odeljak {name}",
     "notAllowed": "Ovo nije za tebe",
     "notAllowedText": "Administrativni deo vide samo moderatori i Superadmin.",
     "rightMissing": "Za ovo ti treba pravo koje nemaš",
@@ -1065,7 +1066,7 @@
   "entities": {
     "title": "Entiteti",
     "intro": "Sve što administracija kreira, menja i briše, na jednom mestu.",
-    "pickOne": "Entitet se otvara sa spiska sa strane i ostaje otvoren dok radiš; spisak stoji uz svaki ekran, pa se sa jednog entiteta prelazi pravo na drugi."
+    "pickOne": "Entitet se otvara sa spiska entiteta i ostaje otvoren dok radiš; spisak stoji uz svaki ekran, pa se sa jednog entiteta prelazi pravo na drugi."
   },
   "verification": {
     "title": "Verifikacija",

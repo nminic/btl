@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { NavLink } from 'react-router'
-import { dataOr } from '../../data/useResource'
+import { NavLink, useLocation } from 'react-router'
+import { dataOr, failed } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useRole } from '../../roles/useRole'
@@ -22,7 +22,8 @@ import './SectionNav.css'
  *
  * It is applied by the route table and not by the screens (routeObjects.tsx),
  * for the same reason the guard is: the eighteenth administrative screen must
- * not be able to arrive without it.
+ * not be able to arrive without it. The guard stays outside it, so a refusal
+ * never comes with a working navigation.
  */
 
 export type SectionItem = {
@@ -35,10 +36,13 @@ export type SectionItem = {
 }
 
 function Section({
-  /** Names the navigation landmark, and stands over the list. */
+  /** Stands over the list and names the button that opens it. */
   title,
   hub,
   items,
+  /** Said out loud beside the numbers when they cannot be trusted, and nothing
+   *  where the section has no numbers. */
+  alarm,
   children,
 }: {
   title: string
@@ -46,17 +50,28 @@ function Section({
    *  queue there is otherwise no way back to what the section is. */
   hub: string
   items: SectionItem[]
+  alarm?: ReactNode
   children: ReactNode
 }) {
   const { locale, t } = useI18n()
-  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  /* Which address the folded list was opened on, rather than whether it is
+     open. Going anywhere closes it, and without an effect that has to remember
+     to: leaving the section by the header menu or by the browser's back button
+     used to leave the panel standing over whatever came next, because following
+     an entry was the only thing that closed it. */
+  const [openAt, setOpenAt] = useState<string | null>(null)
+  const open = openAt === pathname
   const panelId = `section-${hub.replace(/\//g, '-')}`
 
   const entries: SectionItem[] = [{ path: hub, label: title }, ...items]
 
   return (
     <div className="adminsection">
-      <nav className="adminsection__nav" aria-label={title}>
+      {/* The landmark is named apart from the entry that leads to the section,
+          so somebody moving landmark by landmark does not hear the same word
+          three times over. */}
+      <nav className="adminsection__nav" aria-label={t('admin.sectionNav', { name: title })}>
         {/* On a telephone the list would push the work off the first screen, so
             there it sits behind a button. From tablet up the button goes away
             and the list stands beside the work and follows it down. */}
@@ -65,7 +80,7 @@ function Section({
           className="adminsection__toggle"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen((wasOpen) => !wasOpen)}
+          onClick={() => setOpenAt(open ? null : pathname)}
         >
           {title}
         </button>
@@ -83,16 +98,15 @@ function Section({
                   end
                   to={`/${locale}/${entry.path}`}
                   className="adminsection__link"
-                  /* An aria-label replaces everything inside the element, so a
-                     number described by nothing is a number a screen reader
-                     never reads out. The header does the same for the one
-                     counter it carries (src/app/Shell.tsx). */
+                  /* The number is said in words or not at all. An aria-label
+                     replaces everything inside the element, so the digit is
+                     hidden and the name carries it: a bare "0" read out after a
+                     name is a number with no unit. */
                   aria-label={
-                    entry.count === undefined || entry.count === 0
+                    entry.count === undefined
                       ? undefined
                       : `${entry.label}, ${t('shell.waiting', { count: entry.count })}`
                   }
-                  onClick={() => setOpen(false)}
                 >
                   <span className="adminsection__name">{entry.label}</span>
                   {entry.count !== undefined && (
@@ -101,6 +115,7 @@ function Section({
                        here it is the answer to "is there anything left", and the
                        moderator is watching it come down as they work. */
                     <span
+                      aria-hidden="true"
                       className={
                         entry.count > 0
                           ? 'adminsection__count adminsection__count--waiting'
@@ -114,10 +129,21 @@ function Section({
               </li>
             ))}
           </ul>
+
+          {alarm}
         </div>
       </nav>
 
-      <div className="adminsection__body">{children}</div>
+      {/* Keyed by the address, so moving from one queue to the next builds the
+          screen again instead of handing the next one whatever the last one was
+          in the middle of. React Router does not key what it renders, and these
+          screens are now the same element type in the same place in the tree:
+          without this, opening the box for a reason on one queue and leaving
+          without cancelling reopened it on the queue arrived at next, and took
+          the focus with it. */}
+      <div className="adminsection__body" key={pathname}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -129,6 +155,12 @@ function Section({
  * the header count through as well, so the three cannot disagree. A decision
  * taken on the right is a decision written into the session, and the number
  * beside the queue on the left comes down with it.
+ *
+ * Every queue is shown, and not only the ones this moderator may open. That is
+ * on purpose, and it is what the hub did before it: a moderator may be given any
+ * of these rights, and the portal answers a refusal by naming the right to go
+ * and ask for (ADL A8). Hiding them would mean a moderator could not see that
+ * there is work he might ask to be allowed to do.
  */
 export function VerificationSection({ children }: { children: ReactNode }) {
   const { t } = useI18n()
@@ -153,6 +185,18 @@ export function VerificationSection({ children }: { children: ReactNode }) {
         label: t(queue.labelKey),
         count: counts[queue.id],
       }))}
+      /* Beside the numbers, because that is where the numbers are now. A file
+         that failed counts every queue it feeds as nought, and eight quiet
+         noughts read as an afternoon's work already done. This used to be said
+         on the hub, which was the only screen the numbers were on; they are on
+         all nine now, and an alarm on one of them is an alarm nobody sees. */
+      alarm={
+        failed(items) ? (
+          <p className="adminsection__alarm" role="alert">
+            {t('verification.shortCount')}
+          </p>
+        ) : undefined
+      }
     >
       {children}
     </Section>
@@ -162,9 +206,11 @@ export function VerificationSection({ children }: { children: ReactNode }) {
 /**
  * The nine entities, or eight for a moderator.
  *
- * The same list the screen of entities was drawn from, and filtered the same
- * way: assigning rights is the one thing a moderator may not do (PDL P21), and
- * an entry that answers "this is not for you" is worse than no entry.
+ * Moderators are the one entry left out, and not because a moderator happens to
+ * lack the right: assigning rights is the single thing the superadmin can never
+ * hand over (PDL P21), so that entry could only ever answer "this is not for
+ * you", which is worse than no entry. Every other entity stays, for the same
+ * reason every queue stays.
  *
  * No numbers. How many members there are is not a thing waiting to be dealt
  * with, and a count beside every entity would mean loading all nine files to

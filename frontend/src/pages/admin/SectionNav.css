@@ -97,6 +97,18 @@
   color: var(--accent-contrast);
 }
 
+/* Beside the numbers, because a number that is quietly short is worse than an
+   error: eight noughts read as work already done. */
+.adminsection__alarm {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .adminsection__body {
   min-width: 0;
 }
