@@ -31,11 +31,22 @@ describe('EnrolmentSlot', () => {
     expect(screen.getByText(/Cena raste na 40 EUR za 5 dana/)).toBeVisible()
   })
 
-  it('says nothing about a rise when the price is the last one', () => {
+  it('names the season on sale, which turns over on the first of October', () => {
+    /* Owner, 30.07.2026. In June 2027 what can still be joined is 2027; from 1
+       October it is 2028, and the slot said 2027 either way. */
+    renderWidget(<EnrolmentSlot today="2027-06-01" />)
+    expect(screen.getByRole('heading', { name: /2027/ })).toBeVisible()
+
+    renderWidget(<EnrolmentSlot today="2027-10-02" />)
+    expect(screen.getByRole('heading', { name: /2028/ })).toBeVisible()
+  })
+
+  it('always has a next price, because the four periods repeat', () => {
+    // In the middle of a season the next one is the early price in October.
     renderWidget(<EnrolmentSlot today="2027-06-01" />)
 
     expect(screen.getByText('40 EUR')).toBeVisible()
-    expect(screen.queryByText(/Cena raste/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Cena raste na 35 EUR/)).toBeVisible()
   })
 })
 

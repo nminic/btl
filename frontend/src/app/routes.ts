@@ -91,6 +91,10 @@ export const NAV: NavSection[] = [
         seoKey: 'adminVerification',
       },
       { path: 'administracija/znacke', labelKey: 'admin.badges', seoKey: 'adminBadges' },
+      /* Beside the two sections rather than inside one: the price list has four
+         fixed rows, and nothing is created or removed on it (owner,
+         30.07.2026), which is what the section of entities is for. */
+      { path: 'administracija/cenovnik', labelKey: 'admin.pricing', seoKey: 'adminPricing' },
     ],
   },
 ]
@@ -124,7 +128,6 @@ const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'administracija/trke', labelKey: 'admin.races', seoKey: 'adminRaces' },
   { path: 'administracija/timovi', labelKey: 'admin.teams', seoKey: 'adminTeams' },
   { path: 'administracija/lige', labelKey: 'admin.leagues', seoKey: 'adminLeagues' },
-  { path: 'administracija/cenovnik', labelKey: 'admin.pricing', seoKey: 'adminPricing' },
   { path: 'administracija/strane', labelKey: 'admin.pages', seoKey: 'adminPages' },
   /* The ninth entity, reached from the list of entities like the other eight,
      and shown there to the superadmin alone (PDL P21, P28a). */

@@ -108,7 +108,12 @@ const VERIFICATION_PATHS = new Set([
   ...QUEUES.map((queue) => queue.path),
 ])
 
-const ENTITY_PATHS = new Set(['administracija/entiteti', ...ENTITY_FORMS.map((one) => one.path)])
+/* A fixed entity is not in the section: nothing is created or removed there,
+   which is what the section is (entityForms.ts). */
+const ENTITY_PATHS = new Set([
+  'administracija/entiteti',
+  ...ENTITY_FORMS.filter((one) => one.fixed !== true).map((one) => one.path),
+])
 
 /** The screen with its section standing beside it, where it is in one (owner,
  *  30.07.2026). Everything else is handed through untouched. */

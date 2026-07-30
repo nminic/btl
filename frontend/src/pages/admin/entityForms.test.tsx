@@ -13,7 +13,6 @@ import {
   MEMBERS,
   MODERATORS,
   PAGES,
-  PRICING,
   RACES,
   TEAMS,
   type EntityDef,
@@ -77,7 +76,6 @@ const SCREENS: Screen[] = [
      when nothing had written a badge down anywhere. They are generated data like
      the other seven now, so they answer the same four questions. */
   { entity: BADGES, path: 'administracija/znacke', list: 'Značke' },
-  { entity: PRICING, path: 'administracija/cenovnik', list: 'Cenovnik' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
   /* The ninth. It is entered and changed by the same renderer reading the same
      kind of JSON as the other eight, which is the whole point of it being an
@@ -502,8 +500,11 @@ describe('the words the eight forms need', () => {
     const missing: string[] = []
 
     for (const entity of ENTITY_FORMS) {
+      /* An entity whose rows are fixed is never created, so it has no words for
+         creating one: the price list is the year itself, four windows that
+         repeat (owner, 30.07.2026). */
       const keys = [
-        `admin.form.new.${entity.id}`,
+        ...(entity.fixed === true ? [] : [`admin.form.new.${entity.id}`]),
         `admin.form.edit.${entity.id}`,
         entity.form.titleKey,
         entity.form.submitKey,

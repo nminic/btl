@@ -48,13 +48,20 @@ export function usePermittedQueues(): Queue[] {
 /**
  * The entities this person may open.
  *
- * Nine for the superadmin. For a moderator, those whose box is ticked, less
+ * Eight for the superadmin. For a moderator, those whose box is ticked, less
  * moderators themselves: assigning rights is the single thing the superadmin
  * cannot hand over (PDL P21), so that one has no box to tick and is answered by
  * the same table as everything else (needs.ts).
+ *
+ * And less the price list, whose rows are fixed (owner, 30.07.2026). This
+ * section is what is created and removed; a screen where neither is possible
+ * belongs beside the sections rather than inside one.
  */
 export function usePermittedEntities(): EntityDef[] {
   const open = useMayOpen()
 
-  return useMemo(() => ENTITY_FORMS.filter((entity) => open(entity.path)), [open])
+  return useMemo(
+    () => ENTITY_FORMS.filter((entity) => entity.fixed !== true && open(entity.path)),
+    [open],
+  )
 }

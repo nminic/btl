@@ -1,6 +1,6 @@
 {
   "id": "admin-cena",
-  "titleKey": "admin.form.new.pricing",
+  "titleKey": "admin.form.edit.pricing",
   "submitKey": "form.submit",
   "fields": [
     {
@@ -10,17 +10,6 @@
       "hintKey": "admin.hint.priceLabel",
       "required": true,
       "maxLength": 80
-    },
-    {
-      "name": "from",
-      "type": "date",
-      "labelKey": "admin.field.validFrom"
-    },
-    {
-      "name": "to",
-      "type": "date",
-      "labelKey": "admin.field.validTo",
-      "hintKey": "admin.hint.validPeriod"
     },
     {
       "name": "eur",
@@ -38,12 +27,6 @@
       "required": true,
       "min": 0,
       "max": 200000
-    },
-    {
-      "name": "ranking",
-      "type": "checkbox",
-      "labelKey": "admin.ranking",
-      "hintKey": "admin.hint.ranking"
     }
   ]
 }

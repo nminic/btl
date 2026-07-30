@@ -192,14 +192,71 @@ describe('events', () => {
 })
 
 describe('the price list', () => {
-  it('is shown as rows with a period of validity, not as numbers in a screen', async () => {
+  it('is a period of the year rather than a date, because the list repeats', async () => {
+    /* Owner, 30.07.2026: membership for 2027 is sold until 30 September 2027,
+       and on 1 October the same four periods open again for 2028. Written as
+       dates they would have expired. */
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
-    expect(within(table).getByText('2026-10-01')).toBeVisible()
-    expect(within(table).getByText('2026-11-30')).toBeVisible()
+
+    expect(within(table).getByText('1.10. - 5.10.')).toBeVisible()
+    expect(within(table).getByText('1.1. - 30.9.')).toBeVisible()
+    // The junior price is the one row with no period at all.
+    expect(within(table).getByText('Svaka uplata')).toBeVisible()
     // The in-season price buys a profile but no place in the standing.
     expect(within(table).getAllByText('Ne')).toHaveLength(1)
+  })
+
+  it('is named by its own field, and neither added to nor taken from', async () => {
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Cenovnik' })
+
+    expect(within(table).getByRole('columnheader', { name: 'Naziv perioda' })).toBeVisible()
+    /* The four periods are the year itself. A fifth row would have to fall
+       inside one of them, and a row taken away would leave a stretch of the
+       year with no price at all. */
+    expect(screen.queryByRole('button', { name: /^Nov/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
+  })
+
+  it('stands beside the sections rather than inside the entities', async () => {
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    await screen.findByRole('table', { name: 'Cenovnik' })
+
+    // Nothing is created or removed on it, which is what the section is for.
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
+  })
+
+  it('changes what a period costs and what it is called, and nothing else', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    await screen.findByRole('table', { name: 'Cenovnik' })
+    await user.click(screen.getByRole('button', { name: 'Otvori: 1. do 5. oktobra' }))
+
+    /* Three fields and no more. The window is the year itself and is not
+       something an administrator types (owner, 30.07.2026); it used to ask for a
+       date from and a date to, which is how a price list expires. */
+    expect(screen.getByLabelText(/Naziv perioda/)).toBeVisible()
+    expect(screen.queryByLabelText(/Važi od/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Važi do/)).not.toBeInTheDocument()
+
+    const eur = screen.getByLabelText(/Cena u evrima/)
+    await user.clear(eur)
+    await user.type(eur, '33')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const table = within(await screen.findByRole('table', { name: 'Cenovnik' }))
+    expect(table.getByText('33')).toBeVisible()
+    // And the period it belongs to is where it was.
+    expect(table.getByText('1.10. - 5.10.')).toBeVisible()
   })
 })
 
@@ -1400,6 +1457,8 @@ describe('the section of entities', () => {
   }
 
   it('offers every entity administration owns, screen or not', async () => {
+    /* Eight, not nine: the price list left the section on 30.07.2026, because
+       nothing is created or removed on it and that is what the section is. */
     const names = [
       'Članovi',
       'Događaji',
@@ -1407,13 +1466,12 @@ describe('the section of entities', () => {
       'Timovi',
       'Lige',
       'Značke',
-      'Cenovnik',
       'Statične strane',
       'Moderatori',
     ]
 
     await openSection()
-    expect(names).toHaveLength(ENTITIES.length)
+    expect(names).toHaveLength(ENTITIES.filter((entity) => entity.fixed !== true).length)
 
     const nav = sectionNav()
 
@@ -1434,7 +1492,7 @@ describe('the section of entities', () => {
 
     await screen.findByRole('heading', { level: 1, name: 'Članovi' })
 
-    expect(sectionNav().getByRole('link', { name: 'Cenovnik' })).toBeVisible()
+    expect(sectionNav().getByRole('link', { name: 'Događaji' })).toBeVisible()
   })
 
   it('names the entity for the tab and the screen reader, and nowhere on the screen', async () => {
@@ -1516,7 +1574,7 @@ describe('the section of entities', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(toggle)
-    await user.click(sectionNav().getByRole('link', { name: 'Cenovnik' }))
+    await user.click(sectionNav().getByRole('link', { name: 'Lige' }))
     expect(screen.getByRole('button', { name: 'Entiteti' })).toHaveAttribute(
       'aria-expanded',
       'false',

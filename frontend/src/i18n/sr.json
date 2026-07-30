@@ -639,8 +639,8 @@
   },
   "pricing": {
     "title": "Članarina",
-    "lead": "Članarina se plaća za sezonu, a sezona 2027. traje od 1. januara do 31. decembra 2027.",
-    "period": "Period uplate",
+    "lead": "Članarina se plaća za sezonu, a sezona {season}. traje od 1. januara do 31. decembra {season}.",
+    "period": "Naziv perioda",
     "priceEur": "Cena",
     "priceRsd": "Iz Srbije",
     "notSold": "Ne naplaćuje se",
@@ -648,14 +648,15 @@
       "early": "1. do 5. oktobra",
       "regular": "6. oktobra do 30. novembra",
       "late": "1. do 31. decembra",
-      "season": "Tokom sezone, od 1. januara",
+      "season": "1. januara do 30. septembra",
       "junior": "Uzrast do 14 godina"
     },
     "noRanking": "bez prava na rangiranje",
     "rsdNote": "Dinarska cena je fiksirana za celu sezonu i ne menja se sa kursom. Ako plaćaš iz Srbije, plaćaš dinarski iznos.",
     "previewNote": "Od 15. do 30. septembra portal je otvoren samo za razgledanje: registracija tada nije moguća. Učlanjenje kreće 1. oktobra.",
     "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
-    "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra."
+    "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra.",
+    "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje."
   },
   "error": {
     "title": "Nešto je puklo",
@@ -839,7 +840,6 @@
         "teams": "Novi tim",
         "leagues": "Nova liga",
         "badges": "Nova značka",
-        "pricing": "Novi red cenovnika",
         "pages": "Nova strana",
         "moderators": "Nov moderator"
       },
@@ -921,7 +921,7 @@
       "kind": "Vrsta se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
       "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi. Prag stoji na sredini znaka i nikad nije prazan.",
       "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
-      "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra.",
+      "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
       "validPeriod": "Bez perioda cena ne zavisi od datuma uplate, kao junior cena.",
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "ranking": "Ko plati posle 1. januara ima profil i svoje rezultate, ali ne ulazi u rang liste.",
@@ -932,7 +932,10 @@
     "value": {
       "genderM": "Muški",
       "genderF": "Ženski"
-    }
+    },
+    "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
+    "period": "Period u godini",
+    "everyPayment": "Svaka uplata"
   },
   "badges": {
     "title": "Značke",
