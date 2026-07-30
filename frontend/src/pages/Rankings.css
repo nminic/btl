@@ -81,6 +81,38 @@
   font-size: 0.85rem;
 }
 
+/* The Δ column: how far the row has moved since the end of last month
+   (PDL P12).
+
+   The class is on the table only while the column is really there, which is why
+   it is named after the column and not after the screen. Δ pushes a fourth word
+   column in behind the place and the name, and table.css reads only the first
+   three from the left; without this the category hangs off the right edge. On a
+   season the column says nothing about it is not rendered at all, and then the
+   fourth column is Trke, a number, which belongs on the right where table.css
+   leaves it. */
+.table--with-delta th:nth-child(4),
+.table--with-delta td:nth-child(4) {
+  text-align: left;
+}
+
+.table__delta {
+  width: 3.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Colour is the second thing said, never the first: the arrow carries the
+   direction on its own, so a reader who cannot separate the two hues still
+   reads the column. */
+.delta--up {
+  color: var(--up);
+}
+
+.delta--down {
+  color: var(--down);
+}
+
 /* The drawer under a team row: who is in it and what each of them brought to the
    total. The team standing is a plain sum (PDL P12), so the only honest way to
    read a position is to see whose races add up to it. */

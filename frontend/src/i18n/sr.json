@@ -1,7 +1,6 @@
 {
   "app": {
     "name": "Balkanska trkačka liga",
-    "nameUppercase": "BALKANSKA TRKAČKA LIGA",
     "short": "BTL",
     "slogan": "Svaka trka se broji"
   },
@@ -186,7 +185,6 @@
     "footerNavigation": "Uslovi i pravila",
     "messages": "Poruke",
     "openMessages": "Otvori poruke",
-    "closeMessages": "Zatvori poruke",
     "unread": {
       "one": "{count} nepročitana",
       "few": "{count} nepročitane",
@@ -232,11 +230,6 @@
     "settings": "Podešavanja",
     "stats": "Rangiranje",
     "table": "Tabela"
-  },
-  "theme": {
-    "label": "Tema",
-    "toDark": "Uključi tamnu temu",
-    "toLight": "Uključi svetlu temu"
   },
   "language": {
     "label": "Jezik",
@@ -293,8 +286,8 @@
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
     "wholeStanding": "Cela tabela",
     "byCategory": "Trke po dužini",
-    "previousCategory": "Prethodna kategorija",
-    "nextCategory": "Sledeća kategorija",
+    "pauseCategories": "Zaustavi smenjivanje dužina",
+    "resumeCategories": "Pokreni smenjivanje dužina",
     "calculator": "BTL kalkulator",
     "calcLength": "Dužina staze (km)",
     "calcAscent": "Uspon (m)",
@@ -346,7 +339,6 @@
   "data": {
     "loading": "Učitavanje",
     "error": "Podaci se ne mogu učitati.",
-    "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."
   },
   "form": {
@@ -461,6 +453,19 @@
       "one": "{count} takmičar",
       "few": "{count} takmičara",
       "other": "{count} takmičara"
+    },
+    "delta": {
+      "level": "bez promene mesta",
+      "up": {
+        "one": "{count} mesto naviše",
+        "few": "{count} mesta naviše",
+        "other": "{count} mesta naviše"
+      },
+      "down": {
+        "one": "{count} mesto naniže",
+        "few": "{count} mesta naniže",
+        "other": "{count} mesta naniže"
+      }
     },
     "historyNote": "Sezona 2027. još nije počela. Prikazani su probni podaci iz ranijih godina, da bi se tabela mogla proceniti."
   },
@@ -634,7 +639,6 @@
     "period": "Period uplate",
     "priceEur": "Cena",
     "priceRsd": "Iz Srbije",
-    "notSold": "Ne naplaćuje se",
     "rows": {
       "early": "1. do 5. oktobra",
       "regular": "6. oktobra do 30. novembra",
@@ -769,7 +773,6 @@
     "sendBackNamed": "Vraćanje na doradu: {name}",
     "reason": "Razlog vraćanja",
     "reasonPlaceholder": "Bez razloga se ne vraća.",
-    "officialResults": "Zvanični rezultati",
     "decision": "Odluka",
     "confirmSendBack": "Vrati uz ovaj razlog",
     "cancel": "Odustani",

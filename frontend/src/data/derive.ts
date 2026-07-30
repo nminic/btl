@@ -235,6 +235,100 @@ export function rankingFor(
 }
 
 /**
+ * The last day of the month before the one the given day falls in, as
+ * "YYYY-MM-DD".
+ *
+ * That day is the reference the Δ column measures against, because a month was
+ * the natural rhythm of the old portal too (PDL P12).
+ */
+export function endOfPreviousMonth(today: string): string {
+  const year = Number(today.slice(0, 4))
+  const month = Number(today.slice(5, 7))
+
+  // Day zero of a month is the last day of the month before it, which is what
+  // spares this the count of days in a month and the leap year with it.
+  return new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10)
+}
+
+/**
+ * Whether the Δ column has anything to say about a season: it has while the
+ * reference day falls inside that season and short of its last day (PDL P12).
+ *
+ * The question reads as a strange one until both ends are laid out. A season is
+ * a calendar year (P4) and the reference is the end of the previous month, so in
+ * January the reference is the December before the season began, when nobody was
+ * in the table yet and every row would be blank; and once a season has been
+ * frozen (P9) nothing in it can move again, so every row is level for good.
+ * Neither end is wrong and both are empty. Between them, from February to
+ * December, the column measures something.
+ *
+ * The last day of the season is excluded rather than included, and that is the
+ * whole of the frozen case rather than a detail of it. Looked at in the January
+ * after a season, the reference is that season's 31st of December: a real day
+ * inside it, but one by which every race it will ever hold had already been run
+ * (P9 lets the results arrive until the 1st of January and freezes the tables
+ * that afternoon). The reference standing is then the final standing, and the
+ * column is zero down the page. A test for the frozen case that only looked a
+ * year or two later would have missed this by a fortnight.
+ */
+export function deltaApplies(season: number, referenceDay: string): boolean {
+  return referenceDay >= `${season}-01-01` && referenceDay < `${season}-12-31`
+}
+
+/** A row of the standing together with the places it has gained since the
+ *  reference day. No number at all for a member who was not in the table then. */
+export type StandingRow = RankingRow & { delta?: number }
+
+/**
+ * The standing with the Δ column worked out: how many places each member has
+ * gained since the reference day, which is the end of the previous month
+ * (PDL P12).
+ *
+ * A member who was not in the table on that day carries no number rather than a
+ * leap invented out of their first race, which is the whole reason the number is
+ * optional instead of zero.
+ *
+ * The reference standing is built over the same field and placed by the same
+ * ladder, so the two positions are comparable. The search is left out of it: it
+ * narrows what is shown without renumbering anything (`rankingFor` searches
+ * after placing), so running it over the reference as well would only be work.
+ *
+ * A season the column says nothing about comes back without a single number on
+ * it, and the screen leaves the column out rather than drawing one full of
+ * blanks. Reading `deltaApplies` here as well as there is deliberate: the second
+ * pass over the results is the expensive half of this function, and there is no
+ * sense paying for it to fill a column nobody will be shown.
+ */
+export function standingWithDelta(
+  competitors: Competitor[],
+  results: Result[],
+  filter: RankingFilter,
+  referenceDay: string,
+): StandingRow[] {
+  const rows = rankingFor(competitors, results, filter)
+
+  if (!deltaApplies(filter.season, referenceDay)) {
+    return rows
+  }
+
+  const before = new Map(
+    rankingFor(
+      competitors,
+      results.filter((result) => result.date <= referenceDay),
+      { ...filter, search: undefined },
+    ).map((row) => [row.competitor.memberNumber, row.position]),
+  )
+
+  return rows.map((row) => {
+    const was = before.get(row.competitor.memberNumber)
+
+    // A smaller number is the better place, so places gained is the subtraction
+    // the other way round from the one it looks like.
+    return was === undefined ? row : { ...row, delta: was - row.position }
+  })
+}
+
+/**
  * The members of one team, ordered by what each of them brought to it, down the
  * ladder of the general standing and with a tie nothing separates shared, like
  * every other list on the portal (PDL P12).

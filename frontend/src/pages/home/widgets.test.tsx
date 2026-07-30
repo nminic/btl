@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { setupUser } from '../../test/user'
 import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
 import { TopByCategory } from './TopByCategory'
@@ -203,8 +204,67 @@ describe('TopByCategory', () => {
 
     const first = screen.getByText(/^Najviše/).textContent
 
-    // It turns on its own: there is nothing to click and no heading above it.
+    // It turns on its own, with no heading above it and nothing to steer it by.
     await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(first))
+  })
+
+  /* Content that starts moving by itself and keeps it up past five seconds has
+   * to be stoppable (WCAG 2.2.2). These prove the timer really is cleared, which
+   * is the only part of the rule a screen cannot show. */
+
+  /* Nothing here waits for a change: the point is to give a change that must not
+   * come the time to arrive.
+   *
+   * The number is chosen, not picked. Five lengths at turnMs=20 means the
+   * caption comes back round to itself every 100 ms, so a widget that never
+   * stopped would still read the same at 100, 200 or 300 ms and the test would
+   * pass on a coincidence. 250 ms sits as far from all three as the interval
+   * allows, which leaves 50 ms of slack on a loaded runner in both directions. */
+  const severalTurns = () => new Promise((resolve) => setTimeout(resolve, 250))
+
+  it('stops turning when asked, and turns again when asked again', async () => {
+    const user = setupUser()
+    renderWidget(
+      <TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Zaustavi smenjivanje dužina' }))
+    const stopped = screen.getByText(/^Najviše/).textContent
+    await severalTurns()
+
+    expect(screen.getByText(/^Najviše/).textContent).toBe(stopped)
+
+    // The control now offers the other half of itself.
+    await user.click(screen.getByRole('button', { name: 'Pokreni smenjivanje dužina' }))
+    await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(stopped))
+  })
+
+  it('stands still from the start for anyone who asked for less motion', async () => {
+    const previous = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('reduced-motion'),
+      media: query,
+    })) as typeof matchMedia
+
+    try {
+      renderWidget(
+        <TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />,
+      )
+
+      const first = screen.getByText(/^Najviše/).textContent
+      await severalTurns()
+
+      /* The turning is a timer rather than an animation, so the reduced motion
+         block in index.css never touches it. It has to be read in the component
+         or the preference is silently ignored. */
+      expect(screen.getByText(/^Najviše/).textContent).toBe(first)
+      // Standing still is the default, not the only choice on offer.
+      expect(
+        screen.getByRole('button', { name: 'Pokreni smenjivanje dužina' }),
+      ).toBeInTheDocument()
+    } finally {
+      window.matchMedia = previous
+    }
   })
 
   it('names the length underneath, and says so when nobody ran one', () => {

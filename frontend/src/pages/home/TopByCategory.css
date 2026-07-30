@@ -74,16 +74,50 @@
   font-weight: 700;
 }
 
+/* The gold band at the foot: the name of the length, and the control that stops
+   the widget turning (WCAG 2.2.2). The band carries the colour rather than the
+   caption, so the button sits on the same gold instead of on a seam. */
+.top-cat__foot {
+  position: relative;
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+}
+
 .top-cat__caption {
   margin: 0;
-  padding: 0.45rem 0.6rem;
-  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+  /* The same room kept on both sides, so the button never pushes the words off
+     centre and never sits on top of them. */
+  padding: 0.45rem 2.2rem;
   color: #3a2a02;
   text-align: center;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.09em;
+}
+
+.top-cat__pause {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0.3rem;
+  margin-block: auto;
+  /* Never under the 24 pixels a finger is entitled to (WCAG 2.5.8). */
+  inline-size: 28px;
+  block-size: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(58, 42, 2, 0.4);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  /* The glyphs are drawn in currentColor, and this is the colour the caption
+     beside them is already proved readable in. */
+  color: #3a2a02;
+  cursor: pointer;
+  transition: background var(--fast);
+}
+
+.top-cat__pause:hover {
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .top-cat .card__empty {

@@ -7,8 +7,11 @@ import {
   eventsInMonth,
   monthsWithEvents,
   bestSingleRaces,
+  deltaApplies,
+  endOfPreviousMonth,
   rankingFor,
   rankMembers,
+  standingWithDelta,
   topByKilometers,
   topByTimeOnCourse,
   rankTeams,
@@ -197,6 +200,181 @@ describe('rankingFor', () => {
       ['000005', 1],
       ['000004', 3],
     ])
+  })
+})
+
+describe('endOfPreviousMonth', () => {
+  it('steps back to the last day of the month before', () => {
+    expect(endOfPreviousMonth('2027-03-15')).toBe('2027-02-28')
+    expect(endOfPreviousMonth('2027-06-01')).toBe('2027-05-31')
+    // The first day of the month is still inside it, so the answer is the month
+    // before it and not the day before it.
+    expect(endOfPreviousMonth('2027-01-01')).toBe('2026-12-31')
+  })
+
+  it('knows February in a leap year', () => {
+    expect(endOfPreviousMonth('2028-03-09')).toBe('2028-02-29')
+  })
+})
+
+describe('deltaApplies', () => {
+  /* One condition for both ends of the year (PDL P12). Read through a season
+   * that runs 2027, month by month, with the reference day the screen would
+   * really hand it. */
+  const forMonth = (today: string) => deltaApplies(2027, endOfPreviousMonth(today))
+
+  it('says no in January, when the season had not started at the reference day', () => {
+    // The end of December 2026 is before the first race of 2027, so nobody was
+    // in the table and every row would be blank rather than level.
+    expect(forMonth('2027-01-01')).toBe(false)
+    expect(forMonth('2027-01-31')).toBe(false)
+  })
+
+  it('says yes from February to December', () => {
+    expect(forMonth('2027-02-01')).toBe(true)
+    expect(forMonth('2027-07-15')).toBe(true)
+    expect(forMonth('2027-12-31')).toBe(true)
+  })
+
+  it('says no once the season has been frozen', () => {
+    /* The January after a season is the case worth naming. The reference is that
+       season's 31st of December, a day genuinely inside it, but one by which
+       every race it will ever hold has been run (P9), so the reference standing
+       is the final standing and the column is zero all the way down. Reading the
+       rule as "inside the season" rather than "short of its last day" lets this
+       fortnight through. */
+    expect(forMonth('2028-01-15')).toBe(false)
+    expect(forMonth('2028-01-31')).toBe(false)
+    expect(forMonth('2028-06-15')).toBe(false)
+    expect(forMonth('2030-07-30')).toBe(false)
+  })
+
+  it('still says yes on the last day the season can move', () => {
+    // Looked at in December, the reference is the end of November and the month
+    // being raced still counts.
+    expect(forMonth('2027-12-31')).toBe(true)
+  })
+
+  it('says no about a season that has not begun', () => {
+    expect(deltaApplies(2027, endOfPreviousMonth('2026-09-15'))).toBe(false)
+  })
+})
+
+describe('standingWithDelta', () => {
+  /* Three men whose order changes over the season, and a fourth who does not
+   * start racing until after the reference day. One of each case the column has
+   * to tell apart: a climb, a fall, a row that has not moved, and a row that was
+   * not there to move.
+   *
+   * End of January: 000001 on 10, 000002 on 6, 000003 on 1.
+   * End of season:  000002 on 26, 000001 on 10, 000003 on 9, 000004 on 2.
+   */
+  const competitors = [
+    competitor('000001'),
+    competitor('000002'),
+    competitor('000003'),
+    competitor('000004'),
+  ]
+
+  const results = [
+    result('000001', '2027-01-10', 10),
+    result('000002', '2027-01-10', 6),
+    result('000003', '2027-01-10', 1),
+    result('000002', '2027-05-10', 20),
+    result('000003', '2027-05-10', 8),
+    result('000004', '2027-05-10', 2),
+  ]
+
+  const rows = standingWithDelta(
+    competitors,
+    results,
+    { season: 2027, gender: 'M' },
+    endOfPreviousMonth('2027-02-14'),
+  )
+
+  const deltaOf = (memberNumber: string) =>
+    rows.find((row) => row.competitor.memberNumber === memberNumber)?.delta
+
+  it('counts the places gained since the end of the previous month', () => {
+    // 000002 was second in January and won the season: one place up.
+    expect(deltaOf('000002')).toBe(1)
+  })
+
+  it('counts a fall as places lost', () => {
+    // 000001 led in January and did not race again: first to second.
+    expect(deltaOf('000001')).toBe(-1)
+  })
+
+  it('is zero, not absent, for a row that has held its place', () => {
+    // 000003 was third in January and is third now, having raced in between.
+    expect(deltaOf('000003')).toBe(0)
+  })
+
+  it('says nothing at all about a member who was not in the table then', () => {
+    // 000004 raced in May only, so January has no place of theirs to compare
+    // with and no arrow is invented out of the first race (PDL P12). Absent
+    // rather than zero, because the two mean different things on the screen.
+    expect(deltaOf('000004')).toBeUndefined()
+    expect(rows.find((row) => row.competitor.memberNumber === '000004')).not.toHaveProperty('delta')
+  })
+
+  it('hands back no numbers at all for a season the column says nothing about', () => {
+    /* Once the season is frozen every row would read as level, and in January
+       every row would be blank. Neither is worth a column, so the rows come back
+       untouched and the screen leaves it out (PDL P12). */
+    for (const today of ['2030-07-30', '2027-01-20']) {
+      const outside = standingWithDelta(
+        competitors,
+        results,
+        { season: 2027, gender: 'M' },
+        endOfPreviousMonth(today),
+      )
+
+      expect(outside.map((row) => row.delta)).toEqual([undefined, undefined, undefined, undefined])
+      expect(outside.every((row) => !('delta' in row))).toBe(true)
+      // The standing itself is untouched by any of this.
+      expect(outside.map((row) => row.position)).toEqual([1, 2, 3, 4])
+    }
+  })
+
+  it('keeps the standing itself untouched', () => {
+    expect(rows.map((row) => [row.competitor.memberNumber, row.position])).toEqual([
+      ['000002', 1],
+      ['000001', 2],
+      ['000003', 3],
+      ['000004', 4],
+    ])
+  })
+
+  it('measures against the same field a category filter leaves', () => {
+    const older = competitor('000005', { birthYear: 1960 })
+    const ran = [result('000005', '2027-01-10', 3), result('000005', '2027-05-10', 3)]
+    const only = standingWithDelta(
+      [...competitors, older],
+      [...results, ...ran],
+      { season: 2027, gender: 'M', categoryCode: 'M55+' },
+      endOfPreviousMonth('2027-02-14'),
+    )
+
+    // Alone in the band, so first then and first now.
+    expect(only.map((row) => [row.competitor.memberNumber, row.position, row.delta])).toEqual([
+      ['000005', 1, 0],
+    ])
+  })
+
+  it('reads the same whether or not the view is narrowed by a search', () => {
+    // The search narrows what is shown without renumbering, so the movement of a
+    // row must not depend on what was typed in the box.
+    const searched = standingWithDelta(
+      competitors,
+      results,
+      { season: 2027, gender: 'M', search: '000001' },
+      endOfPreviousMonth('2027-02-14'),
+    )
+
+    expect(searched).toHaveLength(1)
+    expect(searched[0].delta).toBe(-1)
+    expect(searched[0].position).toBe(2)
   })
 })
 
