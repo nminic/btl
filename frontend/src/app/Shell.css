@@ -598,61 +598,9 @@
   }
 }
 
-/* The verification queues (PDL P28a). */
-
-.queues {
-  list-style: none;
-  margin: 1rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.queues__row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.15rem 0.75rem;
-  align-items: center;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  text-decoration: none;
-}
-
-.queues__row:hover {
-  border-color: var(--accent);
-}
-
-.queues__name {
-  font-weight: 700;
-}
-
-.queues__count {
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 2rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: var(--surface-hover);
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-align: center;
-}
-
-.queues__count--waiting {
-  background: var(--accent);
-  color: var(--accent-contrast);
-}
-
-.queues__source {
-  grid-column: 1;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-}
+/* The rows of verification queues that used to stand here are gone: the queues
+   are in the navigation beside the work now, and what is left of the screen is
+   styled where it lives, in pages/admin/Verification.css (owner, 30.07.2026). */
 
 /* The two things a visitor is here to do. Joining is the loud one: it is the
    only control in the header that brings the league any money. */

@@ -107,6 +107,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
   const today = useToday()
+  const waitingId = `waiting-${queue.id}`
   /** Which card has its reason field open. One at a time, as in the results. */
   const [open, setOpen] = useState<string | null>(null)
   /**
@@ -172,14 +173,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
           return (
             <>
-              <h2 className="profile__section">
+              <h2 className="profile__section" id={waitingId}>
                 {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
               </h2>
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>
               ) : (
-                <ul className="submissions">
+                /* Named after the heading above it. The screen now carries the
+                   navigation of the whole section as well (SectionNav), so a
+                   list with no name is one of two lists on the screen and
+                   neither says which. */
+                <ul className="submissions" aria-labelledby={waitingId}>
                   {waiting.map((one) => (
                     <li key={one.id} className="submissions__item">
                       <div className="submissions__head">

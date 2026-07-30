@@ -1,6 +1,27 @@
 /* The queue screens. Every one of them is a list of things to read and two
    decisions to take, so they share one card. */
 
+/* Why each queue exists, which is what the way into the section is left holding
+   once the queues themselves moved into the navigation beside it. A page owns
+   its own names (ADL A7); this used to sit in the shell's stylesheet and worked
+   only because the shell is always mounted. */
+.queues__reasons {
+  margin: 0.75rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.queues__reasons dt {
+  font-weight: 700;
+}
+
+.queues__reasons dd {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .pending__subject {
   margin: 0;
   font-size: 1rem;
