@@ -27,37 +27,6 @@
   }
 }
 
-/* Hero */
-
-.hero__title {
-  margin: 0 0 0.4rem;
-  font-size: clamp(28px, 5vw, 42px);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
-.hero__lead {
-  margin: 0 0 0.75rem;
-  max-width: 62ch;
-  color: var(--text-muted);
-  font-size: 1.05rem;
-}
-
-.hero__countdown {
-  margin: 0 0 1rem;
-  color: var(--text-muted);
-}
-
-.hero__countdown strong {
-  color: var(--gold-text);
-}
-
-.hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
 .button {
   display: inline-block;
   font-weight: 600;

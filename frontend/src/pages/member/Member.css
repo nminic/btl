@@ -270,15 +270,24 @@
   color: var(--text-muted);
 }
 
+/* The buttons of one decision, inside the cell rather than instead of it.
+   `display: flex` used to sit on the `td` itself, which takes a cell out of the
+   table: the row wraps it in a cell of its own making, `vertical-align` never
+   reaches it, and the buttons ended up at a different height from the name they
+   decide about. The cell stays a cell and the flex goes on a box inside it.
+
+   Wrapping, because three buttons do not fit beside a name on a telephone. Each
+   label keeps to one line; the row of them breaks instead. */
 .review__decide {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
-  white-space: nowrap;
 }
 
 .review__decide .button {
   padding: 0.35rem 0.7rem;
   font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .review__reason {

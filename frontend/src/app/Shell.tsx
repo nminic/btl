@@ -173,7 +173,7 @@ export function Shell() {
                 <Link className="button button--secondary button--compact" to={`/${locale}/prijava`}>
                   {t('shell.signIn')}
                 </Link>
-                <Link className="button button--compact" to={`/${locale}/registracija`}>
+                <Link className="button--cta" to={`/${locale}/registracija`}>
                   {t('shell.join')}
                 </Link>
               </>

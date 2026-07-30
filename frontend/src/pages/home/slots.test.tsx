@@ -4,7 +4,6 @@ import type { BtlEvent } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { CalendarExtract } from './CalendarExtract'
 import { EnrolmentSlot } from './EnrolmentSlot'
-import { Hero } from './Hero'
 import { seasonLabelKey } from './content'
 
 function renderWidget(ui: React.ReactNode) {
@@ -14,27 +13,6 @@ function renderWidget(ui: React.ReactNode) {
     </I18nProvider>,
   )
 }
-
-describe('Hero', () => {
-  it('points at the price list while nothing can be bought yet', () => {
-    renderWidget(<Hero today="2026-09-20" />)
-
-    expect(screen.getByRole('link', { name: 'Vidi članarinu' })).toBeVisible()
-    expect(screen.getByText(/do početka sezone/)).toBeVisible()
-  })
-
-  it('points at registration once it is open', () => {
-    renderWidget(<Hero today="2026-10-02" />)
-
-    expect(screen.getByRole('link', { name: 'Učlani se' })).toBeVisible()
-  })
-
-  it('stops counting down once the season has started', () => {
-    renderWidget(<Hero today="2027-03-01" />)
-
-    expect(screen.queryByText(/do početka sezone/)).not.toBeInTheDocument()
-  })
-})
 
 describe('EnrolmentSlot', () => {
   it('says when it opens while it is shut', () => {

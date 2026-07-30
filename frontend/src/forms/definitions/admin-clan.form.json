@@ -4,14 +4,6 @@
   "submitKey": "form.submit",
   "fields": [
     {
-      "name": "memberNumber",
-      "type": "text",
-      "labelKey": "admin.field.memberNumber",
-      "hintKey": "admin.hint.memberNumber",
-      "required": true,
-      "pattern": "^\\d{6}$"
-    },
-    {
       "name": "firstName",
       "type": "text",
       "labelKey": "admin.field.firstName",

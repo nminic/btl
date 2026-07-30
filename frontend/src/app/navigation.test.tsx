@@ -49,7 +49,7 @@ describe('navigation', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    await openGroup(user, 'Statistike')
+    await openGroup(user, 'Rangiranje')
     await user.click(screen.getByRole('link', { name: 'Tabela' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Tabela' })).toBeVisible()
@@ -177,7 +177,7 @@ describe('navigation', () => {
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
-    await openGroup(user, 'Statistike')
+    await openGroup(user, 'Rangiranje')
     await user.click(screen.getByRole('link', { name: 'Top 10 liste' }))
 
     expect(screen.getByRole('button', { name: 'Otvori meni' })).toBeInTheDocument()

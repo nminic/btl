@@ -86,14 +86,19 @@ function CompetitorCards({
                   <span className="card__city">{competitor.city}</span>
                 </span>
 
+                {/* The word above the number, never after it. Serbian declines
+                    the noun by the number in front of it (1 trka, 3 trke, 5 trka),
+                    so a label glued to the end of a figure is wrong for most
+                    values. Above it, the label is a heading and stays in the
+                    nominative (owner, 30.07.2026). */}
                 <span className="card__figures">
                   <span className="card__figure">
-                    <span className="card__value">{formatNumber(own.races, locale)}</span>
                     <span className="card__label">{t('competitors.columns.races')}</span>
+                    <span className="card__value">{formatNumber(own.races, locale)}</span>
                   </span>
                   <span className="card__figure">
-                    <span className="card__value">{formatPoints(own.points, locale)}</span>
                     <span className="card__label">{t('competitors.columns.points')}</span>
+                    <span className="card__value">{formatPoints(own.points, locale)}</span>
                   </span>
                 </span>
               </Link>

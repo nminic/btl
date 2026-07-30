@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
-import { useCompetitors } from '../../data/useResource'
-import type { Competitor, MembershipBasis } from '../../data/types'
+import { nextMemberNumber } from '../../data/memberNumber'
+import { combinePair, useCompetitors } from '../../data/useResource'
+import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
-import { paymentKey } from './pending'
+import { MEMBERS, recordsOf } from './entityForms'
+import { settledIn, usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
@@ -25,12 +27,21 @@ type Refusing = { key: string; name: string }
  * they are nowhere on the portal and can do nothing, so this screen is the whole
  * of their existence in the league.
  *
+ * Which is why the rows are not members. A member number is handed out at the
+ * moment the fee is recorded, first free in order (PDL P8, 30.07.2026), so
+ * whoever is still waiting has no number, and without a number there is no row in
+ * the member list and no profile to link to. They wait in the file of everything
+ * else that wants a decision, and go by their name and their address until the
+ * number exists.
+ *
  * Activation has two grounds, not one. A paid fee is the usual one, and honorary
  * is the second: during the fortnight before registration opens the owner enters
  * the competitors of earlier seasons himself and does not charge them for 2027.
  * An honorary member is a full member, ranked like anybody else, and the ground
  * is only ever a line in the books. It is never shown publicly, anywhere, because
- * it is a fact about money rather than about running.
+ * it is a fact about money rather than about running. The number, on the other
+ * hand, is the first thing the administrator passes on, so it is on screen the
+ * moment it is given.
  *
  * A table, because the work here is comparison down a list rather than reading
  * one thing.
@@ -38,9 +49,11 @@ type Refusing = { key: string; name: string }
 export function Payments() {
   const { t } = useI18n()
   const { role } = useRole()
-  const { decisions, settle } = useSession()
+  const { decisions, edits, creations, settle } = useSession()
   const [open, setOpen] = useState<Refusing | null>(null)
-  const state = useCompetitors()
+  /* The member list is read for one reason only: a number can only be handed out
+     against every number that is already gone. */
+  const state = combinePair(usePending(), useCompetitors())
 
   if (!isStaff(role)) {
     return <StaffOnly />
@@ -48,36 +61,55 @@ export function Payments() {
 
   const queue = QUEUE.payments
 
-  /**
-   * Activation, and the reason box shut behind it.
-   *
-   * The box stands below the table rather than in the row, so without this it
-   * survived the decision taken by the buttons beside it: the row moved to the
-   * settled table, the box stayed open on the same member, and confirming it
-   * overwrote the activation with a refusal. One decision is one record per
-   * member, so the second silently replaced the first and the ground of the
-   * membership went with it.
-   */
-  const activate = (key: string, basis: MembershipBasis) => {
-    settle(key, { status: 'approved', note: '', basis })
-    setOpen((current) => (current?.key === key ? null : current))
-  }
-
   return (
     <div className="member">
       <QueueMeta queue={queue} />
 
       <h1>{t(queue.labelKey)}</h1>
       <p className="member__note">{t(queue.sourceKey)}</p>
+      <p className="member__note">{t('verification.numberNote')}</p>
       <p className="member__note">{t('verification.basisNote')}</p>
 
       <Resource state={state}>
-        {(competitors) => {
-          const unpaid = competitors.filter((one) => !one.active)
-          const decided = (one: Competitor) =>
-            decisions[paymentKey(one.memberNumber)] !== undefined
-          const waiting = unpaid.filter((one) => !decided(one))
-          const settled = unpaid.filter(decided)
+        {([items, competitors]) => {
+          const waiting = waitingIn(items, decisions, queue.id)
+          const settled = settledIn(items, decisions, queue.id)
+
+          /**
+           * Activation, and the reason box shut behind it.
+           *
+           * The number comes off everything that holds one: the member list as the
+           * screen shows it, records entered during this visit included, plus the
+           * numbers handed out earlier in this visit, which are not in any list
+           * yet. Without the last of those, activating three registrations in a
+           * row gave all three the same number.
+           *
+           * The box stands below the table rather than in the row, so without the
+           * second line it survived the decision taken by the buttons beside it:
+           * the row moved to the settled table, the box stayed open on the same
+           * registration, and confirming it overwrote the activation with a
+           * refusal. One decision is one record per registration, so the second
+           * silently replaced the first and the ground of the membership went with
+           * it.
+           */
+          const activate = (id: string, basis: MembershipBasis) => {
+            const spokenFor = [
+              ...recordsOf(MEMBERS, competitors, edits, creations).map((one) =>
+                String(one.memberNumber),
+              ),
+              ...Object.values(decisions)
+                .map((one) => one.memberNumber)
+                .filter((one) => one !== ''),
+            ]
+
+            settle(id, {
+              status: 'approved',
+              note: '',
+              basis,
+              memberNumber: nextMemberNumber(spokenFor),
+            })
+            setOpen((current) => (current?.key === id ? null : current))
+          }
 
           return (
             <>
@@ -100,42 +132,42 @@ export function Payments() {
                     </thead>
                     <tbody>
                       {waiting.map((one) => (
-                        <tr key={one.memberNumber}>
+                        <tr key={one.id}>
                           <td>
-                            {one.firstName} {one.lastName}{' '}
-                            <span className="table__member-number">{one.memberNumber}</span>
+                            {one.who}
+                            {/* The address under the name, because until the fee
+                                is recorded it is what the two of them have to go
+                                by (PDL P8). */}
+                            <span className="pending__country">{one.email}</span>
                           </td>
                           <td>
                             {one.city}
                             <span className="pending__country">{t(`country.${one.country}`)}</span>
                           </td>
-                          <td className="review__decide">
-                            <button
-                              type="button"
-                              className="button button--primary"
-                              onClick={() => activate(paymentKey(one.memberNumber), 'payment')}
-                            >
-                              {t('verification.activatePayment')}
-                            </button>
-                            <button
-                              type="button"
-                              className="button button--secondary"
-                              onClick={() => activate(paymentKey(one.memberNumber), 'honorary')}
-                            >
-                              {t('verification.activateHonorary')}
-                            </button>
-                            <button
-                              type="button"
-                              className="button button--secondary"
-                              onClick={() =>
-                                setOpen({
-                                  key: paymentKey(one.memberNumber),
-                                  name: `${one.firstName} ${one.lastName} (${one.memberNumber})`,
-                                })
-                              }
-                            >
-                              {t('review.sendBack')}
-                            </button>
+                          <td>
+                            <div className="review__decide">
+                              <button
+                                type="button"
+                                className="button button--primary"
+                                onClick={() => activate(one.id, 'payment')}
+                              >
+                                {t('verification.activatePayment')}
+                              </button>
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                onClick={() => activate(one.id, 'honorary')}
+                              >
+                                {t('verification.activateHonorary')}
+                              </button>
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                onClick={() => setOpen({ key: one.id, name: one.who })}
+                              >
+                                {t('review.sendBack')}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -151,7 +183,15 @@ export function Payments() {
                 <SendBack
                   subject={open.name}
                   onConfirm={(reason) => {
-                    settle(open.key, { status: 'rejected', note: reason, basis: '' })
+                    /* Nothing is handed out on a refusal. The registration is
+                       still waiting for a fee, and a number given to it here
+                       would be a number nobody could ever use. */
+                    settle(open.key, {
+                      status: 'rejected',
+                      note: reason,
+                      basis: '',
+                      memberNumber: '',
+                    })
                     setOpen(null)
                   }}
                   onCancel={() => setOpen(null)}
@@ -167,6 +207,10 @@ export function Payments() {
                       <thead>
                         <tr>
                           <th scope="col">{t('competitors.columns.member')}</th>
+                          {/* The number the activation handed out. It is the first
+                              thing the administrator passes on to the member, so
+                              it is a column and not a detail. */}
+                          <th scope="col">{t('admin.field.memberNumber')}</th>
                           <th scope="col">{t('admin.state')}</th>
                           <th scope="col">{t('admin.basis')}</th>
                           <th scope="col">{t('review.explanation')}</th>
@@ -174,13 +218,22 @@ export function Payments() {
                       </thead>
                       <tbody>
                         {settled.map((one) => {
-                          const decision = decisions[paymentKey(one.memberNumber)]
+                          const decision = decisions[one.id]
 
                           return (
-                            <tr key={one.memberNumber}>
+                            <tr key={one.id}>
                               <td>
-                                {one.firstName} {one.lastName}{' '}
-                                <span className="table__member-number">{one.memberNumber}</span>
+                                {one.who}
+                                <span className="pending__country">{one.email}</span>
+                              </td>
+                              <td>
+                                {decision.memberNumber === '' ? (
+                                  ''
+                                ) : (
+                                  <span className="table__member-number">
+                                    {decision.memberNumber}
+                                  </span>
+                                )}
                               </td>
                               <td>
                                 <span className={`tag tag--${decision.status}`}>

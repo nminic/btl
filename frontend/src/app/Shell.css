@@ -627,8 +627,50 @@
 /* The two things a visitor is here to do. Joining is the loud one: it is the
    only control in the header that brings the league any money. */
 .button--compact {
+  /* The base .button is inline-block with its own block padding, so a fixed
+     height left the words sitting above the middle of the box. Centring has to
+     be done by the box, not by the padding (owner, 30.07.2026). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 2.4rem;
+  padding-block: 0;
   padding-inline: 0.85rem;
   font-size: 0.85rem;
+  line-height: 1;
   white-space: nowrap;
+}
+
+/* The one control in the header that brings the league any money (PDL P28a).
+
+   Gold rather than the accent blue: blue is already the colour of every link,
+   pill and active tab, so a blue button in a blue interface is just another blue
+   thing. Gold is the league's other colour and nothing else in the header uses
+   it, which is the whole point of a call to action.
+
+   Same size and same shape as the button beside it, on the owner's word: colour
+   alone carries the emphasis, so the row keeps one geometry. */
+.button--cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.4rem;
+  padding-inline: 0.85rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--gold-400);
+  /* Near black on gold, comfortably past the 4.5:1 the standards ask for. */
+  color: #1a1205;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--fast);
+}
+
+.button--cta:hover,
+.button--cta:focus-visible {
+  background: var(--gold-300);
 }

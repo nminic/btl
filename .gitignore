@@ -1,3 +1,6 @@
 .env
 *.log
 .DS_Store
+
+# Per-session working copies made by tooling, never part of the repo.
+.claude/worktrees/

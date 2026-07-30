@@ -9,7 +9,7 @@ import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from './admin/badgeRule'
 import { ENTITIES } from './admin/entityList'
-import { paymentKey, type PendingItem, type PendingQueueId } from './admin/pending'
+import { type PendingItem, type PendingQueueId } from './admin/pending'
 import { countsFor, QUEUE, QUEUES } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
@@ -167,25 +167,25 @@ describe('the badge rule editor', () => {
     expect(await screen.findByText(/broj trka bude najmanje 10/)).toBeVisible()
 
     await user.selectOptions(screen.getByLabelText('Veličina'), 'totalKm')
-    await user.selectOptions(screen.getByLabelText('Uslov'), 'moreThan')
 
-    expect(screen.getByText(/ukupno kilometara bude više od 10/)).toBeVisible()
+    expect(screen.getByText(/ukupno kilometara bude najmanje 10/)).toBeVisible()
   })
 
+  /* There is no operator to choose any more: the condition is always "at least"
+     (PDL, 30.07.2026), so the only closed list left is the quantity. */
   it('offers no way to write a condition by hand', async () => {
     renderAt('/sr/administracija/znacke', 'superadmin')
 
     await screen.findByLabelText('Veličina')
     // A free text box here is the shortest path to running code on the server.
     expect(screen.getByLabelText('Veličina').tagName).toBe('SELECT')
-    expect(screen.getByLabelText('Uslov').tagName).toBe('SELECT')
+    expect(screen.queryByLabelText('Uslov')).not.toBeInTheDocument()
   })
 })
 
 describe('ruleSentence', () => {
   const base: BadgeRule = {
     quantity: 'raceCount',
-    operator: 'atLeast',
     value: 5,
     from: '',
     to: '',
@@ -479,16 +479,15 @@ describe('verification', () => {
     try {
       renderAt('/sr/administracija/verifikacija', 'moderator')
 
-      /* The file feeds six of the eight rows. Results come from the session and
-         memberships from the list of members, so a failure on it used to take
-         down two rows that never touched it, and the whole screen with them. The
-         header treats the same failure the other way round (src/app/Shell.tsx),
-         and this now matches it. */
-      const memberships = await screen.findByRole('link', {
-        name: /Uplate i aktivacija članova/,
-      })
-      expect(within(memberships).getByText('3')).toBeVisible()
-      expect(screen.getByRole('link', { name: /Rezultati/ })).toBeVisible()
+      /* The file feeds seven of the eight rows, memberships among them since the
+         member number became something the system hands out (PDL P8). Results
+         come from the session, so that row touches no file at all: a failure used
+         to take it down with the rest, and the whole screen with it. The header
+         treats the same failure the other way round (src/app/Shell.tsx), and this
+         still matches it. */
+      const results = await screen.findByRole('link', { name: /Rezultati/ })
+      expect(within(results).getByText('0')).toBeVisible()
+      expect(screen.getByRole('link', { name: /Uplate i aktivacija članova/ })).toBeVisible()
 
       // What a failure must not do is pass for an empty queue without a word.
       expect(await screen.findByRole('alert')).toHaveTextContent(/nije dostupan/)
@@ -544,13 +543,27 @@ describe('the queue of memberships waiting to be activated', () => {
     return user
   }
 
-  it('holds the members who opened an account and are not active yet', async () => {
+  it('holds everyone who opened an account and has not paid yet', async () => {
     await openPayments()
 
     const table = screen.getByRole('table', { name: 'Uplate i aktivacija članova' })
-    // Three of them are generated, and they are the only ones not active.
+    // Three of them are generated, and the file holds no other membership.
     expect(within(table).getAllByRole('row')).toHaveLength(4)
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+  })
+
+  it('goes by the name and the address, because there is no number yet', async () => {
+    await openPayments()
+
+    const table = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' }))
+
+    /* The member number is handed out when the fee is recorded (PDL P8,
+       30.07.2026), so a row that is still waiting has none, and the two things
+       that identify the person are the name and the address. The rows used to
+       carry 000032 to 000034, numbers nobody had given them. */
+    expect(table.getByText('Miodrag Stanković')).toBeVisible()
+    expect(table.getByText('miodrag.stankovic@primer.rs')).toBeVisible()
+    expect(table.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
   })
 
   it('activates on a recorded payment, and on honorary membership', async () => {
@@ -568,6 +581,38 @@ describe('the queue of memberships waiting to be activated', () => {
     const decided = screen.getByRole('table', { name: 'Rešeno' })
     expect(within(decided).getByText('Uplata')).toBeVisible()
     expect(within(decided).getByText('Počasno')).toBeVisible()
+  })
+
+  it('shows the number it handed out, first free and one per activation', async () => {
+    const user = await openPayments()
+
+    /* The generated members hold 000001 to 000031, so the next free one is
+       000032, and every activation after it takes the one after that. The number
+       is what the administrator passes on to the member, so it is on screen the
+       moment it is given (PDL P8, 30.07.2026). */
+    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'Počasno članstvo' })[0])
+
+    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
+    expect(decided.getByText('000032')).toBeVisible()
+    expect(decided.getByText('000033')).toBeVisible()
+  })
+
+  it('hands out no number to a membership it sends back', async () => {
+    const user = await openPayments()
+
+    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Uplata nije vidljiva na izvodu.')
+    await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
+
+    /* A refusal leaves the registration waiting for a fee, so a number given
+       here would be one nobody could ever use, and the next activation would
+       have to skip it for nothing. */
+    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
+    expect(decided.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000032')).toBeVisible()
   })
 
   it('will not send a membership back without a reason', async () => {
@@ -616,15 +661,16 @@ describe('the queue of memberships waiting to be activated', () => {
     const rows = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' }))
       .getAllByRole('row')
       .slice(1)
-    const number = within(rows[0]).getByText(/^\d{6}$/).textContent!
 
     await user.click(within(rows[0]).getByRole('button', { name: 'Vrati na doradu' }))
 
     /* The box hangs below the table, so on a list of twenty there is nothing on
-       screen that says whose membership it decides unless it says so itself. */
+       screen that says whose membership it decides unless it says so itself. The
+       name is what it says, because a member number is exactly what a row here
+       does not have yet (PDL P8, 30.07.2026). */
     const box = screen.getByRole('group', { name: /Vraćanje na doradu/ })
-    expect(box).toHaveAccessibleName(new RegExp(`Vraćanje na doradu: .+\\(${number}\\)`))
-    expect(within(box).getByText(new RegExp(number))).toBeVisible()
+    expect(box).toHaveAccessibleName('Vraćanje na doradu: Miodrag Stanković')
+    expect(within(box).getByText(/Miodrag Stanković/)).toBeVisible()
     // And the field it opens on has the focus, not the document body.
     expect(screen.getByLabelText('Razlog vraćanja')).toHaveFocus()
 
@@ -681,22 +727,21 @@ describe('the six queues read from the file', () => {
     ['teams', 'Novi timovi', 2],
     ['bios', 'Trkačke biografije', 2],
     ['photos', 'Profilne slike', 2],
-    ['comments', 'Komentari', 3],
     ['schedule', 'Prijave promene termina', 3],
   ] as [PendingQueueId, string, number][])(
     'has something waiting in %s, and decides it both ways',
     async (queue, title, waiting) => {
       const user = await open(queue, title)
 
-      // A queue with no data cannot be reviewed at all, so every one of the six
-      // is generated with items in it.
+      // A queue with no data cannot be reviewed at all, so every one of them is
+      // generated with items in it.
       expect(
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
       ).toBeVisible()
       expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(waiting)
       expect(screen.getAllByRole('button', { name: 'Vrati na doradu' })).toHaveLength(waiting)
 
-      // The rule is the same on every queue: no reason, no sending back.
+      // The rule on these queues: no reason, no sending back.
       await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
       expect(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })).toBeDisabled()
       expect(
@@ -712,6 +757,24 @@ describe('the six queues read from the file', () => {
     },
   )
 
+  /* Comments are the one exception (PDL P23, 30.07.2026): they are refused in one
+     click and no reason is asked for, because a comment is not work to be
+     improved and a moderator reads them by the dozen. */
+  it('refuses a comment in one click, and never asks why', async () => {
+    const user = await open('comments', 'Komentari')
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('button', { name: 'Odbij' })[0])
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Razlog vraćanja' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('table', { name: 'Rešeno' })).getByText('Odbijeno'),
+    ).toBeVisible()
+  })
+
   it('drops the count in the queue and on the list of queues once approved', async () => {
     const user = await open('leagues', 'Predložene lige')
 
@@ -726,21 +789,21 @@ describe('the six queues read from the file', () => {
   })
 
   it('will not send anything back without a reason', async () => {
-    const user = await open('comments', 'Komentari')
+    const user = await open('bios', 'Trkačke biografije')
 
     await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
 
     const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
     expect(confirm).toBeDisabled()
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Reklama, ne komentar o trci.')
+    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Nedostaje bilo šta o trčanju.')
     await user.click(confirm)
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(
       within(screen.getByRole('table', { name: 'Rešeno' })).getByText(
-        'Reklama, ne komentar o trci.',
+        'Nedostaje bilo šta o trčanju.',
       ),
     ).toBeVisible()
   })
@@ -840,8 +903,9 @@ describe('countsFor', () => {
   it('counts every queue from the one place', () => {
     const counts = countsFor({
       pendingResults: 3,
-      competitors: [competitor('000001', true), competitor('000002', false)],
+      competitors: [competitor('000001', true)],
       items: [
+        item('u', 'payments'),
         item('a', 'bios'),
         item('b', 'bios'),
         item('c', 'comments'),
@@ -857,6 +921,16 @@ describe('countsFor', () => {
     expect(counts.schedule).toBe(1)
   })
 
+  it('counts a membership from the queue and never from the member list', () => {
+    /* It used to be counted as the member who was not active yet. A member number
+       is handed out when the fee is recorded (PDL P8, 30.07.2026), so somebody who
+       has not paid has no number and is not a member; counting them off the member
+       list would mean they were in it, and everything that reads that list reads
+       all of it, front page included. */
+    expect(countsFor({ ...empty, competitors: [competitor('000002', false)] }).payments).toBe(0)
+    expect(countsFor({ ...empty, items: [item('u', 'payments')] }).payments).toBe(1)
+  })
+
   it('counts a date under check only from what somebody sent in', () => {
     /* The calendar used to be counted here as well, for the dates whose freshness
        clock ran out (PDL P10). An event carries no clock and has no card on the
@@ -869,18 +943,16 @@ describe('countsFor', () => {
   })
 
   it('stops counting an item once it has been decided', () => {
-    const items = [item('a', 'teams'), item('b', 'teams')]
-    const competitors = [competitor('000002', false)]
+    const items = [item('a', 'teams'), item('b', 'teams'), item('u', 'payments')]
 
-    expect(countsFor({ ...empty, items, competitors }).teams).toBe(2)
+    expect(countsFor({ ...empty, items })).toMatchObject({ teams: 2, payments: 1 })
     expect(
       countsFor({
         ...empty,
         items,
-        competitors,
         decisions: {
-          a: { status: 'approved', note: '', basis: '' },
-          [paymentKey('000002')]: { status: 'approved', note: '', basis: 'payment' },
+          a: { status: 'approved', note: '', basis: '', memberNumber: '' },
+          u: { status: 'approved', note: '', basis: 'payment', memberNumber: '000032' },
         },
       }),
     ).toMatchObject({ teams: 1, payments: 0 })

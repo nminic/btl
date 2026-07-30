@@ -25,10 +25,14 @@ describe('Home', () => {
     ])
   })
 
-  it('counts down to the start of the season', async () => {
+  /* The countdown to the season left the page together with the block above the
+     counters (owner, 30.07.2026). What remains is the one date a visitor can act
+     on: when membership opens. */
+  it('says when membership opens rather than counting down to the season', async () => {
     renderAt('/sr')
 
-    expect(await screen.findByText(/do početka sezone 2027/)).toBeVisible()
+    expect(await screen.findByText(/Otvara se za/)).toBeVisible()
+    expect(screen.queryByText(/do početka sezone/)).not.toBeInTheDocument()
   })
 
   it('groups a recurring event into one row instead of five', async () => {

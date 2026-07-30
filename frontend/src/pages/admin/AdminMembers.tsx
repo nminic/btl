@@ -44,9 +44,12 @@ export function AdminMembers() {
               <EntityEditor
                 entity={MEMBERS}
                 editing={editing}
-                /* A member number is unique (PDL P8), so the form has to know
-                   which ones are gone. Without it two members answered to one
-                   number and one change reached both. */
+                /* Every number that is gone, so a new member can be given the
+                   first one that is not: the number is handed out rather than
+                   typed (PDL P8, 30.07.2026). The list is the one this screen
+                   shows, so a member entered a moment ago holds their number
+                   already; reading the file instead would give the next two
+                   members the same one. */
                 taken={all.map((one) => String(one.memberNumber))}
                 onDone={() => setEditing(null)}
               />

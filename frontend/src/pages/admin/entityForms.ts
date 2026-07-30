@@ -6,6 +6,7 @@ import strana from '../../forms/definitions/admin-strana.form.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import trka from '../../forms/definitions/admin-trka.form.json'
 import znacka from '../../forms/definitions/admin-znacka.form.json'
+import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { applyChanges, recordValue } from '../../forms/records'
 import type { DerivedField, FieldError, FormDef, FormValues } from '../../forms/types'
@@ -29,9 +30,18 @@ export type EntityDef = {
   id: string
   form: FormDef
   /** The field that names a record. Taken from the form where the form asks for
-   *  it, generated where it does not: a member number is typed in by hand, the
-   *  id of an event is not something anybody should be typing. */
+   *  it, handed out or made up where it does not: the address of a written page
+   *  is typed in, the id of an event is not something anybody should be typing. */
   idField: string
+  /**
+   * How a record gets an identity the system owns, given every identity that is
+   * spoken for. Only members have one: a member number is handed out first free
+   * in order and an administrator never types it (PDL P8, 30.07.2026).
+   *
+   * The other seven either ask for their identity on the form or get a made up
+   * one, and neither of those needs to know what is taken.
+   */
+  handsOutIdentity?: (taken: string[]) => string
   /** What the record carries that the form leaves alone, so a created record has
    *  the same shape as a generated one and the lists cannot tell them apart. */
   blank: Record<string, unknown>
@@ -45,14 +55,23 @@ export type EntityDef = {
 export type DerivedValue = DerivedField & { value: string }
 
 /**
- * Membership of a team is deliberately not on the member form: a competitor
- * joins a team through a request or an invitation, and never because an
- * administrator typed an id (PDL P13).
+ * Two things are deliberately not on the member form.
+ *
+ * Membership of a team, because a competitor joins a team through a request or an
+ * invitation, and never because an administrator typed an id (PDL P13).
+ *
+ * And the member number, because the system hands it out: first free in order, at
+ * the moment somebody records that the fee arrived, and never typed by an
+ * administrator (PDL P8, 30.07.2026). It was an obligatory field of six digits
+ * with a rule beside it and a check that the number was still free; all three go,
+ * and what they were protecting is now the property of the one function that
+ * hands the number out.
  */
 export const MEMBERS: EntityDef = {
   id: 'members',
   form: clan as FormDef,
   idField: 'memberNumber',
+  handsOutIdentity: nextMemberNumber,
   blank: { teamId: null },
 }
 
@@ -155,9 +174,25 @@ export function namesItself(entity: EntityDef): boolean {
   return entity.form.fields.some((field) => field.name === entity.idField)
 }
 
-/** The identity a record about to be created gets: what was typed where the form
- *  asks for it, and a made up one where it does not. */
-export function idFor(entity: EntityDef, values: FormValues, made: number): string {
+/**
+ * The identity a record about to be created gets, in the three ways an entity can
+ * come by one: handed out by the system out of what is free, typed where the form
+ * asks for it, or made up where nobody should be typing it.
+ *
+ * `taken` is every identity that is spoken for, which is what makes the first of
+ * the three possible. The list is the one the screen is showing rather than the
+ * file it read, so numbers taken by records entered during this visit are in it.
+ */
+export function idFor(
+  entity: EntityDef,
+  values: FormValues,
+  made: number,
+  taken: string[],
+): string {
+  if (entity.handsOutIdentity !== undefined) {
+    return entity.handsOutIdentity(taken)
+  }
+
   return namesItself(entity) ? String(values[entity.idField]) : `${entity.id}-nov-${made + 1}`
 }
 
@@ -165,14 +200,16 @@ export function idFor(entity: EntityDef, values: FormValues, made: number): stri
  * Whether the identity typed into the form belongs to somebody already, as an
  * error beside that field.
  *
- * A member number is unique (PDL P8) and so is the address of a written page.
- * Without this the identity was taken as typed: two records answered to one
- * identity, the list drew two rows with the same key, and one change reached
- * both of them, because the overlay of changes is keyed by exactly that
- * identity. Entering a member as 000001 was enough.
+ * The address of a written page is unique, and without this it was taken as
+ * typed: two records answered to one identity, the list drew two rows with the
+ * same key, and one change reached both of them, because the overlay of changes
+ * is keyed by exactly that identity. Two pages on /pravilnik was enough.
  *
- * Only for the entities whose form asks for their identity. The other six
- * generate one that cannot collide.
+ * Only for the entities whose form asks for their identity, which is now written
+ * pages alone. A member number is unique too (PDL P8), and it is kept unique by
+ * being handed out rather than checked: the number the system gives is the first
+ * one nobody holds, so there is no typed value left to refuse. The other six
+ * generate an identity that cannot collide.
  */
 export function takenIdentity(
   entity: EntityDef,

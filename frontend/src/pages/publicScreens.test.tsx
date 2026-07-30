@@ -329,6 +329,21 @@ describe('Competitors', () => {
     expect(hueFor('000001')).not.toBe(hueFor('000002'))
     expect(hueFor('000001')).toBeLessThan(360)
   })
+
+  it('does not carry anybody whose fee has not been recorded', async () => {
+    /* Before paying, a member has an account and is visible nowhere (PDL P8), and
+       since 30.07.2026 they do not even have a member number: it is handed out at
+       the moment the fee is recorded. Three of them used to sit in the member list
+       as inactive members holding 000032 to 000034, and everything that reads that
+       list reads all of it, so they turned up on the front page among the newest
+       members. They are not members now; they wait in the queue of memberships,
+       and nothing public can reach them. */
+    renderAt('/sr/takmicari')
+
+    const list = within(await screen.findByRole('list'))
+    expect(list.queryByText(/Miodrag Stanković/)).not.toBeInTheDocument()
+    expect(list.queryByText(/Čolaković/)).not.toBeInTheDocument()
+  })
 })
 
 describe('CompetitorProfile', () => {
@@ -461,13 +476,71 @@ describe('Pricing', () => {
 })
 
 describe('Teams', () => {
+  /** The first table on the screen is the standing; the drawers open inside it. */
+  const standing = async () => within(await screen.findByRole('table'))
+
   it('ranks teams by the plain sum of their members', async () => {
     renderAt('/sr/timovi')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const rows = (await standing()).getAllByRole('row').slice(1)
 
     expect(rows.length).toBeGreaterThan(1)
     expect(rows[0].className).toBe('podium')
+  })
+
+  it('opens a team to show who is in it and what each of them brought', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+
+    const drawer = within(screen.getByRole('table', { name: /^Članovi tima/ }))
+    const members = drawer.getAllByRole('row').slice(1)
+    expect(members.length).toBeGreaterThan(0)
+    // Each member is a link to their profile, and carries their own figures.
+    expect(within(members[0]).getByRole('link')).toBeVisible()
+    expect(drawer.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
+      '#',
+      'Član',
+      'Trke',
+      'd (km)',
+      'Bodovi',
+    ])
+  })
+
+  it('closes again, and says which state it is in', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    const open = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    await user.click(open)
+
+    const close = screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0]
+    expect(close).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(close)
+
+    expect(screen.getAllByRole('button', { name: /^Prikaži članove tima/ })[0]).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('says so for a team nobody has joined', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    // The generator leaves one team empty on purpose, which is the case a table
+    // of contributions has nothing to show for.
+    await screen.findByRole('table')
+    for (const toggle of screen.getAllByRole('button', { name: /^Prikaži članove tima/ })) {
+      await user.click(toggle)
+    }
+
+    expect(screen.getByText('Ovaj tim još nema članova.')).toBeVisible()
   })
 })
 

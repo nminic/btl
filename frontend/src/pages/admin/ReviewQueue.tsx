@@ -91,31 +91,36 @@ export function ReviewQueue() {
                   <td className="table__hide-phone">{formatNumber(one.descentM, locale)}</td>
                   <td>{formatDuration(one.seconds)}</td>
                   <td className="table__hide-phone">{formatPoints(one.points, locale)}</td>
-                  <td className="review__decide">
-                    <button
-                      type="button"
-                      className="button button--primary"
-                      onClick={() => {
-                        decide(one.id, 'approved', '')
-                        /* The reason box stands below the table, so approving
-                           from the row would leave it open over a result that
-                           is already decided, and confirming it would refuse
-                           what was just approved without saying so. */
-                        setOpen((current) => (current === one.id ? null : current))
-                      }}
-                    >
-                      {t('review.approve')}
-                    </button>
-                    <button
-                      type="button"
-                      className="button button--secondary"
-                      onClick={() => {
-                        setOpen(one.id)
-                        setNote('')
-                      }}
-                    >
-                      {t('review.sendBack')}
-                    </button>
+                  <td>
+                    {/* The buttons in a box inside the cell, never on the cell
+                        itself: a `td` laid out as a flex container leaves the
+                        table and stops lining up with the row (Member.css). */}
+                    <div className="review__decide">
+                      <button
+                        type="button"
+                        className="button button--primary"
+                        onClick={() => {
+                          decide(one.id, 'approved', '')
+                          /* The reason box stands below the table, so approving
+                             from the row would leave it open over a result that
+                             is already decided, and confirming it would refuse
+                             what was just approved without saying so. */
+                          setOpen((current) => (current === one.id ? null : current))
+                        }}
+                      >
+                        {t('review.approve')}
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => {
+                          setOpen(one.id)
+                          setNote('')
+                        }}
+                      >
+                        {t('review.sendBack')}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

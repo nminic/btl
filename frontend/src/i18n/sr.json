@@ -230,7 +230,7 @@
     "entities": "Entiteti",
     "verification": "Verifikacija",
     "settings": "Podešavanja",
-    "stats": "Statistike",
+    "stats": "Rangiranje",
     "table": "Tabela"
   },
   "theme": {
@@ -611,7 +611,11 @@
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
     "notFound": "Ovog tima nema.",
-    "name": "Tim"
+    "name": "Tim",
+    "membersColumn": "Članovi tima",
+    "showMembers": "Prikaži članove tima {team}",
+    "hideMembers": "Sakrij članove tima {team}",
+    "membersOf": "Članovi tima {team}"
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -890,7 +894,6 @@
       "sectionBody": "Tekst prve sekcije"
     },
     "hint": {
-      "memberNumber": "Šest cifara, na primer 000127. Broj je jedinstven, isti kroz sve sezone i ne nosi oznaku pola.",
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
       "birthYear": "Nikad se ne prikazuje javno. Iz nje se izvodi kategorija, koja jedina ide na profil.",
       "firstSeason": "Prva sezona u kojoj je član nastupao.",
@@ -913,7 +916,7 @@
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
       "description": "Jedna do dve rečenice koje član vidi uz značku.",
       "quantity": "Veličina se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
-      "operator": "Samo najmanje ili više od, da značka koja je osvojena ne može kasnije da se izgubi.",
+      "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi.",
       "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra.",
       "validPeriod": "Bez perioda cena ne zavisi od datuma uplate, kao junior cena.",
@@ -930,16 +933,15 @@
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
     "quantityLabel": "Veličina",
-    "operatorLabel": "Uslov",
     "valueLabel": "Vrednost",
     "from": "Od datuma",
     "to": "Do datuma",
-    "sentence": "Značka se dodeljuje kad {quantity} bude {operator} {value}",
+    "sentence": "Značka se dodeljuje kad {quantity} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
-    "closedList": "Spisak veličina je deo ugovora i menja se samo izmenom portala. Uslov može biti samo najmanje ili više od, da značka koja je osvojena ne može kasnije da se izgubi.",
+    "closedList": "Spisak veličina je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa značka koja je osvojena ne može kasnije da se izgubi.",
     "quantity": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
@@ -954,10 +956,6 @@
       "points": "broj bodova",
       "countryCount": "broj zemalja",
       "seasonCount": "broj sezona"
-    },
-    "operator": {
-      "atLeast": "najmanje",
-      "moreThan": "više od"
     }
   },
   "settings": {
@@ -986,6 +984,7 @@
     "proposedDate": "Prijavljen datum",
     "activatePayment": "Evidentiraj uplatu",
     "activateHonorary": "Počasno članstvo",
+    "numberNote": "Članski broj dodeljuje sistem u trenutku aktivacije, prvi slobodan po redu, i ne unosi se rukom. Zato onaj ko čeka uplatu još nema broj, pa se vodi po imenu i adresi elektronske pošte; dodeljen broj stoji u tabeli rešenih i njega javljaš članu.",
     "basisNote": "Osnov članstva se nikad ne prikazuje javno; vidi ga samo administracija. Počasan član je punopravan i rangira se kao svaki drugi.",
     "body": {
       "leagues": "Opis lige",
@@ -1010,7 +1009,9 @@
     "fromBios": "Biografiju piše član, administrator je odobrava pre objave",
     "fromPhotos": "Profilnu sliku administrator odobrava pre objave",
     "fromComments": "Komentari se odobravaju pre objave, za sve",
-    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine"
+    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine",
+    "reject": "Odbij",
+    "rejected": "Odbijeno"
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

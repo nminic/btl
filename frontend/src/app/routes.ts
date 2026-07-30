@@ -45,19 +45,21 @@ export const NAV: NavSection[] = [
   {
     id: 'about',
     labelKey: 'nav.about',
-    // Two entries for now, on the owner's word (29.07.2026). Badges and the
-    // membership price keep their addresses in UNLISTED_ROUTES until he says
-    // where in the navigation they belong.
+    // Membership joined on 30.07.2026, second on the owner's word: it is the
+    // page that leads to joining, and nothing in the navigation pointed at it.
+    // Badges keep their address in UNLISTED_ROUTES until he says where they go.
     items: [
       { path: 'pravilnik', labelKey: 'nav.rules', seoKey: 'rulebook' },
+      { path: 'clanarina', labelKey: 'nav.pricing', seoKey: 'pricing' },
       { path: 'istorijat', labelKey: 'nav.history', seoKey: 'history' },
     ],
   },
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
   { id: 'teams', labelKey: 'nav.teams', path: 'timovi', seoKey: 'teams' },
-  /* "Statistike" rather than "Tabele", because the group holds three different
-     kinds of thing and only one of them is a table. The standing itself is then
-     free to be called what it is: the table. */
+  /* "Rangiranje" (owner, 30.07.2026). It was briefly "Statistike", but the group
+     holds three ways of ranking people rather than statistics about them, and the
+     word says what a visitor came for. The standing inside it is free to be
+     called what it is: the table. */
   {
     id: 'stats',
     labelKey: 'nav.stats',
@@ -109,7 +111,6 @@ export const CONTACT_ADDRESS = 'info@balkanskatrkackaliga.net'
 const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'o-ligi', labelKey: 'nav.aboutLeague', seoKey: 'aboutLeague' },
   { path: 'znacke', labelKey: 'nav.badges', seoKey: 'badges' },
-  { path: 'clanarina', labelKey: 'nav.pricing', seoKey: 'pricing' },
   { path: 'registracija', labelKey: 'nav.register', seoKey: 'register' },
   { path: 'prijava', labelKey: 'nav.login', seoKey: 'signIn' },
   { path: 'administracija', labelKey: 'nav.admin', seoKey: 'admin' },

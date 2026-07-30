@@ -80,3 +80,45 @@
   color: var(--text-muted);
   font-size: 0.85rem;
 }
+
+/* The drawer under a team row: who is in it and what each of them brought to the
+   total. The team standing is a plain sum (PDL P12), so the only honest way to
+   read a position is to see whose races add up to it. */
+
+.contributions__toggle {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--fast),
+    color var(--fast);
+}
+
+.contributions__toggle:hover,
+.contributions__toggle[aria-expanded='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.contributions__cell {
+  padding: 0.35rem 0.75rem 0.9rem;
+  background: var(--surface-hover);
+}
+
+/* A table inside a table cell keeps its own scroll, and drops the outer border
+   so the drawer reads as part of the row it hangs from. */
+.contributions {
+  margin: 0;
+}
+
+.contributions th,
+.contributions td {
+  font-size: 0.85rem;
+}

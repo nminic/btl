@@ -45,7 +45,7 @@ describe('a panel that opens under a button', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Statistike' })
+    const button = await screen.findByRole('button', { name: 'Rangiranje' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
     expect(button).toHaveAttribute('aria-controls', 'nav-stats')
     expect(screen.queryByRole('link', { name: 'Tabela' })).not.toBeInTheDocument()
@@ -62,7 +62,7 @@ describe('a panel that opens under a button', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Statistike' })
+    const button = await screen.findByRole('button', { name: 'Rangiranje' })
     await user.click(button)
     await user.keyboard('{Escape}')
 
@@ -73,7 +73,7 @@ describe('a panel that opens under a button', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Statistike' })
+    const button = await screen.findByRole('button', { name: 'Rangiranje' })
     await user.click(button)
     screen.getByRole('link', { name: 'Tabela' }).focus()
 
@@ -87,7 +87,7 @@ describe('a panel that opens under a button', () => {
   it('says it opens a panel rather than a menu of commands', async () => {
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Statistike' })
+    const button = await screen.findByRole('button', { name: 'Rangiranje' })
 
     // A disclosure over a list of links: aria-haspopup would announce a menu
     // widget, and with it the arrow keys a menu is expected to answer to.
@@ -99,7 +99,7 @@ describe('a panel that opens under a button', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Statistike' })
+    const button = await screen.findByRole('button', { name: 'Rangiranje' })
     await user.click(button)
     await user.keyboard('{ArrowDown}')
 
@@ -110,7 +110,7 @@ describe('a panel that opens under a button', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Statistike' })
+    const button = await screen.findByRole('button', { name: 'Rangiranje' })
     await user.click(button)
     await user.click(screen.getByRole('main'))
 

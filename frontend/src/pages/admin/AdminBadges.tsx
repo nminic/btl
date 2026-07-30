@@ -3,14 +3,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
-import {
-  OPERATORS,
-  QUANTITIES,
-  ruleSentence,
-  type BadgeRule,
-  type Operator,
-  type Quantity,
-} from './badgeRule'
+import { QUANTITIES, ruleSentence, type BadgeRule, type Quantity } from './badgeRule'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { BADGES, recordsOf, type Editing } from './entityForms'
 import { StaffOnly } from './StaffOnly'
@@ -27,7 +20,6 @@ export function AdminBadges() {
   const [editing, setEditing] = useState<Editing | null>(null)
   const [rule, setRule] = useState<BadgeRule>({
     quantity: 'raceCount',
-    operator: 'atLeast',
     value: 10,
     from: '',
     to: '',
@@ -102,20 +94,6 @@ export function AdminBadges() {
             {QUANTITIES.map((one) => (
               <option key={one} value={one}>
                 {t(`badges.quantity.${one}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="rankings__field">
-          <span>{t('badges.operatorLabel')}</span>
-          <select
-            value={rule.operator}
-            onChange={(event) => setRule({ ...rule, operator: event.target.value as Operator })}
-          >
-            {OPERATORS.map((one) => (
-              <option key={one} value={one}>
-                {t(`badges.operator.${one}`)}
               </option>
             ))}
           </select>

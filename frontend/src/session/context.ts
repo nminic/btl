@@ -90,6 +90,17 @@ export type Decision = {
    *  or honorary (PDL P8). Empty on every other queue, and never shown
    *  publicly. */
   basis: MembershipBasis | ''
+  /**
+   * The payments queue only: the member number the system handed out when the
+   * membership was activated, first free in order (PDL P8, 30.07.2026).
+   *
+   * Written down rather than worked out again where it is shown, because it is
+   * only the first free number at the moment it is given: activate three
+   * registrations and the second must not be able to read itself as the number
+   * the first got. Empty on a refusal, which hands out nothing, and on every
+   * other queue.
+   */
+  memberNumber: string
 }
 
 export type Decisions = Record<string, Decision>
