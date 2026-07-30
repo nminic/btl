@@ -41,6 +41,10 @@
   --gold-text: var(--gold-600);
   --up: #1a7f4b;
   --down: #b3402f;
+  /* Removing something. The same values as --down, which is a fall in the
+     table, and a separate name because the two are not the same idea and must
+     be free to move apart. Both clear 4.5:1 on their own surface. */
+  --danger: #b3402f;
 
   --radius: 10px;
   --radius-sm: 8px;
@@ -67,6 +71,7 @@
     --gold-text: var(--gold-300);
     --up: #4ec98a;
     --down: #ff8a72;
+    --danger: #ff8a72;
 
     color-scheme: dark;
   }
@@ -85,6 +90,7 @@
   --gold-text: var(--gold-300);
   --up: #4ec98a;
   --down: #ff8a72;
+  --danger: #ff8a72;
 
   color-scheme: dark;
 }

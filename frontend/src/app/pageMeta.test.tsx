@@ -38,10 +38,12 @@ describe('the name of a page', () => {
     expect(sr.seo.calendar.title).not.toBe(sr.nav.calendar)
   })
 
-  it('names the not found page as such', async () => {
+  it('lands on the front page when the address is not one, and says so in the tab', async () => {
+    // The address is gone rather than named (owner, 30.07.2026), so the tab ends
+    // up saying what the front page says.
     renderAt('/sr/ovoga-nema')
 
-    await waitFor(() => expect(document.title).toBe(`Ove strane nema · ${LEAGUE}`))
+    await waitFor(() => expect(document.title).toBe(`Svaka trka se broji · ${LEAGUE}`))
   })
 
   it('carries the person on a competitor profile, not "Ove strane nema"', async () => {

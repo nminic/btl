@@ -4,7 +4,7 @@ import { PageMetaContext } from '../app/pageMetaContext'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
-import { moderatorWith, renderAt } from '../test/render'
+import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from '../data/badgeRule'
@@ -59,6 +59,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     setRight: vi.fn(),
     decisions: {},
     settle: vi.fn(),
+  deletions: [],
+  remove: vi.fn(),
   }
 }
 
@@ -78,14 +80,12 @@ describe('administration is closed to everyone else', () => {
   ])('turns a competitor away from %s', async (path) => {
     renderAt(path, 'competitor')
 
-    expect(await screen.findByRole('heading', { name: 'Ovo nije za tebe' })).toBeVisible()
-
-    /* And with nothing of the section around the refusal. The door is fitted
-       outside the section on purpose (routeObjects.tsx): drawn inside it, a
-       competitor at a queue would be refused the work and handed the column
-       beside it, which names all eight queues and says how much is waiting in
-       every one of them. Nothing said so until this line, and swapping the two
-       wrappers left all 766 tests passing. */
+    /* To the front page, and with nothing of administration around it (owner,
+       30.07.2026). The door is fitted outside the section on purpose
+       (routeObjects.tsx): drawn inside it, a competitor at a queue would be
+       turned away from the work and handed the column beside it, which names
+       every queue and says how much is waiting in each. */
+    await expectFrontPage()
     expect(
       screen.queryByRole('navigation', { name: 'Odeljak Verifikacija' }),
     ).not.toBeInTheDocument()
@@ -94,14 +94,12 @@ describe('administration is closed to everyone else', () => {
 
   it('turns a moderator away from a queue he has no right to, section and all', async () => {
     /* The other half of the same rule, and the one that is not about a stranger:
-       a moderator is staff, so it is only the right that stops him. He gets the
-       sentence naming the right to ask for (ADL A8), and not the column of
-       everything he may not open. */
+       a moderator is staff, so it is only the right that stops him. He is not
+       told which right it was; he is told nothing, which is the whole of the
+       30.07.2026 decision. */
     renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, moderatorWith(['queue:results']))
 
-    expect(
-      await screen.findByRole('heading', { name: 'Za ovo ti treba pravo koje nemaš' }),
-    ).toBeVisible()
+    await expectFrontPage()
     expect(
       screen.queryByRole('navigation', { name: 'Odeljak Verifikacija' }),
     ).not.toBeInTheDocument()
@@ -110,7 +108,7 @@ describe('administration is closed to everyone else', () => {
   it('turns a moderator away from the entity of moderators, section and all', async () => {
     renderAt('/sr/administracija/moderatori', 'moderator')
 
-    expect(await screen.findByRole('heading', { name: 'Ovo nije za tebe' })).toBeVisible()
+    await expectFrontPage()
     expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
   })
 })
@@ -465,24 +463,21 @@ describe('the queue of results', () => {
 
 describe('verification', () => {
   it('puts every queue in the navigation beside the work, with its count', async () => {
-    renderAt('/sr/administracija/verifikacija', 'moderator')
+    /* The section has no screen of its own any more (owner, 30.07.2026): its
+       address opens the first queue, so this lands on the results. */
+    renderAt('/sr/administracija/verifikacija', 'superadmin')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Verifikacija' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { level: 2, name: /Čeka proveru/ }),
+    ).toBeVisible()
 
-    /* The section itself first, so a moderator inside a queue can get back to
-       what the section is, then the eight in the order of QUEUES. Every one of
-       them leads somewhere: a queue nobody can open is a list of complaints
-       rather than a place of work. */
+    // The eight, in the order of QUEUES, and nothing above them: the way in is
+    // not an entry, because there is no longer anything at it.
     const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
     const rows = nav.getAllByRole('listitem')
-    expect(rows).toHaveLength(QUEUES.length + 1)
+    expect(rows).toHaveLength(QUEUES.length)
 
-    expect(within(rows[0]).getByRole('link')).toHaveAttribute(
-      'href',
-      '/sr/administracija/verifikacija',
-    )
-
-    rows.slice(1).forEach((row, index) => {
+    rows.forEach((row, index) => {
       expect(within(row).getByRole('link')).toHaveAttribute('href', `/sr/${QUEUES[index].path}`)
     })
 
@@ -491,18 +486,18 @@ describe('verification', () => {
     expect(within(nav.getByRole('link', { name: /Rezultati/ })).getByText('0')).toBeVisible()
   })
 
-  it('says on the way in why each queue exists, which the navigation cannot', async () => {
-    renderAt('/sr/administracija/verifikacija', 'moderator')
+  it('names the queue for the tab and the screen reader, and nowhere on the screen', async () => {
+    renderAt(`/sr/${QUEUE.leagues.path}`, 'superadmin')
 
-    await screen.findByRole('heading', { level: 1, name: 'Verifikacija' })
+    /* Everything above the work is gone (owner, 30.07.2026). The name stays in
+       the markup, because a page with no name is a page a screen reader cannot
+       announce and a browser tab cannot title. */
+    const name = await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
 
-    /* The eight rows of names and numbers that used to be here are in the
-       navigation now (owner, 30.07.2026), so no number on this portal is
-       written in two places. What is left is the one thing a navigation cannot
-       carry. */
-    const reasons = within(screen.getByRole('main'))
-    expect(reasons.getByRole('heading', { level: 2, name: 'Šta se gde odlučuje' })).toBeVisible()
-    expect(reasons.getByText('Rezultat ulazi u tabele tek posle odobrenja')).toBeVisible()
+    expect(name).toHaveClass('visually-hidden')
+    expect(
+      within(screen.getByRole('main')).queryByText('Nova liga se objavljuje tek kad je odobrena'),
+    ).not.toBeInTheDocument()
   })
 
   it('leads to the queue of results', async () => {
@@ -1176,11 +1171,6 @@ describe('the six queues read from the file', () => {
     await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })).toBeVisible()
-    // And back to what the section is, which is the first entry.
-    expect(sectionNav().getByRole('link', { name: 'Verifikacija' })).toHaveAttribute(
-      'href',
-      '/sr/administracija/verifikacija',
-    )
   })
 
   it('hands the next queue a clean screen, not what the last one was in the middle of', async () => {
@@ -1391,9 +1381,14 @@ describe('the section of entities', () => {
    *  (owner, 30.07.2026). */
   const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Entiteti' }))
 
-  it('offers every entity administration owns, screen or not', async () => {
-    renderAt('/sr/administracija/entiteti', 'superadmin')
+  /** The section has no screen of its own: its address opens the first entity
+   *  this person may work on, which for the superadmin is the members. */
+  const openSection = async (role: 'superadmin' | 'moderator' = 'superadmin') => {
+    renderAt('/sr/administracija/entiteti', role)
+    await screen.findByRole('navigation', { name: 'Odeljak Entiteti' })
+  }
 
+  it('offers every entity administration owns, screen or not', async () => {
     const names = [
       'Članovi',
       'Događaji',
@@ -1406,7 +1401,7 @@ describe('the section of entities', () => {
       'Moderatori',
     ]
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Entiteti' })).toBeVisible()
+    await openSection()
     expect(names).toHaveLength(ENTITIES.length)
 
     const nav = sectionNav()
@@ -1431,13 +1426,40 @@ describe('the section of entities', () => {
     expect(sectionNav().getByRole('link', { name: 'Cenovnik' })).toBeVisible()
   })
 
-  it('leaves moderators off it for a moderator, who may not assign rights', async () => {
-    /* The one entity the two roles do not share. An entry that answers "this is
-       not for you" is worse than no entry: it tells somebody there is a screen
-       they are being kept out of (PDL P21). */
-    renderAt('/sr/administracija/entiteti', 'moderator')
+  it('names the entity for the tab and the screen reader, and nowhere on the screen', async () => {
+    renderAt('/sr/administracija/timovi', 'superadmin')
 
-    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+    const name = await screen.findByRole('heading', { level: 1, name: 'Timovi' })
+
+    expect(name).toHaveClass('visually-hidden')
+  })
+
+  it('offers a moderator only the entities he was given', async () => {
+    /* Owner, 30.07.2026: a moderator is not to be aware that there are actions
+       nobody gave him. He used to be shown all nine and refused at the door on
+       eight of them, which is a list of rooms he is being kept out of. */
+    renderAt(
+      '/sr/administracija/entiteti',
+      'moderator',
+      null,
+      moderatorWith(['entity:teams', 'entity:leagues']),
+    )
+
+    await screen.findByRole('navigation', { name: 'Odeljak Entiteti' })
+    const nav = sectionNav()
+
+    expect(nav.getByRole('link', { name: 'Timovi' })).toBeVisible()
+    expect(nav.getByRole('link', { name: 'Lige' })).toBeVisible()
+    expect(nav.queryByRole('link', { name: 'Članovi' })).not.toBeInTheDocument()
+    expect(nav.queryByRole('link', { name: 'Cenovnik' })).not.toBeInTheDocument()
+  })
+
+  it('leaves moderators off it for a moderator, who may not assign rights', async () => {
+    /* The one entity the two roles do not share, and the one a moderator cannot
+       be given: assigning rights is what the superadmin does not hand over
+       (PDL P21). */
+    await openSection('moderator')
+
     const nav = sectionNav()
 
     expect(nav.getByRole('link', { name: 'Članovi' })).toBeVisible()
@@ -1446,9 +1468,8 @@ describe('the section of entities', () => {
 
   it('opens an entity from the section', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/entiteti', 'superadmin')
+    await openSection()
 
-    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
     await user.click(sectionNav().getByRole('link', { name: 'Statične strane' }))
 
     expect(
@@ -1459,18 +1480,14 @@ describe('the section of entities', () => {
   it('carries no count, because nothing about an entity is waiting', async () => {
     /* How many members there are is not work to be done, and a number beside
        every entity would mean loading all nine files to draw a navigation. */
-    renderAt('/sr/administracija/entiteti', 'superadmin')
-
-    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+    await openSection()
 
     expect(sectionNav().getByRole('link', { name: 'Članovi' }).textContent).toBe('Članovi')
   })
 
   it('folds behind a button, for the telephone where it would push the work off', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/entiteti', 'superadmin')
-
-    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+    await openSection()
 
     /* One button, closed to begin with. Which of the two the screen is wide
        enough for is a question for the stylesheet; what has to be true here is
@@ -1495,15 +1512,58 @@ describe('the section of entities', () => {
     )
   })
 
+  it('removes a record, once it has been asked twice', async () => {
+    /* Owner, 30.07.2026: every row can be deleted. Twice, because nothing brings
+       it back and the control stands in a row of twenty beside the one that
+       merely opens the record. */
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    const table = () => within(screen.getByRole('table', { name: 'Timovi' }))
+    const before = (await screen.findAllByRole('button', { name: /^Obriši:/ })).length
+    const first = table().getAllByRole('button', { name: /^Obriši:/ })[0]
+    const name = first.getAttribute('aria-label')!.replace('Obriši: ', '')
+
+    await user.click(first)
+    // Asking is not doing: the row is still there while the question stands.
+    expect(table().getByText(name)).toBeVisible()
+
+    await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+
+    expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before - 1)
+    expect(table().queryByText(name)).not.toBeInTheDocument()
+  })
+
+  it('puts the question away again on second thoughts', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    const table = () => within(screen.getByRole('table', { name: 'Timovi' }))
+    const before = (await screen.findAllByRole('button', { name: /^Obriši:/ })).length
+
+    await user.click(table().getAllByRole('button', { name: /^Obriši:/ })[0])
+    await user.click(table().getAllByRole('button', { name: 'Odustani' })[0])
+
+    expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before)
+    expect(table().queryByRole('button', { name: /^Potvrdi brisanje:/ })).not.toBeInTheDocument()
+  })
+
+  it('sends a moderator with no entity of his own to the front page', async () => {
+    /* Not to an empty section. Somebody who may open nothing here has no
+       business being told the section exists (owner, 30.07.2026). */
+    renderAt('/sr/administracija/entiteti', 'moderator', null, moderatorWith(['queue:results']))
+
+    await expectFrontPage()
+  })
+
   it('puts the list away when the section is left by any other road', async () => {
     /* Following an entry used to be the only thing that closed it, so leaving by
        the header menu or by the browser's back button left the panel standing
        over whatever came next. It is now open at an address rather than open,
        so going anywhere at all closes it. */
     const user = setupUser()
-    renderAt('/sr/administracija/entiteti', 'superadmin')
+    await openSection()
 
-    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
     await user.click(screen.getByRole('button', { name: 'Entiteti' }))
 
     // Through the header rather than through the panel, which is the road that

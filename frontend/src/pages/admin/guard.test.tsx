@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { ROUTES } from '../../app/routes'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
-import { moderatorWith, renderAt } from '../../test/render'
+import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { needFor, NEEDS } from './needs'
 import { QUEUES } from './queues'
@@ -60,27 +60,33 @@ describe('every administrative address', () => {
 })
 
 describe('a moderator without the right for a screen', () => {
-  it('is turned away from it', async () => {
+  it('is sent to the front page, and told nothing at all', async () => {
+    /* It used to be a sentence naming the right to go and ask for. That was the
+       right answer while the navigation named every screen whether or not you
+       could open it; it names only the ones you can now, so the sentence would
+       be the only thing on the portal telling a moderator that a room exists he
+       was never given (owner, 30.07.2026). */
     renderAt('/sr/administracija/cenovnik', 'moderator', null, moderatorWith(['queue:results']))
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('admin.rightMissing') }),
-    ).toBeVisible()
+    await expectFrontPage()
     expect(screen.queryByRole('table', { name: t('admin.pricing') })).not.toBeInTheDocument()
   })
 
-  it('is told which right it is, and not that this is not for him', async () => {
-    renderAt('/sr/administracija/cenovnik', 'moderator', null, moderatorWith([]))
+  it('is never offered it in the navigation either, which is the point', async () => {
+    /* The door and the navigation ask the same question of the same table
+       (needs.ts), so a screen cannot be named in one and refused by the other. */
+    renderAt(
+      '/sr/administracija/verifikacija/komentari',
+      'moderator',
+      null,
+      moderatorWith(['queue:comments']),
+    )
 
-    /* The words of the box in the matrix, so the sentence names the thing the
-       superadmin has to tick. "Ovo nije za tebe" is what a competitor sees, and
-       a moderator reading it would go and report a fault. */
-    expect(
-      await screen.findByText(
-        t('admin.rightMissingText', { action: t('rights.action.entity.pricing') }),
-      ),
-    ).toBeVisible()
-    expect(screen.queryByText(t('admin.notAllowedText'))).not.toBeInTheDocument()
+    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+    expect(nav.getByRole('link', { name: /Komentari/ })).toBeVisible()
+    expect(nav.queryByRole('link', { name: /Profilne slike/ })).not.toBeInTheDocument()
+    expect(nav.queryByRole('link', { name: /Uplate/ })).not.toBeInTheDocument()
   })
 
   it('is turned away from a queue it may not decide, by the same door', async () => {
@@ -91,11 +97,16 @@ describe('a moderator without the right for a screen', () => {
       moderatorWith(['queue:comments']),
     )
 
-    expect(
-      await screen.findByText(
-        t('admin.rightMissingText', { action: t('rights.action.queue.photos') }),
-      ),
-    ).toBeVisible()
+    await expectFrontPage()
+  })
+
+  it('goes to the front page rather than an empty section, holding no queue at all', async () => {
+    /* The way into the section opens the first queue he may work in. Somebody
+       who may work in none has no business being told the section is there
+       (owner, 30.07.2026). */
+    renderAt('/sr/administracija/verifikacija', 'moderator', null, moderatorWith(['entity:teams']))
+
+    await expectFrontPage()
   })
 
   it('gets in where the right is his', async () => {
@@ -106,13 +117,18 @@ describe('a moderator without the right for a screen', () => {
     ).toBeVisible()
   })
 
-  it('is kept out of moderators for a different reason, and told that one', async () => {
-    renderAt('/sr/administracija/moderatori', 'moderator', null, moderatorWith(RIGHTS.map((r) => r.key)))
+  it('is kept out of moderators even holding every right there is', async () => {
+    renderAt(
+      '/sr/administracija/moderatori',
+      'moderator',
+      null,
+      moderatorWith(RIGHTS.map((r) => r.key)),
+    )
 
     /* Holding every right there is changes nothing here. Assigning rights is not
        a right, it is the one thing the two roles do not share (PDL P21), which
        is why there is no box for it to hold. */
-    expect(await screen.findByText(t('admin.moderatorsClosed'))).toBeVisible()
+    await expectFrontPage()
   })
 })
 
@@ -131,13 +147,11 @@ describe('the superadmin', () => {
 })
 
 describe('a competitor', () => {
-  it('is turned away from administration without being told about rights', async () => {
+  it('is sent to the front page, with no sign that administration is there', async () => {
     renderAt('/sr/administracija/cenovnik', 'competitor')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('admin.notAllowed') }),
-    ).toBeVisible()
-    expect(screen.getByText(t('admin.notAllowedText'))).toBeVisible()
+    await expectFrontPage()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
   })
 })
 
@@ -150,21 +164,14 @@ describe('the role switch', () => {
        limited one runs into is to become one of them. Until this existed, the
        matrix had nobody to belong to. */
     const chooser = await screen.findByLabelText(t('role.label'))
-    expect(within(chooser).getByRole('option', { name: 'Nenad Vujačić' })).toBeInTheDocument()
+    // By initials, so the widest choice does not push the rest of the header
+    // onto a second line (owner, 30.07.2026).
+    expect(within(chooser).getByRole('option', { name: 'N. V.' })).toBeInTheDocument()
 
     // Nenad may decide results and nothing else, so the price list closes.
     await user.selectOptions(chooser, 'moderator:mod-vujacic')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('admin.rightMissing') }),
-    ).toBeVisible()
-
-    // And the moderator who holds everything opens it again.
-    await user.selectOptions(chooser, 'moderator:mod-radulovic')
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('admin.pricing') }),
-    ).toBeVisible()
+    await expectFrontPage()
   })
 
   it('carries a tick taken away in the matrix through to the screen behind it', async () => {
@@ -181,14 +188,19 @@ describe('the role switch', () => {
 
     await user.selectOptions(screen.getByLabelText(t('role.label')), 'moderator:mod-radulovic')
 
-    // In through the front, the way the owner walks it: the menu, the list of
-    // entities, and the tile that used to open regardless.
+    /* The screen she was standing on is the one entity no moderator ever opens,
+       so becoming her takes her off it and onto the front page. In through the
+       menu again, the way the owner walks it. */
+    await expectFrontPage()
     await user.click(screen.getByRole('button', { name: t('nav.admin') }))
     await user.click(screen.getByRole('link', { name: t('nav.entities') }))
-    await user.click(await screen.findByRole('link', { name: t('admin.pricing') }))
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('admin.rightMissing') }),
-    ).toBeVisible()
+    /* And the price list has left the section beside her. Before the matrix was
+       enforced the box was remembered and read by nothing at all; before this it
+       was read by the door alone, so the screen was named and then refused. */
+    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Entiteti' }))
+
+    expect(nav.queryByRole('link', { name: t('admin.pricing') })).not.toBeInTheDocument()
+    expect(nav.getByRole('link', { name: t('admin.members') })).toBeVisible()
   })
 })

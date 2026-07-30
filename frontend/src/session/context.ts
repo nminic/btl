@@ -135,6 +135,17 @@ export type Decision = {
 
 export type Decisions = Record<string, Decision>
 
+/**
+ * Records administration has removed, by identity.
+ *
+ * The same overlay every other change is kept as: the generated record
+ * underneath stays where it is and the lists read past it. A list that removed
+ * the record itself could not be told apart from one that never had it, and
+ * there is nothing to delete from in any case, since the records are generated.
+ * When the backend arrives this becomes a DELETE and the screens do not notice.
+ */
+export type Deletions = string[]
+
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'upcomingEvent' | 'newsletter'
 
 export type SessionValue = {
@@ -176,6 +187,11 @@ export type SessionValue = {
 
   decisions: Decisions
   settle: (id: string, decision: Decision) => void
+
+  deletions: Deletions
+  /** Removes one record of any entity. Asked for twice on screen before it gets
+   *  here (EntityEditor.tsx), because nothing brings it back. */
+  remove: (id: string) => void
 }
 
 export const NOTIFICATION_KEYS: NotificationKey[] = [

@@ -163,8 +163,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     <div className="member">
       <QueueMeta queue={queue} />
 
-      <h1>{t(queue.labelKey)}</h1>
-      <p className="member__note">{t(queue.sourceKey)}</p>
+      {/* The name of the queue is in the navigation beside this, marked as the
+          screen in view, and in the browser tab. On the screen it was a heading
+          and a sentence above the work, pushing the first card down, and the
+          moderator arrived here having just read both (owner, 30.07.2026). It
+          stays in the markup because a page has to have a name for anyone who
+          cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t(queue.labelKey)}</h1>
 
       <Resource state={state}>
         {(items) => {

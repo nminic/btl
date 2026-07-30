@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
-import { renderAt } from '../../test/render'
+import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { ENTITY_FORMS } from './entityForms'
 import { QUEUES } from './queues'
@@ -248,13 +248,11 @@ describe('the screen behind the matrix', () => {
   it('is closed to a moderator, who may not decide what a moderator may', async () => {
     renderAt('/sr/administracija/moderatori', 'moderator')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('admin.notAllowed') }),
-    ).toBeVisible()
-    /* And it says why in its own words. The standard sentence names moderators
-       as the people who do see administration, which a moderator standing in
-       front of this would read as a fault rather than as the rule. */
-    expect(screen.getByText(t('admin.moderatorsClosed'))).toBeVisible()
+    /* And says nothing about it. Assigning rights is the one thing the two roles
+       do not share (PDL P21), and a sentence explaining that is a sentence
+       telling a moderator there is a room he is kept out of; the address simply
+       does not answer (owner, 30.07.2026). */
+    await expectFrontPage()
     expect(screen.queryByRole('table', { name: MATRIX })).not.toBeInTheDocument()
   })
 

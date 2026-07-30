@@ -3,11 +3,10 @@ import { NavLink, useLocation } from 'react-router'
 import { dataOr, failed } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
-import { entitiesForRole } from './entityList'
+import { usePermittedEntities, usePermittedQueues } from './mayOpen'
 import { usePending } from './pending'
-import { countsFor, QUEUES } from './queues'
+import { countsFor } from './queues'
 import './SectionNav.css'
 
 /* The two administrative sections are worked through rather than visited: the
@@ -38,7 +37,7 @@ export type SectionItem = {
 function Section({
   /** Stands over the list and names the button that opens it. */
   title,
-  hub,
+  id,
   items,
   /** Said out loud beside the numbers when they cannot be trusted, and nothing
    *  where the section has no numbers. */
@@ -46,9 +45,10 @@ function Section({
   children,
 }: {
   title: string
-  /** The address of the section itself, which is the first entry: from inside a
-   *  queue there is otherwise no way back to what the section is. */
-  hub: string
+  /** Names the panel the button opens, and nothing else. The section itself has
+   *  no entry: it has no screen any more, only the work in it (owner,
+   *  30.07.2026). */
+  id: string
   items: SectionItem[]
   alarm?: ReactNode
   children: ReactNode
@@ -62,9 +62,7 @@ function Section({
      an entry was the only thing that closed it. */
   const [openAt, setOpenAt] = useState<string | null>(null)
   const open = openAt === pathname
-  const panelId = `section-${hub.replace(/\//g, '-')}`
-
-  const entries: SectionItem[] = [{ path: hub, label: title }, ...items]
+  const panelId = `section-${id}`
 
   return (
     <div className="adminsection">
@@ -90,7 +88,7 @@ function Section({
           className={open ? 'adminsection__panel adminsection__panel--open' : 'adminsection__panel'}
         >
           <ul className="adminsection__list">
-            {entries.map((entry) => (
+            {items.map((entry) => (
               <li key={entry.path}>
                 <NavLink
                   /* `end` so the section itself is not marked as the screen in
@@ -149,27 +147,28 @@ function Section({
 }
 
 /**
- * The eight queues, each with what is waiting in it right now.
+ * The queues this moderator may work in, each with what is waiting in it.
  *
- * Counted through countsFor, which is what the list of queues and the number in
- * the header count through as well, so the three cannot disagree. A decision
- * taken on the right is a decision written into the session, and the number
- * beside the queue on the left comes down with it.
+ * Only the ones he may open (owner, 30.07.2026). A moderator is not to be aware
+ * that there are actions nobody gave him: naming eight queues to somebody who
+ * may work in one is telling him about seven doors, and every one of them is an
+ * invitation to ask what is behind it. The superadmin sees all eight, because he
+ * may open all eight.
  *
- * Every queue is shown, and not only the ones this moderator may open. That is
- * on purpose, and it is what the hub did before it: a moderator may be given any
- * of these rights, and the portal answers a refusal by naming the right to go
- * and ask for (ADL A8). Hiding them would mean a moderator could not see that
- * there is work he might ask to be allowed to do.
+ * Counted through countsFor, which is what the number in the header counts
+ * through as well, so the two cannot disagree. A decision taken on the right is
+ * a decision written into the session, and the number beside the queue on the
+ * left comes down with it.
  */
 export function VerificationSection({ children }: { children: ReactNode }) {
   const { t } = useI18n()
   const { submissions, decisions } = useSession()
   const items = usePending()
+  const queues = usePermittedQueues()
 
-  /* Read for what it is worth rather than waited for, exactly as the header and
-     the list of queues read it: a section that waited for the file would hold up
-     the screen behind it, which is the work itself. */
+  /* Read for what it is worth rather than waited for, exactly as the header
+     reads it: a section that waited for the file would hold up the screen behind
+     it, which is the work itself. */
   const counts = countsFor({
     pendingResults: submissions.filter((one) => one.status === 'pending').length,
     items: dataOr(items, []),
@@ -179,8 +178,8 @@ export function VerificationSection({ children }: { children: ReactNode }) {
   return (
     <Section
       title={t('verification.title')}
-      hub="administracija/verifikacija"
-      items={QUEUES.map((queue) => ({
+      id="verifikacija"
+      items={queues.map((queue) => ({
         path: queue.path,
         label: t(queue.labelKey),
         count: counts[queue.id],
@@ -204,13 +203,12 @@ export function VerificationSection({ children }: { children: ReactNode }) {
 }
 
 /**
- * The nine entities, or eight for a moderator.
+ * The entities this person may open: all nine for the superadmin, and for a
+ * moderator only those he has been given.
  *
- * Moderators are the one entry left out, and not because a moderator happens to
- * lack the right: assigning rights is the single thing the superadmin can never
- * hand over (PDL P21), so that entry could only ever answer "this is not for
- * you", which is worse than no entry. Every other entity stays, for the same
- * reason every queue stays.
+ * Moderators are the entity no moderator ever sees, and not because a tick is
+ * missing: assigning rights is the single thing the superadmin cannot hand over
+ * (PDL P21). The other eight come and go with the boxes in the matrix.
  *
  * No numbers. How many members there are is not a thing waiting to be dealt
  * with, and a count beside every entity would mean loading all nine files to
@@ -218,13 +216,13 @@ export function VerificationSection({ children }: { children: ReactNode }) {
  */
 export function EntitiesSection({ children }: { children: ReactNode }) {
   const { t } = useI18n()
-  const { role } = useRole()
+  const entities = usePermittedEntities()
 
   return (
     <Section
       title={t('entities.title')}
-      hub="administracija/entiteti"
-      items={entitiesForRole(role).map((entity) => ({
+      id="entiteti"
+      items={entities.map((entity) => ({
         path: entity.path,
         label: t(entity.labelKey),
       }))}

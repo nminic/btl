@@ -3,6 +3,7 @@ import { dataOr, useModerators } from '../data/useResource'
 import { devToolsEnabled } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { ROLES, type Role } from './context'
+import { initialsOf } from './initials'
 import { useRole } from './useRole'
 import './RoleSwitch.css'
 
@@ -65,8 +66,8 @@ function RoleChooser() {
                different. */
             <optgroup key={option} label={t('role.moderator')}>
               {moderators.map((one) => (
-                <option key={one.id} value={optionFor(one)}>
-                  {`${one.firstName} ${one.lastName}`}
+                <option key={one.id} value={optionFor(one)} title={`${one.firstName} ${one.lastName}`}>
+                  {initialsOf(one)}
                 </option>
               ))}
             </optgroup>

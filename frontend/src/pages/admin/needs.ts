@@ -1,3 +1,4 @@
+import { isStaff, type Role } from '../../roles/context'
 import { ENTITY_FORMS } from './entityForms'
 import { QUEUES } from './queues'
 import { RIGHT, type Right } from './rights'
@@ -50,4 +51,29 @@ export const NEEDS: Record<string, Need> = {
  *  outside administration. */
 export function needFor(path: string): Need | undefined {
   return NEEDS[path]
+}
+
+/**
+ * Whether somebody may open an address that asks for something.
+ *
+ * The one place the question is answered, because two places would answer it
+ * differently within a release. The door asks it (Guard.tsx), and so does the
+ * navigation, before naming a screen at all: a moderator is not to be aware that
+ * there are actions nobody gave him (owner, 30.07.2026).
+ *
+ * It answers yes or no and nothing else. It used to say which of three refusals
+ * it was, so the screen could name the right to go and ask for; there is no
+ * refusal screen any more (Guard.tsx), and a sentence naming a right is the one
+ * thing that decision was meant to stop being said.
+ */
+export function mayOpen(need: Need, role: Role, may: (right: string) => boolean): boolean {
+  if (!isStaff(role)) {
+    return false
+  }
+
+  if (need.of === 'superadmin') {
+    return role === 'superadmin'
+  }
+
+  return need.of === 'staff' || may(need.right.key)
 }

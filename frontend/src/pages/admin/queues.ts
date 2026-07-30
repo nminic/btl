@@ -191,10 +191,16 @@ export function countsFor({ pendingResults, items, decisions }: Waiting): Record
   return counts
 }
 
-/** Everything waiting for a moderator as one number, which is what stands beside
- *  Verification in the navigation (PDL P28a). */
-export function totalWaiting(waiting: Waiting): number {
+/**
+ * Everything waiting for a moderator as one number, which is what stands beside
+ * Verification in the navigation (PDL P28a).
+ *
+ * Over the queues given, which is not always all eight: a moderator sees only
+ * the queues he may work in (owner, 30.07.2026), and a total counting the other
+ * seven would send him looking for work he cannot reach and cannot see.
+ */
+export function totalWaiting(waiting: Waiting, queues: Queue[] = QUEUES): number {
   const counts = countsFor(waiting)
 
-  return QUEUES.reduce((sum, queue) => sum + counts[queue.id], 0)
+  return queues.reduce((sum, queue) => sum + counts[queue.id], 0)
 }

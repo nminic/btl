@@ -4,6 +4,7 @@ import {
   type Creations,
   type Decision,
   type Decisions,
+  type Deletions,
   type Edits,
   type Message,
   type NotificationKey,
@@ -51,6 +52,7 @@ export function SessionProvider({
   const [creations, setCreations] = useState<Creations>({})
   const [rights, setRights] = useState<Rights>({})
   const [decisions, setDecisions] = useState<Decisions>({})
+  const [deletions, setDeletions] = useState<Deletions>([])
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -110,6 +112,13 @@ export function SessionProvider({
     setDecisions((current) => ({ ...current, [id]: decision }))
   }, [])
 
+  const remove = useCallback((id: string) => {
+    // Not guarded against being said twice: the lists ask whether an identity is
+    // in here, so saying it again changes no answer, and a record cannot be
+    // deleted twice from a screen where the first press took the row away.
+    setDeletions((current) => [...current, id])
+  }, [])
+
   /* What the person at the keyboard is allowed to see: what was written to them,
    * and what was written to the whole league. The store holds everybody's. */
   const inbox = useMemo(
@@ -139,6 +148,8 @@ export function SessionProvider({
       setRight,
       decisions,
       settle,
+      deletions,
+      remove,
     }),
     [
       memberNumber,
@@ -159,6 +170,8 @@ export function SessionProvider({
       setRight,
       decisions,
       settle,
+      deletions,
+      remove,
     ],
   )
 

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { JUNIOR, PRICES, type PriceRow } from '../../data/pricing'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import '../member/Member.css'
 
 /* The price list as it is actually stored: rows with a period of validity.
@@ -25,13 +25,18 @@ const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
 
 export function AdminPricing() {
   const { t } = useI18n()
-  const { edits, creations } = useSession()
-  const [editing, setEditing] = useState<Editing | null>(null)
+  const overlay = useOverlay()
+    const [editing, setEditing] = useState<Editing | null>(null)
 
   if (editing !== null) {
     return (
       <div className="member">
-        <h1>{t('admin.pricing')}</h1>
+        {/* The name of the screen is in the navigation beside it and in the browser
+            tab. Here it was a heading and a sentence or two above the work, and the
+            moderator arrives having just read the name in the list he came from
+            (owner, 30.07.2026). It stays in the markup so the page has a name for
+            anyone who cannot see which entry is marked. */}
+        <h1 className="visually-hidden">{t('admin.pricing')}</h1>
         <EntityEditor entity={PRICING} editing={editing} onDone={() => setEditing(null)} />
       </div>
     )
@@ -41,14 +46,13 @@ export function AdminPricing() {
     ...row,
     label: t(`pricing.rows.${row.key}`),
   }))
-  const rows = recordsOf(PRICING, base, edits, creations)
+  const rows = recordsOf(PRICING, base, overlay)
 
   return (
     <div className="member">
-      <h1>{t('admin.pricing')}</h1>
-      <p className="member__note">{t('admin.pricingNote')}</p>
+      <h1 className="visually-hidden">{t('admin.pricing')}</h1>
 
-      <NewRecord entity={PRICING} onOpen={() => setEditing({ mode: 'new' })} />
+      <EntityBar entity={PRICING} onNew={() => setEditing({ mode: 'new' })} />
 
       <div className="table-scroll">
         <table className="table">
@@ -74,7 +78,9 @@ export function AdminPricing() {
                 <td>{row.rsd.toLocaleString('sr-Latn')}</td>
                 <td>{row.ranking ? t('admin.yes') : t('admin.no')}</td>
                 <td>
-                  <OpenRecord
+                  <RowActions
+                    entity={PRICING}
+                    record={row}
                     name={row.label}
                     onOpen={() => setEditing({ mode: 'one', record: row })}
                   />

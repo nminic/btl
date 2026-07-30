@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
-import { renderAt } from '../../test/render'
+import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { BADGE_KINDS } from '../../data/badgeRule'
 import {
@@ -176,9 +176,11 @@ describe('the confirmation that a record was saved', () => {
 
 describe('a competitor', () => {
   it.each(SCREENS)('is offered no form at all on $path', async ({ entity, path }) => {
+    // The address is not refused with a sentence any more, it is not there at
+    // all (owner, 30.07.2026).
     renderAt(`/sr/${path}`, 'competitor')
 
-    expect(await screen.findByRole('heading', { level: 1, name: t('admin.notAllowed') })).toBeVisible()
+    await expectFrontPage()
     expect(
       screen.queryByRole('button', { name: t(`admin.form.new.${entity.id}`) }),
     ).not.toBeInTheDocument()

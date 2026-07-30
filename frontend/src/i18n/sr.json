@@ -255,14 +255,13 @@
     "moderator": "Moderator",
     "superadmin": "Superadmin"
   },
+  "notFound": {
+    "title": "Ove strane nema",
+    "text": "Adresa je pogrešna ili je strana uklonjena."
+  },
   "clock": {
     "label": "Današnji datum",
     "reset": "Vrati na stvarni datum"
-  },
-  "notFound": {
-    "title": "Ove strane nema",
-    "text": "Adresa je pogrešna ili je strana uklonjena.",
-    "back": "Nazad na naslovnu"
   },
   "placeholder": {
     "title": "{name}",
@@ -791,10 +790,6 @@
   "admin": {
     "title": "Administracija",
     "sectionNav": "Odeljak {name}",
-    "notAllowed": "Ovo nije za tebe",
-    "notAllowedText": "Administrativni deo vide samo moderatori i Superadmin.",
-    "rightMissing": "Za ovo ti treba pravo koje nemaš",
-    "rightMissingText": "Ovaj ekran otvara moderator kome je Superadmin dao ovo pravo: {action}. Traži ga od njega ako ti je potrebno za posao.",
     "waiting": "Čeka proveru",
     "members": "Članovi",
     "events": "Događaji",
@@ -836,7 +831,6 @@
     "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
     "moderators": "Moderatori",
     "moderatorsNote": "Ljudi koji moderiraju portal. Superadmin ih pravi i kućicama im zadaje prava; sve ostalo u administraciji rade isto kao on.",
-    "moderatorsClosed": "Moderatore uređuje samo Superadmin. To je jedina razlika između dve uloge: ne šta ko sme da radi, nego ko odlučuje šta moderator sme.",
     "pageTitle": "Naslov",
     "address": "Adresa",
     "noAddress": "Stoji unutar drugih strana",
@@ -848,7 +842,6 @@
       "back": "Nazad na spisak",
       "saved": "Sačuvano",
       "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
-      "note": "Ceo zapis se otvara dugmetom u redu. Nov zapis i izmena se pamte dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
       "tryRule": "Proba pravila",
       "new": {
         "members": "Novi član",
@@ -871,7 +864,12 @@
         "pricing": "Izmena reda cenovnika",
         "pages": "Izmena strane",
         "moderators": "Izmena moderatora"
-      }
+      },
+      "delete": "Obriši",
+      "deleteNamed": "Obriši: {name}",
+      "deleteSure": "Sigurno?",
+      "deleteSureNamed": "Potvrdi brisanje: {name}",
+      "keep": "Odustani"
     },
     "field": {
       "memberNumber": "Članski broj",

@@ -4,7 +4,7 @@ import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
-import { renderAt } from '../test/render'
+import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
@@ -242,10 +242,11 @@ describe('messages', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Poruke' })).toBeVisible()
   })
 
-  it('says the message is not there when the address is wrong', async () => {
+  it('goes to the front page when the address is a message that is not there', async () => {
+    // Same road as any address the portal does not have (owner, 30.07.2026).
     renderAt('/sr/poruke/nema-ovakve', 'competitor', '000007')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ove strane nema' })).toBeVisible()
+    await expectFrontPage()
   })
 })
 

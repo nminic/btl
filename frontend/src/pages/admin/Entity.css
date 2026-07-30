@@ -100,3 +100,57 @@
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+
+/* The strip above every list: what narrows it on the left, the one control that
+   starts a new record at the far end (owner, 30.07.2026). It was above the
+   search, which put it first on a screen whose work is reading a list. */
+.entity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block: 0.5rem 0.75rem;
+}
+
+.entity-bar__filters {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+/* The filters bring their own spacing when they stand alone on a page; inside
+   the strip the strip is what spaces them. */
+.entity-bar__filters .rankings__filters {
+  margin: 0;
+}
+
+.entity-bar__new {
+  flex: none;
+}
+
+/* Open and delete, side by side at the end of every row, always in that order
+   and always the same distance apart. */
+.entity-row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Deleting is not the ordinary thing to do in a row, so it does not look like
+   the button beside it until it is hovered. The confirmation does, because by
+   then it is the thing about to happen. */
+.entity-delete {
+  color: var(--text-muted);
+}
+
+.entity-delete:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: transparent;
+}
+
+.entity-delete--sure {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 700;
+}

@@ -5,10 +5,10 @@ import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import type { FieldOption } from '../../forms/types'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { recordsOf, TEAMS, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import '../member/Member.css'
 
 /* Teams, with the organiser and the head count beside each. Both matter when a
@@ -26,19 +26,22 @@ function organizerOptions(competitors: Competitor[]): FieldOption[] {
 
 export function AdminTeams() {
   const { locale, t } = useI18n()
-  const { edits, creations } = useSession()
-  const [editing, setEditing] = useState<Editing | null>(null)
+  const overlay = useOverlay()
+    const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useTeams(), useCompetitors())
 
   return (
     <div className="member">
-      <h1>{t('admin.teams')}</h1>
-      <p className="member__note">{t('admin.teamsNote')}</p>
-      <p className="member__note">{t('admin.editNote')}</p>
+      {/* The name of the screen is in the navigation beside it and in the browser
+          tab. Here it was a heading and a sentence or two above the work, and the
+          moderator arrives having just read the name in the list he came from
+          (owner, 30.07.2026). It stays in the markup so the page has a name for
+          anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t('admin.teams')}</h1>
 
       <Resource state={state}>
         {([teams, competitors]) => {
-          const rows = recordsOf(TEAMS, teams, edits, creations)
+          const rows = recordsOf(TEAMS, teams, overlay)
 
           if (editing !== null) {
             return (
@@ -53,7 +56,7 @@ export function AdminTeams() {
 
           return (
             <>
-              <NewRecord entity={TEAMS} onOpen={() => setEditing({ mode: 'new' })} />
+              <EntityBar entity={TEAMS} onNew={() => setEditing({ mode: 'new' })} />
 
               <div className="table-scroll">
                 <table className="table">
@@ -99,7 +102,9 @@ export function AdminTeams() {
                               : `${organizer.firstName} ${organizer.lastName}`}
                           </td>
                           <td>
-                            <OpenRecord
+                            <RowActions
+                              entity={TEAMS}
+                              record={team}
                               name={team.name}
                               onOpen={() => setEditing({ mode: 'one', record: team })}
                             />
