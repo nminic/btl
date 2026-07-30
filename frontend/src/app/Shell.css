@@ -596,10 +596,6 @@
   border-color: var(--accent);
 }
 
-.queues__row--flat:hover {
-  border-color: var(--border);
-}
-
 .queues__name {
   font-weight: 700;
 }
@@ -626,14 +622,6 @@
   grid-column: 1;
   color: var(--text-muted);
   font-size: 0.82rem;
-}
-
-.queues__soon {
-  grid-column: 2;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 /* The two things a visitor is here to do. Joining is the loud one: it is the

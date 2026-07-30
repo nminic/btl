@@ -284,6 +284,11 @@ function renderInbox(messages: Message[]) {
     setNotification: vi.fn(),
     edits: {},
     edit: vi.fn(),
+    editRecord: vi.fn(),
+    creations: {},
+    create: vi.fn(),
+    decisions: {},
+    settle: vi.fn(),
   }
 
   return render(

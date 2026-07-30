@@ -1,0 +1,54 @@
+{
+  "id": "admin-dogadjaj",
+  "titleKey": "admin.form.new.events",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.field.eventName",
+      "hintKey": "admin.hint.eventName",
+      "required": true,
+      "maxLength": 120
+    },
+    {
+      "name": "date",
+      "type": "date",
+      "labelKey": "admin.field.date",
+      "hintKey": "admin.hint.date",
+      "required": true
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "labelKey": "admin.field.city",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "country",
+      "type": "country",
+      "labelKey": "admin.field.country",
+      "required": true
+    },
+    {
+      "name": "organizer",
+      "type": "text",
+      "labelKey": "admin.organizer",
+      "hintKey": "admin.hint.organizer",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "status",
+      "type": "select",
+      "labelKey": "admin.state",
+      "hintKey": "admin.hint.status",
+      "required": true,
+      "options": [
+        { "value": "confirmed", "labelKey": "calendar.status.confirmed" },
+        { "value": "checking", "labelKey": "calendar.status.checking" }
+      ]
+    }
+  ]
+}

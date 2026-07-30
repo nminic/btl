@@ -67,7 +67,7 @@ describe('navigation', () => {
 
   it('keeps the current screen when the language changes', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rang-liste')
+    renderAt('/sr/top-liste')
 
     await user.click(screen.getByRole('button', { name: 'Jezik' }))
     await user.click(screen.getByRole('option', { name: 'English' }))
@@ -78,7 +78,7 @@ describe('navigation', () => {
         'true',
       ),
     )
-    expect(screen.getByRole('heading', { level: 1, name: 'Rang liste' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
   })
 
   it('declares the language the text is actually written in', async () => {
@@ -93,23 +93,9 @@ describe('navigation', () => {
     await waitFor(() => expect(document.documentElement.lang).toBe('sr'))
   })
 
-  it('names every screen in the document title', async () => {
-    const user = userEvent.setup()
-    renderAt('/sr')
-
-    await waitFor(() => expect(document.title).toBe('Naslovna · Balkanska trkačka liga'))
-
-    await user.click(screen.getByRole('link', { name: 'Kalendar' }))
-    await waitFor(() => expect(document.title).toBe('Kalendar · Balkanska trkačka liga'))
-  })
-
-  it('titles an unknown address as not found', async () => {
-    renderAt('/sr/ovoga-nema')
-
-    await waitFor(() =>
-      expect(document.title).toBe('Ove strane nema · Balkanska trkačka liga'),
-    )
-  })
+  /* What each screen is called in the browser tab, what it says about itself to
+     a search engine and what a shared link to it shows are all in
+     src/app/pageMeta.test.tsx, address by address. */
 
   it('says out loud which screen opened', async () => {
     renderAt('/sr/timovi')
@@ -162,7 +148,10 @@ describe('navigation', () => {
 
     await openGroup(user, 'Administracija')
 
-    expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
+    /* The entry carries the sum of everything waiting in its name, not only in
+       the badge (PDL P28a), and something is always waiting, so the number is
+       part of what a screen reader hears here. */
+    expect(screen.getByRole('link', { name: /^Verifikacija/ })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Entiteti' })).toBeVisible()
   })
 
@@ -189,10 +178,10 @@ describe('navigation', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
     await openGroup(user, 'Statistike')
-    await user.click(screen.getByRole('link', { name: 'Rang liste' }))
+    await user.click(screen.getByRole('link', { name: 'Top 10 liste' }))
 
     expect(screen.getByRole('button', { name: 'Otvori meni' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Rang liste' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
   })
 
   it('closes the menu after following a link that is not in a group', async () => {

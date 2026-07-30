@@ -4,6 +4,8 @@ import type { Competitor } from './types'
 import {
   combinePair,
   combineResources,
+  dataOr,
+  failed,
   useCompetitors,
   useEvents,
   useLeagues,
@@ -143,5 +145,37 @@ describe('combinePair', () => {
   it('lets an error win over loading, because half a screen is a broken screen', () => {
     expect(combinePair(loading, failed)).toBe(failed)
     expect(combinePair(failed, ready(1))).toBe(failed)
+  })
+})
+
+describe('dataOr and failed', () => {
+  /* For the two places that must not wait and must not become an error message:
+     the count in the header, which sits above every screen there is, and the list
+     of queues, where one file feeds two rows at most. */
+  const failure: ResourceState<number[]> = { status: 'error', error: new Error('pukla veza') }
+
+  it('hands over what a resource holds, and a stand-in until it does', () => {
+    expect(dataOr({ status: 'ready', data: [1, 2] }, [])).toEqual([1, 2])
+    expect(dataOr({ status: 'loading' }, [])).toEqual([])
+    expect(dataOr(failure, [])).toEqual([])
+  })
+
+  it('says when one of them failed, so nothing counts a failure as empty in silence', () => {
+    expect(failed({ status: 'ready', data: [1] })).toBe(false)
+    expect(failed({ status: 'loading' }, { status: 'ready', data: [1] })).toBe(false)
+    expect(failed({ status: 'ready', data: [1] }, failure)).toBe(true)
+  })
+})
+
+describe('the generated data', () => {
+  it('carries no event in a state the portal does not have', async () => {
+    /* A race has no state "announced" and none "postponed" (PDL P10). The
+       generator wrote thirty of them, which is a state no screen and no decision
+       knows what to do with. It lives outside the repo, so this is the only place
+       that can notice. */
+    const events = await loadResource<{ status: string }[]>('events')
+
+    expect(events.length).toBeGreaterThan(0)
+    expect([...new Set(events.map((one) => one.status))].sort()).toEqual(['confirmed'])
   })
 })

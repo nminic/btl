@@ -173,7 +173,10 @@
   gap: 0.35rem;
 }
 
-.pay h3 {
+/* A way of paying sits under the slip it belongs to, so its heading is a level
+   below it. The size stays the same; the level is about the outline, not the
+   look. */
+.pay h4 {
   margin: 0;
   font-size: 0.95rem;
 }
@@ -285,6 +288,13 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+/* Who the decision is about, where the box stands away from the row it belongs
+   to. Under a table of twenty, the name is the whole context there is. */
+.review__about {
+  margin: 0;
+  font-weight: 700;
 }
 
 .editable {

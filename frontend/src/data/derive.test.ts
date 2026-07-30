@@ -8,6 +8,7 @@ import {
   monthsWithEvents,
   bestSingleRaces,
   rankingFor,
+  rankMembers,
   topByKilometers,
   topByTimeOnCourse,
   rankTeams,
@@ -398,6 +399,67 @@ describe('rankTeams', () => {
     expect(ranked[0].team.id).toBe('big')
     expect(ranked[0].members).toBe(2)
   })
+
+  /* The rest of the ladder from PDL P12, below the member count: the kilometres
+     of every member, then the races of every member. The order stopped at the
+     member count before, so two teams level on points and on size were left in
+     whatever order the team list happened to be in. */
+  it('goes on to the kilometres of every member when the size is level too', () => {
+    const teams = [team('fewer'), team('more')]
+    const competitors = [
+      competitor('000001', { teamId: 'fewer' }),
+      competitor('000002', { teamId: 'more' }),
+    ]
+    const results = [
+      result('000001', '2027-01-01', 10, { distanceKm: 10 }),
+      result('000002', '2027-01-01', 10, { distanceKm: 30 }),
+    ]
+
+    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual([
+      'more',
+      'fewer',
+    ])
+  })
+
+  it('goes on to the races of every member when the kilometres are level too', () => {
+    const teams = [team('one-race'), team('two-races')]
+    const competitors = [
+      competitor('000001', { teamId: 'one-race' }),
+      competitor('000002', { teamId: 'two-races' }),
+    ]
+    const results = [
+      result('000001', '2027-01-01', 20, { distanceKm: 20 }),
+      result('000002', '2027-01-01', 10, { distanceKm: 10 }),
+      result('000002', '2027-02-02', 10, { distanceKm: 10 }),
+    ]
+
+    // Same points and same kilometres, and the bigger volume of races wins.
+    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual([
+      'two-races',
+      'one-race',
+    ])
+  })
+
+  it('shows a tie the whole ladder leaves standing as a shared place', () => {
+    const teams = [team('b'), team('a'), team('c')]
+    const competitors = [
+      competitor('000001', { teamId: 'a' }),
+      competitor('000002', { teamId: 'b' }),
+      competitor('000004', { teamId: 'c' }),
+    ]
+    const results = [
+      result('000001', '2027-01-01', 10),
+      result('000002', '2027-01-01', 10),
+      result('000004', '2027-01-01', 5),
+    ]
+
+    const ranked = rankTeams(teams, competitors, results)
+
+    // 1, 1, 3, and inside the shared place the smaller id first, so the board
+    // does not shuffle between two recounts of the same data (PDL P12).
+    expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
+    expect(ranked.map((row) => row.team.id)).toEqual(['a', 'b', 'c'])
+  })
 })
 
 describe('topByCategory', () => {
@@ -559,6 +621,59 @@ describe('topByKilometers', () => {
       30, 20,
     ])
     expect(topByKilometers(competitors, results, 2025, 10)).toEqual([])
+  })
+
+  it('gives the place to whoever got there first, before sharing it', () => {
+    /* The fifth rung, from PDL P12 and Article 57 of the rulebook: two rows level
+       on kilometres, races, vertical and points are settled by who reached the
+       count earlier. The board of races by length already had it and this one did
+       not, so the two were left in whatever order they came in and shared a place
+       they were not level on. */
+    const level = [
+      result('000002', '2027-06-01', 1, { distanceKm: 20 }),
+      result('000008', '2027-03-01', 1, { distanceKm: 20 }),
+    ]
+
+    expect(
+      topByKilometers([competitor('000002'), competitor('000008')], level, 2027, 10).map((row) => [
+        row.competitor.memberNumber,
+        row.position,
+      ]),
+    ).toEqual([
+      ['000008', 1],
+      ['000002', 2],
+    ])
+  })
+})
+
+describe('rankMembers', () => {
+  /* The members of a team, ordered by what each brought to it. The page used to
+     number the rows and sort on points alone, so two members level on points were
+     given 1 and 2 by the order they happened to be in (PDL P12). */
+  const members = [competitor('000002'), competitor('000008'), competitor('000004')]
+
+  it('shares a place nothing separates, and keeps everybody who is in the team', () => {
+    const results = [
+      result('000002', '2027-01-01', 10),
+      result('000008', '2027-01-01', 10),
+      result('000004', '2027-01-01', 20),
+    ]
+
+    expect(
+      rankMembers(members, results).map((row) => [row.competitor.memberNumber, row.position]),
+    ).toEqual([
+      ['000004', 1],
+      ['000002', 2],
+      ['000008', 2],
+    ])
+  })
+
+  it('leaves the member who has not raced yet in the team, at the bottom', () => {
+    const rows = rankMembers(members, [result('000002', '2027-01-01', 10)])
+
+    expect(rows).toHaveLength(3)
+    expect(rows.map((row) => row.position)).toEqual([1, 2, 2])
+    expect(rows[0].competitor.memberNumber).toBe('000002')
   })
 })
 

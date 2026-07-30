@@ -432,5 +432,47 @@
     "active": true,
     "membershipBasis": "payment",
     "teamId": "team-dunav"
+  },
+  {
+    "firstName": "Miodrag",
+    "lastName": "Stanković",
+    "gender": "M",
+    "city": "Kraljevo",
+    "country": "RS",
+    "birthYear": 1979,
+    "memberNumber": "000032",
+    "firstSeason2027": true,
+    "firstSeason": 2027,
+    "active": false,
+    "membershipBasis": "payment",
+    "teamId": null
+  },
+  {
+    "firstName": "Đorđe",
+    "lastName": "Mitrović",
+    "gender": "M",
+    "city": "Beograd",
+    "country": "RS",
+    "birthYear": 2014,
+    "memberNumber": "000033",
+    "firstSeason2027": true,
+    "firstSeason": 2027,
+    "active": false,
+    "membershipBasis": "payment",
+    "teamId": null
+  },
+  {
+    "firstName": "Ivana",
+    "lastName": "Čolaković",
+    "gender": "F",
+    "city": "Banja Luka",
+    "country": "BA",
+    "birthYear": 1991,
+    "memberNumber": "000034",
+    "firstSeason2027": true,
+    "firstSeason": 2027,
+    "active": false,
+    "membershipBasis": "payment",
+    "teamId": null
   }
 ]

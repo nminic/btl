@@ -42,7 +42,7 @@ export function TopTen({
           it is actually showing rather than pretending to be a standing. */}
       {!scored && <p className="card__note">{t('home.topBeforeSeason')}</p>}
 
-      {/* The standing lives at /tabela; /rang-liste is the page of top boards
+      {/* The standing lives at /tabela; /top-liste is the page of Top 10 boards
           beside it (PDL P28a). */}
       <Link className="card__more" to={`/${locale}/tabela?pol=${gender === 'M' ? 'm' : 'z'}`}>
         {t('home.wholeStanding')}
