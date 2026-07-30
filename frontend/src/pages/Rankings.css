@@ -84,12 +84,15 @@
 /* The Δ column: how far the row has moved since the end of last month
    (PDL P12).
 
-   The standing is the one table on the portal with a column between the place
-   and the name, so it is the one table whose fourth column is still a word.
-   table.css reads the first three from the left, which is right for every table
-   that has no Δ, and would leave the category hanging off the right edge here. */
-.table--standing th:nth-child(4),
-.table--standing td:nth-child(4) {
+   The class is on the table only while the column is really there, which is why
+   it is named after the column and not after the screen. Δ pushes a fourth word
+   column in behind the place and the name, and table.css reads only the first
+   three from the left; without this the category hangs off the right edge. On a
+   season the column says nothing about it is not rendered at all, and then the
+   fourth column is Trke, a number, which belongs on the right where table.css
+   leaves it. */
+.table--with-delta th:nth-child(4),
+.table--with-delta td:nth-child(4) {
   text-align: left;
 }
 

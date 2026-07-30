@@ -1,7 +1,9 @@
-import { screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { loadResource } from '../data/client'
+import { I18nProvider } from '../i18n/I18nProvider'
 import { hueFor } from './competitorFace'
-import { Delta } from './Rankings'
+import { Delta, Rankings } from './Rankings'
 import { renderAt, renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -15,28 +17,64 @@ describe('Rankings', () => {
     renderAt('/sr/tabela')
 
     expect(await screen.findByRole('table')).toBeVisible()
-    // All ten columns of PDL P12, Δ among them, in the order the rulebook lists
-    // them. The two vertical columns stand beside the distance, and no column
-    // below is left out of the markup at any width.
-    const columns = ['#', 'Δ', 'Član', 'Kat.', 'Trke', 'd (km)', '+ (m)', '− (m)', 'Vreme', 'Bodovi']
-
-    expect(screen.getAllByRole('columnheader').map((one) => one.textContent)).toEqual(columns)
+    /* The nine columns of PDL P12 that are always there. Δ is the tenth and it
+       comes and goes with the season being shown, so it is pinned below on a
+       given day rather than on whichever day the suite happens to run: this one
+       opens on whatever season the data makes fullest, which moves as the
+       calendar does. The two vertical columns stand beside the distance, and no
+       column here is left out of the markup at any width. */
+    for (const column of ['#', 'Član', 'Kat.', 'Trke', 'd (km)', '+ (m)', '− (m)', 'Vreme', 'Bodovi']) {
+      expect(screen.getByRole('columnheader', { name: column })).toBeInTheDocument()
+    }
     expect(screen.getAllByRole('row').length).toBeGreaterThan(2)
   })
 
-  it('gives every row a Δ against the end of last month', async () => {
-    renderAt('/sr/tabela?sezona=2020')
+  /* The Δ column through the screen rather than the function, on a day inside
+   * the season being shown. The season is over in real life, so the day has to
+   * be given rather than taken off the clock, which is why the screen takes one
+   * (Membership and the front page slots do the same). */
+  function renderStandingOn(today: string, path: string) {
+    return render(
+      <I18nProvider locale="sr">
+        <MemoryRouter initialEntries={[path]}>
+          <Rankings today={today} />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+  }
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+  it('carries all ten columns of the rulebook while the season is running', async () => {
+    // The 2026 season runs in the data from January to late July, so the end of
+    // June is a reference with half a season behind it and a fortnight of racing
+    // after it.
+    renderStandingOn('2026-07-30', '/sr/tabela?sezona=2026')
 
-    /* Every season the portal holds has been over for years, so the standing as
-       it stood at the end of last month is the standing as it stands now and
-       every row is level. That is what the column is for saying; the arrows are
-       covered where they can be produced on purpose, in derive.test.ts and in
-       the block below. */
-    for (const row of rows) {
-      expect(within(row).getByText('bez promene mesta')).toBeInTheDocument()
-    }
+    const table = await screen.findByRole('table')
+    expect(within(table).getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
+      '#', 'Δ', 'Član', 'Kat.', 'Trke', 'd (km)', '+ (m)', '− (m)', 'Vreme', 'Bodovi',
+    ])
+
+    // Rows that really moved, not a column of dashes.
+    expect(within(table).getAllByText(/mesta? naviše|mesta? naniže|mesto nav|mesto nan/).length)
+      .toBeGreaterThan(0)
+  })
+
+  it('drops the Δ column in January, before the season has anything behind it', async () => {
+    // The reference would be the end of December 2025, when the 2026 season had
+    // not begun: nobody was in the table, so every row would be blank (PDL P12).
+    renderStandingOn('2026-01-20', '/sr/tabela?sezona=2026')
+
+    const table = await screen.findByRole('table')
+    expect(within(table).queryByRole('columnheader', { name: 'Δ' })).not.toBeInTheDocument()
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(9)
+  })
+
+  it('drops it on a season that has been frozen, where nothing can move again', async () => {
+    renderStandingOn('2026-07-30', '/sr/tabela?sezona=2020')
+
+    const table = await screen.findByRole('table')
+    expect(within(table).queryByRole('columnheader', { name: 'Δ' })).not.toBeInTheDocument()
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(9)
   })
 
   it('orders by points, with the podium marked', async () => {

@@ -7,6 +7,7 @@ import {
   eventsInMonth,
   monthsWithEvents,
   bestSingleRaces,
+  deltaApplies,
   endOfPreviousMonth,
   rankingFor,
   rankMembers,
@@ -216,6 +217,49 @@ describe('endOfPreviousMonth', () => {
   })
 })
 
+describe('deltaApplies', () => {
+  /* One condition for both ends of the year (PDL P12). Read through a season
+   * that runs 2027, month by month, with the reference day the screen would
+   * really hand it. */
+  const forMonth = (today: string) => deltaApplies(2027, endOfPreviousMonth(today))
+
+  it('says no in January, when the season had not started at the reference day', () => {
+    // The end of December 2026 is before the first race of 2027, so nobody was
+    // in the table and every row would be blank rather than level.
+    expect(forMonth('2027-01-01')).toBe(false)
+    expect(forMonth('2027-01-31')).toBe(false)
+  })
+
+  it('says yes from February to December', () => {
+    expect(forMonth('2027-02-01')).toBe(true)
+    expect(forMonth('2027-07-15')).toBe(true)
+    expect(forMonth('2027-12-31')).toBe(true)
+  })
+
+  it('says no once the season has been frozen', () => {
+    /* The January after a season is the case worth naming. The reference is that
+       season's 31st of December, a day genuinely inside it, but one by which
+       every race it will ever hold has been run (P9), so the reference standing
+       is the final standing and the column is zero all the way down. Reading the
+       rule as "inside the season" rather than "short of its last day" lets this
+       fortnight through. */
+    expect(forMonth('2028-01-15')).toBe(false)
+    expect(forMonth('2028-01-31')).toBe(false)
+    expect(forMonth('2028-06-15')).toBe(false)
+    expect(forMonth('2030-07-30')).toBe(false)
+  })
+
+  it('still says yes on the last day the season can move', () => {
+    // Looked at in December, the reference is the end of November and the month
+    // being raced still counts.
+    expect(forMonth('2027-12-31')).toBe(true)
+  })
+
+  it('says no about a season that has not begun', () => {
+    expect(deltaApplies(2027, endOfPreviousMonth('2026-09-15'))).toBe(false)
+  })
+})
+
 describe('standingWithDelta', () => {
   /* Three men whose order changes over the season, and a fourth who does not
    * start racing until after the reference day. One of each case the column has
@@ -274,15 +318,23 @@ describe('standingWithDelta', () => {
     expect(rows.find((row) => row.competitor.memberNumber === '000004')).not.toHaveProperty('delta')
   })
 
-  it('is level for everyone once the reference day is past the whole season', () => {
-    const frozen = standingWithDelta(
-      competitors,
-      results,
-      { season: 2027, gender: 'M' },
-      endOfPreviousMonth('2030-07-30'),
-    )
+  it('hands back no numbers at all for a season the column says nothing about', () => {
+    /* Once the season is frozen every row would read as level, and in January
+       every row would be blank. Neither is worth a column, so the rows come back
+       untouched and the screen leaves it out (PDL P12). */
+    for (const today of ['2030-07-30', '2027-01-20']) {
+      const outside = standingWithDelta(
+        competitors,
+        results,
+        { season: 2027, gender: 'M' },
+        endOfPreviousMonth(today),
+      )
 
-    expect(frozen.map((row) => row.delta)).toEqual([0, 0, 0, 0])
+      expect(outside.map((row) => row.delta)).toEqual([undefined, undefined, undefined, undefined])
+      expect(outside.every((row) => !('delta' in row))).toBe(true)
+      // The standing itself is untouched by any of this.
+      expect(outside.map((row) => row.position)).toEqual([1, 2, 3, 4])
+    }
   })
 
   it('keeps the standing itself untouched', () => {

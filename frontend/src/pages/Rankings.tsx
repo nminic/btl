@@ -5,6 +5,7 @@ import {
   categoriesOf,
   categoryOfMember,
   defaultSeason,
+  deltaApplies,
   endOfPreviousMonth,
   seasonsWithResults,
   standingWithDelta,
@@ -75,11 +76,13 @@ function Standing({
   competitors,
   results,
   filters,
+  today,
   onChange,
 }: {
   competitors: Competitor[]
   results: Result[]
   filters: Filters
+  today: string
   onChange: (next: Record<string, string>) => void
 }) {
   const { locale, t } = useI18n()
@@ -100,22 +103,26 @@ function Standing({
 
     return defaultSeason(
       results.filter((one) => ofGender.has(one.memberNumber)),
-      new Date().toISOString().slice(0, 10),
+      today,
     )
-  }, [competitors, results, gender, seasonParam])
+  }, [competitors, results, gender, seasonParam, today])
 
-  /* The Δ column measures against the end of last month (PDL P12). A season that
-   * has already been frozen has nothing left to move, so every row in it reads
-   * as level, which is what it is. */
+  /* The Δ column measures against the end of last month, and it is left out
+   * entirely on a season that day falls outside of (PDL P12): in January the
+   * season had not begun and in a frozen one nothing can move any more. A column
+   * of blanks or a column of dashes says as little as the other. */
+  const referenceDay = endOfPreviousMonth(today)
+  const showsDelta = deltaApplies(season, referenceDay)
+
   const rows = useMemo(
     () =>
       standingWithDelta(
         competitors,
         results,
         { season, gender, categoryCode: category, search },
-        endOfPreviousMonth(new Date().toISOString().slice(0, 10)),
+        referenceDay,
       ),
-    [competitors, results, season, gender, category, search],
+    [competitors, results, season, gender, category, search, referenceDay],
   )
 
   return (
@@ -180,13 +187,15 @@ function Standing({
         <p className="rankings__empty">{t('rankings.empty')}</p>
       ) : (
         <div className="table-scroll">
-          <table className="table table--standing">
+          <table className={showsDelta ? 'table table--with-delta' : 'table'}>
             <thead>
               <tr>
                 <th scope="col">{t('rankings.columns.position')}</th>
-                <th scope="col" className="table__hide-phone">
-                  {t('rankings.columns.delta')}
-                </th>
+                {showsDelta && (
+                  <th scope="col" className="table__hide-phone">
+                    {t('rankings.columns.delta')}
+                  </th>
+                )}
                 <th scope="col">{t('rankings.columns.member')}</th>
                 <th scope="col">{t('rankings.columns.category')}</th>
                 <th scope="col" className="table__hide-phone">
@@ -214,9 +223,11 @@ function Standing({
                   className={row.position <= PODIUM ? 'podium' : undefined}
                 >
                   <td className="table__position">{row.position}</td>
-                  <td className="table__hide-phone table__delta">
-                    <Delta places={row.delta} />
-                  </td>
+                  {showsDelta && (
+                    <td className="table__hide-phone table__delta">
+                      <Delta places={row.delta} />
+                    </td>
+                  )}
                   <td>
                     <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
                       {row.competitor.firstName} {row.competitor.lastName}
@@ -240,7 +251,13 @@ function Standing({
   )
 }
 
-export function Rankings() {
+/* The day is a prop with the clock behind it, the way every other screen that
+ * reads a date does it (Membership, EnrolmentSlot, CalendarExtract). Nothing in
+ * the application passes it; it is what lets a test put the standing inside a
+ * running season, which is the only time the Δ column has anything to say. */
+export function Rankings({
+  today = new Date().toISOString().slice(0, 10),
+}: { today?: string } = {}) {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
   /* Only what the standing shows. Waiting on the events as well meant the whole
@@ -277,6 +294,7 @@ export function Rankings() {
               search: params.get('trazi') ?? '',
               seasonParam: params.get('sezona'),
             }}
+            today={today}
             onChange={change}
           />
         )}
