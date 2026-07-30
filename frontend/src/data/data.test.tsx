@@ -168,6 +168,28 @@ describe('dataOr and failed', () => {
 })
 
 describe('the generated data', () => {
+  it('gives every member in the list a member number, and nobody else one', async () => {
+    /* The list of members is keyed by the number and read by every public screen
+       there is, whole. A member number is handed out at the moment the fee is
+       recorded (PDL P8, 30.07.2026), so anybody in this list has one and anybody
+       waiting to pay is not in this list at all. Three of them used to be, holding
+       000032 to 000034, which put them on the front page among the newest members
+       with numbers nobody had given them. The generator lives outside the repo, so
+       this is the only place that can notice it happening again. */
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const waiting = await loadResource<{ queue: string; memberNumber: string; email: string }[]>(
+      'verification',
+    )
+    const memberships = waiting.filter((one) => one.queue === 'payments')
+
+    expect(competitors.filter((one) => !/^\d{6}$/.test(one.memberNumber))).toEqual([])
+    expect(competitors.filter((one) => !one.active)).toEqual([])
+
+    expect(memberships.length).toBeGreaterThan(0)
+    expect(memberships.filter((one) => one.memberNumber !== '')).toEqual([])
+    expect(memberships.filter((one) => one.email === '')).toEqual([])
+  })
+
   it('carries no event in a state the portal does not have', async () => {
     /* A race has no state "announced" and none "postponed" (PDL P10). The
        generator wrote thirty of them, which is a state no screen and no decision

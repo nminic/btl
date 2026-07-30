@@ -230,7 +230,7 @@
     "entities": "Entiteti",
     "verification": "Verifikacija",
     "settings": "Podešavanja",
-    "stats": "Statistike",
+    "stats": "Rangiranje",
     "table": "Tabela"
   },
   "theme": {
@@ -261,9 +261,6 @@
     "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
   },
   "home": {
-    "lead": "Rang lista rekreativnih trkača Balkana. Trčiš gde hoćeš, bodovi te prate.",
-    "untilSeason": "do početka sezone {season}.",
-    "toCalendar": "Kalendar trka",
     "toRegistration": "Učlani se",
     "toPricing": "Vidi članarinu",
     "season": "Sezona {season}.",
@@ -437,11 +434,6 @@
       "one": "{count} član",
       "few": "{count} člana",
       "other": "{count} članova"
-    },
-    "dayCount": {
-      "one": "{count} dan",
-      "few": "{count} dana",
-      "other": "{count} dana"
     }
   },
   "rankings": {
@@ -611,7 +603,13 @@
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
     "notFound": "Ovog tima nema.",
-    "name": "Tim"
+    "name": "Tim",
+    "membersColumn": "Članovi tima",
+    "show": "Prikaži",
+    "hide": "Sakrij",
+    "showMembers": "Prikaži članove tima {team}",
+    "hideMembers": "Sakrij članove tima {team}",
+    "membersOf": "Članovi tima {team}"
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -865,7 +863,6 @@
       "country": "Država",
       "firstSeason": "U ligi od sezone",
       "firstSeason2027": "Prva sezona u 2027.",
-      "active": "Punopravan član",
       "eventName": "Naziv događaja",
       "date": "Datum",
       "event": "Događaj",
@@ -890,12 +887,10 @@
       "sectionBody": "Tekst prve sekcije"
     },
     "hint": {
-      "memberNumber": "Šest cifara, na primer 000127. Broj je jedinstven, isti kroz sve sezone i ne nosi oznaku pola.",
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
       "birthYear": "Nikad se ne prikazuje javno. Iz nje se izvodi kategorija, koja jedina ide na profil.",
       "firstSeason": "Prva sezona u kojoj je član nastupao.",
       "firstSeason2027": "Član sezonu 2027. provodi u kategoriji Prva sezona, a ne u svojoj starosnoj.",
-      "active": "Dok članarina nije potvrđena, član ima nalog ali nigde nije vidljiv i ne može ništa.",
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
@@ -913,7 +908,7 @@
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
       "description": "Jedna do dve rečenice koje član vidi uz značku.",
       "quantity": "Veličina se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
-      "operator": "Samo najmanje ili više od, da značka koja je osvojena ne može kasnije da se izgubi.",
+      "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi.",
       "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra.",
       "validPeriod": "Bez perioda cena ne zavisi od datuma uplate, kao junior cena.",
@@ -930,16 +925,15 @@
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
     "quantityLabel": "Veličina",
-    "operatorLabel": "Uslov",
     "valueLabel": "Vrednost",
     "from": "Od datuma",
     "to": "Do datuma",
-    "sentence": "Značka se dodeljuje kad {quantity} bude {operator} {value}",
+    "sentence": "Značka se dodeljuje kad {quantity} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
-    "closedList": "Spisak veličina je deo ugovora i menja se samo izmenom portala. Uslov može biti samo najmanje ili više od, da značka koja je osvojena ne može kasnije da se izgubi.",
+    "closedList": "Spisak veličina je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa značka koja je osvojena ne može kasnije da se izgubi.",
     "quantity": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
@@ -954,10 +948,6 @@
       "points": "broj bodova",
       "countryCount": "broj zemalja",
       "seasonCount": "broj sezona"
-    },
-    "operator": {
-      "atLeast": "najmanje",
-      "moreThan": "više od"
     }
   },
   "settings": {
@@ -986,6 +976,7 @@
     "proposedDate": "Prijavljen datum",
     "activatePayment": "Evidentiraj uplatu",
     "activateHonorary": "Počasno članstvo",
+    "numberNote": "Članski broj dodeljuje sistem u trenutku aktivacije, prvi slobodan po redu, i ne unosi se rukom. Zato onaj ko čeka uplatu još nema broj, pa se vodi po imenu i adresi elektronske pošte; dodeljen broj stoji u tabeli rešenih i njega javljaš članu.",
     "basisNote": "Osnov članstva se nikad ne prikazuje javno; vidi ga samo administracija. Počasan član je punopravan i rangira se kao svaki drugi.",
     "body": {
       "leagues": "Opis lige",
@@ -1010,7 +1001,9 @@
     "fromBios": "Biografiju piše član, administrator je odobrava pre objave",
     "fromPhotos": "Profilnu sliku administrator odobrava pre objave",
     "fromComments": "Komentari se odobravaju pre objave, za sve",
-    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine"
+    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine",
+    "reject": "Odbij",
+    "rejected": "Odbijeno"
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

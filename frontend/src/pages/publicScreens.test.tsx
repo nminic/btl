@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import { loadResource } from '../data/client'
 import { hueFor } from './competitorFace'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -329,6 +330,32 @@ describe('Competitors', () => {
     expect(hueFor('000001')).not.toBe(hueFor('000002'))
     expect(hueFor('000001')).toBeLessThan(360)
   })
+
+  it('does not carry anybody whose fee has not been recorded', async () => {
+    /* Before paying, a member has an account and is visible nowhere (PDL P8), and
+       since 30.07.2026 they do not even have a member number: it is handed out at
+       the moment the fee is recorded. Three of them used to sit in the member list
+       as inactive members holding 000032 to 000034, and everything that reads that
+       list reads all of it, so they turned up on the front page among the newest
+       members. They are not members now; they wait in the queue of memberships,
+       and nothing public can reach them.
+
+       The names come out of the queue rather than being written down here. Written
+       down, they were three names that competitors.json does not contain and could
+       not contain, so the test could not fail whatever the generator did; asked of
+       the queue, it fails the day one of the two files carries somebody the other
+       one does. */
+    const waiting = await loadResource<{ queue: string; who: string }[]>('verification')
+    const names = waiting.filter((one) => one.queue === 'payments').map((one) => one.who)
+
+    renderAt('/sr/takmicari')
+
+    const list = within(await screen.findByRole('list'))
+    expect(names.length).toBeGreaterThan(0)
+    for (const name of names) {
+      expect(list.queryByText(name)).not.toBeInTheDocument()
+    }
+  })
 })
 
 describe('CompetitorProfile', () => {
@@ -461,13 +488,112 @@ describe('Pricing', () => {
 })
 
 describe('Teams', () => {
+  /** The first table on the screen is the standing; the drawers open inside it. */
+  const standing = async () => within(await screen.findByRole('table'))
+
   it('ranks teams by the plain sum of their members', async () => {
     renderAt('/sr/timovi')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const rows = (await standing()).getAllByRole('row').slice(1)
 
     expect(rows.length).toBeGreaterThan(1)
     expect(rows[0].className).toBe('podium')
+  })
+
+  it('opens a team to show who is in it and what each of them brought', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+
+    const drawer = within(screen.getByRole('table', { name: /^Članovi tima/ }))
+    const members = drawer.getAllByRole('row').slice(1)
+    expect(members.length).toBeGreaterThan(0)
+    // Each member is a link to their profile, and carries their own figures.
+    expect(within(members[0]).getByRole('link')).toBeVisible()
+    expect(drawer.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
+      '#',
+      'Član',
+      'Trke',
+      'd (km)',
+      'Bodovi',
+    ])
+  })
+
+  it('builds nothing for a drawer nobody opened, and still points at it', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    const drawer = document.getElementById(toggle.getAttribute('aria-controls')!)
+
+    /* The row is there whether the drawer is open or not, so aria-controls never
+       points at nothing: a button that says it controls an element which does not
+       exist is a broken promise to a screen reader.
+
+       What is inside it is not. The drawer filters all 3522 results and ranks the
+       members of its team, and a closed one did that too, on every render: fifty
+       teams meant fifty passes over the whole result set for every single click. */
+    expect(drawer).toBeInTheDocument()
+    expect(drawer).not.toHaveTextContent(/\S/)
+    expect(screen.queryByRole('table', { name: /^Članovi tima/ })).not.toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(within(drawer!).getByRole('table', { name: /^Članovi tima/ })).toBeInTheDocument()
+
+    // And it is emptied again on the way back, rather than kept for later.
+    await user.click(screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0])
+    expect(drawer).not.toHaveTextContent(/\S/)
+  })
+
+  it('reads one word on screen and the whole team out loud', async () => {
+    renderAt('/sr/timovi')
+
+    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+
+    /* The sentence used to be the visible text, and it does not wrap: at 360px
+       this column alone took 279 of the 661 pixels the table wanted inside a box
+       328 wide, so the standing scrolled sideways (PDL P24). The team is still in
+       the accessible name, because twenty buttons reading "Prikaži" are twenty
+       buttons a screen reader cannot tell apart, and the visible word is the first
+       word of that name, so what is heard contains what is seen (WCAG 2.2, 2.5.3). */
+    expect(toggle.textContent).toBe('Prikaži')
+    expect(toggle).toHaveAccessibleName(/^Prikaži članove tima \S/)
+  })
+
+  it('closes again, and says which state it is in', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    const open = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    await user.click(open)
+
+    const close = screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0]
+    expect(close).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(close)
+
+    expect(screen.getAllByRole('button', { name: /^Prikaži članove tima/ })[0]).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('says so for a team nobody has joined', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    // The generator leaves one team empty on purpose, which is the case a table
+    // of contributions has nothing to show for.
+    await screen.findByRole('table')
+    for (const toggle of screen.getAllByRole('button', { name: /^Prikaži članove tima/ })) {
+      await user.click(toggle)
+    }
+
+    expect(screen.getByText('Ovaj tim još nema članova.')).toBeVisible()
   })
 })
 

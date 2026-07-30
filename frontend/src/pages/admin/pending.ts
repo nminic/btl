@@ -1,19 +1,29 @@
 import { useResource } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
 
-/* What is waiting in the six queues that are read from a file.
+/* What is waiting in the seven queues that are read from a file.
  *
- * Results are not here: a competitor sends those in during the visit, so they
- * live in the session. Payments are not here either: a membership waiting to be
- * activated is a member who is not active yet, and that is already in the list
- * of members. The other six have no table anywhere yet, so until the database
- * arrives they are generated data, like every other screen in the prototype.
+ * Results are the eighth and are not here: a competitor sends those in during
+ * the visit, so they live in the session.
  *
- * One shape for all six, with every field always present and empty where it
- * does not apply. The alternative is six shapes and a screen that asks which one
- * it is holding, to show the same three lines either way.
+ * Payments were not here either, and are now. A membership waiting to be
+ * activated used to be read off the list of members, as the member who was not
+ * active yet. It cannot be any more: a member number is handed out the moment the
+ * fee is recorded (PDL P8, 30.07.2026), so somebody who has not paid has no
+ * number, and without one they are not a row in the member list at all. They are
+ * a registration waiting for a decision, which is what this file holds.
+ *
+ * That also keeps them off every public screen by construction rather than by
+ * remembering to filter: three of them used to be on the front page under the
+ * newest members, with numbers they should never have had, because everything
+ * that reads the member list reads all of it (PDL P8, P11).
+ *
+ * One shape for all seven, with every field always present and empty where it
+ * does not apply. The alternative is seven shapes and a screen that asks which
+ * one it is holding, to show the same three lines either way.
  */
 export const PENDING_QUEUE_IDS = [
+  'payments',
   'leagues',
   'teams',
   'bios',
@@ -29,8 +39,13 @@ export type PendingItem = {
   queue: PendingQueueId
   /** The day it arrived in the queue. */
   date: string
-  /** Who sent it in, or empty. A change of date may be reported by somebody
-   *  with no account at all (PDL P10). */
+  /**
+   * Who sent it in, or empty. A change of date may be reported by somebody with
+   * no account at all (PDL P10), and on the payments queue it is empty for a
+   * different reason: a registration whose fee is not recorded has no member
+   * number yet, which is the whole of the 30.07.2026 decision made visible in
+   * the data.
+   */
   memberNumber: string
   who: string
   /** What the decision is about: the name of the league, the team, the member
@@ -43,6 +58,14 @@ export type PendingItem = {
    *  thing on screen. Empty on every other queue. */
   currentDate: string
   proposedDate: string
+  /** The payments queue only. Until the fee is recorded there is no number to go
+   *  by, so a waiting registration is known by its name and its address (PDL
+   *  P8). Empty on the other six. */
+  email: string
+  /** The payments queue only. How a member pays follows the country they live in
+   *  (PDL P8), so it belongs beside the fee. Empty on the other six. */
+  city: string
+  country: string
 }
 
 export const usePending = () => useResource<PendingItem[]>('verification')
@@ -67,9 +90,9 @@ export function settledIn(
   return items.filter((one) => one.queue === queue && decisions[one.id] !== undefined)
 }
 
-/** The key a decision about a membership fee is remembered under. Prefixed
- *  because a member number and the id of an item from the file share one
- *  record, and 000012 must never mean two things. */
-export function paymentKey(memberNumber: string): string {
-  return `pay-${memberNumber}`
-}
+/* A decision about a membership fee used to be remembered under a key of its own,
+ * "pay-000012", because the queue was read off the member list and a member
+ * number and the id of an item from this file shared one record: 000012 must
+ * never have meant two things. A registration now carries an id from the same
+ * file as everything else, so there is nothing left to keep apart and the key is
+ * the id, on all seven queues alike. */

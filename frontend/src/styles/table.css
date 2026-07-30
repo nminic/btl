@@ -13,6 +13,21 @@
   border-collapse: collapse;
 }
 
+/* Every cell of a row starts at the top of it, so the first line of text in one
+   column sits on the same line as the first line in the next.
+
+   A cell is centred in its row by default, and a row is only as tall as its
+   tallest cell, so the moment one cell wrapped to two lines every other cell in
+   the row slid down half a line. On the queue of memberships the name stood
+   eleven pixels below the town beside it on a wide screen and twenty-eight on a
+   telephone, and the same happened on every administration list where one column
+   holds a button or a tag and the next holds words. Nothing is centred here on
+   purpose: a table is read across, and reading across needs a shared baseline. */
+.table th,
+.table td {
+  vertical-align: top;
+}
+
 .table th {
   text-align: right;
   font-size: 0.7rem;

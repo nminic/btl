@@ -40,20 +40,10 @@
       ]
     },
     {
-      "name": "operator",
-      "type": "select",
-      "labelKey": "badges.operatorLabel",
-      "hintKey": "admin.hint.operator",
-      "required": true,
-      "options": [
-        { "value": "atLeast", "labelKey": "badges.operator.atLeast" },
-        { "value": "moreThan", "labelKey": "badges.operator.moreThan" }
-      ]
-    },
-    {
       "name": "value",
       "type": "number",
       "labelKey": "badges.valueLabel",
+      "hintKey": "admin.hint.badgeValue",
       "required": true,
       "min": 1,
       "max": 100000

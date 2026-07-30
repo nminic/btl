@@ -8,7 +8,6 @@ import { TopByCategory } from './home/TopByCategory'
 import { CommunityNumbers } from './home/CommunityNumbers'
 import { Counters } from './home/Counters'
 import { EnrolmentSlot } from './home/EnrolmentSlot'
-import { Hero } from './home/Hero'
 import { HowItWorks } from './home/HowItWorks'
 import { NEWS, seasonLabelKey, SPONSORS } from './home/content'
 import { News } from './home/News'
@@ -18,12 +17,17 @@ import './Home.css'
 
 /* The widget order is the one fixed in PDL P14, top to bottom:
  *
- *   hero with the season counters
+ *   the season counters
  *   "Priprema, pozor, SAD!" (2/3) beside the seasonal slot (1/3)
  *   Top 10 men (1/4) | Top 10 women (1/4) | rotating chart (1/2)
  *   calculator (1/2) beside how it works (1/2)
  *   news (2/3) beside sponsor of the day (1/3)
  *   the strip of partner logos
+ *
+ * The hero that used to stand above the counters is gone (owner, 30.07.2026):
+ * it repeated the name already in the header and the slogan already under it,
+ * and pushed the scoreboard, which the owner values above everything else on the
+ * page, below the fold.
  *
  * On a phone it is the same order in one column. News, sponsor and strip
  * disappear entirely when they have nothing fresh to say.
@@ -35,6 +39,11 @@ export function Home() {
 
   return (
     <div className="home">
+      {/* Not shown, but present: the header already says the name in full right
+          above, and repeating it was what the owner had removed. A page with no
+          h1 at all is still a page a screen reader cannot name. */}
+      <h1 className="visually-hidden">{t('app.name')}</h1>
+
       <Resource state={state}>
         {([competitors, events, results]) => {
           // The running season once it has results; until then the fullest one
@@ -47,7 +56,6 @@ export function Home() {
 
           return (
             <>
-              <Hero today={today} />
               <Counters totals={totals} seasonLabel={label} />
 
               <div className="home__row home__row--calendar">

@@ -25,10 +25,30 @@ describe('Home', () => {
     ])
   })
 
-  it('counts down to the start of the season', async () => {
+  it('names itself for a screen reader without showing the name again', async () => {
     renderAt('/sr')
 
-    expect(await screen.findByText(/do početka sezone 2027/)).toBeVisible()
+    /* The block above the counters is gone in full, name included (owner,
+       30.07.2026): the header says it in full right above, and repeating it pushed
+       the scoreboard below the fold. A page with no h1 at all is still a page a
+       screen reader cannot name, so the heading stays and does not show.
+
+       Held on the class, because that is the mechanism that hides it and jsdom
+       measures nothing: toBeVisible passes on a heading of one clipped pixel, so a
+       test written that way would pass with the name back on screen in full. */
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })
+
+    expect(heading).toHaveClass('visually-hidden')
+  })
+
+  /* The countdown to the season left the page together with the block above the
+     counters (owner, 30.07.2026). What remains is the one date a visitor can act
+     on: when membership opens. */
+  it('says when membership opens rather than counting down to the season', async () => {
+    renderAt('/sr')
+
+    expect(await screen.findByText(/Otvara se za/)).toBeVisible()
+    expect(screen.queryByText(/do početka sezone/)).not.toBeInTheDocument()
   })
 
   it('groups a recurring event into one row instead of five', async () => {

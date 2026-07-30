@@ -189,7 +189,6 @@ describe('a record that is entered rather than changed', () => {
     await user.click(await screen.findByRole('button', { name: title }))
     const form = open(title)
 
-    await user.type(form.getByLabelText(labelled(t('admin.field.memberNumber'))), '12')
     await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), 'Milica')
     await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
@@ -197,19 +196,18 @@ describe('a record that is entered rather than changed', () => {
     await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
     await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
-    await user.click(form.getByLabelText(labelled(t('admin.field.active'))))
+    await user.click(form.getByLabelText(labelled(t('admin.field.firstSeason2027'))))
     await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'honorary')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
 
-    // A member number is six digits, and the rule stops the save where it is
-    // broken rather than at the end of the form.
-    expect(document.getElementById('field-memberNumber-error')).toHaveTextContent(
-      t('form.errors.pattern'),
-    )
+    /* The form used to carry a box saying the membership was active, with a note
+       that an unpaid member has an account but is visible nowhere. Nothing reads
+       that flag any more: an unpaid member is not in the member list at all, they
+       wait in the queue of memberships (ADL A4d), so the box was a way to put back
+       into the list exactly what that change took out of it. Held on the
+       definition rather than on the screen, because a field that is not there has
+       no label to ask the screen about. */
+    expect(MEMBERS.form.fields.map((one) => one.name)).not.toContain('active')
 
-    const number = form.getByLabelText(labelled(t('admin.field.memberNumber')))
-    await user.clear(number)
-    await user.type(number, '000900')
     await user.click(form.getByRole('button', { name: t('form.submit') }))
 
     const saved = screen.getByRole('status', { name: t('admin.form.saved') })
@@ -222,7 +220,8 @@ describe('a record that is entered rather than changed', () => {
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    const row = within(list.getByText('000900').closest('tr')!)
+    // The generated members hold 000001 to 000031, so the first free one is next.
+    const row = within(list.getByText('000032').closest('tr')!)
 
     expect(row.getByText('Milica Pavlović')).toBeVisible()
     // The year of birth is on this screen and on no other (PDL P11, P23).
@@ -244,7 +243,6 @@ describe('a record that is entered rather than changed', () => {
 
       await user.type(form.getByLabelText(labelled(t('admin.field.badgeName'))), name)
       await user.selectOptions(form.getByLabelText(labelled(t('badges.quantityLabel'))), 'totalKm')
-      await user.selectOptions(form.getByLabelText(labelled(t('badges.operatorLabel'))), 'atLeast')
       await user.type(form.getByLabelText(labelled(t('badges.valueLabel'))), '100')
       await user.click(form.getByRole('button', { name: t('form.submit') }))
       await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
@@ -269,7 +267,24 @@ describe('a record that is entered rather than changed', () => {
 })
 
 describe('the identity of a record', () => {
-  it('is refused when it belongs to somebody already, beside the field', async () => {
+  /** Everything the member form does ask for, so a test can get to the save. */
+  const fillMember = async (
+    user: ReturnType<typeof setupUser>,
+    form: ReturnType<typeof open>,
+    firstName: string,
+  ) => {
+    await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), firstName)
+    await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
+    await user.type(form.getByLabelText(labelled(t('admin.field.birthYear'))), '1991')
+    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
+    await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'payment')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+  }
+
+  it('is never asked for on a new member, because the system hands it out', async () => {
     const user = setupUser()
     const title = t('admin.form.new.members')
     renderAt('/sr/administracija/clanovi', 'superadmin')
@@ -280,41 +295,45 @@ describe('the identity of a record', () => {
     await user.click(screen.getByRole('button', { name: title }))
     const form = open(title)
 
-    /* 000001 is the first member in the generated data. It used to be taken as
-       typed: two members answered to one number, React drew two rows with the
-       same key, and changing the city of one of them changed both, because the
-       overlay of changes is keyed by the number (PDL P8). */
-    await user.type(form.getByLabelText(labelled(t('admin.field.memberNumber'))), '000001')
-    await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), 'Milica')
-    await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
-    await user.type(form.getByLabelText(labelled(t('admin.field.birthYear'))), '1991')
-    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
-    await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'payment')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    /* It was an obligatory field of six digits with a check that the number was
+       still free, because it used to be taken as typed: two members answered to
+       one number, React drew two rows with the same key, and changing the city of
+       one of them changed both, since the overlay of changes is keyed by the
+       number. The field is gone (PDL P8, 30.07.2026): the number is handed out at
+       the moment the fee is recorded and an administrator never types it. */
+    expect(form.queryByLabelText(labelled(t('admin.field.memberNumber')))).not.toBeInTheDocument()
 
-    // The message lands beside the field it is about, tied to it, like every
-    // other rule on the form.
-    const field = form.getByLabelText(labelled(t('admin.field.memberNumber')))
-    expect(field).toHaveAttribute('aria-invalid', 'true')
-    expect(field.getAttribute('aria-describedby')).toContain('field-memberNumber-error')
-    expect(document.getElementById('field-memberNumber-error')).toHaveTextContent(
-      t('form.errors.taken'),
-    )
-    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
+    await fillMember(user, form, 'Milica')
 
-    // A free number saves, and the list grows by exactly one row.
-    const number = form.getByLabelText(labelled(t('admin.field.memberNumber')))
-    await user.clear(number)
-    await user.type(number, '000901')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toBeVisible()
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    expect(
-      within(await screen.findByRole('table', { name: 'Članovi' })).getAllByRole('row'),
-    ).toHaveLength(rows + 1)
+    /* Uniqueness survives the field going away, and it survives differently: the
+       number given is the first one nobody holds, so there is nothing left to
+       refuse. The generated members hold 000001 to 000031. */
+    const grown = within(await screen.findByRole('table', { name: 'Članovi' }))
+    expect(grown.getAllByRole('row')).toHaveLength(rows + 1)
+    expect(grown.getByText('000032')).toBeVisible()
+  })
+
+  it('is the next free number for each member entered in turn', async () => {
+    const user = setupUser()
+    const title = t('admin.form.new.members')
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    await screen.findByRole('table', { name: 'Članovi' })
+
+    for (const name of ['Milica', 'Jelena']) {
+      await user.click(screen.getByRole('button', { name: title }))
+      await fillMember(user, open(title), name)
+      await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+    }
+
+    /* The second must not read the file and hand out 000032 again: what the screen
+       shows is what counts as taken, records entered a moment ago included. */
+    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
+    expect(within(list.getByText('000032').closest('tr')!).getByText(/Milica/)).toBeVisible()
+    expect(within(list.getByText('000033').closest('tr')!).getByText(/Jelena/)).toBeVisible()
   })
 
   it('is refused for a written page whose address answers already', async () => {
@@ -322,7 +341,10 @@ describe('the identity of a record', () => {
     const title = t('admin.form.new.pages')
     renderAt('/sr/administracija/strane', 'superadmin')
 
-    await user.click(await screen.findByRole('button', { name: title }))
+    const before = within(await screen.findByRole('table', { name: 'Statične strane' }))
+    const rows = before.getAllByRole('row').length
+
+    await user.click(screen.getByRole('button', { name: title }))
     const form = open(title)
 
     // Two records on /pravilnik would be one page arguing with itself.
@@ -333,6 +355,27 @@ describe('the identity of a record', () => {
     await user.click(form.getByRole('button', { name: t('form.submit') }))
 
     expect(document.getElementById('field-slug-error')).toHaveTextContent(t('form.errors.taken'))
+    /* And nothing was written down. Without this the test passes on the behaviour
+       it exists to forbid: the message appears and the duplicate is made anyway,
+       two records answer to /pravilnik, and one change reaches both of them,
+       because the overlay of changes is keyed by exactly that address. */
+    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
+
+    /* A free address saves, and the record answers to what was typed. Written
+       pages are the one entity left that names itself: a member number is handed
+       out (PDL P8) and the other six get an identity nobody types. */
+    const address = form.getByLabelText(labelled(t('admin.address')))
+    await user.clear(address)
+    await user.type(address, 'nova-strana')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    const list = within(await screen.findByRole('table', { name: 'Statične strane' }))
+    const row = within(list.getByRole('link', { name: '/nova-strana' }).closest('tr')!)
+
+    expect(row.getByRole('button', { name: 'Otvori: Drugi pravilnik' })).toBeVisible()
+    // Exactly one row more: the refused attempt left nothing behind either.
+    expect(list.getAllByRole('row')).toHaveLength(rows + 1)
   })
 
   it('does not stand in the way of the record it belongs to', async () => {

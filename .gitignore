@@ -1,3 +1,9 @@
 .env
 *.log
 .DS_Store
+
+# Per-session working copies made by tooling, never part of the repo. The
+# leading ** matters: a pattern with a slash inside it is anchored to the root of
+# the repository, so .claude/worktrees/ never covered frontend/.claude/worktrees/,
+# which is the directory the rule was written for.
+**/.claude/worktrees/

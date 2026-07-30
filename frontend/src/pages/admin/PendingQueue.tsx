@@ -4,6 +4,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
+import type { Decision } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { settledIn, usePending, waitingIn, type PendingItem } from './pending'
 import { QueueMeta } from './QueueMeta'
@@ -18,8 +19,15 @@ import './Verification.css'
  *
  * One screen rather than six because the work is the same work every time. The
  * moderator reads a piece of text somebody wrote, and either lets it out onto the
- * portal or sends it back saying why. What differs is the word for the text and
- * whether there are two dates to compare, and neither of those is a screen.
+ * portal or refuses it. What differs is the word for the text, whether there are
+ * two dates to compare, and whether the refusal is asked to say why, and none of
+ * those is a screen.
+ *
+ * That last one is the only difference the moderator can feel. Five of the six
+ * send work back to be improved and carry a reason for it; comments are refused
+ * on the spot, because a comment is not work (PDL P23). Which of the two a queue
+ * is comes off the queue itself (queues.ts), so it is one fact in one place
+ * rather than the name of a queue tested here.
  *
  * Cards rather than a table, unlike the queue of results. There the work is
  * comparison down a column of thirty; here it is reading one thing at a time, and
@@ -57,6 +65,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       { key: 'verification.currentDate', value: one.currentDate },
       { key: 'verification.proposedDate', value: one.proposedDate },
     ].filter((fact) => fact.value !== '')
+
+  /* What the decision is called once it has been taken. "Vraćeno" is the word
+     where a refusal hands work back; where it only means the text does not go
+     out, the word is "Odbijeno" and there is nothing to come back with. */
+  const stateKey = (status: Decision['status']) =>
+    status === 'rejected' && !queue.refusalNeedsReason
+      ? 'verification.rejected'
+      : `status.${status}`
 
   return (
     <div className="member">
@@ -117,7 +133,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                       {open === one.id ? (
                         <SendBack
                           onConfirm={(reason) => {
-                            settle(one.id, { status: 'rejected', note: reason, basis: '' })
+                            settle(one.id, {
+                              status: 'rejected',
+                              note: reason,
+                              basis: '',
+                              memberNumber: '',
+                            })
                             setOpen(null)
                           }}
                           onCancel={() => {
@@ -131,22 +152,47 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             type="button"
                             className="button button--primary"
                             onClick={() =>
-                              settle(one.id, { status: 'approved', note: '', basis: '' })
+                              settle(one.id, {
+                                status: 'approved',
+                                note: '',
+                                basis: '',
+                                memberNumber: '',
+                              })
                             }
                           >
                             {t('review.approve')}
                           </button>
-                          {/* The focus comes back to this button with it, on the
-                              render that brings it back and on no other: nothing
-                              is autofocused when the page first draws. */}
-                          <button
-                            type="button"
-                            className="button button--secondary"
-                            autoFocus={one.id === closed}
-                            onClick={() => setOpen(one.id)}
-                          >
-                            {t('review.sendBack')}
-                          </button>
+                          {queue.refusalNeedsReason ? (
+                            /* The focus comes back to this button with it, on the
+                               render that brings it back and on no other: nothing
+                               is autofocused when the page first draws. */
+                            <button
+                              type="button"
+                              className="button button--secondary"
+                              autoFocus={one.id === closed}
+                              onClick={() => setOpen(one.id)}
+                            >
+                              {t('review.sendBack')}
+                            </button>
+                          ) : (
+                            /* One click and the item is decided, the same as
+                               approving it. There is no box to open, so there is
+                               no focus to hand back either. */
+                            <button
+                              type="button"
+                              className="button button--secondary"
+                              onClick={() =>
+                                settle(one.id, {
+                                  status: 'rejected',
+                                  note: '',
+                                  basis: '',
+                                  memberNumber: '',
+                                })
+                              }
+                            >
+                              {t('verification.reject')}
+                            </button>
+                          )}
                         </div>
                       )}
                     </li>
@@ -173,7 +219,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             <td>{one.subject}</td>
                             <td>
                               <span className={`tag tag--${decisions[one.id].status}`}>
-                                {t(`status.${decisions[one.id].status}`)}
+                                {t(stateKey(decisions[one.id].status))}
                               </span>
                             </td>
                             <td>{decisions[one.id].note}</td>

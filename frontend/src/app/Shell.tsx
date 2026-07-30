@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { dataOr, useCompetitors } from '../data/useResource'
+import { dataOr } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { usePending } from '../pages/admin/pending'
 import { totalWaiting } from '../pages/admin/queues'
@@ -36,19 +36,23 @@ const VERIFICATION = 'administracija/verifikacija'
  * verification screen, counted from the same place that screen counts it, so the
  * two can never disagree.
  *
- * The files are asked for here as well as there, and the data layer keeps a
- * resource for the whole visit, so this costs one request each. A header that
- * waited for them would hold up every screen behind it, so until they arrive the
+ * One file, which is the one the numbers come out of. The file of members was
+ * asked for here too, for a field nothing counted from any more, and this counter
+ * stands above every screen on the portal: one dead line in a type meant one
+ * request for a million bytes of members on the front page, the calendar and
+ * every table.
+ *
+ * It is asked for here as well as on the verification screen, and the data layer
+ * keeps a resource for the whole visit, so it costs one request. A header that
+ * waited for it would hold up every screen behind it, so until it arrives the
  * number says what the session alone knows.
  */
 function useWaiting(): number {
   const { submissions, decisions } = useSession()
-  const competitors = useCompetitors()
   const items = usePending()
 
   return totalWaiting({
     pendingResults: submissions.filter((one) => one.status === 'pending').length,
-    competitors: dataOr(competitors, []),
     items: dataOr(items, []),
     decisions,
   })
@@ -173,7 +177,7 @@ export function Shell() {
                 <Link className="button button--secondary button--compact" to={`/${locale}/prijava`}>
                   {t('shell.signIn')}
                 </Link>
-                <Link className="button button--compact" to={`/${locale}/registracija`}>
+                <Link className="button--cta" to={`/${locale}/registracija`}>
                   {t('shell.join')}
                 </Link>
               </>

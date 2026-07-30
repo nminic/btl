@@ -1,5 +1,47 @@
 [
   {
+    "id": "ver-upl-1",
+    "queue": "payments",
+    "date": "2026-07-22",
+    "memberNumber": "",
+    "who": "Miodrag Stanković",
+    "subject": "Miodrag Stanković",
+    "body": "",
+    "currentDate": "",
+    "proposedDate": "",
+    "email": "miodrag.stankovic@primer.rs",
+    "city": "Kraljevo",
+    "country": "RS"
+  },
+  {
+    "id": "ver-upl-2",
+    "queue": "payments",
+    "date": "2026-07-25",
+    "memberNumber": "",
+    "who": "Đorđe Mitrović",
+    "subject": "Đorđe Mitrović",
+    "body": "",
+    "currentDate": "",
+    "proposedDate": "",
+    "email": "djordje.mitrovic@primer.rs",
+    "city": "Beograd",
+    "country": "RS"
+  },
+  {
+    "id": "ver-upl-3",
+    "queue": "payments",
+    "date": "2026-07-28",
+    "memberNumber": "",
+    "who": "Ivana Čolaković",
+    "subject": "Ivana Čolaković",
+    "body": "",
+    "currentDate": "",
+    "proposedDate": "",
+    "email": "ivana.colakovic@primer.ba",
+    "city": "Banja Luka",
+    "country": "BA"
+  },
+  {
     "id": "ver-lig-1",
     "queue": "leagues",
     "date": "2026-07-21",
@@ -8,7 +50,10 @@
     "subject": "Zimska planinska liga 2027",
     "body": "Šest zimskih planinskih trka, od decembra do marta. Bodovanje je isto kao u glavnoj ligi, a poredak se vodi odvojeno po polu.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-lig-2",
@@ -19,7 +64,10 @@
     "subject": "Liga stepenika",
     "body": "Trke uz stepenište kroz celu godinu, na kulama i stadionima.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-tim-1",
@@ -30,7 +78,10 @@
     "subject": "Timočka trkačka družina",
     "body": "Devet ljudi iz Zaječara i Knjaževca, trče zajedno od 2019.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-tim-2",
@@ -41,7 +92,10 @@
     "subject": "dunavski trkači",
     "body": "Tim iz Novog Sada, prijavljuje se devet članova.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-bio-1",
@@ -52,7 +106,10 @@
     "subject": "Miloje Stanojlović",
     "body": "Rekreativac iz Čačka. Trčim zbog druženja i putovanja, a rezultat mi je uvek bio na drugom mestu.\n\nNajviše volim trail trke do dvadeset kilometara i planinarske akcije preko Ovčara.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-bio-2",
@@ -63,7 +120,10 @@
     "subject": "Vukašin Todorović",
     "body": "Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-sli-1",
@@ -74,7 +134,10 @@
     "subject": "Damjan Krstić",
     "body": "profilna-sa-maratona.jpg",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-sli-2",
@@ -85,7 +148,10 @@
     "subject": "Radoslav Milovanović",
     "body": "IMG_20260714_073221_HDR_kopija (1) - najbolja verzija.jpeg",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-kom-1",
@@ -96,7 +162,10 @@
     "subject": "Beogradski maraton",
     "body": "Organizacija na nivou, ali startni paket je ove godine bio slabiji nego prošle. Staza je odlično obeležena, okrepa na svakih pet kilometara.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-kom-2",
@@ -107,7 +176,10 @@
     "subject": "Podgorička desetka",
     "body": "Odlično",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-kom-3",
@@ -118,7 +190,10 @@
     "subject": "Avala Trail 2023",
     "body": "Prijavite se preko mog linka i dobijate popust, pišite mi na poruke.",
     "currentDate": "",
-    "proposedDate": ""
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-ter-1",
@@ -129,7 +204,10 @@
     "subject": "Beogradski maraton",
     "body": "Organizator je na Fejsbuku objavio da se trka pomera nedelju dana.",
     "currentDate": "2027-04-03",
-    "proposedDate": "2027-04-10"
+    "proposedDate": "2027-04-10",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-ter-2",
@@ -140,7 +218,10 @@
     "subject": "Beogradski maraton",
     "body": "Pisao sam organizatoru, potvrdio mi je nov datum mejlom.",
     "currentDate": "2027-04-03",
-    "proposedDate": "2027-04-10"
+    "proposedDate": "2027-04-10",
+    "email": "",
+    "city": "",
+    "country": ""
   },
   {
     "id": "ver-ter-3",
@@ -151,6 +232,9 @@
     "subject": "Podgorička desetka",
     "body": "Trka se seli za dve nedelje zbog opštinske manifestacije.",
     "currentDate": "2027-01-30",
-    "proposedDate": "2027-02-13"
+    "proposedDate": "2027-02-13",
+    "email": "",
+    "city": "",
+    "country": ""
   }
 ]

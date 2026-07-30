@@ -30,9 +30,14 @@ export function EntityEditor({
   /** Choices for selects whose list is data: the events a race can belong to,
    *  the members who can run a team. */
   options?: Record<string, FieldOption[]>
-  /** The identities already in use, for the two entities whose form asks for
-   *  their own: a member number and the address of a written page have to be
-   *  free (PDL P8). The other six generate one that cannot collide. */
+  /**
+   * The identities already in use, for the two entities that care.
+   *
+   * A written page asks for its own address and has to be told the address is
+   * gone. A member does not ask at all: its number is handed out first free in
+   * order (PDL P8, 30.07.2026), which is the same list read the other way round.
+   * The other six generate an identity that cannot collide.
+   */
   taken?: string[]
   onDone: () => void
 }) {
@@ -55,7 +60,7 @@ export function EntityEditor({
     const text = textFrom(form, values)
 
     if (editing.mode === 'new') {
-      create(entity.id, idFor(entity, values, (creations[entity.id] ?? []).length), text)
+      create(entity.id, idFor(entity, values, (creations[entity.id] ?? []).length, taken), text)
     } else {
       editRecord(String(editing.record[entity.idField]), text)
     }

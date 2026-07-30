@@ -3,11 +3,17 @@
  * Everything here is a closed list on purpose. A free text box in which the
  * superadmin writes a condition is the shortest path there is to running
  * arbitrary code on the server, so there is no free text: a quantity from a
- * fixed list, an operator that can only be "at least" or "more than", a number,
- * and an optional range of dates.
+ * fixed list, a number, and an optional range of dates.
  *
- * Only those two operators, and both monotonic, so a badge once earned can
- * never be taken away by a later result.
+ * There is no operator at all. The condition is always "at least", greater than
+ * or equal to the value given (PDL P16). The choice between "at least" and "more
+ * than" differed by exactly one, which nobody could see from the screen, so it
+ * was a field that cost a decision and bought nothing.
+ *
+ * What that choice existed to protect is protected still, because "at least"
+ * over a quantity the portal only ever adds to is monotonic: once it is true it
+ * stays true, so a badge that has been earned can never be taken away by a later
+ * result. That is what makes a rule fit to award something permanent.
  */
 export const QUANTITIES = [
   'raceCount',
@@ -27,26 +33,22 @@ export const QUANTITIES = [
 
 export type Quantity = (typeof QUANTITIES)[number]
 
-export const OPERATORS = ['atLeast', 'moreThan'] as const
-
-export type Operator = (typeof OPERATORS)[number]
-
 export type BadgeRule = {
   quantity: Quantity
-  operator: Operator
   value: number
   from: string
   to: string
 }
 
-/** The rule as a sentence, so it can be read back before it is saved. */
+/** The rule as a sentence, so it can be read back before it is saved. The
+ *  sentence carries the "at least" itself, there being nothing else it could
+ *  say. */
 export function ruleSentence(
   rule: BadgeRule,
   t: (key: string, params?: Record<string, string | number>) => string,
 ): string {
   const core = t('badges.sentence', {
     quantity: t(`badges.quantity.${rule.quantity}`),
-    operator: t(`badges.operator.${rule.operator}`),
     value: rule.value,
   })
 
