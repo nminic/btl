@@ -61,11 +61,27 @@ describe('the fee schedule in the terms', () => {
     return within(section).getByText(matching)
   }
 
-  /** The lines of the price table, which is one paragraph of pipe-separated rows. */
+  /** The price table, one string per row of cells. Written pages render their
+   *  Markdown as a real table (src/components/Markdown.tsx), so this reads the
+   *  rows a screen reader would, not the pipes the source is written in. The
+   *  header row has no cells, only column headers, so it falls out by itself. */
   async function priceTableRows() {
-    const table = await feeParagraph(/Period uplate/)
+    const heading = await screen.findByRole('heading', { name: /Članarina/ })
+    const section = heading.closest('section')
 
-    return (table.textContent ?? '').split('\n').filter((line) => line.startsWith('|'))
+    if (section === null) {
+      throw new Error('the fee heading stands outside a section')
+    }
+
+    return within(within(section).getByRole('table'))
+      .getAllByRole('row')
+      .map((row) =>
+        within(row)
+          .queryAllByRole('cell')
+          .map((cell) => cell.textContent ?? '')
+          .join(' | '),
+      )
+      .filter((line) => line !== '')
   }
 
   it('quotes every price band that pricing.ts holds, in whole rows', async () => {
