@@ -1,6 +1,7 @@
 import { ENTITY_FORMS, type EntityDef } from './entityForms'
 
-/* Everything administration can create, change and remove (PDL P28a).
+/* Every entity administration owns (PDL P28a). Most are created, changed and
+ * removed; the price list is only changed, and says so on itself (entityForms.ts).
  *
  * Read off the entity definitions rather than written out again beside them. It
  * was a second list, and a second list of the same nine things is a list that

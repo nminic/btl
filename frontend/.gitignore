@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 coverage
+# Coverage written somewhere else, which is what a second process has to do
+# so two runs at once do not delete each other's working directory.
+coverage-*

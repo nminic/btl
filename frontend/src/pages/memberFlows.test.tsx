@@ -130,16 +130,15 @@ describe('membership', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('says the price list is missing instead of drawing a slip for nothing', async () => {
-    // The window opens every October; the price list runs out at the end of
-    // 2027, so this is a real October with nothing to charge.
-    renderMembershipOn('2028-10-01')
+  it('has a price in any October of any year, because the list repeats', async () => {
+    /* It used to run out at the end of 2027, and this screen carried a line
+       saying membership was not on sale yet for the day it did. The four
+       periods repeat now (owner, 30.07.2026), so that day never comes. */
+    renderMembershipOn('2031-10-01')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
-    expect(
-      screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getAllByText(/Članarina se još ne prodaje/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/35 EUR/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Članarina se još ne prodaje/)).not.toBeInTheDocument()
   })
 
   it('keeps the slip out of sight while renewal is shut', async () => {

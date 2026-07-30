@@ -96,7 +96,13 @@ export function mayOpen(need: Need, role: Role, may: (right: string) => boolean)
   }
 
   if (need.of === 'anyEntity') {
-    return ENTITY_FORMS.some((entity) => mayOpen(NEEDS[entity.path], role, may))
+    /* The ones the section actually holds, which is not all of them: an entity
+       whose rows are fixed is not in it (entityForms.ts). Counting it here
+       offered "Entiteti" to a moderator whose one entity right is the price
+       list, and the section it opened was empty. */
+    return ENTITY_FORMS.some(
+      (entity) => entity.fixed !== true && mayOpen(NEEDS[entity.path], role, may),
+    )
   }
 
   return need.of === 'staff' || may(need.right.key)

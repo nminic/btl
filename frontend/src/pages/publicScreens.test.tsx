@@ -512,13 +512,21 @@ describe('Pricing', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Članarina' })).toBeVisible()
     expect(screen.getByText('1. do 5. oktobra')).toBeInTheDocument()
+    // The fourth period ends on 30 September, because on 1 October the next
+    // season goes on sale (owner, 30.07.2026).
+    expect(screen.getByText('1. januara do 30. septembra')).toBeInTheDocument()
     expect(screen.getByText(/35 EUR/)).toBeInTheDocument()
     expect(screen.getAllByText(/40 EUR/)).toHaveLength(2)
     expect(screen.getByText('6.000 RSD')).toBeInTheDocument()
     expect(screen.getByText('(bez prava na rangiranje)')).toBeInTheDocument()
-    // The preview period is not a price, so it has no row in the table. It is
-    // still explained underneath it.
-    expect(within(screen.getByRole('table')).queryByText(/septembra/)).not.toBeInTheDocument()
+    /* The period of looking around, 15 to 30 September 2026, is not a price and
+       has no row; it is explained underneath the table. The fourth row does end
+       in September, which is a different September: from 1 October the next
+       season goes on sale (owner, 30.07.2026). */
+    expect(
+      within(screen.getByRole('table')).queryByText(/15\. do 30\. septembra/),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/Od 15\. do 30\. septembra/)).toBeVisible()
   })
 
   it('states that the fee is not refunded', async () => {

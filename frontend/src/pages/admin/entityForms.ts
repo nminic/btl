@@ -47,6 +47,16 @@ export type EntityDef = {
    * moderator who could tick his own boxes.
    */
   superadminOnly?: boolean
+  /**
+   * Whether the set of records is fixed: nothing added, nothing removed, only
+   * changed.
+   *
+   * True of the price list alone (owner, 30.07.2026), whose rows are the four
+   * windows of the year. It keeps its right in the matrix and its guard like
+   * every other entity, and it leaves the section of entities, which is the
+   * place for the ones that are created and removed.
+   */
+  fixed?: boolean
   form: FormDef
   /** The field that names a record. Taken from the form where the form asks for
    *  it, handed out or made up where it does not: the address of a written page
@@ -175,12 +185,17 @@ export const BADGES: EntityDef = {
   blank: {},
 }
 
+/* The one entity whose rows are the year itself: four windows that tile it and
+ * repeat, plus the junior price that has none. Nothing is added and nothing is
+ * removed (owner, 30.07.2026), so it is not in the section that is about
+ * creating and removing; it is a screen of administration. */
 export const PRICING: EntityDef = {
   id: 'pricing',
   labelKey: 'admin.pricing',
   path: 'administracija/cenovnik',
   form: cena as FormDef,
   idField: 'key',
+  fixed: true,
   blank: {},
 }
 

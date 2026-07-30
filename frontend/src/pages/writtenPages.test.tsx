@@ -2,9 +2,13 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { JUNIOR, PRICES } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
+import sr from '../i18n/sr.json'
+import { translate, type Dictionary } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
 import { StaticPage } from './StaticPage'
+
+const dictionary = sr as Dictionary
 
 describe('the written pages', () => {
   it.each([
@@ -87,16 +91,23 @@ describe('the fee schedule in the terms', () => {
       .filter((line) => line !== '')
   }
 
-  it('quotes every price band that pricing.ts holds, in whole rows', async () => {
+  it('quotes every price band that pricing.ts holds, by its own name', async () => {
     renderAt('/sr/uslovi-koriscenja')
     const rows = await priceTableRows()
 
     for (const price of PRICES) {
-      // Whole rows, so a price cannot keep its band while wearing another's
-      // dinar amount.
-      const row = rows.find((line) => line.includes(`${price.eur} EUR`))
+      /* Found by the name of the band and then checked for both amounts, rather
+         than found by an amount. Two of the four cost 40 EUR and 4.800 RSD, so
+         looking a row up by its price returned the regular band for the season
+         band as well: the terms could have dropped the fourth row entirely, or
+         gone on selling a band the price list had renamed, and this test would
+         have stayed green. It is named in ADL A12 as the guard against exactly
+         that, and against the one thing that changed it was inert. */
+      const band = translate(dictionary, 'sr', `pricing.rows.${price.key}`)
+      const row = rows.find((line) => line.includes(band))
 
-      expect(row, `no row of the table quotes ${price.eur} EUR`).toBeDefined()
+      expect(row, `no row of the table is the band "${band}"`).toBeDefined()
+      expect(row).toContain(`${price.eur} EUR`)
       expect(row).toContain(`${price.rsd.toLocaleString('sr-Latn')} RSD`)
     }
   })
