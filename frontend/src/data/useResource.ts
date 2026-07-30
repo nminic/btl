@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 import type { Badge } from './badgeRule'
 import { loadResource, type ResourceName } from './client'
-import type { BtlEvent, Competitor, League, Race, Result, StaticPage, Team } from './types'
+import type {
+  BtlEvent,
+  Competitor,
+  League,
+  Moderator,
+  Race,
+  Result,
+  StaticPage,
+  Team,
+} from './types'
 
 export type ResourceState<T> =
   | { status: 'loading' }
@@ -101,6 +110,7 @@ export const useBadges = () => useResource<Badge[]>('badges')
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useResource<BtlEvent[]>('events')
 export const useLeagues = () => useResource<League[]>('leagues')
+export const useModerators = () => useResource<Moderator[]>('moderators')
 export const usePages = () => useResource<Record<string, StaticPage>>('pages')
 export const useRaces = () => useResource<Race[]>('races')
 export const useResults = () => useResource<Result[]>('results')

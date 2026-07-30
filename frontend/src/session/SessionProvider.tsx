@@ -7,6 +7,7 @@ import {
   type Edits,
   type Message,
   type NotificationKey,
+  type Rights,
   type SessionValue,
   type Submission,
   type SubmissionStatus,
@@ -48,6 +49,7 @@ export function SessionProvider({
   const [messages, setMessages] = useState<Message[]>(FIRST_MESSAGES)
   const [edits, setEdits] = useState<Edits>({})
   const [creations, setCreations] = useState<Creations>({})
+  const [rights, setRights] = useState<Rights>({})
   const [decisions, setDecisions] = useState<Decisions>({})
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
@@ -93,6 +95,13 @@ export function SessionProvider({
     setCreations((current) => ({ ...current, [entity]: [{ id, values }, ...(current[entity] ?? [])] }))
   }, [])
 
+  const setRight = useCallback((moderator: string, right: string, granted: boolean) => {
+    setRights((current) => ({
+      ...current,
+      [moderator]: { ...current[moderator], [right]: granted },
+    }))
+  }, [])
+
   const setNotification = useCallback((key: NotificationKey, on: boolean) => {
     setNotifications((current) => ({ ...current, [key]: on }))
   }, [])
@@ -126,6 +135,8 @@ export function SessionProvider({
       editRecord,
       creations,
       create,
+      rights,
+      setRight,
       decisions,
       settle,
     }),
@@ -144,6 +155,8 @@ export function SessionProvider({
       editRecord,
       creations,
       create,
+      rights,
+      setRight,
       decisions,
       settle,
     ],

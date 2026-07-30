@@ -1,0 +1,29 @@
+{
+  "id": "admin-moderator",
+  "titleKey": "admin.form.new.moderators",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "firstName",
+      "type": "text",
+      "labelKey": "admin.field.firstName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "lastName",
+      "type": "text",
+      "labelKey": "admin.field.lastName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "email",
+      "type": "email",
+      "labelKey": "admin.field.email",
+      "hintKey": "admin.hint.moderatorEmail",
+      "required": true,
+      "maxLength": 120
+    }
+  ]
+}

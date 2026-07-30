@@ -17,6 +17,7 @@ export const RESOURCE_NAMES = [
   'competitors',
   'events',
   'leagues',
+  'moderators',
   'pages',
   'races',
   'results',

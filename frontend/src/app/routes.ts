@@ -126,6 +126,9 @@ const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'administracija/lige', labelKey: 'admin.leagues', seoKey: 'adminLeagues' },
   { path: 'administracija/cenovnik', labelKey: 'admin.pricing', seoKey: 'adminPricing' },
   { path: 'administracija/strane', labelKey: 'admin.pages', seoKey: 'adminPages' },
+  /* The ninth entity, reached from the list of entities like the other eight,
+     and shown there to the superadmin alone (PDL P21, P28a). */
+  { path: 'administracija/moderatori', labelKey: 'admin.moderators', seoKey: 'adminModerators' },
 ]
 
 /* Addresses the router serves that the navigation never names: the home page,

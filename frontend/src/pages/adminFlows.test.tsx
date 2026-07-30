@@ -55,6 +55,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     editRecord: vi.fn(),
     creations: {},
     create: vi.fn(),
+    rights: {},
+    setRight: vi.fn(),
     decisions: {},
     settle: vi.fn(),
   }
@@ -1185,6 +1187,7 @@ describe('the list of entities', () => {
       'Značke',
       'Cenovnik',
       'Statične strane',
+      'Moderatori',
     ]
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Entiteti' })).toBeVisible()
@@ -1202,6 +1205,19 @@ describe('the list of entities', () => {
       'href',
       '/sr/administracija/clanovi',
     )
+  })
+
+  it('leaves moderators off it for a moderator, who may not assign rights', async () => {
+    /* The one entity the two roles do not share. A tile that answers "this is
+       not for you" is worse than no tile: it tells somebody there is a screen
+       they are being kept out of, on the screen whose whole job is to say what
+       there is (PDL P21). */
+    renderAt('/sr/administracija/entiteti', 'moderator')
+
+    const page = within(await screen.findByRole('main'))
+
+    expect(page.getByRole('link', { name: 'Članovi' })).toBeVisible()
+    expect(page.queryByRole('link', { name: 'Moderatori' })).not.toBeInTheDocument()
   })
 
   it('opens an entity from the list', async () => {

@@ -138,6 +138,10 @@
       "title": "Pisane strane (administracija)",
       "description": "Pisane strane portala: pravilnik, uslovi korišćenja i politika privatnosti."
     },
+    "adminModerators": {
+      "title": "Moderatori (administracija)",
+      "description": "Ko moderira portal i koja mu je prava Superadmin dodelio, po entitetu i po redu."
+    },
     "newResult": {
       "title": "Prijava rezultata",
       "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
@@ -823,6 +827,9 @@
     "byCategory": "Po kategorijama",
     "noEvents": "Bez događaja",
     "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
+    "moderators": "Moderatori",
+    "moderatorsNote": "Ljudi koji moderiraju portal. Superadmin ih pravi i kućicama im zadaje prava; sve ostalo u administraciji rade isto kao on.",
+    "moderatorsClosed": "Moderatore uređuje samo Superadmin. To je jedina razlika između dve uloge: ne šta ko sme da radi, nego ko odlučuje šta moderator sme.",
     "pageTitle": "Naslov",
     "address": "Adresa",
     "noAddress": "Stoji unutar drugih strana",
@@ -844,7 +851,8 @@
         "leagues": "Nova liga",
         "badges": "Nova značka",
         "pricing": "Novi red cenovnika",
-        "pages": "Nova strana"
+        "pages": "Nova strana",
+        "moderators": "Nov moderator"
       },
       "edit": {
         "members": "Izmena člana",
@@ -854,7 +862,8 @@
         "leagues": "Izmena lige",
         "badges": "Izmena značke",
         "pricing": "Izmena reda cenovnika",
-        "pages": "Izmena strane"
+        "pages": "Izmena strane",
+        "moderators": "Izmena moderatora"
       }
     },
     "field": {
@@ -889,7 +898,8 @@
       "rsd": "Cena u dinarima",
       "pageTitle": "Naslov strane",
       "sectionHeading": "Naslov prve sekcije",
-      "sectionBody": "Tekst prve sekcije"
+      "sectionBody": "Tekst prve sekcije",
+      "email": "Adresa elektronske pošte"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -921,7 +931,8 @@
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "ranking": "Ko plati posle 1. januara ima profil i svoje rezultate, ali ne ulazi u rang liste.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
-      "sectionBody": "Ostale sekcije se uređuju kad stigne baza."
+      "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
+      "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega."
     },
     "value": {
       "genderM": "Muški",
@@ -983,6 +994,68 @@
     "themeLight": "Svetla",
     "themeHint": "Tamna tema je podrazumevana.",
     "notifications": "Obaveštenja"
+  },
+  "rights": {
+    "title": "Prava moderatora",
+    "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",
+    "superadminNote": "Superadmina nema u ovoj tabeli. On sme sve, uvek, pa nema šta da mu se dodeli ni oduzme.",
+    "moderator": "Moderator",
+    "given": "Prava",
+    "none": "Bez ijednog prava",
+    "granted": {
+      "one": "{count} pravo",
+      "few": "{count} prava",
+      "other": "{count} prava"
+    },
+    "box": "{who}, {action}",
+    "groupEntities": "Uređivanje entiteta",
+    "groupQueues": "Odlučivanje u redovima verifikacije",
+    "column": {
+      "entity": {
+        "members": "Članovi",
+        "events": "Događaji",
+        "races": "Trke",
+        "teams": "Timovi",
+        "leagues": "Lige",
+        "badges": "Značke",
+        "pricing": "Cenovnik",
+        "pages": "Strane",
+        "moderators": "Moderatori"
+      },
+      "queue": {
+        "results": "Rezultati",
+        "payments": "Uplate",
+        "leagues": "Predložene lige",
+        "teams": "Novi timovi",
+        "bios": "Biografije",
+        "photos": "Slike",
+        "comments": "Komentari",
+        "schedule": "Termini"
+      }
+    },
+    "action": {
+      "entity": {
+        "members": "uređivanje članova",
+        "events": "uređivanje događaja",
+        "races": "uređivanje trka",
+        "teams": "uređivanje timova",
+        "leagues": "uređivanje liga",
+        "badges": "uređivanje znački",
+        "pricing": "uređivanje cenovnika",
+        "pages": "uređivanje statičnih strana",
+        "moderators": "uređivanje moderatora"
+      },
+      "queue": {
+        "results": "odlučivanje o rezultatima",
+        "payments": "odlučivanje o uplatama",
+        "leagues": "odlučivanje o predloženim ligama",
+        "teams": "odlučivanje o novim timovima",
+        "bios": "odlučivanje o biografijama",
+        "photos": "odlučivanje o profilnim slikama",
+        "comments": "odlučivanje o komentarima",
+        "schedule": "odlučivanje o prijavama termina"
+      }
+    }
   },
   "entities": {
     "title": "Entiteti",

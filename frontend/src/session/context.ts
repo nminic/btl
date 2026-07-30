@@ -79,8 +79,20 @@ export type Created = {
   values: Record<string, string>
 }
 
-/** New records by entity: members, events, races, and the five others. */
+/** New records by entity: members, events, races, and the six others. */
 export type Creations = Record<string, Created[]>
+
+/*
+ * Which rights the superadmin has ticked and unticked, by moderator and by
+ * right, kept as an overlay for the same reason an edit is (PDL P28a).
+ *
+ * A box has to remember both answers rather than only the yes. A moderator who
+ * arrives holding a right and has it taken away is not the same as one who never
+ * had it, and a set of keys that are on could not tell the two apart: unticking
+ * would be read as "nothing said about this one" and the right would come
+ * straight back on the next read.
+ */
+export type Rights = Record<string, Record<string, boolean>>
 
 /* What an administrator has decided in one of the verification queues, kept the
  * same way an edit is: an overlay on top of what is waiting, rather than a
@@ -155,6 +167,12 @@ export type SessionValue = {
 
   creations: Creations
   create: (entity: string, id: string, values: Record<string, string>) => void
+
+  rights: Rights
+  /** One box, ticked or unticked. One call per box, because that is what the
+   *  superadmin does: there is no save button on the matrix and nothing to lose
+   *  by leaving the screen. */
+  setRight: (moderator: string, right: string, granted: boolean) => void
 
   decisions: Decisions
   settle: (id: string, decision: Decision) => void

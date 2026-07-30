@@ -26,6 +26,7 @@ import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
 import { AdminMembers } from '../pages/admin/AdminMembers'
 import { AdminLeagues } from '../pages/admin/AdminLeagues'
+import { AdminModerators } from '../pages/admin/AdminModerators'
 import { AdminPages } from '../pages/admin/AdminPages'
 import { AdminPricing } from '../pages/admin/AdminPricing'
 import { AdminRaces } from '../pages/admin/AdminRaces'
@@ -74,6 +75,7 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/timovi': <AdminTeams />,
   'administracija/lige': <AdminLeagues />,
   'administracija/strane': <AdminPages />,
+  'administracija/moderatori': <AdminModerators />,
   znacke: <Badges />,
   'o-ligi': <StaticPage slug="o-ligi" />,
   pravilnik: <Rulebook />,

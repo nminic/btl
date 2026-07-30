@@ -11,6 +11,7 @@ import {
   EVENTS,
   LEAGUES,
   MEMBERS,
+  MODERATORS,
   PAGES,
   PRICING,
   RACES,
@@ -78,6 +79,11 @@ const SCREENS: Screen[] = [
   { entity: BADGES, path: 'administracija/znacke', list: 'Značke' },
   { entity: PRICING, path: 'administracija/cenovnik', list: 'Cenovnik' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
+  /* The ninth. It is entered and changed by the same renderer reading the same
+     kind of JSON as the other eight, which is the whole point of it being an
+     entity rather than a screen somebody wrote by hand (PDL P28a). What it may
+     do is not on the form; that is the matrix below the list. */
+  { entity: MODERATORS, path: 'administracija/moderatori', list: 'Moderatori' },
 ]
 
 describe('every entity has a form for a record that does not exist yet', () => {

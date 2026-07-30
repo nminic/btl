@@ -288,6 +288,8 @@ function renderInbox(inbox: Message[]) {
     editRecord: vi.fn(),
     creations: {},
     create: vi.fn(),
+    rights: {},
+    setRight: vi.fn(),
     decisions: {},
     settle: vi.fn(),
   }

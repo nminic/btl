@@ -1,0 +1,56 @@
+[
+  {
+    "id": "mod-radulovic",
+    "firstName": "Jelena",
+    "lastName": "Radulović",
+    "email": "jelena.radulovic@primer.rs",
+    "rights": [
+      "entity:members",
+      "entity:events",
+      "entity:races",
+      "entity:teams",
+      "entity:leagues",
+      "entity:badges",
+      "entity:pricing",
+      "entity:pages",
+      "queue:results",
+      "queue:payments",
+      "queue:leagues",
+      "queue:teams",
+      "queue:bios",
+      "queue:photos",
+      "queue:comments",
+      "queue:schedule"
+    ]
+  },
+  {
+    "id": "mod-vujacic",
+    "firstName": "Nenad",
+    "lastName": "Vujačić",
+    "email": "nenad.vujacic@primer.me",
+    "rights": [
+      "queue:results"
+    ]
+  },
+  {
+    "id": "mod-saric",
+    "firstName": "Milena",
+    "lastName": "Šarić",
+    "email": "milena.saric@primer.rs",
+    "rights": []
+  },
+  {
+    "id": "mod-milovanovic-stefanovic",
+    "firstName": "Aleksandra",
+    "lastName": "Milovanović-Stefanović",
+    "email": "aleksandra.milovanovic@primer.ba",
+    "rights": [
+      "entity:events",
+      "entity:races",
+      "queue:bios",
+      "queue:photos",
+      "queue:comments",
+      "queue:schedule"
+    ]
+  }
+]
