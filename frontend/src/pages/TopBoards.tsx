@@ -5,20 +5,24 @@ import {
   bestSingleRaces,
   CATEGORIES,
   defaultSeason,
+  rankTeams,
+  seasonOf,
   seasonsWithResults,
   topByCategory,
   topByKilometers,
   topByTimeOnCourse,
 } from '../data/derive'
-import type { Competitor, Result } from '../data/types'
-import { combinePair, useCompetitors, useResults } from '../data/useResource'
+import type { Competitor, Result, Team } from '../data/types'
+import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './TopBoards.css'
 
-/* The top boards from PDL P12: the lists that stand beside the season table
- * rather than inside it. Every one of them keeps ten places and no more, and
- * they all read the same season, which is chosen once at the top of the page.
+/* The Top 10 boards: the lists the rulebook counts out in Article 56, which
+ * stand beside the season table rather than inside it. There are eleven of
+ * them, they appear in the order the rulebook names them, every one of them
+ * keeps ten places and no more, and they all read the same season, which is
+ * chosen once at the top of the page (PDL P12 and P28a).
  *
  * The ordering rules, tie-breakers included, live in src/data/derive.ts. This
  * file only lays them out.
@@ -29,8 +33,9 @@ const PLACES = 10
 const PODIUM = 3
 
 type Place = {
-  /** Whose place it is; also the address of the profile behind the name. */
-  memberNumber: string
+  /** Where the name leads. A profile on most boards, a team page on the team
+   *  board, because the row is about the team and not about one member. */
+  to: string
   /** Unique within one board, which a member number is not on the race board:
    *  the same runner can hold two of the ten best races. */
   key: string
@@ -44,22 +49,22 @@ type Place = {
   value: string
 }
 
-function Board({
-  id,
-  title,
-  valueLabel,
-  detailLabel,
-  places,
-  empty,
-}: {
+type BoardData = {
   id: string
   title: string
   valueLabel: string
   detailLabel?: string
+  /** What the column of names is called, when "Član" is not what is in it. */
+  nameLabel?: string
   places: Place[]
+  /** What stands in place of the table when the board has no places, which is
+   *  not always the same sentence: a season without results and a list whose
+   *  measure nobody has decided on are two different answers. */
   empty: ReactNode
-}) {
-  const { locale, t } = useI18n()
+}
+
+function Board({ id, title, valueLabel, detailLabel, nameLabel, places, empty }: BoardData) {
+  const { t } = useI18n()
   const headingId = `board-${id}`
 
   return (
@@ -76,7 +81,7 @@ function Board({
             <thead>
               <tr>
                 <th scope="col">{t('topBoards.columns.position')}</th>
-                <th scope="col">{t('topBoards.columns.member')}</th>
+                <th scope="col">{nameLabel ?? t('topBoards.columns.member')}</th>
                 {detailLabel !== undefined && <th scope="col">{detailLabel}</th>}
                 <th scope="col">{valueLabel}</th>
               </tr>
@@ -86,7 +91,7 @@ function Board({
                 <tr key={place.key} className={place.position <= PODIUM ? 'podium' : undefined}>
                   <td className="table__position">{place.position}</td>
                   <td>
-                    <Link to={`/${locale}/takmicar/${place.memberNumber}`}>{place.name}</Link>
+                    <Link to={place.to}>{place.name}</Link>
                   </td>
                   {place.detail !== undefined && <td className="boards__detail">{place.detail}</td>}
                   <td className="table__points">{place.value}</td>
@@ -107,11 +112,13 @@ function nameOf(competitor: Competitor): string {
 function Boards({
   competitors,
   results,
+  teams,
   seasonParam,
   onSeason,
 }: {
   competitors: Competitor[]
   results: Result[]
+  teams: Team[]
   seasonParam: string | null
   onSeason: (season: string) => void
 }) {
@@ -125,14 +132,23 @@ function Boards({
   const season = seasonParam === null ? fallback : Number(seasonParam)
 
   /* One pass over the results per board, and the season only changes when
-   * somebody changes it, so the nine boards are not rebuilt on every render. */
-  const boards = useMemo(() => {
+   * somebody changes it, so the boards are not rebuilt on every render. */
+  const boards = useMemo<BoardData[]>(() => {
+    const profile = (memberNumber: string) => `/${locale}/takmicar/${memberNumber}`
+    const noResults = t('topBoards.empty')
+
+    /* Boards seven to eleven of Article 56, kept in CATEGORIES order rather
+     * than in the order the sentence in the rulebook happens to name them: the
+     * five lengths are shown shortest first everywhere else on the portal, and
+     * one screen disagreeing with the other four is worse than one screen
+     * disagreeing with the punctuation of one sentence. */
     const lengths = CATEGORIES.map((category) => ({
       id: category,
       title: t(`topBoards.byLength.${category}`),
       valueLabel: t('topBoards.columns.races'),
+      empty: noResults,
       places: topByCategory(competitors, results, season, category, PLACES).map((column) => ({
-        memberNumber: column.competitor.memberNumber,
+        to: profile(column.competitor.memberNumber),
         key: column.competitor.memberNumber,
         position: column.position,
         name: nameOf(column.competitor),
@@ -140,28 +156,20 @@ function Boards({
       })),
     }))
 
+    /* The team board reads the chosen season like every other board, so the
+     * results are narrowed before they are summed. The teams page beside it
+     * sums the whole history, which is why rankTeams takes the results it is
+     * given rather than a season. */
+    const inSeason = results.filter((result) => seasonOf(result) === season)
+
     return [
-      ...lengths,
-      {
-        id: 'best-races',
-        title: t('topBoards.bestRaces'),
-        valueLabel: t('topBoards.columns.points'),
-        detailLabel: t('topBoards.columns.event'),
-        places: bestSingleRaces(competitors, results, season, PLACES).map((row) => ({
-          memberNumber: row.competitor.memberNumber,
-          key: row.result.id,
-          position: row.position,
-          name: nameOf(row.competitor),
-          detail: row.result.eventName,
-          value: formatPoints(row.result.points, locale),
-        })),
-      },
       {
         id: 'kilometers',
         title: t('topBoards.kilometers'),
         valueLabel: t('topBoards.columns.distance'),
+        empty: noResults,
         places: topByKilometers(competitors, results, season, PLACES).map((row) => ({
-          memberNumber: row.competitor.memberNumber,
+          to: profile(row.competitor.memberNumber),
           key: row.competitor.memberNumber,
           position: row.position,
           name: nameOf(row.competitor),
@@ -172,16 +180,79 @@ function Boards({
         id: 'on-course',
         title: t('topBoards.onCourse'),
         valueLabel: t('topBoards.columns.time'),
+        empty: noResults,
         places: topByTimeOnCourse(competitors, results, season, PLACES).map((row) => ({
-          memberNumber: row.competitor.memberNumber,
+          to: profile(row.competitor.memberNumber),
           key: row.competitor.memberNumber,
           position: row.position,
           name: nameOf(row.competitor),
           value: formatCourseTime(row.seconds),
         })),
       },
+      {
+        id: 'best-races',
+        title: t('topBoards.bestRaces'),
+        valueLabel: t('topBoards.columns.points'),
+        detailLabel: t('topBoards.columns.event'),
+        empty: noResults,
+        places: bestSingleRaces(competitors, results, season, PLACES).map((row) => ({
+          to: profile(row.competitor.memberNumber),
+          key: row.result.id,
+          position: row.position,
+          name: nameOf(row.competitor),
+          detail: row.result.eventName,
+          value: formatPoints(row.result.points, locale),
+        })),
+      },
+      /* Fourth in the rulebook: the best progress. It has no places, on
+         purpose. The list is in Article 56 and in PDL P12, but what it
+         compares is still an open decision (P28a): the change of position
+         against the end of last month, or the points gained against the
+         previous season. Until the owner picks one, the board says why it is
+         empty. Inventing a measure would put a number on the screen that
+         nobody decided on. */
+      {
+        id: 'progress',
+        title: t('topBoards.progress'),
+        valueLabel: t('topBoards.columns.points'),
+        places: [] as Place[],
+        empty: t('topBoards.progressUndecided'),
+      },
+      {
+        id: 'teams',
+        title: t('topBoards.teams'),
+        nameLabel: t('topBoards.columns.team'),
+        valueLabel: t('topBoards.columns.points'),
+        detailLabel: t('topBoards.columns.members'),
+        empty: noResults,
+        places: rankTeams(teams, competitors, inSeason)
+          .filter((row) => row.totals.races > 0)
+          .slice(0, PLACES)
+          .map((row) => ({
+            to: `/${locale}/tim/${row.team.slug}`,
+            key: row.team.id,
+            position: row.position,
+            name: row.team.name,
+            detail: formatNumber(row.members, locale),
+            value: formatPoints(row.totals.points, locale),
+          })),
+      },
+      /* Sixth in the rulebook: the pairs. A pair is two members who confirmed
+         each other (PDL P13) and it is ranked on the races they ran together
+         (P12); neither the pairing nor the joint race exists in the data the
+         prototype reads, and inventing one would be worse than an empty
+         board. Verification says the same thing about the queues that have no
+         table yet. */
+      {
+        id: 'pairs',
+        title: t('topBoards.pairs'),
+        valueLabel: t('topBoards.columns.points'),
+        places: [] as Place[],
+        empty: t('topBoards.pairsSoon'),
+      },
+      ...lengths,
     ]
-  }, [competitors, results, season, locale, t])
+  }, [competitors, results, teams, season, locale, t])
 
   return (
     <>
@@ -200,22 +271,8 @@ function Boards({
 
       <div className="boards__grid">
         {boards.map((board) => (
-          <Board key={board.id} {...board} empty={t('topBoards.empty')} />
+          <Board key={board.id} {...board} />
         ))}
-
-        {/* The pairs board has nothing behind it yet. A pair is two members who
-            confirmed each other (PDL P13) and it is ranked on the races they ran
-            together (P12); neither the pairing nor the joint race exists in the
-            data the prototype reads, and inventing one would be worse than an
-            empty board. Verification says the same thing about the queues that
-            have no table yet. */}
-        <Board
-          id="pairs"
-          title={t('topBoards.pairs')}
-          valueLabel={t('topBoards.columns.points')}
-          places={[]}
-          empty={t('topBoards.pairsSoon')}
-        />
       </div>
     </>
   )
@@ -224,7 +281,7 @@ function Boards({
 export function TopBoards() {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
-  const state = combinePair(useCompetitors(), useResults())
+  const state = combineResources(useCompetitors(), useResults(), useTeams())
 
   function changeSeason(season: string) {
     const merged = new URLSearchParams(params)
@@ -239,10 +296,11 @@ export function TopBoards() {
       <p className="boards__intro">{t('topBoards.intro')}</p>
 
       <Resource state={state}>
-        {([competitors, results]) => (
+        {([competitors, results, teams]) => (
           <Boards
             competitors={competitors}
             results={results}
+            teams={teams}
             seasonParam={params.get('sezona')}
             onSeason={changeSeason}
           />

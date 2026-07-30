@@ -1,0 +1,62 @@
+{
+  "id": "admin-trka",
+  "titleKey": "admin.form.new.races",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "select",
+      "labelKey": "admin.field.event",
+      "hintKey": "admin.hint.event",
+      "required": true
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.raceName",
+      "hintKey": "admin.hint.raceName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "distanceKm",
+      "type": "number",
+      "labelKey": "admin.field.distanceKm",
+      "hintKey": "admin.hint.distanceKm",
+      "required": true,
+      "min": 0.1,
+      "max": 1000
+    },
+    {
+      "name": "ascentM",
+      "type": "number",
+      "labelKey": "admin.field.ascentM",
+      "hintKey": "admin.hint.ascentM",
+      "required": true,
+      "min": 0,
+      "max": 30000
+    },
+    {
+      "name": "descentM",
+      "type": "number",
+      "labelKey": "admin.field.descentM",
+      "required": true,
+      "min": 0,
+      "max": 30000
+    },
+    {
+      "name": "category",
+      "type": "select",
+      "labelKey": "admin.field.category",
+      "hintKey": "admin.hint.category",
+      "required": true,
+      "options": [
+        { "value": "short", "labelKey": "category.short" },
+        { "value": "half", "labelKey": "category.half" },
+        { "value": "long", "labelKey": "category.long" },
+        { "value": "marathon", "labelKey": "category.marathon" },
+        { "value": "ultra", "labelKey": "category.ultra" }
+      ]
+    }
+  ]
+}

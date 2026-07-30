@@ -9,7 +9,9 @@ describe('changing data in administration', () => {
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
     const first = within(table).getAllByRole('row')[1]
-    const city = within(first).getByRole('button')
+    // Named, because the row also carries the control that opens the whole
+    // record on a form.
+    const city = within(first).getByRole('button', { name: /^Mesto:/ })
     const before = city.textContent
 
     await user.click(city)
@@ -18,8 +20,8 @@ describe('changing data in administration', () => {
     await user.type(box, 'Vršac')
     await user.tab()
 
-    expect(within(first).getByRole('button')).toHaveTextContent('Vršac')
-    expect(within(first).getByRole('button')).not.toHaveTextContent(before!)
+    expect(within(first).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
+    expect(within(first).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before!)
   })
 
   it('lets an edit be abandoned', async () => {
@@ -28,13 +30,13 @@ describe('changing data in administration', () => {
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
     const first = within(table).getAllByRole('row')[1]
-    const before = within(first).getByRole('button').textContent
+    const before = within(first).getByRole('button', { name: /^Mesto:/ }).textContent
 
-    await user.click(within(first).getByRole('button'))
+    await user.click(within(first).getByRole('button', { name: /^Mesto:/ }))
     await user.type(within(first).getByRole('textbox'), 'nešto')
     await user.keyboard('{Escape}')
 
-    expect(within(first).getByRole('button')).toHaveTextContent(before!)
+    expect(within(first).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before!)
   })
 
   it('changes the name and the place of an event', async () => {

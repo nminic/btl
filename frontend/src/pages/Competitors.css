@@ -37,15 +37,19 @@
 .card__face {
   display: grid;
   place-items: center;
-  width: 5.5rem;
-  height: 5.5rem;
-  margin-bottom: 0.35rem;
+  /* Bigger, and optically centred: the glyph carries no line box of its own, so
+     without line-height 1 it sits a hair below the middle of the circle
+     (owner, 29.07.2026). */
+  width: 7.5rem;
+  height: 7.5rem;
+  margin: 0 auto 0.5rem;
+  line-height: 1;
   border-radius: 50%;
   /* Stands in for a photograph, in the space a photograph will take. The hue
      comes from the member number, so a face keeps its colour between visits. */
   background: hsl(var(--face-hue) 45% 32%);
   color: #fff;
-  font-size: 1.9rem;
+  font-size: 2.6rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 4px hsl(var(--face-hue) 45% 32% / 0.35);

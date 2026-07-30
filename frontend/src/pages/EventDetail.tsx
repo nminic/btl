@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router'
+import { PageMeta } from '../app/PageMeta'
 import { Resource } from '../components/Resource'
 import { useEvents, useRaces } from '../data/useResource'
 import { formatDate, formatNumber } from '../i18n/format'
@@ -65,32 +66,48 @@ export function EventDetail() {
         }
 
         return (
-          <div className="profile">
-            <header className="profile__head">
-              <p className="profile__meta">
-                <Link to={`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`}>
-                  {t('event.backToCalendar')}
-                </Link>
-              </p>
-              <h1>{event.name}</h1>
-              <p className="profile__meta">
-                {formatDate(event.date, locale)}
-                {' · '}
-                {event.city}
-                {' · '}
-                {t(`calendar.status.${event.status}`)}
-              </p>
-              <p className="profile__meta">
-                {t('event.organizer')}
-                {': '}
-                {event.organizer}
-              </p>
-            </header>
+          <>
+            {/* An event is shared as a link far more often than it is browsed to,
+                so the date goes in the name: a shared link that says only "Trka
+                kroz Košutnjak" leaves out the one thing the person needs. */}
+            <PageMeta
+              title={t('seo.event.recordTitle', {
+                name: event.name,
+                date: formatDate(event.date, locale),
+              })}
+              description={t('seo.event.recordDescription', {
+                name: event.name,
+                city: event.city,
+              })}
+            />
 
-            <h2 className="profile__section">{t('event.races')}</h2>
+            <div className="profile">
+              <header className="profile__head">
+                <p className="profile__meta">
+                  <Link to={`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`}>
+                    {t('event.backToCalendar')}
+                  </Link>
+                </p>
+                <h1>{event.name}</h1>
+                <p className="profile__meta">
+                  {formatDate(event.date, locale)}
+                  {' · '}
+                  {event.city}
+                  {' · '}
+                  {t(`calendar.status.${event.status}`)}
+                </p>
+                <p className="profile__meta">
+                  {t('event.organizer')}
+                  {': '}
+                  {event.organizer}
+                </p>
+              </header>
 
-            <RaceTable eventId={event.id} />
-          </div>
+              <h2 className="profile__section">{t('event.races')}</h2>
+
+              <RaceTable eventId={event.id} />
+            </div>
+          </>
         )
       }}
     </Resource>

@@ -5,7 +5,10 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
+import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
+import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EVENTS, recordsOf, type Editing } from './entityForms'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -15,7 +18,9 @@ import '../member/Member.css'
 export function AdminEvents() {
   const { locale, t } = useI18n()
   const { role } = useRole()
+  const { edits, creations } = useSession()
   const [search, setSearch] = useState('')
+  const [editing, setEditing] = useState<Editing | null>(null)
   const state = useEvents()
   const today = new Date().toISOString().slice(0, 10)
 
@@ -31,8 +36,16 @@ export function AdminEvents() {
 
       <Resource state={state}>
         {(events) => {
+          const all = recordsOf(EVENTS, events, edits, creations)
+
+          if (editing !== null) {
+            return (
+              <EntityEditor entity={EVENTS} editing={editing} onDone={() => setEditing(null)} />
+            )
+          }
+
           const needle = search.trim().toLowerCase()
-          const rows = events
+          const rows = all
             .filter((one) => (needle === '' ? one.date >= today : true))
             .filter((one) => `${one.name} ${one.city}`.toLowerCase().includes(needle))
             .sort((left, right) => left.date.localeCompare(right.date))
@@ -40,6 +53,8 @@ export function AdminEvents() {
 
           return (
             <>
+              <NewRecord entity={EVENTS} onOpen={() => setEditing({ mode: 'new' })} />
+
               <div className="rankings__filters">
                 <label className="rankings__field rankings__field--wide">
                   <span>{t('competitors.search')}</span>
@@ -64,6 +79,7 @@ export function AdminEvents() {
                       <th scope="col">{t('event.place')}</th>
                       <th scope="col">{t('event.races')}</th>
                       <th scope="col">{t('admin.state')}</th>
+                      <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -91,6 +107,12 @@ export function AdminEvents() {
                           <span className={`tag tag--${one.status}`}>
                             {t(`calendar.status.${one.status}`)}
                           </span>
+                        </td>
+                        <td>
+                          <OpenRecord
+                            name={one.name}
+                            onOpen={() => setEditing({ mode: 'one', record: one })}
+                          />
                         </td>
                       </tr>
                     ))}

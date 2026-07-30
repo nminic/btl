@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useCompetitors, useEvents } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { usePending } from '../pages/admin/pending'
 import { countsFor, QUEUES } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
@@ -12,6 +13,7 @@ import { Dropdown } from './Dropdown'
 import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
+import { PageMetaContext } from './pageMetaContext'
 import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './routes'
 import { useRouteChrome } from './useRouteChrome'
 import './Shell.css'
@@ -34,21 +36,24 @@ const VERIFICATION = 'administracija/verifikacija'
  * verification screen, counted from the same place that screen counts it, so the
  * two can never disagree.
  *
- * The two files are asked for here as well as there, and the data layer keeps a
- * resource for the whole visit, so this costs one request. A header that waited
- * for them would hold up every screen behind it, so until they arrive the number
- * says what the session alone knows.
+ * The files are asked for here as well as there, and the data layer keeps a
+ * resource for the whole visit, so this costs one request each. A header that
+ * waited for them would hold up every screen behind it, so until they arrive the
+ * number says what the session alone knows.
  */
 function useWaiting(): number {
-  const { submissions } = useSession()
+  const { submissions, decisions } = useSession()
   const competitors = useCompetitors()
   const events = useEvents()
+  const items = usePending()
 
-  const counts = countsFor(
-    submissions.filter((one) => one.status === 'pending').length,
-    competitors.status === 'ready' ? competitors.data : [],
-    events.status === 'ready' ? events.data : [],
-  )
+  const counts = countsFor({
+    pendingResults: submissions.filter((one) => one.status === 'pending').length,
+    competitors: competitors.status === 'ready' ? competitors.data : [],
+    events: events.status === 'ready' ? events.data : [],
+    items: items.status === 'ready' ? items.data : [],
+    decisions,
+  })
 
   return QUEUES.reduce((sum, queue) => sum + counts[queue.id], 0)
 }
@@ -133,7 +138,7 @@ export function Shell() {
   const { locale, t } = useI18n()
   const { role } = useRole()
   const rest = useRestOfPath()
-  const pageTitle = useRouteChrome()
+  const { pageTitle, declare } = useRouteChrome()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
   /* Signing out has to empty the header. This used to read the role, which the
@@ -206,18 +211,23 @@ export function Shell() {
         {pageTitle}
       </p>
 
-      <main id="content" className="shell__main">
-        <ErrorBoundary
-          fallback={
-            <div role="alert">
-              <h1>{t('error.title')}</h1>
-              <p>{t('error.text')}</p>
-            </div>
-          }
-        >
-          <Outlet />
-        </ErrorBoundary>
-      </main>
+      {/* A screen that shows one record names the page after that record, and
+          this is how it says so. One writer, so the head can never be pulled in
+          two directions at once. */}
+      <PageMetaContext.Provider value={declare}>
+        <main id="content" className="shell__main">
+          <ErrorBoundary
+            fallback={
+              <div role="alert">
+                <h1>{t('error.title')}</h1>
+                <p>{t('error.text')}</p>
+              </div>
+            }
+          >
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </PageMetaContext.Provider>
 
       <footer className="shell__footer">
         <nav className="shell__footer-links" aria-label={t('shell.footerNavigation')}>

@@ -398,6 +398,67 @@ describe('rankTeams', () => {
     expect(ranked[0].team.id).toBe('big')
     expect(ranked[0].members).toBe(2)
   })
+
+  /* The rest of the ladder from PDL P12, below the member count: the kilometres
+     of every member, then the races of every member. The order stopped at the
+     member count before, so two teams level on points and on size were left in
+     whatever order the team list happened to be in. */
+  it('goes on to the kilometres of every member when the size is level too', () => {
+    const teams = [team('fewer'), team('more')]
+    const competitors = [
+      competitor('000001', { teamId: 'fewer' }),
+      competitor('000002', { teamId: 'more' }),
+    ]
+    const results = [
+      result('000001', '2027-01-01', 10, { distanceKm: 10 }),
+      result('000002', '2027-01-01', 10, { distanceKm: 30 }),
+    ]
+
+    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual([
+      'more',
+      'fewer',
+    ])
+  })
+
+  it('goes on to the races of every member when the kilometres are level too', () => {
+    const teams = [team('one-race'), team('two-races')]
+    const competitors = [
+      competitor('000001', { teamId: 'one-race' }),
+      competitor('000002', { teamId: 'two-races' }),
+    ]
+    const results = [
+      result('000001', '2027-01-01', 20, { distanceKm: 20 }),
+      result('000002', '2027-01-01', 10, { distanceKm: 10 }),
+      result('000002', '2027-02-02', 10, { distanceKm: 10 }),
+    ]
+
+    // Same points and same kilometres, and the bigger volume of races wins.
+    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual([
+      'two-races',
+      'one-race',
+    ])
+  })
+
+  it('shows a tie the whole ladder leaves standing as a shared place', () => {
+    const teams = [team('b'), team('a'), team('c')]
+    const competitors = [
+      competitor('000001', { teamId: 'a' }),
+      competitor('000002', { teamId: 'b' }),
+      competitor('000004', { teamId: 'c' }),
+    ]
+    const results = [
+      result('000001', '2027-01-01', 10),
+      result('000002', '2027-01-01', 10),
+      result('000004', '2027-01-01', 5),
+    ]
+
+    const ranked = rankTeams(teams, competitors, results)
+
+    // 1, 1, 3, and inside the shared place the smaller id first, so the board
+    // does not shuffle between two recounts of the same data (PDL P12).
+    expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
+    expect(ranked.map((row) => row.team.id)).toEqual(['a', 'b', 'c'])
+  })
 })
 
 describe('topByCategory', () => {

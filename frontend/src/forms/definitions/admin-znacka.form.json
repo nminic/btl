@@ -1,0 +1,73 @@
+{
+  "id": "admin-znacka",
+  "titleKey": "admin.form.new.badges",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.field.badgeName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "description",
+      "type": "textarea",
+      "labelKey": "admin.field.description",
+      "hintKey": "admin.hint.description",
+      "maxLength": 400
+    },
+    {
+      "name": "quantity",
+      "type": "select",
+      "labelKey": "badges.quantityLabel",
+      "hintKey": "admin.hint.quantity",
+      "required": true,
+      "options": [
+        { "value": "raceCount", "labelKey": "badges.quantity.raceCount" },
+        { "value": "marathonCount", "labelKey": "badges.quantity.marathonCount" },
+        { "value": "halfCount", "labelKey": "badges.quantity.halfCount" },
+        { "value": "longCount", "labelKey": "badges.quantity.longCount" },
+        { "value": "shortCount", "labelKey": "badges.quantity.shortCount" },
+        { "value": "ultraCount", "labelKey": "badges.quantity.ultraCount" },
+        { "value": "totalKm", "labelKey": "badges.quantity.totalKm" },
+        { "value": "totalAscent", "labelKey": "badges.quantity.totalAscent" },
+        { "value": "totalDescent", "labelKey": "badges.quantity.totalDescent" },
+        { "value": "totalTime", "labelKey": "badges.quantity.totalTime" },
+        { "value": "points", "labelKey": "badges.quantity.points" },
+        { "value": "countryCount", "labelKey": "badges.quantity.countryCount" },
+        { "value": "seasonCount", "labelKey": "badges.quantity.seasonCount" }
+      ]
+    },
+    {
+      "name": "operator",
+      "type": "select",
+      "labelKey": "badges.operatorLabel",
+      "hintKey": "admin.hint.operator",
+      "required": true,
+      "options": [
+        { "value": "atLeast", "labelKey": "badges.operator.atLeast" },
+        { "value": "moreThan", "labelKey": "badges.operator.moreThan" }
+      ]
+    },
+    {
+      "name": "value",
+      "type": "number",
+      "labelKey": "badges.valueLabel",
+      "required": true,
+      "min": 1,
+      "max": 100000
+    },
+    {
+      "name": "from",
+      "type": "date",
+      "labelKey": "badges.from"
+    },
+    {
+      "name": "to",
+      "type": "date",
+      "labelKey": "badges.to",
+      "hintKey": "admin.hint.badgePeriod"
+    }
+  ]
+}

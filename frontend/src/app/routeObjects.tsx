@@ -29,6 +29,9 @@ import { AdminPages } from '../pages/admin/AdminPages'
 import { AdminPricing } from '../pages/admin/AdminPricing'
 import { AdminRaces } from '../pages/admin/AdminRaces'
 import { AdminTeams } from '../pages/admin/AdminTeams'
+import { Payments } from '../pages/admin/Payments'
+import { PendingQueue } from '../pages/admin/PendingQueue'
+import { QUEUE } from '../pages/admin/queues'
 import { ReviewQueue } from '../pages/admin/ReviewQueue'
 import { Membership } from '../pages/member/Membership'
 import { MessageDetail } from '../pages/member/MessageDetail'
@@ -46,7 +49,7 @@ import { ROUTES } from './routes'
 const SCREENS: Record<string, ReactElement> = {
   kalendar: <Calendar />,
   tabela: <Rankings />,
-  'rang-liste': <TopBoards />,
+  'top-liste': <TopBoards />,
   takmicari: <Competitors />,
   timovi: <Teams />,
   lige: <Leagues />,
@@ -85,7 +88,17 @@ const DETAILS: RouteObject[] = [
   { path: 'liga/:slug', element: <LeagueDetail /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
-  { path: 'administracija/verifikacija/rezultati', element: <ReviewQueue /> },
+  /* The eight verification queues (PDL P28a). The addresses live in QUEUES,
+     which is also what the list of queues links with, so a queue cannot end up
+     with a row that points nowhere. */
+  { path: QUEUE.results.path, element: <ReviewQueue /> },
+  { path: QUEUE.payments.path, element: <Payments /> },
+  { path: QUEUE.leagues.path, element: <PendingQueue queue={QUEUE.leagues} /> },
+  { path: QUEUE.teams.path, element: <PendingQueue queue={QUEUE.teams} /> },
+  { path: QUEUE.bios.path, element: <PendingQueue queue={QUEUE.bios} /> },
+  { path: QUEUE.photos.path, element: <PendingQueue queue={QUEUE.photos} /> },
+  { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
+  { path: QUEUE.schedule.path, element: <PendingQueue queue={QUEUE.schedule} /> },
 ]
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */

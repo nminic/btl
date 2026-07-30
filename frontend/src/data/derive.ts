@@ -254,25 +254,48 @@ export type TeamRow = {
   totals: Totals
 }
 
+/** The ladder of the team board (PDL P12): points, more members of the team,
+ *  the kilometres of every member, the races of every member, then a shared
+ *  place. It stopped at the member count before, so two teams level on points
+ *  and on size were left in whatever order the team list happened to be in. */
+const BY_TEAM = byLadder<TeamRow>([
+  (row) => row.totals.points,
+  (row) => row.members,
+  (row) => row.totals.kilometers,
+  (row) => row.totals.races,
+])
+
 /**
  * Teams by the plain sum of every member, never normalised: more members is
  * meant to be an advantage, and a tie goes to the bigger team (PDL P12). A
  * rule that rewarded the smaller team is explicitly excluded.
+ *
+ * A tie the whole ladder leaves standing is a shared place, like everywhere
+ * else. Inside one, the order is by team id rather than by member number: a
+ * team has no member number, and what the rule is for is that the table does
+ * not shuffle between two recounts of the same data.
+ *
+ * The results are taken as given, so the caller decides whether the board is
+ * one season or the whole history.
  */
-export function rankTeams(teams: Team[], competitors: Competitor[], results: Result[]): TeamRow[] {
-  return teams
-    .map((team) => {
-      const numbers = new Set(
-        competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
-      )
+export function rankTeams(
+  teams: Team[],
+  competitors: Competitor[],
+  results: Result[],
+): Placed<TeamRow>[] {
+  const rows = teams.map((team) => {
+    const numbers = new Set(
+      competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
+    )
 
-      return {
-        team,
-        members: numbers.size,
-        totals: totalsOf(results.filter((result) => numbers.has(result.memberNumber))),
-      }
-    })
-    .sort((left, right) => right.totals.points - left.totals.points || right.members - left.members)
+    return {
+      team,
+      members: numbers.size,
+      totals: totalsOf(results.filter((result) => numbers.has(result.memberNumber))),
+    }
+  })
+
+  return withPlaces(rows.sort(BY_TEAM), BY_TEAM, (row) => row.team.id)
 }
 
 /** The category a member competes in for a season, derived rather than stored:

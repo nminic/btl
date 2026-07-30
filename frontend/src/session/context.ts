@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { RaceCategory } from '../data/types'
+import type { MembershipBasis, RaceCategory } from '../data/types'
 
 /* What the prototype remembers between screens.
  *
@@ -55,6 +55,45 @@ export type Message = {
  */
 export type Edits = Record<string, Record<string, string>>
 
+/* And what administration has created, kept the same way for the same reason.
+ *
+ * There is no table to insert into, so a new record is remembered beside the
+ * generated ones and the lists read both. It carries its own identity, because
+ * a member number is typed in by hand while the id of an event is not, and the
+ * screens have to be able to open it again afterwards. Once created, it is
+ * changed through `edits` like everything else: the creation is the record and
+ * the overlay is what happened to it since.
+ */
+export type Created = {
+  id: string
+  values: Record<string, string>
+}
+
+/** New records by entity: members, events, races, and the five others. */
+export type Creations = Record<string, Created[]>
+
+/* What an administrator has decided in one of the verification queues, kept the
+ * same way an edit is: an overlay on top of what is waiting, rather than a
+ * change to it. The item underneath stays as it was, and every screen reads it
+ * through the overlay, so one decision is enough to make the counter fall in the
+ * queue, on the verification list and beside Verification in the navigation.
+ *
+ * Approving carries no reason. Sending something back always does, on every
+ * queue, because the member is told why and "no" with no why is the shortest
+ * road to a telephone call.
+ */
+export type Decision = {
+  status: 'approved' | 'rejected'
+  /** Why it was sent back. Empty on an approval, which explains itself. */
+  note: string
+  /** The payments queue only: on what basis the membership was activated, paid
+   *  or honorary (PDL P8). Empty on every other queue, and never shown
+   *  publicly. */
+  basis: MembershipBasis | ''
+}
+
+export type Decisions = Record<string, Decision>
+
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'upcomingEvent' | 'newsletter'
 
 export type SessionValue = {
@@ -75,6 +114,15 @@ export type SessionValue = {
 
   edits: Edits
   edit: (id: string, field: string, value: string) => void
+  /** Every field a form just saved, at once. One call rather than one per field,
+   *  because a form is one decision and the screens must never see half of it. */
+  editRecord: (id: string, values: Record<string, string>) => void
+
+  creations: Creations
+  create: (entity: string, id: string, values: Record<string, string>) => void
+
+  decisions: Decisions
+  settle: (id: string, decision: Decision) => void
 }
 
 export const NOTIFICATION_KEYS: NotificationKey[] = [

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { PageMeta } from '../app/PageMeta'
 import { Resource } from '../components/Resource'
 import { isStaff } from '../roles/context'
 import { useRole } from '../roles/useRole'
@@ -86,75 +87,87 @@ export function LeagueDetail() {
           .sort((left, right) => left.date.localeCompare(right.date))
 
         return (
-          <div className="profile">
-            <header className="profile__head">
-              <p className="profile__meta">
-                <Link to={`/${locale}/lige`}>{t('leagues.backToLeagues')}</Link>
-              </p>
-              <h1>{league.name}</h1>
-              <p className="profile__meta">
-                {t('leagues.season', { season: league.season })}
-                {' · '}
-                {league.groupsByCategory ? t('leagues.byCategory') : t('leagues.byGenderOnly')}
-              </p>
-            </header>
-
-            {/* The competition's own administrator writes this; until somebody
-                does, the section is not there at all. */}
-            <EditableText
-              id={league.id}
-              field="rules"
-              value={edits[league.id]?.rules ?? league.rules}
-              headingId="league-rules"
-              heading={t('leagues.rules')}
-              canEdit={isStaff(role)}
-              onSave={(text) => edit(league.id, 'rules', text)}
+          <>
+            {/* The name of a competition already carries its season, so it is
+                the whole title on its own. */}
+            <PageMeta
+              title={t('seo.league.recordTitle', { name: league.name })}
+              description={t('seo.league.recordDescription', {
+                name: league.name,
+                season: league.season,
+              })}
             />
 
-            <EditableText
-              id={league.id}
-              field="prizes"
-              value={edits[league.id]?.prizes ?? league.prizes}
-              headingId="league-prizes"
-              heading={t('leagues.prizes')}
-              canEdit={isStaff(role)}
-              onSave={(text) => edit(league.id, 'prizes', text)}
-            />
+            <div className="profile">
+              <header className="profile__head">
+                <p className="profile__meta">
+                  <Link to={`/${locale}/lige`}>{t('leagues.backToLeagues')}</Link>
+                </p>
+                <h1>{league.name}</h1>
+                <p className="profile__meta">
+                  {t('leagues.season', { season: league.season })}
+                  {' · '}
+                  {league.groupsByCategory ? t('leagues.byCategory') : t('leagues.byGenderOnly')}
+                </p>
+              </header>
 
-            <h2 className="profile__section">
-              {t('leagues.countingEvents')}{' '}
-              <span className="profile__count">{counting.length}</span>
-            </h2>
+              {/* The competition's own administrator writes this; until somebody
+                  does, the section is not there at all. */}
+              <EditableText
+                id={league.id}
+                field="rules"
+                value={edits[league.id]?.rules ?? league.rules}
+                headingId="league-rules"
+                heading={t('leagues.rules')}
+                canEdit={isStaff(role)}
+                onSave={(text) => edit(league.id, 'rules', text)}
+              />
 
-            {counting.length === 0 ? (
-              <p className="profile__empty">{t('leagues.noEvents')}</p>
-            ) : (
-              <div className="table-scroll">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('profile.columns.date')}</th>
-                      <th scope="col">{t('profile.columns.event')}</th>
-                      <th scope="col">{t('event.place')}</th>
-                      <th scope="col">{t('event.races')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {counting.map((event) => (
-                      <tr key={event.id}>
-                        <td>{formatShortDate(event.date, locale)}</td>
-                        <td>
-                          <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
-                        </td>
-                        <td>{event.city}</td>
-                        <td>{event.raceIds.length}</td>
+              <EditableText
+                id={league.id}
+                field="prizes"
+                value={edits[league.id]?.prizes ?? league.prizes}
+                headingId="league-prizes"
+                heading={t('leagues.prizes')}
+                canEdit={isStaff(role)}
+                onSave={(text) => edit(league.id, 'prizes', text)}
+              />
+
+              <h2 className="profile__section">
+                {t('leagues.countingEvents')}{' '}
+                <span className="profile__count">{counting.length}</span>
+              </h2>
+
+              {counting.length === 0 ? (
+                <p className="profile__empty">{t('leagues.noEvents')}</p>
+              ) : (
+                <div className="table-scroll">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('profile.columns.date')}</th>
+                        <th scope="col">{t('profile.columns.event')}</th>
+                        <th scope="col">{t('event.place')}</th>
+                        <th scope="col">{t('event.races')}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody>
+                      {counting.map((event) => (
+                        <tr key={event.id}>
+                          <td>{formatShortDate(event.date, locale)}</td>
+                          <td>
+                            <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
+                          </td>
+                          <td>{event.city}</td>
+                          <td>{event.raceIds.length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
         )
       }}
     </Resource>

@@ -74,8 +74,23 @@ describe('my profile', () => {
 })
 
 describe('membership', () => {
+  /* The payment slip lives inside renewal now (owner, 29.07.2026), and renewal
+     only opens between the first of October and the end of December, so these
+     render on a date inside that window. */
+  function renderFor(memberNumber: string) {
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber={memberNumber}>
+            <Membership today="2026-11-01" />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+  }
+
   it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
-    renderAt('/sr/moja-clanarina', 'competitor', '000001')
+    renderFor('000001')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' })).toBeVisible()
@@ -86,10 +101,47 @@ describe('membership', () => {
 
   it('offers a member abroad SEPA and PayPal, never the Serbian slip', async () => {
     // 000009 is in Montenegro in the generated data.
-    renderAt('/sr/moja-clanarina', 'competitor', '000009')
+    renderFor('000009')
 
     expect(await screen.findByRole('heading', { level: 3, name: /SEPA/ })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'PayPal' })).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('says the price list is missing instead of drawing a slip for nothing', async () => {
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber="000001">
+            {/* The window opens every October; the price list runs out at the end
+                of 2027, so this is a real October with nothing to charge. */}
+            <Membership today="2028-10-01" />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Članarina se još ne prodaje/).length).toBeGreaterThan(0)
+  })
+
+  it('keeps the slip out of sight while renewal is shut', async () => {
+    render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber="000001">
+            <Membership today="2026-07-30" />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(
       screen.queryByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()

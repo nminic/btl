@@ -1,0 +1,94 @@
+{
+  "id": "admin-clan",
+  "titleKey": "admin.form.new.members",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "memberNumber",
+      "type": "text",
+      "labelKey": "admin.field.memberNumber",
+      "hintKey": "admin.hint.memberNumber",
+      "required": true,
+      "pattern": "^\\d{6}$"
+    },
+    {
+      "name": "firstName",
+      "type": "text",
+      "labelKey": "admin.field.firstName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "lastName",
+      "type": "text",
+      "labelKey": "admin.field.lastName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "gender",
+      "type": "select",
+      "labelKey": "admin.field.gender",
+      "hintKey": "admin.hint.gender",
+      "required": true,
+      "options": [
+        { "value": "M", "labelKey": "admin.value.genderM" },
+        { "value": "F", "labelKey": "admin.value.genderF" }
+      ]
+    },
+    {
+      "name": "birthYear",
+      "type": "number",
+      "labelKey": "admin.field.birthYear",
+      "hintKey": "admin.hint.birthYear",
+      "required": true,
+      "min": 1900,
+      "max": 2027
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "labelKey": "admin.field.city",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "country",
+      "type": "country",
+      "labelKey": "admin.field.country",
+      "required": true
+    },
+    {
+      "name": "firstSeason",
+      "type": "number",
+      "labelKey": "admin.field.firstSeason",
+      "hintKey": "admin.hint.firstSeason",
+      "required": true,
+      "min": 2014,
+      "max": 2027
+    },
+    {
+      "name": "firstSeason2027",
+      "type": "checkbox",
+      "labelKey": "admin.field.firstSeason2027",
+      "hintKey": "admin.hint.firstSeason2027"
+    },
+    {
+      "name": "active",
+      "type": "checkbox",
+      "labelKey": "admin.field.active",
+      "hintKey": "admin.hint.active"
+    },
+    {
+      "name": "membershipBasis",
+      "type": "select",
+      "labelKey": "admin.basis",
+      "hintKey": "admin.hint.membershipBasis",
+      "required": true,
+      "options": [
+        { "value": "payment", "labelKey": "admin.basisValue.payment" },
+        { "value": "honorary", "labelKey": "admin.basisValue.honorary" }
+      ]
+    }
+  ]
+}

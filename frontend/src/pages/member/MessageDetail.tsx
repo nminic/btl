@@ -10,7 +10,14 @@ import './Member.css'
 /* Where a subject in the header panel leads: the message, opened out, on its
  * own address that can be kept and shared (PDL P28a). Opening it is what marks
  * it read; asking someone to press a button to say they have read what is on
- * the screen in front of them is asking for nothing. */
+ * the screen in front of them is asking for nothing.
+ *
+ * This is the one detail screen that deliberately does NOT name the page after
+ * the record it shows, so there is no <PageMeta> here. The subject of a message
+ * is personal data (PDL P23), and a document title is the least private thing
+ * on a computer: it goes into the browser tab, into history, into a bookmark and
+ * into whatever a shared screen shows. The generic name for this address is set
+ * once, in EXTRA_ADDRESSES in src/app/routes.ts. */
 export function MessageDetail() {
   const { locale, t } = useI18n()
   const { id } = useParams()

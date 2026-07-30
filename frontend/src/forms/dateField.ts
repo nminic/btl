@@ -40,6 +40,33 @@ export function ageOn(birth: Date, today: Date): number {
   return years
 }
 
+const ISO = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * A stored date as the form shows it, dd/mm/gggg, or empty when there is none.
+ *
+ * Records keep dates the way a database and a sort order want them, yyyy-mm-dd,
+ * and every field on the portal shows them the way the region reads them. The
+ * two shapes meet here and nowhere else.
+ */
+export function fieldDate(iso: string): string {
+  if (!ISO.test(iso)) {
+    return ''
+  }
+
+  const [year, month, day] = iso.split('-')
+
+  return `${day}/${month}/${year}`
+}
+
+/** And back again, which is how a date is stored. Empty when it is not a date,
+ *  so a half typed value is never written as though it were one. */
+export function isoDate(text: string): string {
+  const date = parseDate(text)
+
+  return date === null ? '' : date.toISOString().slice(0, 10)
+}
+
 /** Keeps the typing on the rails: digits only, slashes put in for the member. */
 export function maskDate(text: string): string {
   const digits = text.replace(/\D/g, '').slice(0, 8)

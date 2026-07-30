@@ -6,7 +6,7 @@ import { renderAt } from '../test/render'
 /* One file for the screens a visitor sees. They share a shape: read the data
  * layer, sort it, put it in a table. */
 
-/* The standing sits at /tabela. /rang-liste is the page of top boards beside
+/* The standing sits at /tabela. /top-liste is the page of Top 10 boards beside
  * it (PDL P28a), and has its own block further down. */
 describe('Rankings', () => {
   it('opens on a season that has a field, with the columns from the rulebook', async () => {
@@ -101,10 +101,39 @@ describe('TopBoards', () => {
     return within(screen.getByRole('region', { name }))
   }
 
-  it('carries a board for every length, and each one stops at ten places', async () => {
-    renderAt('/sr/rang-liste?sezona=2019')
+  /* The eleven lists of Article 56, in the order the rulebook counts them out
+     (PDL P28a). The five lengths are the one place the page differs: they are
+     shown shortest first, as they are everywhere else on the portal. Both
+     empty boards are in here, because a list the rulebook names and the page
+     leaves out is the fault this guards against. */
+  const ELEVEN = [
+    'Najviše kilometara',
+    'Najduže na stazi',
+    'Najbolje pojedinačne trke',
+    'Najbolji napredak',
+    'Najbolji tim',
+    'Najbolji parovi',
+    'Najviše kraćih trka',
+    'Najviše dužih trka',
+    'Najviše polumaratona',
+    'Najviše maratona',
+    'Najviše ultramaratona',
+  ]
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Rang liste' })).toBeVisible()
+  it('carries all eleven lists of the rulebook, in the order it names them', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
+
+    const shown = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent)
+
+    expect(shown).toEqual(ELEVEN)
+  })
+
+  it('carries a board for every length, and each one stops at ten places', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
 
     for (const name of [
       'Najviše kraćih trka',
@@ -122,7 +151,7 @@ describe('TopBoards', () => {
   })
 
   it('ranks the best single races with the event beside the points', async () => {
-    renderAt('/sr/rang-liste?sezona=2019')
+    renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
     const races = board('Najbolje pojedinačne trke')
@@ -141,7 +170,7 @@ describe('TopBoards', () => {
   })
 
   it('shows the time on the course in the shape the owner asked for', async () => {
-    renderAt('/sr/rang-liste?sezona=2019')
+    renderAt('/sr/top-liste?sezona=2019')
 
     const rows = (await screen.findAllByRole('row')).length
 
@@ -150,7 +179,7 @@ describe('TopBoards', () => {
   })
 
   it('stands the pairs board empty rather than inventing one', async () => {
-    renderAt('/sr/rang-liste?sezona=2019')
+    renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji parovi' })
     const pairs = board('Najbolji parovi')
@@ -159,8 +188,64 @@ describe('TopBoards', () => {
     expect(pairs.queryByRole('table')).not.toBeInTheDocument()
   })
 
+  it('stands the progress board empty, and says the measure is not decided', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
+    const progress = board('Najbolji napredak')
+
+    // The rulebook names the list, but what it compares is still open (PDL
+    // P28a), so the board says that rather than inventing a measure.
+    expect(progress.getByText(/Merilo ove liste još nije određeno/)).toBeVisible()
+    expect(progress.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('ranks the teams by points and leads to the team, not to a profile', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najbolji tim' })
+    const teams = board('Najbolji tim')
+
+    expect(teams.getByRole('columnheader', { name: 'Tim' })).toBeInTheDocument()
+    expect(teams.getByRole('columnheader', { name: 'Članova' })).toBeInTheDocument()
+
+    const rows = teams.getAllByRole('row').slice(1)
+    expect(rows.length).toBeGreaterThan(1)
+    expect(rows.length).toBeLessThanOrEqual(10)
+
+    const points = rows.map((row) => {
+      const cells = within(row).getAllByRole('cell')
+      return Number(cells[cells.length - 1].textContent!.replace(/\./g, '').replace(',', '.'))
+    })
+    expect([...points].sort((left, right) => right - left)).toEqual(points)
+
+    // The row is about the team, so the name leads to the team page.
+    expect(within(rows[0]).getByRole('link')).toHaveAttribute(
+      'href',
+      expect.stringContaining('/sr/tim/'),
+    )
+  })
+
+  it('narrows the team board to the chosen season like every other board', async () => {
+    const user = userEvent.setup()
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najbolji tim' })
+    const before = board('Najbolji tim')
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.textContent)
+
+    await user.selectOptions(screen.getByLabelText('Sezona'), '2012')
+
+    // 2012 has two results in it, and both belong to the same team.
+    const after = board('Najbolji tim').getAllByRole('row').slice(1)
+    expect(after).toHaveLength(1)
+    expect(after.map((row) => row.textContent)).not.toEqual(before)
+  })
+
   it('leads from every name to the profile behind it', async () => {
-    renderAt('/sr/rang-liste?sezona=2019')
+    renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
     const first = board('Najviše kilometara').getAllByRole('row')[1]
@@ -173,7 +258,7 @@ describe('TopBoards', () => {
 
   it('opens on a season of its own, and changes every board with one filter', async () => {
     const user = userEvent.setup()
-    renderAt('/sr/rang-liste')
+    renderAt('/sr/top-liste')
 
     const season = await screen.findByLabelText('Sezona')
     // No season in the address, so the page picks one that has results.
@@ -199,7 +284,7 @@ describe('TopBoards', () => {
 
   it('says so on a board that the season leaves empty', async () => {
     // 2012 has two results in it, and neither of them is a marathon.
-    renderAt('/sr/rang-liste?sezona=2012')
+    renderAt('/sr/top-liste?sezona=2012')
 
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Najviše maratona' }),

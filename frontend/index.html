@@ -11,9 +11,23 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <title>Balkanska Trkačka Liga</title>
-    <meta name="description" content="Balkanska trkačka liga. Portal je u izgradnji." />
-    <link rel="canonical" href="https://balkanskatrkackaliga.net/" />
+    <!-- The defaults, which is what the home page says. Every screen replaces
+         the title, the description, the canonical address, the hreflang pair and
+         the Open Graph texts the moment React takes over (src/app/head.ts); these
+         are what a reader sees in the tab in the meantime, and what a client that
+         runs no JavaScript ends up with.
+
+         There is deliberately no canonical and no og:url here. This one file is
+         served for every address on the portal, so a fixed canonical in it would
+         tell a crawler that has not run our JavaScript that all fifty screens are
+         copies of the home page, and a fixed og:url would make a shared link to a
+         profile open the home page instead. Absent, both fall back to the address
+         actually being read, which is right on every one of them. -->
+    <title>Svaka trka se broji · Balkanska trkačka liga</title>
+    <meta
+      name="description"
+      content="Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, rang liste i profili takmičara."
+    />
 
     <!-- Link previews (Viber, WhatsApp, Facebook, Telegram, Slack). Absolute
          URLs are required: crawlers do not resolve relative paths. The
@@ -23,9 +37,11 @@
          card here if one is ever produced. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Balkanska trkačka liga" />
-    <meta property="og:title" content="Balkanska trkačka liga" />
-    <meta property="og:description" content="Portal je u izgradnji." />
-    <meta property="og:url" content="https://balkanskatrkackaliga.net/" />
+    <meta property="og:title" content="Svaka trka se broji · Balkanska trkačka liga" />
+    <meta
+      property="og:description"
+      content="Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, rang liste i profili takmičara."
+    />
     <meta property="og:locale" content="sr_RS" />
     <meta property="og:image" content="https://balkanskatrkackaliga.net/icon-512.png" />
     <meta property="og:image:type" content="image/png" />
@@ -34,8 +50,11 @@
     <meta property="og:image:alt" content="Logo Balkanske trkačke lige" />
 
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Balkanska trkačka liga" />
-    <meta name="twitter:description" content="Portal je u izgradnji." />
+    <meta name="twitter:title" content="Svaka trka se broji · Balkanska trkačka liga" />
+    <meta
+      name="twitter:description"
+      content="Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, rang liste i profili takmičara."
+    />
     <meta name="twitter:image" content="https://balkanskatrkackaliga.net/icon-512.png" />
     <meta name="twitter:image:alt" content="Logo Balkanske trkačke lige" />
 

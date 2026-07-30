@@ -1,25 +1,40 @@
 import { useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
-import type { FieldDef, FieldError, FormDef, FormValues } from './types'
+import type { FieldDef, FieldError, FieldOption, FormDef, FormValues } from './types'
 import countries from '../data/countries.json'
 import { DatePicker } from './DatePicker'
+import { optionsFor } from './records'
 import { emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
 
 type Props = {
   form: FormDef
   onSubmit: (values: FormValues) => void
+  /** What the fields start out holding. Empty when nothing is handed in, which
+   *  is a form that creates something rather than one that changes it. */
+  initial?: FormValues
+  /**
+   * Words for the heading, when the form is a screen inside a screen rather than
+   * the screen itself. Then it is a second level heading under the name of the
+   * list it was opened from, because a page has one first level heading.
+   */
+  title?: string
+  /** Choices for selects whose list is data: the events a race can belong to,
+   *  the members who can run a team. Keyed by field name. */
+  options?: Record<string, FieldOption[]>
 }
 
 function Field({
   field,
   value,
   error,
+  choices,
   onChange,
 }: {
   field: FieldDef
   value: string | boolean
   error: FieldError | undefined
+  choices: FieldOption[]
   onChange: (value: string | boolean) => void
 }) {
   const { t } = useI18n()
@@ -114,7 +129,7 @@ function Field({
       {field.type === 'select' && (
         <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('form.choose')}</option>
-          {(field.options ?? []).map((option) => (
+          {choices.map((option) => (
             <option key={option.value} value={option.value}>
               {t(option.labelKey)}
             </option>
@@ -162,9 +177,9 @@ function Field({
   )
 }
 
-export function FormRenderer({ form, onSubmit }: Props) {
+export function FormRenderer({ form, onSubmit, initial, title, options = {} }: Props) {
   const { t } = useI18n()
-  const [values, setValues] = useState<FormValues>(() => emptyValues(form))
+  const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
 
   // A field that is not on screen is neither shown nor validated. The parent
@@ -172,6 +187,7 @@ export function FormRenderer({ form, onSubmit }: Props) {
   // why visibility is derived from the values rather than from a blur event.
   const visible = form.fields.filter((field) => isVisible(field, values, new Date()))
   const broken = visible.filter((field) => errors[field.name] !== undefined)
+  const titleId = `form-${form.id}-title`
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -190,9 +206,19 @@ export function FormRenderer({ form, onSubmit }: Props) {
     setErrors(({ [field.name]: _fixed, ...rest }) => rest)
   }
 
+  /* The form is named after its own heading, so it is a region a screen reader
+   * can be taken to and land in, rather than a run of fields in the page. */
   return (
-    <form className="form" onSubmit={handleSubmit} noValidate>
-      <h1 className="form__title">{t(form.titleKey)}</h1>
+    <form className="form" aria-labelledby={titleId} onSubmit={handleSubmit} noValidate>
+      {title === undefined ? (
+        <h1 className="form__title" id={titleId}>
+          {t(form.titleKey)}
+        </h1>
+      ) : (
+        <h2 className="form__title" id={titleId}>
+          {title}
+        </h2>
+      )}
 
       {/* Announced the moment it appears. Without it, pressing the button with
           a broken form does nothing perceivable for a blind visitor. */}
@@ -215,6 +241,7 @@ export function FormRenderer({ form, onSubmit }: Props) {
           field={field}
           value={values[field.name]}
           error={errors[field.name]}
+          choices={optionsFor(field, options)}
           onChange={(next) => handleChange(field, next)}
         />
       ))}

@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   SessionContext,
+  type Creations,
+  type Decision,
+  type Decisions,
   type Edits,
   type Message,
   type NotificationKey,
@@ -41,6 +44,8 @@ export function SessionProvider({
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [messages, setMessages] = useState<Message[]>(FIRST_MESSAGES)
   const [edits, setEdits] = useState<Edits>({})
+  const [creations, setCreations] = useState<Creations>({})
+  const [decisions, setDecisions] = useState<Decisions>({})
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -69,8 +74,22 @@ export function SessionProvider({
     setEdits((current) => ({ ...current, [id]: { ...current[id], [field]: value } }))
   }, [])
 
+  const editRecord = useCallback((id: string, values: Record<string, string>) => {
+    setEdits((current) => ({ ...current, [id]: { ...current[id], ...values } }))
+  }, [])
+
+  const create = useCallback((entity: string, id: string, values: Record<string, string>) => {
+    // Newest first, because the record somebody just entered is the one they are
+    // looking for when the list comes back.
+    setCreations((current) => ({ ...current, [entity]: [{ id, values }, ...(current[entity] ?? [])] }))
+  }, [])
+
   const setNotification = useCallback((key: NotificationKey, on: boolean) => {
     setNotifications((current) => ({ ...current, [key]: on }))
+  }, [])
+
+  const settle = useCallback((id: string, decision: Decision) => {
+    setDecisions((current) => ({ ...current, [id]: decision }))
   }, [])
 
   const value = useMemo<SessionValue>(
@@ -87,6 +106,11 @@ export function SessionProvider({
       setNotification,
       edits,
       edit,
+      editRecord,
+      creations,
+      create,
+      decisions,
+      settle,
     }),
     [
       memberNumber,
@@ -99,6 +123,11 @@ export function SessionProvider({
       setNotification,
       edits,
       edit,
+      editRecord,
+      creations,
+      create,
+      decisions,
+      settle,
     ],
   )
 

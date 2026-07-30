@@ -1,0 +1,102 @@
+/* The form behind a list, and the two controls that open it. */
+
+/* Scoped rather than set on .button, because raising the specificity of that
+   class would take the colour off every primary button on the portal. */
+.entity-editor > .button,
+.entity-actions > .button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.entity-heading {
+  margin: 0.5rem 0 0;
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--border);
+  font-size: 1.05rem;
+}
+
+.entity-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.entity-editor .form {
+  inline-size: 100%;
+}
+
+.entity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Small enough to sit in a table row without stretching it. */
+.entity-open {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.entity-open:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.entity-saved {
+  inline-size: 100%;
+  max-inline-size: 34rem;
+  border: 1px solid var(--gold-400);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.entity-saved h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.entity-saved p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.entity-saved dl {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.entity-saved dl div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 0.35rem;
+}
+
+.entity-saved dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  min-inline-size: 11rem;
+}
+
+.entity-saved dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}

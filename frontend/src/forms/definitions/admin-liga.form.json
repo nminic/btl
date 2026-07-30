@@ -1,0 +1,42 @@
+{
+  "id": "admin-liga",
+  "titleKey": "admin.form.new.leagues",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.field.leagueName",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "season",
+      "type": "number",
+      "labelKey": "rankings.season",
+      "hintKey": "admin.hint.season",
+      "required": true,
+      "min": 2014,
+      "max": 2100
+    },
+    {
+      "name": "groupsByCategory",
+      "type": "checkbox",
+      "labelKey": "admin.byCategory",
+      "hintKey": "admin.hint.groupsByCategory"
+    },
+    {
+      "name": "rules",
+      "type": "textarea",
+      "labelKey": "leagues.rules",
+      "hintKey": "admin.hint.rules",
+      "maxLength": 4000
+    },
+    {
+      "name": "prizes",
+      "type": "textarea",
+      "labelKey": "leagues.prizes",
+      "maxLength": 4000
+    }
+  ]
+}

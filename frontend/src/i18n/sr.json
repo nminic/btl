@@ -5,6 +5,176 @@
     "short": "BTL",
     "slogan": "Svaka trka se broji"
   },
+  "seo": {
+    "home": {
+      "title": "Svaka trka se broji",
+      "description": "Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, rang liste i profili takmičara."
+    },
+    "notFound": {
+      "title": "Ove strane nema",
+      "description": "Adresa ne postoji ili je strana uklonjena. Naslovna strana vodi do svega ostalog."
+    },
+    "rulebook": {
+      "title": "Pravilnik lige",
+      "description": "Zvanična pravila takmičenja: šta se boduje, kako se računaju bodovi i kako se rezultati prijavljuju i proveravaju."
+    },
+    "history": {
+      "title": "Istorijat lige",
+      "description": "Kako je liga nastala i šta se u njoj dogodilo od prve sezone do danas."
+    },
+    "competitors": {
+      "title": "Takmičari lige",
+      "description": "Svi članovi lige sa kategorijom, brojem trka i osvojenim bodovima, i veza ka profilu svakog od njih."
+    },
+    "teams": {
+      "title": "Timovi lige",
+      "description": "Timovi koji se takmiče u ligi, sa mestom, brojem članova i bodovima koje su osvojili zajedno."
+    },
+    "table": {
+      "title": "Tabela sezone",
+      "description": "Zvanična tabela sezone po BTL bodovima, sa izborom sezone, pola i kategorije."
+    },
+    "topBoards": {
+      "title": "Top 10 liste",
+      "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, parovi i trke po dužini."
+    },
+    "leagues": {
+      "title": "Dodatna takmičenja",
+      "description": "Takmičenja koja se voze uz glavnu ligu: koji događaji ulaze u njih i kako se grupišu takmičari."
+    },
+    "calendar": {
+      "title": "Kalendar trka",
+      "description": "Sve trke sezone po mesecima, sa datumom, mestom, dužinom i statusom priprema."
+    },
+    "myProfile": {
+      "title": "Moj profil",
+      "description": "Profil člana kako ga vidi ceo portal, sa radnjama koje su dostupne samo vlasniku naloga."
+    },
+    "myResults": {
+      "title": "Moji rezultati",
+      "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
+    },
+    "membership": {
+      "title": "Moja članarina",
+      "description": "Stanje članstva, plaćanje članarine i uplatnica sa QR kodom."
+    },
+    "messages": {
+      "title": "Poruke",
+      "description": "Interno sanduče portala: obaveštenja lige i poruke primljene na nalog."
+    },
+    "settings": {
+      "title": "Podešavanja naloga",
+      "description": "Obaveštenja, tema prikaza i ostala podešavanja koja važe za nalog na svim uređajima."
+    },
+    "privacy": {
+      "title": "Politika privatnosti",
+      "description": "Koje podatke portal čuva, zašto ih čuva, koliko dugo, i kako se ostvaruju prava člana."
+    },
+    "terms": {
+      "title": "Uslovi korišćenja",
+      "description": "Pravila korišćenja portala: nalog, članarina, obaveze članova i odgovornost udruženja."
+    },
+    "aboutLeague": {
+      "title": "Priča o ligi",
+      "description": "Zašto Balkanska trkačka liga postoji, kako radi i ko je čini."
+    },
+    "badges": {
+      "title": "Značke",
+      "description": "Značke koje se osvajaju u ligi i uslov koji za svaku od njih treba ispuniti."
+    },
+    "pricing": {
+      "title": "Članarina",
+      "description": "Koliko košta članstvo u ligi, šta donosi i do kada važi koja cena."
+    },
+    "register": {
+      "title": "Registracija",
+      "description": "Otvaranje naloga i učlanjenje u ligu. Za takmičare mlađe od 16 godina prijavu potvrđuje roditelj."
+    },
+    "signIn": {
+      "title": "Prijava",
+      "description": "Prijava na članski nalog portala Balkanske trkačke lige."
+    },
+    "admin": {
+      "title": "Administracija",
+      "description": "Ulaz u administrativni deo portala, sa redovima čekanja i svim entitetima lige."
+    },
+    "adminEntities": {
+      "title": "Entiteti (administracija)",
+      "description": "Članovi, događaji, trke, timovi i lige na jednom mestu, za unos i ispravku."
+    },
+    "adminVerification": {
+      "title": "Verifikacija (administracija)",
+      "description": "Redovi čekanja: prijavljeni rezultati, novi članovi i sve što traži odluku moderatora."
+    },
+    "adminBadges": {
+      "title": "Značke (administracija)",
+      "description": "Definicije značaka i uslovi po kojima se dodeljuju članovima lige."
+    },
+    "adminMembers": {
+      "title": "Članovi (administracija)",
+      "description": "Članski nalozi: podaci, stanje članstva i osnov po kojem je nalog aktiviran."
+    },
+    "adminEvents": {
+      "title": "Događaji (administracija)",
+      "description": "Unos i ispravka događaja iz kalendara, sa datumom, mestom i organizatorom."
+    },
+    "adminRaces": {
+      "title": "Trke (administracija)",
+      "description": "Unos i ispravka trka unutar događaja, sa dužinom, usponom i spustom."
+    },
+    "adminTeams": {
+      "title": "Timovi (administracija)",
+      "description": "Osnivanje timova i ispravka njihovih podataka i sastava."
+    },
+    "adminLeagues": {
+      "title": "Lige (administracija)",
+      "description": "Koji događaji ulaze u koje takmičenje i kako se u njemu grupišu takmičari."
+    },
+    "adminPricing": {
+      "title": "Cenovnik (administracija)",
+      "description": "Redovi cenovnika članarine, svaki sa periodom važenja, iznosom i valutom."
+    },
+    "adminPages": {
+      "title": "Pisane strane (administracija)",
+      "description": "Pisane strane portala: pravilnik, uslovi korišćenja i politika privatnosti."
+    },
+    "newResult": {
+      "title": "Prijava rezultata",
+      "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
+    },
+    "verificationQueue": {
+      "title": "Red čekanja (administracija)",
+      "description": "Jedan red čekanja u verifikaciji, sa svim podacima koji su potrebni za odluku moderatora."
+    },
+    "competitor": {
+      "title": "Profil takmičara",
+      "description": "Trke, bodovi i statistika jednog takmičara Balkanske trkačke lige.",
+      "recordTitle": "{name} ({number})",
+      "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi."
+    },
+    "event": {
+      "title": "Događaj iz kalendara",
+      "description": "Sve trke jednog događaja iz kalendara lige, sa dužinom, usponom i spustom.",
+      "recordTitle": "{name}, {date}",
+      "recordDescription": "{name}, {city}: sve trke na ovom događaju, sa dužinom, usponom, spustom i kategorijom."
+    },
+    "team": {
+      "title": "Tim u ligi",
+      "description": "Članovi jednog tima i bodovi koje su zajedno osvojili u ligi.",
+      "recordTitle": "{name}, {city}",
+      "recordDescription": "{name}: sastav tima i bodovi koje su njegovi članovi osvojili u Balkanskoj trkačkoj ligi."
+    },
+    "league": {
+      "title": "Takmičenje u ligi",
+      "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
+      "recordTitle": "{name}",
+      "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
+    },
+    "message": {
+      "title": "Poruka",
+      "description": "Jedna poruka iz internog sanduka portala Balkanske trkačke lige."
+    }
+  },
   "shell": {
     "skipToContent": "Preskoči na sadržaj",
     "openMenu": "Otvori meni",
@@ -34,7 +204,7 @@
   "nav": {
     "home": "Naslovna",
     "calendar": "Kalendar",
-    "rankings": "Rang liste",
+    "topBoards": "Top 10 liste",
     "competitors": "Takmičari",
     "teams": "Timovi",
     "leagues": "Dodatna takmičenja",
@@ -300,8 +470,8 @@
     "historyNote": "Sezona 2027. još nije počela. Prikazani su probni podaci iz ranijih godina, da bi se tabela mogla proceniti."
   },
   "topBoards": {
-    "title": "Rang liste",
-    "intro": "Svaka lista drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
+    "title": "Top 10 liste",
+    "intro": "Jedanaest lista iz Člana 56 Pravilnika. Svaka drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
     "season": "Sezona",
     "byLength": {
       "short": "Najviše kraćih trka",
@@ -312,12 +482,17 @@
     },
     "pairs": "Najbolji parovi",
     "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
+    "progress": "Najbolji napredak",
+    "progressUndecided": "Merilo ove liste još nije određeno. Pravilnik je navodi, ali nije rečeno da li se poredi promena pozicije prema kraju prethodnog meseca ili prirast bodova prema prethodnoj sezoni. Dok se ne odluči, lista stoji prazna, jer izmišljeno merilo daje poredak koji nikom ništa ne znači.",
+    "teams": "Najbolji tim",
     "bestRaces": "Najbolje pojedinačne trke",
     "kilometers": "Najviše kilometara",
     "onCourse": "Najduže na stazi",
     "columns": {
       "position": "#",
       "member": "Član",
+      "team": "Tim",
+      "members": "Članova",
       "races": "Trke",
       "event": "Događaj",
       "points": "Bodovi",
@@ -580,7 +755,8 @@
     "inTeam": "Trenutno si u timu {team}.",
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
     "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
-    "askToJoin": "Pošalji zahtev timu"
+    "askToJoin": "Pošalji zahtev timu",
+    "payNow": "Uplatnica"
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -644,7 +820,108 @@
     "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
     "pageTitle": "Naslov",
     "address": "Adresa",
-    "sections": "Sekcija"
+    "sections": "Sekcija",
+    "form": {
+      "record": "Zapis",
+      "open": "Otvori",
+      "openNamed": "Otvori: {name}",
+      "back": "Nazad na spisak",
+      "saved": "Sačuvano",
+      "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
+      "note": "Ceo zapis se otvara dugmetom u redu. Nov zapis i izmena se pamte dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
+      "noBadges": "Još nema ni jedne značke. Prva se pravi dugmetom iznad.",
+      "tryRule": "Proba pravila",
+      "new": {
+        "members": "Novi član",
+        "events": "Novi događaj",
+        "races": "Nova trka",
+        "teams": "Novi tim",
+        "leagues": "Nova liga",
+        "badges": "Nova značka",
+        "pricing": "Novi red cenovnika",
+        "pages": "Nova strana"
+      },
+      "edit": {
+        "members": "Izmena člana",
+        "events": "Izmena događaja",
+        "races": "Izmena trke",
+        "teams": "Izmena tima",
+        "leagues": "Izmena lige",
+        "badges": "Izmena značke",
+        "pricing": "Izmena reda cenovnika",
+        "pages": "Izmena strane"
+      }
+    },
+    "field": {
+      "memberNumber": "Članski broj",
+      "firstName": "Ime",
+      "lastName": "Prezime",
+      "gender": "Pol",
+      "birthYear": "Godina rođenja",
+      "city": "Mesto",
+      "country": "Država",
+      "firstSeason": "U ligi od sezone",
+      "firstSeason2027": "Prva sezona u 2027.",
+      "active": "Punopravan član",
+      "eventName": "Naziv događaja",
+      "date": "Datum",
+      "event": "Događaj",
+      "distanceKm": "Dužina (km)",
+      "ascentM": "Uspon (m)",
+      "descentM": "Spust (m)",
+      "category": "Kategorija",
+      "teamName": "Naziv tima",
+      "teamOrganizer": "Organizator tima",
+      "leagueName": "Naziv lige",
+      "badgeName": "Naziv značke",
+      "description": "Opis",
+      "rule": "Pravilo",
+      "priceLabel": "Naziv perioda",
+      "validFrom": "Važi od",
+      "validTo": "Važi do",
+      "eur": "Cena u evrima",
+      "rsd": "Cena u dinarima",
+      "pageTitle": "Naslov strane",
+      "sectionHeading": "Naslov prve sekcije",
+      "sectionBody": "Tekst prve sekcije"
+    },
+    "hint": {
+      "memberNumber": "Šest cifara, na primer 000127. Broj je jedinstven, isti kroz sve sezone i ne nosi oznaku pola.",
+      "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
+      "birthYear": "Nikad se ne prikazuje javno. Iz nje se izvodi kategorija, koja jedina ide na profil.",
+      "firstSeason": "Prva sezona u kojoj je član nastupao.",
+      "firstSeason2027": "Član sezonu 2027. provodi u kategoriji Prva sezona, a ne u svojoj starosnoj.",
+      "active": "Dok članarina nije potvrđena, član ima nalog ali nigde nije vidljiv i ne može ništa.",
+      "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
+      "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
+      "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
+      "organizer": "Organizator nema nalog na portalu; ovde stoji samo kao podatak.",
+      "status": "Dok je termin u proveri, datum se ne prikazuje nigde na portalu.",
+      "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
+      "raceName": "Ime po kome se trka prepoznaje, na primer Polumaraton ili 6 h.",
+      "distanceKm": "Unosi se ručno, i kad postoji GPX. GPX sme da predloži vrednost, ali je unos pregazi.",
+      "ascentM": "Dok se ne unese, stoji 0. Trka bez podatka o nagibu se i dalje boduje.",
+      "category": "Kategorija ide po dužini, tačno u vrednosti: 21,1 km je polumaraton, 42,2 km maraton.",
+      "teamName": "Naziv je slobodan. Tim je jedini entitet koji ima poredak; klub ga nema.",
+      "teamOrganizer": "Član koji vodi tim, odobrava učlanjenja i šalje pozive.",
+      "season": "Sezona za koju liga važi.",
+      "groupsByCategory": "Bez ovoga se poredak lige grupiše samo po polu.",
+      "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
+      "description": "Jedna do dve rečenice koje član vidi uz značku.",
+      "quantity": "Veličina se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
+      "operator": "Samo najmanje ili više od, da značka koja je osvojena ne može kasnije da se izgubi.",
+      "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
+      "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra.",
+      "validPeriod": "Bez perioda cena ne zavisi od datuma uplate, kao junior cena.",
+      "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
+      "ranking": "Ko plati posle 1. januara ima profil i svoje rezultate, ali ne ulazi u rang liste.",
+      "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
+      "sectionBody": "Ostale sekcije se uređuju kad stigne baza."
+    },
+    "value": {
+      "genderM": "Muški",
+      "genderF": "Ženski"
+    }
   },
   "badges": {
     "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
@@ -696,7 +973,23 @@
   "verification": {
     "title": "Verifikacija",
     "intro": "Sve što čeka odobrenje moderatora ili superadmina, na jednom mestu.",
-    "soon": "Radi se",
+    "empty": "Nema nijedne stavke na čekanju.",
+    "subject": "Predmet",
+    "sentBy": "Poslao {who}, član {memberNumber}",
+    "sentByAnonymous": "Prijavio posetilac bez naloga",
+    "currentDate": "Datum u kalendaru",
+    "proposedDate": "Prijavljen datum",
+    "activatePayment": "Evidentiraj uplatu",
+    "activateHonorary": "Počasno članstvo",
+    "basisNote": "Osnov članstva se nikad ne prikazuje javno; vidi ga samo administracija. Počasan član je punopravan i rangira se kao svaki drugi.",
+    "body": {
+      "leagues": "Opis lige",
+      "teams": "Obrazloženje",
+      "bios": "Tekst biografije",
+      "photos": "Datoteka",
+      "comments": "Komentar",
+      "schedule": "Šta je prijavljeno"
+    },
     "results": "Rezultati",
     "payments": "Uplate i aktivacija članova",
     "leagues": "Predložene lige",

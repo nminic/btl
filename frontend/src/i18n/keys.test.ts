@@ -1,4 +1,4 @@
-import { ROUTES } from '../app/routes'
+import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
 import type { FormDef } from '../forms/types'
 import sr from './sr.json'
@@ -42,5 +42,48 @@ describe('translation keys used in code', () => {
 
   it('notices a key that is not there', () => {
     expect(resolves('nav.nepostoji')).toBe(false)
+  })
+})
+
+/* The words every address needs for a browser tab, a search result and a shared
+ * link. The not found page is in here too, because an address that does not
+ * exist is still a page somebody is looking at. */
+const SEO_KEYS = [...ROUTES, ...EXTRA_ADDRESSES].map((address) => address.seoKey).concat('notFound')
+
+describe('the seo entry of every address', () => {
+  it('has a name and a sentence', () => {
+    const missing = SEO_KEYS.flatMap((key) => [`seo.${key}.title`, `seo.${key}.description`]).filter(
+      (key) => !resolves(key),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('keeps every description to the 160 characters a search engine shows', () => {
+    const tooLong = SEO_KEYS.map((key) => translate(dictionary, 'sr', `seo.${key}.description`))
+      .filter((text) => text.length > 160)
+
+    expect(tooLong).toEqual([])
+  })
+
+  it('describes the page rather than repeating its name', () => {
+    const repeated = SEO_KEYS.filter(
+      (key) =>
+        translate(dictionary, 'sr', `seo.${key}.description`) ===
+        translate(dictionary, 'sr', `seo.${key}.title`),
+    )
+
+    expect(repeated).toEqual([])
+  })
+
+  it('names each of the five records after the record itself', () => {
+    // The screen replaces both texts once it has loaded the record (PageMeta).
+    // The message is the one that must not: its subject is personal data (P23).
+    const missing = ['competitor', 'event', 'team', 'league']
+      .flatMap((key) => [`seo.${key}.recordTitle`, `seo.${key}.recordDescription`])
+      .filter((key) => !resolves(key))
+
+    expect(missing).toEqual([])
+    expect(resolves('seo.message.recordTitle')).toBe(false)
   })
 })
