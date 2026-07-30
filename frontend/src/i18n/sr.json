@@ -255,14 +255,12 @@
     "moderator": "Moderator",
     "superadmin": "Superadmin"
   },
+  "notFound": {
+    "title": "Ove strane nema"
+  },
   "clock": {
     "label": "Današnji datum",
     "reset": "Vrati na stvarni datum"
-  },
-  "notFound": {
-    "title": "Ove strane nema",
-    "text": "Adresa je pogrešna ili je strana uklonjena.",
-    "back": "Nazad na naslovnu"
   },
   "placeholder": {
     "title": "{name}",
@@ -771,7 +769,6 @@
   },
   "review": {
     "title": "Red za proveru rezultata",
-    "note": "Rezultat ulazi u rang liste tek kad se odobri. Dok čeka, ne postoji ni za koga osim za onog ko ga je uneo.",
     "waiting": "Čeka proveru",
     "empty": "Nema nijednog rezultata na čekanju.",
     "decided": "Rešeno",
@@ -785,16 +782,11 @@
     "decision": "Odluka",
     "confirmSendBack": "Vrati uz ovaj razlog",
     "cancel": "Odustani",
-    "correctionNote": "Odbijanje rezultata i izmena vremena nose obrazloženje, jer diraju ono što je član prijavio da je uradio. Ispravka dužine, naziva ili visinske razlike ne nosi: te podatke administracija usklađuje sa zvaničnim izvorom, i to je najavljeno u uslovima korišćenja.",
     "explanation": "Obrazloženje"
   },
   "admin": {
     "title": "Administracija",
     "sectionNav": "Odeljak {name}",
-    "notAllowed": "Ovo nije za tebe",
-    "notAllowedText": "Administrativni deo vide samo moderatori i Superadmin.",
-    "rightMissing": "Za ovo ti treba pravo koje nemaš",
-    "rightMissingText": "Ovaj ekran otvara moderator kome je Superadmin dao ovo pravo: {action}. Traži ga od njega ako ti je potrebno za posao.",
     "waiting": "Čeka proveru",
     "members": "Članovi",
     "events": "Događaji",
@@ -805,38 +797,29 @@
       "honorary": "Počasno"
     },
     "pricing": "Cenovnik",
-    "pricingNote": "Cenovnik se čuva kao redovi sa periodom važenja. Cena je obaveza prema članu, pa se ne menja usred sezone.",
     "from": "Od",
     "to": "Do",
     "ranking": "Pravo rangiranja",
     "yes": "Da",
     "no": "Ne",
     "badges": "Značke",
-    "eventsNote": "Bez pretrage prikazani su samo događaji koji tek dolaze. Pretraga gleda ceo kalendar.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
     "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
     "state": "Stanje",
     "change": "Izmeni",
-    "editNote": "Podaci u tabeli se menjaju klikom na samu vrednost. Izmena se pamti dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
     "races": "Trke",
     "teams": "Timovi",
     "leagues": "Lige",
     "pages": "Statične strane",
-    "racesNote": "Trke koje pripadaju događajima. Naziv se menja klikom na njega.",
     "searchRaces": "Traži po nazivu trke ili događaja",
     "raceName": "Naziv trke",
     "noEvent": "Bez događaja",
-    "teamsNote": "Timovi, sa organizatorom i brojem članova.",
     "organizer": "Organizator",
     "noOrganizer": "Nema organizatora",
-    "leaguesNote": "Lige i broj događaja koje nose.",
     "byCategory": "Po kategorijama",
     "noEvents": "Bez događaja",
-    "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
     "moderators": "Moderatori",
-    "moderatorsNote": "Ljudi koji moderiraju portal. Superadmin ih pravi i kućicama im zadaje prava; sve ostalo u administraciji rade isto kao on.",
-    "moderatorsClosed": "Moderatore uređuje samo Superadmin. To je jedina razlika između dve uloge: ne šta ko sme da radi, nego ko odlučuje šta moderator sme.",
     "pageTitle": "Naslov",
     "address": "Adresa",
     "noAddress": "Stoji unutar drugih strana",
@@ -848,7 +831,6 @@
       "back": "Nazad na spisak",
       "saved": "Sačuvano",
       "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
-      "note": "Ceo zapis se otvara dugmetom u redu. Nov zapis i izmena se pamte dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
       "tryRule": "Proba pravila",
       "new": {
         "members": "Novi član",
@@ -871,7 +853,13 @@
         "pricing": "Izmena reda cenovnika",
         "pages": "Izmena strane",
         "moderators": "Izmena moderatora"
-      }
+      },
+      "delete": "Obriši",
+      "deleteNamed": "Obriši: {name}",
+      "deleteSure": "Sigurno?",
+      "deleteSureNamed": "Potvrdi brisanje: {name}",
+      "keep": "Odustani",
+      "keepNamed": "Odustani od brisanja: {name}"
     },
     "field": {
       "memberNumber": "Članski broj",
@@ -962,7 +950,6 @@
       "other": "{count} znački"
     },
     "empty": "Nijedna značka ne odgovara izabranim filterima.",
-    "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se vrsta bira sa spiska, a ne kuca.",
     "kindLabel": "Vrsta",
     "valueLabel": "Vrednost",
     "from": "Od datuma",
@@ -1064,14 +1051,10 @@
     }
   },
   "entities": {
-    "title": "Entiteti",
-    "intro": "Sve što administracija kreira, menja i briše, na jednom mestu.",
-    "pickOne": "Entitet se otvara sa spiska entiteta i ostaje otvoren dok radiš; spisak stoji uz svaki ekran, pa se sa jednog entiteta prelazi pravo na drugi."
+    "title": "Entiteti"
   },
   "verification": {
     "title": "Verifikacija",
-    "intro": "Sve što čeka odobrenje moderatora ili superadmina, na jednom mestu.",
-    "whatIsWhere": "Šta se gde odlučuje",
     "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",
     "subject": "Predmet",
@@ -1081,8 +1064,6 @@
     "proposedDate": "Prijavljen datum",
     "activatePayment": "Evidentiraj uplatu",
     "activateHonorary": "Počasno članstvo",
-    "numberNote": "Članski broj dodeljuje sistem u trenutku aktivacije, prvi slobodan po redu, i ne unosi se rukom. Zato onaj ko čeka uplatu još nema broj, pa se vodi po imenu i adresi elektronske pošte; dodeljen broj stoji u tabeli rešenih i njega javljaš članu.",
-    "basisNote": "Osnov članstva se nikad ne prikazuje javno; vidi ga samo administracija. Počasan član je punopravan i rangira se kao svaki drugi.",
     "body": {
       "leagues": "Opis lige",
       "teams": "Obrazloženje",

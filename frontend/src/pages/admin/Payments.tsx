@@ -57,10 +57,11 @@ export function Payments() {
     <div className="member">
       <QueueMeta queue={queue} />
 
-      <h1>{t(queue.labelKey)}</h1>
-      <p className="member__note">{t(queue.sourceKey)}</p>
-      <p className="member__note">{t('verification.numberNote')}</p>
-      <p className="member__note">{t('verification.basisNote')}</p>
+      {/* Everything that stood above the work is gone (owner, 30.07.2026): the
+          name is in the navigation and in the tab, and the three sentences under
+          it were read once and then in the way for good. The name stays in the
+          markup for anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t(queue.labelKey)}</h1>
 
       <Resource state={state}>
         {([items, competitors]) => {

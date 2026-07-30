@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { useBadges } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { BADGE_KINDS, ruleSentence, type BadgeKind, type BadgeRule } from '../../data/badgeRule'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { BADGES, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import '../member/Member.css'
 
 export function AdminBadges() {
   const { locale, t } = useI18n()
-  const { edits, creations } = useSession()
-  const state = useBadges()
+  const overlay = useOverlay()
+    const state = useBadges()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [rule, setRule] = useState<BadgeRule>({
     kind: 'raceCount',
@@ -23,7 +23,10 @@ export function AdminBadges() {
   if (editing !== null) {
     return (
       <div className="member">
-        <h1>{t('admin.badges')}</h1>
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
+        <h1 className="visually-hidden">{t('admin.badges')}</h1>
         <EntityEditor entity={BADGES} editing={editing} onDone={() => setEditing(null)} />
       </div>
     )
@@ -31,10 +34,9 @@ export function AdminBadges() {
 
   return (
     <div className="member">
-      <h1>{t('admin.badges')}</h1>
-      <p className="member__note">{t('badges.note')}</p>
+      <h1 className="visually-hidden">{t('admin.badges')}</h1>
 
-      <NewRecord entity={BADGES} onOpen={() => setEditing({ mode: 'new' })} />
+      <EntityBar entity={BADGES} onNew={() => setEditing({ mode: 'new' })} />
 
       {/* The same badges the members see. This screen used to start from an
           empty list, from the days when no badge was written down anywhere, so
@@ -47,7 +49,7 @@ export function AdminBadges() {
           says that plainly enough. */}
       <Resource state={state}>
         {(badges) => {
-          const rows = recordsOf(BADGES, badges, edits, creations)
+          const rows = recordsOf(BADGES, badges, overlay)
 
           return (
             <div className="table-scroll">
@@ -66,7 +68,9 @@ export function AdminBadges() {
                       <td>{badge.name}</td>
                       <td>{ruleSentence(badge, t, locale)}</td>
                       <td>
-                        <OpenRecord
+                        <RowActions
+                          entity={BADGES}
+                          record={badge}
                           name={badge.name}
                           onOpen={() => setEditing({ mode: 'one', record: badge })}
                         />

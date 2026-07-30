@@ -135,6 +135,23 @@ export type Decision = {
 
 export type Decisions = Record<string, Decision>
 
+/**
+ * Records administration has removed, by entity and then by identity.
+ *
+ * The same overlay every other change is kept as: the generated record
+ * underneath stays where it is and the lists read past it. There is nothing to
+ * delete from in any case, since the records are generated. When the backend
+ * arrives this becomes a DELETE and the screens do not notice.
+ *
+ * By entity, exactly as `creations` is, and not one flat list of identities for
+ * all nine. Identities are only unique inside their own entity: a member is
+ * `000012` and a price row is a key, and nothing stops two entities from using
+ * the same string one day. A single namespace would then delete a row of one
+ * entity by deleting a row of another, and the fault would look like a screen
+ * that had not refreshed.
+ */
+export type Deletions = Record<string, string[]>
+
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'upcomingEvent' | 'newsletter'
 
 export type SessionValue = {
@@ -176,6 +193,11 @@ export type SessionValue = {
 
   decisions: Decisions
   settle: (id: string, decision: Decision) => void
+
+  deletions: Deletions
+  /** Removes one record of one entity. Asked for twice on screen before it gets
+   *  here (EntityEditor.tsx), because nothing brings it back. */
+  remove: (entity: string, id: string) => void
 }
 
 export const NOTIFICATION_KEYS: NotificationKey[] = [

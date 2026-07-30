@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
-import { renderAt } from '../test/render'
+import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
 /** The groups in the navigation open as panels, so a screen inside one is two
@@ -25,14 +25,18 @@ describe('navigation', () => {
   it('treats an unknown language as a path in the default language', async () => {
     renderAt('/de/kalendar')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ove strane nema' })).toBeVisible()
+    await expectFrontPage()
   })
 
-  it('shows the not found page for an unknown address', async () => {
+  it('sends an address the portal does not have to the front page', async () => {
+    /* Owner, 30.07.2026. It used to be a screen saying the address is not here,
+       with a link back. A mistyped address is almost always a typed or a copied
+       one, and a page that says "this is not here" leaves somebody at a dead end
+       deciding what to do; the front page is what they would have chosen. */
     renderAt('/sr/ovoga-nema')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ove strane nema' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Nazad na naslovnu' })).toBeInTheDocument()
+    await expectFrontPage()
+    expect(screen.queryByRole('heading', { name: 'Ove strane nema' })).not.toBeInTheDocument()
   })
 
   it('opens a public screen straight from the navigation', async () => {

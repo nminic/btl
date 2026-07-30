@@ -5,10 +5,10 @@ import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import type { FieldOption } from '../../forms/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { RACES, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import '../member/Member.css'
 
 /* Races, the level below an event. They are listed with the event they belong
@@ -33,20 +33,21 @@ function eventOptions(events: BtlEvent[], locale: string): FieldOption[] {
 
 export function AdminRaces() {
   const { locale, t } = useI18n()
-  const { edits, creations } = useSession()
+  const overlay = useOverlay()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useRaces(), useEvents())
 
   return (
     <div className="member">
-      <h1>{t('admin.races')}</h1>
-      <p className="member__note">{t('admin.racesNote')}</p>
-      <p className="member__note">{t('admin.editNote')}</p>
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t('admin.races')}</h1>
 
       <Resource state={state}>
         {([races, events]) => {
-          const all = recordsOf(RACES, races, edits, creations)
+          const all = recordsOf(RACES, races, overlay)
 
           if (editing !== null) {
             return (
@@ -68,19 +69,19 @@ export function AdminRaces() {
 
           return (
             <>
-              <NewRecord entity={RACES} onOpen={() => setEditing({ mode: 'new' })} />
-
-              <div className="rankings__filters">
-                <label className="rankings__field rankings__field--wide">
-                  <span>{t('competitors.search')}</span>
-                  <input
-                    type="search"
-                    value={search}
-                    placeholder={t('admin.searchRaces')}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
-              </div>
+              <EntityBar entity={RACES} onNew={() => setEditing({ mode: 'new' })}>
+                <div className="rankings__filters">
+                  <label className="rankings__field rankings__field--wide">
+                    <span>{t('competitors.search')}</span>
+                    <input
+                      type="search"
+                      value={search}
+                      placeholder={t('admin.searchRaces')}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                  </label>
+                </div>
+              </EntityBar>
 
               <p className="rankings__count">
                 {t('admin.showing', { count: rows.length })}
@@ -120,7 +121,9 @@ export function AdminRaces() {
                         <td>{formatNumber(one.descentM, locale)}</td>
                         <td>{t(`category.${one.category}`)}</td>
                         <td>
-                          <OpenRecord
+                          <RowActions
+                            entity={RACES}
+                            record={one}
                             name={one.name}
                             onOpen={() => setEditing({ mode: 'one', record: one })}
                           />

@@ -33,9 +33,9 @@ export function ReviewQueue() {
     <div className="member">
       <QueueMeta queue={QUEUE.results} />
 
-      <h1>{t('review.title')}</h1>
-      <p className="member__note">{t('review.note')}</p>
-      <p className="member__note">{t('review.correctionNote')}</p>
+      {/* As on the other seven queues: the name is in the navigation and in the
+          tab, and what stood above the work is gone (owner, 30.07.2026). */}
+      <h1 className="visually-hidden">{t('review.title')}</h1>
 
       <h2 className="profile__section">
         {t('review.waiting')} <span className="profile__count">{waiting.length}</span>

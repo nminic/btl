@@ -11,7 +11,7 @@ import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { applyChanges, recordValue } from '../../forms/records'
 import type { DerivedField, FieldError, FormDef, FormValues } from '../../forms/types'
-import type { Created, Creations, Edits } from '../../session/context'
+import type { Created, Creations, Deletions, Edits } from '../../session/context'
 
 /* The nine entities administration owns, described rather than programmed.
  *
@@ -311,6 +311,17 @@ export function recordFrom(entity: EntityDef, created: Created): Record<string, 
 }
 
 /**
+ * Everything administration has changed, handed over whole.
+ *
+ * One argument rather than three, so a tenth screen cannot be written that reads
+ * the changes and the creations and forgets the deletions: the type says all
+ * three or none, and a record somebody deleted going on standing in a list is
+ * the kind of thing nobody reports because it reads as a screen that has not
+ * refreshed.
+ */
+export type Overlay = { edits: Edits; creations: Creations; deletions: Deletions }
+
+/**
  * Everything the list shows: what was created during this visit first, then what
  * was generated, all of it read through the overlay of changes.
  *
@@ -321,12 +332,19 @@ export function recordFrom(entity: EntityDef, created: Created): Record<string, 
 export function recordsOf<T extends object>(
   entity: EntityDef,
   base: T[],
-  edits: Edits,
-  creations: Creations,
+  { edits, creations, deletions }: Overlay,
 ): T[] {
   const made = (creations[entity.id] ?? []).map((one) => recordFrom(entity, one) as T)
+  const gone = deletions[entity.id] ?? []
+  const identity = (one: T) => String((one as Record<string, unknown>)[entity.idField])
 
-  return [...made, ...base].map((one) =>
-    applyChanges(one, edits[String((one as Record<string, unknown>)[entity.idField])]),
+  /* Deletions are read past the generated records only. What was entered during
+     this visit is dropped when it is deleted (SessionProvider), so it is never
+     in here to be filtered; filtering it here as well would mean that entering a
+     member under a number that a deletion had just freed produced a member who
+     saved, confirmed, and was then not in the list, with the next member handed
+     the same number again, and again after that. */
+  return [...made, ...base.filter((one) => !gone.includes(identity(one)))].map((one) =>
+    applyChanges(one, edits[identity(one)]),
   )
 }

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
-import { sectionsOf } from '../data/pages'
+import { livePage, sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
 import type { StaticPage } from '../data/types'
 import { useI18n } from '../i18n/useI18n'
+import { useSession } from '../session/useSession'
 import { tableOfContents } from './rulebookToc'
 import './Rulebook.css'
 
@@ -150,13 +151,14 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
 
 /** The rulebook of the season, written out in full, with its own contents. */
 export function Rulebook() {
+  const { deletions } = useSession()
   const { t } = useI18n()
   const state = usePages()
 
   return (
     <Resource state={state}>
       {(pages) => {
-        const page = pages[SLUG]
+        const page = livePage(pages, SLUG, deletions.pages ?? [])
 
         if (page === undefined) {
           return <h1>{t('notFound.title')}</h1>

@@ -4,6 +4,7 @@ import {
   type Creations,
   type Decision,
   type Decisions,
+  type Deletions,
   type Edits,
   type Message,
   type NotificationKey,
@@ -51,6 +52,7 @@ export function SessionProvider({
   const [creations, setCreations] = useState<Creations>({})
   const [rights, setRights] = useState<Rights>({})
   const [decisions, setDecisions] = useState<Decisions>({})
+  const [deletions, setDeletions] = useState<Deletions>({})
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -110,6 +112,27 @@ export function SessionProvider({
     setDecisions((current) => ({ ...current, [id]: decision }))
   }, [])
 
+  /**
+   * Three things happen, and all three are the same act.
+   *
+   * The identity goes on the entity's list of deletions, so the generated record
+   * underneath is read past. Any record created during this visit under that
+   * identity is dropped outright, because there is nothing underneath it to read
+   * past and a deletion entry would then also swallow the next record entered
+   * under the same identity. And the changes remembered against it go with it,
+   * or a record entered later under a freed identity would inherit the edits of
+   * the one that is gone: the overlay of changes is keyed by identity, and an
+   * identity really is freed by deletion (PDL P23).
+   */
+  const remove = useCallback((entity: string, id: string) => {
+    setDeletions((current) => ({ ...current, [entity]: [...(current[entity] ?? []), id] }))
+    setCreations((current) => ({
+      ...current,
+      [entity]: (current[entity] ?? []).filter((one) => one.id !== id),
+    }))
+    setEdits(({ [id]: _gone, ...rest }) => rest)
+  }, [])
+
   /* What the person at the keyboard is allowed to see: what was written to them,
    * and what was written to the whole league. The store holds everybody's. */
   const inbox = useMemo(
@@ -139,6 +162,8 @@ export function SessionProvider({
       setRight,
       decisions,
       settle,
+      deletions,
+      remove,
     }),
     [
       memberNumber,
@@ -159,6 +184,8 @@ export function SessionProvider({
       setRight,
       decisions,
       settle,
+      deletions,
+      remove,
     ],
   )
 

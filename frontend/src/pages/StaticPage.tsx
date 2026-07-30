@@ -1,8 +1,9 @@
 import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
-import { sectionsOf } from '../data/pages'
+import { livePage, sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { useSession } from '../session/useSession'
 import './StaticPage.css'
 
 /* Written pages: the terms, the privacy policy, the page about the league, the
@@ -19,13 +20,14 @@ import './StaticPage.css'
  * src/data/pages.ts).
  */
 export function StaticPage({ slug }: { slug: string }) {
+  const { deletions } = useSession()
   const { t } = useI18n()
   const state = usePages()
 
   return (
     <Resource state={state}>
       {(pages) => {
-        const page = pages[slug]
+        const page = livePage(pages, slug, deletions.pages ?? [])
 
         if (page === undefined) {
           return <h1>{t('notFound.title')}</h1>

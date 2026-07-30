@@ -5,10 +5,10 @@ import type { StaticPage } from '../../data/types'
 import { usePages } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { PAGES, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import '../member/Member.css'
 
 /* The written pages: the rulebook, the history, the privacy policy, the terms,
@@ -53,18 +53,20 @@ function takenIn(pages: Record<string, StaticPage>): Set<string> {
 
 export function AdminPages() {
   const { locale, t } = useI18n()
-  const { edits, creations } = useSession()
+  const overlay = useOverlay()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = usePages()
 
   return (
     <div className="member">
-      <h1>{t('admin.pages')}</h1>
-      <p className="member__note">{t('admin.pagesNote')}</p>
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t('admin.pages')}</h1>
 
       <Resource state={state}>
         {(pages) => {
-          const rows = recordsOf(PAGES, pageRows(pages), edits, creations)
+          const rows = recordsOf(PAGES, pageRows(pages), overlay)
           const inside = takenIn(pages)
 
           if (editing !== null) {
@@ -83,7 +85,7 @@ export function AdminPages() {
 
           return (
             <>
-              <NewRecord entity={PAGES} onOpen={() => setEditing({ mode: 'new' })} />
+              <EntityBar entity={PAGES} onNew={() => setEditing({ mode: 'new' })} />
 
               <div className="table-scroll">
                 <table className="table">
@@ -118,7 +120,9 @@ export function AdminPages() {
                         <td>{page.heading}</td>
                         <td>{formatNumber(page.sectionCount, locale)}</td>
                         <td>
-                          <OpenRecord
+                          <RowActions
+                            entity={PAGES}
+                            record={page}
                             name={page.title}
                             onOpen={() => setEditing({ mode: 'one', record: page })}
                           />

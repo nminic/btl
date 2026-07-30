@@ -4,10 +4,10 @@ import { Resource } from '../../components/Resource'
 import { useEvents } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import '../member/Member.css'
 
 /* The calendar from the other side. Between 15 and 30 September this is the
@@ -15,7 +15,7 @@ import '../member/Member.css'
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { edits, creations } = useSession()
+  const overlay = useOverlay()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useEvents()
@@ -23,13 +23,14 @@ export function AdminEvents() {
 
   return (
     <div className="member">
-      <h1>{t('admin.events')}</h1>
-      <p className="member__note">{t('admin.eventsNote')}</p>
-      <p className="member__note">{t('admin.editNote')}</p>
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t('admin.events')}</h1>
 
       <Resource state={state}>
         {(events) => {
-          const all = recordsOf(EVENTS, events, edits, creations)
+          const all = recordsOf(EVENTS, events, overlay)
 
           if (editing !== null) {
             return (
@@ -46,19 +47,19 @@ export function AdminEvents() {
 
           return (
             <>
-              <NewRecord entity={EVENTS} onOpen={() => setEditing({ mode: 'new' })} />
-
-              <div className="rankings__filters">
-                <label className="rankings__field rankings__field--wide">
-                  <span>{t('competitors.search')}</span>
-                  <input
-                    type="search"
-                    value={search}
-                    placeholder={t('admin.searchEvents')}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
-              </div>
+              <EntityBar entity={EVENTS} onNew={() => setEditing({ mode: 'new' })}>
+                <div className="rankings__filters">
+                  <label className="rankings__field rankings__field--wide">
+                    <span>{t('competitors.search')}</span>
+                    <input
+                      type="search"
+                      value={search}
+                      placeholder={t('admin.searchEvents')}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                  </label>
+                </div>
+              </EntityBar>
 
               <p className="rankings__count">{t('admin.showing', { count: rows.length })}</p>
 
@@ -102,7 +103,9 @@ export function AdminEvents() {
                           </span>
                         </td>
                         <td>
-                          <OpenRecord
+                          <RowActions
+                            entity={EVENTS}
+                            record={one}
                             name={one.name}
                             onOpen={() => setEditing({ mode: 'one', record: one })}
                           />

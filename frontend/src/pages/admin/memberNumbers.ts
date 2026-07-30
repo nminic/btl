@@ -30,7 +30,7 @@ import { MEMBERS, recordsOf } from './entityForms'
  * Handed in whole rather than one by one, so `useSession()` satisfies it as it
  * stands and a fourth source is added here rather than at every call.
  */
-export type NumberSources = Pick<SessionValue, 'edits' | 'creations' | 'decisions'>
+export type NumberSources = Pick<SessionValue, 'edits' | 'creations' | 'decisions' | 'deletions'>
 
 /**
  * Every member number that is spoken for: the ones in the member list as the
@@ -43,9 +43,14 @@ export type NumberSources = Pick<SessionValue, 'edits' | 'creations' | 'decision
  */
 export function takenMemberNumbers(
   competitors: Competitor[],
-  { edits, creations, decisions }: NumberSources,
+  { edits, creations, decisions, deletions }: NumberSources,
 ): string[] {
-  const listed = recordsOf(MEMBERS, competitors, edits, creations).map((one) =>
+  /* Read through the overlay, deletions included, so a number is free again once
+     the member holding it is gone. That is the rule rather than a side effect:
+     deleting on request removes the tie between the number and the person, and a
+     number nobody can be traced by is a number the next member may have (PDL
+     P23). */
+  const listed = recordsOf(MEMBERS, competitors, { edits, creations, deletions }).map((one) =>
     String(one.memberNumber),
   )
 

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { routeObjects } from '../app/routeObjects'
@@ -58,6 +58,20 @@ export function renderAt(
       </RoleProvider>
     </ClockProvider>,
   )
+}
+
+/**
+ * Waits until the front page is what is on screen.
+ *
+ * Where a closed door and an address the portal does not have both end up
+ * (owner, 30.07.2026). Its own heading is the thing to look for: it is the only
+ * level one heading on the portal that carries the name of the league, and it is
+ * there precisely so the page has a name at all.
+ */
+export async function expectFrontPage(): Promise<void> {
+  expect(
+    await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' }),
+  ).toBeInTheDocument()
 }
 
 /** For components that need translations but no routing. */

@@ -7,8 +7,9 @@ import { useCompetitors } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { MEMBERS, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import { takenMemberNumbers } from './memberNumbers'
 import '../member/Member.css'
 
@@ -18,20 +19,22 @@ import '../member/Member.css'
  * (PDL P8, P11, P23). */
 export function AdminMembers() {
   const { locale, t } = useI18n()
+  const overlay = useOverlay()
   const session = useSession()
-  const { edits, creations } = session
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useCompetitors()
 
   return (
     <div className="member">
-      <h1>{t('admin.members')}</h1>
-      <p className="member__note">{t('admin.editNote')}</p>
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t('admin.members')}</h1>
 
       <Resource state={state}>
         {(competitors) => {
-          const all = recordsOf(MEMBERS, competitors, edits, creations)
+          const all = recordsOf(MEMBERS, competitors, overlay)
 
           if (editing !== null) {
             return (
@@ -58,18 +61,18 @@ export function AdminMembers() {
 
           return (
             <>
-              <NewRecord entity={MEMBERS} onOpen={() => setEditing({ mode: 'new' })} />
-
-              <div className="rankings__filters">
-                <label className="rankings__field rankings__field--wide">
-                  <span>{t('competitors.search')}</span>
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
-              </div>
+              <EntityBar entity={MEMBERS} onNew={() => setEditing({ mode: 'new' })}>
+                <div className="rankings__filters">
+                  <label className="rankings__field rankings__field--wide">
+                    <span>{t('competitors.search')}</span>
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                  </label>
+                </div>
+              </EntityBar>
 
               <p className="rankings__count">{t('competitors.count', { count: rows.length })}</p>
 
@@ -111,7 +114,9 @@ export function AdminMembers() {
                           </span>
                         </td>
                         <td>
-                          <OpenRecord
+                          <RowActions
+                            entity={MEMBERS}
+                            record={one}
                             name={`${one.firstName} ${one.lastName}`}
                             onOpen={() => setEditing({ mode: 'one', record: one })}
                           />

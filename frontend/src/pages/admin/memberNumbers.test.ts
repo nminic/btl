@@ -6,7 +6,7 @@ import { handOutMemberNumber, takenMemberNumbers, type NumberSources } from './m
  * written for was one caller knowing about two of them and the other about three.
  * A source that quietly stops being read is a member number handed out twice. */
 
-const NOTHING: NumberSources = { edits: {}, creations: {}, decisions: {} }
+const NOTHING: NumberSources = { edits: {}, creations: {}, decisions: {}, deletions: {} }
 
 const member = (memberNumber: string) => ({ memberNumber }) as Competitor
 

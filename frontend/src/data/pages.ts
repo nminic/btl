@@ -27,3 +27,19 @@ export function sectionsOf(pages: Record<string, StaticPage>, page: StaticPage):
 
   return [...taken, ...page.sections]
 }
+
+/**
+ * A written page by its address, or nothing where administration has removed it.
+ *
+ * Both screens that draw a written page go through here. Without it the row went
+ * off the list of pages and the page went on being served: `/sr/pravilnik`
+ * answered exactly as before, which makes the delete button on that screen a
+ * control that reads as removing a page and does not.
+ */
+export function livePage(
+  pages: Record<string, StaticPage>,
+  slug: string,
+  deleted: string[],
+): StaticPage | undefined {
+  return deleted.includes(slug) ? undefined : pages[slug]
+}

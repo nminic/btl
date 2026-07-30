@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { DateSwitch } from '../clock/DateSwitch'
 import { dataOr } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
 import { totalWaiting } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
@@ -51,12 +52,40 @@ const VERIFICATION = 'administracija/verifikacija'
 function useWaiting(): number {
   const { submissions, decisions } = useSession()
   const items = usePending()
+  /* Over the queues this moderator may work in and no others. A total that
+     counted the rest would send him looking for work he cannot reach and is not
+     shown anywhere (owner, 30.07.2026). */
+  const queues = usePermittedQueues()
 
-  return totalWaiting({
-    pendingResults: submissions.filter((one) => one.status === 'pending').length,
-    items: dataOr(items, []),
-    decisions,
-  })
+  return totalWaiting(
+    {
+      pendingResults: submissions.filter((one) => one.status === 'pending').length,
+      items: dataOr(items, []),
+      decisions,
+    },
+    queues,
+  )
+}
+
+/**
+ * The navigation as this person sees it.
+ *
+ * A group whose every screen is closed to them is a group that opens onto
+ * nothing, and a screen they may not open is one they are not to be told about
+ * at all (owner, 30.07.2026). Asked through the same table the door is
+ * (needs.ts), so a screen cannot be named here and refused there.
+ */
+function useNavSections(): NavSection[] {
+  const { role } = useRole()
+  const mayOpen = useMayOpen()
+
+  return navForRole(role)
+    .map((section) =>
+      section.path === undefined
+        ? { ...section, items: section.items.filter((item) => mayOpen(item.path)) }
+        : section,
+    )
+    .filter((section) => (section.path === undefined ? section.items.length > 0 : mayOpen(section.path)))
 }
 
 /* Verification, with the number of items waiting behind it. The count goes into
@@ -137,7 +166,7 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
 
 export function Shell() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
+  const sections = useNavSections()
   const rest = useRestOfPath()
   const { pageTitle, declare } = useRouteChrome()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -204,7 +233,7 @@ export function Shell() {
           className={menuOpen ? 'shell__nav shell__nav--open' : 'shell__nav'}
           aria-label={t('shell.mainNavigation')}
         >
-          {navForRole(role).map((section) => (
+          {sections.map((section) => (
             <NavEntry key={section.id} section={section} onNavigate={closeMenu} />
           ))}
         </nav>

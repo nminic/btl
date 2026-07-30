@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
+import { SessionProvider } from '../session/SessionProvider'
 import { isMember, isStaff } from './context'
 import { RoleProvider } from './RoleProvider'
 import { RoleSwitch } from './RoleSwitch'
@@ -20,10 +21,14 @@ function CurrentRole() {
 function renderSwitch(initial?: 'visitor' | 'competitor' | 'moderator' | 'superadmin') {
   return render(
     <I18nProvider locale="sr">
-      <RoleProvider initialRole={initial}>
-        <RoleSwitch />
-        <CurrentRole />
-      </RoleProvider>
+      {/* The switch reads what administration has deleted, so a moderator who
+          has been removed stops being somebody it can become. */}
+      <SessionProvider>
+        <RoleProvider initialRole={initial}>
+          <RoleSwitch />
+          <CurrentRole />
+        </RoleProvider>
+      </SessionProvider>
     </I18nProvider>,
   )
 }
@@ -75,7 +80,7 @@ describe('RoleSwitch', () => {
     expect(screen.getByTestId('uloga')).toHaveTextContent('superadmin')
   })
 
-  it('offers the moderators by name, because a moderator is not a role', async () => {
+  it('offers the moderators one by one, because a moderator is not a role', async () => {
     const user = setupUser()
     renderSwitch()
 
@@ -83,11 +88,18 @@ describe('RoleSwitch', () => {
        of them holds a different set (PDL P21), so becoming "a moderator" is not
        something anybody can do: the choice is which one. Until this was here,
        nothing connected the person at the keyboard to a row in the matrix of
-       rights, and sixteen ticked boxes changed nothing on any screen. */
+       rights, and sixteen ticked boxes changed nothing on any screen.
+
+       By initials rather than by name (owner, 30.07.2026): a select is as wide
+       as its widest choice, and Aleksandra Milovanović-Stefanović was pushing
+       the rest of the header onto a second line. Every part of a double surname
+       keeps its letter, so nobody becomes anybody else. */
     const chooser = screen.getByLabelText('Uloga')
-    const named = await screen.findByRole('option', { name: 'Milena Šarić' })
+    const named = await screen.findByRole('option', { name: 'M. Š.' })
 
     expect(named).toBeInTheDocument()
+    expect(named).toHaveAttribute('title', 'Milena Šarić')
+    expect(screen.getByRole('option', { name: 'A. M.-S.' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Moderator' })).not.toBeInTheDocument()
 
     await user.selectOptions(chooser, 'moderator:mod-saric')

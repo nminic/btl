@@ -4,8 +4,9 @@ import { useModerators } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { MODERATORS, recordsOf, type Editing } from './entityForms'
+import { useOverlay } from './overlay'
 import { grantedCount } from './rights'
 import { RightsMatrix } from './RightsMatrix'
 import '../member/Member.css'
@@ -29,19 +30,21 @@ import './Rights.css'
  */
 export function AdminModerators() {
   const { t } = useI18n()
-  const { edits, creations, rights } = useSession()
+  const overlay = useOverlay()
+  const { rights } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useModerators()
 
   return (
     <div className="member">
-      <h1>{t('admin.moderators')}</h1>
-      <p className="member__note">{t('admin.moderatorsNote')}</p>
-      <p className="member__note">{t('admin.editNote')}</p>
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
+      <h1 className="visually-hidden">{t('admin.moderators')}</h1>
 
       <Resource state={state}>
         {(moderators) => {
-          const rows = recordsOf(MODERATORS, moderators, edits, creations)
+          const rows = recordsOf(MODERATORS, moderators, overlay)
 
           if (editing !== null) {
             return (
@@ -55,7 +58,7 @@ export function AdminModerators() {
 
           return (
             <>
-              <NewRecord entity={MODERATORS} onOpen={() => setEditing({ mode: 'new' })} />
+              <EntityBar entity={MODERATORS} onNew={() => setEditing({ mode: 'new' })} />
 
               <div className="table-scroll">
                 <table className="table moderators">
@@ -106,7 +109,9 @@ export function AdminModerators() {
                             : t('rights.granted', { count: grantedCount(one, rights) })}
                         </td>
                         <td>
-                          <OpenRecord
+                          <RowActions
+                            entity={MODERATORS}
+                            record={one}
                             name={`${one.firstName} ${one.lastName}`}
                             onOpen={() => setEditing({ mode: 'one', record: one })}
                           />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldOption, FormValues } from '../../forms/types'
@@ -136,19 +136,96 @@ export function EntityEditor({
   )
 }
 
-/** The one control that starts a record that does not exist yet. It carries the
- *  name of the thing being created, because "new record" on eight screens is
- *  eight buttons a screen reader cannot tell apart. */
-export function NewRecord({ entity, onOpen }: { entity: EntityDef; onOpen: () => void }) {
+/**
+ * The strip above every list: whatever narrows it on the left, and the one
+ * control that starts a record that does not exist yet on the right.
+ *
+ * The button carries the name of the thing being created, because "new record"
+ * on nine screens is nine buttons a screen reader cannot tell apart.
+ *
+ * It sits at the end of the row rather than above it (owner, 30.07.2026). Above
+ * the search it was the first thing on a screen whose work is reading a list;
+ * at the far end of the same line it is where the eye goes last and the hand
+ * goes when the list has been read. On a narrow screen the row wraps and the
+ * button drops under the search, which is the same order.
+ */
+/** The one control on the screen that survives a row being deleted, so it is
+ *  where the focus goes when one is (RowActions). */
+export const NEW_RECORD_ID = 'entity-new'
+
+export function EntityBar({
+  entity,
+  onNew,
+  children,
+}: {
+  entity: EntityDef
+  onNew: () => void
+  /** What narrows the list, where the list has anything to narrow it by. */
+  children?: ReactNode
+}) {
   const { t } = useI18n()
 
   return (
-    <div className="entity-actions">
-      <button type="button" className="button button--secondary" onClick={onOpen}>
+    <div className="entity-bar">
+      <div className="entity-bar__filters">{children}</div>
+      <button
+        type="button"
+        id={NEW_RECORD_ID}
+        className="button button--secondary entity-bar__new"
+        onClick={onNew}
+      >
         {t(`admin.form.new.${entity.id}`)}
       </button>
-      <p className="member__note">{t('admin.form.note')}</p>
     </div>
+  )
+}
+
+/**
+ * What every row of every list ends with: open the record, or remove it.
+ *
+ * One component for both, so a tenth screen cannot be written with the one and
+ * not the other, and so the two are always the same distance apart in the same
+ * order on all nine.
+ *
+ * The identity comes off the record through the entity's own definition rather
+ * than being handed in, because which field is the identity is a fact about the
+ * entity: a member is its number, an event its id, a written page its address.
+ */
+export function RowActions({
+  entity,
+  record,
+  name,
+  onOpen,
+}: {
+  entity: EntityDef
+  record: object
+  /** What the row is called, for both accessible names. */
+  name: string
+  onOpen: () => void
+}) {
+  const { remove } = useSession()
+  const id = String((record as Record<string, unknown>)[entity.idField])
+
+  /* The row about to go is where the focus is, so deleting it leaves the focus
+     on nothing and the next Tab starts the page from the top. It moves to the
+     control that starts a new record, which is the one thing on the screen that
+     cannot be the row just deleted; a screen reader announces the move, which is
+     also the only word anyone gets that the deletion happened. */
+  function deleteRow() {
+    const anchor = document.getElementById(NEW_RECORD_ID)
+
+    if (anchor !== null) {
+      anchor.focus()
+    }
+
+    remove(entity.id, id)
+  }
+
+  return (
+    <span className="entity-row-actions">
+      <OpenRecord name={name} onOpen={onOpen} />
+      <DeleteRecord name={name} onDelete={deleteRow} />
+    </span>
   )
 }
 
@@ -166,5 +243,63 @@ export function OpenRecord({ name, onOpen }: { name: string; onOpen: () => void 
     >
       {t('admin.form.open')}
     </button>
+  )
+}
+
+/**
+ * And the control that removes it (owner, 30.07.2026).
+ *
+ * Asked twice, because nothing brings the record back and the button stands in a
+ * row of twenty beside the one that merely opens it. The first press asks, the
+ * second does it, and the third control that appears beside it puts the question
+ * away. No dialogue: nothing to trap the focus in, nothing to dismiss with a
+ * key, and the record still gone in two presses when it is meant to be.
+ *
+ * The question stays where it was put, in its own row, until it is answered. It
+ * does not close when the list is searched or sorted: the rows are keyed by
+ * identity, so the question follows the record it names rather than the place it
+ * was standing, and a question that closed itself on the next keystroke would be
+ * one somebody had to ask twice.
+ *
+ * The name of the record is on all three, so a screen reader asking "delete
+ * what?" is answered without reading back up the row, and two rows asking at
+ * once are two different questions rather than two buttons called Odustani.
+ */
+export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () => void }) {
+  const { t } = useI18n()
+  const [asking, setAsking] = useState(false)
+
+  if (!asking) {
+    return (
+      <button
+        type="button"
+        className="entity-open entity-delete"
+        aria-label={t('admin.form.deleteNamed', { name })}
+        onClick={() => setAsking(true)}
+      >
+        {t('admin.form.delete')}
+      </button>
+    )
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="entity-open entity-delete entity-delete--sure"
+        aria-label={t('admin.form.deleteSureNamed', { name })}
+        onClick={onDelete}
+      >
+        {t('admin.form.deleteSure')}
+      </button>
+      <button
+        type="button"
+        className="entity-open"
+        aria-label={t('admin.form.keepNamed', { name })}
+        onClick={() => setAsking(false)}
+      >
+        {t('admin.form.keep')}
+      </button>
+    </>
   )
 }
