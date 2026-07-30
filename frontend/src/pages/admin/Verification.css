@@ -17,6 +17,22 @@
   font-size: 0.9rem;
 }
 
+/* A biography is read and then rewritten on the same card (PDL P22), so the text,
+   the button that opens it and the box it opens into stand one under the other
+   and each takes the width it needs rather than the width of the card. */
+.pending__edit {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.pending__editor {
+  inline-size: 100%;
+  min-block-size: 9rem;
+}
+
 /* The country under the town, so the cell stays narrow on a telephone. The way
    a member pays follows the country (PDL P8), so it belongs beside the fee. */
 .pending__country {

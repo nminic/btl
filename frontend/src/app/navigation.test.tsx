@@ -55,14 +55,32 @@ describe('navigation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Tabela' })).toBeVisible()
   })
 
-  /* Badges left the navigation on 29.07.2026 and kept their address, which is
-     exactly the case worth testing: an address with no screen behind it yet
-     still has to answer with something a person can read. */
-  it('shows a placeholder for a screen that has not been built yet', () => {
-    renderAt('/sr/znacke')
+  /* Every address in the navigation has a screen of its own since the badges
+     arrived (PDL P28a, 30.07.2026), so nothing here answers with a placeholder
+     any more. What an address answers with before its screen exists is held in
+     src/app/screenFor.test.tsx, address by address being pointless there. */
+
+  /* Both of these had an address and not one link on the whole portal leading to
+     it: pages a person could only reach by typing the address (PDL P28a,
+     30.07.2026). The group is the way in now, so the way in is what is walked. */
+  it('opens the story of the league from the group it now sits in', async () => {
+    const user = setupUser()
+    renderAt('/sr')
+
+    await openGroup(user, 'O ligi')
+    await user.click(screen.getByRole('link', { name: 'Priča o ligi' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'O ligi' })).toBeVisible()
+  })
+
+  it('opens the badges from the same group', async () => {
+    const user = setupUser()
+    renderAt('/sr')
+
+    await openGroup(user, 'O ligi')
+    await user.click(screen.getByRole('link', { name: 'Značke' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Značke' })).toBeVisible()
-    expect(screen.getByText(/Ovaj ekran dolazi u sledećoj fazi/)).toBeVisible()
   })
 
   it('keeps the current screen when the language changes', async () => {

@@ -33,6 +33,35 @@ describe('navForRole', () => {
   })
 })
 
+describe('the group "O ligi"', () => {
+  it('holds the five screens the owner named, in that order (PDL P28a)', () => {
+    const about = NAV.find((section) => section.id === 'about')
+
+    expect((about?.items ?? []).map((item) => item.path)).toEqual([
+      'o-ligi',
+      'pravilnik',
+      'clanarina',
+      'znacke',
+      'istorijat',
+    ])
+  })
+
+  it('serves no address twice, now that two of them moved into it', () => {
+    /* The story of the league and the badges had an address and no link anywhere
+       pointing at it. They joined the group on 30.07.2026 and left the unlisted
+       list on the same day: an entry in both would be one address with two router
+       entries, and the second would never be reached. Read out of the real router
+       table rather than out of ROUTES, because that is what is served. */
+    const served = (routeObjects[1].children ?? [])
+      .map((child) => child.path)
+      .filter((path): path is string => path !== undefined)
+
+    expect(new Set(served).size).toBe(served.length)
+    expect(served).toContain('o-ligi')
+    expect(served).toContain('znacke')
+  })
+})
+
 describe('the shape of the navigation', () => {
   it('gives every section either one screen or a group, never both and never neither', () => {
     for (const section of NAV) {

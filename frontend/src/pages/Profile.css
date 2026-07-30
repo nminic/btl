@@ -19,17 +19,12 @@
   color: var(--text);
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  background: linear-gradient(150deg, var(--gold-400), var(--gold-600));
-  color: #241a02;
-  font-weight: 700;
-  font-size: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-}
+/* A gold pill called .badge used to live here with no user anywhere in the
+   portal. Vite bundles every imported stylesheet into one global sheet, so it
+   was not merely dead: it painted every card on the badges page gold and gave
+   each one a 999px radius, because that page names its cards .badge too. Gold
+   carries achievement, never a surface (the approved visual direction), and the
+   dark pill text was inherited by the card text underneath. */
 
 .profile .counter {
   margin: 1.25rem 0;

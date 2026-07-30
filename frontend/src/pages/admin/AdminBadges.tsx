@@ -1,25 +1,24 @@
 import { useState } from 'react'
+import { Resource } from '../../components/Resource'
+import { useBadges } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
-import { QUANTITIES, ruleSentence, type BadgeRule, type Quantity } from './badgeRule'
+import { BADGE_KINDS, ruleSentence, type BadgeKind, type BadgeRule } from '../../data/badgeRule'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { BADGES, recordsOf, type Editing } from './entityForms'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
-/** A badge as it is stored: what it is called, what it says, and the rule that
- *  awards it. The rule half is the closed set from badgeRule. */
-type Badge = BadgeRule & { id: string; name: string; description: string }
-
 export function AdminBadges() {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const { role } = useRole()
   const { edits, creations } = useSession()
+  const state = useBadges()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [rule, setRule] = useState<BadgeRule>({
-    quantity: 'raceCount',
+    kind: 'raceCount',
     value: 10,
     from: '',
     to: '',
@@ -38,12 +37,6 @@ export function AdminBadges() {
     )
   }
 
-  /* No badge has been written down anywhere yet, so the list holds exactly what
-   * this visit created. Everything else on the portal reads generated data; a
-   * badge has none, and inventing some would put rules on screen that the owner
-   * never agreed to. */
-  const rows = recordsOf(BADGES, [] as Badge[], edits, creations)
-
   return (
     <div className="member">
       <h1>{t('admin.badges')}</h1>
@@ -51,49 +44,62 @@ export function AdminBadges() {
 
       <NewRecord entity={BADGES} onOpen={() => setEditing({ mode: 'new' })} />
 
-      {rows.length === 0 ? (
-        <p className="member__note">{t('admin.form.noBadges')}</p>
-      ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <caption className="visually-hidden">{t('admin.badges')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('admin.field.badgeName')}</th>
-                <th scope="col">{t('admin.field.rule')}</th>
-                <th scope="col">{t('admin.form.record')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((badge) => (
-                <tr key={badge.id}>
-                  <td>{badge.name}</td>
-                  <td>{ruleSentence(badge, t)}</td>
-                  <td>
-                    <OpenRecord
-                      name={badge.name}
-                      onOpen={() => setEditing({ mode: 'one', record: badge })}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* The same badges the members see. This screen used to start from an
+          empty list, from the days when no badge was written down anywhere, so
+          the superadmin could not see, let alone change, a single one of the
+          badges on the public page.
+
+          There is no word for a list with nothing in it, here or on any of the
+          other seven entity screens: the badges are generated data, so the list
+          is empty only if the file is, and a table with its headings and no rows
+          says that plainly enough. */}
+      <Resource state={state}>
+        {(badges) => {
+          const rows = recordsOf(BADGES, badges, edits, creations)
+
+          return (
+            <div className="table-scroll">
+              <table className="table">
+                <caption className="visually-hidden">{t('admin.badges')}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('admin.field.badgeName')}</th>
+                    <th scope="col">{t('admin.field.rule')}</th>
+                    <th scope="col">{t('admin.form.record')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((badge) => (
+                    <tr key={badge.id}>
+                      <td>{badge.name}</td>
+                      <td>{ruleSentence(badge, t, locale)}</td>
+                      <td>
+                        <OpenRecord
+                          name={badge.name}
+                          onOpen={() => setEditing({ mode: 'one', record: badge })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }}
+      </Resource>
 
       <h2 className="entity-heading">{t('admin.form.tryRule')}</h2>
 
       <div className="rankings__filters">
         <label className="rankings__field">
-          <span>{t('badges.quantityLabel')}</span>
+          <span>{t('badges.kindLabel')}</span>
           <select
-            value={rule.quantity}
-            onChange={(event) => setRule({ ...rule, quantity: event.target.value as Quantity })}
+            value={rule.kind}
+            onChange={(event) => setRule({ ...rule, kind: event.target.value as BadgeKind })}
           >
-            {QUANTITIES.map((one) => (
+            {BADGE_KINDS.map((one) => (
               <option key={one} value={one}>
-                {t(`badges.quantity.${one}`)}
+                {t(`badges.kind.${one}`)}
               </option>
             ))}
           </select>
@@ -128,8 +134,8 @@ export function AdminBadges() {
         </label>
       </div>
 
-      <p className="badges__sentence" role="status">
-        {ruleSentence(rule, t)}
+      <p className="badges__sentence" role="status" aria-label={t('admin.form.tryRule')}>
+        {ruleSentence(rule, t, locale)}
       </p>
 
       <p className="member__note">{t('badges.closedList')}</p>

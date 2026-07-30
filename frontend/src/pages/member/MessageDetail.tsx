@@ -21,8 +21,11 @@ import './Member.css'
 export function MessageDetail() {
   const { locale, t } = useI18n()
   const { id } = useParams()
-  const { memberNumber, messages, markRead } = useSession()
-  const message = messages.find((one) => one.id === id)
+  const { memberNumber, inbox, markRead } = useSession()
+  /* Out of the inbox rather than out of the store, so an address that names
+   * somebody else's message answers with the not found page instead of showing
+   * it (Message.to). */
+  const message = inbox.find((one) => one.id === id)
   const unread = message !== undefined && !message.read
 
   useEffect(() => {

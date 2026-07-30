@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
 import { DEFAULT_LOCALE } from '../i18n/config'
+import { Badges } from '../pages/Badges'
 import { Calendar } from '../pages/Calendar'
 import { Competitors } from '../pages/Competitors'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
@@ -42,10 +43,11 @@ import { MyResults } from '../pages/member/MyResults'
 import { NewResult } from '../pages/member/NewResult'
 import { SignIn } from '../pages/member/SignIn'
 import { LocaleLayout } from './LocaleLayout'
-import { ROUTES } from './routes'
+import { ROUTES, type RouteDef } from './routes'
 
-/* Screens that already exist. Everything else in ROUTES renders a placeholder,
- * so the navigation can be walked end to end from the first day. */
+/* Screens that already exist, which is every address in ROUTES since the badges
+ * arrived. Anything else in ROUTES renders a placeholder, so the navigation can
+ * be walked end to end from the day an address is added. */
 const SCREENS: Record<string, ReactElement> = {
   kalendar: <Calendar />,
   tabela: <Rankings />,
@@ -72,11 +74,23 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/timovi': <AdminTeams />,
   'administracija/lige': <AdminLeagues />,
   'administracija/strane': <AdminPages />,
+  znacke: <Badges />,
   'o-ligi': <StaticPage slug="o-ligi" />,
   pravilnik: <Rulebook />,
   istorijat: <StaticPage slug="istorijat" />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
+}
+
+/**
+ * The screen at an address, or a stand-in for one.
+ *
+ * Every address in ROUTES has a screen of its own today. The stand-in is what a
+ * newly added address answers with on the day it is added and before its screen
+ * exists, so the navigation can always be walked end to end.
+ */
+export function screenFor(route: RouteDef): ReactElement {
+  return SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />
 }
 
 /* Detail screens. They are addresses, not navigation entries, so they are not
@@ -109,10 +123,7 @@ export const routeObjects: RouteObject[] = [
     element: <LocaleLayout />,
     children: [
       { index: true, element: <Home /> },
-      ...ROUTES.map((route) => ({
-        path: route.path,
-        element: SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />,
-      })),
+      ...ROUTES.map((route) => ({ path: route.path, element: screenFor(route) })),
       ...DETAILS,
       { path: '*', element: <NotFound /> },
     ],

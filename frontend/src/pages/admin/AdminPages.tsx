@@ -14,7 +14,8 @@ import { PAGES, recordsOf, type Editing } from './entityForms'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
-/* The written pages: the rulebook, the history, the privacy policy, the terms.
+/* The written pages: the rulebook, the history, the privacy policy, the terms,
+ * and the address of the president.
  *
  * A page is a title and a list of sections. The form reaches the first section,
  * which is where a page starts and the part somebody rewrites; the rest of the
@@ -44,6 +45,15 @@ function pageRows(pages: Record<string, StaticPage>): PageRow[] {
   })
 }
 
+/* The pages that other pages take in, which are the ones with no address of
+ * their own: the address of the president is written once and drawn inside the
+ * front page and inside "O ligi" (PDL P28a). Its row is here, because this is
+ * where it is maintained, but a link to /rec-predsednika would lead to "Ove
+ * strane nema". */
+function takenIn(pages: Record<string, StaticPage>): Set<string> {
+  return new Set(Object.values(pages).flatMap((page) => page.includes ?? []))
+}
+
 export function AdminPages() {
   const { locale, t } = useI18n()
   const { role } = useRole()
@@ -63,6 +73,7 @@ export function AdminPages() {
       <Resource state={state}>
         {(pages) => {
           const rows = recordsOf(PAGES, pageRows(pages), edits, creations)
+          const inside = takenIn(pages)
 
           if (editing !== null) {
             return (
@@ -106,7 +117,11 @@ export function AdminPages() {
                           />
                         </td>
                         <td>
-                          <Link to={`/${locale}/${page.slug}`}>/{page.slug}</Link>
+                          {inside.has(page.slug) ? (
+                            <span className="member__note">{t('admin.noAddress')}</span>
+                          ) : (
+                            <Link to={`/${locale}/${page.slug}`}>/{page.slug}</Link>
+                          )}
                         </td>
                         <td>{page.heading}</td>
                         <td>{formatNumber(page.sectionCount, locale)}</td>

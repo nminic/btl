@@ -45,12 +45,19 @@ export const NAV: NavSection[] = [
   {
     id: 'about',
     labelKey: 'nav.about',
-    // Membership joined on 30.07.2026, second on the owner's word: it is the
-    // page that leads to joining, and nothing in the navigation pointed at it.
-    // Badges keep their address in UNLISTED_ROUTES until he says where they go.
+    /* Five, in this order, and all five settled on 30.07.2026 (PDL P28a).
+     *
+     * Membership is second because it is the page that leads to joining. The
+     * story of the league and the badges are the other two that joined: both had
+     * an address and not one link anywhere on the portal pointed at it, so they
+     * were pages a person could only reach by typing the address. They are here
+     * now and nowhere else; leaving them in UNLISTED_ROUTES as well would be the
+     * same address served twice. */
     items: [
+      { path: 'o-ligi', labelKey: 'nav.aboutLeague', seoKey: 'aboutLeague' },
       { path: 'pravilnik', labelKey: 'nav.rules', seoKey: 'rulebook' },
       { path: 'clanarina', labelKey: 'nav.pricing', seoKey: 'pricing' },
+      { path: 'znacke', labelKey: 'nav.badges', seoKey: 'badges' },
       { path: 'istorijat', labelKey: 'nav.history', seoKey: 'history' },
     ],
   },
@@ -109,8 +116,6 @@ export const CONTACT_ADDRESS = 'info@balkanskatrkackaliga.net'
 /* Screens that have an address but no navigation entry: reached from a button,
  * a link inside a page, or the login symbol. */
 const UNLISTED_ROUTES: RouteDef[] = [
-  { path: 'o-ligi', labelKey: 'nav.aboutLeague', seoKey: 'aboutLeague' },
-  { path: 'znacke', labelKey: 'nav.badges', seoKey: 'badges' },
   { path: 'registracija', labelKey: 'nav.register', seoKey: 'register' },
   { path: 'prijava', labelKey: 'nav.login', seoKey: 'signIn' },
   { path: 'administracija', labelKey: 'nav.admin', seoKey: 'admin' },

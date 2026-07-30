@@ -90,10 +90,21 @@ export type League = {
   prizes: string
 }
 
+export type PageSection = { heading: string; body: string }
+
 /** A page of written text: the rulebook, the terms, the page about the league.
  *  Kept as data rather than in the translation dictionary because these run to
  *  thousands of words and are written and revised on their own schedule. */
 export type StaticPage = {
   title: string
-  sections: { heading: string; body: string }[]
+  sections: PageSection[]
+  /**
+   * Slugs of other written pages shown above this page's own sections.
+   *
+   * One text that belongs on two screens is kept once and pointed at twice: the
+   * address of the president stands on the front page and on "O ligi" (PDL P28a),
+   * and the administrator who maintains it edits one record. Copying it into both
+   * would guarantee that one of the copies is out of date.
+   */
+  includes?: string[]
 }

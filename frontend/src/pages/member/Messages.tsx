@@ -8,7 +8,7 @@ import './Member.css'
  * find what was said to them without digging through a mailbox. */
 export function Messages({ only }: { only?: string[] } = {}) {
   const { locale, t } = useI18n()
-  const { memberNumber, messages: all, markRead } = useSession()
+  const { memberNumber, inbox: all, markRead } = useSession()
   // `only` exists so the empty inbox can be seen; nothing in the application
   // passes it.
   const messages = only === undefined ? all : all.filter((one) => only.includes(one.id))

@@ -190,15 +190,53 @@ describe('TopBoards', () => {
     expect(pairs.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('stands the progress board empty, and says the measure is not decided', async () => {
+  it('ranks the progress by the points gained on the season before', async () => {
     renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najbolji napredak' })
+    const progress = board('Najbolji napredak')
+
+    // The measure is the gain, so the gain is the column, with the season it is
+    // measured against beside it (PDL P12, 30.07.2026).
+    expect(progress.getByRole('columnheader', { name: 'Prirast' })).toBeInTheDocument()
+    expect(progress.getByRole('columnheader', { name: 'Prethodna sezona' })).toBeInTheDocument()
+
+    const gains = progress
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => {
+        const cells = within(row).getAllByRole('cell')
+        return Number(cells[cells.length - 1].textContent!.replace(/\./g, '').replace(',', '.'))
+      })
+
+    expect(gains.length).toBeGreaterThan(1)
+    expect(gains.length).toBeLessThanOrEqual(10)
+    expect([...gains].sort((left, right) => right - left)).toEqual(gains)
+  })
+
+  it('leaves out whoever did not race the season before', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najbolji napredak' })
+
+    /* Miloje Stanojlović scored the second most points of 2019 and ran nothing
+       in 2018. Counting the season he was not there as a zero would make his
+       whole score a gain and put him at the top of a board about improvement,
+       which is the one thing a board about improvement must not do (PDL P12,
+       30.07.2026). He is on the boards that measure the season itself. */
+    expect(board('Najbolji napredak').queryByText('Miloje Stanojlović')).not.toBeInTheDocument()
+    expect(board('Najviše kilometara').getByText('Miloje Stanojlović')).toBeVisible()
+  })
+
+  it('stands the progress board empty for a season nobody has a season before', async () => {
+    renderAt('/sr/top-liste?sezona=2010')
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
     const progress = board('Najbolji napredak')
 
-    // The rulebook names the list, but what it compares is still open (PDL
-    // P28a), so the board says that rather than inventing a measure.
-    expect(progress.getByText(/Merilo ove liste još nije određeno/)).toBeVisible()
+    // 2010 is the first season with any results at all, so there is nothing to
+    // measure a gain against and the board says which rule left it empty.
+    expect(progress.getByText(/meri prirast bodova/)).toBeVisible()
     expect(progress.queryByRole('table')).not.toBeInTheDocument()
   })
 

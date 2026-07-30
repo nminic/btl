@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { Badge } from './badgeRule'
 import { loadResource, type ResourceName } from './client'
 import type { BtlEvent, Competitor, League, Race, Result, StaticPage, Team } from './types'
 
@@ -96,6 +97,7 @@ export function combinePair<A, B>(
   return { status: 'ready', data: [first.data, second.data] }
 }
 
+export const useBadges = () => useResource<Badge[]>('badges')
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useResource<BtlEvent[]>('events')
 export const useLeagues = () => useResource<League[]>('leagues')

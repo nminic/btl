@@ -40,6 +40,16 @@ export type Submission = {
 export type Message = {
   id: string
   from: string
+  /**
+   * The member number this was written to, or empty for the whole league.
+   *
+   * The portal writes to one person often enough that "the inbox" cannot mean
+   * "every message there is": a moderator who hands a profile picture back with
+   * an instruction (PDL P22) must not find that instruction in their own inbox a
+   * moment later. Empty is the league talking to everybody, which is what the
+   * messages the prototype starts with are.
+   */
+  to: string
   subject: string
   body: string
   date: string
@@ -84,7 +94,15 @@ export type Creations = Record<string, Created[]>
  */
 export type Decision = {
   status: 'approved' | 'rejected'
-  /** Why it was sent back. Empty on an approval, which explains itself. */
+  /**
+   * What was written down with the decision.
+   *
+   * Why it was sent back on most queues, the instruction the member is to follow
+   * on the profile pictures, and on the biographies the text that actually went
+   * out, because there the moderator edits before publishing and the published
+   * version is whatever they left (PDL P22). Empty where nothing was written:
+   * a plain approval, and a deleted comment, which carries no reason at all.
+   */
   note: string
   /** The payments queue only: on what basis the membership was activated, paid
    *  or honorary (PDL P8). Empty on every other queue, and never shown
@@ -117,8 +135,14 @@ export type SessionValue = {
   submit: (submission: Omit<Submission, 'id' | 'status' | 'note'>) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
-  messages: Message[]
+  /** Everything written to whoever is signed in, plus everything written to the
+   *  whole league. Not the whole store: see Message.to. */
+  inbox: Message[]
   markRead: (id: string) => void
+  /** Writes to one member's inbox. The portal already has one and it is where
+   *  the sideways messages belong: the bell always, the mail only if the member
+   *  switched it on (PDL P22). */
+  notify: (message: Omit<Message, 'id' | 'read'>) => void
 
   notifications: Record<NotificationKey, boolean>
   setNotification: (key: NotificationKey, on: boolean) => void

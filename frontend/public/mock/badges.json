@@ -1,0 +1,222 @@
+[
+  {
+    "id": "znk-prvi-maraton",
+    "name": "Prvi maraton",
+    "description": "Prvih 42,2 km na trci sa zvaničnim merenjem vremena.",
+    "label": "",
+    "kind": "marathonCount",
+    "value": 1,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-deset-maratona",
+    "name": "Deset maratona",
+    "description": "",
+    "label": "",
+    "kind": "marathonCount",
+    "value": 10,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-prvi-polumaraton",
+    "name": "Prvi polumaraton",
+    "description": "Prvih 21,1 km, najcesci prvi ozbiljan cilj u ligi.",
+    "label": "",
+    "kind": "halfCount",
+    "value": 1,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-sto-kilometara",
+    "name": "Prvih sto kilometara",
+    "description": "Zbir svih trka dostigao je sto kilometara.",
+    "label": "",
+    "kind": "totalKm",
+    "value": 100,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-hiljadu-dvesta",
+    "name": "Hiljadu i dvesta kilometara",
+    "description": "Zbir svih trka kroz sve sezone.",
+    "label": "",
+    "kind": "totalKm",
+    "value": 1200,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-sto-km-jul-2027",
+    "name": "Sto kilometara u julu",
+    "description": "Sto kilometara u jednom mesecu, samo u julu 2027.",
+    "label": "Jul 2027",
+    "kind": "totalKm",
+    "value": 100,
+    "from": "2027-07-01",
+    "to": "2027-07-31"
+  },
+  {
+    "id": "znk-sto-km-avgust-2027",
+    "name": "Sto kilometara u avgustu",
+    "description": "Ista znacka za sledeci mesec, i osvaja se posebno.",
+    "label": "Avgust 2027",
+    "kind": "totalKm",
+    "value": 100,
+    "from": "2027-08-01",
+    "to": "2027-08-31"
+  },
+  {
+    "id": "znk-ultramaratonac",
+    "name": "Ultramaratonac",
+    "description": "Prva trka duza od maratona.",
+    "label": "",
+    "kind": "ultraCount",
+    "value": 1,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-kratke-trke",
+    "name": "Dvadeset pet kraćih trka",
+    "description": "Kratke trke se broje isto kao i duge.",
+    "label": "",
+    "kind": "shortCount",
+    "value": 25,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-duze-trke",
+    "name": "Petnaest dužih trka",
+    "description": "Trke izmedju polumaratona i maratona.",
+    "label": "",
+    "kind": "longCount",
+    "value": 15,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-deset-trka-sezone",
+    "name": "Deset trka u sezoni",
+    "description": "Deset zvanicnih trka u jednoj sezoni.",
+    "label": "Sezona 2027/2028",
+    "kind": "raceCount",
+    "value": 10,
+    "from": "2027-01-01",
+    "to": "2027-12-31"
+  },
+  {
+    "id": "znk-tri-zemlje",
+    "name": "Tri zemlje",
+    "description": "Trke u tri razlicite drzave.",
+    "label": "",
+    "kind": "countryCount",
+    "value": 3,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-pet-sezona",
+    "name": "Pet sezona u ligi",
+    "description": "Dugovecnost clanstva se broji kao i sve ostalo.",
+    "label": "",
+    "kind": "seasonCount",
+    "value": 5,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-kilometar-visine",
+    "name": "Kilometar visine",
+    "description": "Zbir uspona dostigao je hiljadu metara.",
+    "label": "",
+    "kind": "totalAscent",
+    "value": 1000,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-deset-hiljada-spusta",
+    "name": "Deset hiljada metara spusta",
+    "description": "Zbir spusta kroz sve sezone.",
+    "label": "",
+    "kind": "totalDescent",
+    "value": 10000,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-sto-sati",
+    "name": "Sto sati na stazi",
+    "description": "Zbir vremena na stazi, racunato u satima.",
+    "label": "",
+    "kind": "totalTime",
+    "value": 100,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-sto-bodova",
+    "name": "Sto BTL bodova",
+    "description": "Zbir bodova iz svih trka.",
+    "label": "",
+    "kind": "points",
+    "value": 100,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-najbolja-trka",
+    "name": "Osamdeset bodova na jednoj trci",
+    "description": "Jedan rezultat vredan osamdeset bodova.",
+    "label": "",
+    "kind": "bestRacePoints",
+    "value": 80,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-maraton-u-komadu",
+    "name": "Maraton u jednom komadu",
+    "description": "Najduza trka dostigla je duzinu maratona.",
+    "label": "",
+    "kind": "bestRaceKm",
+    "value": 42.2,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-veliki-uspon",
+    "name": "Dva kilometra uspona na jednoj trci",
+    "description": "Jedna trka sa dva hiljade metara uspona.",
+    "label": "",
+    "kind": "bestRaceAscent",
+    "value": 2000,
+    "from": "",
+    "to": ""
+  },
+  {
+    "id": "znk-dugacak-naziv",
+    "name": "Značka za takmičare koji su u toku jedne kalendarske sezone istrčali najmanje dvadeset zvaničnih trka u najmanje tri različite države regiona",
+    "description": "Dugacak naziv je stvaran slucaj, ne izmisljen.",
+    "label": "Od 2027.",
+    "kind": "raceCount",
+    "value": 20,
+    "from": "2027-01-01",
+    "to": ""
+  },
+  {
+    "id": "znk-prva-decenija",
+    "name": "Trkač prve decenije",
+    "description": "Za one koji su trcali u ligi pre 2020.",
+    "label": "Do 2019.",
+    "kind": "raceCount",
+    "value": 1,
+    "from": "",
+    "to": "2019-12-31"
+  }
+]

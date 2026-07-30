@@ -1,5 +1,6 @@
 import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
+import { sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import './StaticPage.css'
@@ -12,6 +13,10 @@ import './StaticPage.css'
  * The body is Markdown, rendered by the one component that reads it. Raw HTML
  * is never interpreted, so nothing that ends up in these files can put an
  * element of its own on the page.
+ *
+ * A page may also take in another page, which is how the address of the president
+ * stands on "O ligi" and on the front page while being one record (see
+ * src/data/pages.ts).
  */
 export function StaticPage({ slug }: { slug: string }) {
   const { t } = useI18n()
@@ -30,7 +35,7 @@ export function StaticPage({ slug }: { slug: string }) {
           <article className="page">
             <h1>{page.title}</h1>
 
-            {page.sections.map((section) => (
+            {sectionsOf(pages, page).map((section) => (
               <section key={section.heading}>
                 <h2>{section.heading}</h2>
                 <Markdown text={section.body} />

@@ -7,7 +7,7 @@ import { SessionContext, type SessionValue, type SubmissionStatus } from '../ses
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
-import { ruleSentence, type BadgeRule } from './admin/badgeRule'
+import { ruleSentence, type BadgeRule } from '../data/badgeRule'
 import { ENTITIES } from './admin/entityList'
 import { type PendingItem, type PendingQueueId } from './admin/pending'
 import { countsFor, QUEUE, QUEUES } from './admin/queues'
@@ -40,8 +40,9 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     })),
     submit: vi.fn(),
     decide: vi.fn(),
-    messages: [],
+    inbox: [],
     markRead: vi.fn(),
+    notify: vi.fn(),
     notifications: {
       resultApproved: true,
       resultChanged: true,
@@ -158,33 +159,52 @@ describe('the price list', () => {
   })
 })
 
+/** The sentence the rule tryer reads back. It lives in a live region of its own,
+ *  which is what tells it apart from the same sentence on a badge in the table
+ *  above it. */
+const sentence = () => screen.getByRole('status', { name: 'Proba pravila' })
+
 describe('the badge rule editor', () => {
   it('builds a rule from closed lists and reads it back as a sentence', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/znacke', 'superadmin')
 
-    expect(await screen.findByText(/broj trka bude najmanje 10/)).toBeVisible()
+    await screen.findByLabelText('Vrsta')
+    expect(sentence()).toHaveTextContent(/broj trka bude najmanje 10/)
 
-    await user.selectOptions(screen.getByLabelText('Veličina'), 'totalKm')
+    // "Vrsta", not "Veličina" (PDL P28a, 30.07.2026).
+    await user.selectOptions(screen.getByLabelText('Vrsta'), 'totalKm')
 
-    expect(screen.getByText(/ukupno kilometara bude najmanje 10/)).toBeVisible()
+    expect(sentence()).toHaveTextContent(/ukupno kilometara bude najmanje 10/)
   })
 
   /* There is no operator to choose any more: the condition is always "at least"
-     (PDL, 30.07.2026), so the only closed list left is the quantity. */
+     (PDL, 30.07.2026), so the only closed list left is the kind. */
   it('offers no way to write a condition by hand', async () => {
     renderAt('/sr/administracija/znacke', 'superadmin')
 
-    await screen.findByLabelText('Veličina')
+    await screen.findByLabelText('Vrsta')
     // A free text box here is the shortest path to running code on the server.
-    expect(screen.getByLabelText('Veličina').tagName).toBe('SELECT')
+    expect(screen.getByLabelText('Vrsta').tagName).toBe('SELECT')
     expect(screen.queryByLabelText('Uslov')).not.toBeInTheDocument()
+  })
+
+  /* Three of the kinds read one race rather than a season (PDL P28a,
+     30.07.2026), and the sentence has to stay a sentence when one of them is
+     chosen. */
+  it('reads a rule about a single race back as a sentence too', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/znacke', 'superadmin')
+
+    await user.selectOptions(await screen.findByLabelText('Vrsta'), 'bestRaceKm')
+
+    expect(sentence()).toHaveTextContent(/najviše kilometara na jednoj trci bude najmanje 10/)
   })
 })
 
 describe('ruleSentence', () => {
   const base: BadgeRule = {
-    quantity: 'raceCount',
+    kind: 'raceCount',
     value: 5,
     from: '',
     to: '',
@@ -193,18 +213,25 @@ describe('ruleSentence', () => {
     `${key}${params === undefined ? '' : JSON.stringify(params)}`
 
   it('says a rule with no dates counts every season', () => {
-    expect(ruleSentence(base, t)).toContain('badges.everSince')
+    expect(ruleSentence(base, t, 'sr')).toContain('badges.everSince')
   })
 
   it('says a rule with both dates counts between them', () => {
-    expect(ruleSentence({ ...base, from: '2027-01-01', to: '2027-12-31' }, t)).toContain(
+    expect(ruleSentence({ ...base, from: '2027-01-01', to: '2027-12-31' }, t, 'sr')).toContain(
       'badges.between',
     )
   })
 
   it('says a rule with one date counts from it, or up to it', () => {
-    expect(ruleSentence({ ...base, from: '2027-01-01' }, t)).toContain('badges.after')
-    expect(ruleSentence({ ...base, to: '2027-12-31' }, t)).toContain('badges.before')
+    expect(ruleSentence({ ...base, from: '2027-01-01' }, t, 'sr')).toContain('badges.after')
+    expect(ruleSentence({ ...base, to: '2027-12-31' }, t, 'sr')).toContain('badges.before')
+  })
+
+  it('writes the value the way this language writes a number', () => {
+    // A marathon is 42,2 in Serbian and 42.2 in the data. The sentence and the
+    // threshold on the badge stand on the same card and must agree.
+    expect(ruleSentence({ ...base, kind: 'bestRaceKm', value: 42.2 }, t, 'sr')).toContain('42,2')
+    expect(ruleSentence({ ...base, kind: 'totalKm', value: 1200 }, t, 'sr')).toContain('1.200')
   })
 })
 
@@ -281,13 +308,13 @@ describe('the badge rule dates', () => {
     renderAt('/sr/administracija/znacke', 'superadmin')
 
     await user.type(await screen.findByLabelText('Od datuma'), '2027-01-01')
-    expect(screen.getByText(/računato od 2027-01-01, bez kraja/)).toBeVisible()
+    expect(sentence()).toHaveTextContent(/računato od 2027-01-01, bez kraja/)
 
     await user.type(screen.getByLabelText('Do datuma'), '2027-12-31')
-    expect(screen.getByText(/od 2027-01-01 do 2027-12-31/)).toBeVisible()
+    expect(sentence()).toHaveTextContent(/od 2027-01-01 do 2027-12-31/)
 
     await user.clear(screen.getByLabelText('Od datuma'))
-    expect(screen.getByText(/računato do 2027-12-31/)).toBeVisible()
+    expect(sentence()).toHaveTextContent(/računato do 2027-12-31/)
   })
 
   it('takes a value that is typed rather than chosen', async () => {
@@ -298,7 +325,7 @@ describe('the badge rule dates', () => {
     await user.clear(value)
     await user.type(value, '42')
 
-    expect(screen.getByText(/bude najmanje 42/)).toBeVisible()
+    expect(sentence()).toHaveTextContent(/bude najmanje 42/)
   })
 })
 
@@ -792,7 +819,6 @@ describe('the six queues read from the file', () => {
   it.each([
     ['leagues', 'Predložene lige', 2],
     ['teams', 'Novi timovi', 2],
-    ['bios', 'Trkačke biografije', 2],
     ['photos', 'Profilne slike', 2],
     ['schedule', 'Prijave promene termina', 3],
   ] as [PendingQueueId, string, number][])(
@@ -824,21 +850,134 @@ describe('the six queues read from the file', () => {
     },
   )
 
-  /* Comments are the one exception (PDL P23, 30.07.2026): they are refused in one
-     click and no reason is asked for, because a comment is not work to be
-     improved and a moderator reads them by the dozen. */
-  it('refuses a comment in one click, and never asks why', async () => {
+  /* Comments go their own way (PDL P22, 30.07.2026): accepted or deleted, in one
+     click, with no reason asked for and nothing at all sent to the member. The
+     word is half the decision. "Odbijeno" reads as a refused comment being kept
+     somewhere it could be brought back from, and there is no such place. */
+  it('deletes a comment in one click, and never asks why', async () => {
     const user = await open('comments', 'Komentari')
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button', { name: 'Odbij' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'Obriši' })[0])
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Razlog vraćanja' })).not.toBeInTheDocument()
+
+    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
+    expect(decided.getByText('Obrisano')).toBeVisible()
+    expect(decided.queryByText('Odbijeno')).not.toBeInTheDocument()
+    // Nothing is ever written down about a comment, so the table has no column
+    // for it: a heading over a run of empty cells is a question with no answer.
+    expect(decided.queryByRole('columnheader', { name: 'Obrazloženje' })).not.toBeInTheDocument()
+  })
+
+  /* Biographies go their own way too, and further: there is no second decision at
+     all. The moderator adjusts the text as they see fit and publishes what they
+     left, and it never goes back to the competitor (PDL P22, 30.07.2026). */
+  it('edits a biography in place and publishes what the moderator left', async () => {
+    const user = await open('bios', 'Trkačke biografije')
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    // Nothing here goes back, so there is no button for it and no reason to write.
+    expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
+
+    const card = within(within(screen.getByRole('list')).getAllByRole('listitem')[0])
+
+    await user.click(card.getByRole('button', { name: 'Izmeni' }))
+    const box = card.getByRole('textbox', { name: 'Tekst biografije' })
+    await user.clear(box)
+    await user.type(box, 'Rekreativac iz Čačka, trči zbog druženja.')
+    await user.tab()
+
+    // What the moderator wrote is what stands on the card, before anything is
+    // published and after the box has closed.
+    expect(card.getByText('Rekreativac iz Čačka, trči zbog druženja.')).toBeVisible()
+
+    await user.click(card.getByRole('button', { name: 'Objavi' }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
+
+    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
+    expect(decided.getByText('Objavljeno')).toBeVisible()
+    // And the published version is the edited one, not what came in.
+    expect(decided.getByText('Rekreativac iz Čačka, trči zbog druženja.')).toBeVisible()
+  })
+
+  it('publishes a biography nobody touched exactly as it came in', async () => {
+    const user = await open('bios', 'Trkačke biografije')
+
+    const first = within(screen.getByRole('list')).getAllByRole('listitem')[0]
+    // Two paragraphs with an empty line between them, which is what a biography
+    // looks like and what has to survive being published untouched.
+    const sent = within(first).getByText(/Rekreativac iz Čačka/).textContent
+
+    await user.click(within(first).getByRole('button', { name: 'Objavi' }))
+
+    const cells = within(screen.getByRole('table', { name: 'Rešeno' })).getAllByRole('cell')
+    expect(cells.map((cell) => cell.textContent)).toContain(sent)
+  })
+
+  /* Pictures are the only one of the three that still goes back to a competitor.
+     It is the same box with the same words as every other queue that hands work
+     back, because it is the same decision; what differs is what the moderator is
+     asked to write, since that reason is what the member reads and changes the
+     picture by (PDL P22, owner, 30.07.2026). */
+  it('asks the picture queue for a reason precise enough to work from', async () => {
+    const user = await open('photos', 'Profilne slike')
+
+    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+
+    // The name of the field is the one every queue uses, so a member is never
+    // told about two different things.
+    const reason = screen.getByLabelText('Razlog vraćanja')
+    expect(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })).toBeInTheDocument()
+
+    // The empty field is where the queue says what it wants: not "no good" but
+    // what has to change for the picture to be accepted.
+    expect(reason).toHaveAttribute(
+      'placeholder',
+      'Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.',
+    )
+    expect(screen.getAllByRole('button', { name: 'Vrati na doradu' })).toHaveLength(1)
+  })
+
+  it('leaves the reason for a returned picture in the inbox of the member', async () => {
+    const user = setupUser()
+    /* Signed in as the member whose picture is waiting, because the prototype has
+       one person at the keyboard and the point of the test is where the message
+       lands. A message carries the number it was written to (Message.to), so a
+       moderator who is somebody else never sees it. */
+    renderAt(`/sr/${QUEUE.photos.path}`, 'moderator', '000013')
+    await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
+
+    const card = within(
+      within(screen.getByRole('list')).getAllByRole('listitem').find((one) =>
+        within(one).queryByText('Damjan Krstić') !== null,
+      )!,
+    )
+
+    await user.click(card.getByRole('button', { name: 'Vrati na doradu' }))
+    await user.type(
+      screen.getByLabelText('Razlog vraćanja'),
+      'Slika je mutna, pošalji oštriju u kojoj se vidi lice.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
+
+    /* A reason the member never reads is a reason to nobody, and this is the one
+       queue where the member is expected to act on it. The portal already has an
+       inbox, so it goes there (PDL P22, P28a). */
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(screen.getByRole('link', { name: /Profilna slika je vraćena/ }))
+
     expect(
-      within(screen.getByRole('table', { name: 'Rešeno' })).getByText('Odbijeno'),
+      screen.getByRole('heading', { level: 1, name: 'Profilna slika je vraćena' }),
+    ).toBeVisible()
+    expect(
+      screen.getByText('Slika je mutna, pošalji oštriju u kojoj se vidi lice.'),
     ).toBeVisible()
   })
 
@@ -856,7 +995,9 @@ describe('the six queues read from the file', () => {
   })
 
   it('will not send anything back without a reason', async () => {
-    const user = await open('bios', 'Trkačke biografije')
+    // A team rather than a biography: biographies stopped going back at all
+    // (PDL P22, 30.07.2026), so there is nothing to refuse on that queue.
+    const user = await open('teams', 'Novi timovi')
 
     await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
 
@@ -864,14 +1005,12 @@ describe('the six queues read from the file', () => {
     expect(confirm).toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Nedostaje bilo šta o trčanju.')
+    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Naziv je već zauzet.')
     await user.click(confirm)
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(
-      within(screen.getByRole('table', { name: 'Rešeno' })).getByText(
-        'Nedostaje bilo šta o trčanju.',
-      ),
+      within(screen.getByRole('table', { name: 'Rešeno' })).getByText('Naziv je već zauzet.'),
     ).toBeVisible()
   })
 
