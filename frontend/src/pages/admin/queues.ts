@@ -5,31 +5,51 @@ import { waitingIn, type PendingItem } from './pending'
  * moderator approves a great deal more than results, and every one of these
  * comes from a decision that was already written down (PDL P28a).
  *
- * All eight have a screen, and every screen asks the same two questions: is this
- * good enough to publish, and if not, why not. Approving never carries a reason.
- * Refusing carries one on seven of the eight, and the eighth says so here rather
- * than anywhere else, because it is a fact about the queue and not about the
+ * All eight have a screen, and every screen asks the same first question: is this
+ * good enough to publish. Saying yes never asks the moderator for anything. What
+ * the other answer is differs from queue to queue, and it is stated here rather
+ * than on the screens, because it is a fact about the queue and not about the
  * screen that serves it.
  */
+
+/**
+ * The moderator's second decision on a queue, and therefore what the first one is
+ * called as well.
+ *
+ * Four answers rather than a yes or a no. It used to be one boolean, "does
+ * refusing ask why", and the three exceptions the owner settled on 30.07.2026
+ * (PDL P22) are three different things rather than degrees of the same one:
+ *
+ * - `sendBack`: approve, or hand the work back with a reason. Five of the eight.
+ *   A member who is refused with no reason writes back to ask, so the reason is
+ *   the cheaper of the two paths rather than politeness.
+ * - `instruct`: approve, or hand the picture back with a reason. Pictures are the
+ *   only thing that still goes back to a competitor, so the reason is the one
+ *   that has to arrive somewhere: it goes to the member's inbox, and the member
+ *   changes the picture by it. It is called a reason like everywhere else and
+ *   written into the same box; what differs is that the queue asks for one
+ *   precise enough to work from, which is what the empty field says (SendBack).
+ * - `delete`: accept, or delete on the spot. No reason is asked for, and nothing
+ *   at all is sent to the member. A comment is not work to be improved: it goes
+ *   out onto the portal or it does not, and a moderator reads them by the dozen.
+ *   The word matters as much as the click. "Refused" suggests a refused comment
+ *   is being kept somewhere and could be brought back, and none is.
+ * - `editAndPublish`: there is no second decision. The moderator adjusts the text
+ *   as they see fit and publishes what they left. A biography never goes back to
+ *   the competitor for approval, so there is no button for it and no reason to
+ *   write.
+ */
+export type QueueOutcome = 'sendBack' | 'instruct' | 'delete' | 'editAndPublish'
+
 export type Queue = {
   id: string
   labelKey: string
   sourceKey: string
   path: string
-  /**
-   * Whether refusing something on this queue asks the moderator why.
-   *
-   * True on seven of the eight (PDL P28a): what comes in is work, the member is
-   * meant to improve it and send it again, and "no" with no why is the shortest
-   * road to a telephone call.
-   *
-   * False on comments, and on comments only (PDL P23). A comment is not work to
-   * be improved; it either goes out onto the portal or it does not, and a
-   * moderator reads them by the dozen. Writing a sentence about each refused one
-   * is work that gives nobody anything. Stated on every queue rather than
-   * defaulted, so a ninth arrives having answered the question.
-   */
-  refusalNeedsReason: boolean
+  /** What happens to an item here that is not approved as it stands. Stated on
+   *  every queue rather than defaulted, so a ninth arrives having answered the
+   *  question instead of inheriting somebody else's answer. */
+  outcome: QueueOutcome
 }
 
 const ADDRESS = 'administracija/verifikacija'
@@ -40,56 +60,56 @@ export const QUEUES: Queue[] = [
     labelKey: 'verification.results',
     sourceKey: 'verification.fromResults',
     path: `${ADDRESS}/rezultati`,
-    refusalNeedsReason: true,
+    outcome: 'sendBack',
   },
   {
     id: 'payments',
     labelKey: 'verification.payments',
     sourceKey: 'verification.fromPayments',
     path: `${ADDRESS}/uplate`,
-    refusalNeedsReason: true,
+    outcome: 'sendBack',
   },
   {
     id: 'leagues',
     labelKey: 'verification.leagues',
     sourceKey: 'verification.fromLeagues',
     path: `${ADDRESS}/lige`,
-    refusalNeedsReason: true,
+    outcome: 'sendBack',
   },
   {
     id: 'teams',
     labelKey: 'verification.teams',
     sourceKey: 'verification.fromTeams',
     path: `${ADDRESS}/timovi`,
-    refusalNeedsReason: true,
+    outcome: 'sendBack',
   },
   {
     id: 'bios',
     labelKey: 'verification.bios',
     sourceKey: 'verification.fromBios',
     path: `${ADDRESS}/biografije`,
-    refusalNeedsReason: true,
+    outcome: 'editAndPublish',
   },
   {
     id: 'photos',
     labelKey: 'verification.photos',
     sourceKey: 'verification.fromPhotos',
     path: `${ADDRESS}/slike`,
-    refusalNeedsReason: true,
+    outcome: 'instruct',
   },
   {
     id: 'comments',
     labelKey: 'verification.comments',
     sourceKey: 'verification.fromComments',
     path: `${ADDRESS}/komentari`,
-    refusalNeedsReason: false,
+    outcome: 'delete',
   },
   {
     id: 'schedule',
     labelKey: 'verification.schedule',
     sourceKey: 'verification.fromSchedule',
     path: `${ADDRESS}/termini`,
-    refusalNeedsReason: true,
+    outcome: 'sendBack',
   },
 ]
 
@@ -98,6 +118,26 @@ export const QUEUES: Queue[] = [
 export const QUEUE: Record<string, Queue> = Object.fromEntries(
   QUEUES.map((one) => [one.id, one]),
 )
+
+/**
+ * Whether this item can be handed back at all.
+ *
+ * One queue asks for a reason the member is meant to act on, and there the
+ * reason has somewhere to go: the inbox of whoever sent the picture in (PDL
+ * P22). An item on that queue carrying no member number has nowhere, and an
+ * empty recipient is not "nobody" in this portal, it is **everybody**: the inbox
+ * shows a member what was written to them and what was written to the whole
+ * league, and the league is the empty one (session/context.ts, Message.to).
+ *
+ * So a picture with no sender is not a picture that can be sent back quietly to
+ * nobody. It is one instruction away from "Slika je mutna, vidi ti se lice" on
+ * the front of every member's inbox. Every picture in the data carries a number
+ * today, which is exactly the kind of safety that lasts until the backend hands
+ * over the first row that does not.
+ */
+export function canSendBack(queue: Queue, item: { memberNumber: string }): boolean {
+  return queue.outcome !== 'instruct' || item.memberNumber !== ''
+}
 
 /**
  * Everything the eight numbers are counted from, and nothing else.

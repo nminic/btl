@@ -138,6 +138,10 @@
       "title": "Pisane strane (administracija)",
       "description": "Pisane strane portala: pravilnik, uslovi korišćenja i politika privatnosti."
     },
+    "adminModerators": {
+      "title": "Moderatori (administracija)",
+      "description": "Ko moderira portal i koja mu je prava Superadmin dodelio, po entitetu i po redu."
+    },
     "newResult": {
       "title": "Prijava rezultata",
       "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
@@ -292,6 +296,7 @@
     "topWomen": "Top 10 žene",
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
     "wholeStanding": "Cela tabela",
+    "wholeRulebook": "Ceo pravilnik",
     "byCategory": "Trke po dužini",
     "previousCategory": "Prethodna kategorija",
     "nextCategory": "Sledeća kategorija",
@@ -478,7 +483,7 @@
     "pairs": "Najbolji parovi",
     "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
     "progress": "Najbolji napredak",
-    "progressUndecided": "Merilo ove liste još nije određeno. Pravilnik je navodi, ali nije rečeno da li se poredi promena pozicije prema kraju prethodnog meseca ili prirast bodova prema prethodnoj sezoni. Dok se ne odluči, lista stoji prazna, jer izmišljeno merilo daje poredak koji nikom ništa ne znači.",
+    "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
     "teams": "Najbolji tim",
     "bestRaces": "Najbolje pojedinačne trke",
     "kilometers": "Najviše kilometara",
@@ -491,6 +496,8 @@
       "races": "Trke",
       "event": "Događaj",
       "points": "Bodovi",
+      "gain": "Prirast",
+      "previousSeason": "Prethodna sezona",
       "distance": "d (km)",
       "time": "Vreme na stazi"
     },
@@ -769,6 +776,7 @@
     "sendBackNamed": "Vraćanje na doradu: {name}",
     "reason": "Razlog vraćanja",
     "reasonPlaceholder": "Bez razloga se ne vraća.",
+    "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
     "officialResults": "Zvanični rezultati",
     "decision": "Odluka",
     "confirmSendBack": "Vrati uz ovaj razlog",
@@ -780,6 +788,8 @@
     "title": "Administracija",
     "notAllowed": "Ovo nije za tebe",
     "notAllowedText": "Administrativni deo vide samo moderatori i Superadmin.",
+    "rightMissing": "Za ovo ti treba pravo koje nemaš",
+    "rightMissingText": "Ovaj ekran otvara moderator kome je Superadmin dao ovo pravo: {action}. Traži ga od njega ako ti je potrebno za posao.",
     "waiting": "Čeka proveru",
     "members": "Članovi",
     "events": "Događaji",
@@ -819,8 +829,12 @@
     "byCategory": "Po kategorijama",
     "noEvents": "Bez događaja",
     "pagesNote": "Napisane strane portala. Telo teksta se uređuje kad stigne baza.",
+    "moderators": "Moderatori",
+    "moderatorsNote": "Ljudi koji moderiraju portal. Superadmin ih pravi i kućicama im zadaje prava; sve ostalo u administraciji rade isto kao on.",
+    "moderatorsClosed": "Moderatore uređuje samo Superadmin. To je jedina razlika između dve uloge: ne šta ko sme da radi, nego ko odlučuje šta moderator sme.",
     "pageTitle": "Naslov",
     "address": "Adresa",
+    "noAddress": "Stoji unutar drugih strana",
     "sections": "Sekcija",
     "form": {
       "record": "Zapis",
@@ -830,7 +844,6 @@
       "saved": "Sačuvano",
       "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
       "note": "Ceo zapis se otvara dugmetom u redu. Nov zapis i izmena se pamte dok traje ova poseta; kad baza bude tu, pamtiće se trajno.",
-      "noBadges": "Još nema ni jedne značke. Prva se pravi dugmetom iznad.",
       "tryRule": "Proba pravila",
       "new": {
         "members": "Novi član",
@@ -840,7 +853,8 @@
         "leagues": "Nova liga",
         "badges": "Nova značka",
         "pricing": "Novi red cenovnika",
-        "pages": "Nova strana"
+        "pages": "Nova strana",
+        "moderators": "Nov moderator"
       },
       "edit": {
         "members": "Izmena člana",
@@ -850,7 +864,8 @@
         "leagues": "Izmena lige",
         "badges": "Izmena značke",
         "pricing": "Izmena reda cenovnika",
-        "pages": "Izmena strane"
+        "pages": "Izmena strane",
+        "moderators": "Izmena moderatora"
       }
     },
     "field": {
@@ -875,6 +890,7 @@
       "teamOrganizer": "Organizator tima",
       "leagueName": "Naziv lige",
       "badgeName": "Naziv značke",
+      "badgeLabel": "Labela na znački",
       "description": "Opis",
       "rule": "Pravilo",
       "priceLabel": "Naziv perioda",
@@ -884,7 +900,8 @@
       "rsd": "Cena u dinarima",
       "pageTitle": "Naslov strane",
       "sectionHeading": "Naslov prve sekcije",
-      "sectionBody": "Tekst prve sekcije"
+      "sectionBody": "Tekst prve sekcije",
+      "email": "Adresa elektronske pošte"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -907,15 +924,17 @@
       "groupsByCategory": "Bez ovoga se poredak lige grupiše samo po polu.",
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
       "description": "Jedna do dve rečenice koje član vidi uz značku.",
-      "quantity": "Veličina se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
-      "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi.",
+      "badgeLabel": "Kratak tekst pri dnu znaka, na primer Jul 2027. Sme da ostane prazan; tada znak nosi samo prag.",
+      "kind": "Vrsta se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
+      "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi. Prag stoji na sredini znaka i nikad nije prazan.",
       "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra.",
       "validPeriod": "Bez perioda cena ne zavisi od datuma uplate, kao junior cena.",
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "ranking": "Ko plati posle 1. januara ima profil i svoje rezultate, ali ne ulazi u rang liste.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
-      "sectionBody": "Ostale sekcije se uređuju kad stigne baza."
+      "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
+      "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega."
     },
     "value": {
       "genderM": "Muški",
@@ -923,18 +942,34 @@
     }
   },
   "badges": {
-    "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se veličina bira sa spiska, a ne kuca.",
-    "quantityLabel": "Veličina",
+    "title": "Značke",
+    "intro": "Sve značke koje liga dodeljuje i uslov koji za svaku od njih treba ispuniti. Značka se dodeljuje sama, čim uslov bude ispunjen, i ostaje zauvek. Značke su priznanje i ne nose bodove.",
+    "kindFilter": "Vrsta značke",
+    "allKinds": "Sve vrste",
+    "periodFilter": "Period važenja",
+    "allPeriods": "Svaki period",
+    "forever": "Trajne",
+    "limited": "Vezane za period",
+    "clear": "Obriši filtere",
+    "count": {
+      "one": "{count} značka",
+      "few": "{count} značke",
+      "other": "{count} znački"
+    },
+    "empty": "Nijedna značka ne odgovara izabranim filterima.",
+    "note": "Značka je pravilo koje se čuva kao podatak, ne kao kod. Zato se vrsta bira sa spiska, a ne kuca.",
+    "kindLabel": "Vrsta",
     "valueLabel": "Vrednost",
     "from": "Od datuma",
     "to": "Do datuma",
-    "sentence": "Značka se dodeljuje kad {quantity} bude najmanje {value}",
+    "sentence": "Značka se dodeljuje kad {kind} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
+    "during": ", računato za {period}",
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
-    "closedList": "Spisak veličina je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa značka koja je osvojena ne može kasnije da se izgubi.",
-    "quantity": {
+    "closedList": "Spisak vrsta je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa značka koja je osvojena ne može kasnije da se izgubi.",
+    "kind": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
       "halfCount": "broj polumaratona",
@@ -947,7 +982,10 @@
       "totalTime": "ukupno vreme na stazi",
       "points": "broj bodova",
       "countryCount": "broj zemalja",
-      "seasonCount": "broj sezona"
+      "seasonCount": "broj sezona",
+      "bestRacePoints": "najviše bodova na jednoj trci",
+      "bestRaceKm": "najviše kilometara na jednoj trci",
+      "bestRaceAscent": "najviše uspona na jednoj trci"
     }
   },
   "settings": {
@@ -959,6 +997,66 @@
     "themeLight": "Svetla",
     "themeHint": "Tamna tema je podrazumevana.",
     "notifications": "Obaveštenja"
+  },
+  "rights": {
+    "title": "Prava moderatora",
+    "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",
+    "superadminNote": "Superadmina nema u ovoj tabeli. On sme sve, uvek, pa nema šta da mu se dodeli ni oduzme.",
+    "moderator": "Moderator",
+    "given": "Prava",
+    "none": "Bez ijednog prava",
+    "granted": {
+      "one": "{count} pravo",
+      "few": "{count} prava",
+      "other": "{count} prava"
+    },
+    "box": "{who}, {action}",
+    "groupEntities": "Uređivanje entiteta",
+    "groupQueues": "Odlučivanje u redovima verifikacije",
+    "column": {
+      "entity": {
+        "members": "Članovi",
+        "events": "Događaji",
+        "races": "Trke",
+        "teams": "Timovi",
+        "leagues": "Lige",
+        "badges": "Značke",
+        "pricing": "Cenovnik",
+        "pages": "Strane"
+      },
+      "queue": {
+        "results": "Rezultati",
+        "payments": "Uplate",
+        "leagues": "Predložene lige",
+        "teams": "Novi timovi",
+        "bios": "Biografije",
+        "photos": "Slike",
+        "comments": "Komentari",
+        "schedule": "Termini"
+      }
+    },
+    "action": {
+      "entity": {
+        "members": "uređivanje članova",
+        "events": "uređivanje događaja",
+        "races": "uređivanje trka",
+        "teams": "uređivanje timova",
+        "leagues": "uređivanje liga",
+        "badges": "uređivanje znački",
+        "pricing": "uređivanje cenovnika",
+        "pages": "uređivanje statičnih strana"
+      },
+      "queue": {
+        "results": "odlučivanje o rezultatima",
+        "payments": "odlučivanje o uplatama",
+        "leagues": "odlučivanje o predloženim ligama",
+        "teams": "odlučivanje o novim timovima",
+        "bios": "odlučivanje o biografijama",
+        "photos": "odlučivanje o profilnim slikama",
+        "comments": "odlučivanje o komentarima",
+        "schedule": "odlučivanje o prijavama termina"
+      }
+    }
   },
   "entities": {
     "title": "Entiteti",
@@ -998,12 +1096,17 @@
     "fromPayments": "Član postaje punopravan kad se evidentira uplata",
     "fromLeagues": "Nova liga se objavljuje tek kad je odobrena",
     "fromTeams": "Svaki nov tim odobrava superadministrator",
-    "fromBios": "Biografiju piše član, administrator je odobrava pre objave",
-    "fromPhotos": "Profilnu sliku administrator odobrava pre objave",
-    "fromComments": "Komentari se odobravaju pre objave, za sve",
+    "fromBios": "Biografiju piše član, a moderator je uređuje i objavljuje",
+    "fromPhotos": "Vraćena slika nosi razlog koji član dobija u poruci",
+    "fromComments": "Komentar se prihvata ili briše, odmah i bez obrazloženja",
     "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine",
-    "reject": "Odbij",
-    "rejected": "Odbijeno"
+    "delete": "Obriši",
+    "deleted": "Obrisano",
+    "publish": "Objavi",
+    "published": "Objavljeno",
+    "publishedText": "Objavljen tekst",
+    "photoReturned": "Profilna slika je vraćena",
+    "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se vrati. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi."
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

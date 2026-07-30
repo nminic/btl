@@ -9,6 +9,7 @@ import {
   seasonsWithResults,
   topByCategory,
   topByKilometers,
+  topByProgress,
   topByTimeOnCourse,
 } from '../data/derive'
 import type { Competitor, RaceCategory, Result, Team } from '../data/types'
@@ -227,19 +228,28 @@ function Boards({
           value: formatPoints(row.result.points, locale),
         })),
       },
-      /* Fourth in the rulebook: the best progress. It has no places, on
-         purpose. The list is in Article 56 and in PDL P12, but what it
-         compares is still an open decision (P28a): the change of position
-         against the end of last month, or the points gained against the
-         previous season. Until the owner picks one, the board says why it is
-         empty. Inventing a measure would put a number on the screen that
-         nobody decided on. */
+      /* Fourth in the rulebook: the best progress. The measure was settled on
+         30.07.2026 (PDL P12): the points gained on the previous season, and not
+         a change of position or anything measured against last month. Whoever
+         did not race the season before is not on the board, which is why the
+         board can be empty for a season that is otherwise full. The season
+         before it stands beside the gain, so the number can be read rather than
+         taken on trust. */
       {
         id: 'progress',
         title: t('topBoards.progress'),
-        valueLabel: t('topBoards.columns.points'),
-        places: [] as Place[],
-        empty: t('topBoards.progressUndecided'),
+        valueLabel: t('topBoards.columns.gain'),
+        detailLabel: t('topBoards.columns.previousSeason'),
+        detailIsNumber: true,
+        empty: t('topBoards.progressEmpty'),
+        places: topByProgress(competitors, results, season, PLACES).map((row) => ({
+          to: profile(row.competitor.memberNumber),
+          key: row.competitor.memberNumber,
+          position: row.position,
+          name: nameOf(row.competitor),
+          detail: formatPoints(row.previousPoints, locale),
+          value: formatPoints(row.gain, locale),
+        })),
       },
       {
         id: 'teams',

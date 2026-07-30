@@ -3,13 +3,10 @@ import { Resource } from '../../components/Resource'
 import { useEvents } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { EVENTS, recordsOf, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* The calendar from the other side. Between 15 and 30 September this is the
@@ -17,16 +14,11 @@ import '../member/Member.css'
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useEvents()
   const today = new Date().toISOString().slice(0, 10)
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   return (
     <div className="member">

@@ -90,10 +90,41 @@ export type League = {
   prizes: string
 }
 
+/**
+ * Somebody the superadmin has made a moderator (PDL P21, P28a).
+ *
+ * Three things are asked for and the fourth is given rather than typed. There is
+ * no password here and there never will be: a credential somebody else types is
+ * a credential two people know, so the moderator sets their own when the backend
+ * arrives (ADL A8).
+ *
+ * `rights` is what the superadmin has ticked, as the keys from rights.ts. An
+ * empty list is not a broken record, it is a moderator who has just been made and
+ * may do nothing yet.
+ */
+export type Moderator = {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  rights: string[]
+}
+
+export type PageSection = { heading: string; body: string }
+
 /** A page of written text: the rulebook, the terms, the page about the league.
  *  Kept as data rather than in the translation dictionary because these run to
  *  thousands of words and are written and revised on their own schedule. */
 export type StaticPage = {
   title: string
-  sections: { heading: string; body: string }[]
+  sections: PageSection[]
+  /**
+   * Slugs of other written pages shown above this page's own sections.
+   *
+   * One text that belongs on two screens is kept once and pointed at twice: the
+   * address of the president stands on the front page and on "O ligi" (PDL P28a),
+   * and the administrator who maintains it edits one record. Copying it into both
+   * would guarantee that one of the copies is out of date.
+   */
+  includes?: string[]
 }

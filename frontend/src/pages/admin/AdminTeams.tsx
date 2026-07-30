@@ -5,13 +5,10 @@ import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import type { FieldOption } from '../../forms/types'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { recordsOf, TEAMS, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* Teams, with the organiser and the head count beside each. Both matter when a
@@ -29,14 +26,9 @@ function organizerOptions(competitors: Competitor[]): FieldOption[] {
 
 export function AdminTeams() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useTeams(), useCompetitors())
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   return (
     <div className="member">

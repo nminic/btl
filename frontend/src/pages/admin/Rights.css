@@ -1,0 +1,242 @@
+/* The rights matrix, in its two shapes.
+ *
+ * Mobile first, and the phone shape is the one written here plainly: one block
+ * per moderator with the boxes under each other, because sixteen columns do
+ * not fit in 360 pixels and no table on this portal scrolls sideways (PDL P24).
+ * The table shape is the exception and lives at the bottom, behind one query.
+ *
+ * One markup for both. Drawing the boxes twice and hiding one half would put a
+ * second copy of every checkbox into the accessibility tree, where "hidden" is
+ * something a screen reader has to be told rather than something it can see.
+ */
+
+.rights-wrap {
+  margin-block-start: 0.75rem;
+}
+
+/* The list above the matrix, at 360 pixels.
+ *
+ * Headings on this portal do not wrap, which is right where a heading is one
+ * word. "Adresa elektronske pošte" on one line is 189 of the 313 pixels a
+ * telephone has, and with it the list scrolled sideways while the matrix under
+ * it, the wide thing, did not. Here they wrap. */
+.moderators th {
+  white-space: normal;
+}
+
+/* An address and a double barrelled surname are each one long word to a
+   browser, and one long word is the narrowest a column can ever be unless it is
+   allowed to break. Four columns of them come to 375 pixels of the 313 there
+   are, so here they break. */
+.moderators td,
+.moderators th,
+.moderators .editable {
+  overflow-wrap: anywhere;
+}
+
+.rights {
+  display: block;
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+/* On a telephone the head of the table has nothing to head: the words that
+   would stand over each column stand beside each box instead. */
+.rights thead {
+  display: none;
+}
+
+.rights tbody {
+  display: block;
+}
+
+.rights__row {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem 0.4rem;
+  margin-block-end: 1rem;
+}
+
+.rights__who {
+  display: block;
+  text-align: left;
+  padding: 0 0 0.5rem;
+  border-block-end: 1px solid var(--border);
+  margin-block-end: 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  white-space: normal;
+}
+
+.rights__name {
+  display: block;
+  /* A double barrelled surname is a real name, not an edge case somebody
+     invented, and it wraps rather than widening the column it sits in. */
+  overflow-wrap: anywhere;
+}
+
+.rights__count {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.rights__cell {
+  display: block;
+  padding: 0;
+  border: 0;
+  text-align: left;
+}
+
+/* Where one group of rights stops and the next begins. On a telephone the two
+   groups are one list, so the line is the only thing that separates them, and
+   the wording beside each box carries the rest. */
+.rights__cell--group {
+  border-block-start: 1px solid var(--border);
+  margin-block-start: 0.5rem;
+  padding-block-start: 0.35rem;
+}
+
+.rights__box {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  /* The whole line is the target, not the fourteen pixel square in it
+     (WCAG 2.2 AA, 2.5.8). */
+  min-block-size: 2.75rem;
+  cursor: pointer;
+}
+
+.rights__input {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.rights__inline {
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+/* Written in the dictionary as it is spoken inside the name of the box,
+   "uređivanje događaja", and shown here as a line begins. One string, two
+   places, no second wording to keep in step. */
+.rights__inline::first-letter {
+  text-transform: uppercase;
+}
+
+@media (min-width: 900px) {
+  .rights {
+    display: table;
+  }
+
+  .rights thead {
+    display: table-header-group;
+  }
+
+  .rights tbody {
+    display: table-row-group;
+  }
+
+  .rights__row {
+    display: table-row;
+    border: 0;
+    padding: 0;
+  }
+
+  .rights__row:hover {
+    background: var(--surface-hover);
+  }
+
+  .rights__group {
+    padding: 0.4rem 0.5rem;
+    border-block-end: 1px solid var(--border);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* The two groups are two different actions on two different things, so the
+     eye is told where one stops. */
+  .rights__group + .rights__group {
+    border-inline-start: 2px solid var(--border);
+  }
+
+  .rights__corner {
+    inline-size: 12rem;
+    vertical-align: bottom;
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-block-end: 2px solid var(--border);
+  }
+
+  .rights__column {
+    vertical-align: bottom;
+    padding: 0.35rem 0;
+    border-block-end: 2px solid var(--border);
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Turned on its side rather than shortened. Sixteen headings written across
+     need about fourteen hundred pixels and a heading cut to "Stat..." is a
+     heading nobody can read; upright, a column is as wide as a box needs to be
+     and the words stay whole and selectable. */
+  .rights__column-text {
+    display: inline-block;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    padding-block-end: 0.35rem;
+  }
+
+  .rights__who {
+    display: table-cell;
+    vertical-align: middle;
+    padding: 0.5rem 0.5rem 0.5rem 0;
+    border-block-end: 1px solid var(--border);
+    border-inline-end: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  .rights__cell {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+    padding: 0.35rem 0;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .rights__cell--group {
+    border-block-start: 0;
+    border-inline-start: 2px solid var(--border);
+    margin-block-start: 0;
+    padding-block-start: 0.35rem;
+  }
+
+  .rights__box {
+    display: inline-flex;
+    justify-content: center;
+    min-block-size: 2rem;
+    gap: 0;
+  }
+
+  .rights__inline {
+    display: none;
+  }
+}

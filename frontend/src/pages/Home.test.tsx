@@ -8,12 +8,16 @@ describe('Home', () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+    // The address is written text and arrives on its own request, so it is
+    // waited for as well before the order is read.
+    await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
 
     const headings = screen
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent)
 
     expect(headings).toEqual([
+      'Reč predsednika',
       expect.stringContaining('Sezona'),
       'Priprema, pozor, SAD!',
       expect.stringContaining('Članarina za BTL'),

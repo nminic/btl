@@ -40,6 +40,16 @@ export type Submission = {
 export type Message = {
   id: string
   from: string
+  /**
+   * The member number this was written to, or empty for the whole league.
+   *
+   * The portal writes to one person often enough that "the inbox" cannot mean
+   * "every message there is": a moderator who hands a profile picture back with
+   * an instruction (PDL P22) must not find that instruction in their own inbox a
+   * moment later. Empty is the league talking to everybody, which is what the
+   * messages the prototype starts with are.
+   */
+  to: string
   subject: string
   body: string
   date: string
@@ -69,8 +79,20 @@ export type Created = {
   values: Record<string, string>
 }
 
-/** New records by entity: members, events, races, and the five others. */
+/** New records by entity: members, events, races, and the six others. */
 export type Creations = Record<string, Created[]>
+
+/*
+ * Which rights the superadmin has ticked and unticked, by moderator and by
+ * right, kept as an overlay for the same reason an edit is (PDL P28a).
+ *
+ * A box has to remember both answers rather than only the yes. A moderator who
+ * arrives holding a right and has it taken away is not the same as one who never
+ * had it, and a set of keys that are on could not tell the two apart: unticking
+ * would be read as "nothing said about this one" and the right would come
+ * straight back on the next read.
+ */
+export type Rights = Record<string, Record<string, boolean>>
 
 /* What an administrator has decided in one of the verification queues, kept the
  * same way an edit is: an overlay on top of what is waiting, rather than a
@@ -84,7 +106,15 @@ export type Creations = Record<string, Created[]>
  */
 export type Decision = {
   status: 'approved' | 'rejected'
-  /** Why it was sent back. Empty on an approval, which explains itself. */
+  /**
+   * What was written down with the decision.
+   *
+   * Why it was sent back on most queues, the instruction the member is to follow
+   * on the profile pictures, and on the biographies the text that actually went
+   * out, because there the moderator edits before publishing and the published
+   * version is whatever they left (PDL P22). Empty where nothing was written:
+   * a plain approval, and a deleted comment, which carries no reason at all.
+   */
   note: string
   /** The payments queue only: on what basis the membership was activated, paid
    *  or honorary (PDL P8). Empty on every other queue, and never shown
@@ -117,8 +147,14 @@ export type SessionValue = {
   submit: (submission: Omit<Submission, 'id' | 'status' | 'note'>) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
-  messages: Message[]
+  /** Everything written to whoever is signed in, plus everything written to the
+   *  whole league. Not the whole store: see Message.to. */
+  inbox: Message[]
   markRead: (id: string) => void
+  /** Writes to one member's inbox. The portal already has one and it is where
+   *  the sideways messages belong: the bell always, the mail only if the member
+   *  switched it on (PDL P22). */
+  notify: (message: Omit<Message, 'id' | 'read'>) => void
 
   notifications: Record<NotificationKey, boolean>
   setNotification: (key: NotificationKey, on: boolean) => void
@@ -131,6 +167,12 @@ export type SessionValue = {
 
   creations: Creations
   create: (entity: string, id: string, values: Record<string, string>) => void
+
+  rights: Rights
+  /** One box, ticked or unticked. One call per box, because that is what the
+   *  superadmin does: there is no save button on the matrix and nothing to lose
+   *  by leaving the screen. */
+  setRight: (moderator: string, right: string, granted: boolean) => void
 
   decisions: Decisions
   settle: (id: string, decision: Decision) => void

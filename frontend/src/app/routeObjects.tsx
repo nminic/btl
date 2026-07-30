@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
 import { DEFAULT_LOCALE } from '../i18n/config'
+import { Badges } from '../pages/Badges'
 import { Calendar } from '../pages/Calendar'
 import { Competitors } from '../pages/Competitors'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
@@ -20,11 +21,14 @@ import { Registration } from '../pages/Registration'
 import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
 import { Entities } from '../pages/admin/Entities'
+import { Guard } from '../pages/admin/Guard'
+import { needFor } from '../pages/admin/needs'
 import { Verification } from '../pages/admin/Verification'
 import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
 import { AdminMembers } from '../pages/admin/AdminMembers'
 import { AdminLeagues } from '../pages/admin/AdminLeagues'
+import { AdminModerators } from '../pages/admin/AdminModerators'
 import { AdminPages } from '../pages/admin/AdminPages'
 import { AdminPricing } from '../pages/admin/AdminPricing'
 import { AdminRaces } from '../pages/admin/AdminRaces'
@@ -42,10 +46,11 @@ import { MyResults } from '../pages/member/MyResults'
 import { NewResult } from '../pages/member/NewResult'
 import { SignIn } from '../pages/member/SignIn'
 import { LocaleLayout } from './LocaleLayout'
-import { ROUTES } from './routes'
+import { ROUTES, type RouteDef } from './routes'
 
-/* Screens that already exist. Everything else in ROUTES renders a placeholder,
- * so the navigation can be walked end to end from the first day. */
+/* Screens that already exist, which is every address in ROUTES since the badges
+ * arrived. Anything else in ROUTES renders a placeholder, so the navigation can
+ * be walked end to end from the day an address is added. */
 const SCREENS: Record<string, ReactElement> = {
   kalendar: <Calendar />,
   tabela: <Rankings />,
@@ -72,11 +77,38 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/timovi': <AdminTeams />,
   'administracija/lige': <AdminLeagues />,
   'administracija/strane': <AdminPages />,
+  'administracija/moderatori': <AdminModerators />,
+  znacke: <Badges />,
   'o-ligi': <StaticPage slug="o-ligi" />,
   pravilnik: <Rulebook />,
   istorijat: <StaticPage slug="istorijat" />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
+}
+
+/**
+ * The screen at an address, or a stand-in for one.
+ *
+ * Every address in ROUTES has a screen of its own today. The stand-in is what a
+ * newly added address answers with on the day it is added and before its screen
+ * exists, so the navigation can always be walked end to end.
+ */
+export function screenFor(route: RouteDef): ReactElement {
+  return SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />
+}
+
+/**
+ * The screen at an address, with the door its address asks for.
+ *
+ * Here rather than inside the screens, so that adding a fifteenth administrative
+ * screen cannot mean adding a fifteenth check and forgetting what it should ask
+ * for. Every address outside administration asks for nothing and is handed
+ * through untouched (needs.ts).
+ */
+function guarded(path: string, screen: ReactElement): ReactElement {
+  const need = needFor(path)
+
+  return need === undefined ? screen : <Guard need={need}>{screen}</Guard>
 }
 
 /* Detail screens. They are addresses, not navigation entries, so they are not
@@ -99,7 +131,7 @@ const DETAILS: RouteObject[] = [
   { path: QUEUE.photos.path, element: <PendingQueue queue={QUEUE.photos} /> },
   { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
   { path: QUEUE.schedule.path, element: <PendingQueue queue={QUEUE.schedule} /> },
-]
+].map((route) => ({ ...route, element: guarded(route.path, route.element) }))
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */
 export const routeObjects: RouteObject[] = [
@@ -111,7 +143,7 @@ export const routeObjects: RouteObject[] = [
       { index: true, element: <Home /> },
       ...ROUTES.map((route) => ({
         path: route.path,
-        element: SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />,
+        element: guarded(route.path, screenFor(route)),
       })),
       ...DETAILS,
       { path: '*', element: <NotFound /> },

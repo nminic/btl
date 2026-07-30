@@ -18,7 +18,7 @@ export function SignIn() {
   const { locale, t } = useI18n()
   const navigate = useNavigate()
   const { signIn } = useSession()
-  const { setRole } = useRole()
+  const { become } = useRole()
   const [chosen, setChosen] = useState('')
   const state = useCompetitors()
 
@@ -34,7 +34,7 @@ export function SignIn() {
             onSubmit={(event) => {
               event.preventDefault()
               signIn(chosen)
-              setRole('competitor')
+              become('competitor')
               navigate(`/${locale}/moj-profil`)
             }}
           >

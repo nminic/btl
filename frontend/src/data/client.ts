@@ -13,9 +13,11 @@
 const BASE = '/mock'
 
 export const RESOURCE_NAMES = [
+  'badges',
   'competitors',
   'events',
   'leagues',
+  'moderators',
   'pages',
   'races',
   'results',

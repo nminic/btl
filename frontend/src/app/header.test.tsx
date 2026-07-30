@@ -265,7 +265,7 @@ describe('the icons', () => {
   })
 })
 
-function renderInbox(messages: Message[]) {
+function renderInbox(inbox: Message[]) {
   const session: SessionValue = {
     memberNumber: '000007',
     signIn: vi.fn(),
@@ -273,8 +273,9 @@ function renderInbox(messages: Message[]) {
     submissions: [],
     submit: vi.fn(),
     decide: vi.fn(),
-    messages,
+    inbox,
     markRead: vi.fn(),
+    notify: vi.fn(),
     notifications: {
       resultApproved: true,
       resultChanged: true,
@@ -287,6 +288,8 @@ function renderInbox(messages: Message[]) {
     editRecord: vi.fn(),
     creations: {},
     create: vi.fn(),
+    rights: {},
+    setRight: vi.fn(),
     decisions: {},
     settle: vi.fn(),
   }

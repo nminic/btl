@@ -603,6 +603,87 @@ export function topByTimeOnCourse(
   return withPlaces(rows, BY_TIME_ON_COURSE, (row) => row.competitor.memberNumber).slice(0, limit)
 }
 
+/**
+ * One competitor's season beside the season before it, which is what the board
+ * of best progress compares (PDL P12, 30.07.2026).
+ *
+ * `gain` is the whole measure: the points of the season less the points of the
+ * one before. It is carried on the row rather than worked out inside the
+ * comparator, which would work it out again for every comparison.
+ */
+export type ProgressRow = TotalsRow & { previousPoints: number; gain: number }
+
+/*
+ * The ladder of the best progress: the gain, then the points of the season, then
+ * more races, then a shared place.
+ *
+ * NOT FROM P12. The table of ladders in P12 has no row for this board, because
+ * the board had no measure until 30.07.2026 and the measure was decided without
+ * one. Everything below the first rung is therefore derived, from the principle
+ * the same section states: volume decides, efficiency never overturns it but may
+ * settle a complete tie. Written down as derived so that it is easy to check
+ * against the owner later, and easy to replace with one line when he rules on it.
+ */
+const BY_PROGRESS = byLadder<ProgressRow>([
+  (row) => row.gain,
+  (row) => row.points,
+  (row) => row.races,
+])
+
+/**
+ * Who improved most on the season before, tallest gain first.
+ *
+ * Whoever did not race the previous season is not on the board at all. They have
+ * no previous total to be measured against, and counting the absence as zero
+ * would put every newcomer at the top of a list about improvement, which is the
+ * one thing a list about improvement must not do (PDL P12, 30.07.2026).
+ *
+ * Whoever went backwards is not on it either, and that is the second exclusion
+ * rather than the same one twice: only a positive gain counts (PDL P12,
+ * 30.07.2026). It came out of the historical seasons the prototype reads, where a
+ * field of twenty-odd has fewer than ten people who improved: the board filled
+ * its last two places with -0,63 and -19,16 under the heading "best progress".
+ *
+ * The board is therefore allowed to be shorter than ten, and to be empty in a
+ * season nobody bettered. What it says when it is empty has to name both
+ * exclusions, or it tells a season in which everybody ran and nobody improved
+ * that nobody ran (topBoards.progressEmpty).
+ */
+export function topByProgress(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): Placed<ProgressRow>[] {
+  const now = totalsByMember(results.filter((result) => seasonOf(result) === season))
+  const before = totalsByMember(results.filter((result) => seasonOf(result) === season - 1))
+
+  const rows = competitors.flatMap((competitor) => {
+    const own = now.get(competitor.memberNumber)
+    const previous = before.get(competitor.memberNumber)
+
+    /* Two ways out of this board, and they are different reasons. Somebody who
+       did not race last season has no previous total to grow from, and would
+       otherwise lead a list about improvement on their first season. Somebody
+       whose total fell has not improved at all: a board called "best progress"
+       that ends in minus figures is a board that says the opposite of its own
+       name (owner, 30.07.2026). The list is then shorter than ten, and may be
+       empty in a season nobody bettered. */
+    if (own === undefined || previous === undefined) {
+      return []
+    }
+
+    const gain = own.points - previous.points
+
+    return gain > 0
+      ? [{ competitor, ...own, previousPoints: previous.points, gain }]
+      : []
+  })
+
+  return withPlaces(rows.sort(BY_PROGRESS), BY_PROGRESS, (row) => row.competitor.memberNumber)
+    .slice(0, limit)
+}
+
 export type RaceRow = {
   competitor: Competitor
   result: Result

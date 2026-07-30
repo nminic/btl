@@ -9,12 +9,9 @@ import {
 } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { usePending } from './pending'
 import { totalWaiting } from './queues'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 const SCREENS = [
@@ -25,7 +22,6 @@ const SCREENS = [
 
 export function Admin() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { submissions, decisions } = useSession()
   /* The counter used to hold pending results alone, so it said nought while the
    * entry beside it said how much was really waiting. Both numbers now come out
@@ -35,10 +31,6 @@ export function Admin() {
     combineResources(useCompetitors(), useEvents(), useResults()),
     usePending(),
   )
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   const pendingResults = submissions.filter((one) => one.status === 'pending').length
 

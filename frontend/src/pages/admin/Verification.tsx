@@ -2,12 +2,9 @@ import { Link } from 'react-router'
 import { dataOr, failed } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { usePending } from './pending'
 import { countsFor, QUEUES } from './queues'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /**
@@ -23,13 +20,8 @@ import '../member/Member.css'
  */
 export function Verification() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { submissions, decisions } = useSession()
   const items = usePending()
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   const counts = countsFor({
     pendingResults: submissions.filter((one) => one.status === 'pending').length,

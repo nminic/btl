@@ -4,13 +4,14 @@ import { translate, type Dictionary } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { QUANTITIES } from './badgeRule'
+import { BADGE_KINDS } from '../../data/badgeRule'
 import {
   BADGES,
   ENTITY_FORMS,
   EVENTS,
   LEAGUES,
   MEMBERS,
+  MODERATORS,
   PAGES,
   PRICING,
   RACES,
@@ -72,16 +73,21 @@ const SCREENS: Screen[] = [
   { entity: RACES, path: 'administracija/trke', list: 'Trke' },
   { entity: TEAMS, path: 'administracija/timovi', list: 'Timovi' },
   { entity: LEAGUES, path: 'administracija/lige', list: 'Lige' },
+  /* Badges were the one of the eight with no list to open a record from, back
+     when nothing had written a badge down anywhere. They are generated data like
+     the other seven now, so they answer the same four questions. */
+  { entity: BADGES, path: 'administracija/znacke', list: 'Značke' },
   { entity: PRICING, path: 'administracija/cenovnik', list: 'Cenovnik' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
+  /* The ninth. It is entered and changed by the same renderer reading the same
+     kind of JSON as the other eight, which is the whole point of it being an
+     entity rather than a screen somebody wrote by hand (PDL P28a). What it may
+     do is not on the form; that is the matrix below the list. */
+  { entity: MODERATORS, path: 'administracija/moderatori', list: 'Moderatori' },
 ]
 
-/** Badges have no list of their own to open a record from: nothing has written a
- *  badge down anywhere yet, so that screen is tested through creating one. */
-const ALL: Screen[] = [...SCREENS, { entity: BADGES, path: 'administracija/znacke', list: '' }]
-
 describe('every entity has a form for a record that does not exist yet', () => {
-  it.each(ALL)('$path opens one with every field the entity has', async ({ entity, path }) => {
+  it.each(SCREENS)('$path opens one with every field the entity has', async ({ entity, path }) => {
     const user = setupUser()
     const title = t(`admin.form.new.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
@@ -95,7 +101,7 @@ describe('every entity has a form for a record that does not exist yet', () => {
     }
   })
 
-  it.each(ALL)('$path refuses to save an empty obligatory field', async ({ entity, path }) => {
+  it.each(SCREENS)('$path refuses to save an empty obligatory field', async ({ entity, path }) => {
     const user = setupUser()
     const title = t(`admin.form.new.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
@@ -169,7 +175,7 @@ describe('the confirmation that a record was saved', () => {
 })
 
 describe('a competitor', () => {
-  it.each(ALL)('is offered no form at all on $path', async ({ entity, path }) => {
+  it.each(SCREENS)('is offered no form at all on $path', async ({ entity, path }) => {
     renderAt(`/sr/${path}`, 'competitor')
 
     expect(await screen.findByRole('heading', { level: 1, name: t('admin.notAllowed') })).toBeVisible()
@@ -230,29 +236,39 @@ describe('a record that is entered rather than changed', () => {
     expect(row.getByText(t('admin.basisValue.honorary'))).toBeVisible()
   })
 
-  it('is listed on the badge screen, which has no other records at all', async () => {
+  /* The screen used to start from an empty list, from the days when no badge was
+     written down anywhere. It reads the same badges the members see now, so a
+     new one joins them rather than standing alone. */
+  it('joins the badges already on the screen', async () => {
     const user = setupUser()
     const title = t('admin.form.new.badges')
     renderAt('/sr/administracija/znacke', 'superadmin')
 
-    expect(await screen.findByText(t('admin.form.noBadges'))).toBeVisible()
+    const before = within(
+      await screen.findByRole('table', { name: t('admin.badges') }),
+    ).getAllByRole('row').length
 
     for (const name of ['Prvih deset', 'Prvih sto']) {
       await user.click(screen.getByRole('button', { name: title }))
       const form = open(title)
 
       await user.type(form.getByLabelText(labelled(t('admin.field.badgeName'))), name)
-      await user.selectOptions(form.getByLabelText(labelled(t('badges.quantityLabel'))), 'totalKm')
+      await user.selectOptions(form.getByLabelText(labelled(t('badges.kindLabel'))), 'totalKm')
       await user.type(form.getByLabelText(labelled(t('badges.valueLabel'))), '100')
       await user.click(form.getByRole('button', { name: t('form.submit') }))
       await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
     }
 
     const list = within(screen.getByRole('table', { name: t('admin.badges') }))
-    expect(list.getAllByRole('row')).toHaveLength(3)
-    // The rule is read back as a sentence, out of the same words the rule
-    // builder below the list uses.
-    expect(list.getAllByText(/ukupno kilometara bude najmanje 100/)).toHaveLength(2)
+    expect(list.getAllByRole('row')).toHaveLength(before + 2)
+    /* The rule is read back as a sentence, out of the same words the rule tryer
+       below the list uses. Read out of the two rows that were entered, because
+       the generated badges have rules of their own and some of them read the
+       same way. */
+    for (const name of ['Prvih deset', 'Prvih sto']) {
+      const row = within(list.getByText(name).closest('tr')!)
+      expect(row.getByText(/ukupno kilometara bude najmanje 100/)).toBeVisible()
+    }
 
     // A badge that was entered can be opened again like any other record.
     await user.click(list.getByRole('button', { name: 'Otvori: Prvih sto' }))
@@ -262,7 +278,9 @@ describe('a record that is entered rather than changed', () => {
     await user.click(edit.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    expect(screen.getByText(/ukupno kilometara bude najmanje 1000/)).toBeVisible()
+    // Written the way this language writes a number, because the sentence and
+    // the threshold on the badge itself stand on one card and have to agree.
+    expect(screen.getByText(/ukupno kilometara bude najmanje 1\.000/)).toBeVisible()
   })
 })
 
@@ -540,11 +558,11 @@ describe('the words the eight forms need', () => {
     })
   })
 
-  it('offer the badge sizes the rule engine knows, and no others', () => {
+  it('offer the badge kinds the rule engine knows, and no others', () => {
     // Two closed lists that must never drift apart: the one on the form and the
     // one the sentence is built from.
-    const options = BADGES.form.fields.find((one) => one.name === 'quantity')!.options ?? []
+    const options = BADGES.form.fields.find((one) => one.name === 'kind')!.options ?? []
 
-    expect(options.map((one) => one.value)).toEqual([...QUANTITIES])
+    expect(options.map((one) => one.value)).toEqual([...BADGE_KINDS])
   })
 })

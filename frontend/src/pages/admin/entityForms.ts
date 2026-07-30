@@ -2,6 +2,7 @@ import clan from '../../forms/definitions/admin-clan.form.json'
 import dogadjaj from '../../forms/definitions/admin-dogadjaj.form.json'
 import liga from '../../forms/definitions/admin-liga.form.json'
 import cena from '../../forms/definitions/admin-cena.form.json'
+import moderator from '../../forms/definitions/admin-moderator.form.json'
 import strana from '../../forms/definitions/admin-strana.form.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import trka from '../../forms/definitions/admin-trka.form.json'
@@ -12,22 +13,40 @@ import { applyChanges, recordValue } from '../../forms/records'
 import type { DerivedField, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Edits } from '../../session/context'
 
-/* The eight entities administration owns, described rather than programmed.
+/* The nine entities administration owns, described rather than programmed.
  *
- * Each one is a JSON definition of its fields and three facts about the record
- * behind them: what its identity is called, and what it carries that the form
- * does not ask about. There is one renderer, one editor and one list merger for
- * all eight, so a ninth entity is a JSON file and four lines here, never a
- * screen (PDL P30).
+ * Each one is a JSON definition of its fields and a few facts about the record
+ * behind them: what it is called, where its screen lives, what its identity is
+ * called, and what it carries that the form does not ask about. There is one
+ * renderer, one editor and one list merger for all nine, so a tenth entity is a
+ * JSON file and four lines here, never a screen (PDL P30).
+ *
+ * This list is also what the list of entities and the rights matrix are built
+ * from, so a tenth entity appears on both the day it is added rather than on the
+ * day somebody remembers a second list.
  */
 export type EntityDef = {
   /**
    * Both the key its new records are remembered under in the session and the
    * stem of the two headings in the dictionary: admin.form.new.<id> and
    * admin.form.edit.<id>. Serbian will not interpolate a noun into "new", so the
-   * eight titles are written out rather than composed.
+   * nine titles are written out rather than composed.
    */
   id: string
+  /** The words that name it: on the list of entities, and over its column in
+   *  the rights matrix. */
+  labelKey: string
+  /** Where its screen lives, below the language. */
+  path: string
+  /**
+   * Whether only the superadmin reaches it, rather than everybody on staff.
+   *
+   * True of moderators alone, and it is the whole difference between the two
+   * roles: the superadmin does nothing a moderator cannot, he decides what the
+   * moderator may (PDL P21). A moderator who could open this screen would be a
+   * moderator who could tick his own boxes.
+   */
+  superadminOnly?: boolean
   form: FormDef
   /** The field that names a record. Taken from the form where the form asks for
    *  it, handed out or made up where it does not: the address of a written page
@@ -76,6 +95,8 @@ export type DerivedValue = DerivedField & { value: string }
  */
 export const MEMBERS: EntityDef = {
   id: 'members',
+  labelKey: 'admin.members',
+  path: 'administracija/clanovi',
   form: clan as FormDef,
   idField: 'memberNumber',
   handsOutIdentity: nextMemberNumber,
@@ -84,6 +105,8 @@ export const MEMBERS: EntityDef = {
 
 export const EVENTS: EntityDef = {
   id: 'events',
+  labelKey: 'admin.events',
+  path: 'administracija/dogadjaji',
   form: dogadjaj as FormDef,
   idField: 'id',
   blank: { slug: '', raceIds: [] },
@@ -98,6 +121,8 @@ export const EVENTS: EntityDef = {
  */
 export const RACES: EntityDef = {
   id: 'races',
+  labelKey: 'admin.races',
+  path: 'administracija/trke',
   form: trka as FormDef,
   idField: 'id',
   blank: {},
@@ -122,6 +147,8 @@ export const RACES: EntityDef = {
 
 export const TEAMS: EntityDef = {
   id: 'teams',
+  labelKey: 'admin.teams',
+  path: 'administracija/timovi',
   form: tim as FormDef,
   idField: 'id',
   blank: { slug: '' },
@@ -132,6 +159,8 @@ export const TEAMS: EntityDef = {
  *  would be a worse screen than the one that assigns them properly. */
 export const LEAGUES: EntityDef = {
   id: 'leagues',
+  labelKey: 'admin.leagues',
+  path: 'administracija/lige',
   form: liga as FormDef,
   idField: 'id',
   blank: { slug: '', eventIds: [] },
@@ -139,6 +168,8 @@ export const LEAGUES: EntityDef = {
 
 export const BADGES: EntityDef = {
   id: 'badges',
+  labelKey: 'admin.badges',
+  path: 'administracija/znacke',
   form: znacka as FormDef,
   idField: 'id',
   blank: {},
@@ -146,6 +177,8 @@ export const BADGES: EntityDef = {
 
 export const PRICING: EntityDef = {
   id: 'pricing',
+  labelKey: 'admin.pricing',
+  path: 'administracija/cenovnik',
   form: cena as FormDef,
   idField: 'key',
   blank: {},
@@ -156,12 +189,39 @@ export const PRICING: EntityDef = {
  *  arrives with the database. */
 export const PAGES: EntityDef = {
   id: 'pages',
+  labelKey: 'admin.pages',
+  path: 'administracija/strane',
   form: strana as FormDef,
   idField: 'slug',
   blank: { sectionCount: 1 },
 }
 
-/** All eight, so a test can walk them and nothing can be half added. */
+/**
+ * The ninth, and the one that is unlike the other eight in what it is for rather
+ * than in how it is entered (PDL P28a, 30.07.2026).
+ *
+ * The form asks for three things and nothing else. What a moderator may do is
+ * not on it and must not be: rights are ticked in the matrix on the same screen,
+ * a box per entity and a box per queue, and a second place to set them would be
+ * a second answer to one question. A moderator entered here therefore starts
+ * with none, which is exactly what a newly made moderator is.
+ *
+ * The identity is made up rather than typed, like six of the other eight. The
+ * address of a moderator is the obvious candidate and is deliberately not used:
+ * it is the one field on the form somebody may have to correct, and an identity
+ * that changes takes every right hung off it with it.
+ */
+export const MODERATORS: EntityDef = {
+  id: 'moderators',
+  labelKey: 'admin.moderators',
+  path: 'administracija/moderatori',
+  superadminOnly: true,
+  form: moderator as FormDef,
+  idField: 'id',
+  blank: { rights: [] },
+}
+
+/** All nine, so a test can walk them and nothing can be half added. */
 export const ENTITY_FORMS: EntityDef[] = [
   MEMBERS,
   EVENTS,
@@ -171,6 +231,7 @@ export const ENTITY_FORMS: EntityDef[] = [
   BADGES,
   PRICING,
   PAGES,
+  MODERATORS,
 ]
 
 /** What the editor is open on: a record being changed, or a new one. */

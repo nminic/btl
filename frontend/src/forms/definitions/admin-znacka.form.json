@@ -18,25 +18,35 @@
       "maxLength": 400
     },
     {
-      "name": "quantity",
+      "name": "label",
+      "type": "text",
+      "labelKey": "admin.field.badgeLabel",
+      "hintKey": "admin.hint.badgeLabel",
+      "maxLength": 16
+    },
+    {
+      "name": "kind",
       "type": "select",
-      "labelKey": "badges.quantityLabel",
-      "hintKey": "admin.hint.quantity",
+      "labelKey": "badges.kindLabel",
+      "hintKey": "admin.hint.kind",
       "required": true,
       "options": [
-        { "value": "raceCount", "labelKey": "badges.quantity.raceCount" },
-        { "value": "marathonCount", "labelKey": "badges.quantity.marathonCount" },
-        { "value": "halfCount", "labelKey": "badges.quantity.halfCount" },
-        { "value": "longCount", "labelKey": "badges.quantity.longCount" },
-        { "value": "shortCount", "labelKey": "badges.quantity.shortCount" },
-        { "value": "ultraCount", "labelKey": "badges.quantity.ultraCount" },
-        { "value": "totalKm", "labelKey": "badges.quantity.totalKm" },
-        { "value": "totalAscent", "labelKey": "badges.quantity.totalAscent" },
-        { "value": "totalDescent", "labelKey": "badges.quantity.totalDescent" },
-        { "value": "totalTime", "labelKey": "badges.quantity.totalTime" },
-        { "value": "points", "labelKey": "badges.quantity.points" },
-        { "value": "countryCount", "labelKey": "badges.quantity.countryCount" },
-        { "value": "seasonCount", "labelKey": "badges.quantity.seasonCount" }
+        { "value": "raceCount", "labelKey": "badges.kind.raceCount" },
+        { "value": "marathonCount", "labelKey": "badges.kind.marathonCount" },
+        { "value": "halfCount", "labelKey": "badges.kind.halfCount" },
+        { "value": "longCount", "labelKey": "badges.kind.longCount" },
+        { "value": "shortCount", "labelKey": "badges.kind.shortCount" },
+        { "value": "ultraCount", "labelKey": "badges.kind.ultraCount" },
+        { "value": "totalKm", "labelKey": "badges.kind.totalKm" },
+        { "value": "totalAscent", "labelKey": "badges.kind.totalAscent" },
+        { "value": "totalDescent", "labelKey": "badges.kind.totalDescent" },
+        { "value": "totalTime", "labelKey": "badges.kind.totalTime" },
+        { "value": "points", "labelKey": "badges.kind.points" },
+        { "value": "countryCount", "labelKey": "badges.kind.countryCount" },
+        { "value": "seasonCount", "labelKey": "badges.kind.seasonCount" },
+        { "value": "bestRacePoints", "labelKey": "badges.kind.bestRacePoints" },
+        { "value": "bestRaceKm", "labelKey": "badges.kind.bestRaceKm" },
+        { "value": "bestRaceAscent", "labelKey": "badges.kind.bestRaceAscent" }
       ]
     },
     {

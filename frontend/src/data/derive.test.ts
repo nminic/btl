@@ -10,6 +10,7 @@ import {
   rankingFor,
   rankMembers,
   topByKilometers,
+  topByProgress,
   topByTimeOnCourse,
   rankTeams,
   resultsOf,
@@ -459,6 +460,125 @@ describe('rankTeams', () => {
     // does not shuffle between two recounts of the same data (PDL P12).
     expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
     expect(ranked.map((row) => row.team.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+/* The board of best progress. The measure is the points gained on the season
+ * before (PDL P12, 30.07.2026); the rungs under it are derived, and are marked as
+ * derived where they are written (BY_PROGRESS in derive.ts). */
+describe('topByProgress', () => {
+  it('measures the gain against the season before, and orders by it', () => {
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      result('000001', '2026-01-01', 100),
+      result('000001', '2027-01-01', 150),
+      result('000002', '2026-01-01', 10),
+      // Twice the points of the first, and a smaller gain. The board is about
+      // the gain, so the smaller total is ahead.
+      result('000002', '2027-01-01', 40),
+    ]
+
+    const ranked = topByProgress(competitors, results, 2027, 10)
+
+    expect(ranked.map((row) => row.competitor.memberNumber)).toEqual(['000001', '000002'])
+    expect(ranked.map((row) => row.gain)).toEqual([50, 30])
+    expect(ranked.map((row) => row.previousPoints)).toEqual([100, 10])
+  })
+
+  it('leaves out whoever did not race the season before', () => {
+    const competitors = [competitor('000001'), competitor('000002'), competitor('000003')]
+    const results = [
+      result('000001', '2026-01-01', 10),
+      result('000001', '2027-01-01', 20),
+      // A first season of 500 points is not a gain of 500, it is no gain at all:
+      // there is nothing to have gained on.
+      result('000002', '2027-01-01', 500),
+      // And a member who raced the season before and not this one has no season
+      // to be measured.
+      result('000003', '2026-01-01', 300),
+    ]
+
+    expect(topByProgress(competitors, results, 2027, 10).map((row) => row.competitor.memberNumber))
+      .toEqual(['000001'])
+  })
+
+  it('leaves out whoever went backwards, and empties the board when nobody gained', () => {
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      // Fell from 100 to 40. Not progress by any reading of the word, and a
+      // board of best progress that ends in minus figures says the opposite of
+      // its own name (owner, 30.07.2026).
+      result('000001', '2026-01-01', 100),
+      result('000001', '2027-01-01', 40),
+      // Exactly level: no gain either.
+      result('000002', '2026-01-01', 50),
+      result('000002', '2027-01-01', 50),
+    ]
+
+    expect(topByProgress(competitors, results, 2027, 10)).toEqual([])
+  })
+
+  it('goes on to the points of the season when two gains are level', () => {
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      result('000001', '2026-01-01', 10),
+      result('000001', '2027-01-01', 30),
+      result('000002', '2026-01-01', 100),
+      // The same gain of 20, from a season three times the size.
+      result('000002', '2027-01-01', 120),
+    ]
+
+    expect(topByProgress(competitors, results, 2027, 10).map((row) => row.competitor.memberNumber))
+      .toEqual(['000002', '000001'])
+  })
+
+  it('goes on to the races when the gain and the season are level too', () => {
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      result('000001', '2026-01-01', 10),
+      result('000001', '2027-01-01', 30),
+      result('000002', '2026-01-01', 10),
+      // The same gain and the same points of the season, over two races rather
+      // than one. Volume decides, never efficiency (PDL P12).
+      result('000002', '2027-01-01', 15),
+      result('000002', '2027-02-02', 15),
+    ]
+
+    expect(topByProgress(competitors, results, 2027, 10).map((row) => row.competitor.memberNumber))
+      .toEqual(['000002', '000001'])
+  })
+
+  it('shows a tie the whole ladder leaves standing as a shared place', () => {
+    const competitors = [competitor('000002'), competitor('000001'), competitor('000003')]
+    const results = [
+      result('000001', '2026-01-01', 10),
+      result('000001', '2027-01-01', 30),
+      result('000002', '2026-01-01', 10),
+      result('000002', '2027-01-01', 30),
+      result('000003', '2026-01-01', 10),
+      result('000003', '2027-01-01', 20),
+    ]
+
+    const ranked = topByProgress(competitors, results, 2027, 10)
+
+    expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
+    expect(ranked.map((row) => row.competitor.memberNumber)).toEqual([
+      '000001',
+      '000002',
+      '000003',
+    ])
+  })
+
+  it('stops at the places the board has', () => {
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      result('000001', '2026-01-01', 10),
+      result('000001', '2027-01-01', 40),
+      result('000002', '2026-01-01', 10),
+      result('000002', '2027-01-01', 20),
+    ]
+
+    expect(topByProgress(competitors, results, 2027, 1)).toHaveLength(1)
   })
 })
 

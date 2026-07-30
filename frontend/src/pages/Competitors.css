@@ -11,7 +11,8 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
 }
 
-.card {
+/* Scoped to the grid it lives in, for the same reason as .home .card. */
+.cards .card {
   display: grid;
   justify-items: center;
   gap: 0.3rem;
@@ -28,8 +29,8 @@
     transform var(--fast);
 }
 
-.card:hover,
-.card:focus-visible {
+.cards .card:hover,
+.cards .card:focus-visible {
   border-color: var(--accent);
   transform: translateY(-2px);
 }

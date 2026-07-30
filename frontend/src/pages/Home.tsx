@@ -11,13 +11,14 @@ import { EnrolmentSlot } from './home/EnrolmentSlot'
 import { HowItWorks } from './home/HowItWorks'
 import { NEWS, seasonLabelKey, SPONSORS } from './home/content'
 import { News } from './home/News'
+import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
 import { TopTen } from './home/TopTen'
 import './Home.css'
 
 /* The widget order is the one fixed in PDL P14, top to bottom:
  *
- *   the season counters
+ *   the address of the president (2/3) beside the season counters (1/3)
  *   "Priprema, pozor, SAD!" (2/3) beside the seasonal slot (1/3)
  *   Top 10 men (1/4) | Top 10 women (1/4) | rotating chart (1/2)
  *   calculator (1/2) beside how it works (1/2)
@@ -56,7 +57,12 @@ export function Home() {
 
           return (
             <>
-              <Counters totals={totals} seasonLabel={label} />
+              {/* Two to one in favour of the address, and on a phone one under
+                  the other with the address first (PDL P28a). */}
+              <div className="home__row home__row--address">
+                <President />
+                <Counters totals={totals} seasonLabel={label} />
+              </div>
 
               <div className="home__row home__row--calendar">
                 <CalendarExtract events={events} today={today} />

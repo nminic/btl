@@ -11,7 +11,7 @@ import { MailIcon } from './icons'
  * glance, not a place to read. */
 export function MessagesMenu() {
   const { locale, t } = useI18n()
-  const { messages } = useSession()
+  const { inbox: messages } = useSession()
   const unread = messages.filter((one) => !one.read).length
 
   return (

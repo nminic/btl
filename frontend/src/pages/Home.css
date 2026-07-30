@@ -14,6 +14,13 @@
 }
 
 @media (min-width: 860px) {
+  /* Two to one in favour of the address, which is the ratio the owner fixed
+     (PDL P28a). The same shape as the calendar row above it by coincidence, not
+     by kinship, so it is written out rather than shared. */
+  .home__row--address {
+    grid-template-columns: 2fr 1fr;
+  }
+
   .home__row--calendar {
     grid-template-columns: 2fr 1fr;
   }
@@ -56,9 +63,13 @@
   background: var(--surface-hover);
 }
 
-/* Cards */
+/* Cards.
 
-.card {
+   Scoped to the front page: the competitor cards are a .card too, with a layout
+   of their own, and two bare rules of the same name in one bundled sheet settle
+   their differences by load order. */
+
+.home .card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -89,6 +100,27 @@
   margin-top: auto;
   align-self: flex-start;
   font-size: 0.9rem;
+}
+
+/* The address of the president (PDL P28a). The only prose on the front page, so
+   the heading is a real heading rather than the small capitals the widgets above
+   the numbers use, and the measure of the text is left to Markdown.
+
+   Scoped to the page it belongs to, like the cards above: a bare .address in a
+   bundled stylesheet is a name any other screen may reach for, and everything
+   about the address of the president is about this page. */
+
+.home .address {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.home .address__title {
+  margin: 0;
+  font-size: clamp(19px, 2.8vw, 24px);
+  letter-spacing: -0.01em;
 }
 
 /* Calendar extract */
@@ -134,7 +166,7 @@
 
 /* Seasonal slot */
 
-.card--slot {
+.home .card--slot {
   border-color: var(--gold-400);
 }
 

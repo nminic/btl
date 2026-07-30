@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
+import { sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
 import type { StaticPage } from '../data/types'
 import { useI18n } from '../i18n/useI18n'
@@ -65,13 +66,21 @@ function useCurrentSection(ids: string[]): string {
   return current
 }
 
-function RulebookPage({ page }: { page: StaticPage }) {
+/* The rulebook is a written page like every other, so it is drawn through the
+ * same door: what it shows is its own sections and the ones it takes in, in that
+ * order (src/data/pages.ts). Reading `page.sections` here instead meant that an
+ * administrator who added `includes` to the rulebook would be told by the list of
+ * pages that the text had been taken in, and would find the rulebook drawing
+ * nothing of it. Two screens over one record must not disagree about what the
+ * record says. */
+function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page: StaticPage }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
 
+  const sections = useMemo(() => sectionsOf(pages, page), [pages, page])
   const entries = useMemo(
-    () => tableOfContents(page.sections.map((section) => section.heading)),
-    [page.sections],
+    () => tableOfContents(sections.map((section) => section.heading)),
+    [sections],
   )
   const ids = useMemo(() => entries.map((entry) => entry.id), [entries])
   const current = useCurrentSection(ids)
@@ -121,7 +130,7 @@ function RulebookPage({ page }: { page: StaticPage }) {
         </nav>
 
         <div className="rulebook__body">
-          {page.sections.map((section, index) => (
+          {sections.map((section, index) => (
             <section
               key={entries[index].id}
               id={entries[index].id}
@@ -153,7 +162,7 @@ export function Rulebook() {
           return <h1>{t('notFound.title')}</h1>
         }
 
-        return <RulebookPage page={page} />
+        return <RulebookPage pages={pages} page={page} />
       }}
     </Resource>
   )
