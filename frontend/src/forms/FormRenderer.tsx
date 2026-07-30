@@ -64,7 +64,7 @@ const Field = memo(function Field({
   field: FieldDef
   value: string | boolean
   error: FieldError | undefined
-  choices: FieldOption[]
+  choices: readonly FieldOption[]
   onChange: (field: FieldDef, value: string | boolean) => void
 }) {
   const { t } = useI18n()

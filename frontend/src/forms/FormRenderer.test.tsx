@@ -140,6 +140,46 @@ describe('FormRenderer', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ ime: 'Vladan' }))
   })
 
+  /* A form keeps all its values in one place, so unless a field is left alone
+     when nothing about it changed, every letter typed redraws every field. On the
+     race form, whose one select offers all twelve hundred events, that meant
+     rebuilding twelve hundred options per letter, and it is what put that screen
+     over the time limit on CI (GitHub run 30528720474).
+   *
+   * Counted here as how often a field is asked for its words, which is what a
+   * redraw of it costs. Three things have to hold for the count to stay put: the
+   * memo around a field, one change handler made once for the whole form, and one
+   * shared empty list for a field with no choices. Undo any of the three and this
+   * fails, which is the point: none of them shows up on screen. */
+  it('redraws the field that was typed into and no other', async () => {
+    const user = setupUser()
+    let asked = 0
+    const counted: FormDef = {
+      ...everyType,
+      fields: everyType.fields.map((field) =>
+        field.name === 'ime'
+          ? field
+          : {
+              ...field,
+              get labelKey() {
+                asked += 1
+                return `proba.${field.name}`
+              },
+            },
+      ),
+    }
+
+    renderWithI18n(<FormRenderer form={counted} onSubmit={vi.fn()} />)
+
+    const once = asked
+    expect(once).toBe(everyType.fields.length - 1)
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+
+    // Six letters and eight other fields: it was forty eight more than this.
+    expect(asked).toBe(once)
+  })
+
   it('renders the registration definition straight from JSON', () => {
     renderWithI18n(<FormRenderer form={registracija as FormDef} onSubmit={vi.fn()} />)
 

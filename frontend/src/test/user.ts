@@ -16,6 +16,10 @@ import userEvent from '@testing-library/user-event'
  * Nothing on this portal debounces or throttles what is typed, so there is no
  * behaviour behind that wait to lose. A test that needs time to actually pass
  * has to arrange it itself rather than lean on this.
+ *
+ * One thing to know before reaching for fake timers: asking for no wait also
+ * means userEvent never advances them, so a test that fakes the clock has to set
+ * its own userEvent up rather than use this.
  */
 export function setupUser() {
   return userEvent.setup({ delay: null })

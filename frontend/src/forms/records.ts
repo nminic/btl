@@ -12,8 +12,9 @@ import type { FieldDef, FieldOption, FormDef, FormValues } from './types'
 
 /** The answer for a field that offers no choices, as one list rather than a new
  *  empty one per call: a field only redraws when something about it changed, and
- *  a fresh empty list every time counts as a change. */
-const NONE: FieldOption[] = []
+ *  a fresh empty list every time counts as a change. Shut, because one list
+ *  handed to every choiceless field on the portal has to stay empty. */
+const NONE: readonly FieldOption[] = Object.freeze([])
 
 /** The choices a select offers: from the definition, or handed in by the screen
  *  where the list is data rather than a fixed set. A race belongs to one of
@@ -21,7 +22,7 @@ const NONE: FieldOption[] = []
 export function optionsFor(
   field: FieldDef,
   supplied: Record<string, FieldOption[]>,
-): FieldOption[] {
+): readonly FieldOption[] {
   return field.options ?? supplied[field.name] ?? NONE
 }
 

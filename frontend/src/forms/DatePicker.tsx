@@ -48,9 +48,8 @@ export function DatePicker({
   onChange: (value: string) => void
 }) {
   const { locale, t } = useI18n()
-  const today = new Date()
   const [open, setOpen] = useState(false)
-  const [month, setMonth] = useState(() => monthOf(value, today))
+  const [month, setMonth] = useState(() => monthOf(value, new Date()))
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -109,7 +108,11 @@ export function DatePicker({
         aria-expanded={open}
         aria-label={t('form.openCalendar')}
         onClick={() => {
-          setMonth(monthOf(value, today))
+          /* The clock is read when the calendar is opened, never when the field
+             last drew. A field draws again only when something about that field
+             changed (src/forms/FormRenderer.tsx), so a form filled in across
+             midnight would otherwise open the calendar on yesterday's month. */
+          setMonth(monthOf(value, new Date()))
           setOpen((was) => !was)
         }}
       >
