@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useToday } from '../clock/useClock'
 import { monthGrid } from '../data/derive'
 import { formatMonth } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -7,11 +8,15 @@ import './DatePicker.css'
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
 
-function monthOf(value: string, today: Date): string {
+/** Which month to open on: the one in the field, or the one it is now. */
+function monthOf(value: string, today: string): string {
   const parsed = parseDate(value)
-  const base = parsed ?? today
 
-  return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, '0')}`
+  if (parsed === null) {
+    return today.slice(0, 7)
+  }
+
+  return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 function shiftMonth(month: string, by: number): string {
@@ -48,8 +53,9 @@ export function DatePicker({
   onChange: (value: string) => void
 }) {
   const { locale, t } = useI18n()
+  const today = useToday()
   const [open, setOpen] = useState(false)
-  const [month, setMonth] = useState(() => monthOf(value, new Date()))
+  const [month, setMonth] = useState(() => monthOf(value, today))
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -112,7 +118,7 @@ export function DatePicker({
              last drew. A field draws again only when something about that field
              changed (src/forms/FormRenderer.tsx), so a form filled in across
              midnight would otherwise open the calendar on yesterday's month. */
-          setMonth(monthOf(value, new Date()))
+          setMonth(monthOf(value, today))
           setOpen((was) => !was)
         }}
       >

@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import {
   bestSingleRaces,
@@ -150,11 +151,9 @@ function Boards({
 }) {
   const { locale, t } = useI18n()
 
+  const today = useToday()
   const seasons = useMemo(() => seasonsWithResults(results), [results])
-  const fallback = useMemo(
-    () => defaultSeason(results, new Date().toISOString().slice(0, 10)),
-    [results],
-  )
+  const fallback = useMemo(() => defaultSeason(results, today), [results, today])
   const season = seasonParam === null ? fallback : Number(seasonParam)
 
   /* One pass over the results per board, and the season only changes when

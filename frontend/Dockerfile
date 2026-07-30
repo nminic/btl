@@ -3,10 +3,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-fund --no-audit
 COPY . .
-# Shows the role switch. The QA compose file sets it to 1; production sets
-# nothing, and the switch is then absent from the bundle's behaviour.
-ARG VITE_ROLE_SWITCH
-ENV VITE_ROLE_SWITCH=$VITE_ROLE_SWITCH
+# Shows the development controls: the role switch and the switch that moves the
+# day the portal is read as. The QA compose file sets it to 1; production sets
+# nothing, and both are then absent from the bundle's behaviour.
+ARG VITE_DEV_TOOLS
+ENV VITE_DEV_TOOLS=$VITE_DEV_TOOLS
 RUN npm run build
 
 FROM nginx:1.29-alpine

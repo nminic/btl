@@ -1,3 +1,4 @@
+import { useToday } from '../../clock/useClock'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { totalsByMember, EMPTY_TOTALS } from '../../data/derive'
@@ -22,12 +23,14 @@ const RECIPIENT = 'Sportsko udruzenje BTL'
 /** Eight euros per member brought in, credited when their fee is activated. */
 const REFERRAL_EUR = 8
 
-export function Membership({
-  today = new Date().toISOString().slice(0, 10),
-}: { today?: string } = {}) {
+export function Membership() {
   const { locale, t } = useI18n()
   const { memberNumber } = useSession()
   const state = combineResources(useCompetitors(), useResults(), useTeams())
+  /* Renewal only opens inside its window and the price changes three times
+     inside it, so this screen is the one that changes most with the date. It
+     reads the same clock as everything else (src/clock). */
+  const today = useToday()
 
   if (memberNumber === null) {
     return <SignedOut />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -103,6 +104,9 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
   const { decisions, edits, notify, settle } = useSession()
+  /* The message carries the day the portal is being read as, so a walk through
+     a simulated October is dated in October and not in the day it was walked. */
+  const today = useToday()
   /** Which card has its reason field open. One at a time, as in the results. */
   const [open, setOpen] = useState<string | null>(null)
   /**
@@ -246,7 +250,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 to: one.memberNumber,
                                 subject: t('verification.photoReturned'),
                                 body: reason,
-                                date: new Date().toISOString().slice(0, 10),
+                                date: today,
                               })
                             }
 

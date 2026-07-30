@@ -1,4 +1,5 @@
 import { memo, useCallback, useState, type FormEvent } from 'react'
+import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import type {
   DerivedField,
@@ -220,11 +221,15 @@ export function FormRenderer({
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
+  /* One day for showing a field and for validating it. They used to read the
+     clock separately, one on every draw and one on submit, so a form filled in
+     across midnight could show a field it then refused to validate. */
+  const today = useTodayDate()
 
   // A field that is not on screen is neither shown nor validated. The parent
   // signature appears the moment the date of birth says it is needed, which is
   // why visibility is derived from the values rather than from a blur event.
-  const visible = form.fields.filter((field) => isVisible(field, values, new Date()))
+  const visible = form.fields.filter((field) => isVisible(field, values, today))
   const broken = visible.filter((field) => errors[field.name] !== undefined)
   const titleId = `form-${form.id}-title`
 
@@ -232,7 +237,7 @@ export function FormRenderer({
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
        empty is empty before it is anything else. */
-    const found = { ...check?.(values), ...validateForm(form, values) }
+    const found = { ...check?.(values), ...validateForm(form, values, today) }
     setErrors(found)
 
     if (Object.keys(found).length === 0) {

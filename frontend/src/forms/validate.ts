@@ -97,10 +97,13 @@ export function isVisible(field: FieldDef, values: FormValues, today: Date): boo
   return birth !== null && ageOn(birth, today) < rule.years
 }
 
+/* The day is handed in rather than read here. A rule that decides whether a
+ * parent's signature is needed must decide it from the same day the field
+ * appeared on, and the portal has one clock (src/clock). */
 export function validateForm(
   form: FormDef,
   values: FormValues,
-  today: Date = new Date(),
+  today: Date,
 ): Record<string, FieldError> {
   const errors: Record<string, FieldError> = {}
 

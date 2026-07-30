@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { defaultMonth, eventsInMonth, monthGrid } from '../data/derive'
 import type { BtlEvent } from '../data/types'
@@ -87,6 +88,7 @@ export function Calendar() {
   const [params, setParams] = useSearchParams()
   const [openDay, setOpenDay] = useState<string | null>(null)
   const state = useEvents()
+  const today = useToday()
 
   return (
     <div className="calendar">
@@ -94,7 +96,6 @@ export function Calendar() {
 
       <Resource state={state}>
         {(events) => {
-          const today = new Date().toISOString().slice(0, 10)
           const month = params.get('mesec') ?? defaultMonth(events, today)
           const [year, index] = month.split('-').map(Number)
           const inMonth = eventsInMonth(events, year, index)

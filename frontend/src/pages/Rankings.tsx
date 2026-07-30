@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import {
   categoriesOf,
@@ -40,6 +41,7 @@ function Standing({
 }) {
   const { locale, t } = useI18n()
   const { gender, category, search, seasonParam } = filters
+  const today = useToday()
 
   const seasons = useMemo(() => seasonsWithResults(results), [results])
 
@@ -54,11 +56,8 @@ function Standing({
       competitors.filter((one) => one.gender === gender).map((one) => one.memberNumber),
     )
 
-    return defaultSeason(
-      results.filter((one) => ofGender.has(one.memberNumber)),
-      new Date().toISOString().slice(0, 10),
-    )
-  }, [competitors, results, gender, seasonParam])
+    return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
+  }, [competitors, results, gender, seasonParam, today])
 
   const rows = useMemo(
     () => rankingFor(competitors, results, { season, gender, categoryCode: category, search }),

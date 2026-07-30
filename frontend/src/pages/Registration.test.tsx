@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -10,13 +11,17 @@ import { Registration } from './Registration'
 /** After registration opens, so the form itself is on screen. */
 const OPEN = '2026-10-02'
 
+/* The day goes on the clock above the screen, which is where the portal keeps
+   it and what the switch in the header moves (src/clock). */
 function renderForm(today = OPEN) {
   return render(
-    <I18nProvider locale="sr">
-      <MemoryRouter>
-        <Registration today={today} />
-      </MemoryRouter>
-    </I18nProvider>,
+    <ClockProvider simulatedDay={today}>
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <Registration />
+        </MemoryRouter>
+      </I18nProvider>
+    </ClockProvider>,
   )
 }
 
@@ -112,13 +117,15 @@ describe('Registration once it is open', () => {
   it('takes a photograph as proof, and lets it be taken back', async () => {
     const user = setupUser()
     render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000007">
-            <NewResult />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
+      <ClockProvider>
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000007">
+              <NewResult />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
     )
 
     const field = screen.getByLabelText(/Fotografija kao dokaz/) as HTMLInputElement

@@ -343,7 +343,6 @@
    row reads as one strip rather than four unrelated widgets. */
 
 .icon-link,
-.account__btn,
 .inbox__btn {
   display: flex;
   align-items: center;
@@ -368,10 +367,27 @@
 }
 
 .icon-link:hover,
-.account__btn:hover,
 .inbox__btn:hover {
   border-color: var(--accent);
   transform: translateY(-1px);
+}
+
+/* The picture is the control, with no box drawn around it (owner, 30.07.2026).
+   A rectangle around a circle is two shapes doing one job, and the picture is
+   the one thing in the header that is already a shape. */
+.account__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.4rem;
+  min-width: 2.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  /* So the focus ring is round like the thing it is drawn around, rather than a
+     rectangle back in the place the border just left. */
+  border-radius: 50%;
+  cursor: pointer;
 }
 
 .icon-link__glyph,
@@ -390,6 +406,20 @@
   color: var(--accent-contrast);
   font-size: 0.72rem;
   letter-spacing: 0.02em;
+  transition:
+    box-shadow var(--fast),
+    transform var(--fast);
+}
+
+/* Hovering gives it the same blue the rectangles beside it take, drawn as a
+   ring around the circle. A border would be invisible: the circle is already
+   filled with that blue, so the ring needs the header's own colour between the
+   two before the blue can be seen at all. */
+.account__btn:hover .account__monogram {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3px var(--accent);
+  transform: translateY(-1px);
 }
 
 .inbox__badge {

@@ -1,27 +1,28 @@
+/* Shaped like the language button and the rest of the header strip: same
+   height, same rounding, same border that lights up on hover. The dashed frame
+   and the word ULOGA above it are gone (owner, 30.07.2026); they announced a
+   development control on the one environment the owner walks the portal
+   through, and made a finished header look unfinished. */
+
 .role-switch {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.role-switch__label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  font-weight: 700;
-  color: var(--text-muted);
 }
 
 .role-switch__select {
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 0.25rem 0.4rem;
-  color: var(--text);
-  background: var(--surface);
+  height: 2.4rem;
+  padding: 0 0.5rem;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--fast);
+}
+
+.role-switch__select:hover {
+  border-color: var(--accent);
 }
