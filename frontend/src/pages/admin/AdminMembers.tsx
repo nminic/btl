@@ -11,6 +11,7 @@ import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { MEMBERS, recordsOf, type Editing } from './entityForms'
+import { takenMemberNumbers } from './memberNumbers'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -21,7 +22,8 @@ import '../member/Member.css'
 export function AdminMembers() {
   const { locale, t } = useI18n()
   const { role } = useRole()
-  const { edits, creations } = useSession()
+  const session = useSession()
+  const { edits, creations } = session
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useCompetitors()
@@ -46,11 +48,10 @@ export function AdminMembers() {
                 editing={editing}
                 /* Every number that is gone, so a new member can be given the
                    first one that is not: the number is handed out rather than
-                   typed (PDL P8, 30.07.2026). The list is the one this screen
-                   shows, so a member entered a moment ago holds their number
-                   already; reading the file instead would give the next two
-                   members the same one. */
-                taken={all.map((one) => String(one.memberNumber))}
+                   typed (PDL P8, 30.07.2026). Worked out by the one module that
+                   knows where a number can be spoken for, because this screen is
+                   not the only one that gives them out. */
+                taken={takenMemberNumbers(competitors, session)}
                 onDone={() => setEditing(null)}
               />
             )

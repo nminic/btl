@@ -41,34 +41,36 @@ function MemberContributions({
   )
 
   return (
-    <div className="table-scroll">
-      <table className="table contributions">
-        <caption className="visually-hidden">{t('teams.membersOf', { team: team.name })}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t('rankings.columns.position')}</th>
-            <th scope="col">{t('rankings.columns.member')}</th>
-            <th scope="col">{t('rankings.columns.races')}</th>
-            <th scope="col">{t('rankings.columns.distance')}</th>
-            <th scope="col">{t('rankings.columns.points')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.competitor.memberNumber}>
-              <td className="table__position">{row.position}</td>
-              <td>
-                <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-                  {row.competitor.firstName} {row.competitor.lastName}
-                </Link>
-              </td>
-              <td>{formatNumber(row.races, locale)}</td>
-              <td>{formatNumber(row.kilometers, locale, 2)}</td>
-              <td className="table__points">{formatPoints(row.points, locale)}</td>
+    <div className="contributions__pane">
+      <div className="table-scroll">
+        <table className="table contributions">
+          <caption className="visually-hidden">{t('teams.membersOf', { team: team.name })}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t('rankings.columns.position')}</th>
+              <th scope="col">{t('rankings.columns.member')}</th>
+              <th scope="col">{t('rankings.columns.races')}</th>
+              <th scope="col">{t('rankings.columns.distance')}</th>
+              <th scope="col">{t('rankings.columns.points')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.competitor.memberNumber}>
+                <td className="table__position">{row.position}</td>
+                <td>
+                  <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
+                    {row.competitor.firstName} {row.competitor.lastName}
+                  </Link>
+                </td>
+                <td>{formatNumber(row.races, locale)}</td>
+                <td>{formatNumber(row.kilometers, locale, 2)}</td>
+                <td className="table__points">{formatPoints(row.points, locale)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -101,8 +103,12 @@ export function Teams() {
                     <tr>
                       <th scope="col">{t('rankings.columns.position')}</th>
                       <th scope="col">{t('teams.columns.team')}</th>
-                      <th scope="col">{t('teams.columns.city')}</th>
-                      <th scope="col">{t('teams.columns.members')}</th>
+                      <th scope="col" className="table__hide-phone">
+                        {t('teams.columns.city')}
+                      </th>
+                      <th scope="col" className="table__hide-phone">
+                        {t('teams.columns.members')}
+                      </th>
                       <th scope="col">{t('teams.columns.points')}</th>
                       <th scope="col">
                         <span className="visually-hidden">{t('teams.membersColumn')}</span>
@@ -125,33 +131,55 @@ export function Teams() {
                           <td>
                             <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
                           </td>
-                          <td>{row.team.city}</td>
-                          <td>{formatNumber(row.members, locale)}</td>
+                          <td className="table__hide-phone">{row.team.city}</td>
+                          <td className="table__hide-phone">
+                            {formatNumber(row.members, locale)}
+                          </td>
                           <td className="table__points">
                             {formatPoints(row.totals.points, locale)}
                           </td>
                           <td>
+                            {/* One word to read and the whole sentence to hear. The
+                                sentence used to be the visible text and it does not
+                                wrap, so on a telephone this column alone was 279 of
+                                the 661 pixels the table wanted inside a box 328 wide
+                                (PDL P24). A screen reader still gets the team it
+                                belongs to, because twenty buttons called "Prikaži"
+                                are twenty buttons it cannot tell apart. The visible
+                                word is the first word of the label, so what is read
+                                out contains what is on screen (WCAG 2.2, 2.5.3). */}
                             <button
                               type="button"
                               className="contributions__toggle"
                               aria-expanded={shown}
                               aria-controls={drawerId}
+                              aria-label={
+                                shown
+                                  ? t('teams.hideMembers', { team: row.team.name })
+                                  : t('teams.showMembers', { team: row.team.name })
+                              }
                               onClick={() => toggle(row.team.id)}
                             >
-                              {shown
-                                ? t('teams.hideMembers', { team: row.team.name })
-                                : t('teams.showMembers', { team: row.team.name })}
+                              {shown ? t('teams.hide') : t('teams.show')}
                             </button>
                           </td>
                         </tr>
 
+                        {/* The row stays whether the drawer is open or not, so
+                            aria-controls always points at an element that exists.
+                            What is inside it does not: the drawer filters all 3522
+                            results and ranks the members of its team, and with fifty
+                            teams a closed drawer meant fifty passes over the whole
+                            set on every single click. */}
                         <tr id={drawerId} hidden={!shown}>
                           <td colSpan={COLUMNS} className="contributions__cell">
-                            <MemberContributions
-                              team={row.team}
-                              competitors={competitors}
-                              results={results}
-                            />
+                            {shown && (
+                              <MemberContributions
+                                team={row.team}
+                                competitors={competitors}
+                                results={results}
+                              />
+                            )}
                           </td>
                         </tr>
                       </tbody>

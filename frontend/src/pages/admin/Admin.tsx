@@ -48,7 +48,7 @@ export function Admin() {
 
       <Resource state={state}>
         {([[competitors, events, results], items]) => {
-          const waiting = totalWaiting({ pendingResults, competitors, items, decisions })
+          const waiting = totalWaiting({ pendingResults, items, decisions })
 
           return (
             <>

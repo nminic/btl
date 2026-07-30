@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
-import { nextMemberNumber } from '../../data/memberNumber'
 import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
-import { MEMBERS, recordsOf } from './entityForms'
+import { handOutMemberNumber } from './memberNumbers'
 import { settledIn, usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
@@ -49,7 +48,8 @@ type Refusing = { key: string; name: string }
 export function Payments() {
   const { t } = useI18n()
   const { role } = useRole()
-  const { decisions, edits, creations, settle } = useSession()
+  const session = useSession()
+  const { decisions, settle } = session
   const [open, setOpen] = useState<Refusing | null>(null)
   /* The member list is read for one reason only: a number can only be handed out
      against every number that is already gone. */
@@ -78,11 +78,9 @@ export function Payments() {
           /**
            * Activation, and the reason box shut behind it.
            *
-           * The number comes off everything that holds one: the member list as the
-           * screen shows it, records entered during this visit included, plus the
-           * numbers handed out earlier in this visit, which are not in any list
-           * yet. Without the last of those, activating three registrations in a
-           * row gave all three the same number.
+           * The number is asked for rather than worked out here, because this
+           * screen is not the only one that gives one out and the two of them must
+           * not be able to count differently (src/pages/admin/memberNumbers.ts).
            *
            * The box stands below the table rather than in the row, so without the
            * second line it survived the decision taken by the buttons beside it:
@@ -93,20 +91,11 @@ export function Payments() {
            * it.
            */
           const activate = (id: string, basis: MembershipBasis) => {
-            const spokenFor = [
-              ...recordsOf(MEMBERS, competitors, edits, creations).map((one) =>
-                String(one.memberNumber),
-              ),
-              ...Object.values(decisions)
-                .map((one) => one.memberNumber)
-                .filter((one) => one !== ''),
-            ]
-
             settle(id, {
               status: 'approved',
               note: '',
               basis,
-              memberNumber: nextMemberNumber(spokenFor),
+              memberNumber: handOutMemberNumber(competitors, session),
             })
             setOpen((current) => (current?.key === id ? null : current))
           }

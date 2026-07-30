@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import { loadResource } from '../data/client'
 import { hueFor } from './competitorFace'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -337,12 +338,23 @@ describe('Competitors', () => {
        as inactive members holding 000032 to 000034, and everything that reads that
        list reads all of it, so they turned up on the front page among the newest
        members. They are not members now; they wait in the queue of memberships,
-       and nothing public can reach them. */
+       and nothing public can reach them.
+
+       The names come out of the queue rather than being written down here. Written
+       down, they were three names that competitors.json does not contain and could
+       not contain, so the test could not fail whatever the generator did; asked of
+       the queue, it fails the day one of the two files carries somebody the other
+       one does. */
+    const waiting = await loadResource<{ queue: string; who: string }[]>('verification')
+    const names = waiting.filter((one) => one.queue === 'payments').map((one) => one.who)
+
     renderAt('/sr/takmicari')
 
     const list = within(await screen.findByRole('list'))
-    expect(list.queryByText(/Miodrag Stanković/)).not.toBeInTheDocument()
-    expect(list.queryByText(/Čolaković/)).not.toBeInTheDocument()
+    expect(names.length).toBeGreaterThan(0)
+    for (const name of names) {
+      expect(list.queryByText(name)).not.toBeInTheDocument()
+    }
   })
 })
 
@@ -509,6 +521,47 @@ describe('Teams', () => {
       'd (km)',
       'Bodovi',
     ])
+  })
+
+  it('builds nothing for a drawer nobody opened, and still points at it', async () => {
+    const user = setupUser()
+    renderAt('/sr/timovi')
+
+    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    const drawer = document.getElementById(toggle.getAttribute('aria-controls')!)
+
+    /* The row is there whether the drawer is open or not, so aria-controls never
+       points at nothing: a button that says it controls an element which does not
+       exist is a broken promise to a screen reader.
+
+       What is inside it is not. The drawer filters all 3522 results and ranks the
+       members of its team, and a closed one did that too, on every render: fifty
+       teams meant fifty passes over the whole result set for every single click. */
+    expect(drawer).toBeInTheDocument()
+    expect(drawer).not.toHaveTextContent(/\S/)
+    expect(screen.queryByRole('table', { name: /^Članovi tima/ })).not.toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(within(drawer!).getByRole('table', { name: /^Članovi tima/ })).toBeInTheDocument()
+
+    // And it is emptied again on the way back, rather than kept for later.
+    await user.click(screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0])
+    expect(drawer).not.toHaveTextContent(/\S/)
+  })
+
+  it('reads one word on screen and the whole team out loud', async () => {
+    renderAt('/sr/timovi')
+
+    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+
+    /* The sentence used to be the visible text, and it does not wrap: at 360px
+       this column alone took 279 of the 661 pixels the table wanted inside a box
+       328 wide, so the standing scrolled sideways (PDL P24). The team is still in
+       the accessible name, because twenty buttons reading "Prikaži" are twenty
+       buttons a screen reader cannot tell apart, and the visible word is the first
+       word of that name, so what is heard contains what is seen (WCAG 2.2, 2.5.3). */
+    expect(toggle.textContent).toBe('Prikaži')
+    expect(toggle).toHaveAccessibleName(/^Prikaži članove tima \S/)
   })
 
   it('closes again, and says which state it is in', async () => {

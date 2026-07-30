@@ -17,7 +17,6 @@ export type PriceRow = {
 }
 
 export const SEASON = 2027
-export const SEASON_STARTS = '2027-01-01'
 /** Before this date nobody can even begin to register: the portal is open for
  *  looking only (PDL P8). */
 export const REGISTRATION_OPENS = '2026-10-01'

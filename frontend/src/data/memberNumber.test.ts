@@ -38,6 +38,23 @@ describe('nextMemberNumber', () => {
     expect(nextMemberNumber([...inTheFile, '000032'])).toBe('000033')
   })
 
+  it('says so rather than handing out a seventh digit', () => {
+    /* With 000001 to 999999 all spoken for it used to return '1000000', seven
+       digits out of the function whose whole subject is that a member number has
+       six, and on to a row key, a profile address and a printed card without a
+       word. Six digits were chosen to outlive the league (PDL P8), so nobody is
+       expected to reach this; running past it in silence is what must not happen. */
+    const all = new Set(
+      Array.from({ length: 999_999 }, (_, index) => formatMemberNumber(index + 1)),
+    )
+
+    expect(() => nextMemberNumber(all)).toThrow(/999999/)
+
+    // One free in the middle of a full range is still handed out normally.
+    all.delete('000127')
+    expect(nextMemberNumber(all)).toBe('000127')
+  })
+
   it('does not care what order it is given them in, or what else is in the list', () => {
     // It is a set of what is gone, not a sequence to be continued.
     expect(nextMemberNumber(['000004', '000001', '000002'])).toBe('000003')

@@ -261,9 +261,6 @@
     "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
   },
   "home": {
-    "lead": "Rang lista rekreativnih trkača Balkana. Trčiš gde hoćeš, bodovi te prate.",
-    "untilSeason": "do početka sezone {season}.",
-    "toCalendar": "Kalendar trka",
     "toRegistration": "Učlani se",
     "toPricing": "Vidi članarinu",
     "season": "Sezona {season}.",
@@ -437,11 +434,6 @@
       "one": "{count} član",
       "few": "{count} člana",
       "other": "{count} članova"
-    },
-    "dayCount": {
-      "one": "{count} dan",
-      "few": "{count} dana",
-      "other": "{count} dana"
     }
   },
   "rankings": {
@@ -613,6 +605,8 @@
     "notFound": "Ovog tima nema.",
     "name": "Tim",
     "membersColumn": "Članovi tima",
+    "show": "Prikaži",
+    "hide": "Sakrij",
     "showMembers": "Prikaži članove tima {team}",
     "hideMembers": "Sakrij članove tima {team}",
     "membersOf": "Članovi tima {team}"
@@ -869,7 +863,6 @@
       "country": "Država",
       "firstSeason": "U ligi od sezone",
       "firstSeason2027": "Prva sezona u 2027.",
-      "active": "Punopravan član",
       "eventName": "Naziv događaja",
       "date": "Datum",
       "event": "Događaj",
@@ -898,7 +891,6 @@
       "birthYear": "Nikad se ne prikazuje javno. Iz nje se izvodi kategorija, koja jedina ide na profil.",
       "firstSeason": "Prva sezona u kojoj je član nastupao.",
       "firstSeason2027": "Član sezonu 2027. provodi u kategoriji Prva sezona, a ne u svojoj starosnoj.",
-      "active": "Dok članarina nije potvrđena, član ima nalog ali nigde nije vidljiv i ne može ništa.",
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",

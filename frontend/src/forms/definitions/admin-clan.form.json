@@ -66,12 +66,6 @@
       "hintKey": "admin.hint.firstSeason2027"
     },
     {
-      "name": "active",
-      "type": "checkbox",
-      "labelKey": "admin.field.active",
-      "hintKey": "admin.hint.active"
-    },
-    {
       "name": "membershipBasis",
       "type": "select",
       "labelKey": "admin.basis",

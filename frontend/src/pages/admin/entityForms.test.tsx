@@ -196,8 +196,18 @@ describe('a record that is entered rather than changed', () => {
     await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
     await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
-    await user.click(form.getByLabelText(labelled(t('admin.field.active'))))
+    await user.click(form.getByLabelText(labelled(t('admin.field.firstSeason2027'))))
     await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'honorary')
+
+    /* The form used to carry a box saying the membership was active, with a note
+       that an unpaid member has an account but is visible nowhere. Nothing reads
+       that flag any more: an unpaid member is not in the member list at all, they
+       wait in the queue of memberships (ADL A4d), so the box was a way to put back
+       into the list exactly what that change took out of it. Held on the
+       definition rather than on the screen, because a field that is not there has
+       no label to ask the screen about. */
+    expect(MEMBERS.form.fields.map((one) => one.name)).not.toContain('active')
+
     await user.click(form.getByRole('button', { name: t('form.submit') }))
 
     const saved = screen.getByRole('status', { name: t('admin.form.saved') })
@@ -331,7 +341,10 @@ describe('the identity of a record', () => {
     const title = t('admin.form.new.pages')
     renderAt('/sr/administracija/strane', 'superadmin')
 
-    await user.click(await screen.findByRole('button', { name: title }))
+    const before = within(await screen.findByRole('table', { name: 'Statične strane' }))
+    const rows = before.getAllByRole('row').length
+
+    await user.click(screen.getByRole('button', { name: title }))
     const form = open(title)
 
     // Two records on /pravilnik would be one page arguing with itself.
@@ -342,6 +355,11 @@ describe('the identity of a record', () => {
     await user.click(form.getByRole('button', { name: t('form.submit') }))
 
     expect(document.getElementById('field-slug-error')).toHaveTextContent(t('form.errors.taken'))
+    /* And nothing was written down. Without this the test passes on the behaviour
+       it exists to forbid: the message appears and the duplicate is made anyway,
+       two records answer to /pravilnik, and one change reaches both of them,
+       because the overlay of changes is keyed by exactly that address. */
+    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
 
     /* A free address saves, and the record answers to what was typed. Written
        pages are the one entity left that names itself: a member number is handed
@@ -356,6 +374,8 @@ describe('the identity of a record', () => {
     const row = within(list.getByRole('link', { name: '/nova-strana' }).closest('tr')!)
 
     expect(row.getByRole('button', { name: 'Otvori: Drugi pravilnik' })).toBeVisible()
+    // Exactly one row more: the refused attempt left nothing behind either.
+    expect(list.getAllByRole('row')).toHaveLength(rows + 1)
   })
 
   it('does not stand in the way of the record it belongs to', async () => {

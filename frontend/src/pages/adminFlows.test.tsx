@@ -14,7 +14,6 @@ import { countsFor, QUEUE, QUEUES } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import { epcPayload, ipsPayload, methodsFor } from '../data/paymentQr'
-import type { Competitor } from '../data/types'
 
 /** A session holding results in the states the panel has to tell apart. */
 function sessionWith(states: SubmissionStatus[]): SessionValue {
@@ -496,6 +495,31 @@ describe('verification', () => {
     }
   })
 
+  it('raises no alarm over a file none of the numbers come from', async () => {
+    const served = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/competitors.json')
+        ? new Response('nema', { status: 500 })
+        : served(input)) as typeof fetch
+
+    try {
+      renderAt('/sr/administracija/verifikacija', 'moderator')
+
+      /* Nothing here is counted off the member list any more (PDL P8, 30.07.2026),
+         so with only that file down every one of the eight numbers is right. The
+         screen still handed the list in and still said the numbers might be short
+         of the truth. An alarm that goes off when nothing is wrong is how a
+         moderator learns to ignore the one that matters. */
+      const memberships = await screen.findByRole('link', {
+        name: /Uplate i aktivacija članova/,
+      })
+      expect(within(memberships).getByText('3')).toBeVisible()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    } finally {
+      globalThis.fetch = served
+    }
+  })
+
   it('gives every queue its own name in the browser tab', async () => {
     const user = setupUser()
     renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
@@ -697,6 +721,49 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
   })
 
+  it('gives the member form no number an activation has already handed out', async () => {
+    const user = setupUser()
+    renderAt(`/sr/${QUEUE.payments.path}`, 'superadmin')
+    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+
+    /* An activation writes a decision and not a member, so the member form never
+       saw the number the activation had just given out: record a fee, get 000032,
+       then enter a member without reloading and get 000032 again. Two members
+       answered to one number, and because the overlay of changes is keyed by the
+       number, changing the town of one of them changed both. That is the fault
+       the check for uniqueness used to catch before the field left the form (PDL
+       P8, 30.07.2026; ADL A4d). */
+    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000032')).toBeVisible()
+
+    // The same visit, walked the way an administrator walks it: no reload.
+    await user.click(screen.getByRole('button', { name: 'Administracija' }))
+    await user.click(screen.getByRole('link', { name: 'Entiteti' }))
+    await user.click(await screen.findByRole('link', { name: 'Članovi' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
+    const form = within(screen.getByRole('form', { name: 'Novi član' }))
+
+    for (const [label, value] of [
+      ['Ime', 'Milica'],
+      ['Prezime', 'Pavlović'],
+      ['Godina rođenja', '1991'],
+      ['Mesto', 'Kraljevo'],
+      ['U ligi od sezone', '2027'],
+    ]) {
+      await user.type(form.getByLabelText(new RegExp(`^${label}`)), value)
+    }
+    await user.selectOptions(form.getByLabelText(/^Pol/), 'F')
+    await user.selectOptions(form.getByLabelText(/^Država/), 'RS')
+    await user.selectOptions(form.getByLabelText(/^Osnov članstva/), 'payment')
+    await user.click(form.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
+    expect(list.queryByText('000032')).not.toBeInTheDocument()
+    expect(within(list.getByText('000033').closest('tr')!).getByText(/Milica/)).toBeVisible()
+  })
+
   it('says so once every membership has been decided', async () => {
     const user = await openPayments()
 
@@ -895,15 +962,12 @@ describe('the six queues read from the file', () => {
 })
 
 describe('countsFor', () => {
-  const competitor = (memberNumber: string, active: boolean) =>
-    ({ memberNumber, active }) as Competitor
   const item = (id: string, queue: PendingQueueId) => ({ id, queue }) as PendingItem
-  const empty = { pendingResults: 0, competitors: [], items: [], decisions: {} }
+  const empty = { pendingResults: 0, items: [], decisions: {} }
 
   it('counts every queue from the one place', () => {
     const counts = countsFor({
       pendingResults: 3,
-      competitors: [competitor('000001', true)],
       items: [
         item('u', 'payments'),
         item('a', 'bios'),
@@ -926,8 +990,12 @@ describe('countsFor', () => {
        is handed out when the fee is recorded (PDL P8, 30.07.2026), so somebody who
        has not paid has no number and is not a member; counting them off the member
        list would mean they were in it, and everything that reads that list reads
-       all of it, front page included. */
-    expect(countsFor({ ...empty, competitors: [competitor('000002', false)] }).payments).toBe(0)
+       all of it, front page included.
+
+       The member list is not even handed in any more, and that is what this holds:
+       while it still was, the counter in the header asked for the file of members
+       on every screen of the portal so it could pass it in unread. */
+    expect(Object.keys(empty)).not.toContain('competitors')
     expect(countsFor({ ...empty, items: [item('u', 'payments')] }).payments).toBe(1)
   })
 

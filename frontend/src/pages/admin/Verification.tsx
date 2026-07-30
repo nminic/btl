@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { dataOr, failed, useCompetitors } from '../../data/useResource'
+import { dataOr, failed } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
@@ -15,17 +15,16 @@ import '../member/Member.css'
  * Every row leads to the screen where the work is done, and the number on it
  * comes from countsFor, which is also what the navigation counts with.
  *
- * The two files are read for what they are worth rather than waited for
- * together, exactly as the header reads them (src/app/Shell.tsx). A failure on
- * one of them used to take the whole screen down, including the row of results,
- * which is counted from the session and does not depend on either file. What a
- * failure must not do is pass silently, so it is said out loud instead.
+ * The file is read for what it is worth rather than waited for, exactly as the
+ * header reads it (src/app/Shell.tsx). A failure used to take the whole screen
+ * down, including the row of results, which is counted from the session and does
+ * not depend on the file at all. What a failure must not do is pass silently, so
+ * it is said out loud instead.
  */
 export function Verification() {
   const { locale, t } = useI18n()
   const { role } = useRole()
   const { submissions, decisions } = useSession()
-  const competitors = useCompetitors()
   const items = usePending()
 
   if (!isStaff(role)) {
@@ -34,7 +33,6 @@ export function Verification() {
 
   const counts = countsFor({
     pendingResults: submissions.filter((one) => one.status === 'pending').length,
-    competitors: dataOr(competitors, []),
     items: dataOr(items, []),
     decisions,
   })
@@ -46,8 +44,14 @@ export function Verification() {
 
       {/* Said out loud, in the same words a broken screen uses, because a number
           that is quietly short is worse than an error: a moderator reads a queue
-          of zero as a queue of nothing. */}
-      {failed(competitors, items) && (
+          of zero as a queue of nothing.
+
+          Only for the source the numbers actually depend on. The file of members
+          was handed in here too, long after anything counted from it, so a broken
+          competitors.json raised the alarm over eight numbers that were all
+          correct. An alarm that goes off when nothing is wrong is how a moderator
+          learns to ignore it. */}
+      {failed(items) && (
         <p className="resource-state" role="alert">
           {t('verification.shortCount')}
         </p>

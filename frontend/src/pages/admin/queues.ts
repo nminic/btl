@@ -1,4 +1,3 @@
-import type { Competitor } from '../../data/types'
 import type { Decisions } from '../../session/context'
 import { waitingIn, type PendingItem } from './pending'
 
@@ -100,23 +99,20 @@ export const QUEUE: Record<string, Queue> = Object.fromEntries(
   QUEUES.map((one) => [one.id, one]),
 )
 
+/**
+ * Everything the eight numbers are counted from, and nothing else.
+ *
+ * The list of members used to be in here as well. Memberships waiting to be
+ * activated were counted off it, as the members who were not active yet; a member
+ * number is now handed out the moment the fee is recorded (PDL P8, 30.07.2026),
+ * so somebody who has not paid is not in that list at all and is counted in
+ * `items` with the other six. The field outlived its reader by one release, and
+ * while it did, the counter in the header asked for the file of members on every
+ * screen of the portal in order to hand it in unread.
+ */
 export type Waiting = {
   /** Results a competitor sent in during this visit and nobody has judged. */
   pendingResults: number
-  /**
-   * The list of members. Nothing is counted from it any more.
-   *
-   * Memberships waiting to be activated used to be counted here, as the members
-   * who were not active yet. A member number is now handed out the moment the fee
-   * is recorded (PDL P8, 30.07.2026), so somebody who has not paid is not in this
-   * list at all; they wait in `items` with everything else and are counted there,
-   * by the same rule as the other six.
-   *
-   * The field stays in the shape because the counter in the header still hands it
-   * in (src/app/Shell.tsx), as do the panel and the verification list. It goes
-   * the next time one of those three is opened for another reason.
-   */
-  competitors: Competitor[]
   items: PendingItem[]
   decisions: Decisions
 }

@@ -13,6 +13,11 @@
 /** Six digits, so 1 reads as 000001. */
 export const MEMBER_NUMBER_WIDTH = 6
 
+/** The last number six digits can hold. Past it the width is not six any more,
+ *  and the width is the one thing about a member number that cannot change
+ *  quietly: it is the key of every row, address and result on the portal. */
+const HIGHEST = 10 ** MEMBER_NUMBER_WIDTH - 1
+
 export function formatMemberNumber(value: number): string {
   return String(value).padStart(MEMBER_NUMBER_WIDTH, '0')
 }
@@ -28,6 +33,13 @@ export function formatMemberNumber(value: number): string {
  * Whatever is handed in counts as spoken for, which is how the numbers taken by
  * records entered during this visit are skipped: the caller hands in the list it
  * shows, not the file it read.
+ *
+ * With every number from 000001 to 999999 spoken for there is no next one, and it
+ * says so. It used to return '1000000': seven digits out of a function whose whole
+ * subject is that the number has six, handed on to a key, an address and a
+ * printed card without a word. Six digits were chosen to outlive the league (PDL
+ * P8), so this is a line nobody is expected to reach; running past it in silence
+ * is what must not happen.
  */
 export function nextMemberNumber(taken: Iterable<string>): string {
   const spokenFor = new Set(taken)
@@ -35,6 +47,10 @@ export function nextMemberNumber(taken: Iterable<string>): string {
 
   while (spokenFor.has(formatMemberNumber(candidate))) {
     candidate += 1
+  }
+
+  if (candidate > HIGHEST) {
+    throw new Error(`No member number left: all ${HIGHEST} of them are spoken for`)
   }
 
   return formatMemberNumber(candidate)

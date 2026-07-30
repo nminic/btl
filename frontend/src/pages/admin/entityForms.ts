@@ -55,24 +55,31 @@ export type EntityDef = {
 export type DerivedValue = DerivedField & { value: string }
 
 /**
- * Two things are deliberately not on the member form.
+ * Three things are deliberately not on the member form.
  *
  * Membership of a team, because a competitor joins a team through a request or an
  * invitation, and never because an administrator typed an id (PDL P13).
  *
- * And the member number, because the system hands it out: first free in order, at
- * the moment somebody records that the fee arrived, and never typed by an
+ * The member number, because the system hands it out: first free in order, at the
+ * moment somebody records that the fee arrived, and never typed by an
  * administrator (PDL P8, 30.07.2026). It was an obligatory field of six digits
  * with a rule beside it and a check that the number was still free; all three go,
  * and what they were protecting is now the property of the one function that
  * hands the number out.
+ *
+ * And whether the membership is active, which was a box saying that an unpaid
+ * member has an account but is visible nowhere. Nothing reads it any more: a
+ * member who has not paid is not in the member list at all, they wait in the
+ * queue of memberships (ADL A4d). Leaving the box on the form was a way to put
+ * back into the list exactly what that change took out of it, so it is gone and
+ * the flag is set here, where the shape of a record is decided.
  */
 export const MEMBERS: EntityDef = {
   id: 'members',
   form: clan as FormDef,
   idField: 'memberNumber',
   handsOutIdentity: nextMemberNumber,
-  blank: { teamId: null },
+  blank: { teamId: null, active: true },
 }
 
 export const EVENTS: EntityDef = {
