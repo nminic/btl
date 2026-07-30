@@ -16,18 +16,16 @@ import '../member/Member.css'
 export function AdminEvents() {
   const { locale, t } = useI18n()
   const overlay = useOverlay()
-    const [search, setSearch] = useState('')
+  const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useEvents()
   const today = useToday()
 
   return (
     <div className="member">
-      {/* The name of the screen is in the navigation beside it and in the browser
-          tab. Here it was a heading and a sentence or two above the work, and the
-          moderator arrives having just read the name in the list he came from
-          (owner, 30.07.2026). It stays in the markup so the page has a name for
-          anyone who cannot see which entry is marked. */}
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
       <h1 className="visually-hidden">{t('admin.events')}</h1>
 
       <Resource state={state}>

@@ -292,8 +292,8 @@ function renderInbox(inbox: Message[]) {
     setRight: vi.fn(),
     decisions: {},
     settle: vi.fn(),
-  deletions: [],
-  remove: vi.fn(),
+    deletions: {},
+    remove: vi.fn(),
   }
 
   return render(

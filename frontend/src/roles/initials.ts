@@ -5,12 +5,13 @@ import type { Moderator } from '../data/types'
  *
  * A select is as wide as its widest choice, and one of the four is called
  * Aleksandra Milovanović-Stefanović, which was pushing the rest of the header
- * onto a second line. Every part of a double surname keeps its letter, so
- * A. M-S. is still nobody else.
+ * onto a second line. Every part of a double surname keeps its
+ * letter and its stop, so `A. M.-S.` is still nobody else.
  *
- * The full name is on the control as its title, so hovering says who it is, and
- * it is what a screen reader is given for the chosen one: the switch is a
- * development control, but a control nobody can read is one nobody can use.
+ * The full name goes on the choice as its title, which is a tooltip and nothing
+ * more: an option is named to a screen reader by its own text, so what is read
+ * out is the initials. That is the cost of the width, and it is one a control no
+ * member ever sees can pay.
  */
 export function initialsOf(moderator: Moderator): string {
   const surname = moderator.lastName

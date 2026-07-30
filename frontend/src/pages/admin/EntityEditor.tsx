@@ -149,6 +149,10 @@ export function EntityEditor({
  * goes when the list has been read. On a narrow screen the row wraps and the
  * button drops under the search, which is the same order.
  */
+/** The one control on the screen that survives a row being deleted, so it is
+ *  where the focus goes when one is (RowActions). */
+export const NEW_RECORD_ID = 'entity-new'
+
 export function EntityBar({
   entity,
   onNew,
@@ -164,7 +168,12 @@ export function EntityBar({
   return (
     <div className="entity-bar">
       <div className="entity-bar__filters">{children}</div>
-      <button type="button" className="button button--secondary entity-bar__new" onClick={onNew}>
+      <button
+        type="button"
+        id={NEW_RECORD_ID}
+        className="button button--secondary entity-bar__new"
+        onClick={onNew}
+      >
         {t(`admin.form.new.${entity.id}`)}
       </button>
     </div>
@@ -197,10 +206,25 @@ export function RowActions({
   const { remove } = useSession()
   const id = String((record as Record<string, unknown>)[entity.idField])
 
+  /* The row about to go is where the focus is, so deleting it leaves the focus
+     on nothing and the next Tab starts the page from the top. It moves to the
+     control that starts a new record, which is the one thing on the screen that
+     cannot be the row just deleted; a screen reader announces the move, which is
+     also the only word anyone gets that the deletion happened. */
+  function deleteRow() {
+    const anchor = document.getElementById(NEW_RECORD_ID)
+
+    if (anchor !== null) {
+      anchor.focus()
+    }
+
+    remove(entity.id, id)
+  }
+
   return (
     <span className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      <DeleteRecord name={name} onDelete={() => remove(id)} />
+      <DeleteRecord name={name} onDelete={deleteRow} />
     </span>
   )
 }
@@ -225,14 +249,21 @@ export function OpenRecord({ name, onOpen }: { name: string; onOpen: () => void 
 /**
  * And the control that removes it (owner, 30.07.2026).
  *
- * Asked twice, because nothing brings the record back and the button stands in
- * a row of twenty beside the one that merely opens it. The first press asks, the
- * second does it, and anything else at all puts the question away. That is the
- * cheapest guard there is: no dialogue to trap the focus in, nothing to
- * dismiss, and the record still gone in two presses when it is meant to be.
+ * Asked twice, because nothing brings the record back and the button stands in a
+ * row of twenty beside the one that merely opens it. The first press asks, the
+ * second does it, and the third control that appears beside it puts the question
+ * away. No dialogue: nothing to trap the focus in, nothing to dismiss with a
+ * key, and the record still gone in two presses when it is meant to be.
  *
- * The name of the record is in both accessible names, so a screen reader asking
- * "delete what?" is answered without having to read back up the row.
+ * The question stays where it was put, in its own row, until it is answered. It
+ * does not close when the list is searched or sorted: the rows are keyed by
+ * identity, so the question follows the record it names rather than the place it
+ * was standing, and a question that closed itself on the next keystroke would be
+ * one somebody had to ask twice.
+ *
+ * The name of the record is on all three, so a screen reader asking "delete
+ * what?" is answered without reading back up the row, and two rows asking at
+ * once are two different questions rather than two buttons called Odustani.
  */
 export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () => void }) {
   const { t } = useI18n()
@@ -261,7 +292,12 @@ export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () =>
       >
         {t('admin.form.deleteSure')}
       </button>
-      <button type="button" className="entity-open" onClick={() => setAsking(false)}>
+      <button
+        type="button"
+        className="entity-open"
+        aria-label={t('admin.form.keepNamed', { name })}
+        onClick={() => setAsking(false)}
+      >
         {t('admin.form.keep')}
       </button>
     </>

@@ -10,6 +10,7 @@ import {
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { useMayOpen, usePermittedQueues } from './mayOpen'
 import { usePending } from './pending'
 import { totalWaiting } from './queues'
 import '../member/Member.css'
@@ -23,6 +24,14 @@ const SCREENS = [
 export function Admin() {
   const { locale, t } = useI18n()
   const { submissions, decisions } = useSession()
+  /* The same two questions the navigation and the section ask, asked here too.
+     This screen was left behind when the rest of administration learned to show
+     a moderator only what he holds (owner, 30.07.2026): it counted all eight
+     queues while the header beside it counted his, and it offered the badges to
+     somebody with no right to them. */
+  const mayOpen = useMayOpen()
+  const queues = usePermittedQueues()
+  const screens = SCREENS.filter((screen) => mayOpen(screen.path))
   /* The counter used to hold pending results alone, so it said nought while the
    * entry beside it said how much was really waiting. Both numbers now come out
    * of countsFor, which is also what the navigation counts with: two numbers on
@@ -36,11 +45,14 @@ export function Admin() {
 
   return (
     <div className="member">
-      <h1>{t('admin.title')}</h1>
+      {/* Unseen, like every other administrative screen (owner, 30.07.2026):
+          the name is in the navigation and in the browser tab, and a page with
+          no name at all is one a screen reader cannot announce. */}
+      <h1 className="visually-hidden">{t('admin.title')}</h1>
 
       <Resource state={state}>
         {([[competitors, events, results], items]) => {
-          const waiting = totalWaiting({ pendingResults, items, decisions })
+          const waiting = totalWaiting({ pendingResults, items, decisions }, queues)
 
           return (
             <>
@@ -64,7 +76,7 @@ export function Admin() {
               </dl>
 
               <div className="member__links">
-                {SCREENS.map((screen) => (
+                {screens.map((screen) => (
                   <Link
                     key={screen.path}
                     className="button button--secondary"

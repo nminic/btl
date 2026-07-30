@@ -3,7 +3,7 @@
 /* Scoped rather than set on .button, because raising the specificity of that
    class would take the colour off every primary button on the portal. */
 .entity-editor > .button,
-.entity-actions > .button {
+.entity-bar > .button {
   font: inherit;
   cursor: pointer;
 }
@@ -24,13 +24,6 @@
 
 .entity-editor .form {
   inline-size: 100%;
-}
-
-.entity-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
 }
 
 /* Small enough to sit in a table row without stretching it. */

@@ -335,10 +335,16 @@ export function recordsOf<T extends object>(
   { edits, creations, deletions }: Overlay,
 ): T[] {
   const made = (creations[entity.id] ?? []).map((one) => recordFrom(entity, one) as T)
+  const gone = deletions[entity.id] ?? []
+  const identity = (one: T) => String((one as Record<string, unknown>)[entity.idField])
 
-  return [...made, ...base]
-    .filter((one) => !deletions.includes(String((one as Record<string, unknown>)[entity.idField])))
-    .map((one) =>
-      applyChanges(one, edits[String((one as Record<string, unknown>)[entity.idField])]),
-    )
+  /* Deletions are read past the generated records only. What was entered during
+     this visit is dropped when it is deleted (SessionProvider), so it is never
+     in here to be filtered; filtering it here as well would mean that entering a
+     member under a number that a deletion had just freed produced a member who
+     saved, confirmed, and was then not in the list, with the next member handed
+     the same number again, and again after that. */
+  return [...made, ...base.filter((one) => !gone.includes(identity(one)))].map((one) =>
+    applyChanges(one, edits[identity(one)]),
+  )
 }

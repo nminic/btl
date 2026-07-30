@@ -11,11 +11,16 @@ import { ruleSentence, type BadgeRule } from '../data/badgeRule'
 import { ENTITIES } from './admin/entityList'
 import { type PendingItem, type PendingQueueId } from './admin/pending'
 import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
+import { RIGHTS } from './admin/rights'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import { epcPayload, ipsPayload, methodsFor } from '../data/paymentQr'
 
 /** A session holding results in the states the panel has to tell apart. */
+/** Every box in the matrix ticked, for the tests about a screen doing its
+ *  work rather than about what a limited moderator runs into. */
+const EVERY_RIGHT = RIGHTS.map((right) => right.key)
+
 function sessionWith(states: SubmissionStatus[]): SessionValue {
   return {
     memberNumber: '000007',
@@ -59,8 +64,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     setRight: vi.fn(),
     decisions: {},
     settle: vi.fn(),
-  deletions: [],
-  remove: vi.fn(),
+    deletions: {},
+    remove: vi.fn(),
   }
 }
 
@@ -126,7 +131,9 @@ describe('the panel', () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <RoleProvider initialRole="moderator">
+          {/* Named, and holding everything: "a moderator" is nobody, and nobody
+              holds no rights and therefore reaches no queue (rights.ts). */}
+          <RoleProvider initialRole="moderator" initialModerator={moderatorWith(EVERY_RIGHT)}>
             <SessionContext.Provider value={sessionWith(['pending', 'pending', 'approved'])}>
               <Admin />
             </SessionContext.Provider>
@@ -140,7 +147,11 @@ describe('the panel', () => {
        queues read from the file. The tile counted the two while the navigation
        counted the lot, which is two numbers disagreeing on one screen. The sum
        is exact because the data is fixed: an "at least" here would survive the
-       counter losing a whole queue. */
+       counter losing a whole queue.
+
+       The moderator holds every right here, so the panel counts all eight. One
+       who held fewer would see fewer, which is the point of the number: it is
+       the work he can actually reach (owner, 30.07.2026). */
     expect(within(waiting).getByRole('definition')).toHaveTextContent('19')
   })
 })
@@ -1542,7 +1553,7 @@ describe('the section of entities', () => {
     const before = (await screen.findAllByRole('button', { name: /^Obriši:/ })).length
 
     await user.click(table().getAllByRole('button', { name: /^Obriši:/ })[0])
-    await user.click(table().getAllByRole('button', { name: 'Odustani' })[0])
+    await user.click(table().getByRole('button', { name: /^Odustani od brisanja:/ }))
 
     expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before)
     expect(table().queryByRole('button', { name: /^Potvrdi brisanje:/ })).not.toBeInTheDocument()

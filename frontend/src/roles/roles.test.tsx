@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
+import { SessionProvider } from '../session/SessionProvider'
 import { isMember, isStaff } from './context'
 import { RoleProvider } from './RoleProvider'
 import { RoleSwitch } from './RoleSwitch'
@@ -20,10 +21,14 @@ function CurrentRole() {
 function renderSwitch(initial?: 'visitor' | 'competitor' | 'moderator' | 'superadmin') {
   return render(
     <I18nProvider locale="sr">
-      <RoleProvider initialRole={initial}>
-        <RoleSwitch />
-        <CurrentRole />
-      </RoleProvider>
+      {/* The switch reads what administration has deleted, so a moderator who
+          has been removed stops being somebody it can become. */}
+      <SessionProvider>
+        <RoleProvider initialRole={initial}>
+          <RoleSwitch />
+          <CurrentRole />
+        </RoleProvider>
+      </SessionProvider>
     </I18nProvider>,
   )
 }

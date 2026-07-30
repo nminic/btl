@@ -2,6 +2,7 @@ import type { Moderator } from '../data/types'
 import { dataOr, useModerators } from '../data/useResource'
 import { devToolsEnabled } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
+import { useSession } from '../session/useSession'
 import { ROLES, type Role } from './context'
 import { initialsOf } from './initials'
 import { useRole } from './useRole'
@@ -33,7 +34,14 @@ function RoleChooser() {
      above every screen, and a development control must never be what holds a
      page up. Until it arrives the list of moderators is empty and the other
      three choices work. */
-  const moderators = dataOr(useModerators(), [])
+  const { deletions } = useSession()
+  /* Read through the overlay, deletions included. A moderator deleted on the
+     screen of moderators must not go on being somebody this switch can become:
+     a control that reads as revoking access and does not is worse than none.
+     What he holds is read off the record this switch hands over (rights.ts), so
+     leaving him selectable would leave every one of his rights standing. */
+  const gone = deletions.moderators ?? []
+  const moderators = dataOr(useModerators(), []).filter((one) => !gone.includes(one.id))
 
   return (
     <div className="role-switch">

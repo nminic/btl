@@ -23,11 +23,9 @@ export function AdminBadges() {
   if (editing !== null) {
     return (
       <div className="member">
-        {/* The name of the screen is in the navigation beside it and in the browser
-            tab. Here it was a heading and a sentence or two above the work, and the
-            moderator arrives having just read the name in the list he came from
-            (owner, 30.07.2026). It stays in the markup so the page has a name for
-            anyone who cannot see which entry is marked. */}
+      {/* The name of the screen is in the navigation beside it and in the
+          browser tab (owner, 30.07.2026). It stays in the markup so the page
+          has a name for anyone who cannot see which entry is marked. */}
         <h1 className="visually-hidden">{t('admin.badges')}</h1>
         <EntityEditor entity={BADGES} editing={editing} onDone={() => setEditing(null)} />
       </div>
