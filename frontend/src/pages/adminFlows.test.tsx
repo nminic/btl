@@ -431,23 +431,45 @@ describe('the queue of results', () => {
 })
 
 describe('verification', () => {
-  it('lists every queue, with the count each one holds and the screen behind it', async () => {
+  it('puts every queue in the navigation beside the work, with its count', async () => {
     renderAt('/sr/administracija/verifikacija', 'moderator')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Verifikacija' })).toBeVisible()
 
-    /* Every one of the eight leads somewhere now: a queue nobody can open is a
-       list of complaints rather than a place of work. The rows are in the order
-       of QUEUES, so the addresses can be checked against it one by one. */
-    const rows = within(screen.getByRole('main')).getAllByRole('listitem')
-    expect(rows).toHaveLength(QUEUES.length)
+    /* The section itself first, so a moderator inside a queue can get back to
+       what the section is, then the eight in the order of QUEUES. Every one of
+       them leads somewhere: a queue nobody can open is a list of complaints
+       rather than a place of work. */
+    const nav = within(screen.getByRole('navigation', { name: 'Verifikacija' }))
+    const rows = nav.getAllByRole('listitem')
+    expect(rows).toHaveLength(QUEUES.length + 1)
 
-    rows.forEach((row, index) => {
+    expect(within(rows[0]).getByRole('link')).toHaveAttribute(
+      'href',
+      '/sr/administracija/verifikacija',
+    )
+
+    rows.slice(1).forEach((row, index) => {
       expect(within(row).getByRole('link')).toHaveAttribute('href', `/sr/${QUEUES[index].path}`)
     })
 
-    const results = screen.getByRole('link', { name: /Rezultati/ })
-    expect(within(results).getByText('0')).toBeVisible()
+    // Nought is shown as well, unlike the badge in the header: here it is the
+    // answer to "is there anything left", and nothing is not an answer.
+    expect(within(nav.getByRole('link', { name: /Rezultati/ })).getByText('0')).toBeVisible()
+  })
+
+  it('says on the way in why each queue exists, which the navigation cannot', async () => {
+    renderAt('/sr/administracija/verifikacija', 'moderator')
+
+    await screen.findByRole('heading', { level: 1, name: 'Verifikacija' })
+
+    /* The eight rows of names and numbers that used to be here are in the
+       navigation now (owner, 30.07.2026), so no number on this portal is
+       written in two places. What is left is the one thing a navigation cannot
+       carry. */
+    const reasons = within(screen.getByRole('main'))
+    expect(reasons.getByRole('heading', { level: 2, name: 'Šta se gde odlučuje' })).toBeVisible()
+    expect(reasons.getByText('Rezultat ulazi u tabele tek posle odobrenja')).toBeVisible()
   })
 
   it('leads to the queue of results', async () => {
@@ -587,9 +609,8 @@ describe('verification', () => {
       expect(document.title).toContain('Uplate i aktivacija članova (administracija)'),
     )
 
-    await user.click(screen.getByRole('button', { name: 'Administracija' }))
-    await user.click(screen.getByRole('link', { name: /Verifikacija/ }))
-    await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
+    const nav = within(screen.getByRole('navigation', { name: 'Verifikacija' }))
+    await user.click(nav.getByRole('link', { name: /Rezultati/ }))
 
     await waitFor(() => expect(document.title).toContain('Rezultati (administracija)'))
   })
@@ -846,6 +867,14 @@ describe('the six queues read from the file', () => {
     return user
   }
 
+  /** The cards waiting on the screen, by the name of the heading over them. The
+   *  screen carries the navigation of the whole section beside it now, so a
+   *  list asked for without a name is one of two and neither says which. */
+  const waitingList = () => screen.getByRole('list', { name: /Čeka proveru/ })
+
+  /** The section standing beside the work, and the counts on it. */
+  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Verifikacija' }))
+
   it.each([
     ['leagues', 'Predložene lige', 2],
     ['teams', 'Novi timovi', 2],
@@ -915,7 +944,7 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
 
-    const card = within(within(screen.getByRole('list')).getAllByRole('listitem')[0])
+    const card = within(within(waitingList()).getAllByRole('listitem')[0])
 
     await user.click(card.getByRole('button', { name: 'Izmeni' }))
     const box = card.getByRole('textbox', { name: 'Tekst biografije' })
@@ -940,7 +969,7 @@ describe('the six queues read from the file', () => {
   it('publishes a biography nobody touched exactly as it came in', async () => {
     const user = await open('bios', 'Trkačke biografije')
 
-    const first = within(screen.getByRole('list')).getAllByRole('listitem')[0]
+    const first = within(waitingList()).getAllByRole('listitem')[0]
     // Two paragraphs with an empty line between them, which is what a biography
     // looks like and what has to survive being published untouched.
     const sent = within(first).getByText(/Rekreativac iz Čačka/).textContent
@@ -985,7 +1014,7 @@ describe('the six queues read from the file', () => {
     await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
 
     const card = within(
-      within(screen.getByRole('list')).getAllByRole('listitem').find((one) =>
+      within(waitingList()).getAllByRole('listitem').find((one) =>
         within(one).queryByText('Damjan Krstić') !== null,
       )!,
     )
@@ -1068,17 +1097,34 @@ describe('the six queues read from the file', () => {
     })
   })
 
-  it('drops the count in the queue and on the list of queues once approved', async () => {
+  it('drops the count beside the queue the moment the work is done', async () => {
+    /* What the owner asked for on 30.07.2026: the section stands beside the
+       work, and its numbers come down as the work is settled, without leaving
+       the screen. Before this the only place that said how much was left
+       anywhere was the list of queues, which meant walking back to it. */
     const user = await open('leagues', 'Predložene lige')
 
+    expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('2'))
+      .toBeVisible()
+
     await user.click(screen.getAllByRole('button', { name: 'Odobri' })[0])
+
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
+    expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('1'))
+      .toBeVisible()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Administracija' }))
-    await user.click(screen.getByRole('link', { name: /Verifikacija/ }))
+  it('leads from one queue straight to the next', async () => {
+    const user = await open('leagues', 'Predložene lige')
 
-    const row = await screen.findByRole('link', { name: /Predložene lige/ })
-    expect(within(row).getByText('1')).toBeVisible()
+    await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })).toBeVisible()
+    // And back to what the section is, which is the first entry.
+    expect(sectionNav().getByRole('link', { name: 'Verifikacija' })).toHaveAttribute(
+      'href',
+      '/sr/administracija/verifikacija',
+    )
   })
 
   it('will not send anything back without a reason', async () => {
@@ -1114,7 +1160,7 @@ describe('the six queues read from the file', () => {
   it('shows a biography of three and a half thousand characters whole', async () => {
     await open('bios', 'Trkačke biografije')
 
-    const cards = within(screen.getByRole('list')).getAllByRole('listitem')
+    const cards = within(waitingList()).getAllByRole('listitem')
     const longest = cards.map((card) => card.textContent).sort((a, b) => b.length - a.length)[0]
 
     // People really do write this much about themselves, and the card wraps it
@@ -1162,7 +1208,7 @@ describe('the six queues read from the file', () => {
 
   it('keeps the focus on the card in both directions', async () => {
     const user = await open('photos', 'Profilne slike')
-    const cards = within(screen.getByRole('list')).getAllByRole('listitem')
+    const cards = within(waitingList()).getAllByRole('listitem')
     const second = within(cards[1])
 
     /* The box takes the place of the buttons of its own card, so both directions
@@ -1259,7 +1305,11 @@ describe('countsFor', () => {
   })
 })
 
-describe('the list of entities', () => {
+describe('the section of entities', () => {
+  /** The section standing beside the work, which is where the entities are now
+   *  (owner, 30.07.2026). */
+  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Entiteti' }))
+
   it('offers every entity administration owns, screen or not', async () => {
     renderAt('/sr/administracija/entiteti', 'superadmin')
 
@@ -1278,41 +1328,84 @@ describe('the list of entities', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Entiteti' })).toBeVisible()
     expect(names).toHaveLength(ENTITIES.length)
 
-    // Inside the screen, not the whole page: the navigation carries entries of
-    // its own with the same words on them, Timovi among them.
-    const page = within(screen.getByRole('main'))
+    const nav = sectionNav()
 
     for (const name of names) {
-      expect(page.getByRole('link', { name })).toBeVisible()
+      expect(nav.getByRole('link', { name })).toBeVisible()
     }
 
-    expect(page.getByRole('link', { name: 'Članovi' })).toHaveAttribute(
+    expect(nav.getByRole('link', { name: 'Članovi' })).toHaveAttribute(
       'href',
       '/sr/administracija/clanovi',
     )
   })
 
-  it('leaves moderators off it for a moderator, who may not assign rights', async () => {
-    /* The one entity the two roles do not share. A tile that answers "this is
-       not for you" is worse than no tile: it tells somebody there is a screen
-       they are being kept out of, on the screen whose whole job is to say what
-       there is (PDL P21). */
-    renderAt('/sr/administracija/entiteti', 'moderator')
+  it('stays beside the entity being worked on', async () => {
+    /* The point of moving them out of the screen and into a navigation: opening
+       a second entity was a trip back through the list of entities every time. */
+    renderAt('/sr/administracija/clanovi', 'superadmin')
 
-    const page = within(await screen.findByRole('main'))
+    await screen.findByRole('heading', { level: 1, name: 'Članovi' })
 
-    expect(page.getByRole('link', { name: 'Članovi' })).toBeVisible()
-    expect(page.queryByRole('link', { name: 'Moderatori' })).not.toBeInTheDocument()
+    expect(sectionNav().getByRole('link', { name: 'Cenovnik' })).toBeVisible()
   })
 
-  it('opens an entity from the list', async () => {
+  it('leaves moderators off it for a moderator, who may not assign rights', async () => {
+    /* The one entity the two roles do not share. An entry that answers "this is
+       not for you" is worse than no entry: it tells somebody there is a screen
+       they are being kept out of (PDL P21). */
+    renderAt('/sr/administracija/entiteti', 'moderator')
+
+    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+    const nav = sectionNav()
+
+    expect(nav.getByRole('link', { name: 'Članovi' })).toBeVisible()
+    expect(nav.queryByRole('link', { name: 'Moderatori' })).not.toBeInTheDocument()
+  })
+
+  it('opens an entity from the section', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/entiteti', 'superadmin')
 
-    await user.click(await screen.findByRole('link', { name: 'Statične strane' }))
+    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+    await user.click(sectionNav().getByRole('link', { name: 'Statične strane' }))
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Statične strane' }),
     ).toBeVisible()
+  })
+
+  it('carries no count, because nothing about an entity is waiting', async () => {
+    /* How many members there are is not work to be done, and a number beside
+       every entity would mean loading all nine files to draw a navigation. */
+    renderAt('/sr/administracija/entiteti', 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+
+    expect(sectionNav().getByRole('link', { name: 'Članovi' }).textContent).toBe('Članovi')
+  })
+
+  it('folds behind a button, for the telephone where it would push the work off', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/entiteti', 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: 'Entiteti' })
+
+    /* One button, closed to begin with. Which of the two the screen is wide
+       enough for is a question for the stylesheet; what has to be true here is
+       that the button says whether the list is open, and that following an
+       entry closes it again rather than leaving it over the screen it just
+       opened. */
+    const toggle = screen.getByRole('button', { name: 'Entiteti' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(sectionNav().getByRole('link', { name: 'Cenovnik' }))
+    expect(screen.getByRole('button', { name: 'Entiteti' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 })

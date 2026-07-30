@@ -1064,11 +1064,13 @@
   },
   "entities": {
     "title": "Entiteti",
-    "intro": "Sve što administracija kreira, menja i briše, na jednom mestu."
+    "intro": "Sve što administracija kreira, menja i briše, na jednom mestu.",
+    "pickOne": "Entitet se otvara sa spiska sa strane i ostaje otvoren dok radiš; spisak stoji uz svaki ekran, pa se sa jednog entiteta prelazi pravo na drugi."
   },
   "verification": {
     "title": "Verifikacija",
     "intro": "Sve što čeka odobrenje moderatora ili superadmina, na jednom mestu.",
+    "whatIsWhere": "Šta se gde odlučuje",
     "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",
     "subject": "Predmet",

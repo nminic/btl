@@ -1,31 +1,26 @@
-import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
-import { useRole } from '../../roles/useRole'
-import { entitiesForRole } from './entityList'
 import '../member/Member.css'
 
-/** One place that lists everything administration owns, so nothing hides behind
- *  a link on some other screen (PDL P28a). */
+/**
+ * What the section is, on the way into it.
+ *
+ * The entities themselves are in the navigation beside this and beside every
+ * screen behind it (SectionNav, owner 30.07.2026). They used to be a row of
+ * buttons here, which meant that opening a second entity was always a trip back
+ * through this screen.
+ *
+ * Which of them a role may open is decided in one place, entitiesForRole, and
+ * the navigation is drawn from it: a moderator is shown eight, the superadmin
+ * nine (PDL P21).
+ */
 export function Entities() {
-  const { locale, t } = useI18n()
-  const { role } = useRole()
+  const { t } = useI18n()
 
   return (
     <div className="member">
       <h1>{t('entities.title')}</h1>
       <p className="member__note">{t('entities.intro')}</p>
-
-      <div className="member__links">
-        {entitiesForRole(role).map((entity) => (
-          <Link
-            key={entity.path}
-            className="button button--secondary"
-            to={`/${locale}/${entity.path}`}
-          >
-            {t(entity.labelKey)}
-          </Link>
-        ))}
-      </div>
+      <p className="member__note">{t('entities.pickOne')}</p>
     </div>
   )
 }

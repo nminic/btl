@@ -21,8 +21,10 @@ import { Registration } from '../pages/Registration'
 import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
 import { Entities } from '../pages/admin/Entities'
+import { ENTITY_FORMS } from '../pages/admin/entityForms'
 import { Guard } from '../pages/admin/Guard'
 import { needFor } from '../pages/admin/needs'
+import { EntitiesSection, VerificationSection } from '../pages/admin/SectionNav'
 import { Verification } from '../pages/admin/Verification'
 import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
@@ -35,7 +37,7 @@ import { AdminRaces } from '../pages/admin/AdminRaces'
 import { AdminTeams } from '../pages/admin/AdminTeams'
 import { Payments } from '../pages/admin/Payments'
 import { PendingQueue } from '../pages/admin/PendingQueue'
-import { QUEUE } from '../pages/admin/queues'
+import { QUEUE, QUEUES } from '../pages/admin/queues'
 import { ReviewQueue } from '../pages/admin/ReviewQueue'
 import { Membership } from '../pages/member/Membership'
 import { MessageDetail } from '../pages/member/MessageDetail'
@@ -97,18 +99,49 @@ export function screenFor(route: RouteDef): ReactElement {
   return SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />
 }
 
+/* Which administrative section an address belongs to, read off the same two
+ * lists the guards and the rights matrix are read off. A tenth entity or a
+ * ninth queue therefore appears inside its section on the day it is added,
+ * rather than on the day somebody remembers a third list. */
+const VERIFICATION_PATHS = new Set([
+  'administracija/verifikacija',
+  ...QUEUES.map((queue) => queue.path),
+])
+
+const ENTITY_PATHS = new Set(['administracija/entiteti', ...ENTITY_FORMS.map((one) => one.path)])
+
+/** The screen with its section standing beside it, where it is in one (owner,
+ *  30.07.2026). Everything else is handed through untouched. */
+function inSection(path: string, screen: ReactElement): ReactElement {
+  if (VERIFICATION_PATHS.has(path)) {
+    return <VerificationSection>{screen}</VerificationSection>
+  }
+
+  if (ENTITY_PATHS.has(path)) {
+    return <EntitiesSection>{screen}</EntitiesSection>
+  }
+
+  return screen
+}
+
 /**
- * The screen at an address, with the door its address asks for.
+ * The screen at an address, with the door its address asks for and the section
+ * it belongs to.
  *
  * Here rather than inside the screens, so that adding a fifteenth administrative
  * screen cannot mean adding a fifteenth check and forgetting what it should ask
  * for. Every address outside administration asks for nothing and is handed
  * through untouched (needs.ts).
+ *
+ * The door is outside the section: somebody who may not open a screen is not
+ * shown the section it is in either. A refusal that came with a working
+ * navigation would be an inventory of the rooms somebody is being kept out of.
  */
 function guarded(path: string, screen: ReactElement): ReactElement {
   const need = needFor(path)
+  const inside = inSection(path, screen)
 
-  return need === undefined ? screen : <Guard need={need}>{screen}</Guard>
+  return need === undefined ? inside : <Guard need={need}>{inside}</Guard>
 }
 
 /* Detail screens. They are addresses, not navigation entries, so they are not

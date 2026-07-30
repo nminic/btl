@@ -1,33 +1,26 @@
-import { Link } from 'react-router'
-import { dataOr, failed } from '../../data/useResource'
-import { formatNumber } from '../../i18n/format'
+import { failed } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { usePending } from './pending'
-import { countsFor, QUEUES } from './queues'
+import { QUEUES } from './queues'
 import '../member/Member.css'
 
 /**
- * Everything waiting for a moderator or the superadmin, as one list (PDL P28a).
- * Every row leads to the screen where the work is done, and the number on it
- * comes from countsFor, which is also what the navigation counts with.
+ * What the section is, on the way into it.
  *
- * The file is read for what it is worth rather than waited for, exactly as the
- * header reads it (src/app/Shell.tsx). A failure used to take the whole screen
- * down, including the row of results, which is counted from the session and does
- * not depend on the file at all. What a failure must not do is pass silently, so
- * it is said out loud instead.
+ * The eight queues themselves, and how much is waiting in each, are in the
+ * navigation beside this and beside every screen behind it (SectionNav, owner
+ * 30.07.2026). They used to be here, as a list of rows with the same numbers on
+ * them, and that list was the only place on the portal that said how much was
+ * left anywhere else: a moderator settling the last picture had to come back
+ * here to find out what to do next.
+ *
+ * What is left here is the one thing a navigation cannot carry: why each queue
+ * exists at all. Eight names and eight sentences, and not one number, so no
+ * number on this portal is written in two places.
  */
 export function Verification() {
-  const { locale, t } = useI18n()
-  const { submissions, decisions } = useSession()
+  const { t } = useI18n()
   const items = usePending()
-
-  const counts = countsFor({
-    pendingResults: submissions.filter((one) => one.status === 'pending').length,
-    items: dataOr(items, []),
-    decisions,
-  })
 
   return (
     <div className="member">
@@ -49,25 +42,16 @@ export function Verification() {
         </p>
       )}
 
-      <ul className="queues">
-        {QUEUES.map((queue) => {
-          const count = counts[queue.id]
+      <h2>{t('verification.whatIsWhere')}</h2>
 
-          return (
-            <li key={queue.id} className="queues__item">
-              <Link className="queues__row" to={`/${locale}/${queue.path}`}>
-                <span className="queues__name">{t(queue.labelKey)}</span>
-                <span
-                  className={count > 0 ? 'queues__count queues__count--waiting' : 'queues__count'}
-                >
-                  {formatNumber(count, locale)}
-                </span>
-                <span className="queues__source">{t(queue.sourceKey)}</span>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      <dl className="queues__reasons">
+        {QUEUES.map((queue) => (
+          <div key={queue.id}>
+            <dt>{t(queue.labelKey)}</dt>
+            <dd>{t(queue.sourceKey)}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

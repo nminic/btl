@@ -1,0 +1,129 @@
+/* The column that stands beside administrative work. Same shape as the
+   rulebook's list of articles, which is the one the owner asked for: folded
+   behind a button on a telephone, standing and staying put from tablet up. */
+
+.adminsection {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+.adminsection__toggle {
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--fast);
+}
+
+.adminsection__toggle:hover {
+  border-color: var(--accent);
+}
+
+.adminsection__panel {
+  display: none;
+  padding: 0.5rem 0.25rem;
+}
+
+.adminsection__panel--open {
+  display: block;
+}
+
+.adminsection__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.adminsection__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid transparent;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.adminsection__link:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* The screen in view is marked three ways at once: the mark react-router puts
+   in the markup, a weight the eye catches, and a bar down the side. Colour
+   alone would not carry it. */
+.adminsection__link.active {
+  background: var(--surface-hover);
+  border-left-color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.adminsection__name {
+  min-width: 0;
+}
+
+.adminsection__count {
+  flex: none;
+  min-width: 1.8rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+/* Only while something is actually waiting. A queue that is done reads as a
+   quiet nought rather than as one more thing shouting for attention. */
+.adminsection__count--waiting {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.adminsection__body {
+  min-width: 0;
+}
+
+/* From tablet up the section stands beside the work and follows it down the
+   page, and the button that opened it stops existing. */
+@media (min-width: 820px) {
+  .adminsection {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .adminsection__toggle {
+    display: none;
+  }
+
+  .adminsection__panel {
+    display: block;
+    padding: 0;
+  }
+
+  .adminsection__nav {
+    position: sticky;
+    top: 1rem;
+    /* Nine entries plus the section itself are taller than a short window, so
+       the list scrolls inside itself rather than running off the screen. */
+    max-height: calc(100svh - 2rem);
+    overflow-y: auto;
+  }
+}
