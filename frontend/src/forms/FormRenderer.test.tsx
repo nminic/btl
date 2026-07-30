@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderWithI18n } from '../test/render'
+import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
 import type { FormDef } from './types'
@@ -67,7 +67,7 @@ describe('FormRenderer', () => {
   })
 
   it('refuses to submit a broken form and describes each error', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const onSubmit = vi.fn()
     renderWithI18n(<FormRenderer form={everyType} onSubmit={onSubmit} />)
 
@@ -82,7 +82,7 @@ describe('FormRenderer', () => {
   })
 
   it('announces the failure and links to every broken field', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('FormRenderer', () => {
   })
 
   it('clears a field error as soon as the field is touched', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -113,7 +113,7 @@ describe('FormRenderer', () => {
   })
 
   it('submits the values once the form is correct', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const onSubmit = vi.fn()
     renderWithI18n(<FormRenderer form={everyType} onSubmit={onSubmit} />)
 
@@ -129,7 +129,7 @@ describe('FormRenderer', () => {
   })
 
   it('submits trimmed values', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const onSubmit = vi.fn()
     renderWithI18n(<FormRenderer form={everyType} onSubmit={onSubmit} />)
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { memo, useCallback, useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import type {
   DerivedField,
@@ -41,7 +41,20 @@ type Props = {
   derived?: (values: FormValues) => DerivedField[]
 }
 
-function Field({
+/* One field, drawn again only when something about that field changed.
+ *
+ * A form keeps all its values in one place, so without this every keystroke
+ * redraws every field on the form. That is free on a form of eight text boxes and
+ * it is not free on the race form, whose one select offers all twelve hundred
+ * events: typing a race name rebuilt twelve hundred options per letter. It is the
+ * administrator who pays for that, in a browser, with a form that answers late.
+ *
+ * What it takes is that the props hold still: the change handler is made once by
+ * the form (rather than per field per render), the choices for a field that has
+ * none are one shared empty list (src/forms/records.ts), and everything else a
+ * field is given is either its own value or its own error.
+ */
+const Field = memo(function Field({
   field,
   value,
   error,
@@ -52,9 +65,10 @@ function Field({
   value: string | boolean
   error: FieldError | undefined
   choices: FieldOption[]
-  onChange: (value: string | boolean) => void
+  onChange: (field: FieldDef, value: string | boolean) => void
 }) {
   const { t } = useI18n()
+  const change = useCallback((next: string | boolean) => onChange(field, next), [field, onChange])
   const inputId = `field-${field.name}`
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
@@ -77,7 +91,7 @@ function Field({
             {...shared}
             type="checkbox"
             checked={value === true}
-            onChange={(e) => onChange(e.target.checked)}
+            onChange={(e) => change(e.target.checked)}
           />
           <label className="field__label" htmlFor={inputId}>
             {t(field.labelKey)}
@@ -114,7 +128,7 @@ function Field({
       )}
 
       {field.type === 'country' && (
-        <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
+        <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
           <option value="">{t('form.choose')}</option>
           {/* The region first, because nine members in ten pick one of these. */}
           <optgroup label={t('form.region')}>
@@ -139,12 +153,12 @@ function Field({
           {...shared}
           type="file"
           accept="image/*"
-          onChange={(e) => onChange(e.target.files?.[0]?.name ?? '')}
+          onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
         />
       )}
 
       {field.type === 'select' && (
-        <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
+        <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
           <option value="">{t('form.choose')}</option>
           {choices.map((option) => (
             <option key={option.value} value={option.value}>
@@ -155,7 +169,7 @@ function Field({
       )}
 
       {field.type === 'textarea' && (
-        <textarea {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)} />
+        <textarea {...shared} value={String(value)} onChange={(e) => change(e.target.value)} />
       )}
 
       {field.type === 'date' && (
@@ -165,12 +179,12 @@ function Field({
           value={String(value)}
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
-          onChange={onChange}
+          onChange={change}
         />
       )}
 
       {field.type === 'time' && (
-        <input {...shared} type="time" value={String(value)} onChange={(e) => onChange(e.target.value)} />
+        <input {...shared} type="time" value={String(value)} onChange={(e) => change(e.target.value)} />
       )}
 
       {(field.type === 'text' ||
@@ -181,7 +195,7 @@ function Field({
           {...shared}
           type={field.type}
           value={String(value)}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => change(e.target.value)}
         />
       )}
 
@@ -192,7 +206,7 @@ function Field({
       )}
     </div>
   )
-}
+})
 
 export function FormRenderer({
   form,
@@ -226,12 +240,16 @@ export function FormRenderer({
     }
   }
 
-  function handleChange(field: FieldDef, next: string | boolean) {
+  /* Made once for the whole form, not once per field per redraw: a field that is
+     handed a new handler every time counts as changed and redraws with it, which
+     is the one thing the memo above cannot see through. Both setters are stable
+     and both updates read the current state, so there is nothing to depend on. */
+  const handleChange = useCallback((field: FieldDef, next: string | boolean) => {
     setValues((current) => ({ ...current, [field.name]: next }))
     // The message goes away as soon as the field is touched. Leaving it up
     // tells a screen reader the field is still wrong after it was fixed.
     setErrors(({ [field.name]: _fixed, ...rest }) => rest)
-  }
+  }, [])
 
   /* The form is named after its own heading, so it is a region a screen reader
    * can be taken to and land in, rather than a run of fields in the page. */
@@ -269,7 +287,7 @@ export function FormRenderer({
           value={values[field.name]}
           error={errors[field.name]}
           choices={optionsFor(field, options)}
-          onChange={(next) => handleChange(field, next)}
+          onChange={handleChange}
         />
       ))}
 

@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import type { RaceCategory } from '../data/types'
 import { CategoryDonut } from './CategoryDonut'
@@ -31,7 +31,7 @@ describe('CategoryDonut', () => {
   })
 
   it('dims the other lengths while one is pointed at', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderDonut(new Map<RaceCategory, number>([['short', 2], ['half', 2]]))
 
     const rows = within(screen.getByRole('table')).getAllByRole('row')

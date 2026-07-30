@@ -1,11 +1,11 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from './admin/badgeRule'
 import { ENTITIES } from './admin/entityList'
@@ -121,7 +121,7 @@ describe('members', () => {
   })
 
   it('searches', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     await user.type(await screen.findByLabelText('Pretraga'), '000001')
@@ -134,7 +134,7 @@ describe('members', () => {
 
 describe('events', () => {
   it('opens on what is still ahead, and searches the whole calendar', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Događaji' })
@@ -161,7 +161,7 @@ describe('the price list', () => {
 
 describe('the badge rule editor', () => {
   it('builds a rule from closed lists and reads it back as a sentence', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/znacke', 'superadmin')
 
     expect(await screen.findByText(/broj trka bude najmanje 10/)).toBeVisible()
@@ -278,7 +278,7 @@ describe('payment payloads', () => {
 
 describe('the badge rule dates', () => {
   it('narrows the rule to a range and back again', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/znacke', 'superadmin')
 
     await user.type(await screen.findByLabelText('Od datuma'), '2027-01-01')
@@ -292,7 +292,7 @@ describe('the badge rule dates', () => {
   })
 
   it('takes a value that is typed rather than chosen', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/znacke', 'superadmin')
 
     const value = await screen.findByLabelText('Vrednost')
@@ -315,7 +315,7 @@ describe('an empty queue', () => {
 
 describe('the queue of results', () => {
   const openWith = (states: SubmissionStatus[]) => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const session = sessionWith(states)
 
     render(
@@ -395,7 +395,7 @@ describe('verification', () => {
   })
 
   it('leads to the queue of results', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/verifikacija', 'superadmin')
 
     await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
@@ -406,7 +406,7 @@ describe('verification', () => {
   })
 
   it('counts a result from the moment it is sent in', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
@@ -437,7 +437,7 @@ describe('verification', () => {
   })
 
   it('counts no more beside a queue than the screen behind it can show', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const served = globalThis.fetch
     /* A date whose freshness clock has run out is under check as well (PDL P10),
        and the calendar used to be counted towards this queue for it. The screen
@@ -498,7 +498,7 @@ describe('verification', () => {
   })
 
   it('gives every queue its own name in the browser tab', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
 
     /* Eight addresses used to share one name, so eight tabs, eight history
@@ -515,7 +515,7 @@ describe('verification', () => {
   })
 
   it('says nothing beside Verification while nothing is waiting', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const served = globalThis.fetch
     // An empty league has nothing to approve, and a zero beside a name is noise.
     vi.stubGlobal('fetch', async () => new Response('[]', { status: 200 }))
@@ -537,7 +537,7 @@ describe('verification', () => {
  * it back saying why. */
 describe('the queue of memberships waiting to be activated', () => {
   const openPayments = async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
     await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
 
@@ -669,7 +669,7 @@ describe('the queue of memberships waiting to be activated', () => {
 
 describe('the six queues read from the file', () => {
   const open = async (queue: PendingQueueId, title: string) => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt(`/sr/${QUEUE[queue].path}`, 'moderator')
     await screen.findByRole('heading', { level: 1, name: title })
 
@@ -926,7 +926,7 @@ describe('the list of entities', () => {
   })
 
   it('opens an entity from the list', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/entiteti', 'superadmin')
 
     await user.click(await screen.findByRole('link', { name: 'Statične strane' }))

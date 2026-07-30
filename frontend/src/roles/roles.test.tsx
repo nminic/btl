@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { isMember, isStaff } from './context'
 import { roleSwitchEnabled } from './devTools'
@@ -62,7 +62,7 @@ describe('useRole', () => {
 
 describe('RoleSwitch', () => {
   it('changes the role', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderSwitch()
 
     await user.selectOptions(screen.getByLabelText('Uloga'), 'superadmin')

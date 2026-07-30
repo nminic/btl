@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 describe('Calendar', () => {
   it('opens on a month that has something in it', async () => {
@@ -20,7 +20,7 @@ describe('Calendar', () => {
   })
 
   it('walks to the previous and the next month', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/kalendar?mesec=2027-05')
 
     await user.click(await screen.findByRole('button', { name: 'Sledeći mesec' }))
@@ -41,7 +41,7 @@ describe('Calendar', () => {
   })
 
   it('opens a day from its date and closes it again', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/kalendar?mesec=2027-05')
 
     const dayButtons = await screen.findAllByRole('button', { name: /Prikaži ceo dan/ })
@@ -55,7 +55,7 @@ describe('Calendar', () => {
   })
 
   it('shows an empty day as empty when its date is opened', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/kalendar?mesec=2029-01')
 
     const dayButtons = await screen.findAllByRole('button', { name: /Prikaži ceo dan/ })
@@ -65,7 +65,7 @@ describe('Calendar', () => {
   })
 
   it('collapses a crowded day behind a button that opens it', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     // 1 June 2019 holds six events, more than a cell shows.
     renderAt('/sr/kalendar?mesec=2019-06')
 
@@ -77,7 +77,7 @@ describe('Calendar', () => {
   })
 
   it('leads from a chip to the event', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/kalendar?mesec=2027-05')
 
     await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })

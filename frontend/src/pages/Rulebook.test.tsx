@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 const TITLE = 'Pravilnik takmičenja BTL 2027'
 
@@ -49,7 +49,7 @@ describe('the rulebook', () => {
   })
 
   it('opens and closes the list of sections on a phone', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     await openRulebook()
 
     const button = screen.getByRole('button', { name: 'Sekcije pravilnika' })

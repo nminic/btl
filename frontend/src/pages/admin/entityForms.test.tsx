@@ -1,9 +1,9 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { renderAt } from '../../test/render'
+import { setupUser } from '../../test/user'
 import { QUANTITIES } from './badgeRule'
 import {
   BADGES,
@@ -82,7 +82,7 @@ const ALL: Screen[] = [...SCREENS, { entity: BADGES, path: 'administracija/znack
 
 describe('every entity has a form for a record that does not exist yet', () => {
   it.each(ALL)('$path opens one with every field the entity has', async ({ entity, path }) => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t(`admin.form.new.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
 
@@ -96,7 +96,7 @@ describe('every entity has a form for a record that does not exist yet', () => {
   })
 
   it.each(ALL)('$path refuses to save an empty obligatory field', async ({ entity, path }) => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t(`admin.form.new.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
 
@@ -118,7 +118,7 @@ describe('every entity has a form for a record that does not exist yet', () => {
 
 describe('every entity can be opened and changed whole', () => {
   it.each(SCREENS)('$path keeps the change after the way back', async ({ entity, path, list }) => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const changed = 'Provera unosa'
     const title = t(`admin.form.edit.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
@@ -152,7 +152,7 @@ describe('every entity can be opened and changed whole', () => {
 
 describe('the confirmation that a record was saved', () => {
   it('takes the focus, because the form it replaced had it', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.edit.teams')
     renderAt('/sr/administracija/timovi', 'superadmin')
 
@@ -182,7 +182,7 @@ describe('a competitor', () => {
 
 describe('a record that is entered rather than changed', () => {
   it('joins the list it was entered on, and carries every field it was given', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.new.members')
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
@@ -232,7 +232,7 @@ describe('a record that is entered rather than changed', () => {
   })
 
   it('is listed on the badge screen, which has no other records at all', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.new.badges')
     renderAt('/sr/administracija/znacke', 'superadmin')
 
@@ -270,7 +270,7 @@ describe('a record that is entered rather than changed', () => {
 
 describe('the identity of a record', () => {
   it('is refused when it belongs to somebody already, beside the field', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.new.members')
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
@@ -318,7 +318,7 @@ describe('the identity of a record', () => {
   })
 
   it('is refused for a written page whose address answers already', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.new.pages')
     renderAt('/sr/administracija/strane', 'superadmin')
 
@@ -336,7 +336,7 @@ describe('the identity of a record', () => {
   })
 
   it('does not stand in the way of the record it belongs to', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.edit.members')
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
@@ -356,7 +356,7 @@ describe('the identity of a record', () => {
 
 describe('the category of a race', () => {
   it('is read off the distance rather than asked for, and says where it comes from', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.new.races')
     renderAt('/sr/administracija/trke', 'superadmin')
 
@@ -397,7 +397,7 @@ describe('the category of a race', () => {
   })
 
   it('is a hundred metres short of a marathon and says so', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const title = t('admin.form.new.races')
     renderAt('/sr/administracija/trke', 'superadmin')
 
@@ -413,7 +413,7 @@ describe('the category of a race', () => {
 
 describe('a written page nobody has written yet', () => {
   it('is listed, and its form opens empty instead of throwing', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/pages.json')

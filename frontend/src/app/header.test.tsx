@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { SessionContext, type Message, type SessionValue } from '../session/context'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { monogramFor } from './monogram'
 import { MailIcon } from './icons'
 import { MessagesMenu } from './MessagesMenu'
@@ -25,7 +25,7 @@ function panelOf(triggerName: string | RegExp) {
 
 describe('the brand', () => {
   it('says the whole name and the slogan, and leads home', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/timovi')
 
     const brand = await screen.findByRole('link', { name: 'Naslovna strana' })
@@ -42,7 +42,7 @@ describe('the brand', () => {
 
 describe('a panel that opens under a button', () => {
   it('opens and closes from its own button, and says which panel it controls', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Statistike' })
@@ -59,7 +59,7 @@ describe('a panel that opens under a button', () => {
   })
 
   it('closes on Escape', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Statistike' })
@@ -70,7 +70,7 @@ describe('a panel that opens under a button', () => {
   })
 
   it('hands the focus back to its own button on Escape', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Statistike' })
@@ -96,7 +96,7 @@ describe('a panel that opens under a button', () => {
   })
 
   it('leaves a key it does not handle alone', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Statistike' })
@@ -107,7 +107,7 @@ describe('a panel that opens under a button', () => {
   })
 
   it('closes when something outside it is clicked', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Statistike' })
@@ -118,7 +118,7 @@ describe('a panel that opens under a button', () => {
   })
 
   it('stays open while something inside it is clicked', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
@@ -165,7 +165,7 @@ describe('the account menu', () => {
   })
 
   it('shows the monogram and the name of whoever is signed in', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
@@ -176,7 +176,7 @@ describe('the account menu', () => {
   })
 
   it('falls back to the member number when there is no such member', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', 'M9999')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
@@ -187,7 +187,7 @@ describe('the account menu', () => {
   })
 
   it('closes itself when one of its links is followed', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
@@ -199,7 +199,7 @@ describe('the account menu', () => {
   })
 
   it('signs out from the menu', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
@@ -220,7 +220,7 @@ describe('the inbox in the header', () => {
   })
 
   it('lists what arrived, newest first, and opens one of them', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
@@ -234,7 +234,7 @@ describe('the inbox in the header', () => {
   })
 
   it('leads to the whole inbox', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
@@ -244,7 +244,7 @@ describe('the inbox in the header', () => {
   })
 
   it('says so when there is nothing in it', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderInbox([])
 
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))

@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
@@ -77,7 +77,7 @@ describe('Home', () => {
   })
 
   it('works the calculator, and waits quietly until it can answer', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const calc = (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest(

@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 /* The four screens behind Entities: races, teams, leagues and the written
  * pages. Each one is checked for what it is there to show, for the case that
@@ -21,7 +21,7 @@ describe('races', () => {
   })
 
   it('narrows the list by a search', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/trke', 'superadmin')
 
     const before = (await table('Trke')).getAllByRole('row').length
@@ -31,7 +31,7 @@ describe('races', () => {
   })
 
   it('says out loud that the list is cut off, and stops saying it once it is not', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/trke', 'superadmin')
 
     await table('Trke')
@@ -102,7 +102,7 @@ describe('the written pages', () => {
   })
 
   it('changes a title in place', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/strane', 'superadmin')
 
     const rows = await table('Statične strane')
