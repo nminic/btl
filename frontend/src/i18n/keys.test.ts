@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
+import { QUEUES } from '../pages/admin/queues'
 import type { FormDef } from '../forms/types'
 import sr from './sr.json'
 import { translate, type Dictionary } from './translate'
@@ -74,6 +77,48 @@ describe('the seo entry of every address', () => {
     )
 
     expect(repeated).toEqual([])
+  })
+
+  it('names each of the eight queues, within the same 160 characters', () => {
+    /* The eight queues share one address pattern, so their words are composed
+       rather than written out (QueueMeta). A search engine cuts a description at
+       the same place whether it was composed or not. */
+    const composed = QUEUES.map((queue) => ({
+      title: translate(dictionary, 'sr', 'seo.verificationQueue.queueTitle', {
+        name: translate(dictionary, 'sr', queue.labelKey),
+      }),
+      description: translate(dictionary, 'sr', 'seo.verificationQueue.queueDescription', {
+        name: translate(dictionary, 'sr', queue.labelKey),
+        source: translate(dictionary, 'sr', queue.sourceKey),
+      }),
+    }))
+
+    expect(new Set(composed.map((one) => one.title)).size).toBe(QUEUES.length)
+    expect(composed.filter((one) => one.description.length > 160)).toEqual([])
+    expect(composed.filter((one) => one.title.includes('{'))).toEqual([])
+  })
+
+  it('calls the boards what the rulebook and the navigation call them', () => {
+    /* "Rang liste" and "top liste" are no longer two names for one page: it is
+       the Top 10 liste, in the navigation and in Article 56 alike (PDL P28a). The
+       description of the home page still counted the boards among the "rang
+       liste", which puts the retired name in front of every visitor and in every
+       search result. */
+    expect(translate(dictionary, 'sr', 'seo.home.description')).toContain('Top 10 liste')
+
+    const sentences = SEO_KEYS.map((key) => translate(dictionary, 'sr', `seo.${key}.description`))
+    expect(sentences.filter((text) => text.includes('rang liste'))).toEqual([])
+  })
+
+  it('says the same thing in index.html, which is served before React runs', () => {
+    /* The three tags in index.html are the same sentence as the home page's, and
+       they are what a reader sees in the tab and what a client running no
+       JavaScript ends up with. They are written out twice by necessity, so they
+       are held together here. */
+    const page = readFileSync(join(process.cwd(), 'index.html'), 'utf-8')
+    const sentence = translate(dictionary, 'sr', 'seo.home.description')
+
+    expect(page.split(sentence)).toHaveLength(4)
   })
 
   it('names each of the five records after the record itself', () => {

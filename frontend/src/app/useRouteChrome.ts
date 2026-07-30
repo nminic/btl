@@ -59,7 +59,6 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
       description,
       siteName: t('app.name'),
       path,
-      locale,
       textLocale: dictionaryLocale(locale),
     })
   }, [title, description, path, locale, t])

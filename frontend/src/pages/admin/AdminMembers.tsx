@@ -41,7 +41,15 @@ export function AdminMembers() {
 
           if (editing !== null) {
             return (
-              <EntityEditor entity={MEMBERS} editing={editing} onDone={() => setEditing(null)} />
+              <EntityEditor
+                entity={MEMBERS}
+                editing={editing}
+                /* A member number is unique (PDL P8), so the form has to know
+                   which ones are gone. Without it two members answered to one
+                   number and one change reached both. */
+                taken={all.map((one) => String(one.memberNumber))}
+                onDone={() => setEditing(null)}
+              />
             )
           }
 

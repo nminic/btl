@@ -8,7 +8,7 @@
   "seo": {
     "home": {
       "title": "Svaka trka se broji",
-      "description": "Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, rang liste i profili takmičara."
+      "description": "Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, Top 10 liste i profili takmičara."
     },
     "notFound": {
       "title": "Ove strane nema",
@@ -144,7 +144,9 @@
     },
     "verificationQueue": {
       "title": "Red čekanja (administracija)",
-      "description": "Jedan red čekanja u verifikaciji, sa svim podacima koji su potrebni za odluku moderatora."
+      "description": "Jedan red čekanja u verifikaciji, sa svim podacima koji su potrebni za odluku moderatora.",
+      "queueTitle": "{name} (administracija)",
+      "queueDescription": "{name}: {source}. Jedan red čekanja u verifikaciji."
     },
     "competitor": {
       "title": "Profil takmičara",
@@ -365,7 +367,8 @@
       "email": "Unesi ispravnu adresu elektronske pošte.",
       "number": "Unesi broj.",
       "date": "Unesi datum u obliku dd/mm/gggg.",
-      "matches": "Ne poklapa se sa prethodnim poljem."
+      "matches": "Ne poklapa se sa prethodnim poljem.",
+      "taken": "Ova vrednost je već zauzeta. Svaki zapis mora imati svoju."
     },
     "choose": "Izaberi",
     "errorSummary": "Prijava nije poslata. Popravi ova polja:",
@@ -723,7 +726,6 @@
     "priceNow": "Danas članarina košta {eur} EUR, odnosno {rsd} RSD.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
     "junior": "Do 14 godina članarina je {eur} EUR, bez obzira na datum.",
-    "howToPay": "Kako se plaća",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
@@ -766,6 +768,7 @@
     "decided": "Rešeno",
     "approve": "Odobri",
     "sendBack": "Vrati na doradu",
+    "sendBackNamed": "Vraćanje na doradu: {name}",
     "reason": "Razlog vraćanja",
     "reasonPlaceholder": "Bez razloga se ne vraća.",
     "officialResults": "Zvanični rezultati",
@@ -870,6 +873,7 @@
       "ascentM": "Uspon (m)",
       "descentM": "Spust (m)",
       "category": "Kategorija",
+      "categoryFromDistance": "Odrediće se kad se unese dužina",
       "teamName": "Naziv tima",
       "teamOrganizer": "Organizator tima",
       "leagueName": "Naziv lige",
@@ -896,12 +900,12 @@
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
       "organizer": "Organizator nema nalog na portalu; ovde stoji samo kao podatak.",
-      "status": "Dok je termin u proveri, datum se ne prikazuje nigde na portalu.",
+      "status": "Samo dva stanja: potvrđeno i u proveri. Trka se unosi tek kad je datum potvrđen, nema statusa najavljena ni odložena, a otkazana se briše iz kalendara. Dok je termin u proveri, datum se ne prikazuje nigde na portalu.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
       "raceName": "Ime po kome se trka prepoznaje, na primer Polumaraton ili 6 h.",
       "distanceKm": "Unosi se ručno, i kad postoji GPX. GPX sme da predloži vrednost, ali je unos pregazi.",
       "ascentM": "Dok se ne unese, stoji 0. Trka bez podatka o nagibu se i dalje boduje.",
-      "category": "Kategorija ide po dužini, tačno u vrednosti: 21,1 km je polumaraton, 42,2 km maraton.",
+      "category": "Ne unosi se nego se izvodi iz dužine, tačno u vrednosti: 21,1 km je polumaraton, 42,2 km maraton, a svaka druga vrednost pada u jednu od preostale tri kategorije.",
       "teamName": "Naziv je slobodan. Tim je jedini entitet koji ima poredak; klub ga nema.",
       "teamOrganizer": "Član koji vodi tim, odobrava učlanjenja i šalje pozive.",
       "season": "Sezona za koju liga važi.",
@@ -973,6 +977,7 @@
   "verification": {
     "title": "Verifikacija",
     "intro": "Sve što čeka odobrenje moderatora ili superadmina, na jednom mestu.",
+    "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",
     "subject": "Predmet",
     "sentBy": "Poslao {who}, član {memberNumber}",

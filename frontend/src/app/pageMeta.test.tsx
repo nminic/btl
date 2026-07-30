@@ -131,21 +131,31 @@ describe('the description of a page', () => {
 })
 
 describe('the address of a page', () => {
-  it('declares itself canonical, and both languages as each other alternative', async () => {
+  it('declares itself canonical, and offers the languages that have words', async () => {
     renderAt('/sr/kalendar')
 
     await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/kalendar`))
     expect(href('alternate', 'sr')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
-    expect(href('alternate', 'en')).toBe(`${SITE_ORIGIN}/en/kalendar`)
     expect(href('alternate', 'x-default')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
+
+    /* No alternative for English while /en serves the Serbian words letter for
+       letter (src/i18n/config.ts). Announcing it hands a search engine the same
+       text under two sets of addresses, and hands an English reader a page they
+       cannot read either way. To be undone with the English dictionary, together
+       with the canonical below. */
+    expect(href('alternate', 'en')).toBeNull()
   })
 
-  it('moves the canonical address to the language being read', async () => {
+  it('canonicalises the English branch onto the Serbian one', async () => {
     renderAt('/en/kalendar')
 
-    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/en/kalendar`))
+    // The address of the language the text is written in, not the address being
+    // read: two addresses over one text is one page competing with itself.
+    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/kalendar`))
     expect(href('alternate', 'sr')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
-    expect(href('alternate', 'en')).toBe(`${SITE_ORIGIN}/en/kalendar`)
+    expect(href('alternate', 'en')).toBeNull()
+    // A link shared off /en gathers its shares on the same one address.
+    expect(content('property', 'og:url')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
     // /en still shows Serbian words until an English dictionary exists (ADL A2),
     // so what the text is written in has not changed.
     expect(content('property', 'og:locale')).toBe('sr_RS')
@@ -160,7 +170,15 @@ describe('the address of a page', () => {
     await user.click(screen.getByRole('button', { name: sr.language.label }))
     await user.click(screen.getByRole('option', { name: 'English' }))
 
-    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/en/top-liste`))
+    /* The address changed and the canonical did not, which is the point: the
+       English address is the Serbian page until there are English words. */
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    )
+    expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/top-liste`)
   })
 
   it('leaves the home page without a path of its own', async () => {

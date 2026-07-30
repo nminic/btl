@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
-import { categoryOfMember, EMPTY_TOTALS, totalsByMember, totalsOf } from '../data/derive'
+import { categoryOfMember, rankMembers, totalsOf } from '../data/derive'
 import { SEASON } from '../data/pricing'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
@@ -12,6 +12,10 @@ import './Profile.css'
 /* A team is the only entity besides a competitor that carries a standing, so
  * its page is built the same way: totals on top, then the people who made
  * them, ordered by what each contributed. */
+
+/** Gold on the podium, as in every other table. */
+const PODIUM = 3
+
 export function TeamDetail() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
@@ -28,15 +32,12 @@ export function TeamDetail() {
 
         const members = competitors.filter((one) => one.teamId === team.id)
         const numbers = new Set(members.map((one) => one.memberNumber))
-        const perMember = totalsByMember(results)
         const totals = totalsOf(results.filter((one) => numbers.has(one.memberNumber)))
-
-        const rows = members
-          .map((member) => ({
-            member,
-            totals: perMember.get(member.memberNumber) ?? EMPTY_TOTALS,
-          }))
-          .sort((left, right) => right.totals.points - left.totals.points)
+        /* Places, not row numbers, and the whole ladder rather than points
+           alone: two members level on points used to be given 1 and 2 by the
+           order they happened to be in, while the list of teams beside this one
+           already shared the place (PDL P12). */
+        const rows = rankMembers(members, results)
 
         return (
           <>
@@ -79,25 +80,23 @@ export function TeamDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((row, index) => (
+                      {rows.map((row) => (
                         <tr
-                          key={row.member.memberNumber}
-                          className={index < 3 ? 'podium' : undefined}
+                          key={row.competitor.memberNumber}
+                          className={row.position <= PODIUM ? 'podium' : undefined}
                         >
-                          <td className="table__position">{index + 1}</td>
+                          <td className="table__position">{row.position}</td>
                           <td>
-                            <Link to={`/${locale}/takmicar/${row.member.memberNumber}`}>
-                              {row.member.firstName} {row.member.lastName}
+                            <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
+                              {row.competitor.firstName} {row.competitor.lastName}
                             </Link>{' '}
-                            <span className="table__member-number">{row.member.memberNumber}</span>
+                            <span className="table__member-number">
+                              {row.competitor.memberNumber}
+                            </span>
                           </td>
-                          <td>{categoryOfMember(row.member, SEASON)}</td>
-                          <td className="table__hide-phone">
-                            {formatNumber(row.totals.races, locale)}
-                          </td>
-                          <td className="table__points">
-                            {formatPoints(row.totals.points, locale)}
-                          </td>
+                          <td>{categoryOfMember(row.competitor, SEASON)}</td>
+                          <td className="table__hide-phone">{formatNumber(row.races, locale)}</td>
+                          <td className="table__points">{formatPoints(row.points, locale)}</td>
                         </tr>
                       ))}
                     </tbody>

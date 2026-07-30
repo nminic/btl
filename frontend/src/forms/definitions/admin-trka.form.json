@@ -43,20 +43,6 @@
       "required": true,
       "min": 0,
       "max": 30000
-    },
-    {
-      "name": "category",
-      "type": "select",
-      "labelKey": "admin.field.category",
-      "hintKey": "admin.hint.category",
-      "required": true,
-      "options": [
-        { "value": "short", "labelKey": "category.short" },
-        { "value": "half", "labelKey": "category.half" },
-        { "value": "long", "labelKey": "category.long" },
-        { "value": "marathon", "labelKey": "category.marathon" },
-        { "value": "ultra", "labelKey": "category.ultra" }
-      ]
     }
   ]
 }

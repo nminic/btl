@@ -4,6 +4,8 @@ import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
+import { QueueMeta } from './QueueMeta'
+import { QUEUE } from './queues'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -37,6 +39,8 @@ export function ReviewQueue() {
 
   return (
     <div className="member">
+      <QueueMeta queue={QUEUE.results} />
+
       <h1>{t('review.title')}</h1>
       <p className="member__note">{t('review.note')}</p>
       <p className="member__note">{t('review.correctionNote')}</p>
@@ -91,7 +95,14 @@ export function ReviewQueue() {
                     <button
                       type="button"
                       className="button button--primary"
-                      onClick={() => decide(one.id, 'approved', '')}
+                      onClick={() => {
+                        decide(one.id, 'approved', '')
+                        /* The reason box stands below the table, so approving
+                           from the row would leave it open over a result that
+                           is already decided, and confirming it would refuse
+                           what was just approved without saying so. */
+                        setOpen((current) => (current === one.id ? null : current))
+                      }}
                     >
                       {t('review.approve')}
                     </button>
@@ -128,9 +139,13 @@ export function ReviewQueue() {
             <button
               type="button"
               className="button button--primary"
-              disabled={note === ''}
+              /* Written means written, spaces taken off, exactly as the forms
+                 decide it (src/forms/validate.ts). Three spaces are not a
+                 reason, and a plain comparison against the empty string let
+                 them through. */
+              disabled={note.trim() === ''}
               onClick={() => {
-                decide(open, 'rejected', note)
+                decide(open, 'rejected', note.trim())
                 setOpen(null)
                 setNote('')
               }}

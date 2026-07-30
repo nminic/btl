@@ -13,7 +13,7 @@ import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { usePending } from './pending'
-import { countsFor, QUEUES } from './queues'
+import { totalWaiting } from './queues'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -48,8 +48,7 @@ export function Admin() {
 
       <Resource state={state}>
         {([[competitors, events, results], items]) => {
-          const counts = countsFor({ pendingResults, competitors, events, items, decisions })
-          const waiting = QUEUES.reduce((sum, queue) => sum + counts[queue.id], 0)
+          const waiting = totalWaiting({ pendingResults, competitors, items, decisions })
 
           return (
             <>

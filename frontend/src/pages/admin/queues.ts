@@ -1,4 +1,4 @@
-import type { BtlEvent, Competitor } from '../../data/types'
+import type { Competitor } from '../../data/types'
 import type { Decisions } from '../../session/context'
 import { paymentKey, waitingIn, type PendingItem } from './pending'
 
@@ -80,7 +80,6 @@ export type Waiting = {
   /** Results a competitor sent in during this visit and nobody has judged. */
   pendingResults: number
   competitors: Competitor[]
-  events: BtlEvent[]
   items: PendingItem[]
   decisions: Decisions
 }
@@ -91,17 +90,22 @@ export type Waiting = {
  * in the navigation are the same number, and two ways of counting it would
  * eventually be two different numbers.
  *
- * Three of the eight are counted from something other than the file of waiting
- * items: results from the session, memberships from the members who are not
- * active yet, and a date under check from the calendar itself. A date is under
- * check either because two people reported a change or because its freshness
- * clock ran out (PDL P10), and only the first of those is an item somebody sent
- * in.
+ * Two of the eight are counted from something other than the file of waiting
+ * items: results from the session, and memberships from the members who are not
+ * active yet.
+ *
+ * The queue of dates counts the reports somebody sent in, and nothing else. A
+ * date is also under check when its freshness clock runs out (PDL P10), and the
+ * calendar used to be counted for that here. It cannot be: an event carries no
+ * clock, so there is nothing for a moderator to read and no way to settle it,
+ * and the screen behind the row shows only the reports. The row said four while
+ * the screen showed three, and the fourth could never be worked off. It comes
+ * back when an event carries the date of its last confirmation, who confirmed it
+ * and from where, which arrives with the database.
  */
 export function countsFor({
   pendingResults,
   competitors,
-  events,
   items,
   decisions,
 }: Waiting): Record<string, number> {
@@ -115,7 +119,14 @@ export function countsFor({
   counts.payments = competitors.filter(
     (one) => !one.active && decisions[paymentKey(one.memberNumber)] === undefined,
   ).length
-  counts.schedule += events.filter((one) => one.status === 'checking').length
 
   return counts
+}
+
+/** Everything waiting for a moderator as one number, which is what stands beside
+ *  Verification in the navigation (PDL P28a). */
+export function totalWaiting(waiting: Waiting): number {
+  const counts = countsFor(waiting)
+
+  return QUEUES.reduce((sum, queue) => sum + counts[queue.id], 0)
 }

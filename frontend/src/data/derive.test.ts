@@ -8,6 +8,7 @@ import {
   monthsWithEvents,
   bestSingleRaces,
   rankingFor,
+  rankMembers,
   topByKilometers,
   topByTimeOnCourse,
   rankTeams,
@@ -620,6 +621,59 @@ describe('topByKilometers', () => {
       30, 20,
     ])
     expect(topByKilometers(competitors, results, 2025, 10)).toEqual([])
+  })
+
+  it('gives the place to whoever got there first, before sharing it', () => {
+    /* The fifth rung, from PDL P12 and Article 57 of the rulebook: two rows level
+       on kilometres, races, vertical and points are settled by who reached the
+       count earlier. The board of races by length already had it and this one did
+       not, so the two were left in whatever order they came in and shared a place
+       they were not level on. */
+    const level = [
+      result('000002', '2027-06-01', 1, { distanceKm: 20 }),
+      result('000008', '2027-03-01', 1, { distanceKm: 20 }),
+    ]
+
+    expect(
+      topByKilometers([competitor('000002'), competitor('000008')], level, 2027, 10).map((row) => [
+        row.competitor.memberNumber,
+        row.position,
+      ]),
+    ).toEqual([
+      ['000008', 1],
+      ['000002', 2],
+    ])
+  })
+})
+
+describe('rankMembers', () => {
+  /* The members of a team, ordered by what each brought to it. The page used to
+     number the rows and sort on points alone, so two members level on points were
+     given 1 and 2 by the order they happened to be in (PDL P12). */
+  const members = [competitor('000002'), competitor('000008'), competitor('000004')]
+
+  it('shares a place nothing separates, and keeps everybody who is in the team', () => {
+    const results = [
+      result('000002', '2027-01-01', 10),
+      result('000008', '2027-01-01', 10),
+      result('000004', '2027-01-01', 20),
+    ]
+
+    expect(
+      rankMembers(members, results).map((row) => [row.competitor.memberNumber, row.position]),
+    ).toEqual([
+      ['000004', 1],
+      ['000002', 2],
+      ['000008', 2],
+    ])
+  })
+
+  it('leaves the member who has not raced yet in the team, at the bottom', () => {
+    const rows = rankMembers(members, [result('000002', '2027-01-01', 10)])
+
+    expect(rows).toHaveLength(3)
+    expect(rows.map((row) => row.position)).toEqual([1, 2, 2])
+    expect(rows[0].competitor.memberNumber).toBe('000002')
   })
 })
 

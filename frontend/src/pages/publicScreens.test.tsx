@@ -102,10 +102,11 @@ describe('TopBoards', () => {
   }
 
   /* The eleven lists of Article 56, in the order the rulebook counts them out
-     (PDL P28a). The five lengths are the one place the page differs: they are
-     shown shortest first, as they are everywhere else on the portal. Both
-     empty boards are in here, because a list the rulebook names and the page
-     leaves out is the fault this guards against. */
+     (PDL P28a), the five lengths included: longest first, as the article names
+     them. This page is that article on a screen, so the article decides the
+     order on it; the other screens keep the portal's own order, shortest first.
+     Both empty boards are in here, because a list the rulebook names and the
+     page leaves out is the fault this guards against. */
   const ELEVEN = [
     'Najviše kilometara',
     'Najduže na stazi',
@@ -113,11 +114,11 @@ describe('TopBoards', () => {
     'Najbolji napredak',
     'Najbolji tim',
     'Najbolji parovi',
-    'Najviše kraćih trka',
+    'Najviše ultramaratona',
+    'Najviše maratona',
     'Najviše dužih trka',
     'Najviše polumaratona',
-    'Najviše maratona',
-    'Najviše ultramaratona',
+    'Najviše kraćih trka',
   ]
 
   it('carries all eleven lists of the rulebook, in the order it names them', async () => {

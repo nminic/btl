@@ -137,85 +137,91 @@ export function Membership({
                     <p className="member__note">{t('membership.notYetSold')}</p>
                   ) : (
                     <>
-                  <p className="member__note">{t('membership.byCountry', { country: me.country })}</p>
+                      <p className="member__note">
+                        {t('membership.byCountry', { country: me.country })}
+                      </p>
 
-                  {methods.includes('ips') && (
-                    <div className="pay">
-                      <h3>{t('membership.ips')}</h3>
-                      <p className="member__note">{t('membership.ipsNote')}</p>
-                      <div className="pay__code">
-                        <QrCode
-                          text={ipsPayload({
-                            account: ACCOUNT,
-                            recipient: RECIPIENT,
-                            amountRsd: price.rsd,
-                            purpose,
-                            reference: '',
-                          })}
-                          label={t('membership.ipsQrLabel')}
-                        />
-                        <details>
-                          <summary>{t('membership.showPayload')}</summary>
-                          <pre className="pay__payload">
-                            {ipsPayload({
-                              account: ACCOUNT,
-                              recipient: RECIPIENT,
-                              amountRsd: price.rsd,
-                              purpose,
-                              reference: '',
-                            })}
-                          </pre>
-                        </details>
-                      </div>
-                    </div>
-                  )}
+                      {/* Every way of paying is one way of doing what the slip
+                          above is for, so they sit under it rather than beside
+                          it. As third level headings they read as four more
+                          sections of the renewal, which they are not. */}
+                      {methods.includes('ips') && (
+                        <div className="pay">
+                          <h4>{t('membership.ips')}</h4>
+                          <p className="member__note">{t('membership.ipsNote')}</p>
+                          <div className="pay__code">
+                            <QrCode
+                              text={ipsPayload({
+                                account: ACCOUNT,
+                                recipient: RECIPIENT,
+                                amountRsd: price.rsd,
+                                purpose,
+                                reference: '',
+                              })}
+                              label={t('membership.ipsQrLabel')}
+                            />
+                            <details>
+                              <summary>{t('membership.showPayload')}</summary>
+                              <pre className="pay__payload">
+                                {ipsPayload({
+                                  account: ACCOUNT,
+                                  recipient: RECIPIENT,
+                                  amountRsd: price.rsd,
+                                  purpose,
+                                  reference: '',
+                                })}
+                              </pre>
+                            </details>
+                          </div>
+                        </div>
+                      )}
 
-                  {methods.includes('epc') && (
-                    <div className="pay">
-                      <h3>{t('membership.epc')}</h3>
-                      <p className="member__note">{t('membership.epcNote')}</p>
-                      <div className="pay__code">
-                        <QrCode
-                          text={epcPayload({
-                            iban: IBAN,
-                            bic: BIC,
-                            recipient: RECIPIENT,
-                            amountEur: price.eur,
-                            purpose,
-                          })}
-                          label={t('membership.epcQrLabel')}
-                        />
-                        <details>
-                          <summary>{t('membership.showPayload')}</summary>
-                          <pre className="pay__payload">
-                            {epcPayload({
-                              iban: IBAN,
-                              bic: BIC,
-                              recipient: RECIPIENT,
-                              amountEur: price.eur,
-                              purpose,
-                            })}
-                          </pre>
-                        </details>
-                      </div>
-                    </div>
-                  )}
+                      {methods.includes('epc') && (
+                        <div className="pay">
+                          <h4>{t('membership.epc')}</h4>
+                          <p className="member__note">{t('membership.epcNote')}</p>
+                          <div className="pay__code">
+                            <QrCode
+                              text={epcPayload({
+                                iban: IBAN,
+                                bic: BIC,
+                                recipient: RECIPIENT,
+                                amountEur: price.eur,
+                                purpose,
+                              })}
+                              label={t('membership.epcQrLabel')}
+                            />
+                            <details>
+                              <summary>{t('membership.showPayload')}</summary>
+                              <pre className="pay__payload">
+                                {epcPayload({
+                                  iban: IBAN,
+                                  bic: BIC,
+                                  recipient: RECIPIENT,
+                                  amountEur: price.eur,
+                                  purpose,
+                                })}
+                              </pre>
+                            </details>
+                          </div>
+                        </div>
+                      )}
 
-                  {methods.includes('card') && (
-                    <div className="pay">
-                      <h3>{t('membership.card')}</h3>
-                      <p className="member__note">{t('membership.cardNote')}</p>
-                    </div>
-                  )}
+                      {methods.includes('card') && (
+                        <div className="pay">
+                          <h4>{t('membership.card')}</h4>
+                          <p className="member__note">{t('membership.cardNote')}</p>
+                        </div>
+                      )}
 
-                  {methods.includes('paypal') && (
-                    <div className="pay">
-                      <h3>{t('membership.paypal')}</h3>
-                      <p className="member__note">{t('membership.paypalNote')}</p>
-                    </div>
-                  )}
+                      {methods.includes('paypal') && (
+                        <div className="pay">
+                          <h4>{t('membership.paypal')}</h4>
+                          <p className="member__note">{t('membership.paypalNote')}</p>
+                        </div>
+                      )}
 
-                  <p className="member__note">{t('membership.feesOnPayer')}</p>
+                      <p className="member__note">{t('membership.feesOnPayer')}</p>
                     </>
                   )}
                 </>

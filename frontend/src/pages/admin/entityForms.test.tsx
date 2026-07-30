@@ -150,6 +150,24 @@ describe('every entity can be opened and changed whole', () => {
   })
 })
 
+describe('the confirmation that a record was saved', () => {
+  it('takes the focus, because the form it replaced had it', async () => {
+    const user = userEvent.setup()
+    const title = t('admin.form.edit.teams')
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Timovi' })
+    await user.click(within(table).getAllByRole('button', { name: /^Otvori:/ })[0])
+    await user.click(open(title).getByRole('button', { name: t('form.submit') }))
+
+    /* The whole form goes away and the confirmation takes its place, so the button
+       that was pressed is no longer on the page. Without this the focus is on
+       nothing and the next Tab starts the page from the top; with it a screen
+       reader also reads the confirmation from its heading down. */
+    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toHaveFocus()
+  })
+})
+
 describe('a competitor', () => {
   it.each(ALL)('is offered no form at all on $path', async ({ entity, path }) => {
     renderAt(`/sr/${path}`, 'competitor')
@@ -250,6 +268,149 @@ describe('a record that is entered rather than changed', () => {
   })
 })
 
+describe('the identity of a record', () => {
+  it('is refused when it belongs to somebody already, beside the field', async () => {
+    const user = userEvent.setup()
+    const title = t('admin.form.new.members')
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
+    const rows = list.getAllByRole('row').length
+
+    await user.click(screen.getByRole('button', { name: title }))
+    const form = open(title)
+
+    /* 000001 is the first member in the generated data. It used to be taken as
+       typed: two members answered to one number, React drew two rows with the
+       same key, and changing the city of one of them changed both, because the
+       overlay of changes is keyed by the number (PDL P8). */
+    await user.type(form.getByLabelText(labelled(t('admin.field.memberNumber'))), '000001')
+    await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), 'Milica')
+    await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
+    await user.type(form.getByLabelText(labelled(t('admin.field.birthYear'))), '1991')
+    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
+    await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'payment')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+
+    // The message lands beside the field it is about, tied to it, like every
+    // other rule on the form.
+    const field = form.getByLabelText(labelled(t('admin.field.memberNumber')))
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(field.getAttribute('aria-describedby')).toContain('field-memberNumber-error')
+    expect(document.getElementById('field-memberNumber-error')).toHaveTextContent(
+      t('form.errors.taken'),
+    )
+    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
+
+    // A free number saves, and the list grows by exactly one row.
+    const number = form.getByLabelText(labelled(t('admin.field.memberNumber')))
+    await user.clear(number)
+    await user.type(number, '000901')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    expect(
+      within(await screen.findByRole('table', { name: 'Članovi' })).getAllByRole('row'),
+    ).toHaveLength(rows + 1)
+  })
+
+  it('is refused for a written page whose address answers already', async () => {
+    const user = userEvent.setup()
+    const title = t('admin.form.new.pages')
+    renderAt('/sr/administracija/strane', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: title }))
+    const form = open(title)
+
+    // Two records on /pravilnik would be one page arguing with itself.
+    await user.type(form.getByLabelText(labelled(t('admin.address'))), 'pravilnik')
+    await user.type(form.getByLabelText(labelled(t('admin.field.pageTitle'))), 'Drugi pravilnik')
+    await user.type(form.getByLabelText(labelled(t('admin.field.sectionHeading'))), 'Uvod')
+    await user.type(form.getByLabelText(labelled(t('admin.field.sectionBody'))), 'Tekst.')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+
+    expect(document.getElementById('field-slug-error')).toHaveTextContent(t('form.errors.taken'))
+  })
+
+  it('does not stand in the way of the record it belongs to', async () => {
+    const user = userEvent.setup()
+    const title = t('admin.form.edit.members')
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Članovi' })
+    await user.click(within(table).getAllByRole('button', { name: /^Otvori:/ })[0])
+
+    const form = open(title)
+    await user.clear(form.getByLabelText(labelled(t('admin.field.city'))))
+    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Vranje')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+
+    // Its own number is in the list of the taken ones, and it is not competing
+    // with itself for it.
+    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toBeVisible()
+  })
+})
+
+describe('the category of a race', () => {
+  it('is read off the distance rather than asked for, and says where it comes from', async () => {
+    const user = userEvent.setup()
+    const title = t('admin.form.new.races')
+    renderAt('/sr/administracija/trke', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: title }))
+    const form = open(title)
+
+    /* It was a free choice beside the distance, so a race of 42.2 km could be
+       saved as a short one and the board of most marathons lied. The category is
+       the distance, by the exact value and with no tolerance (PDL P5), so there
+       is nothing to ask. */
+    expect(form.queryByLabelText(labelled(t('admin.field.category')))).not.toBeInTheDocument()
+    expect(form.getByText(t('admin.field.categoryFromDistance'))).toBeVisible()
+
+    const events = form.getByLabelText(labelled(t('admin.field.event'))) as HTMLSelectElement
+    await user.selectOptions(events, events.options[1].value)
+    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera kategorije')
+    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
+    await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
+    await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
+
+    // Shown as it is typed, with the rule that produced it beside it.
+    expect(form.getByText(t('category.marathon'))).toBeVisible()
+    expect(form.getByText(t('admin.hint.category'))).toBeVisible()
+
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+
+    const saved = within(screen.getByRole('status', { name: t('admin.form.saved') }))
+    expect(saved.getByText(t('category.marathon'))).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    const row = within(
+      within(await screen.findByRole('table', { name: 'Trke' }))
+        .getByText('Provera kategorije')
+        .closest('tr')!,
+    )
+    expect(row.getByText(t('category.marathon'))).toBeVisible()
+  })
+
+  it('is a hundred metres short of a marathon and says so', async () => {
+    const user = userEvent.setup()
+    const title = t('admin.form.new.races')
+    renderAt('/sr/administracija/trke', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: title }))
+    const form = open(title)
+
+    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.195')
+
+    // The deliberate consequence of there being no tolerance (PDL P5).
+    expect(form.getByText(t('category.long'))).toBeVisible()
+  })
+})
+
 describe('a written page nobody has written yet', () => {
   it('is listed, and its form opens empty instead of throwing', async () => {
     const user = userEvent.setup()
@@ -312,6 +473,28 @@ describe('the words the eight forms need', () => {
 
     expect(withRule.length).toBeGreaterThan(0)
     expect(withRule.filter((field) => field.hintKey === undefined)).toEqual([])
+  })
+
+  it('offer an event the two states it can be in, and no others', () => {
+    /* A race has no state "announced" and none "postponed": it is entered once the
+       date is confirmed, and a cancelled one is deleted from the calendar (PDL
+       P10). The form offered all four, so the calendar could be filled with dates
+       the portal promises never to show as certain. Cancelled stays in the type,
+       because the iCal feed has to send it (STATUS:CANCELLED), and it is not
+       something anybody types on this form. */
+    const options = EVENTS.form.fields.find((one) => one.name === 'status')!.options ?? []
+
+    expect(options.map((one) => one.value)).toEqual(['confirmed', 'checking'])
+  })
+
+  it('offer no choice at all where the value is read off another one', () => {
+    // The category of a race is its distance (PDL P5), so it is not a field.
+    expect(RACES.form.fields.map((one) => one.name)).not.toContain('category')
+    expect(RACES.derived?.({ distanceKm: '21.1' })[0]).toMatchObject({
+      name: 'category',
+      value: 'half',
+      shownKey: 'category.half',
+    })
   })
 
   it('offer the badge sizes the rule engine knows, and no others', () => {

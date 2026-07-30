@@ -89,24 +89,29 @@ describe('membership', () => {
     )
   }
 
+  /* Every way of paying is one way of using the slip above it, so all four sit a
+     level below it (PDL P28a puts the slip inside renewal). As third level
+     headings they read as four more sections of the renewal, which they are
+     not. */
   it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
     renderFor('000001')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: 'Kartica' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 4, name: 'Kartica' })).toBeVisible()
     // Paying between residents of Serbia through PayPal is not allowed.
-    expect(screen.queryByRole('heading', { level: 3, name: 'PayPal' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
   })
 
   it('offers a member abroad SEPA and PayPal, never the Serbian slip', async () => {
     // 000009 is in Montenegro in the generated data.
     renderFor('000009')
 
-    expect(await screen.findByRole('heading', { level: 3, name: /SEPA/ })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: 'PayPal' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 4, name: /SEPA/ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(
-      screen.queryByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' }),
+      screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
   })
 
@@ -125,7 +130,7 @@ describe('membership', () => {
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
     expect(
-      screen.queryByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' }),
+      screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
     expect(screen.getAllByText(/Članarina se još ne prodaje/).length).toBeGreaterThan(0)
   })
@@ -143,7 +148,7 @@ describe('membership', () => {
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(
-      screen.queryByRole('heading', { level: 3, name: 'Uplatnica sa QR kodom' }),
+      screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
   })
 

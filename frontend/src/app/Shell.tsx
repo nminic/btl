@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { useCompetitors, useEvents } from '../data/useResource'
+import { dataOr, useCompetitors } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { usePending } from '../pages/admin/pending'
-import { countsFor, QUEUES } from '../pages/admin/queues'
+import { totalWaiting } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
@@ -44,18 +44,14 @@ const VERIFICATION = 'administracija/verifikacija'
 function useWaiting(): number {
   const { submissions, decisions } = useSession()
   const competitors = useCompetitors()
-  const events = useEvents()
   const items = usePending()
 
-  const counts = countsFor({
+  return totalWaiting({
     pendingResults: submissions.filter((one) => one.status === 'pending').length,
-    competitors: competitors.status === 'ready' ? competitors.data : [],
-    events: events.status === 'ready' ? events.data : [],
-    items: items.status === 'ready' ? items.data : [],
+    competitors: dataOr(competitors, []),
+    items: dataOr(items, []),
     decisions,
   })
-
-  return QUEUES.reduce((sum, queue) => sum + counts[queue.id], 0)
 }
 
 /* Verification, with the number of items waiting behind it. The count goes into

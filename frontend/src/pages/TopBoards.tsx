@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router'
 import { Resource } from '../components/Resource'
 import {
   bestSingleRaces,
-  CATEGORIES,
   defaultSeason,
   rankTeams,
   seasonOf,
@@ -12,7 +11,7 @@ import {
   topByKilometers,
   topByTimeOnCourse,
 } from '../data/derive'
-import type { Competitor, Result, Team } from '../data/types'
+import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -31,6 +30,14 @@ const PLACES = 10
 
 /** Podium places carry gold here for the same reason they do in the table. */
 const PODIUM = 3
+
+/**
+ * The five lengths in the order Article 56 counts them out, longest first (PDL
+ * P28a). This one screen is that article on a page, so the article decides the
+ * order on it; everywhere else on the portal the five are shown shortest first
+ * and stay that way (CATEGORIES in src/data/derive.ts).
+ */
+const BY_RULEBOOK: RaceCategory[] = ['ultra', 'marathon', 'long', 'half', 'short']
 
 type Place = {
   /** Where the name leads. A profile on most boards, a team page on the team
@@ -54,6 +61,10 @@ type BoardData = {
   title: string
   valueLabel: string
   detailLabel?: string
+  /** Whether the middle column holds a number. The event name on the board of
+   *  best races is words and reads from the left, quietly; the size of a team is
+   *  a number and has to read like every other number on the page. */
+  detailIsNumber?: boolean
   /** What the column of names is called, when "Član" is not what is in it. */
   nameLabel?: string
   places: Place[]
@@ -63,9 +74,19 @@ type BoardData = {
   empty: ReactNode
 }
 
-function Board({ id, title, valueLabel, detailLabel, nameLabel, places, empty }: BoardData) {
+function Board({
+  id,
+  title,
+  valueLabel,
+  detailLabel,
+  detailIsNumber,
+  nameLabel,
+  places,
+  empty,
+}: BoardData) {
   const { t } = useI18n()
   const headingId = `board-${id}`
+  const detailClass = detailIsNumber === true ? 'boards__count' : 'boards__detail'
 
   return (
     <section className="boards__board" aria-labelledby={headingId}>
@@ -82,7 +103,11 @@ function Board({ id, title, valueLabel, detailLabel, nameLabel, places, empty }:
               <tr>
                 <th scope="col">{t('topBoards.columns.position')}</th>
                 <th scope="col">{nameLabel ?? t('topBoards.columns.member')}</th>
-                {detailLabel !== undefined && <th scope="col">{detailLabel}</th>}
+                {detailLabel !== undefined && (
+                  <th scope="col" className={detailClass}>
+                    {detailLabel}
+                  </th>
+                )}
                 <th scope="col">{valueLabel}</th>
               </tr>
             </thead>
@@ -93,7 +118,7 @@ function Board({ id, title, valueLabel, detailLabel, nameLabel, places, empty }:
                   <td>
                     <Link to={place.to}>{place.name}</Link>
                   </td>
-                  {place.detail !== undefined && <td className="boards__detail">{place.detail}</td>}
+                  {place.detail !== undefined && <td className={detailClass}>{place.detail}</td>}
                   <td className="table__points">{place.value}</td>
                 </tr>
               ))}
@@ -137,12 +162,10 @@ function Boards({
     const profile = (memberNumber: string) => `/${locale}/takmicar/${memberNumber}`
     const noResults = t('topBoards.empty')
 
-    /* Boards seven to eleven of Article 56, kept in CATEGORIES order rather
-     * than in the order the sentence in the rulebook happens to name them: the
-     * five lengths are shown shortest first everywhere else on the portal, and
-     * one screen disagreeing with the other four is worse than one screen
-     * disagreeing with the punctuation of one sentence. */
-    const lengths = CATEGORIES.map((category) => ({
+    /* Boards seven to eleven of Article 56, in the order the article names them:
+     * ultras, marathons, long races, half marathons, short races. This page is
+     * the article, so the article decides. */
+    const lengths = BY_RULEBOOK.map((category) => ({
       id: category,
       title: t(`topBoards.byLength.${category}`),
       valueLabel: t('topBoards.columns.races'),
@@ -224,6 +247,7 @@ function Boards({
         nameLabel: t('topBoards.columns.team'),
         valueLabel: t('topBoards.columns.points'),
         detailLabel: t('topBoards.columns.members'),
+        detailIsNumber: true,
         empty: noResults,
         places: rankTeams(teams, competitors, inSeason)
           .filter((row) => row.totals.races > 0)

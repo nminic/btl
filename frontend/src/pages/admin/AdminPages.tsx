@@ -66,7 +66,15 @@ export function AdminPages() {
 
           if (editing !== null) {
             return (
-              <EntityEditor entity={PAGES} editing={editing} onDone={() => setEditing(null)} />
+              <EntityEditor
+                entity={PAGES}
+                editing={editing}
+                /* The address is the identity of a page, so a new page cannot be
+                   given one that answers already: two records on /pravilnik
+                   would be one page arguing with itself. */
+                taken={rows.map((page) => page.slug)}
+                onDone={() => setEditing(null)}
+              />
             )
           }
 

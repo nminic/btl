@@ -6,8 +6,9 @@ import strana from '../../forms/definitions/admin-strana.form.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import trka from '../../forms/definitions/admin-trka.form.json'
 import znacka from '../../forms/definitions/admin-znacka.form.json'
+import { categoryOf } from '../../data/raceCategory'
 import { applyChanges, recordValue } from '../../forms/records'
-import type { FormDef, FormValues } from '../../forms/types'
+import type { DerivedField, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Edits } from '../../session/context'
 
 /* The eight entities administration owns, described rather than programmed.
@@ -34,7 +35,14 @@ export type EntityDef = {
   /** What the record carries that the form leaves alone, so a created record has
    *  the same shape as a generated one and the lists cannot tell them apart. */
   blank: Record<string, unknown>
+  /** What the record carries that is read off the fields rather than asked for.
+   *  Shown on the form as words, and written onto the record on saving. */
+  derived?: (values: FormValues) => DerivedValue[]
 }
+
+/** A derived value as the record needs it: the words the form shows, plus the
+ *  value that is written down. */
+export type DerivedValue = DerivedField & { value: string }
 
 /**
  * Membership of a team is deliberately not on the member form: a competitor
@@ -55,11 +63,35 @@ export const EVENTS: EntityDef = {
   blank: { slug: '', raceIds: [] },
 }
 
+/**
+ * The category of a race is not on the form and never will be: it is read off
+ * the distance, by the exact value with no tolerance (PDL P5), so a race entered
+ * as 42.2 km is a marathon and there is nothing to decide. It was a free choice
+ * beside the distance, which let a marathon be saved as a short race and made
+ * the board of most marathons lie.
+ */
 export const RACES: EntityDef = {
   id: 'races',
   form: trka as FormDef,
   idField: 'id',
   blank: {},
+  derived: (values) => {
+    /* Words and an empty field both come out as not a number, and every
+       comparison against that is false, so one comparison covers both. */
+    const distance = Number(String(values.distanceKm))
+    const known = distance > 0
+    const category = known ? categoryOf(distance) : ''
+
+    return [
+      {
+        name: 'category',
+        labelKey: 'admin.field.category',
+        hintKey: 'admin.hint.category',
+        value: category,
+        shownKey: known ? `category.${category}` : 'admin.field.categoryFromDistance',
+      },
+    ]
+  },
 }
 
 export const TEAMS: EntityDef = {
@@ -129,12 +161,43 @@ export function idFor(entity: EntityDef, values: FormValues, made: number): stri
   return namesItself(entity) ? String(values[entity.idField]) : `${entity.id}-nov-${made + 1}`
 }
 
+/**
+ * Whether the identity typed into the form belongs to somebody already, as an
+ * error beside that field.
+ *
+ * A member number is unique (PDL P8) and so is the address of a written page.
+ * Without this the identity was taken as typed: two records answered to one
+ * identity, the list drew two rows with the same key, and one change reached
+ * both of them, because the overlay of changes is keyed by exactly that
+ * identity. Entering a member as 000001 was enough.
+ *
+ * Only for the entities whose form asks for their identity. The other six
+ * generate one that cannot collide.
+ */
+export function takenIdentity(
+  entity: EntityDef,
+  values: FormValues,
+  taken: string[],
+): Record<string, FieldError> {
+  const typed = String(values[entity.idField] ?? '').trim()
+
+  return namesItself(entity) && taken.includes(typed)
+    ? { [entity.idField]: { key: 'form.errors.taken' } }
+    : {}
+}
+
 /** A created record in the shape the lists read. */
 export function recordFrom(entity: EntityDef, created: Created): Record<string, unknown> {
   const record: Record<string, unknown> = { ...entity.blank }
 
   for (const field of entity.form.fields) {
     record[field.name] = recordValue(field, created.values[field.name])
+  }
+
+  /* What the form did not ask for but the record carries all the same, read off
+     what it did ask for: the category of a race is its distance (PDL P5). */
+  for (const value of entity.derived?.(created.values) ?? []) {
+    record[value.name] = value.value
   }
 
   record[entity.idField] = created.id

@@ -7,11 +7,16 @@ import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { paymentKey } from './pending'
+import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 import './Verification.css'
+
+/** Whose membership the reason box is open on: the key the decision is
+ *  remembered under, and the name to put on the box. */
+type Refusing = { key: string; name: string }
 
 /* Everyone who opened an account and is waiting to become a full member.
  *
@@ -34,7 +39,7 @@ export function Payments() {
   const { t } = useI18n()
   const { role } = useRole()
   const { decisions, settle } = useSession()
-  const [open, setOpen] = useState<string | null>(null)
+  const [open, setOpen] = useState<Refusing | null>(null)
   const state = useCompetitors()
 
   if (!isStaff(role)) {
@@ -42,11 +47,26 @@ export function Payments() {
   }
 
   const queue = QUEUE.payments
-  const activate = (key: string, basis: MembershipBasis) =>
+
+  /**
+   * Activation, and the reason box shut behind it.
+   *
+   * The box stands below the table rather than in the row, so without this it
+   * survived the decision taken by the buttons beside it: the row moved to the
+   * settled table, the box stayed open on the same member, and confirming it
+   * overwrote the activation with a refusal. One decision is one record per
+   * member, so the second silently replaced the first and the ground of the
+   * membership went with it.
+   */
+  const activate = (key: string, basis: MembershipBasis) => {
     settle(key, { status: 'approved', note: '', basis })
+    setOpen((current) => (current?.key === key ? null : current))
+  }
 
   return (
     <div className="member">
+      <QueueMeta queue={queue} />
+
       <h1>{t(queue.labelKey)}</h1>
       <p className="member__note">{t(queue.sourceKey)}</p>
       <p className="member__note">{t('verification.basisNote')}</p>
@@ -107,7 +127,12 @@ export function Payments() {
                             <button
                               type="button"
                               className="button button--secondary"
-                              onClick={() => setOpen(paymentKey(one.memberNumber))}
+                              onClick={() =>
+                                setOpen({
+                                  key: paymentKey(one.memberNumber),
+                                  name: `${one.firstName} ${one.lastName} (${one.memberNumber})`,
+                                })
+                              }
                             >
                               {t('review.sendBack')}
                             </button>
@@ -119,10 +144,14 @@ export function Payments() {
                 </div>
               )}
 
+              {/* Named, because the box is under the table and not in the row:
+                  on a list of twenty there is otherwise nothing on screen that
+                  says whose membership is being refused. */}
               {open !== null && (
                 <SendBack
+                  subject={open.name}
                   onConfirm={(reason) => {
-                    settle(open, { status: 'rejected', note: reason, basis: '' })
+                    settle(open.key, { status: 'rejected', note: reason, basis: '' })
                     setOpen(null)
                   }}
                   onCancel={() => setOpen(null)}

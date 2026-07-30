@@ -88,6 +88,13 @@
   font-size: 0.85rem;
 }
 
+/* The size of a team is a number and reads like every other number on the page.
+   The shared table pushes its first three columns to the left, which is right
+   for names and wrong for this one, so it goes back. */
+.boards .table .boards__count {
+  text-align: right;
+}
+
 @media (min-width: 700px) {
   .boards__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

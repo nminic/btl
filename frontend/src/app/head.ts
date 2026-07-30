@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, LOCALES, type Locale } from '../i18n/config'
+import { DEFAULT_LOCALE, dictionaryLocale, LOCALES, type Locale } from '../i18n/config'
 
 /* The only place in the portal that touches document.head. One record in, every
  * tag a page needs out: the browser tab, the description a search engine shows,
@@ -37,9 +37,15 @@ export type PageHead = {
   siteName: string
   /** The path below the language, with no query and no fragment. */
   path: string
-  /** The language in the address. */
-  locale: Locale
-  /** The language the text is written in, which is not always that one. */
+  /**
+   * The language the text is written in, which is not always the language in the
+   * address: /en serves the Serbian words until an English dictionary exists.
+   *
+   * The language in the address is deliberately not here. Nothing in the head
+   * follows it while one text answers on two addresses, and a field nobody reads
+   * is a field that goes stale. It comes back with the translations, together
+   * with the canonical address in applyHead.
+   */
   textLocale: Locale
 }
 
@@ -81,25 +87,38 @@ export function addressOf(locale: Locale, path: string): string {
 
 export function applyHead(head: PageHead): void {
   const title = `${head.title} · ${head.siteName}`
-  const url = addressOf(head.locale, head.path)
+  const canonical = addressOf(head.textLocale, head.path)
 
   document.title = title
   metaTag('name', 'description', head.description)
 
-  /* Every screen has one address per language (ADL A2), so one page always has
-   * two addresses. Without these, a search engine has to guess which of the two
-   * to keep and counts the other as a copy of it.
+  /* Which address counts as this page's own.
+   *
+   * Not the address being read, but the address of the language the text is
+   * actually written in. There is no English dictionary yet, so /en serves the
+   * Serbian words letter for letter (src/i18n/config.ts). Two addresses over one
+   * text is one page competing with itself, and a search engine keeps whichever
+   * of the two it likes.
+   *
+   * TO BE UNDONE WHEN THE ENGLISH DICTIONARY ARRIVES: the canonical address
+   * becomes the address being read again, and the line below starts offering
+   * every language rather than only the one that exists. Both follow
+   * dictionaryLocale, so neither can be forgotten while the other is changed.
    *
    * The query and the fragment are left out on purpose: a filtered table is the
    * same page as the unfiltered one, and a profile with ?sezona=2027 is the same
    * profile. */
-  linkTag('canonical', url)
+  linkTag('canonical', canonical)
 
-  for (const locale of LOCALES) {
+  /* One alternative per language that has words of its own. Offering /en while it
+   * shows Serbian text is an invitation to index the same text twice, under two
+   * sets of addresses, and to serve an English reader a page they cannot read
+   * either way. */
+  for (const locale of LOCALES.filter((one) => dictionaryLocale(one) === one)) {
     linkTag('alternate', addressOf(locale, head.path), locale)
   }
 
-  // Which one to offer somebody whose language is neither of the two.
+  // Which one to offer somebody whose language is none of the above.
   linkTag('alternate', addressOf(DEFAULT_LOCALE, head.path), 'x-default')
 
   /* What a shared link shows. The image is the same on every page and is set
@@ -108,7 +127,10 @@ export function applyHead(head: PageHead): void {
   metaTag('property', 'og:title', title)
   metaTag('property', 'og:description', head.description)
   metaTag('property', 'og:site_name', head.siteName)
-  metaTag('property', 'og:url', url)
+  /* The canonical address, not the one being read: a link shared off /en has to
+     gather its likes and its shares on the one address that counts as the page,
+     the same way the canonical says it does. */
+  metaTag('property', 'og:url', canonical)
   metaTag('property', 'og:locale', OG_LOCALES[head.textLocale])
 
   metaTag('name', 'twitter:title', title)

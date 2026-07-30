@@ -47,9 +47,7 @@
       "required": true,
       "options": [
         { "value": "confirmed", "labelKey": "calendar.status.confirmed" },
-        { "value": "checking", "labelKey": "calendar.status.checking" },
-        { "value": "announced", "labelKey": "calendar.status.announced" },
-        { "value": "cancelled", "labelKey": "calendar.status.cancelled" }
+        { "value": "checking", "labelKey": "calendar.status.checking" }
       ]
     }
   ]

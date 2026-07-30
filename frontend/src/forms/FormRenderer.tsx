@@ -1,6 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
-import type { FieldDef, FieldError, FieldOption, FormDef, FormValues } from './types'
+import type {
+  DerivedField,
+  FieldDef,
+  FieldError,
+  FieldOption,
+  FormDef,
+  FormValues,
+} from './types'
 import countries from '../data/countries.json'
 import { DatePicker } from './DatePicker'
 import { optionsFor } from './records'
@@ -22,6 +29,16 @@ type Props = {
   /** Choices for selects whose list is data: the events a race can belong to,
    *  the members who can run a team. Keyed by field name. */
   options?: Record<string, FieldOption[]>
+  /**
+   * A rule the definition cannot describe, checked when the form is submitted
+   * and returned in the same shape as the rules that can: errors by field name.
+   * Used for the one rule that needs to know about the other records, which is
+   * whether the identity typed in is free (PDL P8).
+   */
+  check?: (values: FormValues) => Record<string, FieldError>
+  /** Values the form shows but does not ask for, because they are read off the
+   *  ones it does ask for. They follow the fields as words. */
+  derived?: (values: FormValues) => DerivedField[]
 }
 
 function Field({
@@ -177,7 +194,15 @@ function Field({
   )
 }
 
-export function FormRenderer({ form, onSubmit, initial, title, options = {} }: Props) {
+export function FormRenderer({
+  form,
+  onSubmit,
+  initial,
+  title,
+  options = {},
+  check,
+  derived,
+}: Props) {
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
@@ -191,7 +216,9 @@ export function FormRenderer({ form, onSubmit, initial, title, options = {} }: P
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const found = validateForm(form, values)
+    /* The rules in the definition win over the handed in check: a field that is
+       empty is empty before it is anything else. */
+    const found = { ...check?.(values), ...validateForm(form, values) }
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
@@ -244,6 +271,18 @@ export function FormRenderer({ form, onSubmit, initial, title, options = {} }: P
           choices={optionsFor(field, options)}
           onChange={(next) => handleChange(field, next)}
         />
+      ))}
+
+      {/* What the record carries without being asked: shown, so nobody wonders
+          where it went, and read only, so it cannot contradict what it is read
+          off. It says where it comes from, or a value nobody can change reads
+          as a fault rather than as a rule. */}
+      {(derived?.(values) ?? []).map((one) => (
+        <p className="field field--derived" key={one.name}>
+          <span className="field__label">{t(one.labelKey)}</span>
+          <strong className="field__derived">{t(one.shownKey)}</strong>
+          <span className="field__hint">{t(one.hintKey)}</span>
+        </p>
       ))}
 
       <button type="submit" className="form__submit">

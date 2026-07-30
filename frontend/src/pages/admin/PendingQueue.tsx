@@ -6,6 +6,7 @@ import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { settledIn, usePending, waitingIn, type PendingItem } from './pending'
+import { QueueMeta } from './QueueMeta'
 import type { Queue } from './queues'
 import { SendBack } from './SendBack'
 import { StaffOnly } from './StaffOnly'
@@ -30,6 +31,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const { decisions, settle } = useSession()
   /** Which card has its reason field open. One at a time, as in the results. */
   const [open, setOpen] = useState<string | null>(null)
+  /**
+   * The card whose reason box has just been closed, so its buttons take the
+   * focus back as they return.
+   *
+   * The box replaces the buttons of its own card, so both directions lose the
+   * focus to the document: opening it takes the button that had it off the page,
+   * and closing it takes the box. The focus then sits nowhere and the next Tab
+   * starts the page from the top, past everything. Opening is answered inside the
+   * box itself, which takes the focus as it appears (SendBack); this is the way
+   * back. A panel in the header has the same problem and the same answer
+   * (src/app/Dropdown.tsx).
+   */
+  const [closed, setClosed] = useState<string | null>(null)
   const state = usePending()
 
   if (!isStaff(role)) {
@@ -46,6 +60,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
   return (
     <div className="member">
+      <QueueMeta queue={queue} />
+
       <h1>{t(queue.labelKey)}</h1>
       <p className="member__note">{t(queue.sourceKey)}</p>
 
@@ -104,7 +120,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             settle(one.id, { status: 'rejected', note: reason, basis: '' })
                             setOpen(null)
                           }}
-                          onCancel={() => setOpen(null)}
+                          onCancel={() => {
+                            setOpen(null)
+                            setClosed(one.id)
+                          }}
                         />
                       ) : (
                         <div className="member__links">
@@ -117,9 +136,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           >
                             {t('review.approve')}
                           </button>
+                          {/* The focus comes back to this button with it, on the
+                              render that brings it back and on no other: nothing
+                              is autofocused when the page first draws. */}
                           <button
                             type="button"
                             className="button button--secondary"
+                            autoFocus={one.id === closed}
                             onClick={() => setOpen(one.id)}
                           >
                             {t('review.sendBack')}

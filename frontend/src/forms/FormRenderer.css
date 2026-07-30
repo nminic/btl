@@ -98,6 +98,16 @@
   gap: 0.4rem;
 }
 
+/* A value the form shows without asking for it. Deliberately not a box: there is
+   nothing to type into, and a disabled field invites a fight with it. */
+.field--derived {
+  margin: 0;
+}
+
+.field__derived {
+  font-size: 1.05rem;
+}
+
 /* The box first, then the words. A confirmation that trails its own text reads
    as a different question. */
 .field__confirm {
