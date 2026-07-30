@@ -9,7 +9,7 @@ import {
   seasonsWithResults,
 } from '../data/derive'
 import type { Competitor, Gender, Result } from '../data/types'
-import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
+import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
@@ -184,7 +184,10 @@ function Standing({
 export function Rankings() {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
-  const state = combineResources(useCompetitors(), useResults(), useEvents())
+  /* Only what the standing shows. Waiting on the events as well meant the whole
+   * table turned into an error message if that one file failed, over data no row
+   * in it has ever read. */
+  const state = combinePair(useCompetitors(), useResults())
 
   function change(next: Record<string, string>) {
     const merged = new URLSearchParams(params)
