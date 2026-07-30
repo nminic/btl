@@ -15278,7 +15278,7 @@
     "city": "Sarajevo",
     "country": "BA",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-sidski-novogodisnji-maraton-2027-01-16-4220"
     ]
@@ -15291,7 +15291,7 @@
     "city": "Banja Luka",
     "country": "BA",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-podgoricka-desetka-2027-01-30-1000"
     ]
@@ -15317,7 +15317,7 @@
     "city": "Kragujevac",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-splitski-maraton-2027-02-13-4220"
     ]
@@ -15330,7 +15330,7 @@
     "city": "Sarajevo",
     "country": "BA",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-avala-trail-2023-2027-02-27-500"
     ]
@@ -15343,7 +15343,7 @@
     "city": "Beograd",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-niski-zimski-maraton-2027-02-27-4220"
     ]
@@ -15356,7 +15356,7 @@
     "city": "Sarajevo",
     "country": "BA",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-srebrno-jezero-polumaraton-2027-03-07-2110"
     ]
@@ -15382,7 +15382,7 @@
     "city": "Niš",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-rome-marathon-2027-03-13-4220"
     ]
@@ -15395,7 +15395,7 @@
     "city": "Kragujevac",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-novosadski-polumaraton-2027-03-24-2110"
     ]
@@ -15421,7 +15421,7 @@
     "city": "Podgorica",
     "country": "ME",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-vrnjacka-banja-maraton-2027-03-27-200"
     ]
@@ -15448,7 +15448,7 @@
     "city": "Sarajevo",
     "country": "BA",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-paris-marathon-2027-04-10-4220"
     ]
@@ -15461,7 +15461,7 @@
     "city": "Subotica",
     "country": "RS",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-fruskogorski-maraton-2027-04-24-5927"
     ]
@@ -15500,7 +15500,7 @@
     "city": "Skoplje",
     "country": "MK",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-kup-fruske-gore-2027-05-15-2400"
     ]
@@ -15513,7 +15513,7 @@
     "city": "Skoplje",
     "country": "MK",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-onerun-2027-05-15-2110"
     ]
@@ -15526,7 +15526,7 @@
     "city": "Beograd",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-5k-ada-virtual-challenge-2027-05-22-500"
     ]
@@ -15552,7 +15552,7 @@
     "city": "Novi Sad",
     "country": "RS",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-ivanjica-trail-2027-05-24-2300"
     ]
@@ -15578,7 +15578,7 @@
     "city": "Novi Sad",
     "country": "RS",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-oplenac-open-trail-2027-05-29-2160"
     ]
@@ -15591,7 +15591,7 @@
     "city": "Kragujevac",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-ultramaraton-palic-2027-05-29-10340"
     ]
@@ -15604,7 +15604,7 @@
     "city": "Čačak",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-novosadski-nocni-maraton-2027-06-26-2110"
     ]
@@ -15643,7 +15643,7 @@
     "city": "Beograd",
     "country": "RS",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-topla-voda-trail-2027-08-21-1620"
     ]
@@ -15656,7 +15656,7 @@
     "city": "Kragujevac",
     "country": "RS",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-dunavske-carolije-2027-08-28-1309"
     ]
@@ -15669,7 +15669,7 @@
     "city": "Čačak",
     "country": "RS",
     "organizer": "Obstacles",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-legionar-ocr-2027-08-28-045"
     ]
@@ -15682,7 +15682,7 @@
     "city": "Novi Sad",
     "country": "RS",
     "organizer": "Trail",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-beljanica-trail-2027-09-04-1000"
     ]
@@ -15695,7 +15695,7 @@
     "city": "Banja Luka",
     "country": "BA",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-10k-belgrade-2027-09-04-1000"
     ]
@@ -15721,7 +15721,7 @@
     "city": "Subotica",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-trka-samoprevazilazenja-2027-09-18-5082"
     ]
@@ -15734,7 +15734,7 @@
     "city": "Banja Luka",
     "country": "BA",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-cacanski-polumaraton-2027-09-25-2110"
     ]
@@ -15773,7 +15773,7 @@
     "city": "Podgorica",
     "country": "ME",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-kostolacki-polumaraton-2027-10-26-2110"
     ]
@@ -15786,7 +15786,7 @@
     "city": "Podgorica",
     "country": "ME",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-zajedno-za-vasilija-2027-11-06-780"
     ]
@@ -15799,7 +15799,7 @@
     "city": "Čačak",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-plavi-krug-oko-ade-2027-11-13-4220"
     ]
@@ -15812,7 +15812,7 @@
     "city": "Skoplje",
     "country": "MK",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-beogradski-polumaraton-2027-11-20-2110"
     ]
@@ -15851,7 +15851,7 @@
     "city": "Subotica",
     "country": "RS",
     "organizer": "Road",
-    "status": "announced",
+    "status": "confirmed",
     "raceIds": [
       "evt-resolution-run-2027-12-27-550"
     ]

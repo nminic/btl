@@ -1,0 +1,119 @@
+/* Competitor cards. Built around the picture: the face takes the top third of
+   the card and keeps its size on every width, because it is the thing a person
+   recognises before they read anything (PDL P28a). */
+
+.cards {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  height: 100%;
+  padding: 1.25rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  text-align: center;
+  transition:
+    border-color var(--fast),
+    transform var(--fast);
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.card__face {
+  display: grid;
+  place-items: center;
+  /* Bigger, and optically centred: the glyph carries no line box of its own, so
+     without line-height 1 it sits a hair below the middle of the circle
+     (owner, 29.07.2026). */
+  width: 7.5rem;
+  height: 7.5rem;
+  margin: 0 auto 0.5rem;
+  line-height: 1;
+  border-radius: 50%;
+  /* Stands in for a photograph, in the space a photograph will take. The hue
+     comes from the member number, so a face keeps its colour between visits. */
+  background: hsl(var(--face-hue) 45% 32%);
+  color: #fff;
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 4px hsl(var(--face-hue) 45% 32% / 0.35);
+}
+
+.card__name {
+  font-weight: 700;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.card__number {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.15rem;
+}
+
+.card__chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.card__city {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.card__figures {
+  display: flex;
+  gap: 1.4rem;
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+  width: 100%;
+  justify-content: center;
+}
+
+.card__figure {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.card__value {
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

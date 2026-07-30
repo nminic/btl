@@ -51,7 +51,7 @@ export function TopByCategory({
 
   const category = CATEGORIES[shown]
   const columns = topByCategory(competitors, results, season, category, TOP)
-  const highest = Math.max(1, ...columns.map((one) => one.count))
+  const highest = Math.max(1, ...columns.map((one) => one.races))
 
   return (
     <section className="top-cat" aria-live="off">
@@ -64,11 +64,11 @@ export function TopByCategory({
               <Face competitor={column.competitor} />
               <Link
                 className="top-cat__bar"
-                style={{ blockSize: `${(column.count / highest) * 100}%` }}
+                style={{ blockSize: `${(column.races / highest) * 100}%` }}
                 to={`/${locale}/takmicar/${column.competitor.memberNumber}`}
                 title={`${column.competitor.firstName} ${column.competitor.lastName}`}
               >
-                <span className="top-cat__count">{column.count}</span>
+                <span className="top-cat__count">{column.races}</span>
                 <span className="visually-hidden">
                   {column.competitor.firstName} {column.competitor.lastName}
                 </span>

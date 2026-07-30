@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { setupUser } from '../test/user'
 import { SessionProvider } from './SessionProvider'
 import { useSession } from './useSession'
 
@@ -14,7 +14,7 @@ function Probe() {
         type="button"
         onClick={() =>
           submit({
-            memberNumber: 'M0001',
+            memberNumber: '000001',
             eventName: `Trka ${submissions.length + 1}`,
             date: '2026-05-10',
             distanceKm: 10,
@@ -51,7 +51,7 @@ function renderProbe() {
 
 describe('the session store', () => {
   it('decides one submission and leaves the others alone', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderProbe()
 
     await user.click(screen.getByRole('button', { name: 'posalji' }))
@@ -66,7 +66,7 @@ describe('the session store', () => {
   })
 
   it('marks one message read and leaves the rest', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderProbe()
 
     expect(screen.getByTestId('unread')).toHaveTextContent('1')

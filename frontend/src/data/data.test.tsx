@@ -2,7 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { loadResource, type ResourceName } from './client'
 import type { Competitor } from './types'
 import {
+  combinePair,
   combineResources,
+  dataOr,
+  failed,
   useCompetitors,
   useEvents,
   useLeagues,
@@ -45,7 +48,7 @@ describe('loadResource', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
 
     expect(competitors.length).toBeGreaterThan(0)
-    expect(competitors[0].memberNumber).toMatch(/^[MF]\d{4}$/)
+    expect(competitors[0].memberNumber).toMatch(/^\d{6}$/)
   })
 
   it('rejects when the resource is not served', async () => {
@@ -122,5 +125,57 @@ describe('combineResources', () => {
 
   it('lets an error win over loading', () => {
     expect(combineResources(loading, failed, ready(1))).toBe(failed)
+  })
+})
+
+describe('combinePair', () => {
+  const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
+  const loading: ResourceState<never> = { status: 'loading' }
+  const failed: ResourceState<never> = { status: 'error', error: new Error('pukla veza') }
+
+  it('is ready only when both are ready', () => {
+    expect(combinePair(ready(1), ready('dva'))).toEqual({ status: 'ready', data: [1, 'dva'] })
+  })
+
+  it('is loading while either is loading', () => {
+    expect(combinePair(loading, ready(1)).status).toBe('loading')
+    expect(combinePair(ready(1), loading).status).toBe('loading')
+  })
+
+  it('lets an error win over loading, because half a screen is a broken screen', () => {
+    expect(combinePair(loading, failed)).toBe(failed)
+    expect(combinePair(failed, ready(1))).toBe(failed)
+  })
+})
+
+describe('dataOr and failed', () => {
+  /* For the two places that must not wait and must not become an error message:
+     the count in the header, which sits above every screen there is, and the list
+     of queues, where one file feeds two rows at most. */
+  const failure: ResourceState<number[]> = { status: 'error', error: new Error('pukla veza') }
+
+  it('hands over what a resource holds, and a stand-in until it does', () => {
+    expect(dataOr({ status: 'ready', data: [1, 2] }, [])).toEqual([1, 2])
+    expect(dataOr({ status: 'loading' }, [])).toEqual([])
+    expect(dataOr(failure, [])).toEqual([])
+  })
+
+  it('says when one of them failed, so nothing counts a failure as empty in silence', () => {
+    expect(failed({ status: 'ready', data: [1] })).toBe(false)
+    expect(failed({ status: 'loading' }, { status: 'ready', data: [1] })).toBe(false)
+    expect(failed({ status: 'ready', data: [1] }, failure)).toBe(true)
+  })
+})
+
+describe('the generated data', () => {
+  it('carries no event in a state the portal does not have', async () => {
+    /* A race has no state "announced" and none "postponed" (PDL P10). The
+       generator wrote thirty of them, which is a state no screen and no decision
+       knows what to do with. It lives outside the repo, so this is the only place
+       that can notice. */
+    const events = await loadResource<{ status: string }[]>('events')
+
+    expect(events.length).toBeGreaterThan(0)
+    expect([...new Set(events.map((one) => one.status))].sort()).toEqual(['confirmed'])
   })
 })

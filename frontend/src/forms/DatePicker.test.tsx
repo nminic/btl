@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { DatePicker } from './DatePicker'
 
@@ -22,7 +22,7 @@ function renderPicker(value = '', onChange = vi.fn()) {
 
 describe('DatePicker', () => {
   it('takes a typed date and puts the slashes in', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const onChange = renderPicker()
 
     await user.type(screen.getByRole('textbox'), '1')
@@ -31,7 +31,7 @@ describe('DatePicker', () => {
   })
 
   it('opens a month and closes it again', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker()
 
     const open = screen.getByRole('button', { name: 'Otvori kalendar' })
@@ -45,7 +45,7 @@ describe('DatePicker', () => {
   })
 
   it('closes on Escape and on a click outside', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker()
 
     const open = screen.getByRole('button', { name: 'Otvori kalendar' })
@@ -60,7 +60,7 @@ describe('DatePicker', () => {
   })
 
   it('stays open for a key it does not handle', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker()
 
     const open = screen.getByRole('button', { name: 'Otvori kalendar' })
@@ -71,7 +71,7 @@ describe('DatePicker', () => {
   })
 
   it('opens on the month of the date already typed', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker('12/04/1985')
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
@@ -82,7 +82,7 @@ describe('DatePicker', () => {
   })
 
   it('walks to the month before and after', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker('12/04/1985')
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
@@ -95,7 +95,7 @@ describe('DatePicker', () => {
   })
 
   it('gives back the day that was picked, and shuts', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const onChange = renderPicker('12/04/1985')
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
@@ -109,7 +109,7 @@ describe('DatePicker', () => {
   })
 
   it('opens on this month when what was typed is not a date yet', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker('12/')
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
@@ -119,7 +119,7 @@ describe('DatePicker', () => {
   })
 
   it('opens on this month when nothing has been typed', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker()
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
@@ -129,7 +129,7 @@ describe('DatePicker', () => {
   })
 
   it('leaves the days outside the month blank', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderPicker('01/05/2027')
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))

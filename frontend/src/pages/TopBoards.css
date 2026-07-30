@@ -1,0 +1,108 @@
+@import '../styles/table.css';
+
+.boards h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: -0.02em;
+}
+
+.boards__intro {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-left: 3px solid var(--gold-500);
+  padding-left: 0.8rem;
+}
+
+.boards__filters {
+  margin-bottom: 1rem;
+}
+
+.boards__field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.boards__field select {
+  font: inherit;
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.5rem;
+}
+
+/* One column on a phone, and as many as fit after that. The boards are short
+   and narrow, so they read badly stretched across a desktop. */
+.boards__grid {
+  display: grid;
+  gap: 1rem;
+  /* minmax(0, …) rather than a bare 1fr: the smallest a track may be is
+     otherwise the widest thing in it, and a table row that does not wrap is
+     wider than a phone. The column would then push the whole page sideways
+     instead of letting the table scroll inside its own box. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.boards__board {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.boards__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.boards__empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* The shared table reads its first three columns as words and puts them to the
+   left. On a board the last column is always the measure, so it goes back to
+   the right where a column of numbers belongs. */
+.boards .table th:last-child,
+.boards .table td:last-child {
+  text-align: right;
+}
+
+/* The event name is the one column here that is words rather than a number,
+   and the only one that can run long. */
+.boards .table .boards__detail {
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* The size of a team is a number and reads like every other number on the page.
+   The shared table pushes its first three columns to the left, which is right
+   for names and wrong for this one, so it goes back. */
+.boards .table .boards__count {
+  text-align: right;
+}
+
+@media (min-width: 700px) {
+  .boards__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .boards__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -1,28 +1,74 @@
-import { useState, type FormEvent } from 'react'
+import { memo, useCallback, useState, type FormEvent } from 'react'
 import { useI18n } from '../i18n/useI18n'
-import type { FieldDef, FieldError, FormDef, FormValues } from './types'
+import type {
+  DerivedField,
+  FieldDef,
+  FieldError,
+  FieldOption,
+  FormDef,
+  FormValues,
+} from './types'
 import countries from '../data/countries.json'
 import { DatePicker } from './DatePicker'
+import { optionsFor } from './records'
 import { emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
 
 type Props = {
   form: FormDef
   onSubmit: (values: FormValues) => void
+  /** What the fields start out holding. Empty when nothing is handed in, which
+   *  is a form that creates something rather than one that changes it. */
+  initial?: FormValues
+  /**
+   * Words for the heading, when the form is a screen inside a screen rather than
+   * the screen itself. Then it is a second level heading under the name of the
+   * list it was opened from, because a page has one first level heading.
+   */
+  title?: string
+  /** Choices for selects whose list is data: the events a race can belong to,
+   *  the members who can run a team. Keyed by field name. */
+  options?: Record<string, FieldOption[]>
+  /**
+   * A rule the definition cannot describe, checked when the form is submitted
+   * and returned in the same shape as the rules that can: errors by field name.
+   * Used for the one rule that needs to know about the other records, which is
+   * whether the identity typed in is free (PDL P8).
+   */
+  check?: (values: FormValues) => Record<string, FieldError>
+  /** Values the form shows but does not ask for, because they are read off the
+   *  ones it does ask for. They follow the fields as words. */
+  derived?: (values: FormValues) => DerivedField[]
 }
 
-function Field({
+/* One field, drawn again only when something about that field changed.
+ *
+ * A form keeps all its values in one place, so without this every keystroke
+ * redraws every field on the form. That is free on a form of eight text boxes and
+ * it is not free on the race form, whose one select offers all twelve hundred
+ * events: typing a race name rebuilt twelve hundred options per letter. It is the
+ * administrator who pays for that, in a browser, with a form that answers late.
+ *
+ * What it takes is that the props hold still: the change handler is made once by
+ * the form (rather than per field per render), the choices for a field that has
+ * none are one shared empty list (src/forms/records.ts), and everything else a
+ * field is given is either its own value or its own error.
+ */
+const Field = memo(function Field({
   field,
   value,
   error,
+  choices,
   onChange,
 }: {
   field: FieldDef
   value: string | boolean
   error: FieldError | undefined
-  onChange: (value: string | boolean) => void
+  choices: readonly FieldOption[]
+  onChange: (field: FieldDef, value: string | boolean) => void
 }) {
   const { t } = useI18n()
+  const change = useCallback((next: string | boolean) => onChange(field, next), [field, onChange])
   const inputId = `field-${field.name}`
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
@@ -45,7 +91,7 @@ function Field({
             {...shared}
             type="checkbox"
             checked={value === true}
-            onChange={(e) => onChange(e.target.checked)}
+            onChange={(e) => change(e.target.checked)}
           />
           <label className="field__label" htmlFor={inputId}>
             {t(field.labelKey)}
@@ -82,7 +128,7 @@ function Field({
       )}
 
       {field.type === 'country' && (
-        <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
+        <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
           <option value="">{t('form.choose')}</option>
           {/* The region first, because nine members in ten pick one of these. */}
           <optgroup label={t('form.region')}>
@@ -107,14 +153,14 @@ function Field({
           {...shared}
           type="file"
           accept="image/*"
-          onChange={(e) => onChange(e.target.files?.[0]?.name ?? '')}
+          onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
         />
       )}
 
       {field.type === 'select' && (
-        <select {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)}>
+        <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
           <option value="">{t('form.choose')}</option>
-          {(field.options ?? []).map((option) => (
+          {choices.map((option) => (
             <option key={option.value} value={option.value}>
               {t(option.labelKey)}
             </option>
@@ -123,7 +169,7 @@ function Field({
       )}
 
       {field.type === 'textarea' && (
-        <textarea {...shared} value={String(value)} onChange={(e) => onChange(e.target.value)} />
+        <textarea {...shared} value={String(value)} onChange={(e) => change(e.target.value)} />
       )}
 
       {field.type === 'date' && (
@@ -133,12 +179,12 @@ function Field({
           value={String(value)}
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
-          onChange={onChange}
+          onChange={change}
         />
       )}
 
       {field.type === 'time' && (
-        <input {...shared} type="time" value={String(value)} onChange={(e) => onChange(e.target.value)} />
+        <input {...shared} type="time" value={String(value)} onChange={(e) => change(e.target.value)} />
       )}
 
       {(field.type === 'text' ||
@@ -149,7 +195,7 @@ function Field({
           {...shared}
           type={field.type}
           value={String(value)}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => change(e.target.value)}
         />
       )}
 
@@ -160,11 +206,19 @@ function Field({
       )}
     </div>
   )
-}
+})
 
-export function FormRenderer({ form, onSubmit }: Props) {
+export function FormRenderer({
+  form,
+  onSubmit,
+  initial,
+  title,
+  options = {},
+  check,
+  derived,
+}: Props) {
   const { t } = useI18n()
-  const [values, setValues] = useState<FormValues>(() => emptyValues(form))
+  const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
 
   // A field that is not on screen is neither shown nor validated. The parent
@@ -172,10 +226,13 @@ export function FormRenderer({ form, onSubmit }: Props) {
   // why visibility is derived from the values rather than from a blur event.
   const visible = form.fields.filter((field) => isVisible(field, values, new Date()))
   const broken = visible.filter((field) => errors[field.name] !== undefined)
+  const titleId = `form-${form.id}-title`
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const found = validateForm(form, values)
+    /* The rules in the definition win over the handed in check: a field that is
+       empty is empty before it is anything else. */
+    const found = { ...check?.(values), ...validateForm(form, values) }
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
@@ -183,16 +240,30 @@ export function FormRenderer({ form, onSubmit }: Props) {
     }
   }
 
-  function handleChange(field: FieldDef, next: string | boolean) {
+  /* Made once for the whole form, not once per field per redraw: a field that is
+     handed a new handler every time counts as changed and redraws with it, which
+     is the one thing the memo above cannot see through. Both setters are stable
+     and both updates read the current state, so there is nothing to depend on. */
+  const handleChange = useCallback((field: FieldDef, next: string | boolean) => {
     setValues((current) => ({ ...current, [field.name]: next }))
     // The message goes away as soon as the field is touched. Leaving it up
     // tells a screen reader the field is still wrong after it was fixed.
     setErrors(({ [field.name]: _fixed, ...rest }) => rest)
-  }
+  }, [])
 
+  /* The form is named after its own heading, so it is a region a screen reader
+   * can be taken to and land in, rather than a run of fields in the page. */
   return (
-    <form className="form" onSubmit={handleSubmit} noValidate>
-      <h1 className="form__title">{t(form.titleKey)}</h1>
+    <form className="form" aria-labelledby={titleId} onSubmit={handleSubmit} noValidate>
+      {title === undefined ? (
+        <h1 className="form__title" id={titleId}>
+          {t(form.titleKey)}
+        </h1>
+      ) : (
+        <h2 className="form__title" id={titleId}>
+          {title}
+        </h2>
+      )}
 
       {/* Announced the moment it appears. Without it, pressing the button with
           a broken form does nothing perceivable for a blind visitor. */}
@@ -215,8 +286,21 @@ export function FormRenderer({ form, onSubmit }: Props) {
           field={field}
           value={values[field.name]}
           error={errors[field.name]}
-          onChange={(next) => handleChange(field, next)}
+          choices={optionsFor(field, options)}
+          onChange={handleChange}
         />
+      ))}
+
+      {/* What the record carries without being asked: shown, so nobody wonders
+          where it went, and read only, so it cannot contradict what it is read
+          off. It says where it comes from, or a value nobody can change reads
+          as a fault rather than as a rule. */}
+      {(derived?.(values) ?? []).map((one) => (
+        <p className="field field--derived" key={one.name}>
+          <span className="field__label">{t(one.labelKey)}</span>
+          <strong className="field__derived">{t(one.shownKey)}</strong>
+          <span className="field__hint">{t(one.hintKey)}</span>
+        </p>
       ))}
 
       <button type="submit" className="form__submit">

@@ -66,3 +66,23 @@ export type FieldError = {
   key: string
   params?: Record<string, string | number>
 }
+
+/**
+ * A value a form shows but never asks for, because it is read off the values it
+ * does ask for: the category of a race is its distance, exactly (PDL P5).
+ *
+ * Not a field type, on purpose. A field is something a person fills in, and the
+ * whole point of these is that nobody can, so they carry no rules and no state.
+ */
+export type DerivedField = {
+  /** The field on the record it fills. */
+  name: string
+  labelKey: string
+  /** Where the value comes from, in words. A value nobody can change has to say
+   *  who decided it, or it reads as a fault. */
+  hintKey: string
+  /** The words shown for it: a dictionary key where there is one, and the value
+   *  itself where there is not, which is what translate() does with a key it
+   *  does not know. */
+  shownKey: string
+}

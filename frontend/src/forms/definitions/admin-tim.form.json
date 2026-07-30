@@ -1,0 +1,35 @@
+{
+  "id": "admin-tim",
+  "titleKey": "admin.form.new.teams",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.field.teamName",
+      "hintKey": "admin.hint.teamName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "labelKey": "admin.field.city",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "country",
+      "type": "country",
+      "labelKey": "admin.field.country",
+      "required": true
+    },
+    {
+      "name": "organizerMemberNumber",
+      "type": "select",
+      "labelKey": "admin.field.teamOrganizer",
+      "hintKey": "admin.hint.teamOrganizer",
+      "required": true
+    }
+  ]
+}

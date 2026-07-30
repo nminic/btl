@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
@@ -198,12 +199,35 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
           return <h1>{t('profile.notFound')}</h1>
         }
 
+        const name = `${competitor.firstName} ${competitor.lastName}`
+
         return (
-          <ProfileBody
-            competitor={competitor}
-            results={results}
-            team={teams.find((one) => one.id === competitor.teamId)}
-          />
+          <>
+            {/* The profile is the most shared page on the portal, so the tab, the
+                search result and the shared link carry the person rather than
+                the words "profil takmičara". Profiles are indexed unless the
+                member says otherwise (PDL P29); the date of birth is not part of
+                any of this, because it is never shown (PDL P23).
+
+                Not when the profile is the one inside "moj profil": there the
+                address belongs to the member area, and its own name fits the tab
+                better than the member's own name does. */}
+            {given === undefined && (
+              <PageMeta
+                title={t('seo.competitor.recordTitle', {
+                  name,
+                  number: competitor.memberNumber,
+                })}
+                description={t('seo.competitor.recordDescription', { name })}
+              />
+            )}
+
+            <ProfileBody
+              competitor={competitor}
+              results={results}
+              team={teams.find((one) => one.id === competitor.teamId)}
+            />
+          </>
         )
       }}
     </Resource>

@@ -2,6 +2,7 @@ import { Navigate, useLocation, useParams } from 'react-router'
 import { DEFAULT_LOCALE, isLocale } from '../i18n/config'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { Shell } from './Shell'
+import { ThemeProvider } from './ThemeProvider'
 
 /* Every address carries the language (ADL A2). Anything that does not start
  * with a known language is treated as a path in the default language, so
@@ -23,7 +24,9 @@ export function LocaleLayout() {
 
   return (
     <I18nProvider locale={locale}>
-      <Shell />
+      <ThemeProvider>
+        <Shell />
+      </ThemeProvider>
     </I18nProvider>
   )
 }

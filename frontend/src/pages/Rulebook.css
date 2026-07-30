@@ -1,0 +1,146 @@
+/* Jumping to a section glides instead of teleporting, so the reader keeps the
+   sense of where the text moved. The rule in index.css turns this off for
+   anyone who asked for less motion, and it does so with !important, so nothing
+   here has to repeat the media query. */
+:root:has(.rulebook) {
+  scroll-behavior: smooth;
+}
+
+.rulebook h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(26px, 4.5vw, 36px);
+  letter-spacing: -0.02em;
+}
+
+.rulebook__layout {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.rulebook__toggle {
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--fast);
+}
+
+.rulebook__toggle:hover {
+  border-color: var(--accent);
+}
+
+.rulebook__panel {
+  display: none;
+  padding: 0.5rem 0.25rem;
+}
+
+.rulebook__panel--open {
+  display: block;
+}
+
+.rulebook__toc-title {
+  margin: 0 0 0.4rem;
+  padding-inline: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rulebook__toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rulebook__toc-link {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid transparent;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.rulebook__toc-link:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* The section being read is marked three ways at once: the mark in the markup,
+   a weight the eye catches, and a bar down the side. Colour alone would not
+   carry it. */
+.rulebook__toc-link[aria-current] {
+  background: var(--surface-hover);
+  border-left-color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.rulebook__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.rulebook__body section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* A section jumped to must not start hard against the top edge. */
+  scroll-margin-top: 1rem;
+}
+
+.rulebook__body section:focus-visible {
+  outline: none;
+}
+
+.rulebook__body h2 {
+  margin: 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+
+/* From tablet up the sections stand beside the text and follow it down the
+   page, and the button that opened them stops existing. */
+@media (min-width: 820px) {
+  .rulebook__layout {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .rulebook__toggle {
+    display: none;
+  }
+
+  .rulebook__panel {
+    display: block;
+    padding: 0;
+  }
+
+  .rulebook__toc {
+    position: sticky;
+    top: 1rem;
+    /* Nineteen sections are taller than a short window, so the list scrolls
+       inside itself rather than running off the screen. */
+    max-height: calc(100svh - 2rem);
+    overflow-y: auto;
+  }
+}

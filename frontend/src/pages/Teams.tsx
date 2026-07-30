@@ -34,9 +34,11 @@ export function Teams() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={row.team.id} className={index === 0 ? 'podium' : undefined}>
-                        <td className="table__position">{index + 1}</td>
+                    {rows.map((row) => (
+                      <tr key={row.team.id} className={row.position === 1 ? 'podium' : undefined}>
+                        {/* The place, not the row number: a tie nothing separates
+                            is shared, so the column can read 1, 1, 3 (PDL P12). */}
+                        <td className="table__position">{row.position}</td>
                         <td>
                           <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
                         </td>

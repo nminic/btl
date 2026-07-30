@@ -1,0 +1,175 @@
+import { fieldDate, isoDate } from './dateField'
+import {
+  applyChanges,
+  optionsFor,
+  recordValue,
+  shownValue,
+  textFrom,
+  valuesFor,
+} from './records'
+import type { FieldDef, FormDef } from './types'
+
+const form: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'name', type: 'text', labelKey: 'proba.naziv' },
+    { name: 'count', type: 'number', labelKey: 'proba.broj' },
+    { name: 'day', type: 'date', labelKey: 'proba.datum' },
+    { name: 'on', type: 'checkbox', labelKey: 'proba.kucica' },
+    { name: 'land', type: 'country', labelKey: 'proba.drzava' },
+    {
+      name: 'pick',
+      type: 'select',
+      labelKey: 'proba.izbor',
+      options: [{ value: 'a', labelKey: 'proba.a' }],
+    },
+    /* A choice whose list is data rather than a fixed set, so the definition
+     * carries no options and the screen hands them in. */
+    { name: 'open', type: 'select', labelKey: 'proba.otvoren' },
+  ],
+}
+
+const field = (name: string): FieldDef => form.fields.find((one) => one.name === name)!
+
+describe('a date between the two shapes it has', () => {
+  it('is shown the way the region reads it', () => {
+    expect(fieldDate('2027-04-03')).toBe('03/04/2027')
+    expect(isoDate('03/04/2027')).toBe('2027-04-03')
+  })
+
+  it('is empty rather than wrong when it is not a date', () => {
+    // A half typed value must never be written down as though it were a date.
+    expect(fieldDate('')).toBe('')
+    expect(fieldDate('3. april 2027.')).toBe('')
+    expect(isoDate('03/04')).toBe('')
+    expect(isoDate('31/02/2027')).toBe('')
+  })
+})
+
+describe('the values a form opens with', () => {
+  it('are read off the record, in the shape each field holds', () => {
+    const values = valuesFor(form, {
+      name: 'Jadovnik',
+      count: 42,
+      day: '2027-07-04',
+      on: true,
+      land: 'RS',
+      pick: 'a',
+      open: 'evt-1',
+    })
+
+    expect(values).toEqual({
+      name: 'Jadovnik',
+      count: '42',
+      day: '04/07/2027',
+      on: true,
+      land: 'RS',
+      pick: 'a',
+      open: 'evt-1',
+    })
+  })
+
+  it('leaves a field the record has nothing for empty', () => {
+    // A record with a hole in it is what a half written page looks like, and the
+    // form has to open on it rather than showing the word "null".
+    expect(valuesFor(form, { name: null, count: undefined })).toEqual({
+      name: '',
+      count: '',
+      day: '',
+      on: false,
+      land: '',
+      pick: '',
+      open: '',
+    })
+  })
+})
+
+describe('what the session remembers', () => {
+  it('is the record shape written as text', () => {
+    expect(
+      textFrom(form, {
+        name: 'Jadovnik',
+        count: '42',
+        day: '04/07/2027',
+        on: false,
+        land: 'RS',
+        pick: 'a',
+        open: 'evt-1',
+      }),
+    ).toEqual({
+      name: 'Jadovnik',
+      count: '42',
+      day: '2027-07-04',
+      on: 'false',
+      land: 'RS',
+      pick: 'a',
+      open: 'evt-1',
+    })
+  })
+})
+
+describe('the overlay over a record', () => {
+  it('leaves the record alone when nothing was changed', () => {
+    const record = { name: 'Jadovnik', count: 42 }
+
+    expect(applyChanges(record, undefined)).toBe(record)
+  })
+
+  it('puts every value back in the shape the record keeps it in', () => {
+    // A screen that formats a number has to keep being handed a number, or the
+    // change turns "42" into a string in the middle of a table of figures.
+    expect(
+      applyChanges(
+        { name: 'Jadovnik', count: 42, on: true, off: false },
+        { name: 'Jadovnik ultra', count: '46', on: 'false', off: 'true' },
+      ),
+    ).toEqual({ name: 'Jadovnik ultra', count: 46, on: false, off: true })
+  })
+})
+
+describe('a value out of a form for a record that is being created', () => {
+  it('takes its shape from the field type, there being nothing underneath', () => {
+    expect(recordValue(field('count'), '42')).toBe(42)
+    expect(recordValue(field('on'), 'true')).toBe(true)
+    expect(recordValue(field('on'), 'false')).toBe(false)
+    expect(recordValue(field('name'), 'Jadovnik')).toBe('Jadovnik')
+  })
+})
+
+describe('the choices a select offers', () => {
+  it('come from the definition, or from the screen, or nowhere', () => {
+    expect(optionsFor(field('pick'), {})).toHaveLength(1)
+    expect(optionsFor(field('open'), { open: [{ value: 'evt-1', labelKey: 'Jadovnik' }] })).toHaveLength(
+      1,
+    )
+    expect(optionsFor(field('open'), {})).toEqual([])
+  })
+})
+
+describe('the words the confirmation shows', () => {
+  it('name a country rather than showing its code', () => {
+    expect(shownValue(field('land'), 'RS', {})).toBe('Srbija')
+  })
+
+  it('fall back to the code for a country that is not on the list', () => {
+    expect(shownValue(field('land'), 'ZZ', {})).toBe('ZZ')
+  })
+
+  it('say yes and no for a box rather than true and false', () => {
+    expect(shownValue(field('on'), true, {})).toBe('admin.yes')
+    expect(shownValue(field('on'), false, {})).toBe('admin.no')
+  })
+
+  it('name a choice through its option, wherever the option came from', () => {
+    expect(shownValue(field('pick'), 'a', {})).toBe('proba.a')
+    expect(
+      shownValue(field('open'), 'evt-1', { open: [{ value: 'evt-1', labelKey: 'Jadovnik' }] }),
+    ).toBe('Jadovnik')
+  })
+
+  it('shows plain text as it was typed', () => {
+    expect(shownValue(field('name'), 'Jadovnik', {})).toBe('Jadovnik')
+  })
+})

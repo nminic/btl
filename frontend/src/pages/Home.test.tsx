@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
@@ -61,9 +61,10 @@ describe('Home', () => {
     const men = (await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section')!
 
     expect(within(men).getAllByRole('listitem').length).toBeGreaterThan(0)
-    expect(within(men).getByRole('link', { name: 'Cela rang lista' })).toHaveAttribute(
+    // The standing moved to /tabela; /top-liste is the page of Top 10 boards now.
+    expect(within(men).getByRole('link', { name: 'Cela tabela' })).toHaveAttribute(
       'href',
-      '/sr/rang-liste?pol=m',
+      '/sr/tabela?pol=m',
     )
   })
 
@@ -76,7 +77,7 @@ describe('Home', () => {
   })
 
   it('works the calculator, and waits quietly until it can answer', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const calc = (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest(

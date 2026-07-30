@@ -23,10 +23,8 @@ export type Totals = {
   points: number
 }
 
-export type RankingRow = Totals & {
-  position: number
-  competitor: Competitor
-}
+/** One competitor with the totals a list is ordering them by. */
+export type TotalsRow = Totals & { competitor: Competitor }
 
 export const EMPTY_TOTALS: Totals = {
   races: 0,
@@ -97,6 +95,85 @@ export function resultsOf(results: Result[], memberNumber: string, season?: numb
     .sort((left, right) => right.date.localeCompare(left.date))
 }
 
+/* How every list is ordered, and what happens when the order runs out of
+ * measures. Both come from PDL P12: volume decides first, efficiency may only
+ * settle a complete tie, and a tie that survives the whole ladder is shown as a
+ * shared place instead of being broken by accident.
+ */
+
+/** One rung of a ladder: the number a list compares two rows by. */
+type Measure<T> = (row: T) => number
+
+/**
+ * Orders by the given measures in turn, highest first, taking the next one only
+ * when the one before it leaves the two rows level. Written once because every
+ * list has a ladder and none of them has the same one.
+ */
+function byLadder<T>(measures: Measure<T>[]): (left: T, right: T) => number {
+  return (left, right) => {
+    for (const measure of measures) {
+      const difference = measure(right) - measure(left)
+
+      if (difference !== 0) {
+        return difference
+      }
+    }
+
+    return 0
+  }
+}
+
+const VERTICAL: Measure<TotalsRow> = (row) => row.ascent + row.descent
+
+/** A row of a list once it knows which place it holds. */
+export type Placed<T> = T & { position: number }
+
+/**
+ * Numbers an ordered list. Rows the ladder leaves level share one number and
+ * the number after them is skipped, so a shared first place reads 1, 1, 3, and
+ * inside a shared place the smaller member number comes first (PDL P12).
+ *
+ * That inner order is not a measure and means nothing. It is there so the table
+ * does not shuffle on every recount and the Δ column does not invent arrows up
+ * and down, which is a fault nobody could explain to a member.
+ *
+ * `compare` is the ladder the list was sorted by, so two rows count as level
+ * only when every rung of it leaves them equal.
+ */
+export function withPlaces<T extends object>(
+  rows: T[],
+  compare: (left: T, right: T) => number,
+  memberNumberOf: (row: T) => string,
+): Placed<T>[] {
+  const placed: Placed<T>[] = []
+  let start = 0
+
+  while (start < rows.length) {
+    /* How far the shared place reaches. Every row in it is compared with the
+     * first one rather than with the one before it, so a ladder that leaves
+     * three rows level gives all three the same number. */
+    let end = start + 1
+
+    while (end < rows.length && compare(rows[start], rows[end]) === 0) {
+      end += 1
+    }
+
+    const tied = rows
+      .slice(start, end)
+      .sort((left, right) => memberNumberOf(left).localeCompare(memberNumberOf(right)))
+
+    for (const row of tied) {
+      placed.push({ ...row, position: start + 1 })
+    }
+
+    start = end
+  }
+
+  return placed
+}
+
+export type RankingRow = Placed<TotalsRow>
+
 export type RankingFilter = {
   season: number
   gender: Gender
@@ -104,9 +181,18 @@ export type RankingFilter = {
   search?: string
 }
 
+/** The ladder of the general standing (PDL P12): points, kilometres, more
+ *  races, vertical, and then a shared place. */
+const STANDING = byLadder<TotalsRow>([
+  (row) => row.points,
+  (row) => row.kilometers,
+  (row) => row.races,
+  VERTICAL,
+])
+
 /**
- * The standing for one season and one gender. Ordered by points, and when
- * points tie, by the number of races: volume wins, never efficiency.
+ * The standing for one season and one gender, ordered down the ladder above:
+ * volume wins, never efficiency, and a tie nothing separates is shared.
  */
 export function rankingFor(
   competitors: Competitor[],
@@ -125,7 +211,7 @@ export function rankingFor(
 
   const search = (filter.search ?? '').trim().toLowerCase()
 
-  return competitors
+  const ranked = competitors
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
@@ -137,15 +223,36 @@ export function rankingFor(
       ...(totals.get(competitor.memberNumber) ?? EMPTY_TOTALS),
     }))
     .filter((row) => row.races > 0)
-    .sort((left, right) => right.points - left.points || right.races - left.races)
-    .map((row, index) => ({ ...row, position: index + 1 }))
-    .filter(
-      (row) =>
-        search === '' ||
-        `${row.competitor.firstName} ${row.competitor.lastName} ${row.competitor.memberNumber}`
-          .toLowerCase()
-          .includes(search),
-    )
+    .sort(STANDING)
+
+  return withPlaces(ranked, STANDING, (row) => row.competitor.memberNumber).filter(
+    (row) =>
+      search === '' ||
+      `${row.competitor.firstName} ${row.competitor.lastName} ${row.competitor.memberNumber}`
+        .toLowerCase()
+        .includes(search),
+  )
+}
+
+/**
+ * The members of one team, ordered by what each of them brought to it, down the
+ * ladder of the general standing and with a tie nothing separates shared, like
+ * every other list on the portal (PDL P12).
+ *
+ * Everybody in the list is in it, results or none: a team page is the team, and
+ * leaving out the member who has not raced yet would read as them not belonging.
+ *
+ * The results are taken as given, so the caller decides whether the page is one
+ * season or the whole history.
+ */
+export function rankMembers(competitors: Competitor[], results: Result[]): RankingRow[] {
+  const totals = totalsByMember(results)
+  const rows = competitors.map((competitor) => ({
+    competitor,
+    ...(totals.get(competitor.memberNumber) ?? EMPTY_TOTALS),
+  }))
+
+  return withPlaces(rows.sort(STANDING), STANDING, (row) => row.competitor.memberNumber)
 }
 
 /**
@@ -168,25 +275,48 @@ export type TeamRow = {
   totals: Totals
 }
 
+/** The ladder of the team board (PDL P12): points, more members of the team,
+ *  the kilometres of every member, the races of every member, then a shared
+ *  place. It stopped at the member count before, so two teams level on points
+ *  and on size were left in whatever order the team list happened to be in. */
+const BY_TEAM = byLadder<TeamRow>([
+  (row) => row.totals.points,
+  (row) => row.members,
+  (row) => row.totals.kilometers,
+  (row) => row.totals.races,
+])
+
 /**
  * Teams by the plain sum of every member, never normalised: more members is
  * meant to be an advantage, and a tie goes to the bigger team (PDL P12). A
  * rule that rewarded the smaller team is explicitly excluded.
+ *
+ * A tie the whole ladder leaves standing is a shared place, like everywhere
+ * else. Inside one, the order is by team id rather than by member number: a
+ * team has no member number, and what the rule is for is that the table does
+ * not shuffle between two recounts of the same data.
+ *
+ * The results are taken as given, so the caller decides whether the board is
+ * one season or the whole history.
  */
-export function rankTeams(teams: Team[], competitors: Competitor[], results: Result[]): TeamRow[] {
-  return teams
-    .map((team) => {
-      const numbers = new Set(
-        competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
-      )
+export function rankTeams(
+  teams: Team[],
+  competitors: Competitor[],
+  results: Result[],
+): Placed<TeamRow>[] {
+  const rows = teams.map((team) => {
+    const numbers = new Set(
+      competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
+    )
 
-      return {
-        team,
-        members: numbers.size,
-        totals: totalsOf(results.filter((result) => numbers.has(result.memberNumber))),
-      }
-    })
-    .sort((left, right) => right.totals.points - left.totals.points || right.members - left.members)
+    return {
+      team,
+      members: numbers.size,
+      totals: totalsOf(results.filter((result) => numbers.has(result.memberNumber))),
+    }
+  })
+
+  return withPlaces(rows.sort(BY_TEAM), BY_TEAM, (row) => row.team.id)
 }
 
 /** The category a member competes in for a season, derived rather than stored:
@@ -323,10 +453,81 @@ export function newestMembers(competitors: Competitor[], count: number): Competi
     .slice(0, count)
 }
 
-export type CategoryColumn = {
-  competitor: Competitor
-  count: number
+/* The top boards (PDL P12). Each one keeps ten places and each one is ordered
+ * down a ladder of measures: volume decides first, and efficiency is only ever
+ * allowed to settle a complete tie. The ladders are written out per board
+ * below, straight from the table in P12.
+ */
+
+/**
+ * One competitor with the totals a board is ordering them by and the day they
+ * reached them: the last of the races that were counted.
+ *
+ * Whoever got there earlier is ahead, which is why that rung reads the other way
+ * round from all the others. Two boards have it (PDL P12), so it is one type.
+ */
+export type TallyRow = TotalsRow & { reachedOn: string }
+
+/** What one competitor did over a set of races, and when they finished doing it. */
+type Tally = { totals: Totals; reachedOn: string }
+
+/**
+ * Totals per competitor over the races handed in, with the day each of them
+ * reached their count: the last of those races.
+ *
+ * Oldest first, so the last thing written into the tally is the race that
+ * completed the count and the day needs no comparing of its own.
+ *
+ * The day matters because "reached earlier wins" is a rung on two of the boards
+ * (PDL P12, and Article 57 of the rulebook), so both are counted here rather than
+ * one of them keeping the day to itself.
+ */
+function tallyOf(results: Result[]): Map<string, Tally> {
+  const tally = new Map<string, Tally>()
+
+  for (const result of [...results].sort((left, right) => left.date.localeCompare(right.date))) {
+    tally.set(result.memberNumber, {
+      totals: addToTotals(tally.get(result.memberNumber)?.totals ?? EMPTY_TOTALS, result),
+      reachedOn: result.date,
+    })
+  }
+
+  return tally
 }
+
+/** Everyone who raced in one season, with their totals for it and the day they
+ *  reached them. Nobody who did not race is in it, because a board of zeroes is
+ *  not a board. */
+function seasonRows(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+): TallyRow[] {
+  const tally = tallyOf(results.filter((result) => seasonOf(result) === season))
+
+  return competitors.flatMap((competitor) => {
+    const own = tally.get(competitor.memberNumber)
+
+    return own === undefined ? [] : [{ competitor, ...own.totals, reachedOn: own.reachedOn }]
+  })
+}
+
+/* Most races of one length. Ladder: the number of races, then the points, the
+ * kilometres and the vertical of exactly those races, then the earlier date.
+ *
+ * Everything below the count is read from the races of that one length and
+ * never from the whole season, or a member's ultras would decide the half
+ * marathon board.
+ */
+const BY_CATEGORY = byLadder<TallyRow>([
+  (row) => row.races,
+  (row) => row.points,
+  (row) => row.kilometers,
+  VERTICAL,
+  // byLadder always puts the larger number first, so the earlier day is fed to
+  // it negated.
+  (row) => -Date.parse(row.reachedOn),
+])
 
 /** Who ran the most races of one length in a season, tallest first. Anyone who
  *  ran none of that length is left out rather than shown as a zero. */
@@ -336,18 +537,114 @@ export function topByCategory(
   season: number,
   category: RaceCategory,
   limit: number,
-): CategoryColumn[] {
-  const counts = new Map<string, number>()
+): Placed<TallyRow>[] {
+  const tally = tallyOf(
+    results.filter((result) => seasonOf(result) === season && result.category === category),
+  )
 
-  for (const result of results) {
-    if (seasonOf(result) === season && result.category === category) {
-      counts.set(result.memberNumber, (counts.get(result.memberNumber) ?? 0) + 1)
-    }
-  }
+  const columns = competitors.flatMap((competitor) => {
+    const own = tally.get(competitor.memberNumber)
 
-  return competitors
-    .map((competitor) => ({ competitor, count: counts.get(competitor.memberNumber) ?? 0 }))
-    .filter((column) => column.count > 0)
-    .sort((left, right) => right.count - left.count)
+    return own === undefined ? [] : [{ competitor, ...own.totals, reachedOn: own.reachedOn }]
+  })
+
+  return withPlaces(columns.sort(BY_CATEGORY), BY_CATEGORY, (row) => row.competitor.memberNumber)
     .slice(0, limit)
+}
+
+/**
+ * Most kilometres in a season. Ladder: kilometres, more races, vertical, points,
+ * then reached earlier, then a shared place.
+ *
+ * The fifth rung is in P12 and in Article 57 of the rulebook, and it was missing
+ * here while the board of races by length already had it: two members level on
+ * all four of the others were left in whatever order they happened to be in, and
+ * the one who got there in March shared a place with the one who got there in
+ * December.
+ */
+const BY_KILOMETERS = byLadder<TallyRow>([
+  (row) => row.kilometers,
+  (row) => row.races,
+  VERTICAL,
+  (row) => row.points,
+  // byLadder always puts the larger number first, so the earlier day is fed to
+  // it negated.
+  (row) => -Date.parse(row.reachedOn),
+])
+
+export function topByKilometers(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): Placed<TallyRow>[] {
+  const rows = seasonRows(competitors, results, season).sort(BY_KILOMETERS)
+
+  return withPlaces(rows, BY_KILOMETERS, (row) => row.competitor.memberNumber).slice(0, limit)
+}
+
+/** Longest on the course in a season. Ladder: time, kilometres, more races,
+ *  vertical. The day is not a rung on this one (PDL P12). */
+const BY_TIME_ON_COURSE = byLadder<TotalsRow>([
+  (row) => row.seconds,
+  (row) => row.kilometers,
+  (row) => row.races,
+  VERTICAL,
+])
+
+export function topByTimeOnCourse(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): Placed<TotalsRow>[] {
+  const rows = seasonRows(competitors, results, season).sort(BY_TIME_ON_COURSE)
+
+  return withPlaces(rows, BY_TIME_ON_COURSE, (row) => row.competitor.memberNumber).slice(0, limit)
+}
+
+export type RaceRow = {
+  competitor: Competitor
+  result: Result
+}
+
+/**
+ * The best single races of a season, by the points of one result. Ladder:
+ * points, the longer race, then the runner's kilometres and races in the
+ * season. The earlier date is deliberately not a rung: the usual tie is two
+ * people crossing the line together, which is the same race on the same day.
+ */
+export function bestSingleRaces(
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): Placed<RaceRow>[] {
+  const byNumber = new Map(competitors.map((competitor) => [competitor.memberNumber, competitor]))
+  const inSeason = results.filter((result) => seasonOf(result) === season)
+  const totals = totalsByMember(inSeason)
+
+  /* The season behind the race, carried on the row: the last two rungs need it,
+   * and looking it up inside a comparator means looking it up again for every
+   * comparison. */
+  const rows = inSeason.flatMap((result) => {
+    const competitor = byNumber.get(result.memberNumber)
+    const seasonTotals = totals.get(result.memberNumber)
+
+    // A result whose member is not in the list is nobody's place. The totals
+    // are there for every result of the season; saying so out loud is what
+    // lets the rungs below read them without a fallback.
+    return competitor === undefined || seasonTotals === undefined
+      ? []
+      : [{ competitor, result, seasonTotals }]
+  })
+
+  const ladder = byLadder<(typeof rows)[number]>([
+    (row) => row.result.points,
+    (row) => row.result.distanceKm,
+    (row) => row.seasonTotals.kilometers,
+    (row) => row.seasonTotals.races,
+  ])
+
+  return withPlaces(rows.sort(ladder), ladder, (row) => row.competitor.memberNumber).slice(0, limit)
 }

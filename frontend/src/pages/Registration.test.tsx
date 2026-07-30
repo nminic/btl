@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
 import { Registration } from './Registration'
@@ -20,7 +20,7 @@ function renderForm(today = OPEN) {
   )
 }
 
-async function fillEverythingExceptBirthDate(user: ReturnType<typeof userEvent.setup>) {
+async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>) {
   await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
   await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
@@ -61,7 +61,7 @@ describe('Registration once it is open', () => {
   })
 
   it('writes the date of birth as dd/mm/gggg and puts the slashes in itself', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderForm()
 
     const birth = screen.getByLabelText(/Datum rođenja/)
@@ -71,7 +71,7 @@ describe('Registration once it is open', () => {
   })
 
   it('refuses a date that does not exist', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderForm()
 
     await user.type(screen.getByLabelText(/Datum rođenja/), '31022027')
@@ -81,7 +81,7 @@ describe('Registration once it is open', () => {
   })
 
   it('asks for a parent as soon as the date says the competitor is under sixteen', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderForm()
 
     const birth = screen.getByLabelText(/Datum rođenja/)
@@ -96,7 +96,7 @@ describe('Registration once it is open', () => {
   })
 
   it('will not submit when the two passwords differ', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderForm()
 
     await fillEverythingExceptBirthDate(user)
@@ -110,11 +110,11 @@ describe('Registration once it is open', () => {
   })
 
   it('takes a photograph as proof, and lets it be taken back', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber="M0005">
+          <SessionProvider initialMemberNumber="000007">
             <NewResult />
           </SessionProvider>
         </MemoryRouter>
@@ -142,7 +142,7 @@ describe('Registration once it is open', () => {
   })
 
   it('shows what would be sent once the form is correct', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderForm()
 
     await fillEverythingExceptBirthDate(user)

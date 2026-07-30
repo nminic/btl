@@ -1,0 +1,58 @@
+/* The queue screens. Every one of them is a list of things to read and two
+   decisions to take, so they share one card. */
+
+.pending__subject {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* A biography can run to thousands of characters with not one empty line in it,
+   and a file name from a telephone can be one word sixty characters long. Both
+   have to wrap inside the card rather than push the page sideways. */
+.pending__body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+/* The country under the town, so the cell stays narrow on a telephone. The way
+   a member pays follows the country (PDL P8), so it belongs beside the fee. */
+.pending__country {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.pending__facts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.2rem;
+}
+
+.pending__facts div {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The text being judged takes the whole width, however short it is. A comment of
+   one word must not end up in a column beside two dates. */
+.pending__facts .pending__text {
+  flex: 1 0 100%;
+  gap: 0.15rem;
+}
+
+.pending__facts dt {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+}
+
+.pending__facts dd {
+  margin: 0;
+  font-weight: 600;
+}
