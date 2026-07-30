@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { DateSwitch } from '../clock/DateSwitch'
 import { dataOr } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { usePending } from '../pages/admin/pending'
@@ -157,7 +158,11 @@ export function Shell() {
           <Brand onNavigate={closeMenu} />
 
           <div className="shell__tools">
+            {/* The two development controls, side by side and gone together in
+                production (src/dev/tools.ts): who is at the keyboard, and what
+                day the portal is being read as. */}
             <RoleSwitch />
+            <DateSwitch />
             <LanguageMenu restOfPath={rest} />
 
             {/* Signed in: the inbox, then the picture whose menu holds settings

@@ -5,9 +5,13 @@ import { beforeEach, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 
 // The data layer caches a resource for the whole visit. Tests are separate
-// visits, so each one starts from an empty cache.
+// visits, so each one starts from an empty cache. So does the day the portal is
+// being read as, which the development switch leaves behind in the tab
+// (src/clock/ClockProvider.tsx): a test that moved it must not move it for the
+// next one.
 beforeEach(() => {
   clearResourceCache()
+  sessionStorage.clear()
 })
 
 /* The data layer fetches /mock/<name>.json, which the dev server and nginx

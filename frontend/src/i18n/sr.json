@@ -255,6 +255,10 @@
     "moderator": "Moderator",
     "superadmin": "Superadmin"
   },
+  "clock": {
+    "label": "Današnji datum",
+    "reset": "Vrati na stvarni datum"
+  },
   "notFound": {
     "title": "Ove strane nema",
     "text": "Adresa je pogrešna ili je strana uklonjena.",

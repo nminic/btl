@@ -100,12 +100,17 @@ describe('validateForm', () => {
     ],
   }
 
+  /* The day is handed in rather than read: the portal has one clock and this
+     rule must decide on the same day the field appeared on (src/clock). No
+     field here depends on it, so it only has to be a day. */
+  const today = new Date(Date.UTC(2026, 6, 28))
+
   it('starts empty, with checkboxes unticked', () => {
     expect(emptyValues(form)).toEqual({ ime: '', mejl: '', saglasnost: false })
   })
 
   it('collects one error per broken field', () => {
-    expect(validateForm(form, emptyValues(form))).toEqual({
+    expect(validateForm(form, emptyValues(form), today)).toEqual({
       ime: { key: 'form.errors.required' },
       saglasnost: { key: 'form.errors.required' },
     })
@@ -113,12 +118,12 @@ describe('validateForm', () => {
 
   it('returns nothing when everything is right', () => {
     expect(
-      validateForm(form, { ime: 'Vladan', mejl: 'v@primer.rs', saglasnost: true }),
+      validateForm(form, { ime: 'Vladan', mejl: 'v@primer.rs', saglasnost: true }, today),
     ).toEqual({})
   })
 
   it('treats a missing value as empty', () => {
-    expect(validateForm(form, {}).ime).toEqual({ key: 'form.errors.required' })
+    expect(validateForm(form, {}, today).ime).toEqual({ key: 'form.errors.required' })
   })
 })
 

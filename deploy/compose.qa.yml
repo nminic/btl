@@ -34,10 +34,11 @@ services:
       context: ../frontend
       args:
         # QA is a production build, so import.meta.env.DEV is false and the
-        # role switch would be invisible. Without it the member and
-        # administration flows cannot be reached at all, since authentication
-        # does not exist yet.
-        VITE_ROLE_SWITCH: "1"
+        # development controls would be invisible. Without the role switch the
+        # member and administration flows cannot be reached at all, since
+        # authentication does not exist yet, and without the date switch nothing
+        # that opens on a date can be looked at before that date arrives.
+        VITE_DEV_TOOLS: "1"
     container_name: qa-frontend
     restart: unless-stopped
     ports:

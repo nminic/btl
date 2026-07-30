@@ -1,5 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
@@ -11,6 +12,28 @@ import { Messages } from './member/Messages'
 /* The flows a member walks. The one that matters most is the last: a result
  * goes in, the moderator finds it, decides, and the member sees the decision.
  * That sequence is the reason for building the front end before the database. */
+
+/**
+ * Membership on a given day.
+ *
+ * The day is put on the clock above the screen rather than handed to the screen,
+ * which is exactly what the switch in the header does (src/clock). The screen
+ * used to take it as a prop, so a test could put it on a day the rest of the
+ * portal was not on, and nothing would say so.
+ */
+function renderMembershipOn(today: string, memberNumber = '000001') {
+  return render(
+    <ClockProvider simulatedDay={today}>
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <SessionProvider initialMemberNumber={memberNumber}>
+            <Membership />
+          </SessionProvider>
+        </MemoryRouter>
+      </I18nProvider>
+    </ClockProvider>,
+  )
+}
 
 describe('signing in', () => {
   it('turns a visitor into a competitor and lands on their profile', async () => {
@@ -78,15 +101,7 @@ describe('membership', () => {
      only opens between the first of October and the end of December, so these
      render on a date inside that window. */
   function renderFor(memberNumber: string) {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber={memberNumber}>
-            <Membership today="2026-11-01" />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    renderMembershipOn('2026-11-01', memberNumber)
   }
 
   /* Every way of paying is one way of using the slip above it, so all four sit a
@@ -116,17 +131,9 @@ describe('membership', () => {
   })
 
   it('says the price list is missing instead of drawing a slip for nothing', async () => {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000001">
-            {/* The window opens every October; the price list runs out at the end
-                of 2027, so this is a real October with nothing to charge. */}
-            <Membership today="2028-10-01" />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    // The window opens every October; the price list runs out at the end of
+    // 2027, so this is a real October with nothing to charge.
+    renderMembershipOn('2028-10-01')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
     expect(
@@ -136,15 +143,7 @@ describe('membership', () => {
   })
 
   it('keeps the slip out of sight while renewal is shut', async () => {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000001">
-            <Membership today="2026-07-30" />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    renderMembershipOn('2026-07-30')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(
@@ -361,15 +360,7 @@ describe('a result from entry to decision', () => {
 
 describe('the transfer window and renewal', () => {
   function renderMembership(today: string) {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000001">
-            <Membership today={today} />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    renderMembershipOn(today)
   }
 
   it('opens both on the first of October', async () => {
@@ -400,30 +391,14 @@ describe('the transfer window and renewal', () => {
   })
 
   it('says plainly when somebody is in no team at all', async () => {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000006">
-            <Membership today="2026-11-01" />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    renderMembershipOn('2026-11-01', '000006')
 
     expect(await screen.findByText('Trenutno nisi ni u jednom timu.')).toBeVisible()
   })
 
   it('keeps a first season member in that choice while it is still open', async () => {
     // 000031 has never raced, so nothing bars them.
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000031">
-            <Membership today="2026-11-01" />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    renderMembershipOn('2026-11-01', '000031')
 
     expect(await screen.findByLabelText('U kategoriji Prva sezona')).toBeEnabled()
     expect(screen.getByText(/Prva sezona ti je još otvorena/)).toBeVisible()
@@ -432,19 +407,36 @@ describe('the transfer window and renewal', () => {
 
 describe('screens that depend on the date', () => {
   it('shows the price in force once membership is on sale', () => {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber="000001">
-            <Membership today="2026-10-02" />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+    renderMembershipOn('2026-10-02')
 
     return screen.findByText(/Danas članarina košta 35 EUR/).then((found) => {
       expect(found).toBeVisible()
     })
+  })
+
+  it('moves the whole portal to another day from the switch in the header', async () => {
+    /* The feature end to end, through the real route table and the real switch,
+       rather than through a component holding a date: the owner asked for this
+       so he could see a screen that only exists after a certain date before
+       that date arrives.
+
+       Registration is the sharpest of them. Between 15 and 30 September the
+       portal is open for looking only and there is no form at all (PDL P8), so
+       nothing about the two states can be mistaken for the other. */
+    renderAt('/sr/registracija', 'visitor', null, undefined, '2026-09-20')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
+    ).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText('Današnji datum'), {
+      target: { value: '2026-10-02' },
+    })
+
+    expect(await screen.findByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Registracija još nije otvorena' }),
+    ).not.toBeInTheDocument()
   })
 })
 

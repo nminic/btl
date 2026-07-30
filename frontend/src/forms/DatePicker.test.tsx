@@ -1,20 +1,27 @@
 import { render, screen, within } from '@testing-library/react'
 import { setupUser } from '../test/user'
+import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { DatePicker } from './DatePicker'
 
+/** The day the portal is on while these run. Fixed rather than the machine's,
+ *  so "opens on this month" is a month the test can name. */
+const TODAY = '2026-07-30'
+
 function renderPicker(value = '', onChange = vi.fn()) {
   render(
-    <I18nProvider locale="sr">
-      <DatePicker
-        id="proba"
-        name="proba"
-        value={value}
-        invalid={false}
-        describedBy={undefined}
-        onChange={onChange}
-      />
-    </I18nProvider>,
+    <ClockProvider simulatedDay={TODAY}>
+      <I18nProvider locale="sr">
+        <DatePicker
+          id="proba"
+          name="proba"
+          value={value}
+          invalid={false}
+          describedBy={undefined}
+          onChange={onChange}
+        />
+      </I18nProvider>
+    </ClockProvider>,
   )
 
   return onChange
@@ -115,17 +122,21 @@ describe('DatePicker', () => {
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
 
     const heading = screen.getByRole('button', { name: 'Sledeći mesec' }).previousElementSibling!
-    expect(heading.textContent).toContain(String(new Date().getFullYear()))
+    expect(heading.textContent).toContain('jul 2026')
   })
 
-  it('opens on this month when nothing has been typed', async () => {
+  it("opens on the month the portal is on, not the one the machine's clock is on", async () => {
     const user = setupUser()
     renderPicker()
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
 
+    /* The portal reads one clock, and the switch in the header moves it
+       (src/clock). A calendar that opened on the machine's month while the
+       price beside it was quoted for another would read as a bug in the portal
+       rather than as one half of it not having heard. */
     const heading = screen.getByRole('button', { name: 'Sledeći mesec' }).previousElementSibling!
-    expect(heading.textContent).toContain(String(new Date().getFullYear()))
+    expect(heading.textContent).toContain('jul 2026')
   })
 
   it('leaves the days outside the month blank', async () => {

@@ -1,0 +1,72 @@
+/* Shaped like the language button and the rest of the header strip: same
+   height, same rounding, same border that lights up on hover. A development
+   control that announced itself with a dashed frame made the header look
+   unfinished on the one environment the owner walks through. */
+
+.date-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.date-switch__day {
+  height: 2.4rem;
+  padding: 0 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--fast);
+}
+
+.date-switch__day:hover {
+  border-color: var(--accent);
+}
+
+/* While the portal is being read as another day, the control says so on its
+   own. Nothing else on the screen can: every date on it looks exactly as it
+   would if that day had really come, which is the point of it. */
+.date-switch__day--on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The browser's own calendar symbol, which is dark on a dark header and cannot
+   be styled any other way. */
+.date-switch__day::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+}
+
+.date-switch__reset {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--fast);
+}
+
+.date-switch__reset:hover {
+  border-color: var(--accent);
+}
+
+/* On a phone the header strip wraps, and a control that reads as one thing must
+   not be broken across two lines. */
+@media (max-width: 480px) {
+  .date-switch__day {
+    font-size: 0.76rem;
+    padding: 0 0.35rem;
+  }
+}

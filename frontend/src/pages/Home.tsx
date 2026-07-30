@@ -1,3 +1,4 @@
+import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { defaultSeason, totalsOf } from '../data/derive'
 import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
@@ -36,7 +37,7 @@ import './Home.css'
 export function Home() {
   const { t } = useI18n()
   const state = combineResources(useCompetitors(), useEvents(), useResults())
-  const today = new Date().toISOString().slice(0, 10)
+  const today = useToday()
 
   return (
     <div className="home">

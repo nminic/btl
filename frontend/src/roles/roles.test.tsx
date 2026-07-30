@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { isMember, isStaff } from './context'
-import { roleSwitchEnabled } from './devTools'
 import { RoleProvider } from './RoleProvider'
 import { RoleSwitch } from './RoleSwitch'
 import { useRole } from './useRole'
@@ -121,34 +120,23 @@ describe('RoleSwitch', () => {
 
   it('exists in the QA build, which is a production build with the flag set', () => {
     vi.stubEnv('DEV', false)
-    vi.stubEnv('VITE_ROLE_SWITCH', '1')
+    vi.stubEnv('VITE_DEV_TOOLS', '1')
 
     renderSwitch()
     expect(screen.getByLabelText('Uloga')).toBeVisible()
 
     vi.unstubAllEnvs()
   })
-})
 
-describe('roleSwitchEnabled', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
+  it('carries no word beside it, only the name it answers to', () => {
+    /* The dashed frame and the word ULOGA are gone (owner, 30.07.2026): the
+       header names places, and a development control that announced itself made
+       a finished header look unfinished on the one environment the owner walks
+       the portal through. The name has to stay for anyone who cannot see which
+       control it is. */
+    renderSwitch()
 
-  it('is on in development', () => {
-    vi.stubEnv('DEV', true)
-    expect(roleSwitchEnabled()).toBe(true)
-  })
-
-  it('is on when the build asked for it', () => {
-    vi.stubEnv('DEV', false)
-    vi.stubEnv('VITE_ROLE_SWITCH', '1')
-    expect(roleSwitchEnabled()).toBe(true)
-  })
-
-  it('is off in a production build that did not ask for it', () => {
-    vi.stubEnv('DEV', false)
-    vi.stubEnv('VITE_ROLE_SWITCH', '')
-    expect(roleSwitchEnabled()).toBe(false)
+    expect(screen.getByLabelText('Uloga')).toBeVisible()
+    expect(screen.queryByText('Uloga')).not.toBeInTheDocument()
   })
 })

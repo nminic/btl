@@ -1,8 +1,8 @@
 import type { Moderator } from '../data/types'
 import { dataOr, useModerators } from '../data/useResource'
+import { devToolsEnabled } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { ROLES, type Role } from './context'
-import { roleSwitchEnabled } from './devTools'
 import { useRole } from './useRole'
 import './RoleSwitch.css'
 
@@ -36,12 +36,16 @@ function RoleChooser() {
 
   return (
     <div className="role-switch">
-      <label className="role-switch__label" htmlFor="role-switch">
-        {t('role.label')}
-      </label>
+      {/* The word that used to stand beside it is gone (owner, 30.07.2026): the
+          header carries names of places, not labels of controls, and the chosen
+          role is written inside the control anyway. The name it is still known
+          by is on the control itself, so a screen reader and a hover both get
+          it. */}
       <select
         id="role-switch"
         className="role-switch__select"
+        aria-label={t('role.label')}
+        title={t('role.label')}
         value={moderator === null ? role : optionFor(moderator)}
         onChange={(event) => {
           const chosen = moderators.find((one) => optionFor(one) === event.target.value)
@@ -81,7 +85,7 @@ function RoleChooser() {
  * called behind a condition, so a single component would fetch the moderators
  * on every screen of a portal that never draws this control. */
 export function RoleSwitch() {
-  if (!roleSwitchEnabled()) {
+  if (!devToolsEnabled()) {
     return null
   }
 

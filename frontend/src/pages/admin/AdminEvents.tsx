@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { useEvents } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
@@ -18,7 +19,7 @@ export function AdminEvents() {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useEvents()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = useToday()
 
   return (
     <div className="member">

@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { routeObjects } from '../app/routeObjects'
+import { ClockProvider } from '../clock/ClockProvider'
 import type { Moderator } from '../data/types'
 import { DEFAULT_LOCALE, type Locale } from '../i18n/config'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -42,19 +43,28 @@ export function renderAt(
   role: Role = 'visitor',
   memberNumber: string | null = null,
   moderator: Moderator = ANY_MODERATOR,
+  /** The day the portal is read as, for the screens that change with it. Left
+   *  alone, a test runs on the real one, exactly as the portal does. */
+  today: string | null = null,
 ) {
   const router = createMemoryRouter(routeObjects, { initialEntries: [path] })
 
   return render(
-    <RoleProvider initialRole={role} initialModerator={role === 'moderator' ? moderator : null}>
-      <SessionProvider initialMemberNumber={memberNumber}>
-        <RouterProvider router={router} />
-      </SessionProvider>
-    </RoleProvider>,
+    <ClockProvider simulatedDay={today}>
+      <RoleProvider initialRole={role} initialModerator={role === 'moderator' ? moderator : null}>
+        <SessionProvider initialMemberNumber={memberNumber}>
+          <RouterProvider router={router} />
+        </SessionProvider>
+      </RoleProvider>
+    </ClockProvider>,
   )
 }
 
 /** For components that need translations but no routing. */
 export function renderWithI18n(ui: ReactNode, locale: Locale = DEFAULT_LOCALE) {
-  return render(<I18nProvider locale={locale}>{ui}</I18nProvider>)
+  return render(
+    <ClockProvider>
+      <I18nProvider locale={locale}>{ui}</I18nProvider>
+    </ClockProvider>,
+  )
 }
