@@ -5,7 +5,7 @@ import { Resource } from '../components/Resource'
 import { isStaff } from '../roles/context'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
-import { combineResources, useEvents, useLeagues, useRaces } from '../data/useResource'
+import { combinePair, useEvents, useLeagues } from '../data/useResource'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Profile.css'
@@ -71,7 +71,10 @@ export function LeagueDetail() {
   const { slug } = useParams()
   const { role } = useRole()
   const { edits, edit } = useSession()
-  const state = combineResources(useLeagues(), useEvents(), useRaces())
+  /* Only what the page shows. The league lists its events, and never the races
+   * on them, so waiting on the races turned one failed file into an error
+   * message over data nothing here reads. */
+  const state = combinePair(useLeagues(), useEvents())
 
   return (
     <Resource state={state}>
