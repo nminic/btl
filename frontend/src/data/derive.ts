@@ -638,16 +638,16 @@ const BY_PROGRESS = byLadder<ProgressRow>([
  * would put every newcomer at the top of a list about improvement, which is the
  * one thing a list about improvement must not do (PDL P12, 30.07.2026).
  *
- * A season somebody ran worse than the last is a small number rather than a
- * disqualification. The decision names one exclusion and this keeps to it rather
- * than inventing a second, because who appears on a board is the owner's to
- * decide and not a matter of implementation.
+ * Whoever went backwards is not on it either, and that is the second exclusion
+ * rather than the same one twice: only a positive gain counts (PDL P12,
+ * 30.07.2026). It came out of the historical seasons the prototype reads, where a
+ * field of twenty-odd has fewer than ten people who improved: the board filled
+ * its last two places with -0,63 and -19,16 under the heading "best progress".
  *
- * Worth knowing, because it shows: on the historical seasons the prototype reads,
- * a field of twenty-odd has fewer than ten people who improved, so the board
- * fills its last places with negative gains and a list called "best progress"
- * ends in minus. On a full season it cannot happen. If the owner would rather see
- * a short board than a negative one, the change is one filter here.
+ * The board is therefore allowed to be shorter than ten, and to be empty in a
+ * season nobody bettered. What it says when it is empty has to name both
+ * exclusions, or it tells a season in which everybody ran and nobody improved
+ * that nobody ran (topBoards.progressEmpty).
  */
 export function topByProgress(
   competitors: Competitor[],

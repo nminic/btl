@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import { JUNIOR, PRICES, type PriceRow } from '../../data/pricing'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* The price list as it is actually stored: rows with a period of validity.
@@ -28,13 +25,8 @@ const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
 
 export function AdminPricing() {
   const { t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   if (editing !== null) {
     return (

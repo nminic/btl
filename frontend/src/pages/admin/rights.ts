@@ -1,5 +1,8 @@
+import { useCallback } from 'react'
 import type { Moderator } from '../../data/types'
+import { useRole } from '../../roles/useRole'
 import type { Rights } from '../../session/context'
+import { useSession } from '../../session/useSession'
 import { ENTITY_FORMS } from './entityForms'
 import { QUEUES } from './queues'
 
@@ -21,6 +24,11 @@ import { QUEUES } from './queues'
  * remember this file: the entities come from ENTITY_FORMS and the queues from
  * QUEUES. Only the words are added here, and a test says so out loud when they
  * are missing.
+ *
+ * This is also the file that answers the question, and not only the one that
+ * draws the boxes: useMay below is what every administrative screen is guarded
+ * by (Guard.tsx). A matrix nothing consults is a screen that looks as though it
+ * does something and does not, which is worse than no screen at all.
  */
 
 export type RightGroupId = 'entities' | 'queues'
@@ -46,11 +54,23 @@ export type Right = {
 export type RightGroup = {
   id: RightGroupId
   headingKey: string
-  noteKey: string
   rights: Right[]
 }
 
-const ENTITY_RIGHTS: Right[] = ENTITY_FORMS.map((entity) => ({
+/**
+ * One column per entity, less the ones no moderator may ever open.
+ *
+ * Moderators are the only such entity today, and the exclusion is read off the
+ * entity definition rather than named here (entityForms.ts, `superadminOnly`),
+ * because it is a fact about the entity: the screen behind it is closed to a
+ * moderator by PDL P21, and no tick anywhere could open it. A column for it was
+ * a box the superadmin could set, a row that then read seventeen rights, and a
+ * moderator who got the same refusal as before. A promise the specification
+ * forbids anyone to keep is worse than no promise.
+ */
+const ENTITY_RIGHTS: Right[] = ENTITY_FORMS.filter(
+  (entity) => entity.superadminOnly !== true,
+).map((entity) => ({
   key: `entity:${entity.id}`,
   group: 'entities',
   nameKey: `rights.column.entity.${entity.id}`,
@@ -64,30 +84,31 @@ const QUEUE_RIGHTS: Right[] = QUEUES.map((queue) => ({
   actionKey: `rights.action.queue.${queue.id}`,
 }))
 
+/* A group carries its heading and nothing else. It used to carry a note as well,
+ * under two keys that were never written into the dictionary and never rendered;
+ * the first person to draw them would have got the text of the key on screen.
+ * What the two groups are and why they are two is said once, over the whole
+ * table, in rights.intro. */
 export const RIGHT_GROUPS: RightGroup[] = [
-  {
-    id: 'entities',
-    headingKey: 'rights.groupEntities',
-    noteKey: 'rights.groupEntitiesNote',
-    rights: ENTITY_RIGHTS,
-  },
-  {
-    id: 'queues',
-    headingKey: 'rights.groupQueues',
-    noteKey: 'rights.groupQueuesNote',
-    rights: QUEUE_RIGHTS,
-  },
+  { id: 'entities', headingKey: 'rights.groupEntities', rights: ENTITY_RIGHTS },
+  { id: 'queues', headingKey: 'rights.groupQueues', rights: QUEUE_RIGHTS },
 ]
 
 /** Every box in the matrix, in the order it is drawn. */
 export const RIGHTS: Right[] = RIGHT_GROUPS.flatMap((group) => group.rights)
+
+/** The same ones by key, so a screen can be handed the right that guards it
+ *  instead of looking it up and then having to prove it found something. */
+export const RIGHT: Record<string, Right> = Object.fromEntries(
+  RIGHTS.map((one) => [one.key, one]),
+)
 
 /**
  * The first right of every group after the first, which is where the line
  * between two groups is drawn.
  *
  * Counted from the groups rather than written into the stylesheet as the
- * eleventh column. A tenth entity would move that line silently and leave it
+ * ninth column. A tenth entity would move that line silently and leave it
  * drawn through the middle of the entities, which is exactly the sort of thing
  * nobody notices for a year.
  */
@@ -112,4 +133,39 @@ export function allowed(moderator: Moderator, key: string, rights: Rights): bool
  *  what makes a moderator with none of them say so rather than look unfinished. */
 export function grantedCount(moderator: Moderator, rights: Rights): number {
   return RIGHTS.filter((right) => allowed(moderator, right.key, rights)).length
+}
+
+/**
+ * Whether whoever is at the keyboard holds a given right. The one question every
+ * administrative screen asks, asked in one place (PDL P21, ADL A8).
+ *
+ * Three answers rather than one lookup, and the order is the rule:
+ *
+ * - The superadmin holds everything, always, and is never looked up. He has no
+ *   row in the matrix precisely because there is nothing to give him or take
+ *   away (PDL P28a, 30.07.2026).
+ * - A moderator holds what has been ticked for **him**. Which moderator that is
+ *   comes off the role, not off the word "moderator": until the switch could
+ *   name one, nothing connected the person signed in to a row in the table, and
+ *   the matrix could not have been enforced even by a screen that tried.
+ * - Everybody else holds nothing. A visitor and a competitor never reach these
+ *   screens at all, and a moderator nobody has named is nobody.
+ *
+ * A predicate rather than a boolean per call, because a screen that filters a
+ * list asks this of every row and a hook cannot be called in a loop.
+ */
+export function useMay(): (right: string) => boolean {
+  const { role, moderator } = useRole()
+  const { rights } = useSession()
+
+  return useCallback(
+    (right: string) => {
+      if (role === 'superadmin') {
+        return true
+      }
+
+      return moderator !== null && allowed(moderator, right, rights)
+    },
+    [role, moderator, rights],
+  )
 }

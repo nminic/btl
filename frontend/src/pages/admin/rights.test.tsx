@@ -36,7 +36,7 @@ describe('every box in the matrix', () => {
 
     /* A screen reader does not read the column heading and the row heading for
        you when you land on a checkbox, so a box named after its column alone is
-       one of seventeen boxes named "Događaji" and the person hearing it cannot
+       one of sixteen boxes named "Događaji" and the person hearing it cannot
        tell whose it is. */
     expect(
       table.getByRole('checkbox', { name: 'Jelena Radulović, uređivanje događaja' }),
@@ -53,7 +53,7 @@ describe('every box in the matrix', () => {
     renderAt('/sr/administracija/moderatori', 'superadmin')
     const table = await matrix()
 
-    /* Four moderators times seventeen rights, and no two of them reading the
+    /* Four moderators times sixteen rights, and no two of them reading the
        same. The pair that would collide first is the league somebody proposed
        and the league record itself, which share an id and share nothing else. */
     const names = table
@@ -89,7 +89,7 @@ describe('every box in the matrix', () => {
 })
 
 describe('a moderator with no right at all', () => {
-  it('says so in his row instead of showing seventeen empty boxes', async () => {
+  it('says so in his row instead of showing sixteen empty boxes', async () => {
     renderAt('/sr/administracija/moderatori', 'superadmin')
     const table = await matrix()
 
@@ -128,7 +128,7 @@ describe('the superadmin', () => {
     const table = await matrix()
 
     /* He does nothing a moderator cannot; what he alone does is decide what the
-       moderator may (PDL P21). A row for him would be seventeen boxes nobody can
+       moderator may (PDL P21). A row for him would be sixteen boxes nobody can
        untick and a lie about where the limit is. */
     expect(table.queryByRole('rowheader', { name: /[Ss]uperadmin/ })).not.toBeInTheDocument()
     expect(table.getAllByRole('rowheader')).toHaveLength(4)
@@ -178,24 +178,56 @@ describe('the columns of the matrix', () => {
     /* The point of reading them rather than writing them out: a ninth queue
        added to queues.ts gets a column the day it is added. It is also why the
        words are checked below rather than assumed. */
+    const editable = ENTITY_FORMS.filter((entity) => entity.superadminOnly !== true)
+
     expect(RIGHT_GROUPS.map((group) => group.rights.length)).toEqual([
-      ENTITY_FORMS.length,
+      editable.length,
       QUEUES.length,
     ])
     expect(RIGHTS.map((right) => right.key)).toEqual([
-      ...ENTITY_FORMS.map((entity) => `entity:${entity.id}`),
+      ...editable.map((entity) => `entity:${entity.id}`),
       ...QUEUES.map((queue) => `queue:${queue.id}`),
     ])
   })
 
-  it('include the moderators themselves, which is the right nobody else holds', () => {
-    expect(RIGHTS.map((right) => right.key)).toContain('entity:moderators')
+  it('leave out the entity no tick could ever open, which is the moderators', () => {
+    /* A column for moderators was a promise the specification forbids anybody to
+       keep: the superadmin could tick it, the row would read seventeen rights,
+       and the screen behind it would go on refusing, because it is closed to a
+       moderator by PDL P21 and not by a missing right. The exclusion is a fact
+       on the entity (superadminOnly), so a second such entity leaves the matrix
+       on the day it is added rather than on the day somebody remembers. */
+    expect(RIGHTS.map((right) => right.key)).not.toContain('entity:moderators')
+    expect(ENTITY_FORMS.some((entity) => entity.superadminOnly === true)).toBe(true)
+
+    // And the words for it are gone too, so nothing can quietly draw a column
+    // out of a key that still resolves.
+    expect(t('rights.column.entity.moderators')).toBe('rights.column.entity.moderators')
+    expect(t('rights.action.entity.moderators')).toBe('rights.action.entity.moderators')
   })
 
   it('draw the line between the two groups from the groups, not from a number', () => {
-    // Written into the stylesheet as "the eleventh column", it would move
-    // silently the day a tenth entity arrives.
+    // Written into the stylesheet as "the ninth column", it would move silently
+    // the day a tenth entity arrives.
     expect([...GROUP_STARTS]).toEqual([`queue:${QUEUES[0].id}`])
+  })
+
+  it('carry no key the dictionary cannot answer', () => {
+    /* A group used to declare a note under two keys nobody had written and
+       nothing rendered. Dead is not harmless: translate() gives back the key it
+       cannot find, so the first person to draw it would have put
+       "rights.groupEntitiesNote" on the screen and had no way of knowing that
+       was the fault rather than the text. */
+    const keys = RIGHT_GROUPS.flatMap((group) =>
+      Object.entries(group)
+        .filter(([field]) => field.endsWith('Key'))
+        .map(([, value]) => String(value)),
+    )
+
+    expect(keys.filter((key) => t(key) === key)).toEqual([])
+    // One heading each and nothing beside it, so a dead field cannot hide among
+    // live ones.
+    expect(keys).toHaveLength(RIGHT_GROUPS.length)
   })
 
   it('have words for every one of them, and no two of them read the same', () => {
@@ -233,9 +265,9 @@ describe('the screen behind the matrix', () => {
 
     expect(list.getByText('jelena.radulovic@primer.rs')).toBeVisible()
     expect(list.getByRole('button', { name: 'Otvori: Milena Šarić' })).toBeVisible()
-    // Sixteen of seventeen: everything but making moderators, which is the one
-    // right the superadmin keeps to himself.
-    expect(list.getByText(t('rights.granted', { count: 16 }))).toBeVisible()
+    // All sixteen there are. Making moderators is not among them and cannot
+    // be: it is the one thing the superadmin keeps to himself (PDL P21).
+    expect(list.getByText(t('rights.granted', { count: RIGHTS.length }))).toBeVisible()
     expect(list.getByText(t('rights.none'))).toBeVisible()
   })
 

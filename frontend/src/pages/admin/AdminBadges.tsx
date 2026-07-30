@@ -2,18 +2,14 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { useBadges } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { BADGE_KINDS, ruleSentence, type BadgeKind, type BadgeRule } from '../../data/badgeRule'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { BADGES, recordsOf, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 export function AdminBadges() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const state = useBadges()
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -23,10 +19,6 @@ export function AdminBadges() {
     from: '',
     to: '',
   })
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   if (editing !== null) {
     return (

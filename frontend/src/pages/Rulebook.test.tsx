@@ -167,19 +167,59 @@ describe('the section being read', () => {
   })
 })
 
-describe('the rulebook without its text', () => {
+/* A written page may take in another one, and the rulebook is a written page:
+ * an administrator who adds `includes` to it is told by the list of pages that
+ * the text has been taken in (AdminPages), so the rulebook has to draw it. It
+ * used to read its own sections and nothing else, so the two screens disagreed
+ * about one record and neither said which was right. */
+describe('the rulebook that takes in another page', () => {
   const original = globalThis.fetch
 
   afterEach(() => {
     globalThis.fetch = original
   })
 
+  /** The real files, except for the written pages, which this test writes. */
+  function serve(pages: unknown) {
+    globalThis.fetch = ((input: RequestInfo | URL) =>
+      String(input).endsWith('pages.json')
+        ? Promise.resolve(
+            new Response(JSON.stringify(pages), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+          )
+        : original(input)) as typeof fetch
+  }
+
+  it('draws what it takes in above its own sections, and lists it too', async () => {
+    serve({
+      pravilnik: {
+        title: TITLE,
+        includes: ['rec-predsednika'],
+        sections: [{ heading: '1. Uvodne odredbe', body: 'Sopstveni tekst.' }],
+      },
+      'rec-predsednika': {
+        title: 'Reč predsednika',
+        sections: [{ heading: 'Reč predsednika', body: 'Preuzeti tekst.' }],
+      },
+    })
+
+    renderAt('/sr/pravilnik')
+    await screen.findByRole('heading', { level: 1, name: TITLE })
+
+    // What is taken in stands first, because a foreword is a foreword, and the
+    // side navigation counts it like any other section.
+    expect(screen.getByText('Preuzeti tekst.')).toBeVisible()
+    expect(
+      within(sideNavigation())
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Reč predsednika', '1. Uvodne odredbe'])
+  })
+
   it('says the page is not there when the text is missing', async () => {
-    globalThis.fetch = (async () =>
-      new Response('{}', {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })) as typeof fetch
+    serve({})
 
     renderAt('/sr/pravilnik')
 

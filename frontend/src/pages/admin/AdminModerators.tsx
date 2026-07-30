@@ -2,14 +2,12 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { useModerators } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { MODERATORS, recordsOf, type Editing } from './entityForms'
 import { grantedCount } from './rights'
 import { RightsMatrix } from './RightsMatrix'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 import './Rights.css'
 
@@ -17,12 +15,12 @@ import './Rights.css'
  * Moderators, as an entity among the others, and the matrix that says what each
  * of them may do (PDL P28a, 30.07.2026).
  *
- * This is the one screen a moderator does not reach. Everything else in
- * administration is open to both roles, because the superadmin does nothing a
- * moderator cannot; what he alone does is decide what the moderator may (PDL
- * P21). Without that boundary the difference between the two roles is a word in
- * the code, and a moderator standing in front of his own row of boxes is not a
- * moderator being limited by anything.
+ * This is the one screen a moderator does not reach, and the door on it is
+ * fitted by the route table like every other (needs.ts, Guard.tsx). What he
+ * alone does is decide what the moderator may (PDL P21). Without that boundary
+ * the difference between the two roles is a word in the code, and a moderator
+ * standing in front of his own row of boxes is not a moderator being limited by
+ * anything.
  *
  * A moderator is entered and changed the way the other eight entities are, by
  * the one renderer reading one JSON definition. The rights are not on that form
@@ -31,14 +29,9 @@ import './Rights.css'
  */
 export function AdminModerators() {
   const { t } = useI18n()
-  const { role } = useRole()
   const { edits, creations, rights } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useModerators()
-
-  if (role !== 'superadmin') {
-    return <StaffOnly noteKey="admin.moderatorsClosed" />
-  }
 
   return (
     <div className="member">

@@ -33,6 +33,16 @@
   min-block-size: 9rem;
 }
 
+/* Where the button that hands work back cannot be there, because there is
+   nobody the instruction could reach (queues.ts). It stands in the row of
+   buttons, so it is read where the missing button would have been. */
+.pending__blocked {
+  margin: 0;
+  align-self: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* The country under the town, so the cell stays narrow on a telephone. The way
    a member pays follows the country (PDL P8), so it belongs beside the fee. */
 .pending__country {

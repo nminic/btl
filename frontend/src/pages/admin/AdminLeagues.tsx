@@ -3,13 +3,10 @@ import { Resource } from '../../components/Resource'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { LEAGUES, recordsOf, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* Leagues, with the number of events each one carries. A league with no events
@@ -17,14 +14,9 @@ import '../member/Member.css'
  * has nothing to rank (PDL P15). */
 export function AdminLeagues() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useLeagues()
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   return (
     <div className="member">

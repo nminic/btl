@@ -7,6 +7,7 @@ import {
   formatNumber,
   formatPoints,
   formatShortDate,
+  wholePeriod,
 } from './format'
 import { intlTag } from './intlTag'
 
@@ -61,5 +62,52 @@ describe('format', () => {
     expect(intlTag('en')).toBe('en')
     expect(intlTag('sr')).toBe('sr-Latn')
     expect(intlTag('de')).toBe('de')
+  })
+})
+
+/* The rule the owner gave on 30.07.2026 (PDL P28a, "Ispis vremenskog opsega").
+ * A range that describes a whole period is written as that period, and only what
+ * describes none is read out from one end to the other. */
+describe('wholePeriod', () => {
+  it('writes one day as that day', () => {
+    expect(wholePeriod('2027-10-15', '2027-10-15', 'sr')).toBe('15. 10. 2027.')
+  })
+
+  it('writes the first to the last of a month as the month', () => {
+    expect(wholePeriod('2027-07-01', '2027-07-31', 'sr')).toBe('jul 2027.')
+    // Thirty days in one, twenty-eight in another, twenty-nine in a leap year,
+    // and the rule is the same because the last day is counted, not assumed.
+    expect(wholePeriod('2027-06-01', '2027-06-30', 'sr')).toBe('jun 2027.')
+    expect(wholePeriod('2027-02-01', '2027-02-28', 'sr')).toBe('februar 2027.')
+    expect(wholePeriod('2028-02-01', '2028-02-29', 'sr')).toBe('februar 2028.')
+  })
+
+  it('writes the first of January to the last of December as the year', () => {
+    expect(wholePeriod('2027-01-01', '2027-12-31', 'sr')).toBe('2027.')
+  })
+
+  it('tries one day first, so the first to the first is a day and not a month', () => {
+    /* The order is the rule rather than an implementation detail. Read as an
+       attempt at a month, the first to the first of February would come back as
+       "februar 2027", which is twenty-eight days instead of one. */
+    expect(wholePeriod('2027-02-01', '2027-02-01', 'sr')).toBe('1. 2. 2027.')
+  })
+
+  it('gives back nothing for a range that describes no period', () => {
+    // A month one day short of itself, and a stretch across two months.
+    expect(wholePeriod('2027-07-01', '2027-07-30', 'sr')).toBeNull()
+    expect(wholePeriod('2027-07-02', '2027-07-31', 'sr')).toBeNull()
+    expect(wholePeriod('2027-01-01', '2027-11-30', 'sr')).toBeNull()
+    expect(wholePeriod('2027-01-01', '2028-12-31', 'sr')).toBeNull()
+  })
+
+  it('follows the language, and never falls back to Cyrillic', () => {
+    /* Intl reads a plain "sr" as Serbian in Cyrillic, which has been a fault on
+       this portal once already, so every month and every year goes through
+       intlTag (ADL A7). */
+    expect(wholePeriod('2027-07-01', '2027-07-31', 'sr')).not.toMatch(/[Ѐ-ӿ]/)
+    expect(wholePeriod('2027-07-01', '2027-07-31', 'en')).toBe('July 2027')
+    // A year is a date rather than a number: Serbian writes the full stop.
+    expect(wholePeriod('2027-01-01', '2027-12-31', 'en')).toBe('2027')
   })
 })

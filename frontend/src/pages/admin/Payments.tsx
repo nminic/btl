@@ -3,15 +3,12 @@ import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { handOutMemberNumber } from './memberNumbers'
 import { settledIn, usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 import './Verification.css'
 
@@ -47,17 +44,12 @@ type Refusing = { key: string; name: string }
  */
 export function Payments() {
   const { t } = useI18n()
-  const { role } = useRole()
   const session = useSession()
   const { decisions, settle } = session
   const [open, setOpen] = useState<Refusing | null>(null)
   /* The member list is read for one reason only: a number can only be handed out
      against every number that is already gone. */
   const state = combinePair(usePending(), useCompetitors())
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   const queue = QUEUE.payments
 

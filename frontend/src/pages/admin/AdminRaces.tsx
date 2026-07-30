@@ -5,13 +5,10 @@ import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import type { FieldOption } from '../../forms/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { RACES, recordsOf, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* Races, the level below an event. They are listed with the event they belong
@@ -36,15 +33,10 @@ function eventOptions(events: BtlEvent[], locale: string): FieldOption[] {
 
 export function AdminRaces() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useRaces(), useEvents())
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   return (
     <div className="member">

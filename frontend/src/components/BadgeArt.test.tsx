@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { BadgeArt } from './BadgeArt'
 
 /* What this file holds is the part of the drawing that cannot be seen: three
@@ -70,5 +72,46 @@ describe('BadgeArt', () => {
 
     expect(container.querySelector('.badge-art')).toHaveAttribute('data-kind', 'raceCount')
     expect(container.querySelector('.badge-art__wreath')).not.toBeNull()
+  })
+})
+
+/* The drawing steps down in density as the disc gets smaller, and a step that
+ * nothing can reach is not a step, it is a comment describing a screen nobody
+ * can open. Two of the three densities were exactly that: --badge-art-size was
+ * set nowhere at all, so the disc stood at 104px on a 360px telephone and on a
+ * 1600px desktop alike and neither container query could ever match.
+ *
+ * jsdom evaluates none of this, so it is read as text. What it holds is the one
+ * fact that made the rules dead, and it is a fact about two files at once, which
+ * is why neither of them can be trusted to state it about itself.
+ */
+describe('the sizes the mark is drawn at', () => {
+  const read = (path: string) => readFileSync(join(process.cwd(), 'src', path), 'utf-8')
+
+  /** The smallest disc anything on the portal asks for, in pixels. */
+  function smallestSize(): number {
+    const clamp = /--badge-art-size:\s*clamp\(\s*([\d.]+)rem/.exec(read('pages/Badges.css'))
+
+    /* Whoever draws a badge says how large. Nobody saying so is the fault this
+       guards: the component's own fallback is then the only size there is. */
+    expect(clamp).not.toBeNull()
+
+    return Number(clamp![1]) * 16
+  }
+
+  /** Every density step in the drawing, as the width it cuts at. */
+  function cuts(): number[] {
+    return [...read('components/BadgeArt.css').matchAll(/@container badge-art \(max-width: (\d+)px\)/g)]
+      .map((match) => Number(match[1]))
+  }
+
+  it('shrinks the disc on a narrow window, so a step below can be reached', () => {
+    // 360px is the narrowest screen this portal supports (ADL A7).
+    expect(smallestSize()).toBeLessThan(Math.max(...cuts()))
+  })
+
+  it('keeps no step the disc can never get down to', () => {
+    expect(cuts()).not.toEqual([])
+    expect(cuts().filter((cut) => cut < smallestSize())).toEqual([])
   })
 })

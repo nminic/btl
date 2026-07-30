@@ -21,6 +21,8 @@ import { Registration } from '../pages/Registration'
 import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
 import { Entities } from '../pages/admin/Entities'
+import { Guard } from '../pages/admin/Guard'
+import { needFor } from '../pages/admin/needs'
 import { Verification } from '../pages/admin/Verification'
 import { AdminBadges } from '../pages/admin/AdminBadges'
 import { AdminEvents } from '../pages/admin/AdminEvents'
@@ -95,6 +97,20 @@ export function screenFor(route: RouteDef): ReactElement {
   return SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />
 }
 
+/**
+ * The screen at an address, with the door its address asks for.
+ *
+ * Here rather than inside the screens, so that adding a fifteenth administrative
+ * screen cannot mean adding a fifteenth check and forgetting what it should ask
+ * for. Every address outside administration asks for nothing and is handed
+ * through untouched (needs.ts).
+ */
+function guarded(path: string, screen: ReactElement): ReactElement {
+  const need = needFor(path)
+
+  return need === undefined ? screen : <Guard need={need}>{screen}</Guard>
+}
+
 /* Detail screens. They are addresses, not navigation entries, so they are not
  * in ROUTES. */
 const DETAILS: RouteObject[] = [
@@ -115,7 +131,7 @@ const DETAILS: RouteObject[] = [
   { path: QUEUE.photos.path, element: <PendingQueue queue={QUEUE.photos} /> },
   { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
   { path: QUEUE.schedule.path, element: <PendingQueue queue={QUEUE.schedule} /> },
-]
+].map((route) => ({ ...route, element: guarded(route.path, route.element) }))
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */
 export const routeObjects: RouteObject[] = [
@@ -125,7 +141,10 @@ export const routeObjects: RouteObject[] = [
     element: <LocaleLayout />,
     children: [
       { index: true, element: <Home /> },
-      ...ROUTES.map((route) => ({ path: route.path, element: screenFor(route) })),
+      ...ROUTES.map((route) => ({
+        path: route.path,
+        element: guarded(route.path, screenFor(route)),
+      })),
       ...DETAILS,
       { path: '*', element: <NotFound /> },
     ],

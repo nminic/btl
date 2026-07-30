@@ -8,8 +8,14 @@ import { RoleSwitch } from './RoleSwitch'
 import { useRole } from './useRole'
 
 function CurrentRole() {
-  const { role } = useRole()
-  return <span data-testid="uloga">{role}</span>
+  const { role, moderator } = useRole()
+
+  return (
+    <>
+      <span data-testid="uloga">{role}</span>
+      <span data-testid="ko">{moderator === null ? 'niko' : moderator.id}</span>
+    </>
+  )
 }
 
 function renderSwitch(initial?: 'visitor' | 'competitor' | 'moderator' | 'superadmin') {
@@ -68,6 +74,40 @@ describe('RoleSwitch', () => {
     await user.selectOptions(screen.getByLabelText('Uloga'), 'superadmin')
 
     expect(screen.getByTestId('uloga')).toHaveTextContent('superadmin')
+  })
+
+  it('offers the moderators by name, because a moderator is not a role', async () => {
+    const user = setupUser()
+    renderSwitch()
+
+    /* What a moderator may do is granular by entity and by action, and every one
+       of them holds a different set (PDL P21), so becoming "a moderator" is not
+       something anybody can do: the choice is which one. Until this was here,
+       nothing connected the person at the keyboard to a row in the matrix of
+       rights, and sixteen ticked boxes changed nothing on any screen. */
+    const chooser = screen.getByLabelText('Uloga')
+    const named = await screen.findByRole('option', { name: 'Milena Šarić' })
+
+    expect(named).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Moderator' })).not.toBeInTheDocument()
+
+    await user.selectOptions(chooser, 'moderator:mod-saric')
+
+    expect(screen.getByTestId('uloga')).toHaveTextContent('moderator')
+    expect(screen.getByTestId('ko')).toHaveTextContent('mod-saric')
+  })
+
+  it('lets go of the moderator when the choice is not one', async () => {
+    const user = setupUser()
+    renderSwitch()
+
+    await user.selectOptions(await screen.findByLabelText('Uloga'), 'moderator:mod-saric')
+    await user.selectOptions(screen.getByLabelText('Uloga'), 'superadmin')
+
+    /* A role and a moderator that could drift apart would be a superadmin
+       carrying somebody else's rights, so they are set together and never
+       separately. */
+    expect(screen.getByTestId('ko')).toHaveTextContent('niko')
   })
 
   it('does not exist in a production build', () => {

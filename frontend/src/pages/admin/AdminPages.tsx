@@ -5,13 +5,10 @@ import type { StaticPage } from '../../data/types'
 import { usePages } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { PAGES, recordsOf, type Editing } from './entityForms'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* The written pages: the rulebook, the history, the privacy policy, the terms,
@@ -56,14 +53,9 @@ function takenIn(pages: Record<string, StaticPage>): Set<string> {
 
 export function AdminPages() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { edits, creations } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = usePages()
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   return (
     <div className="member">

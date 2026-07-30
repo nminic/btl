@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* Every result that has been sent in and not yet decided, as one table.
@@ -25,14 +22,9 @@ import '../member/Member.css'
  */
 export function ReviewQueue() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { submissions, decide } = useSession()
   const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState('')
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   const waiting = submissions.filter((one) => one.status === 'pending')
   const decided = submissions.filter((one) => one.status !== 'pending')

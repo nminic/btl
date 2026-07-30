@@ -2,15 +2,12 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import type { Decision } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { settledIn, usePending, waitingIn, type PendingItem } from './pending'
 import { QueueMeta } from './QueueMeta'
-import type { Queue, QueueOutcome } from './queues'
+import { canSendBack, type Queue, type QueueOutcome } from './queues'
 import { SendBack } from './SendBack'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 import './Verification.css'
 
@@ -43,6 +40,13 @@ import './Verification.css'
  * about one, neither when it is let out nor when it is deleted, so a column
  * there would be a heading over a run of empty cells.
  */
+/** Whether a queue has a second decision that hands the work back to its
+ *  author. Five of the eight, plus the pictures, which hand back an instruction
+ *  (queues.ts). */
+function handsBack(queue: Queue): boolean {
+  return queue.outcome === 'sendBack' || queue.outcome === 'instruct'
+}
+
 const SETTLED_COLUMN: Record<QueueOutcome, string | undefined> = {
   sendBack: 'review.explanation',
   /* The pictures write down a reason like the rest, and it is called what it is
@@ -98,7 +102,6 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const { decisions, edits, notify, settle } = useSession()
   /** Which card has its reason field open. One at a time, as in the results. */
   const [open, setOpen] = useState<string | null>(null)
@@ -116,10 +119,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    */
   const [closed, setClosed] = useState<string | null>(null)
   const state = usePending()
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   /* Both dates of a reported change, so the difference is the thing on screen
      and not something the reader works out. Empty on the other five queues. */
@@ -307,7 +306,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               is autofocused when the page first draws. A
                               biography has no button here at all, because it
                               never goes back. */}
-                          {(queue.outcome === 'sendBack' || queue.outcome === 'instruct') && (
+                          {handsBack(queue) && canSendBack(queue, one) && (
                             <button
                               type="button"
                               className="button button--secondary"
@@ -316,6 +315,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             >
                               {t('review.sendBack')}
                             </button>
+                          )}
+
+                          {/* And where it cannot go back, the button is gone and
+                              the reason is on screen in its place. A control
+                              that quietly does nothing teaches a moderator that
+                              the screen is broken; this one says which fact is
+                              missing and that it is not his to fix. */}
+                          {handsBack(queue) && !canSendBack(queue, one) && (
+                            <p className="pending__blocked">{t('verification.noRecipient')}</p>
                           )}
                         </div>
                       )}

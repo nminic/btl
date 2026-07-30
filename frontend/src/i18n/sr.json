@@ -483,7 +483,7 @@
     "pairs": "Najbolji parovi",
     "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
     "progress": "Najbolji napredak",
-    "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone, jer se meri prirast bodova u odnosu na nju. U ovoj sezoni takvog nema.",
+    "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
     "teams": "Najbolji tim",
     "bestRaces": "Najbolje pojedinačne trke",
     "kilometers": "Najviše kilometara",
@@ -788,6 +788,8 @@
     "title": "Administracija",
     "notAllowed": "Ovo nije za tebe",
     "notAllowedText": "Administrativni deo vide samo moderatori i Superadmin.",
+    "rightMissing": "Za ovo ti treba pravo koje nemaš",
+    "rightMissingText": "Ovaj ekran otvara moderator kome je Superadmin dao ovo pravo: {action}. Traži ga od njega ako ti je potrebno za posao.",
     "waiting": "Čeka proveru",
     "members": "Članovi",
     "events": "Događaji",
@@ -962,6 +964,7 @@
     "to": "Do datuma",
     "sentence": "Značka se dodeljuje kad {kind} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
+    "during": ", računato za {period}",
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
@@ -1019,8 +1022,7 @@
         "leagues": "Lige",
         "badges": "Značke",
         "pricing": "Cenovnik",
-        "pages": "Strane",
-        "moderators": "Moderatori"
+        "pages": "Strane"
       },
       "queue": {
         "results": "Rezultati",
@@ -1042,8 +1044,7 @@
         "leagues": "uređivanje liga",
         "badges": "uređivanje znački",
         "pricing": "uređivanje cenovnika",
-        "pages": "uređivanje statičnih strana",
-        "moderators": "uređivanje moderatora"
+        "pages": "uređivanje statičnih strana"
       },
       "queue": {
         "results": "odlučivanje o rezultatima",
@@ -1104,7 +1105,8 @@
     "publish": "Objavi",
     "published": "Objavljeno",
     "publishedText": "Objavljen tekst",
-    "photoReturned": "Profilna slika je vraćena"
+    "photoReturned": "Profilna slika je vraćena",
+    "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se vrati. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi."
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

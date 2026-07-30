@@ -1,7 +1,11 @@
 /* The wall of badges. The mark and the name are all that stands on a card; the
-   kind is a hint that appears on hover, on keyboard focus and on a tap. */
+   kind is a hint that appears on hover, on keyboard focus and on a tap.
 
-.badges {
+   Scoped to this screen like .badge below it. Everything in a bundled stylesheet
+   shares one namespace, and .badges is exactly the sort of name a profile
+   showing somebody's badges would reach for next. */
+
+.rankings .badges {
   list-style: none;
   margin: 1rem 0 0;
   padding: 0;
@@ -9,11 +13,23 @@
   gap: 0.9rem;
   align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr));
+  /* How large the mark is drawn, and the reason it is set from here rather than
+     defaulted inside the component: the drawing steps down in density as it gets
+     smaller (BadgeArt.css), and a size that never changes is a step that never
+     happens. Set nowhere at all, the disc stood at 104px on a 360px telephone
+     and on a 1600px desktop alike, so the whole of that behaviour was code that
+     could not run.
+
+     Tied to the width of the window rather than to the card, because the number
+     of columns follows the window too: on a telephone one card fills the screen
+     and a 104px coin over a name in a single column is a wall of badges four
+     rows tall. */
+  --badge-art-size: clamp(4.5rem, 20vw, 6.5rem);
 }
 
 /* Scoped to the grid it lives in: a bare .badge is too common a name to hold
    globally, and holding it globally is what broke this page once. */
-.badges .badge {
+.rankings .badges .badge {
   display: flex;
   flex-direction: column;
   align-items: center;

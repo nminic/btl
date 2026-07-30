@@ -9,20 +9,20 @@ import './Rights.css'
  *
  * A row is a moderator and a column is a right, in two groups: editing an entity
  * and deciding in a queue. The superadmin is not a row. He may everything,
- * always, so a row for him would be seventeen boxes that cannot be unticked and
+ * always, so a row for him would be sixteen boxes that cannot be unticked and
  * a lie about where the limit is (PDL P21).
  *
  * Two things are worth knowing before changing any of this.
  *
  * The first is the name of a box. A screen reader does not read the column
  * heading and the row heading for you when you land on a checkbox, so a box
- * called "Događaji" is seventeen boxes called "Događaji" and the person hearing
+ * called "Događaji" is sixteen boxes called "Događaji" and the person hearing
  * it cannot tell whose. Every box therefore carries its own name, whole:
  * "Ana Jovanović, uređivanje događaja". The row and column headings are real
  * `th` elements with `scope` all the same, because that is what makes the table
  * readable cell by cell for anybody who does navigate it as a table.
  *
- * The second is the shape on a telephone. Seventeen columns do not fit in 360
+ * The second is the shape on a telephone. Sixteen columns do not fit in 360
  * pixels and never will, so below 900 pixels the same markup is laid out as one
  * block per moderator with the boxes under each other (PDL P24: no table on this
  * portal scrolls sideways). Nothing is drawn twice for that: a second copy of
@@ -73,7 +73,7 @@ export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
                   <span className="rights__name">{who}</span>
                   {/* A moderator with nothing ticked is the ordinary state of one
                       just entered, not a row that failed to load. It says so, in
-                      the row itself, rather than leaving seventeen empty boxes to
+                      the row itself, rather than leaving sixteen empty boxes to
                       be read as a fault. */}
                   <span className="rights__count">
                     {granted === 0 ? t('rights.none') : t('rights.granted', { count: granted })}

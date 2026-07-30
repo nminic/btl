@@ -104,16 +104,20 @@
 
 /* The address of the president (PDL P28a). The only prose on the front page, so
    the heading is a real heading rather than the small capitals the widgets above
-   the numbers use, and the measure of the text is left to Markdown. */
+   the numbers use, and the measure of the text is left to Markdown.
 
-.address {
+   Scoped to the page it belongs to, like the cards above: a bare .address in a
+   bundled stylesheet is a name any other screen may reach for, and everything
+   about the address of the president is about this page. */
+
+.home .address {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   min-width: 0;
 }
 
-.address__title {
+.home .address__title {
   margin: 0;
   font-size: clamp(19px, 2.8vw, 24px);
   letter-spacing: -0.01em;
@@ -162,7 +166,7 @@
 
 /* Seasonal slot */
 
-.card--slot {
+.home .card--slot {
   border-color: var(--gold-400);
 }
 

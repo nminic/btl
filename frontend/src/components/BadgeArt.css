@@ -20,8 +20,10 @@
 
    It is its own container, which is how one component knows how large it has
    been drawn. Everything that scales below scales off the disc rather than off
-   the viewport: the same badge is 48px on a profile and 160px on the badges
-   screen, and the viewport is the same width in both cases.
+   the viewport, because the same badge is meant to be drawn at more than one
+   size on the same screen width. Whoever draws it says how large: the wall of
+   badges sets --badge-art-size and shrinks it on a narrow window (Badges.css).
+   The fallback here is the size the wall uses at its widest.
 
    It carries no padding, and that is load bearing rather than tidy. A container
    is measured across its content box, so padding here would silently make every
@@ -86,9 +88,9 @@
   opacity: 0.9;
 }
 
-/* The detail that only exists on a large badge. Below the size where these
-   strokes stop being lines and start being grey, they are removed rather than
-   left to muddy the emblem. */
+/* The detail that only exists on a badge above about ninety pixels. Below the
+   size where these strokes stop being lines and start being grey, they are
+   removed rather than left to muddy the emblem. */
 .badge-art__fine {
   stroke-width: 1.1;
   fill: none;
@@ -153,12 +155,21 @@
   overflow-wrap: anywhere;
 }
 
-/* Two steps down in density, and the badge is the same badge at each of them.
+/* One step down in density, and the badge is the same badge on either side of
+   it: under about ninety pixels the hairlines go, the fine detail of the emblem
+   and the inner rule. The cut is where a 1.1 unit stroke stops being a whole
+   pixel, which is also where it stops being a line and becomes a paler one. The
+   rim thickens to make up for it, for the same reason.
 
-   First, under about ninety pixels, the hairlines go: the fine detail of the
-   emblem and the inner rule. The cut is where a 1.1 unit stroke stops being a
-   whole pixel, which is also where it stops being a line and becomes a paler
-   one. The rim thickens to make up for it, for the same reason. */
+   Reached on a telephone, where the wall shrinks the disc to 72px at 360px wide
+   and crosses this line at about 460px (Badges.css).
+
+   There was a second step under it, at 64px, which dropped the emblem and gave
+   the number the whole coin. It went, because nothing on this portal draws a
+   badge that small: it was written for a row of badges on a profile that does
+   not exist, so it was a rule that could not run and a comment describing a
+   screen nobody could open. It comes back with that row, and with a size that
+   actually reaches it. */
 @container badge-art (max-width: 92px) {
   .badge-art__fine,
   .badge-art__rule {
@@ -167,25 +178,5 @@
 
   .badge-art__rim {
     stroke-width: 2.6;
-  }
-}
-
-/* Second, at the size a badge is shown in a row on a profile, the emblem steps
-   aside and the number takes the whole coin.
-
-   This is the one place the drawing gives something up, and it is worth saying
-   why. A 48px disc holding both is a 9px number; holding only the number it is
-   a 16px one. At that size nobody is reading the shoe: they are reading how far
-   somebody ran, and the badge beside it carries its name in words anyway. The
-   emblem is back at 96px, where there is room for both. */
-@container badge-art (max-width: 64px) {
-  .badge-art__emblem {
-    display: none;
-  }
-
-  .badge-art__threshold {
-    inset: 0;
-    font-size: min(34cqw, calc(124cqw / var(--badge-art-chars, 4)));
-    max-width: min(84%, calc(var(--badge-art-chars, 4) * 0.66em));
   }
 }

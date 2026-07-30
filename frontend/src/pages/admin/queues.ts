@@ -120,6 +120,26 @@ export const QUEUE: Record<string, Queue> = Object.fromEntries(
 )
 
 /**
+ * Whether this item can be handed back at all.
+ *
+ * One queue asks for a reason the member is meant to act on, and there the
+ * reason has somewhere to go: the inbox of whoever sent the picture in (PDL
+ * P22). An item on that queue carrying no member number has nowhere, and an
+ * empty recipient is not "nobody" in this portal, it is **everybody**: the inbox
+ * shows a member what was written to them and what was written to the whole
+ * league, and the league is the empty one (session/context.ts, Message.to).
+ *
+ * So a picture with no sender is not a picture that can be sent back quietly to
+ * nobody. It is one instruction away from "Slika je mutna, vidi ti se lice" on
+ * the front of every member's inbox. Every picture in the data carries a number
+ * today, which is exactly the kind of safety that lasts until the backend hands
+ * over the first row that does not.
+ */
+export function canSendBack(queue: Queue, item: { memberNumber: string }): boolean {
+  return queue.outcome !== 'instruct' || item.memberNumber !== ''
+}
+
+/**
  * Everything the eight numbers are counted from, and nothing else.
  *
  * The list of members used to be in here as well. Memberships waiting to be

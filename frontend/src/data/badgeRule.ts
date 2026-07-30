@@ -1,4 +1,4 @@
-import { formatNumber } from '../i18n/format'
+import { formatNumber, formatShortDate, wholePeriod } from '../i18n/format'
 
 /* A badge is a rule kept as data, never as code (ADL A12).
  *
@@ -100,9 +100,18 @@ export function thresholdOf(rule: BadgeRule, locale: string): string {
   return `${reading(rule.value, locale)}${UNITS[rule.kind]}`
 }
 
-/** The rule as a sentence, so that it can be read back before it is saved, and
- *  read by the member who came to find out how a badge is earned. The sentence
- *  carries the "at least" itself, there being nothing else it could say. */
+/**
+ * The rule as a sentence, so that it can be read back before it is saved, and
+ * read by the member who came to find out how a badge is earned. The sentence
+ * carries the "at least" itself, there being nothing else it could say.
+ *
+ * Every date in it is written for the reader, and none of them is an ISO string.
+ * They used to be dropped in raw, so a badge on the public badges page read
+ * "računato od 2027-07-01 do 2027-07-31", which is both a date nobody in this
+ * region writes and the long way of saying "jul 2027" (PDL P28a, 30.07.2026).
+ * Where the two ends describe a whole period, the sentence names the period
+ * instead of reciting its edges (wholePeriod).
+ */
 export function ruleSentence(
   rule: BadgeRule,
   t: (key: string, params?: Record<string, string | number>) => string,
@@ -113,19 +122,30 @@ export function ruleSentence(
     value: reading(rule.value, locale),
   })
 
-  /* No space between the two halves: every one of the four endings starts with
+  /* No space between the two halves: every one of the five endings starts with
      the comma that joins it to the sentence, and a space in front of a comma is
      a mistake a reader sees before they read the words. It was invisible while
-     the sentence only stood in the panel; it stands in front of members now. */
+     the sentence only stood in the panel; it stands in front of members now.
+     The full stop belongs to the ending too, and one of the five leaves it out:
+     a whole period ends the Serbian sentence with a date, and every Serbian date
+     already carries the stop that makes it an ordinal ("jul 2027.", "2027.").
+     Which is why punctuation lives in the dictionary rather than here. */
   if (rule.from === '' && rule.to === '') {
     return `${core}${t('badges.everSince')}`
   }
 
   if (rule.from !== '' && rule.to !== '') {
-    return `${core}${t('badges.between', { from: rule.from, to: rule.to })}`
+    const period = wholePeriod(rule.from, rule.to, locale)
+
+    return period === null
+      ? `${core}${t('badges.between', {
+          from: formatShortDate(rule.from, locale),
+          to: formatShortDate(rule.to, locale),
+        })}`
+      : `${core}${t('badges.during', { period })}`
   }
 
   return rule.from !== ''
-    ? `${core}${t('badges.after', { from: rule.from })}`
-    : `${core}${t('badges.before', { to: rule.to })}`
+    ? `${core}${t('badges.after', { from: formatShortDate(rule.from, locale) })}`
+    : `${core}${t('badges.before', { to: formatShortDate(rule.to, locale) })}`
 }

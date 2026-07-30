@@ -62,7 +62,7 @@ describe('the badges screen', () => {
     expect(hintOf(item)).toHaveTextContent(ruleSentence(badges[bare], t, 'sr'))
   })
 
-  it('carries the label of a badge that has one, and nothing where there is none', async () => {
+  it('carries the label of a badge that has one, and nothing in its place where there is none', async () => {
     const badges = await badgesOf()
     const withLabel = badges.findIndex((badge) => badge.label !== '')
     const without = badges.findIndex((badge) => badge.label === '')
@@ -71,7 +71,76 @@ describe('the badges screen', () => {
     const items = within(await wall()).getAllByRole('listitem')
 
     expect(items[withLabel]).toHaveTextContent(badges[withLabel].label)
-    expect(items[without]).toHaveTextContent(badges[without].name)
+
+    /* And the card with none says nothing where one would have stood. This used
+       to assert that the card contains the name of its badge, which is true of
+       every card there is and would go on passing while something quietly
+       appeared under the mark: a period worked out from the rule is exactly the
+       sort of thing somebody adds as a kindness (badgeRule.ts). Everything the
+       card is allowed to say is listed, and whatever is left over is the thing
+       that should not be there. */
+    const bare = badges[without]
+    const said = [thresholdOf(bare, 'sr'), bare.name, ruleSentence(bare, t, 'sr'), bare.description]
+    const left = said.reduce(
+      (text, part) => text.replace(part, ''),
+      items[without].textContent ?? '',
+    )
+
+    expect(left.trim()).toBe('')
+  })
+
+  it('writes every period the way this language writes one, never as it is stored', async () => {
+    const badges = await badgesOf()
+    renderAt('/sr/znacke')
+
+    const wall = await screen.findByRole('list', { name: 'Značke' })
+
+    /* The rule of a badge carries a range of dates, and the sentence used to
+       drop both of them in as they are stored: "računato od 2027-07-01 do
+       2027-07-31" on a public page (PDL P28a, 30.07.2026). Where the two ends
+       are a whole period, the sentence names the period. */
+    expect(wall.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(wall).toHaveTextContent('računato za jul 2027.')
+    expect(wall).toHaveTextContent('računato za 2027.')
+
+    /* And it ends there. Every Serbian date already carries the full stop that
+       makes it an ordinal, so an ending that adds one of its own reads
+       "računato za jul 2027..", which is the sort of thing a test using
+       toContain never sees and a reader sees at once. */
+    expect(wall.textContent).not.toMatch(/\.\./)
+
+    // And the two badges those sentences belong to are still in the data.
+    expect(badges.some((badge) => badge.from === '2027-07-01' && badge.to === '2027-07-31')).toBe(
+      true,
+    )
+    expect(badges.some((badge) => badge.from === '2027-01-01' && badge.to === '2027-12-31')).toBe(
+      true,
+    )
+  })
+})
+
+describe('the badges the administrator has defined', () => {
+  it('never label a badge with a year its rule does not cover', async () => {
+    const badges = await badgesOf()
+
+    /* The label is free text and the rule is data, so nothing but this holds
+       them together. A badge read "Sezona 2027/2028" over a rule that ran from
+       1 January to 31 December 2027: the coin said one thing and the sentence
+       under it another, and neither said which was right. A BTL season is a
+       calendar year (PDL P8, P12), so a label naming two of them names one the
+       badge cannot be won in. */
+    const wrong = badges.filter((badge) => {
+      const years = [...badge.label.matchAll(/\d{4}/g)].map((match) => Number(match[0]))
+      const first = badge.from === '' ? -Infinity : Number(badge.from.slice(0, 4))
+      const last = badge.to === '' ? Infinity : Number(badge.to.slice(0, 4))
+
+      return years.some((year) => year < first || year > last)
+    })
+
+    expect(wrong.map((badge) => badge.id)).toEqual([])
+    // And the labels carrying a year are really in the data, so this cannot pass
+    // by having nothing to check.
+    expect(badges.filter((badge) => /\d{4}/.test(badge.label)).length).toBeGreaterThan(3)
   })
 })
 

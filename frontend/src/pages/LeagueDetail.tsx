@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { Resource } from '../components/Resource'
-import { isStaff } from '../roles/context'
-import { useRole } from '../roles/useRole'
+import { useMay } from './admin/rights'
 import { useSession } from '../session/useSession'
 import { combinePair, useEvents, useLeagues } from '../data/useResource'
 import { formatShortDate } from '../i18n/format'
@@ -69,7 +68,11 @@ function EditableText({
 export function LeagueDetail() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
-  const { role } = useRole()
+  /* The rules and the prizes of a competition are the league record, so the
+     pencil beside them is the right to edit leagues and not the fact of being
+     staff (PDL P21). A moderator who may judge results has no business rewriting
+     what a competition awards. */
+  const may = useMay()
   const { edits, edit } = useSession()
   /* Only what the page shows. The league lists its events, and never the races
    * on them, so waiting on the races turned one failed file into an error
@@ -122,7 +125,7 @@ export function LeagueDetail() {
                 value={edits[league.id]?.rules ?? league.rules}
                 headingId="league-rules"
                 heading={t('leagues.rules')}
-                canEdit={isStaff(role)}
+                canEdit={may('entity:leagues')}
                 onSave={(text) => edit(league.id, 'rules', text)}
               />
 
@@ -132,7 +135,7 @@ export function LeagueDetail() {
                 value={edits[league.id]?.prizes ?? league.prizes}
                 headingId="league-prizes"
                 heading={t('leagues.prizes')}
-                canEdit={isStaff(role)}
+                canEdit={may('entity:leagues')}
                 onSave={(text) => edit(league.id, 'prizes', text)}
               />
 

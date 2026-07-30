@@ -10,7 +10,7 @@ import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from '../data/badgeRule'
 import { ENTITIES } from './admin/entityList'
 import { type PendingItem, type PendingQueueId } from './admin/pending'
-import { countsFor, QUEUE, QUEUES } from './admin/queues'
+import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import { epcPayload, ipsPayload, methodsFor } from '../data/paymentQr'
@@ -219,14 +219,36 @@ describe('ruleSentence', () => {
   })
 
   it('says a rule with both dates counts between them', () => {
-    expect(ruleSentence({ ...base, from: '2027-01-01', to: '2027-12-31' }, t, 'sr')).toContain(
-      'badges.between',
-    )
+    /* A range that describes no whole period is read out from one end to the
+       other, and both ends are written for the reader. They used to be dropped
+       in as they are stored, so a badge on the public page said "od 2027-07-01
+       do 2027-07-15" (PDL P28a, 30.07.2026). */
+    const sentence = ruleSentence({ ...base, from: '2027-07-01', to: '2027-07-15' }, t, 'sr')
+
+    expect(sentence).toContain('badges.between')
+    expect(sentence).toContain('15. 7. 2027.')
+    expect(sentence).not.toContain('2027-07')
+  })
+
+  it('names the period instead of reciting its edges where the two make one', () => {
+    // A whole month, a whole year, and one day, in the order the rule is tried.
+    const during = (from: string, to: string) =>
+      ruleSentence({ ...base, from, to }, t, 'sr')
+
+    expect(during('2027-07-01', '2027-07-31')).toContain('badges.during{"period":"jul 2027.')
+    expect(during('2027-01-01', '2027-12-31')).toContain('badges.during{"period":"2027.')
+    expect(during('2027-10-15', '2027-10-15')).toContain('badges.during{"period":"15. 10. 2027.')
   })
 
   it('says a rule with one date counts from it, or up to it', () => {
-    expect(ruleSentence({ ...base, from: '2027-01-01' }, t, 'sr')).toContain('badges.after')
-    expect(ruleSentence({ ...base, to: '2027-12-31' }, t, 'sr')).toContain('badges.before')
+    // One end is not a period, so it is a date, and a date is written for the
+    // reader here as everywhere else.
+    expect(ruleSentence({ ...base, from: '2027-01-01' }, t, 'sr')).toContain(
+      'badges.after{"from":"1. 1. 2027.',
+    )
+    expect(ruleSentence({ ...base, to: '2027-12-31' }, t, 'sr')).toContain(
+      'badges.before{"to":"31. 12. 2027.',
+    )
   })
 
   it('writes the value the way this language writes a number', () => {
@@ -309,14 +331,20 @@ describe('the badge rule dates', () => {
     const user = setupUser()
     renderAt('/sr/administracija/znacke', 'superadmin')
 
+    /* The superadmin types the dates the way a date field takes them and reads
+       back the sentence the member will read, so no date in it is an ISO string
+       (PDL P28a, 30.07.2026). */
     await user.type(await screen.findByLabelText('Od datuma'), '2027-01-01')
-    expect(sentence()).toHaveTextContent(/računato od 2027-01-01, bez kraja/)
+    expect(sentence()).toHaveTextContent(/računato od 1\. 1\. 2027\., bez kraja/)
 
+    // Both ends now, and together they are a whole year, so the sentence says
+    // the year rather than reciting the first and the last day of it.
     await user.type(screen.getByLabelText('Do datuma'), '2027-12-31')
-    expect(sentence()).toHaveTextContent(/od 2027-01-01 do 2027-12-31/)
+    expect(sentence()).toHaveTextContent(/računato za 2027\./)
+    expect(sentence()).not.toHaveTextContent('2027-01-01')
 
     await user.clear(screen.getByLabelText('Od datuma'))
-    expect(sentence()).toHaveTextContent(/računato do 2027-12-31/)
+    expect(sentence()).toHaveTextContent(/računato do 31\. 12\. 2027\./)
   })
 
   it('takes a value that is typed rather than chosen', async () => {
@@ -981,6 +1009,63 @@ describe('the six queues read from the file', () => {
     expect(
       screen.getByText('Slika je mutna, pošalji oštriju u kojoj se vidi lice.'),
     ).toBeVisible()
+  })
+
+  /* An instruction is written to one person, and this portal has no way of
+   * writing to nobody: an empty recipient is the whole league (Message.to). A
+   * picture with no member behind it is therefore one click away from
+   * "Slika je mutna, vidi ti se lice" in the inbox of every member there is. */
+  describe('a picture with nobody to send it back to', () => {
+    const original = globalThis.fetch
+
+    afterEach(() => {
+      globalThis.fetch = original
+    })
+
+    it('is decided by the queue rather than by the screen that draws it', () => {
+      // Every other queue hands work back to somebody it can name, or does not
+      // hand it back at all, so only the one that instructs is asked.
+      expect(canSendBack(QUEUE.photos, { memberNumber: '000013' })).toBe(true)
+      expect(canSendBack(QUEUE.photos, { memberNumber: '' })).toBe(false)
+      expect(canSendBack(QUEUE.teams, { memberNumber: '' })).toBe(true)
+    })
+
+    it('offers no way to send it, and says why in the place the button stood', async () => {
+      const orphan: PendingItem = {
+        id: 'ver-sli-bez-clana',
+        queue: 'photos',
+        date: '2026-07-27',
+        memberNumber: '',
+        who: '',
+        subject: 'Nepoznat pošiljalac',
+        body: 'profilna.jpg',
+        currentDate: '',
+        proposedDate: '',
+        email: '',
+        city: '',
+        country: '',
+      }
+
+      globalThis.fetch = ((input: RequestInfo | URL) =>
+        String(input).endsWith('verification.json')
+          ? Promise.resolve(
+              new Response(JSON.stringify([orphan]), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+            )
+          : original(input)) as typeof fetch
+
+      renderAt(`/sr/${QUEUE.photos.path}`, 'moderator')
+      await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
+
+      expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
+      expect(
+        screen.getByText(/nema člana kome bi uputstvo stiglo/),
+      ).toBeVisible()
+      // Approving is still a decision the moderator can take; nothing is sent.
+      expect(screen.getByRole('button', { name: 'Odobri' })).toBeVisible()
+    })
   })
 
   it('drops the count in the queue and on the list of queues once approved', async () => {

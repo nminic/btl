@@ -37,10 +37,11 @@ import './BadgeArt.css'
  * Adding the other kinds: draw one emblem into the same slot, x 27 to 73 and
  * y 64 to 86 of the viewBox, split into the same two groups, and add one branch
  * to the line that chooses it. The outline goes in the outer group and whatever
- * only survives at 96px and above goes in the inner one; nothing else in this
- * file or in the stylesheet should have to move. The slot is where it is because
- * the number owns the middle, and the number is the part that has to be legible
- * at 48px.
+ * only survives above about ninety pixels goes in the inner one; nothing else in
+ * this file or in the stylesheet should have to move. The slot is where it is
+ * because the number owns the middle, and the number is the part that has to
+ * stay legible at the smallest size the mark is drawn at, which is 72px on a
+ * 360px telephone (Badges.css).
  */
 export type BadgeArtProps = {
   kind: BadgeKind
@@ -112,9 +113,9 @@ function Shoe() {
  *
  * One branch a side, rising almost to vertical where it ends, and the leaves
  * are spurs off it rather than drawn shapes. Leaves at the size this slot
- * allows run together into a single crescent by 96px; a branch that turns
- * upwards holds its shape all the way down, and the spurs step aside with the
- * rest of the fine detail. */
+ * allows run together into a single crescent by a hundred pixels; a branch that
+ * turns upwards holds its shape all the way down, and the spurs step aside with
+ * the rest of the fine detail. */
 function Wreath() {
   return (
     <g className="badge-art__emblem badge-art__wreath">

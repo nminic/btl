@@ -234,9 +234,12 @@ describe('TopBoards', () => {
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
     const progress = board('Najbolji napredak')
 
-    // 2010 is the first season with any results at all, so there is nothing to
-    // measure a gain against and the board says which rule left it empty.
-    expect(progress.getByText(/meri prirast bodova/)).toBeVisible()
+    /* 2010 is the first season with any results at all, so there is nothing to
+       measure a gain against and the board says which rules left it empty. Both
+       of them: a season in which everybody ran and nobody bettered their total
+       is just as empty, and a sentence naming only the first tells that season
+       that nobody ran (PDL P12, 30.07.2026). */
+    expect(progress.getByText(/trčao i prethodne sezone i popravio njen zbir/)).toBeVisible()
     expect(progress.queryByRole('table')).not.toBeInTheDocument()
   })
 

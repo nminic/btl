@@ -5,14 +5,11 @@ import { categoryOfMember } from '../../data/derive'
 import { SEASON } from '../../data/pricing'
 import { useCompetitors } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { isStaff } from '../../roles/context'
-import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
 import { MEMBERS, recordsOf, type Editing } from './entityForms'
 import { takenMemberNumbers } from './memberNumbers'
-import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
 /* The list of members, with the two things that are not public about them: the
@@ -21,16 +18,11 @@ import '../member/Member.css'
  * (PDL P8, P11, P23). */
 export function AdminMembers() {
   const { locale, t } = useI18n()
-  const { role } = useRole()
   const session = useSession()
   const { edits, creations } = session
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useCompetitors()
-
-  if (!isStaff(role)) {
-    return <StaffOnly />
-  }
 
   return (
     <div className="member">

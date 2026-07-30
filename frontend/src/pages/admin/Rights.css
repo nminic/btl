@@ -1,7 +1,7 @@
 /* The rights matrix, in its two shapes.
  *
  * Mobile first, and the phone shape is the one written here plainly: one block
- * per moderator with the boxes under each other, because seventeen columns do
+ * per moderator with the boxes under each other, because sixteen columns do
  * not fit in 360 pixels and no table on this portal scrolls sideways (PDL P24).
  * The table shape is the exception and lives at the bottom, behind one query.
  *
@@ -193,7 +193,7 @@
     color: var(--text-muted);
   }
 
-  /* Turned on its side rather than shortened. Seventeen headings written across
+  /* Turned on its side rather than shortened. Sixteen headings written across
      need about fourteen hundred pixels and a heading cut to "Stat..." is a
      heading nobody can read; upright, a column is as wide as a box needs to be
      and the words stay whole and selectable. */

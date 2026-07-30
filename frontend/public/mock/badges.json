@@ -22,7 +22,7 @@
   {
     "id": "znk-prvi-polumaraton",
     "name": "Prvi polumaraton",
-    "description": "Prvih 21,1 km, najcesci prvi ozbiljan cilj u ligi.",
+    "description": "Prvih 21,1 km, najčešći prvi ozbiljan cilj u ligi.",
     "label": "",
     "kind": "halfCount",
     "value": 1,
@@ -62,7 +62,7 @@
   {
     "id": "znk-sto-km-avgust-2027",
     "name": "Sto kilometara u avgustu",
-    "description": "Ista znacka za sledeci mesec, i osvaja se posebno.",
+    "description": "Ista značka za sledeći mesec, i osvaja se posebno.",
     "label": "Avgust 2027",
     "kind": "totalKm",
     "value": 100,
@@ -72,7 +72,7 @@
   {
     "id": "znk-ultramaratonac",
     "name": "Ultramaratonac",
-    "description": "Prva trka duza od maratona.",
+    "description": "Prva trka duža od maratona.",
     "label": "",
     "kind": "ultraCount",
     "value": 1,
@@ -92,7 +92,7 @@
   {
     "id": "znk-duze-trke",
     "name": "Petnaest dužih trka",
-    "description": "Trke izmedju polumaratona i maratona.",
+    "description": "Trke između polumaratona i maratona.",
     "label": "",
     "kind": "longCount",
     "value": 15,
@@ -102,8 +102,8 @@
   {
     "id": "znk-deset-trka-sezone",
     "name": "Deset trka u sezoni",
-    "description": "Deset zvanicnih trka u jednoj sezoni.",
-    "label": "Sezona 2027/2028",
+    "description": "Deset zvaničnih trka u jednoj sezoni.",
+    "label": "Sezona 2027",
     "kind": "raceCount",
     "value": 10,
     "from": "2027-01-01",
@@ -112,7 +112,7 @@
   {
     "id": "znk-tri-zemlje",
     "name": "Tri zemlje",
-    "description": "Trke u tri razlicite drzave.",
+    "description": "Trke u tri različite države.",
     "label": "",
     "kind": "countryCount",
     "value": 3,
@@ -122,7 +122,7 @@
   {
     "id": "znk-pet-sezona",
     "name": "Pet sezona u ligi",
-    "description": "Dugovecnost clanstva se broji kao i sve ostalo.",
+    "description": "Dugovečnost članstva se broji kao i sve ostalo.",
     "label": "",
     "kind": "seasonCount",
     "value": 5,
@@ -152,7 +152,7 @@
   {
     "id": "znk-sto-sati",
     "name": "Sto sati na stazi",
-    "description": "Zbir vremena na stazi, racunato u satima.",
+    "description": "Zbir vremena na stazi, računato u satima.",
     "label": "",
     "kind": "totalTime",
     "value": 100,
@@ -182,7 +182,7 @@
   {
     "id": "znk-maraton-u-komadu",
     "name": "Maraton u jednom komadu",
-    "description": "Najduza trka dostigla je duzinu maratona.",
+    "description": "Najduža trka dostigla je dužinu maratona.",
     "label": "",
     "kind": "bestRaceKm",
     "value": 42.2,
@@ -192,7 +192,7 @@
   {
     "id": "znk-veliki-uspon",
     "name": "Dva kilometra uspona na jednoj trci",
-    "description": "Jedna trka sa dva hiljade metara uspona.",
+    "description": "Jedna trka sa dve hiljade metara uspona.",
     "label": "",
     "kind": "bestRaceAscent",
     "value": 2000,
@@ -202,8 +202,8 @@
   {
     "id": "znk-dugacak-naziv",
     "name": "Značka za takmičare koji su u toku jedne kalendarske sezone istrčali najmanje dvadeset zvaničnih trka u najmanje tri različite države regiona",
-    "description": "Dugacak naziv je stvaran slucaj, ne izmisljen.",
-    "label": "Od 2027.",
+    "description": "Dugačak naziv je stvaran slučaj, ne izmišljen.",
+    "label": "Od 2027. nadalje",
     "kind": "raceCount",
     "value": 20,
     "from": "2027-01-01",
@@ -212,7 +212,7 @@
   {
     "id": "znk-prva-decenija",
     "name": "Trkač prve decenije",
-    "description": "Za one koji su trcali u ligi pre 2020.",
+    "description": "Za one koji su trčali u ligi pre 2020.",
     "label": "Do 2019.",
     "kind": "raceCount",
     "value": 1,
