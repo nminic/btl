@@ -1,0 +1,36 @@
+{
+  "id": "admin-strana",
+  "titleKey": "admin.form.new.pages",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "slug",
+      "type": "text",
+      "labelKey": "admin.address",
+      "hintKey": "admin.hint.slug",
+      "required": true,
+      "maxLength": 60,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    {
+      "name": "title",
+      "type": "text",
+      "labelKey": "admin.field.pageTitle",
+      "required": true,
+      "maxLength": 120
+    },
+    {
+      "name": "heading",
+      "type": "text",
+      "labelKey": "admin.field.sectionHeading",
+      "maxLength": 120
+    },
+    {
+      "name": "body",
+      "type": "textarea",
+      "labelKey": "admin.field.sectionBody",
+      "hintKey": "admin.hint.sectionBody",
+      "maxLength": 8000
+    }
+  ]
+}

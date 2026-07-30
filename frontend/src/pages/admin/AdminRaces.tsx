@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
+import type { BtlEvent } from '../../data/types'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
-import { formatNumber } from '../../i18n/format'
+import type { FieldOption } from '../../forms/types'
+import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { isStaff } from '../../roles/context'
 import { useRole } from '../../roles/useRole'
+import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
+import { EntityEditor, NewRecord, OpenRecord } from './EntityEditor'
+import { RACES, recordsOf, type Editing } from './entityForms'
 import { StaffOnly } from './StaffOnly'
 import '../member/Member.css'
 
@@ -17,10 +22,24 @@ import '../member/Member.css'
  *  and the browser is the one that suffers. */
 const SHOWN = 60
 
+/**
+ * Which event a race belongs to is a closed list, but the list is data: twelve
+ * hundred events have no business being copied into a form definition, so the
+ * screen hands them to the renderer instead. The date is in the label because
+ * the same race is run every year under the same name.
+ */
+function eventOptions(events: BtlEvent[], locale: string): FieldOption[] {
+  return [...events]
+    .sort((left, right) => right.date.localeCompare(left.date))
+    .map((one) => ({ value: one.id, labelKey: `${one.name}, ${formatShortDate(one.date, locale)}` }))
+}
+
 export function AdminRaces() {
   const { locale, t } = useI18n()
   const { role } = useRole()
+  const { edits, creations } = useSession()
   const [search, setSearch] = useState('')
+  const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useRaces(), useEvents())
 
   if (!isStaff(role)) {
@@ -35,15 +54,30 @@ export function AdminRaces() {
 
       <Resource state={state}>
         {([races, events]) => {
+          const all = recordsOf(RACES, races, edits, creations)
+
+          if (editing !== null) {
+            return (
+              <EntityEditor
+                entity={RACES}
+                editing={editing}
+                options={{ eventId: eventOptions(events, locale) }}
+                onDone={() => setEditing(null)}
+              />
+            )
+          }
+
           const eventNames = new Map(events.map((one) => [one.id, one.name]))
           const needle = search.trim().toLowerCase()
-          const found = races.filter((one) =>
+          const found = all.filter((one) =>
             `${one.name} ${eventNames.get(one.eventId) ?? ''}`.toLowerCase().includes(needle),
           )
           const rows = found.slice(0, SHOWN)
 
           return (
             <>
+              <NewRecord entity={RACES} onOpen={() => setEditing({ mode: 'new' })} />
+
               <div className="rankings__filters">
                 <label className="rankings__field rankings__field--wide">
                   <span>{t('competitors.search')}</span>
@@ -74,6 +108,7 @@ export function AdminRaces() {
                       <th scope="col">{t('rankings.columns.ascent')}</th>
                       <th scope="col">{t('rankings.columns.descent')}</th>
                       <th scope="col">{t('rankings.columns.category')}</th>
+                      <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -92,6 +127,12 @@ export function AdminRaces() {
                         <td>{formatNumber(one.ascentM, locale)}</td>
                         <td>{formatNumber(one.descentM, locale)}</td>
                         <td>{t(`category.${one.category}`)}</td>
+                        <td>
+                          <OpenRecord
+                            name={one.name}
+                            onOpen={() => setEditing({ mode: 'one', record: one })}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>

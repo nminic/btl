@@ -1,10 +1,13 @@
+import { routeObjects } from './routeObjects'
 import {
   ACCOUNT_ROUTES,
   CONTACT_ADDRESS,
+  EXTRA_ADDRESSES,
   FOOTER_ROUTES,
   NAV,
   navForRole,
   ROUTES,
+  seoKeyFor,
 } from './routes'
 
 describe('navForRole', () => {
@@ -99,5 +102,47 @@ describe('ROUTES', () => {
     // The queue moved under verification, where the rest of the waiting work is.
     expect(ROUTES.map((route) => route.path)).not.toContain('administracija/red-za-proveru')
     expect(ROUTES.map((route) => route.path)).toContain('administracija/verifikacija')
+  })
+})
+
+describe('seoKeyFor', () => {
+  it('answers for every address the router serves, not only for the listed ones', () => {
+    /* Read out of the real router table, so that a route added there without
+       words to go with it fails here rather than quietly showing up in a browser
+       tab as "Ove strane nema", which is how the detail screens got that name in
+       the first place. */
+    const served = (routeObjects[1].children ?? [])
+      .map((child) => child.path)
+      .filter((path): path is string => path !== undefined && path !== '*')
+
+    expect(served.length).toBeGreaterThan(30)
+    expect(served.filter((path) => seoKeyFor(path) === undefined)).toEqual([])
+  })
+
+  it('answers for the home page, which has no path at all', () => {
+    expect(seoKeyFor('')).toBe('home')
+  })
+
+  it('fills the value in an address that carries one', () => {
+    expect(seoKeyFor('takmicar/000001')).toBe('competitor')
+    expect(seoKeyFor('kalendar/beogradski-maraton-2027-04-17')).toBe('event')
+    expect(seoKeyFor('poruke/msg-1')).toBe('message')
+    expect(seoKeyFor('administracija/verifikacija/rezultati')).toBe('verificationQueue')
+  })
+
+  it('never lets an address with a value answer for the screen above it', () => {
+    expect(seoKeyFor('kalendar')).toBe('calendar')
+    expect(seoKeyFor('poruke')).toBe('messages')
+  })
+
+  it('answers with nothing for an address the portal does not have', () => {
+    expect(seoKeyFor('ovoga-nema')).toBeUndefined()
+    expect(seoKeyFor('takmicar/000001/rezultati')).toBeUndefined()
+  })
+
+  it('gives every address its own seo entry, so that no two pages share a name', () => {
+    const keys = [...ROUTES, ...EXTRA_ADDRESSES].map((address) => address.seoKey)
+
+    expect(new Set(keys).size).toBe(keys.length)
   })
 })

@@ -20,6 +20,7 @@ export const RESOURCE_NAMES = [
   'races',
   'results',
   'teams',
+  'verification',
 ] as const
 
 export type ResourceName = (typeof RESOURCE_NAMES)[number]

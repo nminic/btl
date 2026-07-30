@@ -123,6 +123,107 @@ export function Membership({
                   <button type="button" className="button button--primary">
                     {t('membership.renew', { season: nextSeason })}
                   </button>
+
+                  {/* The slip belongs to renewing, not to a screen of its own: the
+                      member has just chosen a category and the next thing they need
+                      is the code to pay with (owner, 29.07.2026).
+
+                      It needs an amount, so it hangs off the price row rather than
+                      off the window. The window opens every October; a season whose
+                      price list is not published yet has nothing to put on a slip. */}
+                  <h3 className="profile__section">{t('membership.payNow')}</h3>
+
+                  {price === null ? (
+                    <p className="member__note">{t('membership.notYetSold')}</p>
+                  ) : (
+                    <>
+                      <p className="member__note">
+                        {t('membership.byCountry', { country: me.country })}
+                      </p>
+
+                      {/* Every way of paying is one way of doing what the slip
+                          above is for, so they sit under it rather than beside
+                          it. As third level headings they read as four more
+                          sections of the renewal, which they are not. */}
+                      {methods.includes('ips') && (
+                        <div className="pay">
+                          <h4>{t('membership.ips')}</h4>
+                          <p className="member__note">{t('membership.ipsNote')}</p>
+                          <div className="pay__code">
+                            <QrCode
+                              text={ipsPayload({
+                                account: ACCOUNT,
+                                recipient: RECIPIENT,
+                                amountRsd: price.rsd,
+                                purpose,
+                                reference: '',
+                              })}
+                              label={t('membership.ipsQrLabel')}
+                            />
+                            <details>
+                              <summary>{t('membership.showPayload')}</summary>
+                              <pre className="pay__payload">
+                                {ipsPayload({
+                                  account: ACCOUNT,
+                                  recipient: RECIPIENT,
+                                  amountRsd: price.rsd,
+                                  purpose,
+                                  reference: '',
+                                })}
+                              </pre>
+                            </details>
+                          </div>
+                        </div>
+                      )}
+
+                      {methods.includes('epc') && (
+                        <div className="pay">
+                          <h4>{t('membership.epc')}</h4>
+                          <p className="member__note">{t('membership.epcNote')}</p>
+                          <div className="pay__code">
+                            <QrCode
+                              text={epcPayload({
+                                iban: IBAN,
+                                bic: BIC,
+                                recipient: RECIPIENT,
+                                amountEur: price.eur,
+                                purpose,
+                              })}
+                              label={t('membership.epcQrLabel')}
+                            />
+                            <details>
+                              <summary>{t('membership.showPayload')}</summary>
+                              <pre className="pay__payload">
+                                {epcPayload({
+                                  iban: IBAN,
+                                  bic: BIC,
+                                  recipient: RECIPIENT,
+                                  amountEur: price.eur,
+                                  purpose,
+                                })}
+                              </pre>
+                            </details>
+                          </div>
+                        </div>
+                      )}
+
+                      {methods.includes('card') && (
+                        <div className="pay">
+                          <h4>{t('membership.card')}</h4>
+                          <p className="member__note">{t('membership.cardNote')}</p>
+                        </div>
+                      )}
+
+                      {methods.includes('paypal') && (
+                        <div className="pay">
+                          <h4>{t('membership.paypal')}</h4>
+                          <p className="member__note">{t('membership.paypalNote')}</p>
+                        </div>
+                      )}
+
+                      <p className="member__note">{t('membership.feesOnPayer')}</p>
+                    </>
+                  )}
                 </>
               ) : (
                 <p className="member__note">{t('membership.renewalShut')}</p>
@@ -148,91 +249,6 @@ export function Membership({
                   {t('membership.askToJoin')}
                 </button>
               )}
-            </section>
-
-            <section className="member__panel" aria-labelledby="membership-pay">
-              <h2 className="profile__section" id="membership-pay">
-                {t('membership.howToPay')}
-              </h2>
-              <p className="member__note">{t('membership.byCountry', { country: me.country })}</p>
-
-              {methods.includes('ips') && (
-                <div className="pay">
-                  <h3>{t('membership.ips')}</h3>
-                  <p className="member__note">{t('membership.ipsNote')}</p>
-                  <div className="pay__code">
-                    <QrCode
-                      text={ipsPayload({
-                        account: ACCOUNT,
-                        recipient: RECIPIENT,
-                        amountRsd: price?.rsd ?? 0,
-                        purpose,
-                        reference: '',
-                      })}
-                      label={t('membership.ipsQrLabel')}
-                    />
-                    <details>
-                      <summary>{t('membership.showPayload')}</summary>
-                      <pre className="pay__payload">
-                        {ipsPayload({
-                          account: ACCOUNT,
-                          recipient: RECIPIENT,
-                          amountRsd: price?.rsd ?? 0,
-                          purpose,
-                          reference: '',
-                        })}
-                      </pre>
-                    </details>
-                  </div>
-                </div>
-              )}
-
-              {methods.includes('epc') && (
-                <div className="pay">
-                  <h3>{t('membership.epc')}</h3>
-                  <p className="member__note">{t('membership.epcNote')}</p>
-                  <div className="pay__code">
-                    <QrCode
-                      text={epcPayload({
-                        iban: IBAN,
-                        bic: BIC,
-                        recipient: RECIPIENT,
-                        amountEur: price?.eur ?? 0,
-                        purpose,
-                      })}
-                      label={t('membership.epcQrLabel')}
-                    />
-                    <details>
-                      <summary>{t('membership.showPayload')}</summary>
-                      <pre className="pay__payload">
-                        {epcPayload({
-                          iban: IBAN,
-                          bic: BIC,
-                          recipient: RECIPIENT,
-                          amountEur: price?.eur ?? 0,
-                          purpose,
-                        })}
-                      </pre>
-                    </details>
-                  </div>
-                </div>
-              )}
-
-              {methods.includes('card') && (
-                <div className="pay">
-                  <h3>{t('membership.card')}</h3>
-                  <p className="member__note">{t('membership.cardNote')}</p>
-                </div>
-              )}
-
-              {methods.includes('paypal') && (
-                <div className="pay">
-                  <h3>{t('membership.paypal')}</h3>
-                  <p className="member__note">{t('membership.paypalNote')}</p>
-                </div>
-              )}
-
-              <p className="member__note">{t('membership.feesOnPayer')}</p>
             </section>
 
             <section className="member__panel" aria-labelledby="membership-referral">

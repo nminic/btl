@@ -1,0 +1,49 @@
+{
+  "id": "admin-cena",
+  "titleKey": "admin.form.new.pricing",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "label",
+      "type": "text",
+      "labelKey": "admin.field.priceLabel",
+      "hintKey": "admin.hint.priceLabel",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "from",
+      "type": "date",
+      "labelKey": "admin.field.validFrom"
+    },
+    {
+      "name": "to",
+      "type": "date",
+      "labelKey": "admin.field.validTo",
+      "hintKey": "admin.hint.validPeriod"
+    },
+    {
+      "name": "eur",
+      "type": "number",
+      "labelKey": "admin.field.eur",
+      "required": true,
+      "min": 0,
+      "max": 1000
+    },
+    {
+      "name": "rsd",
+      "type": "number",
+      "labelKey": "admin.field.rsd",
+      "hintKey": "admin.hint.rsd",
+      "required": true,
+      "min": 0,
+      "max": 200000
+    },
+    {
+      "name": "ranking",
+      "type": "checkbox",
+      "labelKey": "admin.ranking",
+      "hintKey": "admin.hint.ranking"
+    }
+  ]
+}

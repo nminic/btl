@@ -35,6 +35,27 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
   return state
 }
 
+/**
+ * What a resource holds, or a stand-in until it does.
+ *
+ * For the places that must not wait and must not turn into an error message: the
+ * count beside Verification in the header sits above every screen on the portal,
+ * and the list of queues has eight rows of which any one file feeds two at most.
+ * A number one short is better than a header that holds up the page, or a whole
+ * screen refusing to draw over a file none of its rows come from. Everywhere
+ * else <Resource> is the answer, because a screen showing half its data as if it
+ * were all of it is worse than a screen saying it is broken.
+ */
+export function dataOr<T>(state: ResourceState<T>, fallback: T): T {
+  return state.status === 'ready' ? state.data : fallback
+}
+
+/** Whether a resource failed, for the screens that carry on without it and have
+ *  to say so rather than quietly counting it as empty. */
+export function failed(...states: ResourceState<unknown>[]): boolean {
+  return states.some((state) => state.status === 'error')
+}
+
 /* One screen usually needs several resources at once, and it has to show one
  * loading state and one error, not three. Error wins over loading, because a
  * screen that is partly broken is broken. */

@@ -1,5 +1,8 @@
-import { ROUTES } from '../app/routes'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
+import { QUEUES } from '../pages/admin/queues'
 import type { FormDef } from '../forms/types'
 import sr from './sr.json'
 import { translate, type Dictionary } from './translate'
@@ -42,5 +45,90 @@ describe('translation keys used in code', () => {
 
   it('notices a key that is not there', () => {
     expect(resolves('nav.nepostoji')).toBe(false)
+  })
+})
+
+/* The words every address needs for a browser tab, a search result and a shared
+ * link. The not found page is in here too, because an address that does not
+ * exist is still a page somebody is looking at. */
+const SEO_KEYS = [...ROUTES, ...EXTRA_ADDRESSES].map((address) => address.seoKey).concat('notFound')
+
+describe('the seo entry of every address', () => {
+  it('has a name and a sentence', () => {
+    const missing = SEO_KEYS.flatMap((key) => [`seo.${key}.title`, `seo.${key}.description`]).filter(
+      (key) => !resolves(key),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('keeps every description to the 160 characters a search engine shows', () => {
+    const tooLong = SEO_KEYS.map((key) => translate(dictionary, 'sr', `seo.${key}.description`))
+      .filter((text) => text.length > 160)
+
+    expect(tooLong).toEqual([])
+  })
+
+  it('describes the page rather than repeating its name', () => {
+    const repeated = SEO_KEYS.filter(
+      (key) =>
+        translate(dictionary, 'sr', `seo.${key}.description`) ===
+        translate(dictionary, 'sr', `seo.${key}.title`),
+    )
+
+    expect(repeated).toEqual([])
+  })
+
+  it('names each of the eight queues, within the same 160 characters', () => {
+    /* The eight queues share one address pattern, so their words are composed
+       rather than written out (QueueMeta). A search engine cuts a description at
+       the same place whether it was composed or not. */
+    const composed = QUEUES.map((queue) => ({
+      title: translate(dictionary, 'sr', 'seo.verificationQueue.queueTitle', {
+        name: translate(dictionary, 'sr', queue.labelKey),
+      }),
+      description: translate(dictionary, 'sr', 'seo.verificationQueue.queueDescription', {
+        name: translate(dictionary, 'sr', queue.labelKey),
+        source: translate(dictionary, 'sr', queue.sourceKey),
+      }),
+    }))
+
+    expect(new Set(composed.map((one) => one.title)).size).toBe(QUEUES.length)
+    expect(composed.filter((one) => one.description.length > 160)).toEqual([])
+    expect(composed.filter((one) => one.title.includes('{'))).toEqual([])
+  })
+
+  it('calls the boards what the rulebook and the navigation call them', () => {
+    /* "Rang liste" and "top liste" are no longer two names for one page: it is
+       the Top 10 liste, in the navigation and in Article 56 alike (PDL P28a). The
+       description of the home page still counted the boards among the "rang
+       liste", which puts the retired name in front of every visitor and in every
+       search result. */
+    expect(translate(dictionary, 'sr', 'seo.home.description')).toContain('Top 10 liste')
+
+    const sentences = SEO_KEYS.map((key) => translate(dictionary, 'sr', `seo.${key}.description`))
+    expect(sentences.filter((text) => text.includes('rang liste'))).toEqual([])
+  })
+
+  it('says the same thing in index.html, which is served before React runs', () => {
+    /* The three tags in index.html are the same sentence as the home page's, and
+       they are what a reader sees in the tab and what a client running no
+       JavaScript ends up with. They are written out twice by necessity, so they
+       are held together here. */
+    const page = readFileSync(join(process.cwd(), 'index.html'), 'utf-8')
+    const sentence = translate(dictionary, 'sr', 'seo.home.description')
+
+    expect(page.split(sentence)).toHaveLength(4)
+  })
+
+  it('names each of the five records after the record itself', () => {
+    // The screen replaces both texts once it has loaded the record (PageMeta).
+    // The message is the one that must not: its subject is personal data (P23).
+    const missing = ['competitor', 'event', 'team', 'league']
+      .flatMap((key) => [`seo.${key}.recordTitle`, `seo.${key}.recordDescription`])
+      .filter((key) => !resolves(key))
+
+    expect(missing).toEqual([])
+    expect(resolves('seo.message.recordTitle')).toBe(false)
   })
 })

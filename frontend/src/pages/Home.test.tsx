@@ -61,7 +61,7 @@ describe('Home', () => {
     const men = (await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section')!
 
     expect(within(men).getAllByRole('listitem').length).toBeGreaterThan(0)
-    // The standing moved to /tabela; /rang-liste is the page of top boards now.
+    // The standing moved to /tabela; /top-liste is the page of Top 10 boards now.
     expect(within(men).getByRole('link', { name: 'Cela tabela' })).toHaveAttribute(
       'href',
       '/sr/tabela?pol=m',
