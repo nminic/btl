@@ -1,10 +1,10 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -14,7 +14,7 @@ import { Messages } from './member/Messages'
 
 describe('signing in', () => {
   it('turns a visitor into a competitor and lands on their profile', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/prijava')
 
     await user.selectOptions(await screen.findByLabelText('Ko si?'), '000007')
@@ -64,7 +64,7 @@ describe('my profile', () => {
   })
 
   it('signs out again', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Odjavi se' }))
@@ -182,7 +182,7 @@ describe('settings', () => {
   })
 
   it('switches an optional notification off and on', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/podesavanja', 'competitor', '000007')
 
     const box = await screen.findByRole('checkbox', { name: 'Kad mi rezultat bude odobren' })
@@ -205,7 +205,7 @@ describe('settings', () => {
 
 describe('messages', () => {
   it('lists the inbox and marks one read', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/poruke', 'competitor', '000007')
 
     expect(await screen.findByText('1 nepročitana')).toBeVisible()
@@ -235,7 +235,7 @@ describe('messages', () => {
   })
 
   it('leads back to the whole inbox', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/poruke/msg-2', 'competitor', '000007')
 
     await user.click(await within(screen.getByRole('main')).findByRole('link', { name: 'Sve poruke' }))
@@ -251,7 +251,7 @@ describe('messages', () => {
 })
 
 describe('a result from entry to decision', () => {
-  async function enterResult(user: ReturnType<typeof userEvent.setup>) {
+  async function enterResult(user: ReturnType<typeof setupUser>) {
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Vreme starta/), '09:00')
@@ -268,7 +268,7 @@ describe('a result from entry to decision', () => {
   /* The queue moved under verification, so a moderator reaches it the way the
    * navigation now goes: the administration group, then verification, then the
    * queue of results. */
-  async function openTheQueue(user: ReturnType<typeof userEvent.setup>) {
+  async function openTheQueue(user: ReturnType<typeof setupUser>) {
     await user.click(await screen.findByRole('button', { name: 'Administracija' }))
     // The entry carries the number waiting in its name (PDL P28a), so the name
     // is matched on the words rather than in full.
@@ -277,7 +277,7 @@ describe('a result from entry to decision', () => {
   }
 
   it('refuses a result with no link to official results', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
@@ -288,7 +288,7 @@ describe('a result from entry to decision', () => {
   })
 
   it('goes in, waits, is approved, and the member sees it', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await enterResult(user)
@@ -311,7 +311,7 @@ describe('a result from entry to decision', () => {
   })
 
   it('scores nothing when the time entered is zero', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka bez vremena')
@@ -331,7 +331,7 @@ describe('a result from entry to decision', () => {
   })
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await enterResult(user)

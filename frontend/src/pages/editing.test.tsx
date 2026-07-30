@@ -1,10 +1,10 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 describe('changing data in administration', () => {
   it('changes a value in the row it sits in, and keeps it', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
@@ -25,7 +25,7 @@ describe('changing data in administration', () => {
   })
 
   it('lets an edit be abandoned', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
@@ -40,7 +40,7 @@ describe('changing data in administration', () => {
   })
 
   it('changes the name and the place of an event', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Događaji' })
@@ -57,7 +57,7 @@ describe('changing data in administration', () => {
 
 describe('the text of a competition', () => {
   it('is written by whoever runs it, and only by them', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/liga/runtrace-2027', 'superadmin')
 
     await screen.findByRole('heading', { level: 1 })
@@ -94,7 +94,7 @@ describe('the text of a competition', () => {
 
 describe('the last few branches these screens have', () => {
   it('cancels sending a result back', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
@@ -122,7 +122,7 @@ describe('the last few branches these screens have', () => {
   })
 
   it('leaves an already written competition text alone unless it is changed', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/liga/btl-2027', 'superadmin')
 
     const prizes = (await screen.findByRole('heading', { name: 'Nagrade' })).closest('section')!

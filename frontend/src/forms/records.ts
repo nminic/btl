@@ -10,14 +10,20 @@ import type { FieldDef, FieldOption, FormDef, FormValues } from './types'
  * new JSON file and not a new converter (PDL P30).
  */
 
+/** The answer for a field that offers no choices, as one list rather than a new
+ *  empty one per call: a field only redraws when something about it changed, and
+ *  a fresh empty list every time counts as a change. Shut, because one list
+ *  handed to every choiceless field on the portal has to stay empty. */
+const NONE: readonly FieldOption[] = Object.freeze([])
+
 /** The choices a select offers: from the definition, or handed in by the screen
  *  where the list is data rather than a fixed set. A race belongs to one of
  *  twelve hundred events, and those have no business being copied into JSON. */
 export function optionsFor(
   field: FieldDef,
   supplied: Record<string, FieldOption[]>,
-): FieldOption[] {
-  return field.options ?? supplied[field.name] ?? []
+): readonly FieldOption[] {
+  return field.options ?? supplied[field.name] ?? NONE
 }
 
 /** What the form opens with, read off the record it is going to change. */

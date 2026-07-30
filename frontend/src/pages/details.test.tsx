@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 describe('TeamDetail', () => {
   it('shows the team, its totals and its members with what each contributed', async () => {
@@ -42,7 +42,7 @@ describe('TeamDetail', () => {
   })
 
   it('is reachable from the list of teams', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/timovi')
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
@@ -124,7 +124,7 @@ describe('LeagueDetail', () => {
   })
 
   it('is reachable from the list of leagues', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/lige')
 
     await user.click(await screen.findByRole('link', { name: /RunTrace liga/ }))

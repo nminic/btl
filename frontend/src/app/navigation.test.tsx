@@ -1,10 +1,10 @@
 import { screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 /** The groups in the navigation open as panels, so a screen inside one is two
  *  clicks away: the group, then the screen. */
-async function openGroup(user: ReturnType<typeof userEvent.setup>, name: string) {
+async function openGroup(user: ReturnType<typeof setupUser>, name: string) {
   await user.click(await screen.findByRole('button', { name }))
 }
 
@@ -36,7 +36,7 @@ describe('navigation', () => {
   })
 
   it('opens a public screen straight from the navigation', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     // The calendar is the one entry that is a link rather than a group.
@@ -46,7 +46,7 @@ describe('navigation', () => {
   })
 
   it('opens a screen that sits inside a group', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await openGroup(user, 'Statistike')
@@ -66,7 +66,7 @@ describe('navigation', () => {
   })
 
   it('keeps the current screen when the language changes', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/top-liste')
 
     await user.click(screen.getByRole('button', { name: 'Jezik' }))
@@ -82,7 +82,7 @@ describe('navigation', () => {
   })
 
   it('declares the language the text is actually written in', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Jezik' }))
@@ -133,7 +133,7 @@ describe('navigation', () => {
   )
 
   it('shows the account screens to a member', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
@@ -143,7 +143,7 @@ describe('navigation', () => {
   })
 
   it('shows administration to staff', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'moderator', '000007')
 
     await openGroup(user, 'Administracija')
@@ -156,7 +156,7 @@ describe('navigation', () => {
   })
 
   it('opens and closes the mobile menu', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Otvori meni' })
@@ -173,7 +173,7 @@ describe('navigation', () => {
   })
 
   it('closes the menu after following a link out of a group', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
@@ -185,7 +185,7 @@ describe('navigation', () => {
   })
 
   it('closes the menu after following a link that is not in a group', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
@@ -195,7 +195,7 @@ describe('navigation', () => {
   })
 
   it('no longer switches the theme from the header, and sends the cog to settings', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
     // The switch moved to the settings screen (PDL P28a); the header only leads

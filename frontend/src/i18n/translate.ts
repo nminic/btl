@@ -26,6 +26,26 @@ function resolve(dictionary: Dictionary, key: string): string | Dictionary | und
   return node
 }
 
+/* Kept per locale, like the formatters in ./format.ts and for the same reason:
+ * building an Intl object costs, using one again does not. This one is the
+ * hottest of the three, because a plural key is what the front page counters read
+ * on every frame of the number they unroll. */
+const plurals = new Map<string, Intl.PluralRules>()
+
+function pluralRules(locale: string): Intl.PluralRules {
+  const tag = intlTag(locale)
+  const found = plurals.get(tag)
+
+  if (found !== undefined) {
+    return found
+  }
+
+  const made = new Intl.PluralRules(tag)
+  plurals.set(tag, made)
+
+  return made
+}
+
 function interpolate(text: string, params: TranslateParams): string {
   return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
     const value = params[name]
@@ -62,7 +82,7 @@ export function translate(
     return key
   }
 
-  const category = new Intl.PluralRules(intlTag(locale)).select(count)
+  const category = pluralRules(locale).select(count)
   const form = node[category] ?? node.other
 
   if (typeof form !== 'string') {

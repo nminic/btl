@@ -1,10 +1,10 @@
 import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 describe('LanguageMenu', () => {
   it('opens and closes from its own button', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Jezik' })
@@ -18,7 +18,7 @@ describe('LanguageMenu', () => {
   })
 
   it('ticks the language in use', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Jezik' }))
@@ -28,7 +28,7 @@ describe('LanguageMenu', () => {
   })
 
   it('closes on Escape', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Jezik' })
@@ -39,7 +39,7 @@ describe('LanguageMenu', () => {
   })
 
   it('closes when something else is clicked', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     const button = await screen.findByRole('button', { name: 'Jezik' })
@@ -50,7 +50,7 @@ describe('LanguageMenu', () => {
   })
 
   it('changes the language from the keyboard', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/timovi')
 
     await user.click(await screen.findByRole('button', { name: 'Jezik' }))
@@ -61,7 +61,7 @@ describe('LanguageMenu', () => {
   })
 
   it('leaves a key it does not handle alone', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await user.click(await screen.findByRole('button', { name: 'Jezik' }))

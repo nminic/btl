@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import sr from '../i18n/sr.json'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { SITE_ORIGIN } from './head'
 import { PageMeta } from './PageMeta'
 
@@ -83,7 +83,7 @@ describe('the name of a page', () => {
   })
 
   it('gives the page its own name back on the way out of a record', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/tim/dunavski-trkaci')
 
     await waitFor(() => expect(document.title).toContain('Dunavski trkači'))
@@ -120,7 +120,7 @@ describe('the description of a page', () => {
   })
 
   it('follows the screen from one address to the next', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr')
 
     await waitFor(() => expect(content('name', 'description')).toBe(sr.seo.home.description))
@@ -162,7 +162,7 @@ describe('the address of a page', () => {
   })
 
   it('follows the language switch', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/top-liste')
 
     await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/top-liste`))

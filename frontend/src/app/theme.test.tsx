@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { storedTheme, THEME_STORAGE_KEY } from './themeContext'
 import { useTheme } from './useTheme'
 
@@ -52,7 +52,7 @@ describe('the theme on the page', () => {
   })
 
   it('is changed from settings, and the choice is remembered', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/podesavanja', 'competitor', '000007')
 
     expect(await screen.findByRole('radio', { name: 'Tamna' })).toBeChecked()

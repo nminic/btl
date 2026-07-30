@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { hueFor } from './competitorFace'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 /* One file for the screens a visitor sees. They share a shape: read the data
  * layer, sort it, put it in a table. */
@@ -37,7 +37,7 @@ describe('Rankings', () => {
   })
 
   it('keeps men and women apart', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/tabela?sezona=2020')
 
     const men = within(await screen.findByRole('table')).getAllByRole('row').length
@@ -49,7 +49,7 @@ describe('Rankings', () => {
   })
 
   it('goes back to the men after the women, and changes the season', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/tabela?sezona=2020')
 
     await screen.findByRole('table')
@@ -62,7 +62,7 @@ describe('Rankings', () => {
   })
 
   it('narrows by category and by search, and lets both go again', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/tabela?sezona=2020')
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
@@ -228,7 +228,7 @@ describe('TopBoards', () => {
   })
 
   it('narrows the team board to the chosen season like every other board', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najbolji tim' })
@@ -258,7 +258,7 @@ describe('TopBoards', () => {
   })
 
   it('opens on a season of its own, and changes every board with one filter', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/top-liste')
 
     const season = await screen.findByLabelText('Sezona')
@@ -310,7 +310,7 @@ describe('Competitors', () => {
   })
 
   it('searches, and says so when nothing matches', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/takmicari')
 
     await user.type(await screen.findByLabelText('Pretraga'), '000001')
@@ -343,7 +343,7 @@ describe('CompetitorProfile', () => {
   })
 
   it('narrows the table, the totals and the bars with one filter', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
@@ -358,7 +358,7 @@ describe('CompetitorProfile', () => {
   })
 
   it('lets a filter go again', async () => {
-    const user = userEvent.setup()
+    const user = setupUser()
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
