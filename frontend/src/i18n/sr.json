@@ -286,6 +286,8 @@
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
     "wholeStanding": "Cela tabela",
     "byCategory": "Trke po dužini",
+    "pauseCategories": "Zaustavi smenjivanje dužina",
+    "resumeCategories": "Pokreni smenjivanje dužina",
     "calculator": "BTL kalkulator",
     "calcLength": "Dužina staze (km)",
     "calcAscent": "Uspon (m)",

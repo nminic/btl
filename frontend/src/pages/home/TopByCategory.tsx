@@ -22,9 +22,45 @@ function Face({ competitor }: { competitor: Competitor }) {
   )
 }
 
+/** Whether the visitor has asked their system for less movement. */
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/* Two bars and a triangle, drawn rather than typed: the media characters render
+ * as anything from a glyph to an emoji to a blank box depending on the machine,
+ * and this one has to read as a control at 28 pixels. */
+function PauseGlyph() {
+  return (
+    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+      <rect x="2" y="1.5" width="3" height="9" fill="currentColor" />
+      <rect x="7" y="1.5" width="3" height="9" fill="currentColor" />
+    </svg>
+  )
+}
+
+function PlayGlyph() {
+  return (
+    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+      <path d="M3 1.5 L10.5 6 L3 10.5 Z" fill="currentColor" />
+    </svg>
+  )
+}
+
 /* The bar chart from the old portal: who has run the most races of one length
  * this season. It carries no heading and no arrows; it simply turns, one
  * category after another, round and round.
+ *
+ * The one control on it stops the turning. Anything that starts moving by
+ * itself, keeps it up for more than five seconds and sits beside other content
+ * has to be stoppable (WCAG 2.2.2, and ADL A7 sets WCAG 2.2 AA as the floor).
+ * Arrows are still deliberately absent: the fault was that the movement could
+ * not be stopped, not that it could not be steered.
+ *
+ * The turning is a timer rather than an animation, so the reduced motion block
+ * in index.css cannot reach it and the preference is read here by hand. Anyone
+ * who asked for less movement gets the widget standing still, with the control
+ * offering to start it.
  */
 export function TopByCategory({
   competitors,
@@ -40,14 +76,19 @@ export function TopByCategory({
 }) {
   const { locale, t } = useI18n()
   const [shown, setShown] = useState(0)
+  const [running, setRunning] = useState(() => !prefersReducedMotion())
 
   useEffect(() => {
+    if (!running) {
+      return
+    }
+
     const turn = setInterval(() => {
       setShown((current) => (current + 1) % CATEGORIES.length)
     }, turnMs)
 
     return () => clearInterval(turn)
-  }, [turnMs])
+  }, [running, turnMs])
 
   const category = CATEGORIES[shown]
   const columns = topByCategory(competitors, results, season, category, TOP)
@@ -78,7 +119,23 @@ export function TopByCategory({
         </ol>
       )}
 
-      <p className="top-cat__caption">{t(`home.mostOf.${category}`)}</p>
+      <div className="top-cat__foot">
+        <p className="top-cat__caption">{t(`home.mostOf.${category}`)}</p>
+
+        {/* The name says what the press will do, the way the navigation toggle
+            in the header does, rather than naming a state the visitor then has
+            to work out the opposite of. */}
+        <button
+          type="button"
+          className="top-cat__pause"
+          onClick={() => setRunning((was) => !was)}
+        >
+          {running ? <PauseGlyph /> : <PlayGlyph />}
+          <span className="visually-hidden">
+            {t(running ? 'home.pauseCategories' : 'home.resumeCategories')}
+          </span>
+        </button>
+      </div>
     </section>
   )
 }
