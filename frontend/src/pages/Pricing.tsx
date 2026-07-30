@@ -1,5 +1,5 @@
 import { useToday } from '../clock/useClock'
-import { JUNIOR, PRICES, seasonOnOffer } from '../data/pricing'
+import { JUNIOR, PRICES, registrationOpen, seasonOnOffer } from '../data/pricing'
 import { useI18n } from '../i18n/useI18n'
 import './Pricing.css'
 
@@ -49,7 +49,10 @@ export function Pricing() {
       <div className="pricing__notes">
         <p>{t('pricing.cycle')}</p>
         <p>{t('pricing.rsdNote')}</p>
-        <p>{t('pricing.previewNote')}</p>
+        {/* One September, in 2026, and not a rule of the list. Printed
+            for ever it told a reader every autumn that registration was
+            shut, which from 2027 it is not. */}
+        {!registrationOpen(today) && <p>{t('pricing.previewNote')}</p>}
         <p>{t('pricing.noRefund')}</p>
         <p>{t('pricing.reminders')}</p>
       </div>

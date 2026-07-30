@@ -1471,7 +1471,10 @@ describe('the section of entities', () => {
     ]
 
     await openSection()
-    expect(names).toHaveLength(ENTITIES.filter((entity) => entity.fixed !== true).length)
+    /* Eight written out, not counted with the predicate under test: an entity
+       wrongly marked fixed would have satisfied that quietly. */
+    expect(names).toHaveLength(8)
+    expect(ENTITIES).toHaveLength(9)
 
     const nav = sectionNav()
 

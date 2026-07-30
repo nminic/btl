@@ -348,7 +348,8 @@
     },
     "pointsUnit": " BTL poena",
     "ascentUnit": " m+",
-    "descentUnit": " m-"
+    "descentUnit": " m-",
+    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama."
   },
   "data": {
     "loading": "Učitavanje",
@@ -640,7 +641,7 @@
   "pricing": {
     "title": "Članarina",
     "lead": "Članarina se plaća za sezonu, a sezona {season}. traje od 1. januara do 31. decembra {season}.",
-    "period": "Naziv perioda",
+    "period": "Period uplate",
     "priceEur": "Cena",
     "priceRsd": "Iz Srbije",
     "notSold": "Ne naplaćuje se",
@@ -798,8 +799,6 @@
       "honorary": "Počasno"
     },
     "pricing": "Cenovnik",
-    "from": "Od",
-    "to": "Do",
     "ranking": "Pravo rangiranja",
     "yes": "Da",
     "no": "Ne",
@@ -887,8 +886,6 @@
       "description": "Opis",
       "rule": "Pravilo",
       "priceLabel": "Naziv perioda",
-      "validFrom": "Važi od",
-      "validTo": "Važi do",
       "eur": "Cena u evrima",
       "rsd": "Cena u dinarima",
       "pageTitle": "Naslov strane",
@@ -922,9 +919,7 @@
       "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi. Prag stoji na sredini znaka i nikad nije prazan.",
       "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
-      "validPeriod": "Bez perioda cena ne zavisi od datuma uplate, kao junior cena.",
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
-      "ranking": "Ko plati posle 1. januara ima profil i svoje rezultate, ali ne ulazi u rang liste.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega."

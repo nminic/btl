@@ -129,6 +129,23 @@ export function seasonOnOffer(today: string): number {
   return Math.max(SEASON, seasonOnSale(today))
 }
 
+/**
+ * The season a renewal now is a renewal for.
+ *
+ * Always one that has not begun. The season on offer and the season being
+ * renewed are the same thing from October to December and different for the nine
+ * months before it: in August 2027 somebody joining is joining 2027, but the
+ * renewal that opens in October is for 2028, and the screen read "Obnova
+ * članarine za 2027" directly above "renewal opens on 1 October".
+ *
+ * A transfer is the same question with the same answer: asked for now, it takes
+ * effect at the start of the next season and never during a running one
+ * (PDL P13).
+ */
+export function seasonBeingRenewed(today: string): number {
+  return Math.max(SEASON, Number(today.slice(0, 4)) + 1)
+}
+
 /** The league the portal exists for. It is implied everywhere and is never
  *  listed among the competitions that run alongside it. */
 export const MAIN_LEAGUE_SLUG = `btl-${SEASON}`

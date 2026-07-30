@@ -6,7 +6,12 @@ import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
 import { inYearlyWindow } from '../../data/season'
 import { useResults } from '../../data/useResource'
 import { epcPayload, ipsPayload, methodsFor } from '../../data/paymentQr'
-import { JUNIOR, SEASON, priceOn, registrationOpen, seasonOnOffer } from '../../data/pricing'
+import {
+  JUNIOR,
+  priceOn,
+  registrationOpen,
+  seasonBeingRenewed,
+} from '../../data/pricing'
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -46,12 +51,18 @@ export function Membership() {
         }
 
         const points = (totalsByMember(results).get(me.memberNumber) ?? EMPTY_TOTALS).points
-        const nextSeason = seasonOnOffer(today)
+        /* The season the renewal is for, which is never the one already
+           running: in August 2027 the renewal that opens in October is for
+           2028, and the heading said 2027. */
+        const nextSeason = seasonBeingRenewed(today)
         const windowOpen = inYearlyWindow(today)
         const team = teams.find((one) => one.id === me.teamId)
         const price = priceOn(today)
         const methods = methodsFor(me.country)
-        const purpose = `Clanarina BTL ${SEASON} ${me.memberNumber}`
+        /* What the member scans and what the association books. It named the
+           first season for ever, so from October 2027 the heading would have
+           said 2028 while the reference said 2027. */
+        const purpose = `Clanarina BTL ${nextSeason} ${me.memberNumber}`
 
         return (
           <div className="member">
@@ -133,8 +144,9 @@ export function Membership() {
 
                       It needs an amount, and there is always one: the four periods
                       of the price list repeat every year, so it cannot run out
-                      (owner, 30.07.2026). The screen used to carry a line saying
-                      membership was not on sale yet, for the day it did. */}
+                      (owner, 30.07.2026). The line above about membership not
+                      being on sale is the one September before the launch, and
+                      not the day the list ran out. */}
                   <h3 className="profile__section">{t('membership.payNow')}</h3>
 
                   <p className="member__note">

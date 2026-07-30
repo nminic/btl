@@ -41,12 +41,33 @@ describe('EnrolmentSlot', () => {
     expect(screen.getByRole('heading', { name: /2028/ })).toBeVisible()
   })
 
-  it('always has a next price, because the four periods repeat', () => {
-    // In the middle of a season the next one is the early price in October.
+  it('calls a rise a rise, and says nothing of one where the next price is lower', () => {
+    /* Through the nine months a season is running, the next price is the early
+       one and is lower. The slot announced "cena raste na 35 EUR" for two
+       hundred and seventy-three days of every year. */
     renderWidget(<EnrolmentSlot today="2027-06-01" />)
 
     expect(screen.getByText('40 EUR')).toBeVisible()
-    expect(screen.getByText(/Cena raste na 35 EUR/)).toBeVisible()
+    expect(screen.queryByText(/Cena raste/)).not.toBeInTheDocument()
+  })
+
+  it('says instead what the in-season price does not buy', () => {
+    /* The other half of that price, and the half worth knowing: it buys a
+       profile and the results and no place in the standing (PDL P8). The slot
+       said this nowhere. */
+    renderWidget(<EnrolmentSlot today="2027-06-01" />)
+
+    expect(screen.getByText(/ne i mesto u rang listama/)).toBeVisible()
+  })
+
+  it('still counts the days to a rise where there is one', () => {
+    renderWidget(<EnrolmentSlot today="2026-12-20" />)
+
+    expect(screen.getByText('50 EUR')).toBeVisible()
+    expect(screen.queryByText(/Cena raste/)).not.toBeInTheDocument()
+
+    renderWidget(<EnrolmentSlot today="2026-10-01" />)
+    expect(screen.getByText(/Cena raste na 40 EUR za 5 dana/)).toBeVisible()
   })
 })
 

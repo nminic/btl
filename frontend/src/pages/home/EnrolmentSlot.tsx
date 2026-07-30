@@ -14,9 +14,9 @@ import { useI18n } from '../../i18n/useI18n'
  * The price thresholds are the real lever and they were being used only in
  * three reminder emails; here they work every day of the year.
  *
- * The season named is the one on sale, which turns over on 1 October (owner,
- * 30.07.2026). Before that date the slot would have gone on offering 2027 in
- * the middle of 2027, which is a season nobody can still join.
+ * The season named is the one on offer, which turns over on 1 October (owner,
+ * 30.07.2026). It was a constant, so in the middle of 2027 the slot went on
+ * naming 2027 after the price beside it had become next year's.
  */
 export function EnrolmentSlot({ today }: { today: string }) {
   const { locale, t } = useI18n()
@@ -50,14 +50,22 @@ export function EnrolmentSlot({ today }: { today: string }) {
         <strong>{price.eur} EUR</strong>
         <span className="slot__rsd">{price.rsd.toLocaleString('sr-Latn')} RSD</span>
       </p>
-      {/* Always something: the four periods repeat, so there is always a next
-          one and always a day it starts. */}
-      <p className="slot__note">
-        {t('home.priceRises', {
-          price: nextPrice(today).eur,
-          count: daysBetween(today, nextPriceStart(today)),
-        })}
-      </p>
+      {/* Only where the next price is higher, which is the only thing worth
+          hurrying anybody for. Through the nine months the season is running the
+          next price is the early one and is lower, so the slot was announcing a
+          rise to 35 EUR for two hundred and seventy-three days of every year.
+          What is worth saying then is the other half of the in-season price:
+          it buys a profile and the results, and no place in the standing. */}
+      {nextPrice(today).eur > price.eur ? (
+        <p className="slot__note">
+          {t('home.priceRises', {
+            price: nextPrice(today).eur,
+            count: daysBetween(today, nextPriceStart(today)),
+          })}
+        </p>
+      ) : (
+        !price.ranking && <p className="slot__note">{t('home.noRanking')}</p>
+      )}
       <Link className="button button--primary card__more" to={`/${locale}/registracija`}>
         {t('home.toRegistration')}
       </Link>
