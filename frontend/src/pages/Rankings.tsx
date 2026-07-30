@@ -5,8 +5,9 @@ import {
   categoriesOf,
   categoryOfMember,
   defaultSeason,
-  rankingFor,
+  endOfPreviousMonth,
   seasonsWithResults,
+  standingWithDelta,
 } from '../data/derive'
 import type { Competitor, Gender, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
@@ -17,6 +18,49 @@ import './Rankings.css'
 /* Podium places carry gold, and nothing else on this screen does. Gold means
  * achievement here, so it is spent on the three rows that earned it. */
 const PODIUM = 3
+
+/**
+ * The Δ cell: how the row has moved since the end of last month (PDL P12).
+ *
+ * The arrow is hidden from a screen reader and the words beside it are hidden
+ * from the eye, because "▲2" is a shape rather than a sentence and a reader
+ * announcing the name of a triangle tells nobody anything.
+ *
+ * Exported for its own test: on any real season the portal has, every row is
+ * level, so the screen alone never shows the other three cases.
+ */
+export function Delta({ places }: { places: number | undefined }) {
+  const { t } = useI18n()
+
+  /* Nothing at all for a member who was not in the table last month. An arrow
+   * drawn from their first race would claim a climb they never made (PDL P12). */
+  if (places === undefined) {
+    return null
+  }
+
+  if (places === 0) {
+    return (
+      <>
+        <span aria-hidden="true">–</span>
+        <span className="visually-hidden">{t('rankings.delta.level')}</span>
+      </>
+    )
+  }
+
+  const up = places > 0
+
+  return (
+    <span className={up ? 'delta delta--up' : 'delta delta--down'}>
+      <span aria-hidden="true">
+        {up ? '▲' : '▼'}
+        {Math.abs(places)}
+      </span>
+      <span className="visually-hidden">
+        {t(up ? 'rankings.delta.up' : 'rankings.delta.down', { count: Math.abs(places) })}
+      </span>
+    </span>
+  )
+}
 
 type Filters = {
   gender: Gender
@@ -60,8 +104,17 @@ function Standing({
     )
   }, [competitors, results, gender, seasonParam])
 
+  /* The Δ column measures against the end of last month (PDL P12). A season that
+   * has already been frozen has nothing left to move, so every row in it reads
+   * as level, which is what it is. */
   const rows = useMemo(
-    () => rankingFor(competitors, results, { season, gender, categoryCode: category, search }),
+    () =>
+      standingWithDelta(
+        competitors,
+        results,
+        { season, gender, categoryCode: category, search },
+        endOfPreviousMonth(new Date().toISOString().slice(0, 10)),
+      ),
     [competitors, results, season, gender, category, search],
   )
 
@@ -127,10 +180,13 @@ function Standing({
         <p className="rankings__empty">{t('rankings.empty')}</p>
       ) : (
         <div className="table-scroll">
-          <table className="table">
+          <table className="table table--standing">
             <thead>
               <tr>
                 <th scope="col">{t('rankings.columns.position')}</th>
+                <th scope="col" className="table__hide-phone">
+                  {t('rankings.columns.delta')}
+                </th>
                 <th scope="col">{t('rankings.columns.member')}</th>
                 <th scope="col">{t('rankings.columns.category')}</th>
                 <th scope="col" className="table__hide-phone">
@@ -158,6 +214,9 @@ function Standing({
                   className={row.position <= PODIUM ? 'podium' : undefined}
                 >
                   <td className="table__position">{row.position}</td>
+                  <td className="table__hide-phone table__delta">
+                    <Delta places={row.delta} />
+                  </td>
                   <td>
                     <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
                       {row.competitor.firstName} {row.competitor.lastName}

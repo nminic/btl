@@ -235,6 +235,63 @@ export function rankingFor(
 }
 
 /**
+ * The last day of the month before the one the given day falls in, as
+ * "YYYY-MM-DD".
+ *
+ * That day is the reference the Δ column measures against, because a month was
+ * the natural rhythm of the old portal too (PDL P12).
+ */
+export function endOfPreviousMonth(today: string): string {
+  const year = Number(today.slice(0, 4))
+  const month = Number(today.slice(5, 7))
+
+  // Day zero of a month is the last day of the month before it, which is what
+  // spares this the count of days in a month and the leap year with it.
+  return new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10)
+}
+
+/** A row of the standing together with the places it has gained since the
+ *  reference day. No number at all for a member who was not in the table then. */
+export type StandingRow = RankingRow & { delta?: number }
+
+/**
+ * The standing with the Δ column worked out: how many places each member has
+ * gained since the reference day, which is the end of the previous month
+ * (PDL P12).
+ *
+ * A member who was not in the table on that day carries no number rather than a
+ * leap invented out of their first race, which is the whole reason the number is
+ * optional instead of zero.
+ *
+ * The reference standing is built over the same field and placed by the same
+ * ladder, so the two positions are comparable. The search is left out of it: it
+ * narrows what is shown without renumbering anything (`rankingFor` searches
+ * after placing), so running it over the reference as well would only be work.
+ */
+export function standingWithDelta(
+  competitors: Competitor[],
+  results: Result[],
+  filter: RankingFilter,
+  referenceDay: string,
+): StandingRow[] {
+  const before = new Map(
+    rankingFor(
+      competitors,
+      results.filter((result) => result.date <= referenceDay),
+      { ...filter, search: undefined },
+    ).map((row) => [row.competitor.memberNumber, row.position]),
+  )
+
+  return rankingFor(competitors, results, filter).map((row) => {
+    const was = before.get(row.competitor.memberNumber)
+
+    // A smaller number is the better place, so places gained is the subtraction
+    // the other way round from the one it looks like.
+    return was === undefined ? row : { ...row, delta: was - row.position }
+  })
+}
+
+/**
  * The members of one team, ordered by what each of them brought to it, down the
  * ladder of the general standing and with a tie nothing separates shared, like
  * every other list on the portal (PDL P12).

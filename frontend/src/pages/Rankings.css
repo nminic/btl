@@ -81,6 +81,35 @@
   font-size: 0.85rem;
 }
 
+/* The Δ column: how far the row has moved since the end of last month
+   (PDL P12).
+
+   The standing is the one table on the portal with a column between the place
+   and the name, so it is the one table whose fourth column is still a word.
+   table.css reads the first three from the left, which is right for every table
+   that has no Δ, and would leave the category hanging off the right edge here. */
+.table--standing th:nth-child(4),
+.table--standing td:nth-child(4) {
+  text-align: left;
+}
+
+.table__delta {
+  width: 3.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Colour is the second thing said, never the first: the arrow carries the
+   direction on its own, so a reader who cannot separate the two hues still
+   reads the column. */
+.delta--up {
+  color: var(--up);
+}
+
+.delta--down {
+  color: var(--down);
+}
+
 /* The drawer under a team row: who is in it and what each of them brought to the
    total. The team standing is a plain sum (PDL P12), so the only honest way to
    read a position is to see whose races add up to it. */

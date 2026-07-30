@@ -1,7 +1,8 @@
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { hueFor } from './competitorFace'
-import { renderAt } from '../test/render'
+import { Delta } from './Rankings'
+import { renderAt, renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 
 /* One file for the screens a visitor sees. They share a shape: read the data
@@ -14,14 +15,28 @@ describe('Rankings', () => {
     renderAt('/sr/tabela')
 
     expect(await screen.findByRole('table')).toBeVisible()
-    // The two vertical columns stand beside the distance, and no column below is
-    // left out of the markup at any width. Δ from PDL P12 is not among them: it
-    // needs the standing as it stood at the end of last month, which the
-    // prototype has nothing to compute from yet.
-    for (const column of ['#', 'Član', 'Kat.', 'Trke', 'd (km)', '+ (m)', '− (m)', 'Vreme', 'Bodovi']) {
-      expect(screen.getByRole('columnheader', { name: column })).toBeInTheDocument()
-    }
+    // All ten columns of PDL P12, Δ among them, in the order the rulebook lists
+    // them. The two vertical columns stand beside the distance, and no column
+    // below is left out of the markup at any width.
+    const columns = ['#', 'Δ', 'Član', 'Kat.', 'Trke', 'd (km)', '+ (m)', '− (m)', 'Vreme', 'Bodovi']
+
+    expect(screen.getAllByRole('columnheader').map((one) => one.textContent)).toEqual(columns)
     expect(screen.getAllByRole('row').length).toBeGreaterThan(2)
+  })
+
+  it('gives every row a Δ against the end of last month', async () => {
+    renderAt('/sr/tabela?sezona=2020')
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+
+    /* Every season the portal holds has been over for years, so the standing as
+       it stood at the end of last month is the standing as it stands now and
+       every row is level. That is what the column is for saying; the arrows are
+       covered where they can be produced on purpose, in derive.test.ts and in
+       the block below. */
+    for (const row of rows) {
+      expect(within(row).getByText('bez promene mesta')).toBeInTheDocument()
+    }
   })
 
   it('orders by points, with the podium marked', async () => {
@@ -92,6 +107,44 @@ describe('Rankings', () => {
     const link = within(rows[0]).getByRole('link')
 
     expect(link).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
+  })
+})
+
+/* The Δ cell on its own, because the three cases that are not "level" cannot be
+ * produced from a season that ended years ago (PDL P12). */
+describe('the Δ cell', () => {
+  it('draws a climb with an arrow the eye reads and words a screen reader reads', () => {
+    renderWithI18n(<Delta places={2} />)
+
+    expect(screen.getByText('▲2')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText('2 mesta naviše')).toBeInTheDocument()
+  })
+
+  it('counts one place in the singular', () => {
+    renderWithI18n(<Delta places={1} />)
+
+    expect(screen.getByText('1 mesto naviše')).toBeInTheDocument()
+  })
+
+  it('draws a fall as the same shape the other way up, never as a minus', () => {
+    renderWithI18n(<Delta places={-3} />)
+
+    expect(screen.getByText('▼3')).toBeInTheDocument()
+    expect(screen.getByText('3 mesta naniže')).toBeInTheDocument()
+  })
+
+  it('says a row has not moved rather than leaving the cell to be read as missing', () => {
+    renderWithI18n(<Delta places={0} />)
+
+    expect(screen.getByText('bez promene mesta')).toBeInTheDocument()
+  })
+
+  it('shows nothing for a member who was not in the table last month', () => {
+    const { container } = renderWithI18n(<Delta places={undefined} />)
+
+    // Not a dash and not a zero: neither of those is true of somebody who was
+    // not there to move (PDL P12).
+    expect(container).toBeEmptyDOMElement()
   })
 })
 
