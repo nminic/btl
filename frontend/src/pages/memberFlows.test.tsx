@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -412,6 +412,31 @@ describe('screens that depend on the date', () => {
     return screen.findByText(/Danas članarina košta 35 EUR/).then((found) => {
       expect(found).toBeVisible()
     })
+  })
+
+  it('moves the whole portal to another day from the switch in the header', async () => {
+    /* The feature end to end, through the real route table and the real switch,
+       rather than through a component holding a date: the owner asked for this
+       so he could see a screen that only exists after a certain date before
+       that date arrives.
+
+       Registration is the sharpest of them. Between 15 and 30 September the
+       portal is open for looking only and there is no form at all (PDL P8), so
+       nothing about the two states can be mistaken for the other. */
+    renderAt('/sr/registracija', 'visitor', null, undefined, '2026-09-20')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
+    ).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText('Današnji datum'), {
+      target: { value: '2026-10-02' },
+    })
+
+    expect(await screen.findByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { name: 'Registracija još nije otvorena' }),
+    ).not.toBeInTheDocument()
   })
 })
 

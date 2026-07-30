@@ -16,6 +16,10 @@
  *
  * QA is a production build, so `DEV` is false there. The QA image is therefore
  * built with VITE_DEV_TOOLS=1 (deploy/compose.qa.yml); production sets nothing.
+ *
+ * The value has to be exactly `1`. Not "true", not "yes": anything else leaves
+ * the controls off, which is the safe way round to be wrong but is a confusing
+ * hour on QA if nobody says so.
  */
 export function devToolsEnabled(): boolean {
   return import.meta.env.DEV || import.meta.env.VITE_DEV_TOOLS === '1'

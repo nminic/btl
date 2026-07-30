@@ -22,9 +22,22 @@ const ROOT = join(process.cwd(), 'src')
 /** The one file allowed to read it, which is where the clock comes from. */
 const ALLOWED = join('clock', 'context.ts')
 
-/** `new Date()` with nothing in it, and Date.now(). Parsing a stored date is
- *  not this and must go on working. */
-const READS_THE_CLOCK = /new Date\(\s*\)|Date\.now\(/
+/**
+ * Every way of asking the machine what time it is now.
+ *
+ * `new Date()`, and `new Date` with no brackets at all, which is the same
+ * constructor call; `Date()` without `new`, which hands back the moment as a
+ * string; `Date.now()`; and an `Intl` formatter called with nothing to format,
+ * which formats now. That last one is not hypothetical here: the portal builds
+ * and keeps `Intl.DateTimeFormat` instances (src/i18n/format.ts), so a helper
+ * that one day forgets its argument would read the clock and look like
+ * formatting.
+ *
+ * Parsing a stored date is none of these and must go on working, which is why
+ * this asks about the shape of the call rather than about the word Date.
+ */
+const READS_THE_CLOCK =
+  /new Date\s*(\(\s*\))?(?![(\w])|(?<!new\s+)\bDate\(|Date\.now\(|\.format(ToParts)?\(\s*\)/
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -47,13 +60,30 @@ describe('the portal has one clock', () => {
     expect(readers).toEqual([ALLOWED])
   })
 
-  it('notices a reader that should not be one', () => {
+  it('notices every way of asking what time it is now', () => {
     // The check itself, since the list above passing proves only that today
     // nobody does it.
-    expect(READS_THE_CLOCK.test('const now = new Date()')).toBe(true)
-    expect(READS_THE_CLOCK.test('const now = Date.now()')).toBe(true)
-    // And what must go on being allowed: a stored date being read back.
-    expect(READS_THE_CLOCK.test("new Date(Date.UTC(year, month - 1, day))")).toBe(false)
-    expect(READS_THE_CLOCK.test("new Date(`${today}T00:00:00Z`)")).toBe(false)
+    for (const reader of [
+      'const now = new Date()',
+      'const now = new Date',
+      'const now = Date()',
+      'const now = Date.now()',
+      'const month = formatter.format()',
+      'const parts = formatter.formatToParts()',
+    ]) {
+      expect(READS_THE_CLOCK.test(reader)).toBe(true)
+    }
+  })
+
+  it('goes on allowing a stored date to be read back, which is everywhere', () => {
+    for (const parse of [
+      'new Date(Date.UTC(year, month - 1, day))',
+      'new Date(`${today}T00:00:00Z`)',
+      'new Date(Date.parse(text))',
+      'formatter.format(new Date(iso))',
+      'const stamp = record.date',
+    ]) {
+      expect(READS_THE_CLOCK.test(parse)).toBe(false)
+    }
   })
 })

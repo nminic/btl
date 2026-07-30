@@ -257,8 +257,7 @@
   },
   "clock": {
     "label": "Današnji datum",
-    "reset": "Vrati na stvarni datum",
-    "hint": "Samo u razvoju, da se ekrani vezani za datum mogu videti pre nego što taj datum dođe."
+    "reset": "Vrati na stvarni datum"
   },
   "notFound": {
     "title": "Ove strane nema",

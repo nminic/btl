@@ -38,7 +38,12 @@ function DateChooser() {
       {/* Only while the clock is somewhere else. A button that spends its life
           disabled is one more thing in the header and one more stop for anyone
           moving through it with a keyboard, and its absence says the same thing
-          its greyness would: nothing is being simulated. */}
+          its greyness would: nothing is being simulated.
+
+          Known and left: pressing it takes the button away under the finger, so
+          the keyboard focus falls back to the page. On anything a member ever
+          sees that would have to be caught and put somewhere; this is drawn in
+          no production build at all. */}
       {simulated !== null && (
         <button
           type="button"

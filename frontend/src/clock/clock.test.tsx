@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { ClockProvider } from './ClockProvider'
@@ -16,6 +16,7 @@ function Reader() {
       <span data-testid="danas">{today}</span>
       <span data-testid="simulirano">{simulated ?? 'ne'}</span>
       <span data-testid="godina">{asDate.getUTCFullYear()}</span>
+      <span data-testid="kaoDatum">{asDate.toISOString()}</span>
       {/* Moves the clock without going through the switch, which is the only way
           to ask what the provider does in a build where the switch is not
           drawn. */}
@@ -64,6 +65,85 @@ describe('the clock', () => {
     // The two callers that count in years rather than compare days get the day
     // the rest of the portal agreed on, not the clock complete with its time.
     expect(screen.getByTestId('godina')).toHaveTextContent('2027')
+    expect(screen.getByTestId('kaoDatum')).toHaveTextContent('2027-01-15T00:00:00.000Z')
+  })
+
+  it('moves on to the next day when midnight passes under an open tab', () => {
+    /* Every screen used to read the clock inside its own draw, so this was free.
+       Now that they all ask one place, and that place is mounted once above
+       everything and never draws again on its own, the day would otherwise be
+       the day the tab was opened for as long as it stayed open: somebody who
+       left the portal open on the evening of 30 September would come back to it
+       on 1 October and still be told that membership is not yet on sale. */
+    vi.useFakeTimers()
+
+    try {
+      vi.setSystemTime(new Date('2026-09-30T21:59:30Z'))
+      renderClock()
+      expect(screen.getByTestId('danas')).toHaveTextContent('2026-09-30')
+
+      act(() => {
+        vi.setSystemTime(new Date('2026-10-01T00:00:30Z'))
+        vi.advanceTimersByTime(60_000)
+      })
+
+      expect(screen.getByTestId('danas')).toHaveTextContent('2026-10-01')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('looks again as soon as the tab is come back to', () => {
+    /* A laptop that slept through the night fires no timers while it sleeps, and
+       coming back to the tab is exactly when somebody is looking at it. */
+    vi.useFakeTimers()
+
+    try {
+      vi.setSystemTime(new Date('2026-09-30T21:59:30Z'))
+      renderClock()
+
+      act(() => {
+        vi.setSystemTime(new Date('2026-10-01T08:00:00Z'))
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+
+      expect(screen.getByTestId('danas')).toHaveTextContent('2026-10-01')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops looking once it is gone', () => {
+    vi.useFakeTimers()
+
+    try {
+      const { unmount } = renderClock()
+      unmount()
+
+      // A timer and a listener left behind would go on setting state on
+      // something that is no longer there, once per minute, for the visit.
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('leaves a simulated day where it is when the real one changes', () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.setSystemTime(new Date('2026-09-30T21:59:30Z'))
+      renderClock('2027-01-15')
+
+      act(() => {
+        vi.setSystemTime(new Date('2026-10-01T00:00:30Z'))
+        vi.advanceTimersByTime(60_000)
+      })
+
+      expect(screen.getByTestId('danas')).toHaveTextContent('2027-01-15')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('refuses to work outside the provider', () => {
@@ -124,6 +204,9 @@ describe('DateSwitch', () => {
 
   it('does not exist in a production build', () => {
     vi.stubEnv('DEV', false)
+    // Both, or the test turns into a failure on a machine that happens to have
+    // VITE_DEV_TOOLS exported.
+    vi.stubEnv('VITE_DEV_TOOLS', '')
 
     renderClock()
     expect(screen.queryByLabelText('Današnji datum')).not.toBeInTheDocument()
@@ -171,14 +254,48 @@ describe('a moved clock survives a reload', () => {
     expect(sessionStorage.getItem(KEY)).toBeNull()
   })
 
-  it('ignores anything in that slot that is not a day', () => {
-    /* The store is the tab's, not ours alone, and a leftover from an older
-       shape of this would otherwise be shown as though it were a date. */
-    sessionStorage.setItem(KEY, 'juče')
+  it.each([['juče'], ['2026-13-45'], ['2027-02-30']])(
+    'ignores %s in that slot, because it is not a day',
+    (planted) => {
+      /* The store is the tab's, not ours alone. And a day that is only shaped
+         like one is worse than nonsense: it becomes an Invalid Date, which
+         compares false against everything without ever throwing, so the
+         parent's signature would quietly stop appearing on the registration
+         form for a competitor under sixteen. */
+      sessionStorage.setItem(KEY, planted)
 
-    renderClock()
+      renderClock()
 
-    expect(screen.getByTestId('simulirano')).toHaveTextContent('ne')
+      expect(screen.getByTestId('simulirano')).toHaveTextContent('ne')
+    },
+  )
+
+  it('carries on where the browser refuses to keep anything at all', () => {
+    /* Blocked site data, a sandboxed frame, some private windows: reaching the
+       store throws rather than returning nothing. This provider stands above
+       the router and above the only error boundary there is, so a throw here is
+       not a lost date but a blank portal. */
+    const blocked = () => {
+      throw new Error('SecurityError')
+    }
+
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked)
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked)
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(blocked)
+
+    try {
+      renderClock()
+      fireEvent.change(theDay(), { target: { value: '2026-12-31' } })
+
+      // The day still moves. It just will not survive a reload, which is the
+      // better of the two ways to be wrong.
+      expect(screen.getByTestId('danas')).toHaveTextContent('2026-12-31')
+
+      fireEvent.change(theDay(), { target: { value: '' } })
+      expect(screen.getByTestId('simulirano')).toHaveTextContent('ne')
+    } finally {
+      vi.restoreAllMocks()
+    }
   })
 
   it('is not read in a production build', () => {
