@@ -70,17 +70,11 @@ describe('format', () => {
  * A range that describes a whole period is written as that period, and only what
  * describes none is read out from one end to the other. */
 describe('formatDayMonth', () => {
-  /* The narrow column on the front page (owner, 31.07.2026). The year is dropped
-     only where it is the reader's own year, because that is the only case where
-     it is the same four digits down the whole column. */
-  it('leaves the year off a date inside the year being read', () => {
-    expect(formatDayMonth('2027-01-16', '2027-08-04')).toBe('16.01.')
-  })
-
-  it('writes the year out when the date is not in that year', () => {
-    // The state of the portal on the day this was written: the last day of July
-    // 2026, with every event in the calendar in the season after it.
-    expect(formatDayMonth('2027-01-16', '2026-07-31')).toBe('16.01.2027.')
+  /* The shape the owner asked for by name for the narrow column on the front
+     page: day, month, full stop, and no year at any time of year. */
+  it('writes the day and the month and nothing else', () => {
+    expect(formatDayMonth('2027-01-16')).toBe('16.01.')
+    expect(formatDayMonth('2026-12-05')).toBe('05.12.')
   })
 })
 

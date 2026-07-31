@@ -109,28 +109,25 @@ describe('TopTen', () => {
     competitor('000005'),
   ]
 
-  /* The board in the shape the old portal had (owner, 31.07.2026): the leader
-     large beside the heading, the other nine as a three by three block. */
-  it('puts the leader above the rest, with the points they lead by', () => {
+  /* The board in the shape the old portal had (owner, 31.07.2026): round faces
+     carrying the number of their place, and nothing else. No names under the
+     circles, no points beside them, no sentence underneath. */
+  it('is faces and numbers, and says nothing else', () => {
     renderWidget(
       <TopTen
         competitors={competitors}
-        results={[
-          result('000001', 30),
-          result('000002', 20),
-          result('000004', 10),
-          result('000005', 5),
-        ]}
+        results={[result('000001', 30), result('000002', 20)]}
         season={2027}
         gender="M"
       />,
     )
 
-    expect(screen.getByText(/^30,00 BTL poena$/)).toBeVisible()
-    // Every number on this page carries its unit (PDL P28a): the leader's total
-    // stands alone now, where before it was one of ten in a column.
-    expect(screen.getByText('1.')).toBeVisible()
-    expect(screen.queryByText(/ovo nije poredak/)).not.toBeInTheDocument()
+    // The leader is a link called by their place and their name, and the name
+    // is nowhere on the card as text.
+    expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
+    expect(screen.queryByText('Ime 000001')).not.toBeInTheDocument()
+    expect(screen.queryByText(/BTL poena/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/30,00/)).not.toBeInTheDocument()
   })
 
   /* The ten places are the height of the widget, so the two boards standing side
@@ -152,7 +149,25 @@ describe('TopTen', () => {
 
     expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
     expect(within(block).getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByText(/Preostala mesta drže članovi/)).toBeVisible()
+    // The leader stands outside the block, so the board carries four faces.
+    expect(screen.getAllByRole('link', { name: /^\d+\. Ime/ })).toHaveLength(4)
+  })
+
+  it('numbers every place, from the leader to the tenth', () => {
+    renderWidget(<TopTen competitors={competitors} results={[]} season={2027} gender="M" />)
+
+    expect(screen.getAllByText(/^\d+\.$/).map((one) => one.textContent)).toEqual([
+      '1.',
+      '2.',
+      '3.',
+      '4.',
+      '5.',
+      '6.',
+      '7.',
+      '8.',
+      '9.',
+      '10.',
+    ])
   })
 
   /* The circle is the face until there are photographs. Two things it has to
@@ -175,23 +190,13 @@ describe('TopTen', () => {
     )
   })
 
-  it('lists who has joined, and says so, before the first race', () => {
-    renderWidget(<TopTen competitors={competitors} results={[]} season={2027} gender="M" />)
+  it('draws a circle and no link at all where the league has nobody', () => {
+    const { container } = renderWidget(
+      <TopTen competitors={[]} results={[]} season={2027} gender="F" />,
+    )
 
-    expect(within(screen.getByRole('list')).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
-    expect(screen.getByText(/ovo nije poredak/)).toBeVisible()
-    // Not the other kind of incomplete: nobody has raced, so no place is
-    // being held behind anybody.
-    expect(screen.queryByText(/Preostala mesta drže/)).not.toBeInTheDocument()
-  })
-
-  /* Nobody of that gender at all is not the same fact as nobody scoring yet, and
-     the board that says the wrong one sends a reader looking for a fault. */
-  it('says so when there is nobody on this board at all', () => {
-    renderWidget(<TopTen competitors={[]} results={[]} season={2027} gender="F" />)
-
-    expect(screen.getByText(/još nema nikoga/)).toBeVisible()
-    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Ime/ })).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.portrait--empty')).toHaveLength(10)
   })
 })
 
@@ -384,7 +389,7 @@ describe('a member whose fee has run out, in a widget of a season they did race'
     expect(screen.getByTitle('Ime 000099').tagName).toBe('SPAN')
   })
 
-  it('is named in the top ten without a link on the name', () => {
+  it('holds a place in the top ten, and it is no way to a profile', () => {
     renderWidget(
       <TopTen
         competitors={[gone, still]}
@@ -394,8 +399,11 @@ describe('a member whose fee has run out, in a widget of a season they did race'
       />,
     )
 
-    expect(screen.getByText('Ime 000099')).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Ime 000099' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ime 000001' })).toBeInTheDocument()
+    /* Their face is on the board of the season they raced, in first place, and
+       it goes nowhere: the profile is not there to go to (PDL P11). The one
+       behind them is a link. */
+    expect(screen.getByTitle('Ime 000099').tagName).toBe('SPAN')
+    expect(screen.queryByRole('link', { name: /Ime 000099/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '2. Ime 000001' })).toBeInTheDocument()
   })
 })

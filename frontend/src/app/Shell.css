@@ -107,9 +107,14 @@
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
+/* The gap under the navigation is the same gap the widgets keep between
+   themselves, 1.25rem (owner, 31.07.2026): forty pixels of nothing between the
+   navigation and the first widget read as a hole rather than as breathing room.
+   The foot keeps its own room, since nothing follows it. */
 .shell__main {
   flex: 1;
-  padding-block: clamp(1.5rem, 4vw, 2.5rem);
+  padding-block-start: 1.25rem;
+  padding-block-end: clamp(1.5rem, 4vw, 2.5rem);
 }
 
 .shell__footer {

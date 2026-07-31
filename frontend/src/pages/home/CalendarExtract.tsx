@@ -36,7 +36,7 @@ export function CalendarExtract({ events, today }: { events: BtlEvent[]; today: 
               {/* A real date underneath, so what a machine reads is never the
                   shortened form a person reads. */}
               <time className="extract__date" dateTime={entry.next.date}>
-                {formatDayMonth(entry.next.date, today)}
+                {formatDayMonth(entry.next.date)}
               </time>
               <span className="extract__name">
                 <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>

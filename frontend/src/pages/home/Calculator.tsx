@@ -97,13 +97,16 @@ export function Calculator() {
         </label>
       </fieldset>
 
+      {/* The label stands there whether or not there is an answer yet (owner,
+          31.07.2026), so the line does not appear and disappear as somebody
+          types and the card does not change height under the cursor. The number
+          is what arrives. */}
       <p className="calc__result" role="status">
+        <span className="calc__label">{t('home.calcResult')}</span>{' '}
         {points === null ? (
           <span className="calc__waiting">{t('home.calcWaiting')}</span>
         ) : (
-          <>
-            <strong>{formatPoints(points, locale)}</strong> <span>BTL points</span>
-          </>
+          <strong>{formatPoints(points, locale)}</strong>
         )}
       </p>
     </section>

@@ -152,12 +152,13 @@
   flex-direction: column;
 }
 
-/* Day, month, name, on one line at every width: the widget lives in the narrow
-   column now and there is no width at which it wants a second shape. */
+/* Day, month, then the name, on one line at every width (owner, 31.07.2026).
+   The first column is fixed and the figures are tabular, so every name in the
+   widget starts on the same vertical line however wide the numbers are. */
 .extract__row {
   display: grid;
-  grid-template-columns: 3.4rem 1fr;
-  gap: 0.1rem 0.5rem;
+  grid-template-columns: 3.2rem 1fr;
+  gap: 0.1rem 0.75rem;
   align-items: baseline;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
@@ -210,39 +211,15 @@
   color: var(--text-muted);
 }
 
-/* Top ten, in the shape the old portal had (owner, 31.07.2026): the leader at
-   full size, the other nine as a three by three block of faces under them. */
-
-/* Every place carries its number, as it did on the old portal. */
-.top10__place {
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 0.72rem;
-}
-
-.top10__first .top10__place {
-  font-size: 0.8rem;
-}
+/* Top ten, in the shape the old portal had (owner, 31.07.2026): round faces
+   carrying the number of their place, and nothing else. The heading and the
+   leader share the first line, the other nine are a three by three block. */
 
 .top10__first {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 1fr auto;
   gap: 0.7rem;
   align-items: center;
-}
-
-.top10__lead {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.top10__points {
-  color: var(--gold-text);
-  font-weight: 700;
-  font-size: 0.9rem;
 }
 
 .top10__rest {
@@ -252,34 +229,42 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.6rem 0.4rem;
+  justify-items: center;
 }
 
-/* A place keeps its height whether or not somebody is standing in it: the
-   circle, the number over it, and room for two lines of a name. Without this the
-   rows of the block collapse around the empty cells, and the board that was
-   supposed to be the same height all season was only ever the same height as the
-   board beside it, which is a different promise. */
+/* The number sits on the corner of the face, as it did on the old portal, so a
+   place is one thing to look at rather than a circle with a caption. */
 .top10__cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  min-block-size: 5.9rem;
+  position: relative;
+  display: grid;
+  justify-items: center;
   min-width: 0;
-  text-align: center;
 }
 
-.top10__name {
+.top10__face {
+  display: block;
+  border-radius: 50%;
   text-decoration: none;
-  font-size: 0.8rem;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-  min-width: 0;
 }
 
-.top10__first .top10__name {
-  font-size: 1rem;
+.top10__face:hover .portrait {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.top10__place {
+  position: absolute;
+  inset-block-start: -0.2rem;
+  inset-inline-start: -0.2rem;
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold-button);
+  color: var(--gold-button-ink);
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 /* Faces.
@@ -290,6 +275,9 @@
 .home .portrait {
   display: grid;
   place-items: center;
+  /* Never squeezed and never stretched: it is a circle, and a circle that gives
+     way to the box around it is an ellipse. */
+  flex: none;
   inline-size: 2.9rem;
   block-size: 2.9rem;
   border-radius: 50%;
@@ -300,12 +288,6 @@
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-}
-
-.home .portrait--large {
-  inline-size: 4.4rem;
-  block-size: 4.4rem;
-  font-size: 1.3rem;
 }
 
 /* Drawn in the colour of a control's edge and not a surface's: this ring is the
@@ -324,19 +306,12 @@
   gap: 0.45rem;
 }
 
-/* The calculator stands in the narrow column now (owner, 31.07.2026), where
-   three fields abreast leave no room for the labels. One under the other for
-   length, climb and fall; the three parts of a time stay side by side, because
-   hours, minutes and seconds are one number written in three boxes and reading
-   them down a column reads as three separate questions. */
+/* Length, climb and fall in one row of thirds, exactly as the three parts of a
+   time below them (owner, 31.07.2026). Six small boxes in two rows of three,
+   which is what the widget looked like before it moved into the narrow column
+   and what the owner asked for when it got there. */
 .calc--grid {
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 560px) and (max-width: 859px) {
-  .calc--grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .calc__time {
@@ -369,8 +344,20 @@
   min-width: 0;
 }
 
+/* The label is always there and the number arrives beside it, so the line does
+   not appear and disappear while somebody types. */
 .calc__result {
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.calc__label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .calc__result strong {
