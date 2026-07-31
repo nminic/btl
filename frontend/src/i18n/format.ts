@@ -118,24 +118,20 @@ export function formatShortDate(isoDate: string, locale: string): string {
 }
 
 /**
- * "12.09." from "2027-09-12": the day and the month, for the one place that has
- * no room for a year (owner, 31.07.2026), and "12.09.2027." when the date is not
- * in the year being read.
+ * "12.09." from "2027-09-12": the day and the month and nothing else, which is
+ * the shape the owner asked for by name, twice (31.07.2026).
  *
- * The year is dropped only where it is the reader's own, because that is the
- * only case where it is the same four digits repeated down a narrow column. On
- * the last day of July 2026 the next six events in the calendar are all in
- * January and February 2027, and a column reading 16.01., 30.01., 06.02. with
- * the year left off says the opposite of what is true.
+ * No year, at any time of year. It was written out for a while, on the reasoning
+ * that the next six events in the calendar are in the season after the one being
+ * read; the owner asked for the plain form back, and the full date is on the
+ * element anyway, in `datetime`, for anything that needs to know.
  *
  * Cut from the string rather than formatted through Intl, because this is a
- * fixed numeric shape the owner asked for. Intl is still what writes a date
- * anywhere the words matter.
+ * fixed numeric shape. Intl is still what writes a date anywhere the words
+ * matter.
  */
-export function formatDayMonth(isoDate: string, today: string): string {
-  const day = `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.`
-
-  return isoDate.slice(0, 4) === today.slice(0, 4) ? day : `${day}${isoDate.slice(0, 4)}.`
+export function formatDayMonth(isoDate: string): string {
+  return `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.`
 }
 
 /** "maj 2027." from "2027-05", for a calendar heading. */

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -14,7 +14,14 @@ import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
 import { RIGHTS } from './admin/rights'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
-import { epcPayload, ipsPayload, methodsFor } from '../data/paymentQr'
+import {
+  ipsPayload,
+  methodsFor,
+  paymentPurpose,
+  paymentReference,
+  RECIPIENT_ACCOUNT,
+  RECIPIENT_NAME,
+} from '../data/paymentQr'
 
 /** A session holding results in the states the panel has to tell apart. */
 /** Every box in the matrix ticked, for the tests about a screen doing its
@@ -389,39 +396,183 @@ describe('payment payloads', () => {
     expect(payload).not.toContain('RO:')
   })
 
-  it('carries the reference when there is one', () => {
+  /* The statement, as the way a hundred payments are reconciled at once (owner,
+     31.07.2026). Turning the file into decisions is the server's work and the
+     server does not exist yet, so what it does today is take the file and say
+     so; what it can honestly refuse is a file that is not a statement at all. */
+  it('takes a statement in PDF and says what it did with it', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
+
+    await user.upload(pick, new File(['%PDF-1.7'], 'izvod-jul.pdf', { type: 'application/pdf' }))
+
+    expect(await screen.findByText(/Primljen izvod izvod-jul\.pdf/)).toBeVisible()
+    expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
+  })
+
+  /* A statement saved without a type is still a statement. What decides is the
+     file, not what the operating system called it. */
+  it('takes a real PDF whose type the machine never wrote down', async () => {
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+
+    /* Handed over rather than picked, because `user.upload` matches `accept`
+       against the type alone; a browser matches the extension as well, so a
+       `.pdf` with no type does reach the screen there. */
+    fireEvent.change(pick, {
+      target: { files: [new File(['%PDF-1.4 ...'], 'izvod.pdf', { type: '' })] },
+    })
+
+    expect(await screen.findByText(/Primljen izvod izvod\.pdf/)).toBeVisible()
+  })
+
+  it('refuses anything renamed to look like a statement', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
+
+    // A spreadsheet with the extension changed, which is what a hurried
+    // administrator actually does.
+    await user.upload(pick, new File(['ime;iznos'], 'izvod.pdf', { type: 'application/pdf' }))
+
+    expect(await screen.findByText(/mora biti PDF/)).toBeVisible()
+    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
+  })
+
+  it('refuses a file that is not a statement, and says why', async () => {
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+
+    /* Handed over rather than picked through the control: `accept` already
+       turns a CSV away in the dialog, and `user.upload` honours that, so the
+       one case worth testing is the one `accept` cannot cover, which is
+       somebody choosing "all files" and handing over a CSV anyway. */
+    fireEvent.change(pick, {
+      target: { files: [new File(['ime;iznos'], 'izvod.csv', { type: 'text/csv' })] },
+    })
+
+    expect(await screen.findByText(/mora biti PDF/)).toBeVisible()
+    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
+  })
+
+  /* The dialog turns a spreadsheet away before it reaches the screen, which is
+     why the case above has to be handed over rather than picked. */
+  it('asks the dialog for PDFs only', async () => {
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    expect(await screen.findByLabelText('Izaberi PDF izvoda')).toHaveAttribute(
+      'accept',
+      'application/pdf',
+    )
+  })
+
+  it('replaces what it said last time rather than piling messages up', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
+
+    await user.upload(pick, new File(['%PDF-1.7'], 'prvi.pdf', { type: 'application/pdf' }))
+    expect(await screen.findByText(/Primljen izvod prvi\.pdf/)).toBeVisible()
+
+    await user.upload(pick, new File(['ne pdf'], 'drugi.pdf', { type: 'application/pdf' }))
+    expect(await screen.findByText(/mora biti PDF/)).toBeVisible()
+    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing at all when the picking was called off', async () => {
+    /* Opening the dialog and closing it again fires the same event with an
+       empty list, and a screen that answers "primljen izvod" to a file nobody
+       chose is worse than one that says nothing. */
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+
+    fireEvent.change(pick, { target: { files: [] } })
+
+    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
+  })
+
+  /* The whole payload, written out, built from the exported constants.
+   *
+   * Every other test here checked a part: a prefix, one tag, one value. Under
+   * that, the account number could be changed to a different one, the recipient
+   * renamed, the seat corrected to a wrong address, or the tags reordered, and
+   * the suite stayed green. This is the payload real money is sent by, so it is
+   * held whole and by value: the number below is the association's account and
+   * the only test that fails when it changes. */
+  it('is exactly this, tag for tag', () => {
+    expect(
+      ipsPayload({
+        account: RECIPIENT_ACCOUNT,
+        recipient: RECIPIENT_NAME,
+        amountRsd: 4800,
+        purpose: paymentPurpose(2027),
+        reference: paymentReference(2027, '000037'),
+      }),
+    ).toBe(
+      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
+        '|S:Članarina za 2027. godinu|RO:202737',
+    )
+  })
+
+  /* The seat is on the screen in writing and not in the code: the field it would
+     sit in has a length the two together were pushing at. */
+  it('keeps the seat of the association out of the code', () => {
+    const dinars = ipsPayload({
+      account: RECIPIENT_ACCOUNT,
+      recipient: RECIPIENT_NAME,
+      amountRsd: 4800,
+      purpose: paymentPurpose(2027),
+      reference: paymentReference(2027, '000037'),
+    })
+
+    expect(dinars).not.toContain('Čarnojevića')
+    expect(dinars.length).toBeLessThan(200)
+  })
+
+  it('carries the reference exactly as it was handed in', () => {
+    /* The association's slips use no model, so nothing is prefixed to the
+       reference (owner, 31.07.2026). */
     const payload = ipsPayload({
       account: '000000000000000000',
       recipient: 'x',
       amountRsd: 100,
       purpose: 'y',
-      reference: '97-1234',
+      reference: '202737',
     })
 
-    expect(payload).toContain('RO:97-1234')
+    expect(payload).toContain('RO:202737')
   })
 
-  it('builds the EPC payload line by line, blank lines included', () => {
-    const payload = epcPayload({
-      iban: 'RS00000000000000000000',
-      bic: 'XXXXRSBG',
-      recipient: 'Sportsko udruzenje BTL',
-      amountEur: 40,
-      purpose: 'Clanarina',
-    })
-    const lines = payload.split('\n')
-
-    expect(lines[0]).toBe('BCD')
-    expect(lines[7]).toBe('EUR40.00')
-    // Readers go by position, so the empty lines are load bearing.
-    expect(lines).toHaveLength(11)
+  it('writes the reference as the season and the member number, digits only', () => {
+    /* Whose money it is, in the one field a bank statement carries through
+       (owner, 31.07.2026). The season is in it because the same person pays
+       every year; the noughts are out because nobody copies four of them
+       correctly; and there is no separator, because the field is read by a
+       machine and a separator is one more thing that can go missing. */
+    expect(paymentReference(2027, '000037')).toBe('202737')
+    expect(paymentReference(2027, '000001')).toBe('20271')
+    expect(paymentReference(2027, '001234')).toBe('20271234')
+    expect(paymentPurpose(2027)).toBe('Članarina za 2027. godinu')
   })
 
-  it('never offers PayPal to a member in Serbia', () => {
+  /* Two boundaries, not preferences. PayPal is not allowed between residents of
+     Serbia under the foreign exchange act (PDL P8), and the slip pays into a
+     dinar account at a Serbian bank, which from abroad is the slowest and
+     dearest way there is (owner, 31.07.2026). */
+  it('offers the slip only inside Serbia, and PayPal only outside it', () => {
     expect(methodsFor('RS')).toEqual(['ips', 'card'])
-    expect(methodsFor('ME')).toContain('paypal')
-    // Bosnia is not in SEPA, so PayPal is all there is.
-    expect(methodsFor('BA')).toEqual(['paypal'])
+    expect(methodsFor('ME')).toEqual(['paypal', 'card'])
+    expect(methodsFor('HR')).toEqual(['paypal', 'card'])
+    expect(methodsFor('BA')).toEqual(['paypal', 'card'])
+    expect(methodsFor('DE')).toEqual(['paypal', 'card'])
   })
 })
 

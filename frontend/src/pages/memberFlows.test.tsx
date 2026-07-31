@@ -119,15 +119,19 @@ describe('membership', () => {
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
   })
 
-  it('offers a member abroad SEPA and PayPal, never the Serbian slip', async () => {
+  /* No code at all abroad (owner, 31.07.2026): the association has one account,
+     in dinars, at a Serbian bank, and paying into it from abroad is the slowest
+     and dearest way there is. PayPal or a card, and nothing else. */
+  it('offers a member abroad PayPal and a card, and no code at all', async () => {
     // 000009 is in Montenegro in the generated data.
     renderFor('000009')
 
-    expect(await screen.findByRole('heading', { level: 4, name: /SEPA/ })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 4, name: /[Kk]artic/ })).toBeVisible()
     expect(
       screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
   it('has a price in any October of any year, because the list repeats', async () => {

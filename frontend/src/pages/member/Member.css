@@ -337,3 +337,33 @@
   inline-size: 100%;
   min-block-size: 7rem;
 }
+
+/* The payment details in writing, beside the code that says the same thing
+   (owner, 31.07.2026). Two columns where there is room, one where there is not,
+   and the figures are tabular so an account number can be read a group at a
+   time. */
+.pay__details {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.92rem;
+}
+
+.pay__details dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.pay__details dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pay__seat {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: normal;
+}

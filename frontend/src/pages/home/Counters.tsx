@@ -42,16 +42,28 @@ function Flag() {
 }
 
 /* The one row on this widget that counts people rather than something they did,
-   so it is the one row a running figure belongs on (owner, 31.07.2026). */
+   so it is the one row a running figure belongs on (owner, 31.07.2026).
+
+   Drawn as three long strokes and a head rather than as a knot of short ones:
+   the arms are one line through the shoulders, the body and the leading leg are
+   another, and the trailing leg is the third. At twenty pixels a figure is read
+   by its outline, and an outline made of six separate limbs turns into a blot
+   (owner, 31.07.2026). */
 function Runner() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <circle cx="14.6" cy="4.6" r="2.1" />
-      <path
-        d="M13.2 9.1L9.4 11l1.1 3.6 3.1 1.5 1.4 5.2M13.2 9.1l3.9 1.3 1.9 3.3M10.5 14.6L7.2 19"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="15.6" cy="4.9" r="2.1" />
+      <path d="M18.6 11.2 14.1 8.9 9.6 10.4" />
+      <path d="M14.1 8.9 10.7 13.4 13.4 16.5 12.6 21" />
+      <path d="M10.7 13.4 6.8 15.1 5.2 19.4" />
     </svg>
   )
 }

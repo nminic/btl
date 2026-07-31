@@ -27,31 +27,27 @@
   block-size: 15rem;
 }
 
+/* Centred, not stretched (owner, 31.07.2026). Stretching handed the face the
+   width of the column and squeezed the height it was given, so the first circle,
+   in the widest column, came out an ellipse and none of them stood over the
+   middle of their own bar. */
 .top-cat__column {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-end;
   block-size: 100%;
   min-inline-size: 0;
 }
 
-.top-cat__face {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1 / 1;
-  margin-bottom: 0.25rem;
-  border-radius: 4px;
-  background: linear-gradient(160deg, var(--blue-600), var(--blue-900));
-  color: var(--white);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.top-cat__column .portrait {
+  margin-block-end: 0.35rem;
 }
 
 .top-cat__bar {
   position: relative;
   display: block;
+  inline-size: 100%;
   min-block-size: 2.4rem;
   border-radius: 2px 2px 0 0;
   background: #1f7ad6;
@@ -63,11 +59,13 @@
   background: var(--blue-600);
 }
 
+/* Dead in the middle of its bar, both ways (owner, 31.07.2026). It used to sit
+   a fixed distance up from the foot, so on a tall bar it was down at the
+   bottom and on a short one it was nearly out of it. */
 .top-cat__count {
   position: absolute;
-  inset-inline: 0;
-  bottom: 0.55rem;
-  margin-inline: auto;
+  inset: 0;
+  margin: auto;
   inline-size: 1.7rem;
   block-size: 1.7rem;
   display: grid;
@@ -102,8 +100,10 @@
     display: none;
   }
 
-  .top-cat__face {
-    font-size: 0.6rem;
+  .top-cat__column .portrait {
+    inline-size: 2.2rem;
+    block-size: 2.2rem;
+    font-size: 0.7rem;
   }
 }
 

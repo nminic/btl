@@ -37,21 +37,35 @@ describe('Home', () => {
      league has ever had. The data has 32 members and 31 of them active, which is
      the whole point of that one difference. */
   it('counts the members of the running season, not everybody there has ever been', async () => {
-    renderAt('/sr')
+    /* Read with the unrolling off, which is not a convenience but the only way
+       this is about a number. The counters climb from zero, so every value below
+       the target is a frame on the way there: a test that catches 31 in flight
+       passes just as happily when the target is 32. With less motion asked for,
+       the row is nought and then its target and nothing in between. */
+    const previous = window.matchMedia
+    /* The whole shape, not just `matches`: the theme in the shell subscribes to
+       the system preference, and a stub without `addEventListener` throws inside
+       an effect and takes the effects after it down with it. */
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('reduced-motion'),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    })) as unknown as typeof matchMedia
 
-    /* Read after the number has stopped moving, not the first time it says 31.
-       The counters unroll from zero, so every number below the target is a frame
-       on the way there: a test that catches 31 in flight passes just as happily
-       when the target is 32. Waiting for the row to say 31 and then waiting out
-       the rest of the nine hundred milliseconds is what makes this about the
-       number rather than about a moment. */
-    await screen.findByText(/^31 član$/, {}, { timeout: 4000 })
-    await new Promise((settle) => setTimeout(settle, 1000))
+    try {
+      renderAt('/sr')
 
-    // 32 members in the data, 31 of them active. Which of the two this says is
-    // the whole of PDL P11 on the front page.
-    expect(screen.getByText(/^31 član$/)).toBeVisible()
-  })
+      // 32 members in the data, 31 of them active. Which of the two this says
+      // is the whole of PDL P11 on the front page.
+      expect(await screen.findByText(/^31 član$/, {}, { timeout: 10_000 })).toBeVisible()
+      expect(screen.queryByText(/^32 člana$/)).not.toBeInTheDocument()
+    } finally {
+      window.matchMedia = previous
+    }
+  }, 20_000)
 
   /* Two blocks went out (owner, 31.07.2026): one explained on the front page
      what the written pages explain properly, the other counted members, which is
@@ -142,17 +156,23 @@ describe('Home', () => {
     const calc = (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest(
       'section',
     )!
+    /* The label of the answer stands there from the start (owner, 31.07.2026),
+       so the card does not change height as somebody types; what arrives is the
+       number. */
+    expect(within(calc).getByText('BTL poeni:')).toBeVisible()
     expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
 
     // The golden race: 62.07 km, 3456 m up, 3133 m down, 7:28:31 gives 79.03.
-    await user.type(within(calc).getByLabelText('Dužina staze (km)'), '62.07')
+    await user.type(within(calc).getByLabelText('Dužina (km)'), '62.07')
     await user.type(within(calc).getByLabelText('Uspon (m)'), '3456')
     await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
-    await user.type(within(calc).getByLabelText('h'), '7')
-    await user.type(within(calc).getByLabelText('min'), '28')
-    await user.type(within(calc).getByLabelText('s'), '31')
+    await user.type(within(calc).getByLabelText('Sati'), '7')
+    await user.type(within(calc).getByLabelText('Minuti'), '28')
+    await user.type(within(calc).getByLabelText('Sekunde'), '31')
 
+    expect(within(calc).getByText('BTL poeni:')).toBeVisible()
     expect(within(calc).getByText('79,03')).toBeVisible()
+    expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
   })
 
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {

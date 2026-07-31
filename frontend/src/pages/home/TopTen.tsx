@@ -1,19 +1,59 @@
 import { Link } from 'react-router'
 import { BOARD_PLACES, boardOfTen } from '../../data/derive'
 import type { Competitor, Gender, Result } from '../../data/types'
-import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { CompetitorName } from '../../components/CompetitorName'
 import { Portrait } from './Portrait'
 
 /**
- * The top ten of one gender, in the shape the old portal had (owner,
- * 31.07.2026): the leader beside the heading with their face at full size, and
- * the nine behind them as a three by three block of smaller faces.
+ * One face on the board, carrying the number of its place, as a way to that
+ * person or as a plain circle where there is nowhere to go.
  *
- * Every place carries its number, as it did on the old portal, because a board
- * headed "Top 10" in which no place is named leaves the reader to work out
- * whether the top left cell of the block is second or tenth.
+ * A member whose fee has run out carries no link, because their profile is not
+ * there to be linked to (PDL P11), which is the rule the tables keep too.
+ *
+ * The name is on the link rather than under it (owner, 31.07.2026, with the old
+ * widget in front of him): the board is faces and numbers and nothing else. A
+ * circle still has to be somebody, though, so the name is what the link is
+ * called and what the tooltip says.
+ */
+function Face({ slot, place }: { slot: Competitor | undefined; place: number }) {
+  const { locale, t } = useI18n()
+  const numbered = t('home.place', { place })
+
+  if (slot === undefined) {
+    return <Portrait />
+  }
+
+  const name = `${slot.firstName} ${slot.lastName}`
+  const reading = `${numbered} ${name}`
+
+  if (!slot.active) {
+    return (
+      <span className="top10__face" title={name}>
+        <Portrait competitor={slot} />
+        <span className="visually-hidden">{reading}</span>
+      </span>
+    )
+  }
+
+  return (
+    <Link
+      className="top10__face"
+      to={`/${locale}/takmicar/${slot.memberNumber}`}
+      title={name}
+      aria-label={reading}
+    >
+      <Portrait competitor={slot} />
+    </Link>
+  )
+}
+
+/**
+ * The top ten of one gender, in the shape the old portal had (owner,
+ * 31.07.2026): the heading and the leader on one line, then the nine behind
+ * them as a three by three block. Round faces carrying the number of their
+ * place, and nothing else on the card: no names under the circles, no points
+ * beside them, no sentence underneath.
  *
  * The board keeps its ten places whether or not the league has ten members, so
  * the two boards standing side by side are the same height all season.
@@ -31,64 +71,40 @@ export function TopTen({
 }) {
   const { locale, t } = useI18n()
   const slots = boardOfTen(competitors, results, season, gender)
-  const scored = slots.some((slot) => slot.points > 0)
-  const waiting = slots.some((slot) => !slot.ranked)
   const headingId = `top-ten-${gender}`
-  const leader = slots[0]
-  /* Nine slots, always. A slot with nobody in it is a circle and no name, and it
-     is out of the reading entirely: "place five, empty" is not a fact anybody
-     needs read out to them. */
-  const rest = Array.from({ length: BOARD_PLACES - 1 }, (_, index) => slots[index + 1])
+  const places = Array.from({ length: BOARD_PLACES }, (_, index) => slots[index])
 
   return (
     <section className="card top10" aria-labelledby={headingId}>
-      <h2 className="card__title" id={headingId}>
-        {t(gender === 'M' ? 'home.topMen' : 'home.topWomen')}
-      </h2>
+      {/* The heading takes the first two cells of the block and the leader takes
+          the third, which is the shape the old portal had. The list is what
+          holds all ten places, so what a screen reader meets is one list of ten
+          and not a list of nine with somebody standing outside it. `role` is
+          written out because `display: contents` and a list with no markers are
+          each enough, on their own, to make a browser forget it is a list. */}
+      <div className="top10__block">
+        <h2 className="card__title" id={headingId}>
+          {t(gender === 'M' ? 'home.topMen' : 'home.topWomen')}
+        </h2>
 
-      {leader === undefined ? (
-        <p className="card__empty">{t('home.noneRanked')}</p>
-      ) : (
-        <>
-          <div className="top10__first">
-            <Portrait competitor={leader.competitor} large />
-            <p className="top10__lead">
-              <span className="top10__place">{t('home.place', { place: 1 })}</span>
-              <CompetitorName className="top10__name" competitor={leader.competitor} />
-              {scored && (
-                <span className="top10__points">
-                  {formatPoints(leader.points, locale)}
-                  {t('home.pointsUnit')}
-                </span>
-              )}
-            </p>
-          </div>
-
-          <ol className="top10__rest">
-            {rest.map((slot, index) => (
-              <li
-                className="top10__cell"
-                key={slot?.competitor.memberNumber ?? `empty-${index}`}
-                aria-hidden={slot === undefined ? 'true' : undefined}
-              >
-                <span className="top10__place">{t('home.place', { place: index + 2 })}</span>
-                <Portrait competitor={slot?.competitor} />
-                {slot !== undefined && (
-                  <CompetitorName className="top10__name" competitor={slot.competitor} />
-                )}
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-
-      {/* Which of the two kinds of incomplete this board is, because they are
-          different facts: nobody has raced yet, or some have and the rest of the
-          places are held by members waiting for their first result. */}
-      {leader !== undefined && !scored && <p className="card__note">{t('home.topBeforeSeason')}</p>}
-      {leader !== undefined && scored && waiting && (
-        <p className="card__note">{t('home.topPartlyFilled')}</p>
-      )}
+        <ol className="top10__places" role="list">
+          {places.map((slot, index) => (
+            <li
+              className="top10__cell"
+              key={slot?.competitor.memberNumber ?? `empty-${index}`}
+              /* A place with nobody in it is a circle and no more, and it is out
+                 of the reading entirely: "place five, empty" is not a fact
+                 anybody needs read out to them. */
+              aria-hidden={slot === undefined ? 'true' : undefined}
+            >
+              <Face slot={slot?.competitor} place={index + 1} />
+              <span className="top10__place" aria-hidden="true">
+                {t('home.place', { place: index + 1 })}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
 
       {/* The standing lives at /tabela; /top-liste is the page of Top 10 boards
           beside it (PDL P28a). */}

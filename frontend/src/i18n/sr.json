@@ -309,19 +309,16 @@
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
     "place": "{place}.",
-    "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
-    "topPartlyFilled": "Preostala mesta drže članovi koji još nemaju rezultat u ovoj sezoni.",
-    "noneRanked": "U ovoj sezoni još nema nikoga na ovoj listi.",
     "wholeStanding": "Cela tabela",
     "byCategory": "Trke po dužini",
     "calculator": "BTL kalkulator",
-    "calcLength": "Dužina staze (km)",
+    "calcLength": "Dužina (km)",
     "calcAscent": "Uspon (m)",
     "calcDescent": "Spust (m)",
     "calcTime": "Vreme prelaska",
-    "hours": "h",
-    "minutes": "min",
-    "seconds": "s",
+    "hours": "Sati",
+    "minutes": "Minuti",
+    "seconds": "Sekunde",
     "calcWaiting": "Unesi dužinu i vreme.",
     "news": "Vesti",
     "sponsorOfTheDay": "Sponzor dana",
@@ -342,7 +339,8 @@
     "descentUnit": " m-",
     "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama.",
     "members": "Članova lige",
-    "results": "Prijavljenih rezultata"
+    "results": "Prijavljenih rezultata",
+    "calcResult": "BTL poeni:"
   },
   "data": {
     "loading": "Učitavanje",
@@ -783,8 +781,6 @@
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
-    "epc": "SEPA uplata sa EPC QR kodom",
-    "epcNote": "Skeniraj kod u aplikaciji svoje banke. Jeftinije od PayPala za zemlje u SEPA području.",
     "card": "Kartica",
     "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
     "paypal": "PayPal",
@@ -795,7 +791,6 @@
     "balance": "na balansu",
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu, ne prenosi se drugom članu, i briše se posle prve godine bez aktivne članarine.",
     "ipsQrLabel": "IPS QR kod za uplatnicu",
-    "epcQrLabel": "EPC QR kod za SEPA uplatu",
     "showPayload": "Prikaži sadržaj koda",
     "renewal": "Obnova članarine za {season}.",
     "renewalOpen": "Obnova je otvorena. Ne registruješ se ponovo: članski broj, profil i istorija ostaju tvoji.",
@@ -812,7 +807,13 @@
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
     "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
     "askToJoin": "Pošalji zahtev timu",
-    "payNow": "Uplatnica"
+    "payNow": "Uplatnica",
+    "details": "Podaci za uplatu",
+    "toWhom": "Primalac",
+    "account": "Račun",
+    "reference": "Poziv na broj",
+    "purposeLabel": "Svrha uplate",
+    "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -829,7 +830,14 @@
     "decision": "Odluka",
     "confirmSendBack": "Vrati uz ovaj razlog",
     "cancel": "Odustani",
-    "explanation": "Obrazloženje"
+    "explanation": "Obrazloženje",
+    "statement": {
+      "title": "Izvod iz banke",
+      "hint": "Priloži izvod u PDF-u i uplate će se rasknjižiti po pozivu na broj. Do tada svaku uplatu potvrđuješ ručno, red po red, kao i sada.",
+      "choose": "Izaberi PDF izvoda",
+      "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radiće server; do tada uplate potvrđuješ ručno.",
+      "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen."
+    }
   },
   "admin": {
     "title": "Administracija",

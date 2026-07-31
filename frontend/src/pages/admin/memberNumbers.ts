@@ -5,9 +5,9 @@ import { MEMBERS, recordsOf } from './entityForms'
 
 /* Where a member number can already be spoken for, all of it in one place.
  *
- * `data/memberNumber.ts` knows the format and the rule: six digits, first free in
- * order. This module knows the harder half, which is what "taken" means on a
- * portal where a number is given out on two screens at once.
+ * `data/memberNumber.ts` knows the format and the rule: six digits, one past the
+ * highest ever handed out. This module knows the harder half, which is what
+ * "handed out" means on a portal where a number is given on two screens at once.
  *
  * It exists because it was once worked out twice. The member list handed in the
  * numbers of the members it showed; the payments queue handed in those plus the
@@ -45,14 +45,18 @@ export function takenMemberNumbers(
   competitors: Competitor[],
   { edits, creations, decisions, deletions }: NumberSources,
 ): string[] {
-  /* Read through the overlay, deletions included, so a number is free again once
-     the member holding it is gone. That is the rule rather than a side effect:
-     deleting on request removes the tie between the number and the person, and a
-     number nobody can be traced by is a number the next member may have (PDL
-     P23). */
+  /* Read through the overlay, and then the deleted put back.
+ 
+     A deleted member is gone from every screen, but their number is not free
+     (PDL P8, 31.07.2026): deleting removes the tie between the number and the
+     person, and the number stays spent, because it stands in old results, old
+     tables and a printed card. Reading only the overlay handed the highest
+     number straight back to the next member to join, which is the one thing the
+     rule exists to prevent. */
   const listed = recordsOf(MEMBERS, competitors, { edits, creations, deletions }).map((one) =>
     String(one.memberNumber),
   )
+  const deleted = deletions[MEMBERS.id] ?? []
 
   /* Only activations carry one. A refusal hands out nothing, and the other seven
      queues have no numbers to hand out at all, so both leave it empty. */
@@ -60,7 +64,7 @@ export function takenMemberNumbers(
     .map((one) => one.memberNumber)
     .filter((one) => one !== '')
 
-  return [...listed, ...activated]
+  return [...listed, ...deleted, ...activated]
 }
 
 /** The number the next member gets, against everything that is spoken for. */

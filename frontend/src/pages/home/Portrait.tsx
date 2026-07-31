@@ -15,22 +15,14 @@ import { hueFor } from '../competitorFace'
  * so a widget of ten slots is the same height whether the league has thirty
  * members or three.
  */
-export function Portrait({
-  competitor,
-  large = false,
-}: {
-  competitor?: Competitor
-  large?: boolean
-}) {
-  const className = large ? 'portrait portrait--large' : 'portrait'
-
+export function Portrait({ competitor }: { competitor?: Competitor }) {
   if (competitor === undefined) {
-    return <span className={`${className} portrait--empty`} aria-hidden="true" />
+    return <span className="portrait portrait--empty" aria-hidden="true" />
   }
 
   return (
     <span
-      className={className}
+      className="portrait"
       aria-hidden="true"
       style={{ '--face-hue': hueFor(competitor.memberNumber) } as React.CSSProperties}
     >
