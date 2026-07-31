@@ -40,7 +40,11 @@ describe('what a competitor has won', () => {
     // 000031 has never raced, so no board has ever had them on it.
     renderAt('/sr/takmicar/000031/priznanja')
 
-    expect(await screen.findByText('Ovaj takmičar još nema nijedno priznanje.')).toBeVisible()
+    /* Named for what the screen actually holds. P16 also gives a medal for
+       twelve points and figures for the boards of Article 25, and neither is
+       here yet, so "no award at all" would have been a claim the screen cannot
+       make. */
+    expect(await screen.findByText('Ovaj takmičar još nema nijedan pehar ni plaketu.')).toBeVisible()
     expect(screen.getByText('Još nijedna značka.')).toBeVisible()
   })
 
@@ -171,9 +175,11 @@ describe('the address stays as short as it can be', () => {
     await user.selectOptions(season, opensOn)
 
     /* Written into the address only where it differs from the default, so a
-       shared link carries what the reader chose and nothing more. */
+       shared link carries what the reader chose and nothing more. The assertion
+       has to be on the address: the value of the control is the same either
+       way. */
     expect(season.value).toBe(opensOn)
-    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(window.location.search).toBe('')
   })
 
   it('names the board a place was taken on, in both kinds', async () => {
@@ -217,5 +223,27 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
     expect(
       await screen.findByText('Za izabranu sezonu i dužinu nema nijednog rezultata.'),
     ).toBeVisible()
+  })
+})
+
+describe('a member whose fee has run out', () => {
+  it('is on no list of this season, and nowhere carries a link', async () => {
+    /* PDL P11: "u tabeli tekuće godine se ne pojavljuje uopšte", "link ka
+       profilu postoji samo dok je članarina aktivna". 000032 is the first such
+       member in the data, and being the newest number they went straight to the
+       top of "Najnoviji članovi" on the front page, linking to a profile this
+       change had just made unreachable. */
+    renderAt('/sr')
+
+    const newest = await screen.findByRole('heading', { name: /Zajednica|Najnoviji/ })
+    expect(newest).toBeVisible()
+    expect(screen.queryByRole('link', { name: /Vojislav Antonijević/ })).not.toBeInTheDocument()
+  })
+
+  it('is not among the competitors either', async () => {
+    renderAt('/sr/takmicari')
+
+    await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
+    expect(screen.queryByText('Vojislav Antonijević')).not.toBeInTheDocument()
   })
 })

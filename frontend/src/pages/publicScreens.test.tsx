@@ -409,8 +409,13 @@ describe('CompetitorProfile', () => {
 
     await screen.findByRole('heading', { level: 1 })
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
+    const years = within(season)
+      .getAllByRole('option')
+      .map((one) => Number(one.getAttribute('value')))
+      .filter((one) => !Number.isNaN(one))
 
-    expect(season.value).not.toBe('sve')
+    // The newest of them, named: "not all seasons" would pass on the oldest.
+    expect(season.value).toBe(String(Math.max(...years)))
     expect(screen.getByRole('heading', { name: 'Zbirna statistika' })).toBeVisible()
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
       .toBeGreaterThan(1)
@@ -427,15 +432,20 @@ describe('CompetitorProfile', () => {
 
     await screen.findByRole('heading', { level: 1 })
     const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
-    const bars = within(screen.getByRole('table', { name: 'Trke po dužini' })).getAllByRole('row')
-      .length
+    /* The row of the chart that counts the short races, which is the one that
+       has to stay where it is: counting the rows would not do, because the chart
+       always draws all five lengths whatever the counts are. */
+    const shortRace = () =>
+      within(screen.getByRole('table', { name: 'Trke po dužini' })).getByRole('rowheader', {
+        name: 'Kraća trka',
+      }).parentElement!
+    const before = within(shortRace()).getAllByRole('cell')[0].textContent
 
     await user.selectOptions(screen.getByLabelText('Dužina'), 'marathon')
 
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
       .toBeLessThan(all)
-    expect(within(screen.getByRole('table', { name: 'Trke po dužini' })).getAllByRole('row'))
-      .toHaveLength(bars)
+    expect(within(shortRace()).getAllByRole('cell')[0].textContent).toBe(before)
   })
 
   it('lets a filter go again', async () => {

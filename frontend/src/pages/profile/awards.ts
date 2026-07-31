@@ -1,4 +1,10 @@
-import { categoryOfMember, rankingFor, resultsOf, seasonsWithResults } from '../../data/derive'
+import {
+  categoryOfMember,
+  rankingFor,
+  resultsOf,
+  seasonOf,
+  seasonsWithResults,
+} from '../../data/derive'
 import type { Competitor, Result } from '../../data/types'
 
 /* What a competitor has won, worked out rather than stored.
@@ -41,18 +47,42 @@ export function awardsOf(
 ): Award[] {
   const mine = resultsOf(results, competitor.memberNumber)
 
-  return seasonsWithResults(mine)
-    .flatMap((season) => {
-      /* The board the member actually stood on that season, which is a question
-         about that season and not about today: the age band moves with the years
-         and the first season category belongs to one year alone (PDL P7). */
+  /* The whole file, cut into seasons once. Without it every season asked
+     rankingFor for the standing and rankingFor walked every result there is, so
+     a competitor with sixteen seasons walked the file thirty-two times: on the
+     generated data that is a hundred and twelve thousand rows for one view of
+     one page, and a real league is thirty times bigger. */
+  const bySeason = new Map<number, Result[]>()
+
+  for (const result of results) {
+    const season = seasonOf(result)
+    const inSeason = bySeason.get(season)
+
+    if (inSeason === undefined) {
+      bySeason.set(season, [result])
+    } else {
+      inSeason.push(result)
+    }
+  }
+
+  const raced = new Set(seasonsWithResults(mine))
+
+  return [...bySeason.entries()]
+    .filter(([season]) => raced.has(season))
+    .flatMap(([season, inSeason]) => {
+      /* Which board they stood on. Known to be imperfect: categoryOfMember reads
+         the stored "first season" flag and ignores the season it is handed
+         (src/data/categories.ts), so somebody who spent 2027 as a beginner is
+         filed under that band in every season. P7 says the band belongs to one
+         year alone; putting that right means changing what every table shows and
+         is not this change to make. */
       const category = categoryOfMember(competitor, season)
 
       return [
         { kind: 'overall' as AwardKind, category: '', code: undefined },
         { kind: 'category' as AwardKind, category, code: category },
       ].flatMap(({ kind, category: band, code }) => {
-        const row = rankingFor(competitors, results, {
+        const row = rankingFor(competitors, inSeason, {
           season,
           gender: competitor.gender,
           categoryCode: code,

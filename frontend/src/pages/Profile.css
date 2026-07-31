@@ -54,7 +54,11 @@
 /* The profile as two parts and a row of three cards (owner's design decision,
    30.07.2026). */
 
-.profile {
+/* Only the competitor's own page. `.profile` is worn by the event, the league
+   and the team as well, and before this it carried no rules at all: given a flex
+   column their margins stop collapsing and a gap appears between every child
+   they have (ADL A7, the rule about a name that belongs to one page). */
+.profile--competitor {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -120,11 +124,6 @@
   gap: 0.75rem;
   padding-block: 0.75rem;
   border-block: 1px solid var(--border);
-  scroll-margin-top: 1rem;
-}
-
-.profile__controls:focus-visible {
-  outline: none;
 }
 
 .profile__controls .rankings__field {
@@ -189,7 +188,9 @@
   max-width: 20rem;
 }
 
-.profile__empty {
+/* The empty state of the results table alone. `.profile__empty` is a muted
+   sentence on eight other screens and stays one. */
+.profile__results-empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;

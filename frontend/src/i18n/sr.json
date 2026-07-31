@@ -608,7 +608,6 @@
     "length": "Dužina",
     "allLengths": "Sve dužine",
     "seasonScope": "Sezona se bira jednom i važi za sve na ovom pregledu.",
-    "inSeason": "Sezona: {season}.",
     "noneInSeason": "U sezoni {season}. nema nijednog rezultata.",
     "noneInLength": "Nema nijednog rezultata izabrane dužine.",
     "clearFilters": "Poništi filtere",
@@ -616,7 +615,8 @@
       "label": "Delovi profila",
       "overview": "Pregled",
       "awards": "Priznanja i nagrade"
-    }
+    },
+    "allTimeScope": "Prikazane su sve sezone. Izbor sezone važi za sve na ovom pregledu."
   },
   "teams": {
     "title": "Timovi",
@@ -1127,7 +1127,7 @@
     "overall": "Generalni plasman",
     "category": "Kategorija {category}",
     "position": "{position}. mesto",
-    "empty": "Ovaj takmičar još nema nijedno priznanje.",
+    "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
     "noBadges": "Još nijedna značka."
   }
 }

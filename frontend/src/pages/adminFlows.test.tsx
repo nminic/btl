@@ -807,16 +807,17 @@ describe('the queue of memberships waiting to be activated', () => {
   it('shows the number it handed out, first free and one per activation', async () => {
     const user = await openPayments()
 
-    /* The generated members hold 000001 to 000031, so the next free one is
-       000032, and every activation after it takes the one after that. The number
+    /* The generated members hold 000001 to 000032, so the next free one is
+       000033, and every activation after it takes the one after that. The number
        is what the administrator passes on to the member, so it is on screen the
-       moment it is given (PDL P8, 30.07.2026). */
+       moment it is given (PDL P8, 30.07.2026). Two of them, because one number
+       twice is the fault this is here to catch. */
     await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
     await user.click(screen.getAllByRole('button', { name: 'Počasno članstvo' })[0])
 
     const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
     expect(decided.getByText('000033')).toBeVisible()
-    expect(decided.getByText('000033')).toBeVisible()
+    expect(decided.getByText('000034')).toBeVisible()
   })
 
   it('hands out no number to a membership it sends back', async () => {

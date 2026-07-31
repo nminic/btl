@@ -15,9 +15,16 @@ import type { Competitor, Result } from './types'
  * source (ADL A12, 2b). What counts is the date of the race, not the date the
  * result was entered (2c).
  *
- * A badge already won is never taken away (ADL A12, 4). Nothing here can take
- * one away either, because nothing here can lower a total: every quantity is a
- * sum or a maximum over races that have happened.
+ * **What this cannot do, and the backend must.** A badge already won is never
+ * taken away and carries a snapshot of the rule that was in force when it was
+ * given (ADL A12, 4), and it is awarded when a result is verified rather than
+ * whenever a profile is drawn (rule 6). Neither is possible without somewhere to
+ * write the award down, so here the answer is worked out again on every draw:
+ * an administrator who raises a badge's threshold takes that badge off every
+ * profile that held it, which is exactly what P16 forbids. Nothing a competitor
+ * does can lose them one, because every quantity is a sum or a maximum over
+ * races that have happened; only an edit to the rule can. Recorded in the
+ * decision log as owed to the database.
  */
 
 /** Whether a race falls inside the badge's period. Either end may be empty,

@@ -6,12 +6,10 @@ import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
 import {
   CATEGORIES,
-  defaultSeason,
   resultsOf,
   seasonsWithResults,
   totalsOf,
 } from '../data/derive'
-import { useToday } from '../clock/useClock'
 import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
@@ -77,7 +75,6 @@ function ProfileBody({
 }) {
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
-  const today = useToday()
 
   const mine = useMemo(
     () => resultsOf(results, competitor.memberNumber),
@@ -89,10 +86,39 @@ function ProfileBody({
      (owner's spec, 30.07.2026). Somebody with two hundred and seventy-seven
      results opened on all two hundred and seventy-seven, which is twenty-three
      screens on a telephone, and the counters above them were career totals under
-     a heading that says the season. All seasons is one choice away. */
-  const fallback = useMemo(() => defaultSeason(mine, today), [mine, today])
-  const season = params.get('sezona') ?? (seasons.length === 0 ? ALL : String(fallback))
-  const length = params.get('duzina') ?? ALL
+     a heading that says the season. All seasons is one choice away.
+
+     Simply the first of the seasons they raced, which are newest first. It was
+     `defaultSeason`, which asks which season the *rankings* should open on and
+     decides it by how big the field is; handed one person's results the field is
+     one member in every season, so it never took either of its branches and
+     came back with the newest only because the results happen to be sorted that
+     way and Array.sort is stable. */
+  const opensOn = seasons[0]
+  const fallback = opensOn === undefined ? ALL : String(opensOn)
+
+  /* A season named in the address is honoured even where this person has nothing
+     in it, and the select is given that option so it is not drawn blank: a
+     shared link has to show what it was sent to show, and an empty table under
+     the right year says something true. Anything that is not a year at all falls
+     back, and the comparison is on the string the option carries, so `02010` is
+     not quietly taken for 2010.
+
+     The length has no such treatment: an unknown length is nothing a select can
+     offer and nothing a table can narrow by, so it is ignored. */
+  const asked = params.get('sezona')
+  const season = asked === ALL || (asked !== null && /^\d{4}$/.test(asked)) ? asked : fallback
+  const askedLength = params.get('duzina')
+  const length =
+    askedLength !== null && (CATEGORIES as string[]).includes(askedLength) ? askedLength : ALL
+
+  /* Newest first, and never the memoised list itself: sorting that in place
+     during a render is a mutation React forbids, and it is a no-op only because
+     it is already in this order. */
+  const options =
+    season === ALL || seasons.some((year) => String(year) === season)
+      ? seasons
+      : [...seasons, Number(season)].sort((left, right) => right - left)
 
   const inSeason = useMemo(
     () => mine.filter((result) => season === ALL || result.date.startsWith(season)),
@@ -123,34 +149,30 @@ function ProfileBody({
     setParams(merged)
   }
 
-  /* An address may name a season this person has nothing in. The select is built
-     from the seasons they raced, so the chosen one would match no option and the
-     control would draw itself empty. */
-  const options = seasons.includes(Number(season)) || season === ALL ? seasons : [...seasons, Number(season)]
 
   return (
-    <div className="profile">
+    <div className="profile profile--competitor">
       <ProfileHead competitor={competitor} team={team} />
       <ProfileParts memberNumber={competitor.memberNumber} />
 
       {/* Full width and ruled off, so it reads as a control over the page rather
           than as one belonging to the card nearest it. That is the whole
           difficulty of one filter governing two widgets and a table. */}
-      <div className="profile__controls" id="sezona" tabIndex={-1}>
+      <div className="profile__controls">
         <label className="rankings__field">
           <span>{t('rankings.season')}</span>
-          <select value={season} onChange={(event) => change('sezona', event.target.value, String(fallback))}>
+          <select value={season} onChange={(event) => change('sezona', event.target.value, fallback)}>
             <option value={ALL}>{t('profile.allTime')}</option>
-            {options
-              .sort((left, right) => right - left)
-              .map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
+            {options.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
           </select>
         </label>
-        <p className="profile__scope">{t('profile.seasonScope')}</p>
+        <p className="profile__scope">
+          {season === ALL ? t('profile.allTimeScope') : t('profile.seasonScope')}
+        </p>
       </div>
 
       <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
@@ -184,15 +206,10 @@ function ProfileBody({
             </select>
           </label>
 
-          {/* Only where a season is actually chosen, which is the only state in
-              which a short table needs explaining. */}
-          {season !== ALL && (
-            <p className="profile__scope">{t('profile.inSeason', { season })}</p>
-          )}
         </div>
 
         {shown.length === 0 ? (
-          <div className="profile__empty">
+          <div className="profile__results-empty">
             <p>{emptyText(t, mine.length, season, length)}</p>
             {(season !== ALL || length !== ALL) && (
               <button
