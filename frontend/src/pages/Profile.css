@@ -64,6 +64,59 @@
   gap: 1.25rem;
 }
 
+/* The name and the season, level with each other (owner, 31.07.2026). The
+   season governs both parts of the profile, so it stands over both rather than
+   inside one of them. */
+.profile__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* The control the years are chosen in.
+ *
+ * The colours are set on it and on its options. A select with `appearance: none`
+ * and no background of its own hands the browser's own dropdown the page's text
+ * colour and a white sheet to put it on, so on the dark theme the open list was
+ * light grey on white and the years could not be read. */
+.profile__season select {
+  appearance: none;
+  padding: 0.4rem 2rem 0.4rem 0.8rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile__season option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.profile__season {
+  position: relative;
+}
+
+/* The caret the native control lost with appearance: none. */
+.profile__season::after {
+  content: '';
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: translateY(-0.35rem) rotate(45deg);
+  pointer-events: none;
+}
+
 .profile__name {
   margin: 0 0 0.4rem;
   font-size: clamp(26px, 4.5vw, 36px);
@@ -107,6 +160,12 @@
 
 .profile .scoreboard {
   min-width: 0;
+  /* The five figures spread over the whole card rather than sitting at the top
+     of it. That is what lets the ring beside them line up: the owner asked for
+     it to run from the top of the kilometres to the bottom of the points, and
+     with the figures bunched at the top the ring was seventy pixels taller than
+     the span it was supposed to match. */
+  justify-content: space-between;
 }
 
 .profile__card-title {
@@ -241,8 +300,7 @@
   --badge-art-size: clamp(4.5rem, 20vw, 6.5rem);
 }
 
-/* Two across from tablet up: three tracks here would be 250px each, and 250px
-   holds neither a ring beside its legend nor a readable line of prose. */
+/* Two across from tablet up. */
 @media (min-width: 820px) {
   .profile__row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -253,14 +311,67 @@
   }
 }
 
-/* Three only where all three clear their minimum. Below a thousand the words
-   column is about forty characters a line, which is a newspaper column. */
+/* Three of one width where all three clear their minimum (owner, 31.07.2026).
+   Below a thousand the words column is about forty characters a line, which is a
+   newspaper column, so below that the biography takes the full width and the two
+   worked-out cards share the row under it. */
 @media (min-width: 1000px) {
   .profile__row--bio {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .profile__row--bio .profile__bio {
     grid-column: auto;
+  }
+}
+
+
+/* The colour of a length, beside the distance in the table of results (owner,
+   31.07.2026). The same five colours the ring is drawn in, so the two read as
+   one thing.
+
+   It is decoration and nothing rests on it: the distance beside it already says
+   which length it is, and the name of the length is there for a screen reader.
+   That matters, because five hues that differ by hue and not by lightness are
+   five hues somebody may not be able to tell apart. */
+.profile__dot {
+  display: inline-block;
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  border-radius: 50%;
+  margin-inline-end: 0.45rem;
+  vertical-align: -0.05rem;
+}
+
+.profile__dot--short {
+  background: var(--length-short);
+}
+
+.profile__dot--half {
+  background: var(--length-half);
+}
+
+.profile__dot--long {
+  background: var(--length-long);
+}
+
+.profile__dot--marathon {
+  background: var(--length-marathon);
+}
+
+.profile__dot--ultra {
+  background: var(--length-ultra);
+}
+
+/* On a telephone the name of an event is cut rather than allowed to push the
+   table wider than the screen (PDL P24: a table there has no horizontal scroll).
+   Nothing is lost to a screen reader, which reads the whole of the link, and the
+   date beside it is the other half of what identifies a race. */
+@media (max-width: 620px) {
+  .profile__results .table tbody td:nth-child(2) {
+    max-inline-size: 8.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

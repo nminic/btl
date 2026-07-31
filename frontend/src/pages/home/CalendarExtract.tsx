@@ -1,14 +1,22 @@
 import { Link } from 'react-router'
 import { upcomingSeries } from '../../data/derive'
 import type { BtlEvent } from '../../data/types'
-import { formatShortDate } from '../../i18n/format'
+import { formatDayMonth } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 
 const ROWS = 6
 
-/* "Priprema, pozor, SAD!" The calendar is the main reason people come, so it
- * sits high and wide. A recurring event takes one row and says when it runs
- * next, instead of five consecutive Wednesdays eating the whole widget. */
+/* "Priprema, pozor, SAD!" The calendar is the main reason people come, so what
+ * is next stands high on the page.
+ *
+ * One line per event: the day and month, then the name (owner, 31.07.2026). It
+ * stands in the narrow column now and the city no longer fits beside the name,
+ * so it went; the event page it links to says where it is, which is the question
+ * somebody asks after they have decided to look, not before.
+ *
+ * A recurring event takes one row and says when it runs next, instead of five
+ * consecutive Wednesdays eating the whole widget.
+ */
 export function CalendarExtract({ events, today }: { events: BtlEvent[]; today: string }) {
   const { locale, t } = useI18n()
   const series = upcomingSeries(events, today, ROWS)
@@ -25,14 +33,17 @@ export function CalendarExtract({ events, today }: { events: BtlEvent[]; today: 
         <ul className="extract">
           {series.map((entry) => (
             <li key={entry.next.id} className="extract__row">
-              <span className="extract__date">{formatShortDate(entry.next.date, locale)}</span>
+              {/* A real date underneath, so what a machine reads is never the
+                  shortened form a person reads. */}
+              <time className="extract__date" dateTime={entry.next.date}>
+                {formatDayMonth(entry.next.date, today)}
+              </time>
               <span className="extract__name">
                 <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>
                 {entry.more > 0 && (
                   <span className="extract__series"> {t('home.moreRuns', { count: entry.more })}</span>
                 )}
               </span>
-              <span className="extract__place">{entry.next.city}</span>
             </li>
           ))}
         </ul>

@@ -1,10 +1,23 @@
 import { Link } from 'react-router'
-import { topTen } from '../../data/derive'
+import { BOARD_PLACES, boardOfTen } from '../../data/derive'
 import type { Competitor, Gender, Result } from '../../data/types'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { CompetitorName } from '../../components/CompetitorName'
+import { Portrait } from './Portrait'
 
+/**
+ * The top ten of one gender, in the shape the old portal had (owner,
+ * 31.07.2026): the leader beside the heading with their face at full size, and
+ * the nine behind them as a three by three block of smaller faces.
+ *
+ * Every place carries its number, as it did on the old portal, because a board
+ * headed "Top 10" in which no place is named leaves the reader to work out
+ * whether the top left cell of the block is second or tenth.
+ *
+ * The board keeps its ten places whether or not the league has ten members, so
+ * the two boards standing side by side are the same height all season.
+ */
 export function TopTen({
   competitors,
   results,
@@ -17,29 +30,65 @@ export function TopTen({
   gender: Gender
 }) {
   const { locale, t } = useI18n()
-  const rows = topTen(competitors, results, season, gender)
-  const scored = rows.some((row) => row.points > 0)
+  const slots = boardOfTen(competitors, results, season, gender)
+  const scored = slots.some((slot) => slot.points > 0)
+  const waiting = slots.some((slot) => !slot.ranked)
   const headingId = `top-ten-${gender}`
+  const leader = slots[0]
+  /* Nine slots, always. A slot with nobody in it is a circle and no name, and it
+     is out of the reading entirely: "place five, empty" is not a fact anybody
+     needs read out to them. */
+  const rest = Array.from({ length: BOARD_PLACES - 1 }, (_, index) => slots[index + 1])
 
   return (
-    <section className="card" aria-labelledby={headingId}>
+    <section className="card top10" aria-labelledby={headingId}>
       <h2 className="card__title" id={headingId}>
         {t(gender === 'M' ? 'home.topMen' : 'home.topWomen')}
       </h2>
 
-      <ol className="top-ten">
-        {rows.map((row) => (
-          <li key={row.competitor.memberNumber} className={row.position <= 3 ? 'podium' : undefined}>
-            <span className="top-ten__place">{row.position}</span>
-            <CompetitorName className="top-ten__name" competitor={row.competitor} />
-            {scored && <span className="top-ten__points">{formatPoints(row.points, locale)}</span>}
-          </li>
-        ))}
-      </ol>
+      {leader === undefined ? (
+        <p className="card__empty">{t('home.noneRanked')}</p>
+      ) : (
+        <>
+          <div className="top10__first">
+            <Portrait competitor={leader.competitor} large />
+            <p className="top10__lead">
+              <span className="top10__place">{t('home.place', { place: 1 })}</span>
+              <CompetitorName className="top10__name" competitor={leader.competitor} />
+              {scored && (
+                <span className="top10__points">
+                  {formatPoints(leader.points, locale)}
+                  {t('home.pointsUnit')}
+                </span>
+              )}
+            </p>
+          </div>
 
-      {/* Before the first race there is nothing to rank, so the list says what
-          it is actually showing rather than pretending to be a standing. */}
-      {!scored && <p className="card__note">{t('home.topBeforeSeason')}</p>}
+          <ol className="top10__rest">
+            {rest.map((slot, index) => (
+              <li
+                className="top10__cell"
+                key={slot?.competitor.memberNumber ?? `empty-${index}`}
+                aria-hidden={slot === undefined ? 'true' : undefined}
+              >
+                <span className="top10__place">{t('home.place', { place: index + 2 })}</span>
+                <Portrait competitor={slot?.competitor} />
+                {slot !== undefined && (
+                  <CompetitorName className="top10__name" competitor={slot.competitor} />
+                )}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      {/* Which of the two kinds of incomplete this board is, because they are
+          different facts: nobody has raced yet, or some have and the rest of the
+          places are held by members waiting for their first result. */}
+      {leader !== undefined && !scored && <p className="card__note">{t('home.topBeforeSeason')}</p>}
+      {leader !== undefined && scored && waiting && (
+        <p className="card__note">{t('home.topPartlyFilled')}</p>
+      )}
 
       {/* The standing lives at /tabela; /top-liste is the page of Top 10 boards
           beside it (PDL P28a). */}

@@ -419,38 +419,54 @@ export function upcomingSeries(events: BtlEvent[], today: string, limit: number)
     .slice(0, limit)
 }
 
+/** How many places a front page board keeps, whatever the league can fill. */
+export const BOARD_PLACES = 10
+
+export type BoardSlot = {
+  competitor: Competitor
+  points: number
+  /** Whether this place was won. False for somebody holding a place while they
+   *  wait for their first result of the season. */
+  ranked: boolean
+}
+
 /**
- * The ten to show on the front page. Once a season has results this is simply
- * its standing. Before that it lists the members who have joined, oldest
- * membership first, because in a preparation year who is already in the league
- * is the only interesting thing there is (PDL P14).
+ * The ten to show on the front page: the standing of the season as far as it
+ * goes, and then the members who have joined but not yet raced, oldest
+ * membership first, until the ten places are used up.
+ *
+ * The topping up is PDL P14, and it is there against one thing: "Top 10 liste se
+ * prave unapred od registrovanih članova ... Time liste nisu prazne." Two
+ * members with a result in the first week of January would otherwise leave eight
+ * empty places on each of the two boards, above the fold, in the worst week of
+ * the year for the portal to look deserted.
+ *
+ * A member who is only holding a place is marked, so nothing downstream can show
+ * them as having come fifth.
  */
-export function topTen(
+export function boardOfTen(
   competitors: Competitor[],
   results: Result[],
   season: number,
   gender: Gender,
-): RankingRow[] {
-  const ranked = rankingFor(competitors, results, { season, gender }).slice(0, 10)
+): BoardSlot[] {
+  const ranked = rankingFor(competitors, results, { season, gender }).slice(0, BOARD_PLACES)
+  const taken = new Set(ranked.map((row) => row.competitor.memberNumber))
+  const board: BoardSlot[] = ranked.map((row) => ({
+    competitor: row.competitor,
+    points: row.points,
+    ranked: true,
+  }))
 
-  if (ranked.length > 0) {
-    return ranked
-  }
-
-  return competitors
-    .filter((competitor) => competitor.gender === gender)
+  const waiting = competitors
+    .filter((competitor) => competitor.gender === gender && !taken.has(competitor.memberNumber))
     // The member number is handed out on activation, so its order is the order
     // people joined in.
     .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
-    .slice(0, 10)
-    .map((competitor, index) => ({ competitor, position: index + 1, ...EMPTY_TOTALS }))
-}
+    .slice(0, BOARD_PLACES - board.length)
+    .map((competitor) => ({ competitor, points: 0, ranked: false }))
 
-/** The most recently joined members, for "the community in numbers". */
-export function newestMembers(competitors: Competitor[], count: number): Competitor[] {
-  return activeOnly(competitors)
-    .sort((left, right) => right.memberNumber.localeCompare(left.memberNumber))
-    .slice(0, count)
+  return [...board, ...waiting]
 }
 
 /**

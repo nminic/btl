@@ -6,10 +6,8 @@ import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
 import { TopByCategory } from './home/TopByCategory'
-import { CommunityNumbers } from './home/CommunityNumbers'
 import { Counters } from './home/Counters'
 import { EnrolmentSlot } from './home/EnrolmentSlot'
-import { HowItWorks } from './home/HowItWorks'
 import { NEWS, seasonLabelKey, SPONSORS } from './home/content'
 import { News } from './home/News'
 import { President } from './home/President'
@@ -17,22 +15,26 @@ import { Sponsor, SponsorStrip } from './home/Sponsor'
 import { TopTen } from './home/TopTen'
 import './Home.css'
 
-/* The widget order is the one fixed in PDL P14, top to bottom:
+/**
+ * The front page, in two columns: two thirds of standing and prose on the left,
+ * one third of figures and things to do on the right (owner, 31.07.2026).
  *
- *   the address of the president (2/3) beside the season counters (1/3)
- *   "Priprema, pozor, SAD!" (2/3) beside the seasonal slot (1/3)
- *   Top 10 men (1/4) | Top 10 women (1/4) | rotating chart (1/2)
- *   calculator (1/2) beside how it works (1/2)
- *   news (2/3) beside sponsor of the day (1/3)
- *   the strip of partner logos
+ * Left, top to bottom: the two top ten boards side by side, the turning chart of
+ * the five lengths under them, and the address of the president at the foot.
  *
- * The hero that used to stand above the counters is gone (owner, 30.07.2026):
- * it repeated the name already in the header and the slogan already under it,
- * and pushed the scoreboard, which the owner values above everything else on the
- * page, below the fold.
+ * Right, top to bottom: the counters of the running season, what is next in the
+ * calendar, the calculator, and the membership slot.
  *
- * On a phone it is the same order in one column. News, sponsor and strip
- * disappear entirely when they have nothing fresh to say.
+ * Two blocks went out with this: "Kako radi BTL u 3 koraka", which explained on
+ * the front page what the written pages explain properly, and "Zajednica u
+ * brojkama", whose member count is now the first row of the counters where it
+ * stands beside the rest of the season (owner, 31.07.2026).
+ *
+ * News, the sponsor of the day and the strip of partners keep the full width
+ * under both columns. They are the only part of the page that has nothing to say
+ * most of the time, and they disappear entirely when they do.
+ *
+ * On a phone it is one column, left before right.
  */
 export function Home() {
   const { t } = useI18n()
@@ -62,35 +64,41 @@ export function Home() {
 
           return (
             <>
-              {/* Two to one in favour of the address, and on a phone one under
-                  the other with the address first (PDL P28a). */}
-              <div className="home__row home__row--address">
-                <President />
-                <Counters totals={totals} title={label} />
+              <div className="home__split">
+                <div className="home__main">
+                  <div className="home__boards">
+                    <TopTen
+                      competitors={field}
+                      results={results}
+                      season={season}
+                      gender="M"
+                    />
+                    <TopTen
+                      competitors={field}
+                      results={results}
+                      season={season}
+                      gender="F"
+                    />
+                  </div>
+
+                  <TopByCategory competitors={field} results={results} season={season} />
+
+                  <President />
+                </div>
+
+                <div className="home__side">
+                  <Counters totals={totals} title={label} members={field.length} />
+                  <CalendarExtract events={events} today={today} />
+                  <Calculator />
+                  <EnrolmentSlot today={today} />
+                </div>
               </div>
 
-              <div className="home__row home__row--calendar">
-                <CalendarExtract events={events} today={today} />
-                <EnrolmentSlot today={today} />
-              </div>
-
-              <div className="home__row home__row--standing">
-                <TopTen competitors={field} results={results} season={season} gender="M" />
-                <TopTen competitors={field} results={results} season={season} gender="F" />
-                <TopByCategory competitors={field} results={results} season={season} />
-              </div>
-
-              <div className="home__row home__row--halves">
-                <Calculator />
-                <HowItWorks />
-              </div>
-
-              <div className="home__row home__row--calendar">
+              <div className="home__row home__row--news">
                 <News items={NEWS} today={today} />
                 <Sponsor sponsors={SPONSORS} />
               </div>
 
-              <CommunityNumbers competitors={competitors} />
               <SponsorStrip sponsors={SPONSORS} />
             </>
           )

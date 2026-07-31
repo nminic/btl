@@ -80,6 +80,14 @@
       "required": true
     },
     {
+      "name": "bio",
+      "type": "textarea",
+      "labelKey": "profile.bio",
+      "required": true,
+      "maxLength": 360,
+      "hintKey": "registration.bioHint"
+    },
+    {
       "name": "shirtSize",
       "type": "select",
       "labelKey": "registration.shirtSize",

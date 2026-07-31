@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
+import { SeasonPicker } from './SeasonPicker'
 import { categoryOfMember } from '../../data/derive'
 import { SEASON } from '../../data/pricing'
 import type { Competitor, Team } from '../../data/types'
@@ -23,17 +24,24 @@ import { useI18n } from '../../i18n/useI18n'
 export function ProfileHead({
   competitor,
   team,
+  seasons,
 }: {
   competitor: Competitor
   team: Team | undefined
+  /** The seasons the control offers. It stands level with the name because it
+   *  governs both parts of the profile, not one of them (owner, 31.07.2026). */
+  seasons: number[]
 }) {
   const { locale, t } = useI18n()
 
   return (
     <header className="profile__head">
-      <h1 className="profile__name">
-        {competitor.firstName} {competitor.lastName}
-      </h1>
+      <div className="profile__title">
+        <h1 className="profile__name">
+          {competitor.firstName} {competitor.lastName}
+        </h1>
+        <SeasonPicker seasons={seasons} />
+      </div>
 
       <p className="profile__meta">
         <span className="profile__number">{competitor.memberNumber}</span>
@@ -59,15 +67,6 @@ export function ProfileHead({
       </p>
     </header>
   )
-}
-
-/** What the season control needs, handed down from the part that owns it. */
-export type SeasonChoice = {
-  /** Seasons this person raced, newest first, plus any season the address named. */
-  options: number[]
-  /** The chosen one, or `sve` for the whole career. */
-  value: string
-  onChange: (value: string) => void
 }
 
 /**
@@ -96,13 +95,7 @@ export type SeasonChoice = {
  * The query travels with the link, so choosing a season and then looking at the
  * trophies does not lose the season on the way back.
  */
-export function ProfileParts({
-  memberNumber,
-  season,
-}: {
-  memberNumber: string
-  season?: SeasonChoice
-}) {
+export function ProfileParts({ memberNumber }: { memberNumber: string }) {
   const { locale, t } = useI18n()
   const base = `/${locale}/takmicar/${memberNumber}`
 
@@ -114,23 +107,6 @@ export function ProfileParts({
           to: base,
           end: true,
           label: t('profile.parts.overview'),
-          extra:
-            season === undefined ? undefined : (
-              <label className="parts__season">
-                <span className="visually-hidden">{t('rankings.season')}</span>
-                <select
-                  value={season.value}
-                  onChange={(event) => season.onChange(event.target.value)}
-                >
-                  <option value="sve">{t('profile.allTime')}</option>
-                  {season.options.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ),
         },
         { to: `${base}/priznanja`, label: t('profile.parts.awards') },
       ]}

@@ -1,5 +1,14 @@
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { MemoryRouter } from 'react-router'
+import { renderWithI18n } from '../test/render'
 import { Markdown } from './Markdown'
+
+/* Written pages carry links now, and a link is a router element, so the
+   component needs both the dictionary and a router around it. */
+function render(ui: ReactNode) {
+  return renderWithI18n(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 describe('Markdown', () => {
   it('renders sub-headings under the heading of the section', () => {
@@ -81,6 +90,50 @@ describe('Markdown', () => {
     const { container } = render(<Markdown text="" />)
 
     expect(container.textContent).toBe('')
+  })
+
+  /* Links inside prose (owner, 31.07.2026). A written page is read in every
+   * language, so an address inside one is written without the language and gets
+   * it here; anything pointing off the portal is left exactly as written. */
+  it('carries a link to another page of the portal, in the language being read', () => {
+    render(<Markdown text="Kompletan [pravilnik](/pravilnik) stoji na portalu." />)
+
+    expect(screen.getByRole('link', { name: 'pravilnik' })).toHaveAttribute('href', '/sr/pravilnik')
+  })
+
+  it('carries an address of electronic mail as something to write to', () => {
+    render(<Markdown text="Pišite nam na [info@primer.rs](mailto:info@primer.rs)." />)
+
+    expect(screen.getByRole('link', { name: 'info@primer.rs' })).toHaveAttribute(
+      'href',
+      'mailto:info@primer.rs',
+    )
+  })
+
+  it('carries a link out of the portal as it was written', () => {
+    render(<Markdown text="Prijava je [ovde](https://primer.rs/prijava)." />)
+
+    expect(screen.getByRole('link', { name: 'ovde' })).toHaveAttribute(
+      'href',
+      'https://primer.rs/prijava',
+    )
+  })
+
+  /* The one shape of markup that can hand the browser an instruction. A page is
+     edited by a moderator, so what it may point at is a closed list and not a
+     matter of trust. */
+  it('leaves an address it does not allow as the text it is, and makes no link of it', () => {
+    const { container } = render(<Markdown text="Klikni [ovde](javascript:alert(1)) za nagradu." />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    // Nothing is swallowed either: what was written is what stands there.
+    expect(container.textContent).toBe('Klikni [ovde](javascript:alert(1)) za nagradu.')
+  })
+
+  it('carries a link inside a table as well as inside a sentence', () => {
+    render(<Markdown text={'| Strana | Gde |\n|---|---|\n| Pravilnik | [otvori](/pravilnik) |'} />)
+
+    expect(screen.getByRole('link', { name: 'otvori' })).toHaveAttribute('href', '/sr/pravilnik')
   })
 
   /* The central promise of this component. The written pages are content, and

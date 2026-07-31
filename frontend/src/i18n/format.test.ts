@@ -6,6 +6,7 @@ import {
   formatMonth,
   formatNumber,
   formatPoints,
+  formatDayMonth,
   formatShortDate,
   wholePeriod,
 } from './format'
@@ -68,6 +69,21 @@ describe('format', () => {
 /* The rule the owner gave on 30.07.2026 (PDL P28a, "Ispis vremenskog opsega").
  * A range that describes a whole period is written as that period, and only what
  * describes none is read out from one end to the other. */
+describe('formatDayMonth', () => {
+  /* The narrow column on the front page (owner, 31.07.2026). The year is dropped
+     only where it is the reader's own year, because that is the only case where
+     it is the same four digits down the whole column. */
+  it('leaves the year off a date inside the year being read', () => {
+    expect(formatDayMonth('2027-01-16', '2027-08-04')).toBe('16.01.')
+  })
+
+  it('writes the year out when the date is not in that year', () => {
+    // The state of the portal on the day this was written: the last day of July
+    // 2026, with every event in the calendar in the season after it.
+    expect(formatDayMonth('2027-01-16', '2026-07-31')).toBe('16.01.2027.')
+  })
+})
+
 describe('wholePeriod', () => {
   it('writes one day as that day', () => {
     expect(wholePeriod('2027-10-15', '2027-10-15', 'sr')).toBe('15. 10. 2027.')

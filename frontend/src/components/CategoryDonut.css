@@ -1,24 +1,31 @@
-/* The ring, its names and the lines between them are one drawing, so there is
-   no layout left to arrange here: the SVG scales to the width it is given and
-   keeps its own proportions. That is also why the container query that used to
-   decide whether the ring sat beside its legend is gone; there is no legend to
-   sit beside any more. */
+/* The ring, and nothing but the ring (owner, 31.07.2026).
+ *
+ * It fills the height of the card it stands in, so it lines up with the widget
+ * beside it: from the top of the first figure there to the bottom of the last.
+ * A square that takes the height it is given and never more width than it has. */
 
 .donut-block {
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-block-size: 0;
 }
 
 .donut {
   display: block;
-  width: 100%;
-  height: auto;
+  block-size: 100%;
+  inline-size: auto;
+  max-inline-size: 100%;
+  /* Where there is no height to fill, as in a single column on a telephone, the
+     square falls back on the width. */
+  aspect-ratio: 1 / 1;
 }
 
-/* Only the slices turn. The whole SVG used to, back when it held nothing but
-   the ring; now it holds text, and text on its side is not text. */
+/* Only the slices turn, so the figures in the middle stay upright. */
 .donut__ring {
   transform: rotate(-90deg);
-  transform-origin: 180px 100px;
+  transform-origin: 100px 100px;
 }
 
 .donut__track {
@@ -28,68 +35,28 @@
 
 .donut__seg {
   fill: none;
+  cursor: pointer;
+  /* The one being pointed at grows on both edges, so the ring keeps its middle
+     and the number inside it does not jump. */
+  transition: stroke-width var(--fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut__seg {
+    transition: none;
+  }
 }
 
 .donut__total {
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.02em;
   fill: var(--text);
 }
 
 .donut__unit {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   fill: var(--text-muted);
-}
-
-.donut__name {
-  font-size: 12px;
-  fill: var(--text);
-}
-
-.donut__value {
-  font-weight: 700;
-}
-
-/* The line that ties a name to the middle of its own slice.
- *
- * White, as asked for, in the theme the portal opens in, and a slate in the
- * light one, where a white line crossing a white card is a white line on white.
- *
- * The end of the line lies on the band, and the band is no longer one shade: the
- * lightest segment of the dark theme is very nearly white, and a white line on
- * it measured 1,20:1, so the tip of the line naming the shortest races
- * disappeared. Hence the halo underneath, in the colour of the card: whatever
- * the line lands on, it lands on its own outline first. */
-.donut {
-  --donut-leader: #55637a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .donut {
-    --donut-leader: #ffffff;
-  }
-}
-
-:root[data-theme='dark'] .donut {
-  --donut-leader: #ffffff;
-}
-
-.donut__leader {
-  fill: none;
-  stroke: var(--donut-leader);
-  stroke-width: 1;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  opacity: 0.75;
-}
-
-.donut__leader-halo {
-  fill: none;
-  stroke: var(--surface);
-  stroke-width: 3;
-  stroke-linejoin: round;
-  stroke-linecap: round;
 }

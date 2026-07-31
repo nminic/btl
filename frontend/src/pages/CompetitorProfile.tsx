@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
+import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
@@ -11,9 +12,14 @@ import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
-import './Profile.css'
+import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
 
-const ALL = 'sve'
+/** What the address says when no length is chosen. The same word the season
+ *  uses, and a constant of its own: they are two filters that happen to spell
+ *  their "everything" the same way, and one of them changing its mind must not
+ *  silently change the other. */
+const ALL_LENGTHS = 'sve'
+import './Profile.css'
 
 function countsOf(results: Result[]): Map<RaceCategory, number> {
   const counts = new Map<RaceCategory, number>()
@@ -70,7 +76,7 @@ function LengthFilter({
 }) {
   const { t } = useI18n()
   const options = [
-    { key: ALL, full: t('profile.allLengths'), short: t('profile.lengthsShort.all') },
+    { key: ALL_LENGTHS, full: t('profile.allLengths'), short: t('profile.lengthsShort.all') },
     ...CATEGORIES.map((one) => ({
       key: one,
       full: t(`category.${one}`),
@@ -101,14 +107,15 @@ function LengthFilter({
 /**
  * The profile, as one page of two parts (the design decision of 30.07.2026).
  *
- * This is the first: who the person is, then one row of three answering how much
- * and of what kind and who they are, then the races.
+ * This is the first: who the person is, then one row of three answering who they
+ * are and of what kind and how much, then the races.
  *
- * The season is chosen once and governs the whole of this part, and since
- * 31.07.2026 it is chosen inside the control that names the part rather than on a
- * rule of its own below it. That rule cost a whole band of the screen and a
- * sentence underneath explaining what it governed, which is a sentence no screen
- * should need: a setting that sits inside the thing it sets explains itself.
+ * The season is chosen once, at the top of the page beside the name, because it
+ * governs both parts and not one of them (owner, 31.07.2026).
+ *
+ * The order of the three is the biography, the ring, the figures, all of one
+ * width. The words come first because they are the only part of the card that
+ * had to be written by hand; the two that are worked out follow.
  */
 function ProfileBody({
   competitor,
@@ -121,69 +128,47 @@ function ProfileBody({
 }) {
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
+  const today = useToday()
+  const season = useSeason()
 
   const mine = useMemo(
     () => resultsOf(results, competitor.memberNumber),
     [results, competitor.memberNumber],
   )
   const seasons = useMemo(() => seasonsWithResults(mine), [mine])
+  const options = useMemo(
+    () => seasonOptions(seasons, season, today),
+    [seasons, season, today],
+  )
 
-  /* The newest season this person has anything in, rather than all of them
-     (owner's spec, 30.07.2026). Somebody with two hundred and seventy-seven
-     results opened on all two hundred and seventy-seven, which is twenty-three
-     screens on a telephone, and the counters above them were career totals under
-     a heading that says the season. All seasons is one choice away. */
-  const opensOn = seasons[0]
-  const fallback = opensOn === undefined ? ALL : String(opensOn)
-
-  /* A season named in the address is honoured even where this person has nothing
-     in it, and the select is given that option so it is not drawn blank: a
-     shared link has to show what it was sent to show, and an empty table under
-     the right year says something true. Anything that is not a year at all falls
-     back, and the comparison is on the string the option carries, so `02010` is
-     not quietly taken for 2010.
-
-     The length has no such treatment: an unknown length is nothing the row of
-     six can show as chosen and nothing a table can narrow by, so it is
-     ignored. */
-  const asked = params.get('sezona')
-  const season = asked === ALL || (asked !== null && /^\d{4}$/.test(asked)) ? asked : fallback
+  /* The length has no such treatment as the season: an unknown length is nothing
+     the row of six can show as chosen and nothing a table can narrow by, so it
+     is ignored. */
   const askedLength = params.get('duzina')
   const length =
-    askedLength !== null && (CATEGORIES as string[]).includes(askedLength) ? askedLength : ALL
-
-  /* Newest first, and never the memoised list itself: sorting that in place
-     during a render is a mutation React forbids, and it is a no-op only because
-     it is already in this order. */
-  const options =
-    season === ALL || seasons.some((year) => String(year) === season)
-      ? seasons
-      : [...seasons, Number(season)].sort((left, right) => right - left)
+    askedLength !== null && (CATEGORIES as string[]).includes(askedLength)
+      ? askedLength
+      : ALL_LENGTHS
 
   const inSeason = useMemo(
-    () => mine.filter((result) => season === ALL || result.date.startsWith(season)),
+    () => mine.filter((result) => season === ALL_SEASONS || result.date.startsWith(season)),
     [mine, season],
   )
   const shown = useMemo(
-    () => inSeason.filter((result) => length === ALL || result.category === length),
+    () => inSeason.filter((result) => length === ALL_LENGTHS || result.category === length),
     [inSeason, length],
   )
 
   /* The two widgets follow the season and nothing else. */
   const totals = useMemo(() => totalsOf(inSeason), [inSeason])
 
-  /* Written into the address unless it is the default, so an address stays as
-     short as it can be. The season's default is not "all of them" any more, so
-     choosing all of them has to be said out loud: deleting the parameter would
-     have put the reader straight back on the newest season, and there would have
-     been no way to ask for the career at all. */
-  function change(key: string, value: string, fallbackValue: string) {
+  function changeLength(value: string) {
     const merged = new URLSearchParams(params)
 
-    if (value === fallbackValue) {
-      merged.delete(key)
+    if (value === ALL_LENGTHS) {
+      merged.delete('duzina')
     } else {
-      merged.set(key, value)
+      merged.set('duzina', value)
     }
 
     setParams(merged)
@@ -191,24 +176,17 @@ function ProfileBody({
 
   return (
     <div className="profile profile--competitor">
-      <ProfileHead competitor={competitor} team={team} />
-      <ProfileParts
-        memberNumber={competitor.memberNumber}
-        season={{
-          options,
-          value: season,
-          onChange: (value) => change('sezona', value, fallback),
-        }}
-      />
+      <ProfileHead competitor={competitor} team={team} seasons={options} />
+      <ProfileParts memberNumber={competitor.memberNumber} />
 
       <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
-        <Counters totals={totals} races={false} />
+        {competitor.bio !== '' && <Biography text={competitor.bio} />}
 
         <section className="profile__card profile__card--donut">
           <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />
         </section>
 
-        {competitor.bio !== '' && <Biography text={competitor.bio} />}
+        <Counters totals={totals} races={false} />
       </div>
 
       <section className="profile__results" aria-labelledby="profile-results">
@@ -216,12 +194,12 @@ function ProfileBody({
           {t('profile.results')} <span className="profile__count">{shown.length}</span>
         </h2>
 
-        <LengthFilter value={length} onChange={(value) => change('duzina', value, ALL)} />
+        <LengthFilter value={length} onChange={changeLength} />
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">
             <p>{emptyText(t, mine.length, season, length)}</p>
-            {(season !== ALL || length !== ALL) && (
+            {(season !== ALL_SEASONS || length !== ALL_LENGTHS) && (
               <button
                 type="button"
                 className="button button--secondary"
@@ -239,13 +217,11 @@ function ProfileBody({
                 <tr>
                   <th scope="col">{t('profile.columns.date')}</th>
                   <th scope="col">{t('profile.columns.event')}</th>
-                  {/* The length of the race, which is what this column has always
-                      held. It was headed "Kat.", the same word the header two
-                      lines above uses for the age band (PDL P7). */}
-                  <th scope="col">{t('profile.columns.length')}</th>
-                  <th scope="col" className="table__hide-phone">
-                    {t('profile.columns.distance')}
-                  </th>
+                  {/* The length has no column of its own any more (owner,
+                      31.07.2026). It is the colour of the dot beside the
+                      distance, and the distance already says which length it is:
+                      21,10 is a half marathon whatever colour it wears. */}
+                  <th scope="col">{t('profile.columns.distance')}</th>
                   <th scope="col" className="table__hide-phone">
                     {t('rankings.columns.ascent')}
                   </th>
@@ -269,8 +245,18 @@ function ProfileBody({
                     <td>
                       <Link to={`/${locale}/kalendar/${result.eventSlug}`}>{result.eventName}</Link>
                     </td>
-                    <td>{t(`category.${result.category}`)}</td>
-                    <td className="table__hide-phone">
+                    <td className="table__points">
+                      {/* The dot carries the length, and its name goes with it,
+                          because a colour on its own says nothing to anyone who
+                          cannot tell two of them apart. */}
+                      <span
+                        className={`profile__dot profile__dot--${result.category}`}
+                        aria-hidden="true"
+                      />
+                      <span className="visually-hidden">
+                        {t(`category.${result.category}`)}
+                        {': '}
+                      </span>
                       {formatNumber(result.distanceKm, locale, 2)}
                     </td>
                     <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
@@ -301,11 +287,13 @@ function emptyText(
     return t('profile.noResults')
   }
 
-  if (season !== ALL && length !== ALL) {
+  if (season !== ALL_SEASONS && length !== ALL_LENGTHS) {
     return t('profile.noneInFilter')
   }
 
-  return season === ALL ? t('profile.noneInLength') : t('profile.noneInSeason', { season })
+  return season === ALL_SEASONS
+    ? t('profile.noneInLength')
+    : t('profile.noneInSeason', { season })
 }
 
 /**

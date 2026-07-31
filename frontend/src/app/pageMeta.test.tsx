@@ -241,11 +241,11 @@ describe('the two parts of a competition', () => {
 
     cleanup()
 
-    renderAt('/sr/liga/brdska-2019/propozicije')
+    renderAt('/sr/liga/brdska-2019/rezultati')
     await waitFor(() => expect(document.title).toContain('Brdska liga 2019'))
 
     expect(document.title).not.toBe(standing.title)
-    expect(document.title).toContain('propozicije')
+    expect(document.title).toContain('rezultati')
     expect(meta()).not.toBe(standing.description)
   })
 })

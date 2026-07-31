@@ -37,18 +37,49 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe('the address of the president', () => {
-  it('stands on the front page beside the scoreboard, and first of the two', async () => {
+  /* It is the foot of the left column now, under the boards and the turning
+     chart (owner, 31.07.2026), which is also where it lands on a phone: the two
+     columns become one, left before right, so the address is the last thing
+     before the figures rather than the first thing on the page. */
+  it('stands at the foot of the left column of the front page', async () => {
     renderAt('/sr')
 
     const address = await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
+    const board = screen.getByRole('heading', { level: 2, name: 'Top 10 muškarci' })
     const counters = screen.getByRole('heading', { level: 2, name: /Sezona/ })
 
-    // The same row holds both. On a phone the row becomes one column, and the
-    // address is the one that comes first (PDL P28a).
-    expect(address.closest('section')?.parentElement).toBe(counters.closest('section')?.parentElement)
+    // Same column as the boards, and last in it.
+    expect(address.closest('article')?.parentElement?.parentElement).toBe(
+      board.closest('section')?.parentElement?.parentElement,
+    )
+    expect(
+      board.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    // The figures are the other column, and they follow.
     expect(
       address.compareDocumentPosition(counters) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+  })
+
+  /* The way to the rulebook is inside the sentence that names it, and so is the
+     address of the association (owner, 31.07.2026). Both used to be plain text,
+     with a "Ceo pravilnik" link under the card doing the first one's job. */
+  it('carries the way to the rulebook and the address to write to, inside its own text', async () => {
+    renderAt('/sr')
+
+    const address = await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
+    const card = address.closest('article') as HTMLElement
+
+    expect(within(card).getByRole('link', { name: 'pravilnik' })).toHaveAttribute(
+      'href',
+      '/sr/pravilnik',
+    )
+    expect(within(card).getByRole('link', { name: /@/ })).toHaveAttribute(
+      'href',
+      'mailto:info@balkanskatrkackaliga.net',
+    )
+    // And the link that used to stand under the card is gone with it.
+    expect(within(card).queryByRole('link', { name: 'Ceo pravilnik' })).not.toBeInTheDocument()
   })
 
   it('is read out of the data rather than written into the code', async () => {

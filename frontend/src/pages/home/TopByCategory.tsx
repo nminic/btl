@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { CATEGORIES, topByCategory } from '../../data/derive'
 import type { Competitor, Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
+import { Portrait } from './Portrait'
 import './TopByCategory.css'
 
 /** How long one category stays up before the next one comes round. */
@@ -10,15 +11,23 @@ const TURN_MS = 6000
 
 const TOP = 10
 
-/* Initials in a circle, because there are no photographs yet. The old portal
- * put faces above the columns and that is what made the widget worth looking
- * at; a monogram holds the place until the photographs exist. */
-function Face({ competitor }: { competitor: Competitor }) {
+/* Two bars and a triangle: the marks every player in the world uses, so the
+ * button says what it does without a word on it (owner, 31.07.2026). The name
+ * is still there for anyone who cannot see them, in `aria-label`. */
+function PauseMark() {
   return (
-    <span className="top-cat__face" aria-hidden="true">
-      {competitor.firstName.slice(0, 1)}
-      {competitor.lastName.slice(0, 1)}
-    </span>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+      <rect x="7" y="5" width="3.6" height="14" rx="1.2" />
+      <rect x="13.4" y="5" width="3.6" height="14" rx="1.2" />
+    </svg>
+  )
+}
+
+function PlayMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+      <path d="M8.5 5.4l10 6.6-10 6.6z" />
+    </svg>
   )
 }
 
@@ -109,39 +118,45 @@ export function TopByCategory({
   const columns = topByCategory(competitors, results, season, category, TOP)
   const highest = Math.max(1, ...columns.map((one) => one.races))
 
+  const name = turning ? t('home.pauseTurning') : t('home.resumeTurning')
+
   return (
     <section className="top-cat" aria-label={t('home.turning')}>
+      {/* A discreet gold disc in the corner rather than a labelled pill on the
+          band below (owner, 31.07.2026). The name it carried is now the
+          accessible name; an icon is not a name. It is the name and nothing
+          else: a hidden label and a tooltip carrying the same words are read
+          out one after the other.
+
+          There is no `aria-pressed` beside it, and there was none before: the
+          name says the whole state, and the two together contradicted each
+          other. Stopped, the button read "Nastavi smenjivanje" and announced
+          itself as pressed, which is heard as "resuming is on", the opposite of
+          what is true. A button that renames itself is what the guidance for
+          WCAG 2.2 SC 2.2.2 means by a pause control. */}
+      <button
+        type="button"
+        className="top-cat__turn"
+        aria-label={name}
+        onClick={() => setTurning((on) => !on)}
+      >
+        {turning ? <PauseMark /> : <PlayMark />}
+      </button>
+
       {columns.length === 0 ? (
         <p className="card__empty">{t('home.noneYet')}</p>
       ) : (
         <ol className="top-cat__columns">
           {columns.map((column) => (
             <li key={column.competitor.memberNumber} className="top-cat__column">
-              <Face competitor={column.competitor} />
+              <Portrait competitor={column.competitor} />
               <Bar column={column} highest={highest} />
             </li>
           ))}
         </ol>
       )}
 
-      <p className="top-cat__caption">
-        {t(`home.mostOf.${category}`)}
-        {/* Beside the caption rather than above the bars, because it belongs to
-            the turning and not to any one category. */}
-        {/* The name says the whole state, and there is no `aria-pressed`
-            beside it. Together they contradicted each other: stopped, the
-            button read "Nastavi smenjivanje" and announced itself as pressed,
-            which is heard as "resuming is on", the opposite of what is true.
-            A button that renames itself is what the guidance for SC 2.2.2
-            means by a pause control. */}
-        <button
-          type="button"
-          className="top-cat__turn"
-          onClick={() => setTurning((on) => !on)}
-        >
-          {turning ? t('home.pauseTurning') : t('home.resumeTurning')}
-        </button>
-      </p>
+      <p className="top-cat__caption">{t(`home.mostOf.${category}`)}</p>
     </section>
   )
 }

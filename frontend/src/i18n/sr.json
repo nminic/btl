@@ -176,13 +176,13 @@
       "title": "Takmičenje u ligi",
       "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
       "recordTitle": "{name}",
-      "recordDescription": "{name}: poredak i događaji koji u sezoni {season} ulaze u ovo takmičenje."
+      "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
     },
-    "leagueRules": {
-      "title": "Propozicije takmičenja",
-      "description": "Pravila i nagrade jednog takmičenja, onako kako ih je napisao organizator.",
-      "recordTitle": "{name}, propozicije",
-      "recordDescription": "Propozicije i nagrade takmičenja {name}, onako kako ih je napisao organizator."
+    "leagueResults": {
+      "title": "Poredak takmičenja",
+      "description": "Poredak jednog takmičenja uz glavnu ligu: ko je trčao koju trku i sa koliko bodova.",
+      "recordTitle": "{name}, rezultati",
+      "recordDescription": "Poredak takmičenja {name} u sezoni {season}: ko je trčao koju trku i sa koliko bodova."
     },
     "message": {
       "title": "Poruka",
@@ -308,12 +308,12 @@
     },
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
+    "place": "{place}.",
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
+    "topPartlyFilled": "Preostala mesta drže članovi koji još nemaju rezultat u ovoj sezoni.",
+    "noneRanked": "U ovoj sezoni još nema nikoga na ovoj listi.",
     "wholeStanding": "Cela tabela",
-    "wholeRulebook": "Ceo pravilnik",
     "byCategory": "Trke po dužini",
-    "previousCategory": "Prethodna kategorija",
-    "nextCategory": "Sledeća kategorija",
     "calculator": "BTL kalkulator",
     "calcLength": "Dužina staze (km)",
     "calcAscent": "Uspon (m)",
@@ -323,27 +323,9 @@
     "minutes": "min",
     "seconds": "s",
     "calcWaiting": "Unesi dužinu i vreme.",
-    "howTitle": "Kako radi BTL u tri koraka",
-    "how": {
-      "one": {
-        "title": "Trčiš gde hoćeš.",
-        "text": "Bilo koja trka, bilo gde, bilo kada u sezoni."
-      },
-      "two": {
-        "title": "Uneseš rezultat.",
-        "text": "Dužinu, uspon, spust i vreme, uz link ka zvaničnim rezultatima."
-      },
-      "three": {
-        "title": "Dobijaš bodove.",
-        "text": "Duža i teža staza nosi više, brže vreme nosi više. Bodovi se sabiraju kroz celu sezonu."
-      }
-    },
     "news": "Vesti",
     "sponsorOfTheDay": "Sponzor dana",
     "partners": "Sponzori i partneri",
-    "community": "Zajednica u brojkama",
-    "newest": "Poslednji koji su se učlanili",
-    "membersInSeason": "članova u ligi",
     "noneYet": "U ovoj sezoni još nema odtrčanih trka ove dužine.",
     "turning": "Najviše trka po dužini",
     "pauseTurning": "Zaustavi smenjivanje",
@@ -355,16 +337,12 @@
       "marathon": "Najviše maratona",
       "ultra": "Najviše ultramaratona"
     },
-    "races": "Odtrčanih trka",
-    "raceCount": {
-      "one": "{count} trka",
-      "few": "{count} trke",
-      "other": "{count} trka"
-    },
     "pointsUnit": " BTL poena",
     "ascentUnit": " m+",
     "descentUnit": " m-",
-    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama."
+    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama.",
+    "members": "Članova lige",
+    "results": "Prijavljenih rezultata"
   },
   "data": {
     "loading": "Učitavanje",
@@ -411,12 +389,16 @@
     "city": "Grad",
     "country": "Država",
     "countryHint": "Od države zavisi koji načini plaćanja ti se nude.",
+    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda pre nego što se pojave na tvom profilu.",
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
     "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga.",
     "doneTitle": "Prijava je zabeležena",
-    "doneText": "Ovo je probni portal, pa prijava nigde ne odlazi. Evo šta bi bilo poslato:",
+    "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
+    "resend": "Pošalji potvrdu ponovo",
+    "resent": "Potvrda je poslata ponovo. Ako ni sada ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
+    "doneText": "Poslali smo poruku na {email}. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada.",
     "password": "Lozinka",
     "passwordHint": "Najmanje 10 znakova. Njome se posle prijavljuješ na portal.",
     "passwordRepeat": "Ponovi lozinku",
@@ -426,7 +408,12 @@
     "closedText": "Od 15. do 30. septembra portal je otvoren samo za razgledanje. Kalendar i rang liste rade, ali se članstvo tada ne prodaje.",
     "opensOn": "Otvara se {date}.",
     "firstSeason": "Takmičim se u kategoriji Prva sezona",
-    "firstSeasonHint": "Za one koji su nov u ligi. U toj kategoriji se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan. Ako je ne izabereš, takmičiš se u svojoj starosnoj kategoriji."
+    "firstSeasonHint": "Za one koji su nov u ligi. U toj kategoriji se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan. Ako je ne izabereš, takmičiš se u svojoj starosnoj kategoriji.",
+    "opensIn": {
+      "one": "Učlanjenje se otvara {date}, za {count} dan.",
+      "few": "Učlanjenje se otvara {date}, za {count} dana.",
+      "other": "Učlanjenje se otvara {date}, za {count} dana."
+    }
   },
   "country": {
     "RS": "Srbija",
@@ -457,6 +444,11 @@
       "one": "{count} član",
       "few": "{count} člana",
       "other": "{count} članova"
+    },
+    "resultCount": {
+      "one": "{count} rezultat",
+      "few": "{count} rezultata",
+      "other": "{count} rezultata"
     }
   },
   "rankings": {
@@ -689,6 +681,7 @@
     "title": "Članarina",
     "lead": "Članarina se plaća za sezonu, a sezona {season}. traje od 1. januara do 31. decembra {season}.",
     "period": "Period uplate",
+    "today": "važi danas",
     "priceEur": "Cena",
     "priceRsd": "Iz Srbije",
     "notSold": "Ne naplaćuje se",
@@ -757,6 +750,11 @@
     "startTime": "Vreme starta",
     "startTimeHint": "Kad je trka krenula. Ne vreme koje si istrčao.",
     "photo": "Fotografija kao dokaz",
+    "doneTitle": "Rezultat je poslat",
+    "donePoints": "Ova trka ti donosi {points} BTL poena.",
+    "doneWaiting": "Moderator je proverava. Kad je potvrdi, ulazi u rang liste i u tvoj profil.",
+    "toMine": "Moji rezultati",
+    "another": "Unesi još jedan",
     "photoHint": "Neobavezno, na primer slika sata ili tablice sa vremenom. Briše se sa servera čim rezultat bude proveren."
   },
   "status": {
@@ -1155,6 +1153,7 @@
     "category": "Kategorija {category}",
     "position": "{position}. mesto",
     "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
+    "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.",
     "noBadges": "Još nijedna značka."
   }
 }

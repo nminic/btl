@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router'
 import './PartsNav.css'
 
@@ -8,14 +7,6 @@ export type Part = {
   /** Whether this is the one that answers the bare address of the record. */
   end?: boolean
   label: string
-  /**
-   * A control that belongs to this part and to no other, drawn joined to it.
-   *
-   * The profile puts the season here: a setting that sits inside the thing it
-   * sets explains itself, where the same setting on a rule of its own needed a
-   * sentence underneath saying what it governed.
-   */
-  extra?: ReactNode
 }
 
 /**
@@ -39,27 +30,16 @@ export function PartsNav({ parts, label }: { parts: Part[]; label: string }) {
 
   return (
     <nav className="parts" aria-label={label}>
-      {parts.map((part) => {
-        const link = (
-          <NavLink
-            key={part.to}
-            end={part.end}
-            to={{ pathname: part.to, search }}
-            className="parts__item"
-          >
-            {part.label}
-          </NavLink>
-        )
-
-        return part.extra === undefined ? (
-          link
-        ) : (
-          <span className="parts__group" key={part.to}>
-            {link}
-            {part.extra}
-          </span>
-        )
-      })}
+      {parts.map((part) => (
+        <NavLink
+          key={part.to}
+          end={part.end}
+          to={{ pathname: part.to, search }}
+          className="parts__item"
+        >
+          {part.label}
+        </NavLink>
+      ))}
     </nav>
   )
 }

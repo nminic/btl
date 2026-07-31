@@ -217,14 +217,14 @@ describe('LeagueDetail', () => {
 
   it('shows the rules and the prizes that have been written', async () => {
     // Both live under the second part now (owner, 31.07.2026).
-    renderAt('/sr/liga/btl-2027/propozicije')
+    renderAt('/sr/liga/btl-2027')
 
     expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
   })
 
   it('hides both sections while neither has been written', async () => {
-    renderAt('/sr/liga/runtrace-2027/propozicije')
+    renderAt('/sr/liga/runtrace-2027')
 
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
@@ -287,7 +287,7 @@ describe('a competition, in two parts', () => {
      with everybody who ran down the side and every race across the top. The
      data has one competition that has actually been run; the three of 2027 are
      necessarily empty, which is why one was added. */
-  const RUN = '/sr/liga/brdska-2019'
+  const RUN = '/sr/liga/brdska-2019/rezultati'
 
   it('opens on the standing, with the total in the second column', async () => {
     renderAt(RUN)
@@ -340,18 +340,20 @@ describe('a competition, in two parts', () => {
 
     expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
+    // The events that count moved here too, under what is written about them.
+    expect(screen.getByRole('table', { name: 'Događaji koji ulaze u ligu' })).toBeVisible()
     expect(screen.queryByRole('table', { name: 'Poredak takmičenja' })).not.toBeInTheDocument()
   })
 
   it('says so plainly for a competition that has not been run', async () => {
-    renderAt('/sr/liga/runtrace-2027')
+    renderAt('/sr/liga/runtrace-2027/rezultati')
 
     expect(await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.')).toBeVisible()
   })
 })
 
 describe('the grid of a competition, in the details the review found unguarded', () => {
-  const RUN = '/sr/liga/brdska-2019'
+  const RUN = '/sr/liga/brdska-2019/rezultati'
 
   it('names each row by its runner, as a heading of that row', async () => {
     renderAt(RUN)

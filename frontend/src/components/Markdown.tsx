@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router'
+import { useI18n } from '../i18n/useI18n'
 import './Markdown.css'
 
 /* The written pages (rulebook, terms, privacy policy) are data, not code, and
@@ -7,7 +9,7 @@ import './Markdown.css'
  * one place that turns it into elements.
  *
  * It is a deliberately small subset: sub-headings, paragraphs, lists, tables,
- * a rule, bold and code. Raw HTML is never interpreted and no string ever
+ * a rule, bold, code and links. Raw HTML is never interpreted and no string ever
  * reaches dangerouslySetInnerHTML, so nothing that ends up in the content can
  * put an element of its own on the page.
  */
@@ -25,13 +27,36 @@ const BULLET = /^[-*]\s+(.+)$/
 const NUMBERED = /^\d+\.\s+(.+)$/
 const ROW = /^\|(.*)\|$/
 const SEPARATOR = /^:?-{2,}:?$/
-const INLINE = /(\*\*[^*]+\*\*|`[^`]+`)/g
-/* The same two shapes, anchored. Splitting on INLINE hands back the marked
+const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\))/g
+/* The same three shapes, anchored. Splitting on INLINE hands back the marked
  * segments and the plain text between them in one array, and only a segment that
  * matches from end to end is markup: "**Važno" is a pair of stars somebody
  * wrote and never closed, and cutting two characters off it eats the text. */
 const BOLD = /^\*\*[^*]+\*\*$/
 const CODE = /^`[^`]+`$/
+const LINK = /^\[([^\]]+)\]\(([^)\s]+)\)$/
+
+/* Which addresses a written page is allowed to point at.
+ *
+ * A page is content, and content is edited by a moderator, so the set of schemes
+ * it may produce is closed here rather than trusted: a link is the one piece of
+ * markup that can carry an instruction to the browser, and `javascript:` in a
+ * page somebody else typed is a script on the portal. Anything outside this list
+ * stays literal text, so nothing is silently swallowed either. */
+function addressOf(url: string): { inside: boolean; href: string } | undefined {
+  /* One slash is a page of this portal. Two is another host, which a browser
+     reads as a scheme-relative address and the router would turn into a path of
+     ours; neither is what somebody writing a page meant. */
+  if (url.startsWith('/') && !url.startsWith('//')) {
+    return { inside: true, href: url }
+  }
+
+  if (url.startsWith('mailto:') || url.startsWith('https://') || url.startsWith('http://')) {
+    return { inside: false, href: url }
+  }
+
+  return undefined
+}
 
 function cellsOf(line: string): string[] {
   return line
@@ -122,9 +147,9 @@ function parseBlocks(text: string): Block[] {
   return blocks
 }
 
-/** Bold and code inside a line of text. Everything else stays literal, an
+/** Bold, code and links inside a line of text. Everything else stays literal, an
  *  unclosed marker included. */
-function inline(text: string): ReactNode[] {
+function inline(text: string, locale: string): ReactNode[] {
   return text.split(INLINE).map((part, index) => {
     if (BOLD.test(part)) {
       return <strong key={index}>{part.slice(2, -2)}</strong>
@@ -134,11 +159,33 @@ function inline(text: string): ReactNode[] {
       return <code key={index}>{part.slice(1, -1)}</code>
     }
 
+    const link = LINK.exec(part)
+
+    if (link !== null) {
+      const address = addressOf(link[2])
+
+      if (address === undefined) {
+        return part
+      }
+
+      /* A page is written once and read in every language, so an address inside
+         it is written without the language and gets it here (ADL A2). */
+      return address.inside ? (
+        <Link key={index} to={`/${locale}${address.href}`}>
+          {link[1]}
+        </Link>
+      ) : (
+        <a key={index} href={address.href}>
+          {link[1]}
+        </a>
+      )
+    }
+
     return part
   })
 }
 
-function Table({ rows }: { rows: string[][] }) {
+function Table({ rows, locale }: { rows: string[][]; locale: string }) {
   // A table that held nothing but the dashed line under the head has no rows
   // left once that line is dropped.
   if (rows.length === 0) {
@@ -158,7 +205,7 @@ function Table({ rows }: { rows: string[][] }) {
             <tr>
               {first.map((cell, index) => (
                 <th key={index} scope="col">
-                  {inline(cell)}
+                  {inline(cell, locale)}
                 </th>
               ))}
             </tr>
@@ -168,7 +215,7 @@ function Table({ rows }: { rows: string[][] }) {
           {body.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((cell, index) => (
-                <td key={index}>{inline(cell)}</td>
+                <td key={index}>{inline(cell, locale)}</td>
               ))}
             </tr>
           ))}
@@ -178,7 +225,7 @@ function Table({ rows }: { rows: string[][] }) {
   )
 }
 
-function block(item: Block, key: number): ReactNode {
+function block(item: Block, key: number, locale: string): ReactNode {
   if (item.kind === 'rule') {
     return <hr key={key} />
   }
@@ -186,27 +233,33 @@ function block(item: Block, key: number): ReactNode {
   if (item.kind === 'heading') {
     const Tag = `h${item.level}` as 'h3' | 'h4' | 'h5' | 'h6'
 
-    return <Tag key={key}>{inline(item.text)}</Tag>
+    return <Tag key={key}>{inline(item.text, locale)}</Tag>
   }
 
   if (item.kind === 'list') {
-    const items = item.items.map((text, index) => <li key={index}>{inline(text)}</li>)
+    const items = item.items.map((text, index) => <li key={index}>{inline(text, locale)}</li>)
 
     return item.ordered ? <ol key={key}>{items}</ol> : <ul key={key}>{items}</ul>
   }
 
   if (item.kind === 'table') {
-    return <Table key={key} rows={item.rows} />
+    return <Table key={key} rows={item.rows} locale={locale} />
   }
 
   /* The lines of a paragraph are kept as they were written and broken by the
      style sheet, not by markup: an address and a signature need their breaks,
      and a paragraph that is one text node stays one string for the reader and
      for search. */
-  return <p key={key}>{inline(item.lines.join('\n'))}</p>
+  return <p key={key}>{inline(item.lines.join('\n'), locale)}</p>
 }
 
 /** Renders one body of written text. */
 export function Markdown({ text }: { text: string }) {
-  return <div className="markdown">{parseBlocks(text).map(block)}</div>
+  const { locale } = useI18n()
+
+  return (
+    <div className="markdown">
+      {parseBlocks(text).map((item, key) => block(item, key, locale))}
+    </div>
+  )
 }

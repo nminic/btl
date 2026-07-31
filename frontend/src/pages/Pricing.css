@@ -46,3 +46,25 @@
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+/* The row a reader is being asked to pay today. Not the gold of the podium: this
+   is where you are, not something won. */
+.pricing__now {
+  background: var(--surface-hover);
+}
+
+.pricing__badge {
+  margin-inline-start: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.pricing__join {
+  margin: 1.25rem 0 0;
+}

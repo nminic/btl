@@ -59,26 +59,42 @@
   --control-border: #7d8798;
   --accent: var(--blue-700);
 
-  /* The ring on a profile, one colour per race length, shortest to longest.
+  /* One colour per race length: blue, green, yellow, orange, red, from the
+   * shortest to the longest (owner, 31.07.2026). Five hues rather than five
+   * steps of one, because these are five kinds and not five degrees, and because
+   * the same colour has to work as a dot beside a number in a table as well as a
+   * slice of a ring.
    *
-   * They live here rather than in the component so each theme can carry its own,
-   * which is the whole point: the old ramp ran into the dark background and
-   * three of its five segments sat under 2:1 against it.
+   * Per theme, since a colour that reads on a white card disappears on a dark
+   * one. Every one of the ten clears 4,5:1 against its own surface and 4,5:1
+   * against the page behind it.
    *
-   * Each colour clears 3:1 against the surface it is drawn on, which is what
-   * makes a segment visible. Adjacent segments do not, and cannot: five steps
-   * each 3:1 from the next would need a span of eighty one to one, and no hue
-   * has that much room. It is not needed either, since every segment is named by
-   * a label with a line running to it, so no reading of this chart rests on
-   * telling two blues apart. */
-  --chart-1: #4a7fd6;
-  --chart-2: #1f5bb5;
-  --chart-3: #123f88;
-  --chart-4: #0a2a5e;
-  --chart-5: #06182f;
+   * Two neighbours differ by hue and barely by lightness, which is why nothing is
+   * ever left to the colour alone: the ring names the length on hover, and in the
+   * table the dot stands beside the distance that already says which length it
+   * is. */
+  --length-short: #1a63c4;
+  --length-half: #127a48;
+  --length-long: #8a6a08;
+  --length-marathon: #b8531a;
+  --length-ultra: #c0362b;
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
   --gold-text: var(--gold-600);
+  /* A gold disc carrying an icon. Both halves flip with the theme, because the
+     disc is the only edge the control has and it has to clear 3:1 against the
+     card behind it (WCAG 2.2 SC 1.4.11), while the icon inside has to clear 3:1
+     against the disc. Light: gold-600 on white is 5,53:1 and white on it the
+     same. Dark: gold-400 on the card is 8,1:1 and the dark ink on it 6,5:1.
+     Gold-400 on a white card would have been 2,14:1, which is why the light
+     theme takes the deeper one. */
+  --gold-button: var(--gold-600);
+  --gold-button-ink: var(--white);
+  /* Hover moves away from the card, not towards it: deeper on the light theme,
+     brighter on the dark one. Reaching for the next step of the gold scale in
+     both themes would have taken the light one to 3,0:1, which is the threshold
+     and not a margin. */
+  --gold-button-hover: #6b510e;
   --up: #1a7f4b;
   --down: #b3402f;
   /* Removing something. The same values as --down, which is a fall in the
@@ -107,14 +123,17 @@
     --border: #26364f;
     --control-border: #5a6c8f;
     --accent: #5b93ec;
-    --chart-1: #d7e6fd;
-    --chart-2: #a9c9f8;
-    --chart-3: #7aa8f0;
-    --chart-4: #4f86e2;
-    --chart-5: #2f62c4;
+    --length-short: #5b9cf0;
+    --length-half: #3fc27f;
+    --length-long: #e3c04a;
+    --length-marathon: #f0904a;
+    --length-ultra: #f4726a;
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
     --gold-text: var(--gold-300);
+    --gold-button: var(--gold-400);
+    --gold-button-ink: #3a2a02;
+    --gold-button-hover: var(--gold-300);
     --up: #4ec98a;
     --down: #ff8a72;
     --danger: #ff8a72;
@@ -132,14 +151,17 @@
   --border: #26364f;
   --control-border: #5a6c8f;
   --accent: #5b93ec;
-  --chart-1: #d7e6fd;
-  --chart-2: #a9c9f8;
-  --chart-3: #7aa8f0;
-  --chart-4: #4f86e2;
-  --chart-5: #2f62c4;
+  --length-short: #5b9cf0;
+  --length-half: #3fc27f;
+  --length-long: #e3c04a;
+  --length-marathon: #f0904a;
+  --length-ultra: #f4726a;
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
   --gold-text: var(--gold-300);
+  --gold-button: var(--gold-400);
+  --gold-button-ink: #3a2a02;
+  --gold-button-hover: var(--gold-300);
   --up: #4ec98a;
   --down: #ff8a72;
   --danger: #ff8a72;

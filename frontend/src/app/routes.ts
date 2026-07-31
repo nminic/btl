@@ -156,7 +156,7 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: 'kalendar/:slug', seoKey: 'event' },
   { path: 'tim/:slug', seoKey: 'team' },
   { path: 'liga/:slug', seoKey: 'league' },
-  { path: 'liga/:slug/propozicije', seoKey: 'leagueRules' },
+  { path: 'liga/:slug/rezultati', seoKey: 'leagueResults' },
   /* Generic on purpose: the subject of a message is personal data and must not
    * end up in a browser tab, in history or in a shared link (PDL P23). */
   { path: 'poruke/:id', seoKey: 'message' },

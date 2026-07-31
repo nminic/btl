@@ -4,7 +4,11 @@ import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
-  it('lays the widgets out in the order the rulebook fixes', async () => {
+  /* Two thirds of standing and prose against one third of figures and things to
+     do (owner, 31.07.2026). The reading order is the left column whole and then
+     the right one, which is also the order on a phone, where the two columns
+     become one. */
+  it('lays the page out in two columns, the boards first and the figures beside them', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
@@ -17,16 +21,47 @@ describe('Home', () => {
       .map((heading) => heading.textContent)
 
     expect(headings).toEqual([
+      'Top 10 muškarci',
+      'Top 10 žene',
       'Reč predsednika',
       expect.stringContaining('Sezona'),
       'Priprema, pozor, SAD!',
-      expect.stringContaining('Članarina za BTL'),
-      'Top 10 muškarci',
-      'Top 10 žene',
       'BTL kalkulator',
-      'Kako radi BTL u tri koraka',
-      'Zajednica u brojkama',
+      expect.stringContaining('Članarina za BTL'),
     ])
+  })
+
+  /* Whose season it is, counted the way every other widget on this page counts
+     it (PDL P11): a member whose fee has run out is not in the season now, so
+     the count of members is the count of the field and not of everybody the
+     league has ever had. The data has 32 members and 31 of them active, which is
+     the whole point of that one difference. */
+  it('counts the members of the running season, not everybody there has ever been', async () => {
+    renderAt('/sr')
+
+    /* Read after the number has stopped moving, not the first time it says 31.
+       The counters unroll from zero, so every number below the target is a frame
+       on the way there: a test that catches 31 in flight passes just as happily
+       when the target is 32. Waiting for the row to say 31 and then waiting out
+       the rest of the nine hundred milliseconds is what makes this about the
+       number rather than about a moment. */
+    await screen.findByText(/^31 član$/, {}, { timeout: 4000 })
+    await new Promise((settle) => setTimeout(settle, 1000))
+
+    // 32 members in the data, 31 of them active. Which of the two this says is
+    // the whole of PDL P11 on the front page.
+    expect(screen.getByText(/^31 član$/)).toBeVisible()
+  })
+
+  /* Two blocks went out (owner, 31.07.2026): one explained on the front page
+     what the written pages explain properly, the other counted members, which is
+     now the first row of the counters. */
+  it('no longer explains itself in three steps, nor counts the community twice', async () => {
+    renderAt('/sr')
+
+    await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+    expect(screen.queryByRole('heading', { name: /Kako radi BTL/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Zajednica u brojkama' })).not.toBeInTheDocument()
   })
 
   it('names itself for a screen reader without showing the name again', async () => {
@@ -123,7 +158,7 @@ describe('Home', () => {
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {
     renderAt('/sr')
 
-    await screen.findByRole('heading', { name: 'Zajednica u brojkama' })
+    await screen.findByRole('heading', { name: 'Reč predsednika' })
     expect(screen.queryByRole('heading', { name: 'Vesti' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Sponzor dana' })).not.toBeInTheDocument()
   })

@@ -55,7 +55,7 @@ describe('News', () => {
     id: 'a',
     date: '2026-07-20',
     titleKey: 'home.news',
-    textKey: 'home.newest',
+    textKey: 'home.seeCalendar',
   }
 
   it('shows nothing at all when nothing is fresh', () => {
@@ -100,8 +100,8 @@ describe('Sponsor', () => {
 })
 
 describe('TopTen', () => {
-  // Four, so that the fourth row is not on the podium and both sides of that
-  // decision are exercised.
+  // Four, so the board is short of its ten and the empty places have to be
+  // exercised as well as the full ones.
   const competitors = [
     competitor('000001'),
     competitor('000002'),
@@ -109,7 +109,9 @@ describe('TopTen', () => {
     competitor('000005'),
   ]
 
-  it('shows points once the season has been run', () => {
+  /* The board in the shape the old portal had (owner, 31.07.2026): the leader
+     large beside the heading, the other nine as a three by three block. */
+  it('puts the leader above the rest, with the points they lead by', () => {
     renderWidget(
       <TopTen
         competitors={competitors}
@@ -124,20 +126,72 @@ describe('TopTen', () => {
       />,
     )
 
-    const list = screen.getByRole('list')
-    const rows = within(list).getAllByRole('listitem')
-    expect(rows).toHaveLength(4)
-    expect(rows.filter((row) => row.className === 'podium')).toHaveLength(3)
-    expect(within(list).getByText('30,00')).toBeVisible()
+    expect(screen.getByText(/^30,00 BTL poena$/)).toBeVisible()
+    // Every number on this page carries its unit (PDL P28a): the leader's total
+    // stands alone now, where before it was one of ten in a column.
+    expect(screen.getByText('1.')).toBeVisible()
     expect(screen.queryByText(/ovo nije poredak/)).not.toBeInTheDocument()
+  })
+
+  /* The ten places are the height of the widget, so the two boards standing side
+     by side line up in January as well as in December. Two of the four here have
+     raced and the other two hold places behind them (PDL P14), which leaves six
+     places drawn and empty. An empty place is out of the reading entirely, so
+     the two counts are what tells them apart. */
+  it('keeps its ten places, and tops them up with members who have not raced', () => {
+    renderWidget(
+      <TopTen
+        competitors={competitors}
+        results={[result('000001', 30), result('000002', 20)]}
+        season={2027}
+        gender="M"
+      />,
+    )
+
+    const block = screen.getByRole('list')
+
+    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
+    expect(within(block).getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByText(/Preostala mesta drže članovi/)).toBeVisible()
+  })
+
+  /* The circle is the face until there are photographs. Two things it has to
+     do: carry that person's initials, and carry a colour that is theirs and not
+     everybody's. Both survived being taken away. */
+  it('gives each face its own initials and its own colour', () => {
+    const { container } = renderWidget(
+      <TopTen competitors={competitors} results={[]} season={2027} gender="M" />,
+    )
+
+    // Only the ones with somebody in them: an empty place carries no colour.
+    const faces = [
+      ...container.querySelectorAll('.portrait:not(.portrait--empty)'),
+    ] as HTMLElement[]
+
+    // "Ime" and the member number, which is what the fixture calls people.
+    expect(faces[0].textContent).toBe('I0')
+    expect(new Set(faces.map((one) => one.style.getPropertyValue('--face-hue'))).size).toBe(
+      competitors.length,
+    )
   })
 
   it('lists who has joined, and says so, before the first race', () => {
     renderWidget(<TopTen competitors={competitors} results={[]} season={2027} gender="M" />)
 
-    // Everyone who joined, in the order they joined, and no points column.
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(screen.getByRole('list')).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
     expect(screen.getByText(/ovo nije poredak/)).toBeVisible()
+    // Not the other kind of incomplete: nobody has raced, so no place is
+    // being held behind anybody.
+    expect(screen.queryByText(/Preostala mesta drže/)).not.toBeInTheDocument()
+  })
+
+  /* Nobody of that gender at all is not the same fact as nobody scoring yet, and
+     the board that says the wrong one sends a reader looking for a fault. */
+  it('says so when there is nobody on this board at all', () => {
+    renderWidget(<TopTen competitors={[]} results={[]} season={2027} gender="F" />)
+
+    expect(screen.getByText(/još nema nikoga/)).toBeVisible()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 })
 
@@ -151,19 +205,43 @@ describe('Counters', () => {
     points: 42,
   }
 
-  it('unrolls the numbers, and lands on the real ones', async () => {
-    renderWidget(<Counters totals={totals} title="Sezona 2027." />)
+  it('lands on the real numbers, each carrying its own unit', () => {
+    /* With the unrolling switched off. Six counters over nine hundred
+       milliseconds of real time made this the one test in the suite that waited
+       on a clock, and under load it failed while everything it checks was
+       right. That the numbers do unroll is the hook's own test. */
+    renderWidget(<Counters totals={totals} title="Sezona 2027." countMs={0} />)
 
-    expect(await screen.findByText(/1\.234,00 km/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.getByText(/1\.234,00 km/)).toBeVisible()
     // Every row carries its unit now, and time on the course is a quantity
     // rather than a clock reading (owner, 29.07.2026).
     // Each label sits in the same pill as its number, so these match on a part
     // of the line rather than the whole of it.
-    expect(await screen.findByText(/10 h 00' 00''/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/3 trke/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/5\.678 m\+/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/5\.000 m-/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/42,00 BTL poena/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.getByText(/10 h 00' 00''/)).toBeVisible()
+    // What is counted is results, not races: two members in one race are two of
+    // these (owner, 31.07.2026).
+    expect(screen.getByText(/3 rezultata/)).toBeVisible()
+    expect(screen.getByText(/5\.678 m\+/)).toBeVisible()
+    expect(screen.getByText(/5\.000 m-/)).toBeVisible()
+    expect(screen.getByText(/42,00 BTL poena/)).toBeVisible()
+  })
+
+  /* The front page counts members on top of the season, and nothing else does:
+     on a team and on a profile the number of people is one or is the heading
+     (owner, 31.07.2026). */
+  it('counts the members of the league when it is given them', async () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." members={41} />)
+
+    expect(await screen.findByText(/41 član/, {}, { timeout: 3000 })).toBeVisible()
+  })
+
+  it('counts no members where nobody hands them in', () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." countMs={0} />)
+
+    // The rest of the rows have landed, so the missing one is missing rather
+    // than merely late.
+    expect(screen.getByText(/3 rezultata/)).toBeVisible()
+    expect(screen.queryByText(/član/)).not.toBeInTheDocument()
   })
 
   it('gives the numbers straight away to anyone who asked for less motion', () => {
@@ -217,6 +295,9 @@ describe('TopByCategory', () => {
     const user = setupUser()
     renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />)
 
+    expect(
+      screen.getByRole('button', { name: 'Zaustavi smenjivanje' }).querySelectorAll('svg > *'),
+    ).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Zaustavi smenjivanje' }))
     const stopped = screen.getByText(/^Najviše/).textContent
 
@@ -228,6 +309,13 @@ describe('TopByCategory', () => {
        it: the two together announced "Nastavi smenjivanje, pressed", which is
        heard as the opposite of what is true. */
     expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
+    /* And it wears the mark of what it will do: a triangle while it is stopped,
+       two bars while it is turning (owner, 31.07.2026). Held on the drawing
+       itself, because the name alone would pass on a button with no icon in it
+       at all, which is what this button now is apart from the icon. */
+    expect(
+      screen.getByRole('button', { name: 'Nastavi smenjivanje' }).querySelectorAll('svg > *'),
+    ).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).not.toHaveAttribute(
       'aria-pressed',
     )

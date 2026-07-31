@@ -1,8 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
+import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import type { RaceCategory } from '../data/types'
 import { CategoryDonut } from './CategoryDonut'
-import { BAND, CX, CY, RADIUS, placeCallouts, roomForName } from './donutLayout'
 
 function renderDonut(counts: Map<RaceCategory, number>) {
   render(
@@ -60,18 +60,6 @@ describe('CategoryDonut', () => {
     expect(screen.queryByText('trke')).not.toBeInTheDocument()
   })
 
-  it('ties every name to the middle of its own slice with a line', () => {
-    renderDonut(
-      new Map<RaceCategory, number>([
-        ['short', 3],
-        ['marathon', 1],
-      ]),
-    )
-
-    // One line per name, and no line without a name.
-    expect(document.querySelectorAll('.donut__leader')).toHaveLength(2)
-  })
-
   it('survives a runner with nothing at all', () => {
     renderDonut(new Map())
 
@@ -79,7 +67,6 @@ describe('CategoryDonut', () => {
     // named: there is no length to name.
     expect(screen.getByText('0')).toBeInTheDocument()
     expect(document.querySelectorAll('.donut__seg')).toHaveLength(0)
-    expect(document.querySelectorAll('.donut__leader')).toHaveLength(0)
     expect(screen.queryAllByRole('rowheader')).toHaveLength(1)
     expect(
       within(screen.getByRole('table')).getByRole('rowheader', { name: 'Zbirno' }).parentElement,
@@ -98,78 +85,70 @@ describe('CategoryDonut', () => {
   })
 })
 
-describe('placeCallouts', () => {
-  it('puts a name on the side of the ring its slice is on', () => {
-    // Half the ring each: the first fills the right side from twelve o'clock,
-    // the second fills the left.
-    const placed = placeCallouts([
-      { one: 'short', value: 1, share: 0.5, offset: 0 },
-      { one: 'long', value: 1, share: 0.5, offset: 0.5 },
-    ])
+describe('pointing at a slice', () => {
+  it('grows the one under the pointer and leaves the rest alone', async () => {
+    const user = setupUser()
+    renderDonut(
+      new Map<RaceCategory, number>([
+        ['short', 3],
+        ['marathon', 1],
+      ]),
+    )
 
-    expect(placed.map((one) => one.right)).toEqual([true, false])
-    expect(placed[0].nameX).toBeGreaterThan(placed[1].nameX)
+    const slices = [...document.querySelectorAll('.donut__seg')]
+    const before = slices.map((one) => one.getAttribute('stroke-width'))
+
+    await user.hover(slices[0])
+
+    const during = [...document.querySelectorAll('.donut__seg')].map((one) =>
+      one.getAttribute('stroke-width'),
+    )
+
+    /* It grows on both edges, so the ring keeps its middle and the number in it
+       does not jump. */
+    expect(Number(during[0])).toBeGreaterThan(Number(before[0]))
+    expect(during[1]).toBe(before[1])
+
+    await user.unhover(slices[0])
+    expect(
+      [...document.querySelectorAll('.donut__seg')].map((one) =>
+        one.getAttribute('stroke-width'),
+      ),
+    ).toEqual(before)
   })
 
-  it('moves two names apart when their slices are too thin to keep them apart', () => {
-    /* Two slivers next to each other at the top. Their middles are within a
-       degree of one another, so without nudging both names are drawn on the same
-       line and neither can be read. */
-    const placed = placeCallouts([
-      { one: 'short', value: 1, share: 0.01, offset: 0.24 },
-      { one: 'long', value: 1, share: 0.01, offset: 0.25 },
-    ])
+  it('says which length it is, and how many', () => {
+    renderDonut(new Map<RaceCategory, number>([['marathon', 4]]))
 
-    expect(placed[0].right).toBe(true)
-    expect(placed[1].right).toBe(true)
-    expect(Math.abs(placed[0].bendY - placed[1].bendY)).toBeGreaterThanOrEqual(15)
+    // The browser's own tooltip, and what a screen reader reads off a shape.
+    expect(document.querySelector('.donut__seg title')?.textContent).toBe('Maraton: 4')
   })
 
-  it('leaves names alone when the slices already keep them apart', () => {
-    const placed = placeCallouts([
-      { one: 'short', value: 1, share: 0.25, offset: 0 },
-      { one: 'long', value: 1, share: 0.25, offset: 0.25 },
-    ])
+  /* A tooltip is a thing a finger cannot open, and the ring has no names on it
+     any more, so on a telephone it was five unnamed colours (WCAG 2.2 SC 1.4.1).
+     A touch chooses a slice and the middle of the ring answers. */
+  it('answers in the middle of the ring, so a finger can ask too', async () => {
+    const user = setupUser()
+    renderDonut(
+      new Map<RaceCategory, number>([
+        ['short', 3],
+        ['marathon', 1],
+      ]),
+    )
 
-    /* Both on the right, each filling a quarter of the ring, so their middles
-       are at one and five o'clock and neither name is moved. The exact heights
-       are what has to be asserted: "further apart than the minimum" is true of
-       any pair this function has pushed apart, so it would pass on a version
-       that moved names it had no business moving. */
-    expect(placed[0].bendY).toBeCloseTo(44.85, 1)
-    expect(placed[1].bendY).toBeCloseTo(155.15, 1)
-  })
+    // Left alone it is the total and the word for races.
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('trke')).toBeInTheDocument()
 
-  it('keeps the bend clear of the band after moving a name', () => {
-    /* Two slivers at twelve o'clock, which is where this actually goes wrong.
-       Their bends start almost straight above the centre, so once the second
-       name is pushed down its bend has to move sideways to stay outside the
-       band. Slivers at three o'clock, which is what this test used to ask
-       about, are already far enough out sideways to pass whatever the code
-       does: with the old formula restored the whole suite still went green. */
-    const placed = placeCallouts([
-      { one: 'short', value: 1, share: 0.01, offset: 0 },
-      { one: 'long', value: 1, share: 0.01, offset: 0.01 },
-    ])
+    await user.pointer({ target: document.querySelectorAll('.donut__seg')[1], keys: '[TouchA]' })
 
-    const outer = RADIUS + BAND / 2
+    /* Chosen, it is that length and its own count. Read off the drawing and not
+       off the page, because the name of the length also stands in the table
+       underneath, which is where a screen reader reads it. */
+    const middle = document.querySelector('.donut__unit')
+    const number = document.querySelector('.donut__total')
 
-    expect(placed[1].bendY - placed[0].bendY).toBeCloseTo(15, 5)
-
-    for (const one of placed) {
-      expect(Math.hypot(one.bendX - CX, one.bendY - CY)).toBeGreaterThanOrEqual(outer)
-      // And the line still starts where the owner asked, on the middle of the
-      // slice itself.
-      expect(Math.hypot(one.x - CX, one.y - CY)).toBeCloseTo(RADIUS, 5)
-    }
-  })
-
-  it('leaves a name more room than the longest one can take', () => {
-    /* The widest the data can produce is "129 Ultramaraton", which measures
-       ninety-four units in Segoe UI and ninety-three in Arial, the two ends of
-       the stack Windows resolves. This is the guard on the number that decides
-       it: it has been set too tight twice already, and when it is too tight the
-       drawing clips the name without a sound. */
-    expect(roomForName()).toBeGreaterThanOrEqual(100)
+    expect(middle?.textContent).toBe('Maraton')
+    expect(number?.textContent).toBe('1')
   })
 })
