@@ -30,6 +30,7 @@ const competitor = (memberNumber: string): Competitor => ({
   active: true,
   membershipBasis: 'payment',
   teamId: null,
+  teamSince: null,
   bio: '',
 })
 
@@ -38,6 +39,7 @@ const result = (memberNumber: string, points: number): Result => ({
   memberNumber,
   raceId: 'r',
   eventName: 'Trka',
+  eventSlug: 'trka',
   date: '2027-05-01',
   distanceKm: 10,
   ascentM: 0,

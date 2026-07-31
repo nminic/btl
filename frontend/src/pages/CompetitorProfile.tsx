@@ -1,15 +1,10 @@
 import { useMemo } from 'react'
-import { useParams, useSearchParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
-import {
-  CATEGORIES,
-  resultsOf,
-  seasonsWithResults,
-  totalsOf,
-} from '../data/derive'
+import { CATEGORIES, resultsOf, seasonsWithResults, totalsOf } from '../data/derive'
 import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
@@ -52,17 +47,68 @@ function Biography({ text }: { text: string }) {
 }
 
 /**
+ * The length filter, as one row of six rather than a list that has to be opened.
+ *
+ * Two clicks became one (owner, 31.07.2026), and the row takes the same height
+ * the closed select took, so nothing below it moved. There are exactly six and
+ * there will only ever be six, which is what makes this shape safe: a filter
+ * with an open-ended set of values could not be laid out flat.
+ *
+ * Each one carries two names: the length as the rest of the portal says it, and
+ * the short form that fits on a telephone, where six controls have to share
+ * three hundred and sixty pixels. Both are always read out and only one is ever
+ * on screen, which the stylesheet decides. Hiding the other one from the reading
+ * as well would leave the control with no name at all on the width where it is
+ * used most.
+ */
+function LengthFilter({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const { t } = useI18n()
+  const options = [
+    { key: ALL, full: t('profile.allLengths'), short: t('profile.lengthsShort.all') },
+    ...CATEGORIES.map((one) => ({
+      key: one,
+      full: t(`category.${one}`),
+      short: t(`profile.lengthsShort.${one}`),
+    })),
+  ]
+
+  return (
+    <div className="profile__lengths" role="group" aria-label={t('profile.length')}>
+      {options.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          className={
+            value === option.key ? 'profile__length profile__length--on' : 'profile__length'
+          }
+          aria-pressed={value === option.key}
+          onClick={() => onChange(option.key)}
+        >
+          <span className="profile__length-full">{option.full}</span>{' '}
+          <span className="profile__length-short">{option.short}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
  * The profile, as one page of two parts (the design decision of 30.07.2026).
  *
- * This is the first: who the person is, then one season control, then the three
- * cards that answer how much and of what kind and who they are, then the races.
+ * This is the first: who the person is, then one row of three answering how much
+ * and of what kind and who they are, then the races.
  *
- * One season, chosen once, above everything it governs. It used to be one of two
- * filters standing side by side over the widgets, with the second narrowing them
- * by race length as well: a donut narrowed to marathons is a chart with one
- * segment, and a scoreboard quietly showing marathon kilometres beside a season
- * label is a number meaning whatever the reader guesses. Length now narrows the
- * table and nothing else, and it lives beside the table.
+ * The season is chosen once and governs the whole of this part, and since
+ * 31.07.2026 it is chosen inside the control that names the part rather than on a
+ * rule of its own below it. That rule cost a whole band of the screen and a
+ * sentence underneath explaining what it governed, which is a sentence no screen
+ * should need: a setting that sits inside the thing it sets explains itself.
  */
 function ProfileBody({
   competitor,
@@ -86,14 +132,7 @@ function ProfileBody({
      (owner's spec, 30.07.2026). Somebody with two hundred and seventy-seven
      results opened on all two hundred and seventy-seven, which is twenty-three
      screens on a telephone, and the counters above them were career totals under
-     a heading that says the season. All seasons is one choice away.
-
-     Simply the first of the seasons they raced, which are newest first. It was
-     `defaultSeason`, which asks which season the *rankings* should open on and
-     decides it by how big the field is; handed one person's results the field is
-     one member in every season, so it never took either of its branches and
-     came back with the newest only because the results happen to be sorted that
-     way and Array.sort is stable. */
+     a heading that says the season. All seasons is one choice away. */
   const opensOn = seasons[0]
   const fallback = opensOn === undefined ? ALL : String(opensOn)
 
@@ -104,8 +143,9 @@ function ProfileBody({
      back, and the comparison is on the string the option carries, so `02010` is
      not quietly taken for 2010.
 
-     The length has no such treatment: an unknown length is nothing a select can
-     offer and nothing a table can narrow by, so it is ignored. */
+     The length has no such treatment: an unknown length is nothing the row of
+     six can show as chosen and nothing a table can narrow by, so it is
+     ignored. */
   const asked = params.get('sezona')
   const season = asked === ALL || (asked !== null && /^\d{4}$/.test(asked)) ? asked : fallback
   const askedLength = params.get('duzina')
@@ -149,39 +189,22 @@ function ProfileBody({
     setParams(merged)
   }
 
-
   return (
     <div className="profile profile--competitor">
       <ProfileHead competitor={competitor} team={team} />
-      <ProfileParts memberNumber={competitor.memberNumber} />
-
-      {/* Full width and ruled off, so it reads as a control over the page rather
-          than as one belonging to the card nearest it. That is the whole
-          difficulty of one filter governing two widgets and a table. */}
-      <div className="profile__controls">
-        <label className="rankings__field">
-          <span>{t('rankings.season')}</span>
-          <select value={season} onChange={(event) => change('sezona', event.target.value, fallback)}>
-            <option value={ALL}>{t('profile.allTime')}</option>
-            {options.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="profile__scope">
-          {season === ALL ? t('profile.allTimeScope') : t('profile.seasonScope')}
-        </p>
-      </div>
+      <ProfileParts
+        memberNumber={competitor.memberNumber}
+        season={{
+          options,
+          value: season,
+          onChange: (value) => change('sezona', value, fallback),
+        }}
+      />
 
       <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
-        <Counters totals={totals} title={t('profile.stats')} />
+        <Counters totals={totals} races={false} />
 
-        <section className="profile__card profile__card--donut" aria-labelledby="profile-donut">
-          <h2 className="profile__card-title" id="profile-donut">
-            {t('profile.byCategory')}
-          </h2>
+        <section className="profile__card profile__card--donut">
           <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />
         </section>
 
@@ -193,20 +216,7 @@ function ProfileBody({
           {t('profile.results')} <span className="profile__count">{shown.length}</span>
         </h2>
 
-        <div className="profile__list-controls">
-          <label className="rankings__field">
-            <span>{t('profile.length')}</span>
-            <select value={length} onChange={(event) => change('duzina', event.target.value, ALL)}>
-              <option value={ALL}>{t('profile.allLengths')}</option>
-              {CATEGORIES.map((one) => (
-                <option key={one} value={one}>
-                  {t(`category.${one}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-        </div>
+        <LengthFilter value={length} onChange={(value) => change('duzina', value, ALL)} />
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">
@@ -252,7 +262,13 @@ function ProfileBody({
                 {shown.map((result) => (
                   <tr key={result.id}>
                     <td>{formatShortDate(result.date, locale)}</td>
-                    <td>{result.eventName}</td>
+                    {/* The event, not just its name (owner, 31.07.2026). Somebody
+                        reading a result wants the race it came out of, and until
+                        now the only way there was to guess the date in the
+                        calendar. */}
+                    <td>
+                      <Link to={`/${locale}/kalendar/${result.eventSlug}`}>{result.eventName}</Link>
+                    </td>
                     <td>{t(`category.${result.category}`)}</td>
                     <td className="table__hide-phone">
                       {formatNumber(result.distanceKm, locale, 2)}

@@ -19,7 +19,7 @@ describe('the biography, cut to fit beside the widgets', () => {
     const long = `${'reč '.repeat(200)}kraj`
     const cut = shortBio(long)
 
-    expect(cut.length).toBeLessThanOrEqual(601)
+    expect(cut.length).toBeLessThanOrEqual(361)
     expect(cut.endsWith('…')).toBe(true)
     // The character before the ellipsis is the end of a word, not half of one.
     expect(cut.slice(-2, -1)).not.toBe(' ')
@@ -31,7 +31,33 @@ describe('the biography, cut to fit beside the widgets', () => {
     // else might, and the layout still has to survive it.
     const wall = 'a'.repeat(900)
 
-    expect(shortBio(wall)).toHaveLength(601)
+    expect(shortBio(wall)).toHaveLength(361)
+  })
+
+  it('cuts the long one in the data, so the third card stays level with the other two', async () => {
+    /* The rotation hands out nothing longer than two hundred and thirty seven
+       characters, so until 000009 was given a long one the limit had nothing to
+       act on and the card that has to finish where the two beside it finish was
+       never once asked to. Measured in the browser at the limit: all three cards
+       come to the same height and the words do not spill. */
+    renderAt('/sr/takmicar/000009')
+
+    const card = await screen.findByRole('heading', { name: 'Svojim rečima' })
+    const text = card.parentElement!.textContent!
+
+    expect(text).toContain('…')
+    expect(text.length).toBeLessThan(400)
+  })
+
+  it('now cuts a biography that used to fit', () => {
+    /* The limit came down from six hundred to three hundred and sixty when the
+       widget beside it lost its heading and a row (owner, 31.07.2026). A text
+       right on the old limit must now be cut, or the card grows past the two it
+       stands beside and the row of three stops being a row. */
+    const wasFine = 'reč '.repeat(150).trim()
+
+    expect(wasFine.length).toBeGreaterThan(361)
+    expect(shortBio(wasFine).endsWith('…')).toBe(true)
   })
 })
 
@@ -79,21 +105,88 @@ describe('clearing the filters', () => {
     await user.click(screen.getByRole('button', { name: 'Poništi filtere' }))
 
     expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
-    expect((screen.getByLabelText('Dužina') as HTMLSelectElement).value).toBe('sve')
+    // The length is a row of six now, and the one that is on says which.
+    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
-describe('the ring beside its legend', () => {
-  it('breaks on the width of the box it stands in, not on the width of the window', () => {
-    /* Inside a 316px column on a wide desktop a viewport query insisted the ring
-       sat beside a legend that needs 194px, and the two collided. jsdom computes
-       no container queries, so the rule is read as text, the way the badge art
-       is tested (ADL A7). */
+describe('the length, as one row of six', () => {
+  it('narrows the table on one click and says which one is on', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/takmicar/000002?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Rezultati' })
+    const all = within(table).getAllByRole('row').length
+
+    await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
+
+    const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
+    expect(narrowed.length).toBeLessThan(all)
+    expect(narrowed.length).toBeGreaterThan(1)
+    expect(screen.getByRole('button', { name: 'Polumaraton 21,1 km' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    // One click, and the choice is in the address so the link carries it.
+    expect(router.state.location.search).toContain('duzina=half')
+  })
+
+  it('is named by both of its names, at every width', async () => {
+    renderAt('/sr/takmicar/000002?sezona=sve')
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+
+    /* Both names are always in the reading, and only one of them is on screen.
+       The first attempt hid the long one with `display: none` and the short one
+       with `aria-hidden`, which between them left the control with no accessible
+       name at all below 620px: six unnamed buttons on the width PDL P24 calls
+       the main one. */
+    expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toBeVisible()
+    expect(document.querySelector('.profile__length-short')).not.toHaveAttribute('aria-hidden')
+  })
+
+  it('hides one of the two names by moving it, never by removing it', () => {
+    /* jsdom computes no media queries, so the rule is read as text, the way the
+       badge art and the ring are tested (ADL A7). `display: none` on either name
+       is what would take it out of the reading, and it is the one thing this
+       stylesheet must not do to them. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+
+    /* Matched on the rules themselves rather than on everything after the first
+       mention of one. A slice to the end of the file catches any `display: none`
+       written below it, for any selector at all, and misses one written above. */
+    expect(css).toMatch(/\.profile__length-short\s*\{[^}]*clip-path: inset\(50%\)/)
+    expect(css).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
+    )
+    expect(css).not.toMatch(/\.profile__length-(full|short)\s*\{[^}]*display:\s*none/)
+  })
+})
+
+describe('the line that ties a name to its slice', () => {
+  it('is white on the theme the portal opens in, and readable on the other', () => {
+    /* The owner asked for a white line. White is right where the line ends, on
+       the band itself, but the stretch that crosses the card behind it would be
+       white on white in the light theme. So the colour is a token with a value
+       per theme. jsdom computes no media queries and no custom properties, so
+       the rule is read as text, the way the badge art is tested (ADL A7). */
     const css = readFileSync(join(process.cwd(), 'src/components/CategoryDonut.css'), 'utf-8')
 
-    expect(css).toContain('container-type: inline-size')
-    expect(css).toContain('@container donut (min-width: 380px)')
-    expect(css).not.toContain('@media (min-width: 620px)')
+    expect(css).toContain('--donut-leader: #ffffff')
+    expect(css).toContain("[data-theme='dark']")
+    expect(css).toContain('stroke: var(--donut-leader)')
+    // The ring turns, the text does not.
+    expect(css).toContain('.donut__ring')
+    expect(css).not.toContain('container-type: inline-size')
   })
 })
 
@@ -115,6 +208,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     active: true,
     membershipBasis: 'payment' as const,
     teamId: null,
+    teamSince: null,
     bio: '',
   })
 
@@ -123,6 +217,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     memberNumber,
     raceId: 'r1',
     eventName: 'Proba',
+    eventSlug: 'proba',
     date: '2027-05-01',
     distanceKm: 10,
     ascentM: 0,
@@ -166,11 +261,16 @@ describe('a season in which both a trophy and a plaque were taken', () => {
 describe('the address stays as short as it can be', () => {
   it('drops the season from it again when the season chosen is the one it opens on', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000007?sezona=sve')
+    const { router } = renderAt('/sr/takmicar/000007?sezona=sve')
 
     await screen.findByRole('heading', { level: 1 })
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
     const opensOn = within(season).getAllByRole('option')[1].getAttribute('value')!
+
+    /* The address it started on, which has to be the one that changes. Read from
+       the router: a memory router never touches window.location, so the old
+       assertion against it passed no matter what the screen did. */
+    expect(router.state.location.search).toBe('?sezona=sve')
 
     await user.selectOptions(season, opensOn)
 
@@ -179,7 +279,7 @@ describe('the address stays as short as it can be', () => {
        has to be on the address: the value of the control is the same either
        way. */
     expect(season.value).toBe(opensOn)
-    expect(window.location.search).toBe('')
+    expect(router.state.location.search).toBe('')
   })
 
   it('names the board a place was taken on, in both kinds', async () => {

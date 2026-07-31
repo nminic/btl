@@ -1,15 +1,19 @@
 /** What the biography is cut to, and why that number.
  *
- * The card stands in a column beside the scoreboard and the donut and has to
- * finish where they finish. At the widest the column holds about fifty
- * characters a line and about twelve lines of body text before it is taller than
- * the scoreboard beside it, so six hundred (owner's own preference, 30.07.2026:
- * a limit rather than a scrollbar inside a card).
+ * The card is the third of three across one row and has to finish where the
+ * other two finish (owner, 31.07.2026). What it has to match got shorter in the
+ * same breath: the scoreboard beside it lost its heading and its race count, so
+ * it is five rows now and not six with a title, which is about two hundred and
+ * thirty pixels.
+ *
+ * At the width of a third of the row the card holds about forty characters to a
+ * line, and the card's own heading takes the first thirty pixels, which leaves
+ * room for nine lines. Nine times forty is three hundred and sixty.
  *
  * Cut at a word, never mid-word, and only ever as a safety net: the limit
  * belongs on the field the text is written in, and this is what protects the
  * layout from a row that arrives over length from somewhere else. */
-const BIO_LIMIT = 600
+const BIO_LIMIT = 360
 
 export function shortBio(text: string): string {
   if (text.length <= BIO_LIMIT) {

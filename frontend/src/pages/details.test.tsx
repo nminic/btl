@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
+import { loadResource } from '../data/client'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -49,6 +50,153 @@ describe('TeamDetail', () => {
     await user.click(within(rows[0]).getAllByRole('link')[0])
 
     expect(await screen.findByRole('heading', { name: 'Zbirno, ceo tim' })).toBeVisible()
+  })
+})
+
+describe('EventDetail, the results of the league members who ran it', () => {
+  /* The event used to end at its list of races, so the most natural route on the
+     portal (calendar, day, event) answered nothing about anybody. PDL P10 asked
+     for this outright and the owner asked for it again on 31.07.2026, from the
+     other end: the name of a race on a profile is a link, and this is where it
+     leads. */
+  const RAN = '/sr/kalendar/jagodinski-maraton-2017-04-09'
+
+  it('lists everyone who ran, best first', async () => {
+    renderAt(RAN)
+
+    const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+    const points = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => Number(within(row).getAllByRole('cell')[4].textContent!.replace(',', '.')))
+
+    expect(points.length).toBeGreaterThan(1)
+    expect([...points].sort((left, right) => right - left)).toEqual(points)
+  })
+
+  it('carries a link to the profile of everyone whose membership is live', async () => {
+    renderAt(RAN)
+
+    const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+    const links = within(table).getAllByRole('link')
+
+    expect(links.length).toBeGreaterThan(0)
+    expect(links[0]).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
+  })
+
+  it('keeps the name of a member who has left, and takes away only the link', async () => {
+    /* PDL P11: the profile is hidden as though it did not exist, but the history
+       did happen, so the name stays in the table of the season they raced in.
+       000032 is the one such member in the data, and until now they had no
+       results at all, so this half of the rule had nothing to stand on. */
+    renderAt(RAN)
+
+    const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+    const gone = within(table).getByText('Vojislav Antonijević')
+
+    expect(gone).toBeVisible()
+    expect(within(gone).queryByRole('link')).not.toBeInTheDocument()
+    expect(
+      within(table).queryByRole('link', { name: 'Vojislav Antonijević' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('says nothing at all about results for a race nobody has run yet', async () => {
+    /* The whole of next season is like this, and "no results" on every one of
+       those screens would mean nothing but "not yet". Read on a day before the
+       race and not on whatever day the machine happens to hold: left to the real
+       clock this test quietly turns into its own opposite on 17.01.2027. */
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16', 'visitor', null, undefined, '2026-12-01')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    /* The results have to have arrived before their absence means anything. The
+       heading above comes from the events file; the results are a second request
+       over a file of more than a megabyte, so without this the two assertions
+       below ran before the section could have existed either way, and passed on
+       a version that always drew the sentence. */
+    await act(async () => {
+      await loadResource('results')
+      await loadResource('competitors')
+    })
+
+    expect(screen.queryByRole('table', { name: 'Rezultati članova' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Sa ovog događaja nema unetih rezultata.')).not.toBeInTheDocument()
+  })
+
+  it('says so once that same race is in the past and still has nobody in it', async () => {
+    /* The same event, read on a day after it was run. Then the silence stops
+       being "not yet" and becomes a fact: the league was not there. Read through
+       the simulated clock, which is the only way the portal is allowed to know
+       what day it is (ADL A7). */
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16', 'visitor', null, undefined, '2027-06-01')
+
+    expect(await screen.findByText('Sa ovog događaja nema unetih rezultata.')).toBeVisible()
+    expect(screen.queryByRole('table', { name: 'Rezultati članova' })).not.toBeInTheDocument()
+  })
+
+  it('keeps a result whose member is not on the list, under the number it carries', async () => {
+    /* Nothing in the generated data does this, and nothing should: every result
+       belongs to a member. But the two files arrive in two requests, and a
+       member list that is a moment behind the results would otherwise drop rows
+       from a published table without a word. The row stays, under the one thing
+       the result itself carries. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith('/competitors.json')) {
+        return real(input)
+      }
+
+      const all = (await (await real(input)).json()) as { memberNumber: string }[]
+
+      return new Response(JSON.stringify(all.filter((one) => one.memberNumber !== '000001')), {
+        status: 200,
+      })
+    }) as typeof fetch
+
+    /* Put back whatever happens above, or a failing assertion leaves every later
+       test in this file reading a member list with somebody cut out of it. The
+       stub is installed once when the module loads, not per test. */
+    try {
+      renderAt(RAN)
+
+      const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+
+      expect(within(table).getAllByText('000001').length).toBeGreaterThan(0)
+      expect(within(table).queryByText('Vladan Đurišić')).not.toBeInTheDocument()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('is where the name of a race on a profile leads, and it has that runner in it', async () => {
+    const user = setupUser()
+    renderAt('/sr/takmicar/000001?sezona=sve')
+
+    // Whose profile this is, taken from the screen rather than written down, so
+    // the test does not have to be edited when the generated names change.
+    const runner = (await screen.findByRole('heading', { level: 1 })).textContent!
+    const results = screen.getByRole('table', { name: 'Rezultati' })
+    const first = within(results).getAllByRole('row')[1]
+    const race = within(first).getAllByRole('link')[0]
+    const event = race.textContent!
+
+    await user.click(race)
+
+    expect(await screen.findByRole('heading', { level: 1, name: event })).toBeVisible()
+
+    /* The round trip is the point: the race a person ran leads to the event, and
+       the event names that same person. Anything less would pass on an event
+       table drawn from the wrong race. */
+    const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+    /* All of them: one person can appear twice on one event, having run two of
+       its races, and both rows are theirs. */
+    const mine = within(table).getAllByRole('link', { name: runner })
+
+    expect(mine.length).toBeGreaterThan(0)
+    for (const one of mine) {
+      expect(one).toHaveAttribute('href', '/sr/takmicar/000001')
+    }
   })
 })
 

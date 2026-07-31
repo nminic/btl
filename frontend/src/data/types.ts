@@ -30,6 +30,16 @@ export type Competitor = {
   membershipBasis: MembershipBasis
   teamId: string | null
   /**
+   * The season this member joined their club, which is not the season they
+   * joined the league.
+   *
+   * The profile names both, one after the other, because they answer different
+   * questions and people join a club years after they start racing (owner,
+   * 31.07.2026). Null wherever there is no club, so the two always travel
+   * together and a club can never be named without a year.
+   */
+  teamSince: number | null
+  /**
    * The racing biography, as published.
    *
    * Written by the member and edited and published by a moderator, never handed
@@ -66,6 +76,17 @@ export type Result = {
   memberNumber: string
   raceId: string
   eventName: string
+  /**
+   * The address of the event this race belonged to, carried on the result
+   * itself the way the event's name already is.
+   *
+   * Every race named in a table of results is a link to its event (owner,
+   * 31.07.2026). The alternative was for each such screen to load the races and
+   * the events as well, two files of one and a half and one and two tenths
+   * thousand rows, to print one column. A results endpoint would join the event
+   * anyway, so this is the shape the backend will hand back.
+   */
+  eventSlug: string
   date: string
   distanceKm: number
   ascentM: number

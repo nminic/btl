@@ -1,120 +1,85 @@
+/* The ring, its names and the lines between them are one drawing, so there is
+   no layout left to arrange here: the SVG scales to the width it is given and
+   keeps its own proportions. That is also why the container query that used to
+   decide whether the ring sat beside its legend is gone; there is no legend to
+   sit beside any more. */
+
 .donut-block {
-  display: grid;
-  gap: 1rem;
-  align-items: center;
-}
-
-/* The ring stands beside its legend when the box it is in is wide enough, and
-   above it when it is not. A viewport query cannot answer that: inside a 316px
-   column on a wide desktop it insisted on sitting beside a legend that needs
-   194px and the two collided. jsdom does not compute container queries, so a
-   test reads this file as text (Profile.test.tsx), the way the badge art is
-   tested. */
-.donut-block {
-  container-type: inline-size;
-  container-name: donut;
-}
-
-@container donut (min-width: 380px) {
-  .donut-block {
-    grid-template-columns: auto 1fr;
-  }
-}
-
-.donut-wrap {
-  position: relative;
   width: 100%;
-  max-width: 190px;
-  margin: 0 auto;
-  aspect-ratio: 1 / 1;
 }
 
 .donut {
+  display: block;
   width: 100%;
-  height: 100%;
-  /* Starts at twelve o'clock rather than at three. */
+  height: auto;
+}
+
+/* Only the slices turn. The whole SVG used to, back when it held nothing but
+   the ring; now it holds text, and text on its side is not text. */
+.donut__ring {
   transform: rotate(-90deg);
+  transform-origin: 180px 100px;
 }
 
 .donut__track {
   fill: none;
   stroke: var(--border);
-  stroke-width: 20;
 }
 
 .donut__seg {
   fill: none;
-  stroke-width: 20;
-  transition:
-    opacity var(--fast),
-    stroke-width var(--fast);
 }
 
-.donut__seg--dim {
-  opacity: 0.2;
-}
-
-.donut__center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.donut__center strong {
-  font-size: clamp(1.7rem, 5vw, 2.2rem);
-  line-height: 1;
+.donut__total {
+  font-size: 30px;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  fill: var(--text);
 }
 
-.donut__center span {
-  margin-top: 0.15rem;
-  font-size: 0.7rem;
+.donut__unit {
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--text-muted);
+  fill: var(--text-muted);
 }
 
-.donut__legend {
-  width: 100%;
-  border-collapse: collapse;
+.donut__name {
+  font-size: 12px;
+  fill: var(--text);
 }
 
-.donut__legend th {
-  text-align: left;
-  font-weight: 400;
-  font-size: 0.88rem;
-  padding: 0.3rem 0.5rem 0.3rem 0;
-  white-space: nowrap;
-}
-
-.donut__legend td {
-  text-align: right;
-  padding: 0.3rem 0;
+.donut__value {
   font-weight: 700;
-  font-size: 0.88rem;
 }
 
-.donut__share {
-  color: var(--text-muted);
-  font-weight: 400;
-  padding-left: 0.7rem;
-  width: 1%;
+/* The line that ties a name to the middle of its own slice.
+ *
+ * White, as asked for, and white is right where it matters: the end of every
+ * line lies on the band itself, which is mid to deep blue in both themes. The
+ * stretch that crosses the card behind it is another matter, and on a light card
+ * a white line there is a white line on white. So the token is white in the dark
+ * theme, which is the one the portal opens in, and a slate that reads on the
+ * light one. */
+.donut {
+  --donut-leader: #55637a;
 }
 
-.donut__dot {
-  display: inline-block;
-  width: 0.65rem;
-  height: 0.65rem;
-  border-radius: 3px;
-  margin-right: 0.5rem;
-  vertical-align: -1px;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .donut {
+    --donut-leader: #ffffff;
+  }
 }
 
-.donut__legend tr:hover th {
-  color: var(--text);
-  font-weight: 600;
+:root[data-theme='dark'] .donut {
+  --donut-leader: #ffffff;
+}
+
+.donut__leader {
+  fill: none;
+  stroke: var(--donut-leader);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.75;
 }

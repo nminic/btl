@@ -1,8 +1,9 @@
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
+import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { useEvents, useRaces } from '../data/useResource'
-import { formatDate, formatNumber } from '../i18n/format'
+import { combinePair, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
+import { formatDate, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Profile.css'
 
@@ -47,6 +48,126 @@ function RaceTable({ eventId }: { eventId: string }) {
           </table>
         </div>
       )}
+    </Resource>
+  )
+}
+
+/**
+ * Who from the league ran here, and how it went.
+ *
+ * The event used to end at the list of its races, which made it the one screen
+ * on the portal that answers a question with a question: a visitor arriving from
+ * the calendar to see yesterday's race found the distances and nothing about
+ * anybody. PDL P10 asked for this outright ("na svakoj trci u kalendaru se
+ * istorijski vidi ko ju je istrčao i sa kojim rezultatom"), and the owner asked
+ * for it again on 31.07.2026, from the other end: the name of a race on a
+ * profile is a link, and this is what it should lead to.
+ *
+ * Ordered by points, which is the order that means something in this league. The
+ * result carries the address of its event, so this is a filter and not a join
+ * through the races.
+ *
+ * A name is a link only while the membership is live (PDL P11); the name itself
+ * stays in the table for every season the person raced, because the history did
+ * happen. An event nobody from the league ran gets no section at all rather than
+ * a table saying so: for the whole of next season's calendar that sentence would
+ * be on every screen and would mean nothing but "not yet".
+ */
+function EventResults({ slug, date }: { slug: string; date: string }) {
+  const { locale, t } = useI18n()
+  const today = useToday()
+  const state = combinePair(useResults(), useCompetitors())
+
+  return (
+    <Resource state={state}>
+      {([results, competitors]) => {
+        const ran = results
+          .filter((one) => one.eventSlug === slug)
+          .sort((left, right) => right.points - left.points)
+
+        if (ran.length === 0) {
+          /* A race that has not been run yet gets nothing at all: for the whole
+             of next season's calendar the sentence would be on every screen and
+             would mean only "not yet". A race that has been run and has nobody
+             from the league in it is a fact worth saying, and it is the
+             difference between the portal being empty and the race being
+             unattended. */
+          return date > today ? null : (
+            <>
+              <h2 className="profile__section">{t('event.results')}</h2>
+              <p className="profile__empty">{t('event.noResults')}</p>
+            </>
+          )
+        }
+
+        const byNumber = new Map(competitors.map((one) => [one.memberNumber, one]))
+
+        return (
+          <>
+            <h2 className="profile__section">
+              {t('event.results')} <span className="profile__count">{ran.length}</span>
+            </h2>
+
+            <div className="table-scroll">
+              <table className="table">
+                <caption className="visually-hidden">{t('event.results')}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('event.competitor')}</th>
+                    {/* Both of these used to read "Dužina", one beside the
+                        other: `event.distance` is the word too. The results
+                        table on a profile has had the answer all along, and it
+                        is the kilometres that get the shorter head, because the
+                        length is a name and the kilometres are a number.
+
+                        The length goes with the phone columns as well. Left in,
+                        the table was three hundred and thirty six pixels inside
+                        a box of three hundred and twenty eight, which is the
+                        horizontal scroll PDL P24 forbids on a table. */}
+                    <th scope="col" className="table__hide-phone">
+                      {t('profile.columns.length')}
+                    </th>
+                    <th scope="col" className="table__hide-phone">
+                      {t('profile.columns.distance')}
+                    </th>
+                    <th scope="col">{t('profile.columns.time')}</th>
+                    <th scope="col">{t('profile.columns.points')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ran.map((result) => {
+                    const person = byNumber.get(result.memberNumber)
+                    const name =
+                      person === undefined
+                        ? result.memberNumber
+                        : `${person.firstName} ${person.lastName}`
+
+                    return (
+                      <tr key={result.id}>
+                        <td>
+                          {person !== undefined && person.active ? (
+                            <Link to={`/${locale}/takmicar/${result.memberNumber}`}>{name}</Link>
+                          ) : (
+                            name
+                          )}
+                        </td>
+                        <td className="table__hide-phone">
+                          {t(`category.${result.category}`)}
+                        </td>
+                        <td className="table__hide-phone">
+                          {formatNumber(result.distanceKm, locale, 2)}
+                        </td>
+                        <td>{formatDuration(result.seconds)}</td>
+                        <td className="table__points">{formatPoints(result.points, locale)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )
+      }}
     </Resource>
   )
 }
@@ -106,6 +227,8 @@ export function EventDetail() {
               <h2 className="profile__section">{t('event.races')}</h2>
 
               <RaceTable eventId={event.id} />
+
+              <EventResults slug={event.slug} date={event.date} />
             </div>
           </>
         )

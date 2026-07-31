@@ -12,7 +12,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Trčim od 2014. i sve je počelo kao opklada sa bratom da neću izdržati polumaraton. Izdržao sam, pa mi je ostalo.\n\nNajviše volim trail trke do dvadeset kilometara, po Ovčaru i Kablaru, i planinarske akcije koje niko ne meri ali svi pamte.",
-    "teamId": "team-dunav"
+    "teamId": "team-dunav",
+    "teamSince": 2014
   },
   {
     "memberNumber": "000002",
@@ -27,7 +28,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000003",
@@ -42,7 +44,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-vardar"
+    "teamId": "team-vardar",
+    "teamSince": 2018
   },
   {
     "memberNumber": "000004",
@@ -57,7 +60,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Maratonac po opredeljenju, ultramaratonac po nesmotrenosti. Prvih sto kilometara naučilo me je da hodanje nije poraz nego plan.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000005",
@@ -72,7 +76,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-nisava"
+    "teamId": "team-nisava",
+    "teamSince": 2022
   },
   {
     "memberNumber": "000006",
@@ -87,7 +92,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Počela sam da trčim posle druge trudnoće, radi sebe. Danas trčim zbog istog razloga, samo brže.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000007",
@@ -102,7 +108,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-dunav"
+    "teamId": "team-dunav",
+    "teamSince": 2021
   },
   {
     "memberNumber": "000008",
@@ -117,7 +124,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000009",
@@ -131,8 +139,9 @@
     "firstSeason": 2017,
     "active": true,
     "membershipBasis": "honorary",
-    "bio": "Trčim od 2014. i sve je počelo kao opklada sa bratom da neću izdržati polumaraton. Izdržao sam, pa mi je ostalo.\n\nNajviše volim trail trke do dvadeset kilometara, po Ovčaru i Kablaru, i planinarske akcije koje niko ne meri ali svi pamte.",
-    "teamId": "team-vardar"
+    "bio": "Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe. Trčim od 2009. godine, kad me je drug nagovorio da probam peticu na Adi. Prva trka mi je bila katastrofa, ali sam se vratio već sledeće nedelje. Polumaraton sam prvi put istrčao 2011. i od tada me niko nije zaustavio. Maraton je došao 2013. u Beogradu, sa mnogo grešaka i jednim velikim osmehom. Onda su počele planine i shvatio sam da mi asfalt više nije dovoljan. Prvi ultramaraton bio je sto kilometara i naučio me je da hodanje nije poraz. Sada trčim oko trideset trka godišnje, uglavnom po Srbiji i Bosni. Najdraža mi je noćna trka kroz šumu, kad se vidi samo krug od lampe.",
+    "teamId": "team-vardar",
+    "teamSince": 2018
   },
   {
     "memberNumber": "000010",
@@ -147,7 +156,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000011",
@@ -162,7 +172,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-nisava"
+    "teamId": "team-nisava",
+    "teamSince": 2017
   },
   {
     "memberNumber": "000012",
@@ -177,7 +188,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Maratonac po opredeljenju, ultramaratonac po nesmotrenosti. Prvih sto kilometara naučilo me je da hodanje nije poraz nego plan.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000013",
@@ -192,7 +204,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-dunav"
+    "teamId": "team-dunav",
+    "teamSince": 2021
   },
   {
     "memberNumber": "000014",
@@ -207,7 +220,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Počela sam da trčim posle druge trudnoće, radi sebe. Danas trčim zbog istog razloga, samo brže.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000015",
@@ -222,7 +236,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-vardar"
+    "teamId": "team-vardar",
+    "teamSince": 2018
   },
   {
     "memberNumber": "000016",
@@ -237,7 +252,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000017",
@@ -252,7 +268,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Trčim od 2014. i sve je počelo kao opklada sa bratom da neću izdržati polumaraton. Izdržao sam, pa mi je ostalo.\n\nNajviše volim trail trke do dvadeset kilometara, po Ovčaru i Kablaru, i planinarske akcije koje niko ne meri ali svi pamte.",
-    "teamId": "team-nisava"
+    "teamId": "team-nisava",
+    "teamSince": 2017
   },
   {
     "memberNumber": "000018",
@@ -267,7 +284,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000019",
@@ -282,7 +300,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-dunav"
+    "teamId": "team-dunav",
+    "teamSince": 2021
   },
   {
     "memberNumber": "000020",
@@ -297,7 +316,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Maratonac po opredeljenju, ultramaratonac po nesmotrenosti. Prvih sto kilometara naučilo me je da hodanje nije poraz nego plan.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000021",
@@ -312,7 +332,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-vardar"
+    "teamId": "team-vardar",
+    "teamSince": 2020
   },
   {
     "memberNumber": "000022",
@@ -327,7 +348,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Počela sam da trčim posle druge trudnoće, radi sebe. Danas trčim zbog istog razloga, samo brže.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000023",
@@ -342,7 +364,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-nisava"
+    "teamId": "team-nisava",
+    "teamSince": 2017
   },
   {
     "memberNumber": "000024",
@@ -357,7 +380,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000025",
@@ -372,7 +396,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Trčim od 2014. i sve je počelo kao opklada sa bratom da neću izdržati polumaraton. Izdržao sam, pa mi je ostalo.\n\nNajviše volim trail trke do dvadeset kilometara, po Ovčaru i Kablaru, i planinarske akcije koje niko ne meri ali svi pamte.",
-    "teamId": "team-dunav"
+    "teamId": "team-dunav",
+    "teamSince": 2021
   },
   {
     "memberNumber": "000026",
@@ -387,7 +412,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000027",
@@ -402,7 +428,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-vardar"
+    "teamId": "team-vardar",
+    "teamSince": 2020
   },
   {
     "memberNumber": "000028",
@@ -417,7 +444,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Maratonac po opredeljenju, ultramaratonac po nesmotrenosti. Prvih sto kilometara naučilo me je da hodanje nije poraz nego plan.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000029",
@@ -432,7 +460,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "",
-    "teamId": "team-nisava"
+    "teamId": "team-nisava",
+    "teamSince": 2017
   },
   {
     "memberNumber": "000030",
@@ -447,7 +476,8 @@
     "active": true,
     "membershipBasis": "honorary",
     "bio": "Počela sam da trčim posle druge trudnoće, radi sebe. Danas trčim zbog istog razloga, samo brže.",
-    "teamId": null
+    "teamId": null,
+    "teamSince": null
   },
   {
     "memberNumber": "000031",
@@ -462,6 +492,7 @@
     "active": true,
     "membershipBasis": "payment",
     "teamId": "team-dunav",
+    "teamSince": 2027,
     "bio": ""
   },
   {
@@ -477,6 +508,7 @@
     "active": false,
     "membershipBasis": "payment",
     "teamId": null,
+    "teamSince": null,
     "bio": ""
   }
 ]

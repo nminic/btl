@@ -542,6 +542,7 @@
     "organizer": "Organizator",
     "place": "Mesto",
     "races": "Trke",
+    "competitor": "Takmičar",
     "raceName": "Trka",
     "distance": "Dužina",
     "ascent": "Uspon",
@@ -578,8 +579,8 @@
   },
   "profile": {
     "memberSince": "U ligi od {season}.",
+    "inClub": "U klubu {team} od {season}.",
     "honorary": "Počasno članstvo",
-    "team": "Tim",
     "noTeam": "Bez tima",
     "allTime": "Sve sezone",
     "totals": "Zbirno",
@@ -602,12 +603,23 @@
     "notFound": "Ovog takmičara nema.",
     "byCategory": "Trke po dužini",
     "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata.",
-    "racesTotal": "trka",
+    "racesWord": {
+      "one": "trka",
+      "few": "trke",
+      "other": "trka"
+    },
     "stats": "Zbirna statistika",
-    "bio": "Biografija",
+    "bio": "Svojim rečima",
     "length": "Dužina",
     "allLengths": "Sve dužine",
-    "seasonScope": "Sezona se bira jednom i važi za sve na ovom pregledu.",
+    "lengthsShort": {
+      "all": "Sve",
+      "short": "Kratke",
+      "long": "Duge",
+      "half": "21,1 km",
+      "marathon": "42,2 km",
+      "ultra": "Ultra"
+    },
     "noneInSeason": "U sezoni {season}. nema nijednog rezultata.",
     "noneInLength": "Nema nijednog rezultata izabrane dužine.",
     "clearFilters": "Poništi filtere",
@@ -615,8 +627,7 @@
       "label": "Delovi profila",
       "overview": "Pregled",
       "awards": "Priznanja i nagrade"
-    },
-    "allTimeScope": "Prikazane su sve sezone. Izbor sezone važi za sve na ovom pregledu."
+    }
   },
   "teams": {
     "title": "Timovi",

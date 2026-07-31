@@ -416,9 +416,36 @@ describe('CompetitorProfile', () => {
 
     // The newest of them, named: "not all seasons" would pass on the oldest.
     expect(season.value).toBe(String(Math.max(...years)))
-    expect(screen.getByRole('heading', { name: 'Zbirna statistika' })).toBeVisible()
+    /* The widget wears no heading any more (owner, 31.07.2026): the season is
+       chosen above it and the ring beside it carries the race count. It keeps
+       its name where a screen reader can still find it. */
+    expect(screen.getByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Zbirna statistika' })).not.toBeInTheDocument()
+    /* And it counts everything except the races, which the ring beside it
+       carries. The number itself is not lost: it is in the ring's own reading,
+       which is what a screen reader gets instead of the drawing. */
+    expect(screen.queryByText(/Odtrčanih trka/)).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('table', { name: 'Trke po dužini' })).getByRole('rowheader', {
+        name: 'Zbirno',
+      }).parentElement,
+    ).toHaveTextContent(/\d+ trk/)
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
       .toBeGreaterThan(1)
+  })
+
+  it('chooses the season inside the control that names the part', async () => {
+    /* The season used to sit on a rule of its own with a sentence under it
+       saying what it governed. Both are gone; the control that says "Pregled"
+       carries it (owner, 31.07.2026). */
+    renderAt('/sr/takmicar/000007')
+
+    await screen.findByRole('heading', { level: 1 })
+    const parts = screen.getByRole('navigation', { name: 'Delovi profila' })
+
+    expect(within(parts).getByLabelText('Sezona')).toBeVisible()
+    expect(screen.queryByText(/Sezona se bira jednom/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Izbor sezone važi za sve/)).not.toBeInTheDocument()
   })
 
   it('narrows only the table by length, and leaves the widgets on the season', async () => {
@@ -432,20 +459,25 @@ describe('CompetitorProfile', () => {
 
     await screen.findByRole('heading', { level: 1 })
     const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
-    /* The row of the chart that counts the short races, which is the one that
-       has to stay where it is: counting the rows would not do, because the chart
-       always draws all five lengths whatever the counts are. */
-    const shortRace = () =>
-      within(screen.getByRole('table', { name: 'Trke po dužini' })).getByRole('rowheader', {
-        name: 'Kraća trka',
-      }).parentElement!
-    const before = within(shortRace()).getAllByRole('cell')[0].textContent
 
-    await user.selectOptions(screen.getByLabelText('Dužina'), 'marathon')
+    /* What the ring says before and after, read whole. Naming one length would
+       not do any more: the ring names only the lengths this person has run, so
+       an anchor row is not guaranteed to be there. Reading every row also makes
+       the check stronger, because narrowing the ring to marathons would show up
+       as rows disappearing, not merely as one number changing. */
+    const ring = () =>
+      within(screen.getByRole('table', { name: 'Trke po dužini' }))
+        .getAllByRole('row')
+        .map((row) => row.textContent)
+    const before = ring()
+
+    expect(before.length).toBeGreaterThan(1)
+
+    await user.click(screen.getByRole('button', { name: 'Maraton 42,2 km' }))
 
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
       .toBeLessThan(all)
-    expect(within(shortRace()).getAllByRole('cell')[0].textContent).toBe(before)
+    expect(ring()).toEqual(before)
   })
 
   it('lets a filter go again', async () => {
@@ -474,14 +506,35 @@ describe('CompetitorProfile', () => {
     expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2010')
   })
 
-  it('carries the team in brackets after the name', async () => {
-    // Owner, 30.07.2026. It was a line of its own under the member number.
+  it('gives the heading back to the name and puts the club in the line below', async () => {
+    /* Owner, 31.07.2026. The club spent a day in brackets inside the heading and
+       now stands after how long this person has been in the league: "U ligi od
+       2014. · U klubu Dunavski trkači od 2014." Two different facts, said the
+       way anybody would say them. */
     renderAt('/sr/takmicar/000001')
 
     const heading = await screen.findByRole('heading', { level: 1 })
 
-    expect(heading.textContent).toMatch(/\(.+\)$/)
-    expect(within(heading).getByRole('link')).toHaveAttribute('href', expect.stringContaining('/tim/'))
+    expect(heading.textContent).not.toMatch(/[()]/)
+    expect(within(heading).queryByRole('link')).not.toBeInTheDocument()
+
+    const club = screen.getByText(/U klubu/)
+    expect(club.textContent).toMatch(/U klubu .+ od \d{4}\./)
+    expect(within(club).getByRole('link')).toHaveAttribute(
+      'href',
+      expect.stringContaining('/tim/'),
+    )
+    expect(screen.getByText(/U ligi od \d{4}\./)).toBeVisible()
+  })
+
+  it('says nothing about a club for somebody who is in none', async () => {
+    // 000002 has no team, and empty brackets or a year with nothing to belong
+    // to would both be worse than the plain fact.
+    renderAt('/sr/takmicar/000002')
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.getByText('Bez tima')).toBeVisible()
+    expect(screen.queryByText(/U klubu/)).not.toBeInTheDocument()
   })
 
   it('leads to what the competitor has won, and back', async () => {
@@ -496,13 +549,16 @@ describe('CompetitorProfile', () => {
     expect(screen.queryByLabelText('Sezona')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Pregled' }))
-    expect(await screen.findByRole('heading', { name: 'Zbirna statistika' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
   })
 
   it('shows the biography beside the widgets where there is one', async () => {
+    /* Named "Svojim rečima" rather than "Biografija" (owner, 31.07.2026): the
+       box holds a paragraph the member wrote about themselves, and a biography
+       promises a page. */
     renderAt('/sr/takmicar/000001')
 
-    expect(await screen.findByRole('heading', { name: 'Biografija' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Svojim rečima' })).toBeVisible()
   })
 
   it('draws no biography card for the members who have not written one', async () => {
@@ -510,7 +566,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000002')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByRole('heading', { name: 'Biografija' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Svojim rečima' })).not.toBeInTheDocument()
   })
 
   it('hides the profile of a member who is no longer active', async () => {
@@ -525,11 +581,28 @@ describe('CompetitorProfile', () => {
     ).toBeVisible()
   })
 
-  it('shows the five lengths as bars, including the ones never run', async () => {
-    renderAt('/sr/takmicar/000007')
+  it('names on the ring only the lengths this person has run', async () => {
+    /* It used to draw all five whatever the counts were, so most profiles
+       carried three rows reading nought (owner, 31.07.2026). Checked against the
+       table of results rather than against a fixed number, or this passes on any
+       count at all. */
+    renderAt('/sr/takmicar/000007?sezona=sve')
 
     const chart = await screen.findByRole('table', { name: 'Trke po dužini' })
-    expect(within(chart).getAllByRole('row')).toHaveLength(5)
+    // Everything the ring names, less the total, which is not a length.
+    const named = within(chart)
+      .getAllByRole('rowheader')
+      .map((one) => one.textContent)
+      .filter((one) => one !== 'Zbirno')
+
+    const results = within(screen.getByRole('table', { name: 'Rezultati' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[2].textContent)
+
+    expect(named.length).toBeGreaterThan(0)
+    expect(named.length).toBeLessThan(5)
+    expect([...named].sort()).toEqual([...new Set(results)].sort())
   })
 
   it('says which of the four kinds of nothing it is', async () => {
