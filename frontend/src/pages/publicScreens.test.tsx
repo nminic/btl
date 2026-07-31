@@ -810,7 +810,8 @@ describe('Leagues', () => {
     renderAt('/sr/lige')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dodatna takmičenja' })).toBeVisible()
-    expect(screen.getByText('Grupisanje samo po polu')).toBeInTheDocument()
+    // Two of them group by gender alone now, so the list is asked for both.
+    expect(screen.getAllByText('Grupisanje samo po polu').length).toBeGreaterThan(0)
     // The league the portal exists for is implied, not listed.
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })

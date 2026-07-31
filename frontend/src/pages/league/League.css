@@ -1,0 +1,89 @@
+/* The grid of a competition: everybody down the side, every race across the
+   top. */
+
+/* The heading of a race column, turned on its side (owner, 31.07.2026). The
+   widest competition in the data has forty six races; laid flat those headings
+   would be several thousand pixels of table before a single number. Turned, each
+   costs its own line height and no more.
+
+   `vertical-rl` plus a half turn gives text running upwards, which is the way a
+   turned column heading is read everywhere it is used. The height is capped so
+   one long event name cannot push the whole head of the table down the
+   screen. */
+.league__race {
+  vertical-align: bottom;
+  padding: 0.4rem 0.15rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.league__race-name {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  /* The length of the line, which in vertical writing runs down the page and is
+     therefore the inline axis. Capping the block axis instead capped the width
+     of the column and let the head grow to four hundred pixels. */
+  max-inline-size: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* The name and the total are what the table is read by, so they stay put while
+   the races scroll past them. Two sticky columns, the second offset by the width
+   of the first. */
+.league__who,
+.league__total {
+  position: sticky;
+  background: var(--surface);
+}
+
+.league__who {
+  inset-inline-start: 0;
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.league__total {
+  inset-inline-start: 11rem;
+  font-weight: 700;
+}
+
+.league__grid th.league__who,
+.league__grid td.league__total {
+  /* Above the cells that scroll under them, and below nothing else. */
+  z-index: 1;
+}
+
+.league__grid .league__who {
+  inline-size: 11rem;
+  max-inline-size: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A cell for a race somebody did not run. Empty on purpose: nought would say
+   they ran it and scored nothing. */
+.league__grid td:empty::after {
+  content: '';
+}
+
+@media (max-width: 620px) {
+  .league__who,
+  .league__grid .league__who {
+    inline-size: 7.5rem;
+    max-inline-size: 7.5rem;
+  }
+
+  .league__total {
+    inset-inline-start: 7.5rem;
+  }
+
+  .league__race-name {
+    max-inline-size: 6.5rem;
+    font-size: 0.72rem;
+  }
+}

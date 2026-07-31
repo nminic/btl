@@ -178,6 +178,10 @@
       "recordTitle": "{name}",
       "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
     },
+    "leagueRules": {
+      "title": "Propozicije takmičenja",
+      "description": "Pravila i nagrade jednog takmičenja uz glavnu ligu, onako kako ih je napisao organizator."
+    },
     "message": {
       "title": "Poruka",
       "description": "Jedna poruka iz internog sanduka portala Balkanske trkačke lige."
@@ -669,6 +673,13 @@
     "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
     "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze i kako se poredak grupiše.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
+    "parts": {
+      "label": "Delovi takmičenja",
+      "results": "Rezultati",
+      "rules": "Propozicije"
+    },
+    "standing": "Poredak takmičenja",
+    "noResults": "Na ovom takmičenju još nema nijednog rezultata.",
     "notWritten": "Još nije napisano.",
     "name": "Liga"
   },

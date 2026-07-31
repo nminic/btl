@@ -1,0 +1,96 @@
+/* The parts of one record: the profile has two, and so does a competition.
+   Named for the control and not for the screen, because two screens wear it
+   (ADL A7). */
+
+.parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* The overview and its season, drawn as one control (owner, 31.07.2026). Two
+   pills side by side would have said they were two choices; they are one choice
+   and its setting. */
+.parts__group {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.parts__group:has(.parts__season) .parts__item {
+  border-right: 0;
+  border-radius: 999px 0 0 999px;
+}
+
+.parts__season {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--control-border);
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+  padding-right: 0.4rem;
+}
+
+/* The seam between the two halves, so the group reads as two parts of one thing
+   rather than as one wide pill with a number floating in it. */
+.parts__season::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  border-left: 1px solid var(--control-border);
+}
+
+.parts__season select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 1.1rem 0.4rem 0.7rem;
+  cursor: pointer;
+}
+
+/* The caret the native control lost with appearance: none. Drawn on the wrapper
+   and not clickable, so the whole width still opens the list. */
+.parts__season::after {
+  content: '';
+  position: absolute;
+  right: 0.75rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: translateY(-0.12rem) rotate(45deg);
+  pointer-events: none;
+}
+
+.parts__item {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.parts__item:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Marked in the markup as well as by the colour, which alone would leave the
+   reader who cannot see it without the answer. */
+.parts__item[aria-current] {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* The band that used to hold the season, and the sentence under it explaining
+   what the season governed, are both gone: the season moved inside the control
+   that names the part (owner, 31.07.2026). */

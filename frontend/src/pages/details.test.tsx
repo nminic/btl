@@ -216,14 +216,15 @@ describe('LeagueDetail', () => {
   })
 
   it('shows the rules and the prizes that have been written', async () => {
-    renderAt('/sr/liga/btl-2027')
+    // Both live under the second part now (owner, 31.07.2026).
+    renderAt('/sr/liga/btl-2027/propozicije')
 
     expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
   })
 
   it('hides both sections while neither has been written', async () => {
-    renderAt('/sr/liga/runtrace-2027')
+    renderAt('/sr/liga/runtrace-2027/propozicije')
 
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
@@ -278,5 +279,73 @@ describe('LeagueDetail', () => {
     await user.click(await screen.findByRole('link', { name: /RunTrace liga/ }))
 
     expect(await screen.findByRole('heading', { name: /Događaji koji ulaze u ligu/ })).toBeVisible()
+  })
+})
+
+describe('a competition, in two parts', () => {
+  /* Owner, 31.07.2026: the same shape the profile has. The standing is a grid,
+     with everybody who ran down the side and every race across the top. The
+     data has one competition that has actually been run; the three of 2027 are
+     necessarily empty, which is why one was added. */
+  const RUN = '/sr/liga/brdska-2019'
+
+  it('opens on the standing, with the total in the second column', async () => {
+    renderAt(RUN)
+
+    const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+    const heads = within(grid)
+      .getAllByRole('columnheader')
+      .map((one) => one.textContent)
+
+    expect(heads[0]).toBe('Član')
+    expect(heads[1]).toBe('Bodovi')
+    // Everything after the first two is a race of the competition.
+    expect(heads.length).toBeGreaterThan(2)
+  })
+
+  it('orders the rows by that second column, highest first', async () => {
+    renderAt(RUN)
+
+    const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+    const totals = within(grid)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => Number(within(row).getAllByRole('cell')[0].textContent!.replace(',', '.')))
+
+    expect(totals.length).toBeGreaterThan(1)
+    expect([...totals].sort((left, right) => right - left)).toEqual(totals)
+  })
+
+  it('leaves the cell of a race somebody did not run empty', async () => {
+    renderAt(RUN)
+
+    const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+    const cells = within(grid).getAllByRole('row').slice(1).flatMap((row) =>
+      within(row).getAllByRole('cell').slice(1).map((cell) => cell.textContent),
+    )
+
+    // Nought would say they ran it and scored nothing.
+    expect(cells.some((one) => one === '')).toBe(true)
+    expect(cells.some((one) => one === '0,00')).toBe(false)
+  })
+
+  it('keeps the written text on the other part, and not on this one', async () => {
+    const user = setupUser()
+    renderAt(RUN)
+
+    await screen.findByRole('table', { name: 'Poredak takmičenja' })
+    expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Propozicije' }))
+
+    expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
+    expect(screen.queryByRole('table', { name: 'Poredak takmičenja' })).not.toBeInTheDocument()
+  })
+
+  it('says so plainly for a competition that has not been run', async () => {
+    renderAt('/sr/liga/runtrace-2027')
+
+    expect(await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.')).toBeVisible()
   })
 })
