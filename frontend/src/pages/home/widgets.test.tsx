@@ -205,21 +205,25 @@ describe('Counters', () => {
     points: 42,
   }
 
-  it('unrolls the numbers, and lands on the real ones', async () => {
-    renderWidget(<Counters totals={totals} title="Sezona 2027." />)
+  it('lands on the real numbers, each carrying its own unit', () => {
+    /* With the unrolling switched off. Six counters over nine hundred
+       milliseconds of real time made this the one test in the suite that waited
+       on a clock, and under load it failed while everything it checks was
+       right. That the numbers do unroll is the hook's own test. */
+    renderWidget(<Counters totals={totals} title="Sezona 2027." countMs={0} />)
 
-    expect(await screen.findByText(/1\.234,00 km/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.getByText(/1\.234,00 km/)).toBeVisible()
     // Every row carries its unit now, and time on the course is a quantity
     // rather than a clock reading (owner, 29.07.2026).
     // Each label sits in the same pill as its number, so these match on a part
     // of the line rather than the whole of it.
-    expect(await screen.findByText(/10 h 00' 00''/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.getByText(/10 h 00' 00''/)).toBeVisible()
     // What is counted is results, not races: two members in one race are two of
     // these (owner, 31.07.2026).
-    expect(await screen.findByText(/3 rezultata/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/5\.678 m\+/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/5\.000 m-/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/42,00 BTL poena/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.getByText(/3 rezultata/)).toBeVisible()
+    expect(screen.getByText(/5\.678 m\+/)).toBeVisible()
+    expect(screen.getByText(/5\.000 m-/)).toBeVisible()
+    expect(screen.getByText(/42,00 BTL poena/)).toBeVisible()
   })
 
   /* The front page counts members on top of the season, and nothing else does:
@@ -231,12 +235,12 @@ describe('Counters', () => {
     expect(await screen.findByText(/41 član/, {}, { timeout: 3000 })).toBeVisible()
   })
 
-  it('counts no members where nobody hands them in', async () => {
-    renderWidget(<Counters totals={totals} title="Sezona 2027." />)
+  it('counts no members where nobody hands them in', () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." countMs={0} />)
 
-    // Waited for, so the row is absent after the numbers have finished
-    // unrolling and not merely before they started.
-    expect(await screen.findByText(/3 rezultata/, {}, { timeout: 3000 })).toBeVisible()
+    // The rest of the rows have landed, so the missing one is missing rather
+    // than merely late.
+    expect(screen.getByText(/3 rezultata/)).toBeVisible()
     expect(screen.queryByText(/član/)).not.toBeInTheDocument()
   })
 

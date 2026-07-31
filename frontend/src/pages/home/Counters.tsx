@@ -99,6 +99,7 @@ function Row({
   unit = '',
   counted,
   decimals = 0,
+  countMs,
 }: {
   icon: ReactNode
   label: string
@@ -108,9 +109,10 @@ function Row({
   /** Key of a counted phrase, for the one row whose unit declines: trka, trke. */
   counted?: string
   decimals?: number
+  countMs?: number
 }) {
   const { locale, t } = useI18n()
-  const running = useCountUp(value)
+  const running = useCountUp(value, countMs)
 
   /* A row that shows no decimals must not count in them either (owner,
      31.07.2026). The number unrolling behind this is a fraction on every frame,
@@ -151,6 +153,7 @@ export function Counters({
   title,
   races = true,
   members,
+  countMs,
 }: {
   totals: Totals
   /**
@@ -181,6 +184,10 @@ export function Counters({
    * two decisions that only happen to be made together on one screen.
    */
   races?: boolean
+  /** How long the numbers take to unroll. Only a test sets it, to nought;
+   *  nothing in the application passes it, the same arrangement the turning
+   *  chart on this page has. */
+  countMs?: number
 }) {
   const { t } = useI18n()
 
@@ -200,6 +207,7 @@ export function Counters({
           meaning whatever the reader guesses (owner, 29.07.2026). */}
       {members !== undefined && (
         <Row
+          countMs={countMs}
           icon={<Runner />}
           label={t('home.members')}
           value={members}
@@ -211,6 +219,7 @@ export function Counters({
           run a hundred and seventy events (owner, 31.07.2026). */}
       {races && (
         <Row
+          countMs={countMs}
           icon={<Flag />}
           label={t('home.results')}
           value={totals.races}
@@ -218,6 +227,7 @@ export function Counters({
         />
       )}
       <Row
+        countMs={countMs}
         icon={<Road />}
         label={t('home.kilometers')}
         value={totals.kilometers}
@@ -225,24 +235,28 @@ export function Counters({
         decimals={2}
       />
       <Row
+        countMs={countMs}
         icon={<Ascent />}
         label={t('home.ascent')}
         value={totals.ascent}
         unit={t('home.ascentUnit')}
       />
       <Row
+        countMs={countMs}
         icon={<Descent />}
         label={t('home.descent')}
         value={totals.descent}
         unit={t('home.descentUnit')}
       />
       <Row
+        countMs={countMs}
         icon={<Clock />}
         label={t('home.onCourse')}
         value={totals.seconds}
         text={formatCourseTime(totals.seconds)}
       />
       <Row
+        countMs={countMs}
         icon={<Star />}
         label={t('home.points')}
         value={totals.points}
