@@ -23,8 +23,17 @@ function Face({ competitor }: { competitor: Competitor }) {
 }
 
 /* The bar chart from the old portal: who has run the most races of one length
- * this season. It carries no heading and no arrows; it simply turns, one
- * category after another, round and round.
+ * this season, one category after another, round and round.
+ *
+ * It turned forever with nothing to stop it, which WCAG 2.2 SC 2.2.2 does not
+ * allow: anything that moves by itself for more than five seconds beside other
+ * content has to be stoppable. There is a button now, and anyone who has asked
+ * their system for less motion gets it stopped to begin with, the same rule the
+ * counters in this folder already follow.
+ *
+ * The section is named as well. It had `aria-live="off"`, which is the default
+ * and does nothing, and no heading, so a screen reader met a region with no name
+ * whose contents changed under it.
  */
 export function TopByCategory({
   competitors,
@@ -40,21 +49,28 @@ export function TopByCategory({
 }) {
   const { locale, t } = useI18n()
   const [shown, setShown] = useState(0)
+  const [turning, setTurning] = useState(
+    () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
 
   useEffect(() => {
+    if (!turning) {
+      return
+    }
+
     const turn = setInterval(() => {
       setShown((current) => (current + 1) % CATEGORIES.length)
     }, turnMs)
 
     return () => clearInterval(turn)
-  }, [turnMs])
+  }, [turnMs, turning])
 
   const category = CATEGORIES[shown]
   const columns = topByCategory(competitors, results, season, category, TOP)
   const highest = Math.max(1, ...columns.map((one) => one.races))
 
   return (
-    <section className="top-cat" aria-live="off">
+    <section className="top-cat" aria-label={t('home.turning')}>
       {columns.length === 0 ? (
         <p className="card__empty">{t('home.noneYet')}</p>
       ) : (
@@ -78,7 +94,19 @@ export function TopByCategory({
         </ol>
       )}
 
-      <p className="top-cat__caption">{t(`home.mostOf.${category}`)}</p>
+      <p className="top-cat__caption">
+        {t(`home.mostOf.${category}`)}
+        {/* Beside the caption rather than above the bars, because it belongs to
+            the turning and not to any one category. */}
+        <button
+          type="button"
+          className="top-cat__turn"
+          aria-pressed={!turning}
+          onClick={() => setTurning((on) => !on)}
+        >
+          {turning ? t('home.pauseTurning') : t('home.resumeTurning')}
+        </button>
+      </p>
     </section>
   )
 }

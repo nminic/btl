@@ -158,9 +158,20 @@ function Standing({
                 >
                   <td className="table__position">{row.position}</td>
                   <td>
-                    <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-                      {row.competitor.firstName} {row.competitor.lastName}
-                    </Link>{' '}
+                    {/* The name stays in the table of the season they raced,
+                        the link does not: their profile is hidden as though it
+                        did not exist, so a link to it is a door onto a wall
+                        (PDL P11, "link ka profilu postoji samo dok je članarina
+                        aktivna"). */}
+                    {row.competitor.active ? (
+                      <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
+                        {row.competitor.firstName} {row.competitor.lastName}
+                      </Link>
+                    ) : (
+                      <>
+                        {row.competitor.firstName} {row.competitor.lastName}
+                      </>
+                    )}{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
                   <td>{categoryOfMember(row.competitor, season)}</td>

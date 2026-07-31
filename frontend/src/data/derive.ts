@@ -1,5 +1,6 @@
 import { categoryCodeFor } from './categories'
 import type { BtlEvent, Competitor, Gender, RaceCategory, Result, Team } from './types'
+import { SEASON } from './pricing'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -213,6 +214,12 @@ export function rankingFor(
 
   const ranked = competitors
     .filter((competitor) => competitor.gender === filter.gender)
+    /* A member whose fee has run out is not in the table of the season that is
+       running now, because this season they are not a member (PDL P11: "u tabeli
+       tekuće godine se ne pojavljuje uopšte"). In the tables of the seasons they
+       did race they stand exactly as they did, which is the other half of the
+       same decision, so the filter is on the season and not on the member. */
+    .filter((competitor) => competitor.active || filter.season !== SEASON)
     .filter(
       (competitor) =>
         filter.categoryCode === undefined ||

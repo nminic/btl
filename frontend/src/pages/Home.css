@@ -56,7 +56,7 @@
 .button--secondary {
   background: transparent;
   color: var(--text);
-  border-color: var(--border);
+  border-color: var(--control-border);
 }
 
 .button--secondary:hover {

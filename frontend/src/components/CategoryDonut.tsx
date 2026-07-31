@@ -36,14 +36,24 @@ import './CategoryDonut.css'
  * eyes.
  */
 
-/** One colour per length, from short to long. Not the gold: gold means
- *  achievement on this portal and a chart is not an achievement. */
+/**
+ * One colour per length, shortest to longest, named rather than written.
+ *
+ * The values are in `styles/tokens.css`, one set per theme, because they have to
+ * be: the old ramp was written here and ran straight into the dark background,
+ * where three of its five segments measured under 2:1 against the surface and
+ * the whole ring read as one blue smudge. A component that picks its own colour
+ * cannot know which theme it is in.
+ *
+ * Not the gold: gold means achievement on this portal and a chart is not an
+ * achievement.
+ */
 const COLOURS: Record<RaceCategory, string> = {
-  short: '#5b93ec',
-  long: '#1657bd',
-  half: '#10459a',
-  marathon: '#0b3372',
-  ultra: '#06214a',
+  short: 'var(--chart-1)',
+  long: 'var(--chart-2)',
+  half: 'var(--chart-3)',
+  marathon: 'var(--chart-4)',
+  ultra: 'var(--chart-5)',
 }
 
 export function CategoryDonut({

@@ -29,13 +29,46 @@
   --white: #ffffff;
 
   /* Semantic tokens. Components use only these, never the raw scales. */
-  --bg: var(--white);
+
+  /* Two levels of surface, so a card lies on the page instead of dissolving into
+     it. Both were the same white, an odds of 1,00:1, which is why a table, a
+     widget and the page behind them all read as one flat sheet and why the hover
+     on a table row was all but invisible (measured 1,12:1). */
+  --bg: #f4f6fa;
   --surface: var(--white);
-  --surface-hover: var(--gray-100);
+  --surface-hover: #e9edf4;
   --text: var(--black);
   --text-muted: var(--gray-700);
-  --border: var(--gray-200);
+  /* The edge of a card, a panel, a row in a table. It divides, it does not tell
+     anyone that a thing can be typed into or pressed, so 3:1 is not asked of it
+     and holding it to 3:1 would leave every screen looking ruled. */
+  --border: #ccd4e0;
+  /* The edge of something you can operate: a field, a select, a secondary
+     button, a chip. Here the border is the only sign the thing is a control at
+     all, which is exactly what WCAG 2.2 SC 1.4.11 asks 3:1 of. One token used to
+     serve both jobs at #dde2ea, measured at 1,30:1 on white, so the minimum was
+     failing on every screen the portal has. This is 3,63:1 on a card and 3,35:1
+     on the page behind it. */
+  --control-border: #7d8798;
   --accent: var(--blue-700);
+
+  /* The ring on a profile, one colour per race length, shortest to longest.
+   *
+   * They live here rather than in the component so each theme can carry its own,
+   * which is the whole point: the old ramp ran into the dark background and
+   * three of its five segments sat under 2:1 against it.
+   *
+   * Each colour clears 3:1 against the surface it is drawn on, which is what
+   * makes a segment visible. Adjacent segments do not, and cannot: five steps
+   * each 3:1 from the next would need a span of eighty one to one, and no hue
+   * has that much room. It is not needed either, since every segment is named by
+   * a label with a line running to it, so no reading of this chart rests on
+   * telling two blues apart. */
+  --chart-1: #4a7fd6;
+  --chart-2: #1f5bb5;
+  --chart-3: #123f88;
+  --chart-4: #0a2a5e;
+  --chart-5: #06182f;
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
   --gold-text: var(--gold-600);
@@ -59,13 +92,19 @@
  * as its own selector rather than nested inside the media query. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #070d1a;
-    --surface: #0d1628;
-    --surface-hover: #101c33;
+    --bg: #060b16;
+    --surface: #101a2e;
+    --surface-hover: #17243d;
     --text: #eef2f8;
     --text-muted: #a3b0c4;
-    --border: #1d2b45;
+    --border: #26364f;
+    --control-border: #5a6c8f;
     --accent: #5b93ec;
+    --chart-1: #d7e6fd;
+    --chart-2: #a9c9f8;
+    --chart-3: #7aa8f0;
+    --chart-4: #4f86e2;
+    --chart-5: #2f62c4;
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
     --gold-text: var(--gold-300);
@@ -78,13 +117,19 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: #070d1a;
-  --surface: #0d1628;
-  --surface-hover: #101c33;
+  --bg: #060b16;
+  --surface: #101a2e;
+  --surface-hover: #17243d;
   --text: #eef2f8;
   --text-muted: #a3b0c4;
-  --border: #1d2b45;
+  --border: #26364f;
+  --control-border: #5a6c8f;
   --accent: #5b93ec;
+  --chart-1: #d7e6fd;
+  --chart-2: #a9c9f8;
+  --chart-3: #7aa8f0;
+  --chart-4: #4f86e2;
+  --chart-5: #2f62c4;
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
   --gold-text: var(--gold-300);

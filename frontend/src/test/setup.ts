@@ -44,3 +44,10 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   }),
 })
+
+/* jsdom lays nothing out, so it has no scrolling either, and calling scrollTo
+ * prints "Not implemented" once per navigation. ScrollRestoration in the shell
+ * calls it on every one of them, which buried the real output of the suite under
+ * a few hundred lines of noise. A stub, because there is nothing to scroll: what
+ * the shell does with the scroll is checked in the browser, not here. */
+Object.defineProperty(window, 'scrollTo', { writable: true, value: vi.fn() })

@@ -1,5 +1,8 @@
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
+import { rankingFor } from '../data/derive'
+import { SEASON } from '../data/pricing'
+import type { Competitor, Result } from '../data/types'
 import { hueFor } from './competitorFace'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -813,5 +816,44 @@ describe('Leagues', () => {
     expect(screen.getByText('Grupisanje samo po polu')).toBeInTheDocument()
     // The league the portal exists for is implied, not listed.
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('a member whose fee has run out, in the tables', () => {
+  it('stands in the season they raced, with the name but no link', async () => {
+    /* PDL P11 has two halves and this is both of them at once: the name stays
+       in the table of the season they were a member of, and the link goes,
+       because the profile it pointed at is hidden as though it did not exist.
+       000032 raced in 2017 and their fee has since run out. */
+    renderAt('/sr/tabela?sezona=2017')
+
+    const table = await screen.findByRole('table')
+    const gone = within(table).getByText(/Vojislav Antonijević/)
+
+    expect(gone).toBeVisible()
+    expect(
+      within(table).queryByRole('link', { name: /Vojislav Antonijević/ }),
+    ).not.toBeInTheDocument()
+    // Everybody else still has one, or this would pass on a table with no links.
+    expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
+  })
+
+  it('is not in the table of the season that is running now', async () => {
+    /* Their six results are all from 2017, so the season now would not show them
+       anyway. What is checked is the rule and not the data: `rankingFor` is
+       called for 2027 with the same competitor list, and their row must not come
+       back. The season it does come back for is the one above. */
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const results = await loadResource<Result[]>('results')
+    const gone = competitors.find((one) => one.memberNumber === '000032')!
+    const mine = results
+      .filter((one) => one.memberNumber === '000032')
+      .map((one) => ({ ...one, date: one.date.replace(/^\d{4}/, String(SEASON)) }))
+
+    const now = rankingFor([gone], mine, { season: SEASON, gender: gone.gender })
+    const then = rankingFor([gone], results, { season: 2017, gender: gone.gender })
+
+    expect(now).toHaveLength(0)
+    expect(then).toHaveLength(1)
   })
 })

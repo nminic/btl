@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
@@ -206,8 +207,58 @@ describe('TopByCategory', () => {
 
     const first = screen.getByText(/^Najviše/).textContent
 
-    // It turns on its own: there is nothing to click and no heading above it.
     await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(first))
+  })
+
+  it('can be stopped, and stays stopped', async () => {
+    /* WCAG 2.2 SC 2.2.2, level A: anything that moves by itself for more than
+       five seconds beside other content has to be stoppable. This turned every
+       six seconds, forever, with nothing to press. */
+    const user = setupUser()
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />)
+
+    await user.click(screen.getByRole('button', { name: 'Zaustavi smenjivanje' }))
+    const stopped = screen.getByText(/^Najviše/).textContent
+
+    // Four turns' worth of waiting, and it has not moved.
+    await new Promise((wait) => setTimeout(wait, 80))
+
+    expect(screen.getByText(/^Najviše/).textContent).toBe(stopped)
+    expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('starts stopped for anyone who asked for less motion', async () => {
+    const previous = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('reduced-motion'),
+      media: query,
+    })) as typeof matchMedia
+
+    try {
+      renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={10} />)
+
+      const first = screen.getByText(/^Najviše/).textContent
+      expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+
+      await new Promise((wait) => setTimeout(wait, 60))
+      expect(screen.getByText(/^Najviše/).textContent).toBe(first)
+    } finally {
+      window.matchMedia = previous
+    }
+  })
+
+  it('is a named region rather than one that changes under the reader unannounced', () => {
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} />)
+
+    // It carried `aria-live="off"`, which is the default and does nothing, and
+    // had no heading, so the region had no name at all.
+    expect(screen.getByRole('region', { name: 'Najviše trka po dužini' })).toBeInTheDocument()
   })
 
   it('names the length underneath, and says so when nobody ran one', () => {

@@ -101,3 +101,22 @@
     font-size: 0.6rem;
   }
 }
+
+/* The control that stops the turning. Beside the caption, small, and never
+   louder than the chart it governs (WCAG 2.2 SC 2.2.2). */
+.top-cat__turn {
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.top-cat__turn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
