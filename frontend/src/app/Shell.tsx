@@ -243,11 +243,16 @@ export function Shell() {
         </nav>
       </header>
 
-      {/* Back to the top on a new address, and back where it was on the way
-          back. A data router turns the browser's own handling off, so without
-          this every screen opened from halfway down a table opened halfway
-          down. */}
-      <ScrollRestoration />
+      {/* Back to the top on a new screen, and back where it was on the way back.
+          A data router turns the browser's own handling off, so without this
+          every screen opened from halfway down a table opened halfway down.
+
+          Keyed on the path alone, or every filter counts as a new screen: with
+          the default key the table jumped to the top on each letter typed into
+          the search, and the row of six lengths on a profile threw the reader
+          back up the page on every click, which is the very fault this is here
+          to fix, moved from one control to another. */}
+      <ScrollRestoration getKey={(where) => where.pathname} />
 
       {/* Says out loud which screen just opened. The browser announces a page
           change on its own; a single page application has to do it by hand. */}

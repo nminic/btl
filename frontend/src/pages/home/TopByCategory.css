@@ -102,21 +102,36 @@
   }
 }
 
-/* The control that stops the turning. Beside the caption, small, and never
-   louder than the chart it governs (WCAG 2.2 SC 2.2.2). */
+/* The control that stops the turning (WCAG 2.2 SC 2.2.2).
+ *
+ * Its colours are pinned to the band it stands on, not taken from the theme.
+ * The band is the gold gradient and the theme tokens are chosen for the page and
+ * the card, so on the dark theme, which is the one the portal opens in, the
+ * label measured 1,03:1 against the gold and the focus ring 1,03:1 with it: a
+ * control added to satisfy one criterion, failing three others. #3a2a02 is the
+ * band's own text colour and measures 4,66:1 on it, in both themes, because it
+ * is a fixed value on a fixed background. */
 .top-cat__turn {
   margin-left: 0.5rem;
   padding: 0.15rem 0.5rem;
-  border: 1px solid var(--control-border);
+  border: 1px solid #3a2a02;
   border-radius: 999px;
   background: transparent;
-  color: var(--text-muted);
+  color: #3a2a02;
   font: inherit;
   font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: inherit;
+  letter-spacing: inherit;
   cursor: pointer;
 }
 
 .top-cat__turn:hover {
-  border-color: var(--accent);
-  color: var(--text);
+  background: #3a2a02;
+  color: var(--gold-300);
+}
+
+.top-cat__turn:focus-visible {
+  outline: 2px solid #3a2a02;
+  outline-offset: 2px;
 }

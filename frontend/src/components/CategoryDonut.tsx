@@ -124,6 +124,11 @@ export function CategoryDonut({
 
         {callouts.map((slice) => (
           <g key={slice.one}>
+            {/* The line is drawn twice: once thick in the colour of the card
+                behind it, then thin on top. The halo is what keeps it visible
+                where it lands, now that the lightest segment of the dark theme
+                is very nearly white and a white line on it measured 1,20:1. */}
+            <polyline className="donut__leader-halo" points={leaderPoints(slice)} />
             <polyline className="donut__leader" points={leaderPoints(slice)} />
             <text
               className="donut__name"

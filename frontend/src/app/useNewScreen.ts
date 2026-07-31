@@ -23,17 +23,29 @@ import { useLocation } from 'react-router'
  */
 export function useNewScreen(main: RefObject<HTMLElement | null>): void {
   const { pathname } = useLocation()
-  const arrived = useRef(false)
+  /* The path this ran for last, rather than a flag saying it has run.
+   *
+   * A flag does not survive StrictMode, which runs every effect twice in
+   * development: the second run found the flag already set and took the focus on
+   * the very first load of the page, which is the one moment it must not. Then
+   * the tests said one thing, because they mount no StrictMode, and the
+   * development server said another, and neither of them was production.
+   *
+   * Holding the path makes the guard idempotent: run it as many times as you
+   * like for the same screen and nothing happens twice. */
+  const came = useRef(pathname)
 
   useEffect(() => {
-    /* Not on the first render. The page has just loaded, the browser has its own
-       idea of where the focus belongs, and taking it away announces a screen the
-       reader has not asked for. */
-    if (!arrived.current) {
-      arrived.current = true
+    /* Not on the screen the page loaded with. The browser has its own idea of
+       where the focus belongs there, and taking it away announces a screen the
+       reader never asked to be taken to. */
+    if (came.current === pathname) {
       return
     }
 
-    main.current?.focus()
+    came.current = pathname
+    /* Without this the focus can undo the scroll that ScrollRestoration has just
+       put back, by pulling the landmark into view. */
+    main.current?.focus({ preventScroll: true })
   }, [pathname, main])
 }

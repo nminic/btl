@@ -311,7 +311,7 @@
   color: inherit;
   background: transparent;
   border: 0;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--control-border);
   padding: 0.1rem 0;
   cursor: text;
   text-align: inherit;

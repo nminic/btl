@@ -24,7 +24,7 @@
   padding: 0.45rem 0.8rem;
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--fast);
@@ -132,7 +132,7 @@
   padding: 0.25rem;
   cursor: pointer;
   background: transparent;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--control-border);
   border-radius: 6px;
   color: var(--text-muted);
   font: 700 0.75rem/1.2 inherit;

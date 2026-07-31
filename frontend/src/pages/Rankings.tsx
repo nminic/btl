@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { useToday } from '../clock/useClock'
+import { CompetitorName } from '../components/CompetitorName'
 import { Resource } from '../components/Resource'
 import {
   categoriesOf,
@@ -59,9 +60,31 @@ function Standing({
     return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
   }, [competitors, results, gender, seasonParam, today])
 
+  /* Who this season's table has in it (PDL P11).
+   *
+   * A member whose fee has run out is not in the table of the season now,
+   * because this season they are not a member; in the seasons they did race
+   * they stand exactly as they stood. Which season is "now" comes from the one
+   * clock the portal reads (ADL A7) and not from the SEASON constant: the
+   * constant is 2027 forever, so on the day 2027 became history it would have
+   * gone on hiding them from the one archive table the league then had, and
+   * would never have hidden them from 2028.
+   *
+   * At the call site rather than inside `rankingFor`, because it is a rule about
+   * what a table shows and not about how a standing is worked out. Inside, it
+   * would also have reached the awards, where taking a row out shifts everybody
+   * below it and quietly rewrites who came third in a season already run. */
+  const field = useMemo(
+    () =>
+      season === Number(today.slice(0, 4))
+        ? competitors.filter((one) => one.active)
+        : competitors,
+    [competitors, season, today],
+  )
+
   const rows = useMemo(
-    () => rankingFor(competitors, results, { season, gender, categoryCode: category, search }),
-    [competitors, results, season, gender, category, search],
+    () => rankingFor(field, results, { season, gender, categoryCode: category, search }),
+    [field, results, season, gender, category, search],
   )
 
   return (
@@ -158,20 +181,7 @@ function Standing({
                 >
                   <td className="table__position">{row.position}</td>
                   <td>
-                    {/* The name stays in the table of the season they raced,
-                        the link does not: their profile is hidden as though it
-                        did not exist, so a link to it is a door onto a wall
-                        (PDL P11, "link ka profilu postoji samo dok je članarina
-                        aktivna"). */}
-                    {row.competitor.active ? (
-                      <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-                        {row.competitor.firstName} {row.competitor.lastName}
-                      </Link>
-                    ) : (
-                      <>
-                        {row.competitor.firstName} {row.competitor.lastName}
-                      </>
-                    )}{' '}
+                    <CompetitorName competitor={row.competitor} />{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
                   <td>{categoryOfMember(row.competitor, season)}</td>

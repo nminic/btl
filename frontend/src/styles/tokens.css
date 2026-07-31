@@ -16,7 +16,14 @@
   --blue-600: #1657bd;
   --blue-100: #e7eefb;
 
-  --gold-600: #8a6a12;
+  /* A shade deeper than the approved direction drew it. It was #8a6a12, which
+     measured 5,06:1 on white and 4,51:1 on the old hover, so it cleared the
+     threshold by a hundredth. When the hover on a table row was deepened to make
+     it visible at all, gold on a hovered podium row fell to 4,31:1, and the top
+     three rows of every table are gold. At #836412 it is 5,53:1 on a card and
+     4,71:1 on a hovered row, so neither state depends on the other staying
+     still. */
+  --gold-600: #836412;
   --gold-500: #b8901f;
   --gold-400: #d9ab2e;
   --gold-300: #f0c94a;

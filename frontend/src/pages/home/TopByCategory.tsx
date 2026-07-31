@@ -98,10 +98,15 @@ export function TopByCategory({
         {t(`home.mostOf.${category}`)}
         {/* Beside the caption rather than above the bars, because it belongs to
             the turning and not to any one category. */}
+        {/* The name says the whole state, and there is no `aria-pressed`
+            beside it. Together they contradicted each other: stopped, the
+            button read "Nastavi smenjivanje" and announced itself as pressed,
+            which is heard as "resuming is on", the opposite of what is true.
+            A button that renames itself is what the guidance for SC 2.2.2
+            means by a pause control. */}
         <button
           type="button"
           className="top-cat__turn"
-          aria-pressed={!turning}
           onClick={() => setTurning((on) => !on)}
         >
           {turning ? t('home.pauseTurning') : t('home.resumeTurning')}

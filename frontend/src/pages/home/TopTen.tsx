@@ -3,6 +3,7 @@ import { topTen } from '../../data/derive'
 import type { Competitor, Gender, Result } from '../../data/types'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { CompetitorName } from '../../components/CompetitorName'
 
 export function TopTen({
   competitors,
@@ -30,9 +31,7 @@ export function TopTen({
         {rows.map((row) => (
           <li key={row.competitor.memberNumber} className={row.position <= 3 ? 'podium' : undefined}>
             <span className="top-ten__place">{row.position}</span>
-            <Link className="top-ten__name" to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-              {row.competitor.firstName} {row.competitor.lastName}
-            </Link>
+            <CompetitorName className="top-ten__name" competitor={row.competitor} />
             {scored && <span className="top-ten__points">{formatPoints(row.points, locale)}</span>}
           </li>
         ))}

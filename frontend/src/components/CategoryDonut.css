@@ -55,12 +55,14 @@
 
 /* The line that ties a name to the middle of its own slice.
  *
- * White, as asked for, and white is right where it matters: the end of every
- * line lies on the band itself, which is mid to deep blue in both themes. The
- * stretch that crosses the card behind it is another matter, and on a light card
- * a white line there is a white line on white. So the token is white in the dark
- * theme, which is the one the portal opens in, and a slate that reads on the
- * light one. */
+ * White, as asked for, in the theme the portal opens in, and a slate in the
+ * light one, where a white line crossing a white card is a white line on white.
+ *
+ * The end of the line lies on the band, and the band is no longer one shade: the
+ * lightest segment of the dark theme is very nearly white, and a white line on
+ * it measured 1,20:1, so the tip of the line naming the shortest races
+ * disappeared. Hence the halo underneath, in the colour of the card: whatever
+ * the line lands on, it lands on its own outline first. */
 .donut {
   --donut-leader: #55637a;
 }
@@ -82,4 +84,12 @@
   stroke-linejoin: round;
   stroke-linecap: round;
   opacity: 0.75;
+}
+
+.donut__leader-halo {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }

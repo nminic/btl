@@ -224,9 +224,12 @@ describe('TopByCategory', () => {
     await new Promise((wait) => setTimeout(wait, 80))
 
     expect(screen.getByText(/^Najviše/).textContent).toBe(stopped)
-    expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toHaveAttribute(
+    /* The name carries the whole state and there is no `aria-pressed` beside
+       it: the two together announced "Nastavi smenjivanje, pressed", which is
+       heard as the opposite of what is true. */
+    expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).not.toHaveAttribute(
       'aria-pressed',
-      'true',
     )
   })
 
@@ -241,10 +244,7 @@ describe('TopByCategory', () => {
       renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={10} />)
 
       const first = screen.getByText(/^Najviše/).textContent
-      expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      )
+      expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
 
       await new Promise((wait) => setTimeout(wait, 60))
       expect(screen.getByText(/^Najviše/).textContent).toBe(first)

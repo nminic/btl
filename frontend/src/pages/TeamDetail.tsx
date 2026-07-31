@@ -8,6 +8,7 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Profile.css'
+import { CompetitorName } from '../components/CompetitorName'
 
 /* A team is the only entity besides a competitor that carries a standing, so
  * its page is built the same way: totals on top, then the people who made
@@ -87,9 +88,7 @@ export function TeamDetail() {
                         >
                           <td className="table__position">{row.position}</td>
                           <td>
-                            <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-                              {row.competitor.firstName} {row.competitor.lastName}
-                            </Link>{' '}
+                            <CompetitorName competitor={row.competitor} />{' '}
                             <span className="table__member-number">
                               {row.competitor.memberNumber}
                             </span>
