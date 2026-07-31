@@ -39,18 +39,18 @@ describe('Home', () => {
   it('counts the members of the running season, not everybody there has ever been', async () => {
     renderAt('/sr')
 
-    /* Waited out rather than caught in flight. The numbers unroll from zero, so
-       a test that waits for "31" also passes when the number is on its way to
-       32 and 31 was one frame of the climb. The kilometres of this season land
-       on a value no frame before them equals, and every row unrolls over the
-       same nine hundred milliseconds, so once that one has landed they all
-       have. */
-    await screen.findByText('3.569,66 km', {}, { timeout: 3000 })
+    /* Read after the number has stopped moving, not the first time it says 31.
+       The counters unroll from zero, so every number below the target is a frame
+       on the way there: a test that catches 31 in flight passes just as happily
+       when the target is 32. Waiting for the row to say 31 and then waiting out
+       the rest of the nine hundred milliseconds is what makes this about the
+       number rather than about a moment. */
+    await screen.findByText(/^31 član$/, {}, { timeout: 4000 })
+    await new Promise((settle) => setTimeout(settle, 1000))
 
     // 32 members in the data, 31 of them active. Which of the two this says is
     // the whole of PDL P11 on the front page.
-    expect(screen.getByText('31 član')).toBeVisible()
-    expect(screen.queryByText('32 člana')).not.toBeInTheDocument()
+    expect(screen.getByText(/^31 član$/)).toBeVisible()
   })
 
   /* Two blocks went out (owner, 31.07.2026): one explained on the front page
