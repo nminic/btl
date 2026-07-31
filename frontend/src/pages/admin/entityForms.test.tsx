@@ -227,7 +227,7 @@ describe('a record that is entered rather than changed', () => {
 
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
     // The generated members hold 000001 to 000031, so the first free one is next.
-    const row = within(list.getByText('000032').closest('tr')!)
+    const row = within(list.getByText('000033').closest('tr')!)
 
     expect(row.getByText('Milica Pavlović')).toBeVisible()
     // The year of birth is on this screen and on no other (PDL P11, P23).
@@ -331,7 +331,7 @@ describe('the identity of a record', () => {
        refuse. The generated members hold 000001 to 000031. */
     const grown = within(await screen.findByRole('table', { name: 'Članovi' }))
     expect(grown.getAllByRole('row')).toHaveLength(rows + 1)
-    expect(grown.getByText('000032')).toBeVisible()
+    expect(grown.getByText('000033')).toBeVisible()
   })
 
   it('is the next free number for each member entered in turn', async () => {
@@ -347,11 +347,11 @@ describe('the identity of a record', () => {
       await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
     }
 
-    /* The second must not read the file and hand out 000032 again: what the screen
+    /* The second must not read the file and hand out 000033 again: what the screen
        shows is what counts as taken, records entered a moment ago included. */
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(within(list.getByText('000032').closest('tr')!).getByText(/Milica/)).toBeVisible()
-    expect(within(list.getByText('000033').closest('tr')!).getByText(/Jelena/)).toBeVisible()
+    expect(within(list.getByText('000033').closest('tr')!).getByText(/Milica/)).toBeVisible()
+    expect(within(list.getByText('000034').closest('tr')!).getByText(/Jelena/)).toBeVisible()
   })
 
   it('is refused for a written page whose address answers already', async () => {

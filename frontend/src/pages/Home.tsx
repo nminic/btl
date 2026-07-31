@@ -62,7 +62,7 @@ export function Home() {
                   the other with the address first (PDL P28a). */}
               <div className="home__row home__row--address">
                 <President />
-                <Counters totals={totals} seasonLabel={label} />
+                <Counters totals={totals} title={label} />
               </div>
 
               <div className="home__row home__row--calendar">

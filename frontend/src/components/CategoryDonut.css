@@ -4,7 +4,18 @@
   align-items: center;
 }
 
-@media (min-width: 620px) {
+/* The ring stands beside its legend when the box it is in is wide enough, and
+   above it when it is not. A viewport query cannot answer that: inside a 316px
+   column on a wide desktop it insisted on sitting beside a legend that needs
+   194px and the two collided. jsdom does not compute container queries, so a
+   test reads this file as text (Profile.test.tsx), the way the badge art is
+   tested. */
+.donut-block {
+  container-type: inline-size;
+  container-name: donut;
+}
+
+@container donut (min-width: 380px) {
   .donut-block {
     grid-template-columns: auto 1fr;
   }

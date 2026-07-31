@@ -143,6 +143,7 @@ describe('monogramFor', () => {
     active: true,
     membershipBasis: 'payment',
     teamId: null,
+  bio: '',
   }
 
   it('takes the initials of whoever is signed in', () => {

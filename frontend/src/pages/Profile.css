@@ -24,11 +24,10 @@
    was not merely dead: it painted every card on the badges page gold and gave
    each one a 999px radius, because that page names its cards .badge too. Gold
    carries achievement, never a surface (the approved visual direction), and the
-   dark pill text was inherited by the card text underneath. */
+   dark pill text was inherited by the card text underneath.
 
-.profile .counter {
-  margin: 1.25rem 0;
-}
+   A `.profile .counter` rule went the same way: the widget renders .scoreboard
+   and nothing on the portal has ever drawn .counter. */
 
 .profile__section {
   margin: 1.5rem 0 0.5rem;
@@ -42,14 +41,6 @@
   color: var(--text-muted);
 }
 
-.profile__filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: end;
-  margin: 1rem 0 0;
-}
-
 .profile__count {
   color: var(--text-muted);
   font-weight: 400;
@@ -58,4 +49,192 @@
 .profile__text {
   margin: 0;
   color: var(--text-muted);
+}
+
+/* The profile as two parts and a row of three cards (owner's design decision,
+   30.07.2026). */
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profile__name {
+  margin: 0 0 0.4rem;
+  font-size: clamp(26px, 4.5vw, 36px);
+  /* The heading can wrap now that the team is inside it, and the root 1.55 gapes
+     on a wrapped 36px display line. */
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  /* A forty character team name with no space in it must not push the page
+     sideways. */
+  overflow-wrap: anywhere;
+}
+
+/* The bracket group wraps as one, so an opening bracket is never left alone at
+   the end of a line. */
+.profile__team {
+  display: inline-block;
+  font-size: clamp(15px, 0.55em, 22px);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.profile__parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.profile__part {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.profile__part:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Marked in the markup as well as by the colour, which alone would leave the
+   reader who cannot see it without the answer. */
+.profile__part[aria-current] {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Ruled off and full width, so it reads as a control over the page and not as
+   one belonging to the card nearest it. */
+.profile__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: 0.75rem;
+  border-block: 1px solid var(--border);
+  scroll-margin-top: 1rem;
+}
+
+.profile__controls:focus-visible {
+  outline: none;
+}
+
+.profile__controls .rankings__field {
+  flex: 1 1 12rem;
+  max-width: 22rem;
+}
+
+.profile__scope {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.profile__row {
+  display: grid;
+  gap: 1.25rem;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile .profile__card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.profile .scoreboard {
+  min-width: 0;
+}
+
+.profile__card-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.profile__bio-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.profile__list-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.profile__list-controls .rankings__field {
+  flex: 1 1 12rem;
+  max-width: 20rem;
+}
+
+.profile__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  color: var(--text-muted);
+}
+
+.awards__badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 1rem;
+}
+
+.awards__badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+  --badge-art-size: clamp(4.5rem, 20vw, 6.5rem);
+}
+
+/* Two across from tablet up: three tracks here would be 250px each, and 250px
+   holds neither a ring beside its legend nor a readable line of prose. */
+@media (min-width: 820px) {
+  .profile__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile__row--bio .profile__bio {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Three only where all three clear their minimum. Below a thousand the words
+   column is about forty characters a line, which is a newspaper column. */
+@media (min-width: 1000px) {
+  .profile__row--bio {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+  }
+
+  .profile__row--bio .profile__bio {
+    grid-column: auto;
+  }
 }

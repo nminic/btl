@@ -29,6 +29,14 @@ export type Competitor = {
   active: boolean
   membershipBasis: MembershipBasis
   teamId: string | null
+  /**
+   * The racing biography, as published.
+   *
+   * Written by the member and edited and published by a moderator, never handed
+   * back (PDL P11, P22), so what is here is what went out. Empty for most of
+   * them, which is the state the profile has to look right in.
+   */
+  bio: string
 }
 
 export type Race = {

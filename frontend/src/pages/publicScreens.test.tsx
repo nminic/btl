@@ -400,46 +400,119 @@ describe('Competitors', () => {
 })
 
 describe('CompetitorProfile', () => {
-  it('shows the totals and the results of one competitor', async () => {
-    renderAt('/sr/takmicar/000007')
-
-    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Sve sezone' })).toBeVisible()
-
-    const results = screen.getByRole('table', { name: 'Rezultati' })
-    expect(within(results).getAllByRole('row').length).toBeGreaterThan(2)
-  })
-
-  it('narrows the table, the totals and the bars with one filter', async () => {
-    const user = setupUser()
+  it('opens on the newest season this person raced, not on all of them', async () => {
+    /* Owner's design decision, 30.07.2026. Member 000021 has two hundred and
+       seventy-seven results; opening on all of them is twenty-three screens on a
+       telephone, and the counters above were career totals under a heading that
+       names a season. All seasons is one choice away. */
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
+    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
+
+    expect(season.value).not.toBe('sve')
+    expect(screen.getByRole('heading', { name: 'Zbirna statistika' })).toBeVisible()
+    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
+      .toBeGreaterThan(1)
+  })
+
+  it('narrows only the table by length, and leaves the widgets on the season', async () => {
+    /* The season governs everything on the page; the length governs the table
+       and nothing else. A donut narrowed to marathons is a chart with one
+       segment, and a scoreboard quietly showing marathon kilometres under a
+       heading that names a season is a number meaning whatever the reader
+       guesses. */
+    const user = setupUser()
+    renderAt('/sr/takmicar/000007?sezona=sve')
+
+    await screen.findByRole('heading', { level: 1 })
     const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
+    const bars = within(screen.getByRole('table', { name: 'Trke po dužini' })).getAllByRole('row')
+      .length
 
-    await user.selectOptions(screen.getByLabelText('Kategorija'), 'marathon')
+    await user.selectOptions(screen.getByLabelText('Dužina'), 'marathon')
 
-    const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
-    expect(narrowed.length).toBeLessThan(all)
-    // The heading over the totals follows the same filter, not the whole career.
-    expect(screen.getByRole('heading', { name: 'Sve sezone' })).toBeVisible()
+    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
+      .toBeLessThan(all)
+    expect(within(screen.getByRole('table', { name: 'Trke po dužini' })).getAllByRole('row'))
+      .toHaveLength(bars)
   })
 
   it('lets a filter go again', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000007')
+    renderAt('/sr/takmicar/000007?sezona=sve')
 
     await screen.findByRole('heading', { level: 1 })
     const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
 
     await user.selectOptions(screen.getByLabelText('Sezona'), '2020')
-    expect(screen.getByRole('heading', { name: 'Sezona 2020.' })).toBeVisible()
+    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
+      .toBeLessThan(all)
 
     await user.selectOptions(screen.getByLabelText('Sezona'), 'sve')
-    expect(screen.getByRole('heading', { name: 'Sve sezone' })).toBeVisible()
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')).toHaveLength(
       all,
     )
+  })
+
+  it('shows a season from the address that this person has nothing in', async () => {
+    /* The select is built from the seasons they raced, so a season named in the
+       address matched no option and the control drew itself empty. */
+    renderAt('/sr/takmicar/000007?sezona=2010')
+
+    await screen.findByRole('heading', { level: 1 })
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2010')
+  })
+
+  it('carries the team in brackets after the name', async () => {
+    // Owner, 30.07.2026. It was a line of its own under the member number.
+    renderAt('/sr/takmicar/000001')
+
+    const heading = await screen.findByRole('heading', { level: 1 })
+
+    expect(heading.textContent).toMatch(/\(.+\)$/)
+    expect(within(heading).getByRole('link')).toHaveAttribute('href', expect.stringContaining('/tim/'))
+  })
+
+  it('leads to what the competitor has won, and back', async () => {
+    const user = setupUser()
+    renderAt('/sr/takmicar/000001')
+
+    await screen.findByRole('heading', { level: 1 })
+    await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
+
+    expect(await screen.findByRole('heading', { name: /Pehari i plakete/ })).toBeVisible()
+    // Not season-scoped: what is won is never taken away (PDL P11).
+    expect(screen.queryByLabelText('Sezona')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Pregled' }))
+    expect(await screen.findByRole('heading', { name: 'Zbirna statistika' })).toBeVisible()
+  })
+
+  it('shows the biography beside the widgets where there is one', async () => {
+    renderAt('/sr/takmicar/000001')
+
+    expect(await screen.findByRole('heading', { name: 'Biografija' })).toBeVisible()
+  })
+
+  it('draws no biography card for the members who have not written one', async () => {
+    // Most of them, which is the state the row has to look right in.
+    renderAt('/sr/takmicar/000002')
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.queryByRole('heading', { name: 'Biografija' })).not.toBeInTheDocument()
+  })
+
+  it('hides the profile of a member who is no longer active', async () => {
+    /* PDL P11: "Nigde na portalu nema vidljiv profil", "softverski je sakriven
+       kao da ne postoji". Nothing read the flag, so the profile of somebody who
+       had left was public; there was no such member in the data either, so the
+       rule had nothing to be checked against. 000032 is one now. */
+    renderAt('/sr/takmicar/000032')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ovog takmičara nema.' }),
+    ).toBeVisible()
   })
 
   it('shows the five lengths as bars, including the ones never run', async () => {
@@ -449,12 +522,13 @@ describe('CompetitorProfile', () => {
     expect(within(chart).getAllByRole('row')).toHaveLength(5)
   })
 
-  it('says so when the filter leaves nothing', async () => {
+  it('says which of the four kinds of nothing it is', async () => {
+    /* Never raced at all is a different fact from raced but not this season, and
+       a reader told the wrong one goes looking for a fault. */
     renderAt('/sr/takmicar/000007?sezona=2010')
 
-    expect(
-      await screen.findByText('Za izabranu sezonu i dužinu nema nijednog rezultata.'),
-    ).toBeVisible()
+    expect(await screen.findByText('U sezoni 2010. nema nijednog rezultata.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Poništi filtere' })).toBeVisible()
   })
 
   it('says so when the competitor does not exist', async () => {
@@ -470,6 +544,8 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000031')
 
     expect(await screen.findByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
+    // Nothing to filter, so nothing to reset.
+    expect(screen.queryByRole('button', { name: 'Poništi filtere' })).not.toBeInTheDocument()
   })
 
   it('says plainly when somebody is in no team', async () => {

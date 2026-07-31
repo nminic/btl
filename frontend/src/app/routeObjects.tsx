@@ -4,6 +4,7 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { Badges } from '../pages/Badges'
 import { Calendar } from '../pages/Calendar'
 import { Competitors } from '../pages/Competitors'
+import { CompetitorAwards } from '../pages/CompetitorAwards'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
 import { EventDetail } from '../pages/EventDetail'
 import { LeagueDetail } from '../pages/LeagueDetail'
@@ -154,6 +155,7 @@ function guarded(path: string, screen: ReactElement): ReactElement {
 const DETAILS: RouteObject[] = [
   { path: 'kalendar/:slug', element: <EventDetail /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
+  { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
   { path: 'liga/:slug', element: <LeagueDetail /> },
   { path: 'rezultat/novi', element: <NewResult /> },

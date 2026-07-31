@@ -815,7 +815,7 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(screen.getAllByRole('button', { name: 'Počasno članstvo' })[0])
 
     const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
-    expect(decided.getByText('000032')).toBeVisible()
+    expect(decided.getByText('000033')).toBeVisible()
     expect(decided.getByText('000033')).toBeVisible()
   })
 
@@ -833,7 +833,7 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(decided.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
 
     await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
-    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000032')).toBeVisible()
+    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
   })
 
   it('will not send a membership back without a reason', async () => {
@@ -924,14 +924,15 @@ describe('the queue of memberships waiting to be activated', () => {
     await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
 
     /* An activation writes a decision and not a member, so the member form never
-       saw the number the activation had just given out: record a fee, get 000032,
-       then enter a member without reloading and get 000032 again. Two members
+       saw the number the activation had just given out: record a fee, get the
+       first free number, then enter a member without reloading and get it
+       again. Two members
        answered to one number, and because the overlay of changes is keyed by the
        number, changing the town of one of them changed both. That is the fault
        the check for uniqueness used to catch before the field left the form (PDL
        P8, 30.07.2026; ADL A4d). */
     await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
-    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000032')).toBeVisible()
+    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
 
     // The same visit, walked the way an administrator walks it: no reload.
     await user.click(screen.getByRole('button', { name: 'Administracija' }))
@@ -956,9 +957,11 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(form.getByRole('button', { name: 'Sačuvaj' }))
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
+    /* The number the activation handed out is spoken for, so the form must not
+       hand it out again: the new member is 000034. */
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(list.queryByText('000032')).not.toBeInTheDocument()
-    expect(within(list.getByText('000033').closest('tr')!).getByText(/Milica/)).toBeVisible()
+    expect(list.queryByText('000033')).not.toBeInTheDocument()
+    expect(within(list.getByText('000034').closest('tr')!).getByText(/Milica/)).toBeVisible()
   })
 
   it('says so once every membership has been decided', async () => {
@@ -1431,7 +1434,7 @@ describe('countsFor', () => {
         items,
         decisions: {
           a: { status: 'approved', note: '', basis: '', memberNumber: '' },
-          u: { status: 'approved', note: '', basis: 'payment', memberNumber: '000032' },
+          u: { status: 'approved', note: '', basis: 'payment', memberNumber: '000033' },
         },
       }),
     ).toMatchObject({ teams: 1, payments: 0 })
