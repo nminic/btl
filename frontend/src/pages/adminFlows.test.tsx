@@ -436,28 +436,29 @@ describe('payment payloads', () => {
     expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
   })
 
-  it('carries the reference when there is one, under the model that has none', () => {
-    /* The tag begins with two digits naming the model, and `00` is what a
-       reference with no model uses. The reference the association hands out is
-       the season and the member number, so what goes in is 002027-37. */
+  it('carries the reference exactly as it was handed in', () => {
+    /* The association's slips use no model, so nothing is prefixed to the
+       reference (owner, 31.07.2026). */
     const payload = ipsPayload({
       account: '000000000000000000',
       recipient: 'x',
       amountRsd: 100,
       purpose: 'y',
-      reference: '2027-37',
+      reference: '202737',
     })
 
-    expect(payload).toContain('RO:002027-37')
+    expect(payload).toContain('RO:202737')
   })
 
-  it('writes the reference as the season and the member number without its noughts', () => {
+  it('writes the reference as the season and the member number, digits only', () => {
     /* Whose money it is, in the one field a bank statement carries through
        (owner, 31.07.2026). The season is in it because the same person pays
        every year; the noughts are out because nobody copies four of them
-       correctly. */
-    expect(paymentReference(2027, '000037')).toBe('2027-37')
-    expect(paymentReference(2027, '000001')).toBe('2027-1')
+       correctly; and there is no separator, because the field is read by a
+       machine and a separator is one more thing that can go missing. */
+    expect(paymentReference(2027, '000037')).toBe('202737')
+    expect(paymentReference(2027, '000001')).toBe('20271')
+    expect(paymentReference(2027, '001234')).toBe('20271234')
     expect(paymentPurpose(2027)).toBe('Članarina za 2027. godinu')
   })
 

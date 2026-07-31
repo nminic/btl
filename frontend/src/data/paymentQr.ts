@@ -26,14 +26,18 @@ export const RECIPIENT_ACCOUNT = '105000000000328471'
  * What the member writes in the reference field, and what the administrator
  * reads off the statement to know whose money this is (owner, 31.07.2026).
  *
- * The season and the member number without its leading noughts: 2027-37. The
- * season is in it because the same person pays every year and the number alone
- * would not say which year was paid; the noughts are out because nobody copying
- * a reference from a screen into a banking application types four of them
- * correctly.
+ * The season and then the member number without its leading noughts, run
+ * together: 202737. Digits and nothing else, because the field is read by a
+ * machine off a bank statement and a separator is one more thing that can be
+ * dropped, doubled or turned into a different character on the way.
+ *
+ * The season is in it because the same person pays every year and the number
+ * alone would not say which year was paid; the noughts are out because nobody
+ * copying a reference from a screen into a banking application types four of
+ * them correctly.
  */
 export function paymentReference(season: number, memberNumber: string): string {
-  return `${season}-${Number(memberNumber)}`
+  return `${season}${Number(memberNumber)}`
 }
 
 /** What the money is for, in the words the statement will carry. */
@@ -76,11 +80,9 @@ export function ipsAmount(amountRsd: number): string {
  * N takes the name and then the address, one per line, which is how the
  * standard carries a recipient with a seat.
  *
- * RO begins with two digits naming the model, and `00` is what a reference with
- * no model uses. The reference itself is handed in, so this is the one place
- * that says which model the association's slips use. **Confirm with the bank
- * before the first real payment**: a wrong model is a payment that arrives and
- * cannot be reconciled.
+ * RO carries the reference exactly as it is handed in. The association's slips
+ * use no model (owner, 31.07.2026), so nothing is prefixed to it; where a model
+ * is used, its two digits come first.
  */
 export function ipsPayload(payment: IpsPayment): string {
   const parts = [
@@ -95,7 +97,7 @@ export function ipsPayload(payment: IpsPayment): string {
   ]
 
   if (payment.reference !== '') {
-    parts.push(`RO:00${payment.reference}`)
+    parts.push(`RO:${payment.reference}`)
   }
 
   return parts.join('|')
