@@ -384,7 +384,7 @@
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
-    "address": "Adresa",
+    "address": "Adresa za slanje",
     "addressHint": "Ulica i broj, na koje ti stižu majica i finišerska medalja. Nikad se ne prikazuje javno.",
     "city": "Mesto",
     "country": "Država",

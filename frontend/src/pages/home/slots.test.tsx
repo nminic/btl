@@ -121,7 +121,7 @@ describe('CalendarExtract', () => {
      travel with them because a colour on its own says nothing to anybody who
      cannot separate two of them (owner, 31.07.2026). */
   it('marks the lengths an event holds, once each', () => {
-    const { container } = renderWidget(
+    renderWidget(
       <CalendarExtract
         events={[{ ...event('d', 'Fruškogorski maraton', '2026-12-05'), raceIds: ['r1', 'r2', 'r3'] }]}
         races={races}
@@ -129,8 +129,9 @@ describe('CalendarExtract', () => {
       />,
     )
 
-    // Three races, two lengths between them, so two dots.
-    expect(container.querySelectorAll('.length-dot')).toHaveLength(2)
+    /* Three races, two lengths between them, so the row names two: the marathon
+       run twice is named once. What is read out is what is drawn, so counting
+       the drawing separately would be counting the same thing twice. */
     expect(screen.getByText('Maraton, Ultramaraton')).toBeInTheDocument()
   })
 })

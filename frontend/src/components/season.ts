@@ -38,10 +38,12 @@ export function useSeason(fallback: string = ALL_SEASONS): string {
  * whatever the address named.
  *
  * The running one is always there even when they have nothing in it, because it
- * is the default and a select cannot open on an option it does not have. A
- * season named in a shared link is there for the same reason: the link has to
- * show what it was sent to show, and an empty table under the right year says
- * something true.
+ * is what the teams open on and a select cannot open on an option it does not
+ * have. On a profile the default is all of them, but the running year still
+ * belongs on the list: somebody looking at a profile in March wants this season
+ * to be one choice away. A season named in a shared link is there for the same
+ * reason: the link has to show what it was sent to show, and an empty table
+ * under the right year says something true.
  */
 export function seasonOptions(raced: number[], season: string, today: string): number[] {
   const years = new Set(raced)

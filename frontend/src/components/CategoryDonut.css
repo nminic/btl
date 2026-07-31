@@ -36,9 +36,14 @@
 .donut__seg {
   fill: none;
   cursor: pointer;
-  /* The one being pointed at grows on both edges, so the ring keeps its middle
-     and the number inside it does not jump. */
-  transition: stroke-width var(--fast);
+  /* The one being pointed at grows outwards, so the hole in the middle never
+     changes size. Both halves of that have to move together: the radius carries
+     the inner edge outwards while the width carries the outer edge, and
+     animating only one of them made the inner edge set off first and come back,
+     which is the flicker this was meant to avoid. */
+  transition:
+    stroke-width var(--fast),
+    r var(--fast);
 }
 
 @media (prefers-reduced-motion: reduce) {

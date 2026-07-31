@@ -5,9 +5,7 @@ import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
   /* Two thirds of standing and prose against one third of figures and things to
-     do (owner, 31.07.2026). The reading order is the left column whole and then
-     the right one, which is also the order on a phone, where the two columns
-     become one. */
+     do (owner, 31.07.2026). */
   it('lays the widgets out in the order a phone reads them', async () => {
     renderAt('/sr')
 

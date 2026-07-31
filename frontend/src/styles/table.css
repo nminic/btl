@@ -91,3 +91,20 @@
     display: none;
   }
 }
+
+/* One dot per race length, the same five colours the ring and the results table
+   use. Shared, because the calendar, the front page and a profile all draw
+   them, and three copies of five colours is two too many (ADL A7). */
+.length-dot {
+  display: inline-block;
+  inline-size: 0.55rem;
+  block-size: 0.55rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.length-dot--short { background: var(--length-short); }
+.length-dot--long { background: var(--length-long); }
+.length-dot--half { background: var(--length-half); }
+.length-dot--marathon { background: var(--length-marathon); }
+.length-dot--ultra { background: var(--length-ultra); }

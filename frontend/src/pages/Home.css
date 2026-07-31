@@ -201,7 +201,14 @@
    31.07.2026). Not in bold either; the date and the dots carry the weight. */
 .extract__name {
   min-width: 0;
-  overflow: hidden;
+  /* `clip` rather than `hidden`, with room left for the focus ring: the ring is
+     drawn two pixels wide two pixels outside the link, and a box that cuts at
+     its own edge cuts the ring off with it. On a name long enough to be
+     shortened the ring was outside the box on all four sides and could not be
+     seen at all, which is WCAG 2.2 SC 2.4.7. The ellipsis works the same
+     either way. */
+  overflow: clip;
+  overflow-clip-margin: 4px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -272,7 +279,7 @@
   padding: 0.5rem 0.7rem;
   border-radius: var(--radius-sm);
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
-  color: #3a2a02;
+  color: var(--gold-button-ink);
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.15;
@@ -481,18 +488,3 @@
   border-top: 1px solid var(--border);
   color: var(--text-muted);
 }
-
-/* One dot per length, the same five colours the ring and the results table use.
-   Shared, because the front page and the calendar both draw them (ADL A7). */
-.length-dot {
-  display: inline-block;
-  inline-size: 0.55rem;
-  block-size: 0.55rem;
-  border-radius: 50%;
-}
-
-.length-dot--short { background: var(--length-short); }
-.length-dot--long { background: var(--length-long); }
-.length-dot--half { background: var(--length-half); }
-.length-dot--marathon { background: var(--length-marathon); }
-.length-dot--ultra { background: var(--length-ultra); }

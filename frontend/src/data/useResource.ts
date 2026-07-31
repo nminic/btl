@@ -88,7 +88,6 @@ export function combineResources<A, B, C>(
   return { status: 'ready', data: [first.data, second.data, third.data] }
 }
 
-/** The same idea for the common case of exactly two resources. */
 /** Four of them, for the front page, which reads competitors, events, results
  *  and races. */
 export function combineFour<A, B, C, D>(
@@ -116,6 +115,7 @@ export function combineFour<A, B, C, D>(
   return { status: 'ready', data: [first.data, second.data, third.data, fourth.data] }
 }
 
+/** The same idea for the common case of exactly two resources. */
 export function combinePair<A, B>(
   first: ResourceState<A>,
   second: ResourceState<B>,
