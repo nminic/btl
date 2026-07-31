@@ -34,7 +34,7 @@
   cursor: pointer;
   color: var(--text-muted);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   transition: background var(--fast);
 }
@@ -65,7 +65,7 @@
   font-weight: 400;
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   padding: 0.45rem 0.5rem;
 }
@@ -89,7 +89,7 @@
    the width of the whole table from inside a cell. */
 .contributions__toggle {
   padding: 0.3rem 0.6rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-muted);

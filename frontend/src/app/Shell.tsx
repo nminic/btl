@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { useRef, useState } from 'react'
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { DateSwitch } from '../clock/DateSwitch'
 import { dataOr } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
@@ -17,6 +17,7 @@ import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { PageMetaContext } from './pageMetaContext'
 import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './routes'
+import { useNewScreen } from './useNewScreen'
 import { useRouteChrome } from './useRouteChrome'
 import './Shell.css'
 
@@ -165,12 +166,15 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
 }
 
 export function Shell() {
+  const main = useRef<HTMLElement>(null)
   const { locale, t } = useI18n()
   const sections = useNavSections()
   const rest = useRestOfPath()
   const { pageTitle, declare } = useRouteChrome()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
+
+  useNewScreen(main)
   /* Signing out has to empty the header. This used to read the role, which the
      development role switch also sets, so the inbox and the cog stayed on
      screen after a member signed out. The session is the one that knows. */
@@ -239,6 +243,17 @@ export function Shell() {
         </nav>
       </header>
 
+      {/* Back to the top on a new screen, and back where it was on the way back.
+          A data router turns the browser's own handling off, so without this
+          every screen opened from halfway down a table opened halfway down.
+
+          Keyed on the path alone, or every filter counts as a new screen: with
+          the default key the table jumped to the top on each letter typed into
+          the search, and the row of six lengths on a profile threw the reader
+          back up the page on every click, which is the very fault this is here
+          to fix, moved from one control to another. */}
+      <ScrollRestoration getKey={(where) => where.pathname} />
+
       {/* Says out loud which screen just opened. The browser announces a page
           change on its own; a single page application has to do it by hand. */}
       <p className="visually-hidden" role="status">
@@ -249,7 +264,7 @@ export function Shell() {
           this is how it says so. One writer, so the head can never be pulled in
           two directions at once. */}
       <PageMetaContext.Provider value={declare}>
-        <main id="content" className="shell__main">
+        <main id="content" className="shell__main" ref={main} tabIndex={-1}>
           <ErrorBoundary
             fallback={
               <div role="alert">

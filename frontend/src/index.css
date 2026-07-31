@@ -7,6 +7,20 @@
 }
 
 :root {
+  /**
+   * Room for the scrollbar, always, whether or not there is one.
+   *
+   * Without it the width of the page is decided by how tall the page happens to
+   * be. A long screen has a scrollbar and a short one does not, so going from
+   * the table to the rulebook and back moved every heading, every card and the
+   * navigation itself sideways by the width of that bar. Nothing was wrong with
+   * any one screen; the jump was in the going between them (owner, 31.07.2026:
+   * the navigation must not move under the pointer, and boxes have to land on
+   * the same pixel).
+   *
+   * On the root and not on a container, because it is the root that scrolls.
+   */
+  scrollbar-gutter: stable;
   /* A size, not the shorthand: the shorthand would pin the root size and
      ignore a visitor who raised the browser default. */
   font-family: var(--sans);

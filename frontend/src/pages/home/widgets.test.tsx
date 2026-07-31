@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
@@ -17,7 +18,7 @@ function renderWidget(ui: React.ReactNode) {
   )
 }
 
-const competitor = (memberNumber: string): Competitor => ({
+const competitor = (memberNumber: string, active = true): Competitor => ({
   memberNumber,
   firstName: 'Ime',
   lastName: memberNumber,
@@ -27,11 +28,11 @@ const competitor = (memberNumber: string): Competitor => ({
   birthYear: 1985,
   firstSeason2027: false,
   firstSeason: 2027,
-  active: true,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
   bio: '',
+  active,
 })
 
 const result = (memberNumber: string, points: number): Result => ({
@@ -206,8 +207,58 @@ describe('TopByCategory', () => {
 
     const first = screen.getByText(/^Najviše/).textContent
 
-    // It turns on its own: there is nothing to click and no heading above it.
     await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(first))
+  })
+
+  it('can be stopped, and stays stopped', async () => {
+    /* WCAG 2.2 SC 2.2.2, level A: anything that moves by itself for more than
+       five seconds beside other content has to be stoppable. This turned every
+       six seconds, forever, with nothing to press. */
+    const user = setupUser()
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />)
+
+    await user.click(screen.getByRole('button', { name: 'Zaustavi smenjivanje' }))
+    const stopped = screen.getByText(/^Najviše/).textContent
+
+    // Four turns' worth of waiting, and it has not moved.
+    await new Promise((wait) => setTimeout(wait, 80))
+
+    expect(screen.getByText(/^Najviše/).textContent).toBe(stopped)
+    /* The name carries the whole state and there is no `aria-pressed` beside
+       it: the two together announced "Nastavi smenjivanje, pressed", which is
+       heard as the opposite of what is true. */
+    expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).not.toHaveAttribute(
+      'aria-pressed',
+    )
+  })
+
+  it('starts stopped for anyone who asked for less motion', async () => {
+    const previous = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('reduced-motion'),
+      media: query,
+    })) as typeof matchMedia
+
+    try {
+      renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={10} />)
+
+      const first = screen.getByText(/^Najviše/).textContent
+      expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
+
+      await new Promise((wait) => setTimeout(wait, 60))
+      expect(screen.getByText(/^Najviše/).textContent).toBe(first)
+    } finally {
+      window.matchMedia = previous
+    }
+  })
+
+  it('is a named region rather than one that changes under the reader unannounced', () => {
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} />)
+
+    // It carried `aria-live="off"`, which is the default and does nothing, and
+    // had no heading, so the region had no name at all.
+    expect(screen.getByRole('region', { name: 'Najviše trka po dužini' })).toBeInTheDocument()
   })
 
   it('names the length underneath, and says so when nobody ran one', () => {
@@ -215,5 +266,48 @@ describe('TopByCategory', () => {
 
     expect(screen.getByText('Najviše kraćih trka')).toBeVisible()
     expect(screen.getByText('U ovoj sezoni još nema odtrčanih trka ove dužine.')).toBeVisible()
+  })
+})
+
+describe('a member whose fee has run out, in a widget of a season they did race', () => {
+  /* Two halves of PDL P11, and these widgets keep the second one.
+   *
+   * The first half, that they are not in the season running now at all, belongs
+   * to the page: `Home` narrows the field before it hands it over, and so does
+   * the page of boards. The second half, that nothing links to a profile that is
+   * hidden, belongs here, because these are the same widgets that draw a season
+   * already run. */
+  const gone = competitor('000099', false)
+  const still = competitor('000001')
+
+  it('has a bar in the chart, and the bar is not a link', () => {
+    renderWidget(
+      <TopByCategory
+        competitors={[gone, still]}
+        results={[result('000099', 1), result('000099', 2), result('000001', 3)]}
+        season={2027}
+      />,
+    )
+
+    const bars = screen.getAllByRole('listitem')
+    expect(bars).toHaveLength(2)
+    // One of the two names is a link and the other is not.
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByTitle('Ime 000099').tagName).toBe('SPAN')
+  })
+
+  it('is named in the top ten without a link on the name', () => {
+    renderWidget(
+      <TopTen
+        competitors={[gone, still]}
+        results={[result('000099', 20), result('000001', 10)]}
+        season={2027}
+        gender="M"
+      />,
+    )
+
+    expect(screen.getByText('Ime 000099')).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Ime 000099' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ime 000001' })).toBeInTheDocument()
   })
 })

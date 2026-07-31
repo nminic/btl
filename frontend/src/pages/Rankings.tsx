@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { useToday } from '../clock/useClock'
+import { CompetitorName } from '../components/CompetitorName'
 import { Resource } from '../components/Resource'
 import {
   categoriesOf,
   categoryOfMember,
   defaultSeason,
+  fieldFor,
   rankingFor,
   seasonsWithResults,
 } from '../data/derive'
@@ -59,9 +61,17 @@ function Standing({
     return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
   }, [competitors, results, gender, seasonParam, today])
 
+  /* Who this season's table is drawn from (PDL P11, and `fieldFor` for why).
+   *
+   * At the call site rather than inside `rankingFor`, because it is a rule about
+   * what a list shows and not about how a standing is worked out. Inside, it
+   * would also have reached the awards, where taking a row out shifts everybody
+   * below it and quietly rewrites who came third in a season already run. */
+  const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
+
   const rows = useMemo(
-    () => rankingFor(competitors, results, { season, gender, categoryCode: category, search }),
-    [competitors, results, season, gender, category, search],
+    () => rankingFor(field, results, { season, gender, categoryCode: category, search }),
+    [field, results, season, gender, category, search],
   )
 
   return (
@@ -158,9 +168,7 @@ function Standing({
                 >
                   <td className="table__position">{row.position}</td>
                   <td>
-                    <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-                      {row.competitor.firstName} {row.competitor.lastName}
-                    </Link>{' '}
+                    <CompetitorName competitor={row.competitor} />{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
                   <td>{categoryOfMember(row.competitor, season)}</td>

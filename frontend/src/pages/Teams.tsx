@@ -7,6 +7,7 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
+import { CompetitorName } from '../components/CompetitorName'
 
 /** How many columns the team row has, so the drawer underneath can span them. */
 const COLUMNS = 6
@@ -59,9 +60,7 @@ function MemberContributions({
               <tr key={row.competitor.memberNumber}>
                 <td className="table__position">{row.position}</td>
                 <td>
-                  <Link to={`/${locale}/takmicar/${row.competitor.memberNumber}`}>
-                    {row.competitor.firstName} {row.competitor.lastName}
-                  </Link>
+                  <CompetitorName competitor={row.competitor} />
                 </td>
                 <td>{formatNumber(row.races, locale)}</td>
                 <td>{formatNumber(row.kilometers, locale, 2)}</td>

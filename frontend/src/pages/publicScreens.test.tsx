@@ -815,3 +815,91 @@ describe('Leagues', () => {
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })
 })
+
+describe('a member whose fee has run out, in the tables', () => {
+  it('stands in the season they raced, with the name but no link', async () => {
+    /* PDL P11 has two halves and this is both of them at once: the name stays
+       in the table of the season they were a member of, and the link goes,
+       because the profile it pointed at is hidden as though it did not exist.
+       000032 raced in 2017 and their fee has since run out. */
+    // Read on a day well after 2017, so that season is history.
+    renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2026-06-01')
+
+    const table = await screen.findByRole('table')
+    const gone = within(table).getByText(/Vojislav Antonijević/)
+
+    expect(gone).toBeVisible()
+    expect(
+      within(table).queryByRole('link', { name: /Vojislav Antonijević/ }),
+    ).not.toBeInTheDocument()
+    // Everybody else still has one, or this would pass on a table with no links.
+    expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
+  })
+
+  it('is not in the table of the season that is running now', async () => {
+    /* The same table, the same season, read on two different days. 000032 raced
+       in 2017 and their fee has since run out, so on a day in 2017 that table is
+       the season now and they are not in it; on a day after it, it is history
+       and they are.
+     *
+     * Read through the simulated clock and not through the SEASON constant. The
+     * constant is 2027 for ever: on the day 2027 became history it would have
+     * gone on hiding them from the one archive table the league had, and would
+     * never have hidden them from 2028. */
+    renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2017-06-01')
+
+    await screen.findByRole('table')
+    expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
+  })
+})
+
+describe('the top boards, when a member on them has left the league', () => {
+  it('keep the name on the board and take the link off it', async () => {
+    /* PDL P11 again, on the one page that builds its links from a helper rather
+       than from the shared component. Nobody in the generated data is both
+       inactive and on a board, so the list is made inactive here: without it the
+       branch exists and nothing ever walks it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith('/competitors.json')) {
+        return real(input)
+      }
+
+      const all = (await (await real(input)).json()) as { active: boolean }[]
+
+      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
+        status: 200,
+      })
+    }) as typeof fetch
+
+    try {
+      renderAt('/sr/top-liste?sezona=2019')
+
+      const board = await screen.findByRole('table', { name: 'Najviše kilometara' })
+      const names = within(board)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent)
+
+      expect(names.length).toBeGreaterThan(0)
+      expect(names.every((one) => one !== null && one.trim() !== '')).toBe(true)
+      expect(within(board).queryAllByRole('link')).toHaveLength(0)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})
+
+describe('the front page, in the season running now', () => {
+  it('has nobody on it whose fee has run out', async () => {
+    /* PDL P11: they are not in the season now at all, and the top ten and the
+       turning chart are that season's standing in another shape. Read on a day
+       inside the one season 000032 raced, so they would be there if the rule
+       were not kept. */
+    renderAt('/sr', 'visitor', null, undefined, '2017-06-01')
+
+    await screen.findAllByRole('heading', { name: /Top 10/ })
+    expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
+  })
+
+})

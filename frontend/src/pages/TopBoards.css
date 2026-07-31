@@ -37,7 +37,7 @@
   font-weight: 400;
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   padding: 0.45rem 0.5rem;
 }

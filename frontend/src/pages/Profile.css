@@ -106,7 +106,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-left: 0;
   border-radius: 0 999px 999px 0;
   padding-right: 0.4rem;
@@ -120,7 +120,7 @@
   left: 0;
   top: 25%;
   bottom: 25%;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--control-border);
 }
 
 .profile__part-season select {
@@ -151,7 +151,7 @@
 
 .profile__part {
   padding: 0.4rem 0.8rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: 999px;
   color: var(--text-muted);
   text-decoration: none;
@@ -235,7 +235,7 @@
   position: relative;
   flex: 0 0 auto;
   padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);

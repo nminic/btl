@@ -467,6 +467,27 @@ export function activeOnly(competitors: Competitor[]): Competitor[] {
   return competitors.filter((one) => one.active)
 }
 
+/**
+ * Who a list of one season is drawn from (PDL P11).
+ *
+ * The season running now shows only members whose fee is paid, because this
+ * season the others are not members. Every season before it shows everybody who
+ * raced it, exactly as they stood, because they were members then.
+ *
+ * Which season is running comes from the day, and the day comes from the one
+ * clock the portal reads (ADL A7). Never from the SEASON constant: that is 2027
+ * for ever, so it would go on hiding people from 2027 after 2027 had become the
+ * only archive the league has, and would never hide anybody from 2028.
+ *
+ * Written once because it was being kept in one place out of four. The standing
+ * kept it; the front page and the boards of Article 56 are the same season's
+ * standing in another shape and did not, and nothing said so, because the data
+ * has one member this is true of and they are in none of those lists.
+ */
+export function fieldFor(competitors: Competitor[], season: number, today: string): Competitor[] {
+  return season === Number(today.slice(0, 4)) ? activeOnly(competitors) : competitors
+}
+
 /* The top boards (PDL P12). Each one keeps ten places and each one is ordered
  * down a ladder of measures: volume decides first, and efficiency is only ever
  * allowed to settle a complete tie. The ladders are written out per board

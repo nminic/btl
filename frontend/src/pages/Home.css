@@ -56,7 +56,7 @@
 .button--secondary {
   background: transparent;
   color: var(--text);
-  border-color: var(--border);
+  border-color: var(--control-border);
 }
 
 .button--secondary:hover {
@@ -255,7 +255,7 @@
   cursor: pointer;
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
 }
 
@@ -305,7 +305,7 @@
   font-size: 0.9rem;
   color: var(--text);
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   padding: 0.45rem 0.5rem;
   min-width: 0;
