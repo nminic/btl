@@ -32,7 +32,11 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
   await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
   await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
-  await user.type(screen.getByLabelText(/Grad/), 'Beograd')
+  /* Required since 31.07.2026: the shirt and the finisher medal are posted
+     together once a member reaches twelve points, and a parcel needs an
+     address. */
+  await user.type(screen.getByLabelText(/^Adresa$/), 'Bulevar oslobođenja 12')
+  await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
   await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
