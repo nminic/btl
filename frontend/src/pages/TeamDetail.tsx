@@ -59,7 +59,7 @@ export function TeamDetail() {
                 </p>
               </header>
 
-              <Counters totals={totals} seasonLabel={t('teams.together')} />
+              <Counters totals={totals} title={t('teams.together')} />
 
               <h2 className="profile__section">{t('teams.members')}</h2>
 

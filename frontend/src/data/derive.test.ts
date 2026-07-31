@@ -33,6 +33,7 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   active: true,
   membershipBasis: 'payment',
   teamId: null,
+  bio: '',
   ...extra,
 })
 

@@ -9,6 +9,11 @@ import { useCountUp } from './useCountUp'
  * values this widget above everything else on the page.
  *
  * One thing did change: the points are called BTL points and no longer BTLs.
+ *
+ * The heading is handed in rather than being the season. On the front page and
+ * on a team it is what it always was; on a profile the season is chosen once,
+ * above the widget and the one beside it, and repeating it inside would be the
+ * same word twice on one screen (owner, 30.07.2026).
  */
 
 function Runner() {
@@ -112,13 +117,13 @@ function Row({
   )
 }
 
-export function Counters({ totals, seasonLabel }: { totals: Totals; seasonLabel: string }) {
+export function Counters({ totals, title }: { totals: Totals; title: string }) {
   const { t } = useI18n()
 
   return (
     <section className="scoreboard" aria-labelledby="counters-heading">
       <h2 className="scoreboard__title" id="counters-heading">
-        {seasonLabel}
+        {title}
       </h2>
 
       {/* Every row carries its own unit, so a number never stands there

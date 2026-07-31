@@ -183,7 +183,13 @@ describe('the generated data', () => {
     const memberships = waiting.filter((one) => one.queue === 'payments')
 
     expect(competitors.filter((one) => !/^\d{6}$/.test(one.memberNumber))).toEqual([])
-    expect(competitors.filter((one) => !one.active)).toEqual([])
+
+    /* An inactive member is a different thing and does belong here: their fee
+       ran out, they keep their number (PDL P8) and their name stays in the
+       historic tables, while their profile is hidden (PDL P11). This used to
+       assert there were none, which conflated "has not paid yet" with "no longer
+       a member" and left the portal with nobody to check the hiding against. */
+    expect(competitors.filter((one) => !one.active).length).toBe(1)
 
     expect(memberships.length).toBeGreaterThan(0)
     expect(memberships.filter((one) => one.memberNumber !== '')).toEqual([])

@@ -99,7 +99,7 @@ describe('the name of a page', () => {
 
     // The same profile, on an address that belongs to the member area rather
     // than to the person.
-    await screen.findByRole('heading', { level: 1, name: 'Strahinja Vukićević' })
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
     await waitFor(() => expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`))
   })
 

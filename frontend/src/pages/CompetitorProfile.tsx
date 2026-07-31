@@ -1,15 +1,21 @@
 import { useMemo } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
-import { CATEGORIES, categoryOfMember, resultsOf, seasonsWithResults, totalsOf } from '../data/derive'
-import { SEASON } from '../data/pricing'
+import {
+  CATEGORIES,
+  resultsOf,
+  seasonsWithResults,
+  totalsOf,
+} from '../data/derive'
 import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { shortBio } from './profile/bio'
+import { ProfileHead, ProfileParts } from './profile/ProfileHead'
 import './Profile.css'
 
 const ALL = 'sve'
@@ -24,10 +30,40 @@ function countsOf(results: Result[]): Map<RaceCategory, number> {
   return counts
 }
 
-/* The profile is the centre of the portal, so it answers more than "what did
- * this person run". The season and the length filter narrow the table, the
- * totals and the bars follow the same filter, and every one of them lives in
- * the address so a view can be sent as a link. */
+/** The biography as it is published, in paragraphs, with no links inside it: a
+ *  link in text somebody else wrote is an address that has to be policed. */
+function Biography({ text }: { text: string }) {
+  const { t } = useI18n()
+
+  return (
+    <section className="profile__card profile__bio" aria-labelledby="profile-bio">
+      <h2 className="profile__card-title" id="profile-bio">
+        {t('profile.bio')}
+      </h2>
+      {shortBio(text)
+        .split(/\n{2,}/)
+        .map((paragraph) => (
+          <p className="profile__bio-text" key={paragraph}>
+            {paragraph}
+          </p>
+        ))}
+    </section>
+  )
+}
+
+/**
+ * The profile, as one page of two parts (the design decision of 30.07.2026).
+ *
+ * This is the first: who the person is, then one season control, then the three
+ * cards that answer how much and of what kind and who they are, then the races.
+ *
+ * One season, chosen once, above everything it governs. It used to be one of two
+ * filters standing side by side over the widgets, with the second narrowing them
+ * by race length as well: a donut narrowed to marathons is a chart with one
+ * segment, and a scoreboard quietly showing marathon kilometres beside a season
+ * label is a number meaning whatever the reader guesses. Length now narrows the
+ * table and nothing else, and it lives beside the table.
+ */
 function ProfileBody({
   competitor,
   results,
@@ -39,8 +75,6 @@ function ProfileBody({
 }) {
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
-  const season = params.get('sezona') ?? ALL
-  const category = params.get('kategorija') ?? ALL
 
   const mine = useMemo(
     () => resultsOf(results, competitor.memberNumber),
@@ -48,20 +82,65 @@ function ProfileBody({
   )
   const seasons = useMemo(() => seasonsWithResults(mine), [mine])
 
+  /* The newest season this person has anything in, rather than all of them
+     (owner's spec, 30.07.2026). Somebody with two hundred and seventy-seven
+     results opened on all two hundred and seventy-seven, which is twenty-three
+     screens on a telephone, and the counters above them were career totals under
+     a heading that says the season. All seasons is one choice away.
+
+     Simply the first of the seasons they raced, which are newest first. It was
+     `defaultSeason`, which asks which season the *rankings* should open on and
+     decides it by how big the field is; handed one person's results the field is
+     one member in every season, so it never took either of its branches and
+     came back with the newest only because the results happen to be sorted that
+     way and Array.sort is stable. */
+  const opensOn = seasons[0]
+  const fallback = opensOn === undefined ? ALL : String(opensOn)
+
+  /* A season named in the address is honoured even where this person has nothing
+     in it, and the select is given that option so it is not drawn blank: a
+     shared link has to show what it was sent to show, and an empty table under
+     the right year says something true. Anything that is not a year at all falls
+     back, and the comparison is on the string the option carries, so `02010` is
+     not quietly taken for 2010.
+
+     The length has no such treatment: an unknown length is nothing a select can
+     offer and nothing a table can narrow by, so it is ignored. */
+  const asked = params.get('sezona')
+  const season = asked === ALL || (asked !== null && /^\d{4}$/.test(asked)) ? asked : fallback
+  const askedLength = params.get('duzina')
+  const length =
+    askedLength !== null && (CATEGORIES as string[]).includes(askedLength) ? askedLength : ALL
+
+  /* Newest first, and never the memoised list itself: sorting that in place
+     during a render is a mutation React forbids, and it is a no-op only because
+     it is already in this order. */
+  const options =
+    season === ALL || seasons.some((year) => String(year) === season)
+      ? seasons
+      : [...seasons, Number(season)].sort((left, right) => right - left)
+
+  const inSeason = useMemo(
+    () => mine.filter((result) => season === ALL || result.date.startsWith(season)),
+    [mine, season],
+  )
   const shown = useMemo(
-    () =>
-      mine
-        .filter((result) => season === ALL || result.date.startsWith(season))
-        .filter((result) => category === ALL || result.category === category),
-    [mine, season, category],
+    () => inSeason.filter((result) => length === ALL || result.category === length),
+    [inSeason, length],
   )
 
-  const totals = useMemo(() => totalsOf(shown), [shown])
+  /* The two widgets follow the season and nothing else. */
+  const totals = useMemo(() => totalsOf(inSeason), [inSeason])
 
-  function change(key: string, value: string) {
+  /* Written into the address unless it is the default, so an address stays as
+     short as it can be. The season's default is not "all of them" any more, so
+     choosing all of them has to be said out loud: deleting the parameter would
+     have put the reader straight back on the newest season, and there would have
+     been no way to ask for the career at all. */
+  function change(key: string, value: string, fallbackValue: string) {
     const merged = new URLSearchParams(params)
 
-    if (value === ALL) {
+    if (value === fallbackValue) {
       merged.delete(key)
     } else {
       merged.set(key, value)
@@ -70,120 +149,158 @@ function ProfileBody({
     setParams(merged)
   }
 
-  return (
-    <div className="profile">
-      <header className="profile__head">
-        <h1>
-          {competitor.firstName} {competitor.lastName}
-        </h1>
-        <p className="profile__meta">
-          <span className="profile__number">{competitor.memberNumber}</span>
-          {' · '}
-          {categoryOfMember(competitor, SEASON)}
-          {' · '}
-          {competitor.city}
-          {' · '}
-          {t('profile.memberSince', { season: competitor.firstSeason })}
-        </p>
-        <p className="profile__meta">
-          {team === undefined ? (
-            t('profile.noTeam')
-          ) : (
-            <Link to={`/${locale}/tim/${team.slug}`}>{team.name}</Link>
-          )}
-        </p>
-      </header>
 
-      <div className="profile__filters">
+  return (
+    <div className="profile profile--competitor">
+      <ProfileHead competitor={competitor} team={team} />
+      <ProfileParts memberNumber={competitor.memberNumber} />
+
+      {/* Full width and ruled off, so it reads as a control over the page rather
+          than as one belonging to the card nearest it. That is the whole
+          difficulty of one filter governing two widgets and a table. */}
+      <div className="profile__controls">
         <label className="rankings__field">
           <span>{t('rankings.season')}</span>
-          <select value={season} onChange={(e) => change('sezona', e.target.value)}>
+          <select value={season} onChange={(event) => change('sezona', event.target.value, fallback)}>
             <option value={ALL}>{t('profile.allTime')}</option>
-            {seasons.map((year) => (
+            {options.map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>
             ))}
           </select>
         </label>
-
-        <label className="rankings__field">
-          <span>{t('event.category')}</span>
-          <select value={category} onChange={(e) => change('kategorija', e.target.value)}>
-            <option value={ALL}>{t('profile.allCategories')}</option>
-            {CATEGORIES.map((one) => (
-              <option key={one} value={one}>
-                {t(`category.${one}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <p className="profile__scope">
+          {season === ALL ? t('profile.allTimeScope') : t('profile.seasonScope')}
+        </p>
       </div>
 
-      <Counters totals={totals} seasonLabel={season === ALL ? t('profile.allTime') : t('home.season', { season })} />
+      <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
+        <Counters totals={totals} title={t('profile.stats')} />
 
-      <section aria-labelledby="profile-chart-heading">
-        <h2 className="profile__section" id="profile-chart-heading">
-          {t('profile.byCategory')}
+        <section className="profile__card profile__card--donut" aria-labelledby="profile-donut">
+          <h2 className="profile__card-title" id="profile-donut">
+            {t('profile.byCategory')}
+          </h2>
+          <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />
+        </section>
+
+        {competitor.bio !== '' && <Biography text={competitor.bio} />}
+      </div>
+
+      <section className="profile__results" aria-labelledby="profile-results">
+        <h2 className="profile__section" id="profile-results">
+          {t('profile.results')} <span className="profile__count">{shown.length}</span>
         </h2>
-        <CategoryDonut counts={countsOf(shown)} caption={t('profile.byCategory')} />
-      </section>
 
-      <h2 className="profile__section">
-        {t('profile.results')} <span className="profile__count">{shown.length}</span>
-      </h2>
-
-      {shown.length === 0 ? (
-        <p className="profile__empty">
-          {mine.length === 0 ? t('profile.noResults') : t('profile.noneInFilter')}
-        </p>
-      ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <caption className="visually-hidden">{t('profile.results')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('profile.columns.date')}</th>
-                <th scope="col">{t('profile.columns.event')}</th>
-                <th scope="col">{t('rankings.columns.category')}</th>
-                <th scope="col" className="table__hide-phone">
-                  {t('profile.columns.distance')}
-                </th>
-                <th scope="col" className="table__hide-phone">
-                  {t('rankings.columns.ascent')}
-                </th>
-                <th scope="col" className="table__hide-phone">
-                  {t('rankings.columns.descent')}
-                </th>
-                <th scope="col" className="table__hide-phone">
-                  {t('profile.columns.time')}
-                </th>
-                <th scope="col">{t('profile.columns.points')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((result) => (
-                <tr key={result.id}>
-                  <td>{formatShortDate(result.date, locale)}</td>
-                  <td>{result.eventName}</td>
-                  <td>{t(`category.${result.category}`)}</td>
-                  <td className="table__hide-phone">
-                    {formatNumber(result.distanceKm, locale, 2)}
-                  </td>
-                  <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
-                  <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
-                  <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
-                  <td className="table__points">{formatPoints(result.points, locale)}</td>
-                </tr>
+        <div className="profile__list-controls">
+          <label className="rankings__field">
+            <span>{t('profile.length')}</span>
+            <select value={length} onChange={(event) => change('duzina', event.target.value, ALL)}>
+              <option value={ALL}>{t('profile.allLengths')}</option>
+              {CATEGORIES.map((one) => (
+                <option key={one} value={one}>
+                  {t(`category.${one}`)}
+                </option>
               ))}
-            </tbody>
-          </table>
+            </select>
+          </label>
+
         </div>
-      )}
+
+        {shown.length === 0 ? (
+          <div className="profile__results-empty">
+            <p>{emptyText(t, mine.length, season, length)}</p>
+            {(season !== ALL || length !== ALL) && (
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => setParams(new URLSearchParams())}
+              >
+                {t('profile.clearFilters')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <caption className="visually-hidden">{t('profile.results')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('profile.columns.date')}</th>
+                  <th scope="col">{t('profile.columns.event')}</th>
+                  {/* The length of the race, which is what this column has always
+                      held. It was headed "Kat.", the same word the header two
+                      lines above uses for the age band (PDL P7). */}
+                  <th scope="col">{t('profile.columns.length')}</th>
+                  <th scope="col" className="table__hide-phone">
+                    {t('profile.columns.distance')}
+                  </th>
+                  <th scope="col" className="table__hide-phone">
+                    {t('rankings.columns.ascent')}
+                  </th>
+                  <th scope="col" className="table__hide-phone">
+                    {t('rankings.columns.descent')}
+                  </th>
+                  <th scope="col" className="table__hide-phone">
+                    {t('profile.columns.time')}
+                  </th>
+                  <th scope="col">{t('profile.columns.points')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((result) => (
+                  <tr key={result.id}>
+                    <td>{formatShortDate(result.date, locale)}</td>
+                    <td>{result.eventName}</td>
+                    <td>{t(`category.${result.category}`)}</td>
+                    <td className="table__hide-phone">
+                      {formatNumber(result.distanceKm, locale, 2)}
+                    </td>
+                    <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
+                    <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
+                    <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
+                    <td className="table__points">{formatPoints(result.points, locale)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   )
 }
 
+/** Which of the four sentences an empty table gets. Never raced at all is a
+ *  different fact from raced but not this season, and a reader who is told the
+ *  wrong one goes looking for a fault. */
+function emptyText(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  raced: number,
+  season: string,
+  length: string,
+): string {
+  if (raced === 0) {
+    return t('profile.noResults')
+  }
+
+  if (season !== ALL && length !== ALL) {
+    return t('profile.noneInFilter')
+  }
+
+  return season === ALL ? t('profile.noneInLength') : t('profile.noneInSeason', { season })
+}
+
+/**
+ * One competitor, found by number.
+ *
+ * A member who is not active has no visible profile at all (PDL P11: "Nigde na
+ * portalu nema vidljiv profil", "softverski je sakriven kao da ne postoji").
+ * Nothing here read that flag, so the profile of somebody who had left was
+ * public, which is the sort of thing that is nobody's fault and everybody's
+ * problem. It is the same answer as a number nobody has.
+ */
 export function CompetitorProfile({ memberNumber: given }: { memberNumber?: string } = {}) {
   const { t } = useI18n()
   const params = useParams()
@@ -193,7 +310,9 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   return (
     <Resource state={state}>
       {([competitors, results, teams]) => {
-        const competitor = competitors.find((one) => one.memberNumber === memberNumber)
+        const competitor = competitors.find(
+          (one) => one.memberNumber === memberNumber && one.active,
+        )
 
         if (competitor === undefined) {
           return <h1>{t('profile.notFound')}</h1>

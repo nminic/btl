@@ -156,7 +156,9 @@
       "title": "Profil takmičara",
       "description": "Trke, bodovi i statistika jednog takmičara Balkanske trkačke lige.",
       "recordTitle": "{name} ({number})",
-      "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi."
+      "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
+      "awardsTitle": "{name} ({number}), priznanja",
+      "awardsDescription": "{name}: pehari, plakete i značke osvojene u Balkanskoj trkačkoj ligi."
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -179,6 +181,10 @@
     "message": {
       "title": "Poruka",
       "description": "Jedna poruka iz internog sanduka portala Balkanske trkačke lige."
+    },
+    "competitorAwards": {
+      "title": "Priznanja takmičara",
+      "description": "Pehari, plakete i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
     }
   },
   "shell": {
@@ -590,13 +596,27 @@
       "event": "Događaj",
       "distance": "d (km)",
       "time": "Vreme",
-      "points": "Bodovi"
+      "points": "Bodovi",
+      "length": "Dužina"
     },
     "notFound": "Ovog takmičara nema.",
-    "allCategories": "Sve dužine",
     "byCategory": "Trke po dužini",
     "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata.",
-    "racesTotal": "trka"
+    "racesTotal": "trka",
+    "stats": "Zbirna statistika",
+    "bio": "Biografija",
+    "length": "Dužina",
+    "allLengths": "Sve dužine",
+    "seasonScope": "Sezona se bira jednom i važi za sve na ovom pregledu.",
+    "noneInSeason": "U sezoni {season}. nema nijednog rezultata.",
+    "noneInLength": "Nema nijednog rezultata izabrane dužine.",
+    "clearFilters": "Poništi filtere",
+    "parts": {
+      "label": "Delovi profila",
+      "overview": "Pregled",
+      "awards": "Priznanja i nagrade"
+    },
+    "allTimeScope": "Prikazane su sve sezone. Izbor sezone važi za sve na ovom pregledu."
   },
   "teams": {
     "title": "Timovi",
@@ -1097,5 +1117,17 @@
   "rulebook": {
     "onThisPage": "Na ovoj strani",
     "openSections": "Sekcije pravilnika"
+  },
+  "awards": {
+    "trophies": "Pehari i plakete",
+    "badges": "Značke",
+    "note": "Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno.",
+    "board": "Lista",
+    "place": "Mesto",
+    "overall": "Generalni plasman",
+    "category": "Kategorija {category}",
+    "position": "{position}. mesto",
+    "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
+    "noBadges": "Još nijedna značka."
   }
 }

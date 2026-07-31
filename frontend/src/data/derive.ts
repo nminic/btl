@@ -448,9 +448,23 @@ export function topTen(
 
 /** The most recently joined members, for "the community in numbers". */
 export function newestMembers(competitors: Competitor[], count: number): Competitor[] {
-  return [...competitors]
+  return activeOnly(competitors)
     .sort((left, right) => right.memberNumber.localeCompare(left.memberNumber))
     .slice(0, count)
+}
+
+/**
+ * Everybody whose membership is running, which is who a screen about now shows.
+ *
+ * A member whose fee has run out is in no list of this season and their name
+ * carries no link, because their profile is not there to be linked to (PDL P11:
+ * "u tabeli tekuće godine se ne pojavljuje uopšte", "link ka profilu postoji
+ * samo dok je članarina aktivna"). Their name does stay in the tables of the
+ * seasons they raced, as plain text; those are drawn from results and this does
+ * not touch them.
+ */
+export function activeOnly(competitors: Competitor[]): Competitor[] {
+  return competitors.filter((one) => one.active)
 }
 
 /* The top boards (PDL P12). Each one keeps ten places and each one is ordered

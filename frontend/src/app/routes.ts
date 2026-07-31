@@ -152,6 +152,7 @@ const UNLISTED_ROUTES: RouteDef[] = [
 export const EXTRA_ADDRESSES: Address[] = [
   { path: '', seoKey: 'home' },
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
+  { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
   { path: 'kalendar/:slug', seoKey: 'event' },
   { path: 'tim/:slug', seoKey: 'team' },
   { path: 'liga/:slug', seoKey: 'league' },

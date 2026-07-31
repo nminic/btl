@@ -30,6 +30,7 @@ const competitor = (memberNumber: string): Competitor => ({
   active: true,
   membershipBasis: 'payment',
   teamId: null,
+  bio: '',
 })
 
 const result = (memberNumber: string, points: number): Result => ({
@@ -148,7 +149,7 @@ describe('Counters', () => {
   }
 
   it('unrolls the numbers, and lands on the real ones', async () => {
-    renderWidget(<Counters totals={totals} seasonLabel="Sezona 2027." />)
+    renderWidget(<Counters totals={totals} title="Sezona 2027." />)
 
     expect(await screen.findByText(/1\.234,00 km/, {}, { timeout: 3000 })).toBeVisible()
     // Every row carries its unit now, and time on the course is a quantity
@@ -169,7 +170,7 @@ describe('Counters', () => {
       media: query,
     })) as typeof matchMedia
 
-    renderWidget(<Counters totals={totals} seasonLabel="Sezona 2027." />)
+    renderWidget(<Counters totals={totals} title="Sezona 2027." />)
 
     expect(screen.getByText(/1\.234,00 km/)).toBeVisible()
     window.matchMedia = previous

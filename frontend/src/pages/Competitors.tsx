@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { monogramFor } from '../app/monogram'
 import { Resource } from '../components/Resource'
 import { hueFor } from './competitorFace'
-import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
+import { activeOnly, categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
 import { SEASON } from '../data/pricing'
 import type { Competitor, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
@@ -33,7 +33,10 @@ function CompetitorCards({
   const cards = useMemo(() => {
     const needle = search.trim().toLowerCase()
 
-    return competitors
+    /* Members, not everybody who ever was one: a card leads to a profile, and an
+       inactive member has none (PDL P11). It put the newest inactive member on
+       this list and on the front page, both linking to "Ovog takmičara nema." */
+    return activeOnly(competitors)
       .filter((competitor) =>
         `${competitor.firstName} ${competitor.lastName} ${competitor.memberNumber} ${competitor.city}`
           .toLowerCase()
