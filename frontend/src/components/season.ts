@@ -26,11 +26,31 @@ export function useSeason(fallback: string = ALL_SEASONS): string {
   const [params] = useSearchParams()
   const asked = params.get('sezona')
 
-  if ((asked === ALL_SEASONS && fallback === ALL_SEASONS) || (asked !== null && /^\d{4}$/.test(asked))) {
-    return asked
-  }
+  return asked !== null && /^\d{4}$/.test(asked) ? asked : fallback
+}
 
-  return fallback
+/**
+ * The season a screen is actually read in, once the address has been held
+ * against what that screen offers.
+ *
+ * A year the address names that is not on offer is ignored, never added to the
+ * list. The options are the portal saying which seasons the league has, and the
+ * address may pick from them, not extend them. `/sr/timovi?sezona=1999` names a
+ * season the league never ran, and taking it put the control on one year and the
+ * table on another: the control fell to no selection at all and rendered blank,
+ * while the table below it showed every team at 0,00 with nothing on screen
+ * saying which year that was. A screen with a season on it must never do that.
+ *
+ * The address is deliberately not rewritten. Leaving it alone keeps the back
+ * button and a reload doing the same thing twice, and it avoids navigating in
+ * the middle of a render.
+ *
+ * A profile is the exception that proves the rule: its list already carries
+ * whatever the address named, so there this changes nothing, except for a year
+ * that only looks like one.
+ */
+export function offeredSeason(asked: string, offered: number[], fallback: string | undefined): string {
+  return offered.some((year) => String(year) === asked) ? asked : (fallback ?? ALL_SEASONS)
 }
 
 /**

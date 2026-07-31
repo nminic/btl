@@ -3,7 +3,7 @@ import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
-import { useSeason } from '../components/season'
+import { offeredSeason, useSeason } from '../components/season'
 import { useToday } from '../clock/useClock'
 import { Counters } from './home/Counters'
 import {
@@ -14,7 +14,6 @@ import {
   seasonsWithResults,
   totalsOf,
 } from '../data/derive'
-import { SEASON } from '../data/pricing'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -39,7 +38,7 @@ export function TeamDetail() {
   const { slug } = useParams()
   const today = useToday()
   const running = today.slice(0, 4)
-  const season = useSeason(running)
+  const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
   return (
@@ -53,16 +52,18 @@ export function TeamDetail() {
 
         const members = competitors.filter((one) => one.teamId === team.id)
         const numbers = new Set(members.map((one) => one.memberNumber))
-        const inSeason = results.filter((one) => seasonOf(one) === Number(season))
-        const mine = inSeason.filter((one) => numbers.has(one.memberNumber))
-        const totals = totalsOf(mine)
         /* The seasons this team has anything in, plus the running one, which is
-           the default and a control cannot open on an option it does not have. */
+           the default and a control cannot open on an option it does not have.
+           Worked out before the choice, because the choice is held against it. */
         const seasons = [
           ...new Set([Number(running), ...seasonsWithResults(results.filter(
             (one) => numbers.has(one.memberNumber),
           ))]),
         ].sort((left, right) => right - left)
+        const season = offeredSeason(asked, seasons, running)
+        const inSeason = results.filter((one) => seasonOf(one) === Number(season))
+        const mine = inSeason.filter((one) => numbers.has(one.memberNumber))
+        const totals = totalsOf(mine)
         /* Places, not row numbers, and the whole ladder rather than points
            alone: two members level on points used to be given 1 and 2 by the
            order they happened to be in, while the list of teams beside this one
@@ -83,7 +84,7 @@ export function TeamDetail() {
                 </p>
                 <div className="profile__title">
                   <h1 className="profile__name">{team.name}</h1>
-                  <SeasonPicker seasons={seasons} fallback={running} />
+                  <SeasonPicker seasons={seasons} season={season} fallback={running} />
                 </div>
                 <p className="profile__meta">
                   {team.city}
@@ -154,7 +155,7 @@ export function TeamDetail() {
                               {row.competitor.memberNumber}
                             </span>
                           </td>
-                          <td>{categoryOfMember(row.competitor, SEASON)}</td>
+                          <td>{categoryOfMember(row.competitor, Number(season))}</td>
                           <td className="table__hide-phone">{formatNumber(row.races, locale)}</td>
                           <td className="table__points">{formatPoints(row.points, locale)}</td>
                         </tr>

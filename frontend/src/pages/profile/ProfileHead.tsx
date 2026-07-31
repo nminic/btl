@@ -25,12 +25,16 @@ export function ProfileHead({
   competitor,
   team,
   seasons,
+  season,
 }: {
   competitor: Competitor
   team: Team | undefined
   /** The seasons the control offers. It stands level with the name because it
    *  governs both parts of the profile, not one of them (owner, 31.07.2026). */
   seasons: number[]
+  /** Which of them the profile is being read in, worked out by the part that
+   *  draws the content, so the control cannot disagree with what is below it. */
+  season: string
 }) {
   const { locale, t } = useI18n()
 
@@ -40,7 +44,7 @@ export function ProfileHead({
         <h1 className="profile__name">
           {competitor.firstName} {competitor.lastName}
         </h1>
-        <SeasonPicker seasons={seasons} />
+        <SeasonPicker seasons={seasons} season={season} />
       </div>
 
       <p className="profile__meta">

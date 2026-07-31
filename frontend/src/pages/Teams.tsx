@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
-import { useSeason } from '../components/season'
+import { offeredSeason, useSeason } from '../components/season'
 import { rankTeams, seasonOf, seasonsWithResults } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
@@ -28,7 +28,7 @@ export function Teams() {
   const { locale, t } = useI18n()
   const today = useToday()
   const running = today.slice(0, 4)
-  const season = useSeason(running)
+  const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
   return (
@@ -37,18 +37,20 @@ export function Teams() {
 
       <Resource state={state}>
         {([teams, competitors, results]) => {
-          const inSeason = results.filter((one) => seasonOf(one) === Number(season))
-          const rows = rankTeams(teams, competitors, inSeason)
           /* The seasons anybody has raced in, and the running one, which is the
-             default and a control cannot open on an option it does not have. */
+             default and a control cannot open on an option it does not have.
+             Worked out before the choice, because the choice is held against it. */
           const seasons = [...new Set([Number(running), ...seasonsWithResults(results)])].sort(
             (left, right) => right - left,
           )
+          const season = offeredSeason(asked, seasons, running)
+          const inSeason = results.filter((one) => seasonOf(one) === Number(season))
+          const rows = rankTeams(teams, competitors, inSeason)
 
           return (
             <>
               <div className="rankings__season">
-                <SeasonPicker seasons={seasons} fallback={running} />
+                <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 
               <div className="table-scroll">

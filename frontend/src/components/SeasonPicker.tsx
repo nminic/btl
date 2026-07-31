@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router'
 import { useI18n } from '../i18n/useI18n'
-import { ALL_SEASONS, useSeason } from './season'
+import { ALL_SEASONS } from './season'
 
 /**
  * The season control, beside the name of the competitor (owner, 31.07.2026).
@@ -16,9 +16,17 @@ import { ALL_SEASONS, useSeason } from './season'
  */
 export function SeasonPicker({
   seasons,
+  season,
   fallback,
 }: {
   seasons: number[]
+  /**
+   * The season the screen is being read in. Handed in rather than read from the
+   * address here, so that the control and the content below it cannot disagree:
+   * whoever draws the table works out which season it is, and the control shows
+   * that same one.
+   */
+  season: string
   /**
    * What the control shows when the address says nothing, and the one value the
    * address never carries.
@@ -31,7 +39,6 @@ export function SeasonPicker({
 }) {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
-  const season = useSeason(fallback)
   const all = fallback === undefined
 
   function choose(value: string) {

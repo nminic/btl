@@ -18,7 +18,7 @@ import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
-import { ALL_SEASONS, seasonOptions, useSeason } from '../components/season'
+import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
 
 /** What the address says when no length is chosen. The same word the season
  *  uses, and a constant of its own: they are two filters that happen to spell
@@ -136,7 +136,7 @@ function ProfileBody({
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
   const today = useToday()
-  const season = useSeason()
+  const asked = useSeason()
 
   const mine = useMemo(
     () => resultsOf(results, competitor.memberNumber),
@@ -144,9 +144,12 @@ function ProfileBody({
   )
   const seasons = useMemo(() => seasonsWithResults(mine), [mine])
   const options = useMemo(
-    () => seasonOptions(seasons, season, today),
-    [seasons, season, today],
+    () => seasonOptions(seasons, asked, today),
+    [seasons, asked, today],
   )
+  /* Held against the list before anything is read in it, so the control and the
+     table below it cannot show two different years. */
+  const season = offeredSeason(asked, options, undefined)
 
   /* The length has no such treatment as the season: an unknown length is nothing
      the row of six can show as chosen and nothing a table can narrow by, so it
@@ -183,7 +186,7 @@ function ProfileBody({
 
   return (
     <div className="profile profile--competitor">
-      <ProfileHead competitor={competitor} team={team} seasons={options} />
+      <ProfileHead competitor={competitor} team={team} seasons={options} season={season} />
       <ProfileParts memberNumber={competitor.memberNumber} />
 
       <div className="profile__row profile__row--bio">

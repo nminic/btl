@@ -795,6 +795,21 @@ describe('Teams', () => {
     expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2019')
     expect(await points()).not.toEqual(before)
   })
+
+  it('ignores a season in the address that it does not offer', async () => {
+    /* A shared link naming 1999 names a season the league never ran. Taking it
+       left the control with no option to sit on, so it rendered blank, while
+       the table below showed every team at 0,00 with nothing saying which year
+       that was. The address picks from the options; it does not add to them. */
+    renderAt('/sr/timovi?sezona=1999', 'visitor', null, undefined, '2026-06-01')
+
+    await standing()
+
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2026')
+    expect(
+      within(screen.getByLabelText('Sezona')).queryByRole('option', { name: '1999' }),
+    ).not.toBeInTheDocument()
+  })
 })
 
 describe('Leagues', () => {
