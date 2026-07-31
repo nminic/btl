@@ -87,7 +87,7 @@
   margin: 0;
   padding: 0.5rem 0.7rem;
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
-  color: var(--gold-button-ink);
+  color: var(--gold-band-ink);
   text-align: center;
   font-size: 1.15rem;
   font-weight: 700;

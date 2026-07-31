@@ -206,9 +206,16 @@
      its own edge cuts the ring off with it. On a name long enough to be
      shortened the ring was outside the box on all four sides and could not be
      seen at all, which is WCAG 2.2 SC 2.4.7. The ellipsis works the same
-     either way. */
+     either way.
+
+     Six pixels and not four, which is where the ring's outer edge lands: at
+     exactly four there is no room for rounding at a fractional device pixel
+     ratio, so the outermost line of the ring goes. Known and accepted: Firefox
+     81 to 101 took `clip` before it took the margin, drops this line, and there
+     clips at the edge again. Every other engine shipped the two together, and an
+     engine with neither falls back to `visible`, where the ring is whole. */
   overflow: clip;
-  overflow-clip-margin: 4px;
+  overflow-clip-margin: 6px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -279,7 +286,7 @@
   padding: 0.5rem 0.7rem;
   border-radius: var(--radius-sm);
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
-  color: var(--gold-button-ink);
+  color: var(--gold-band-ink);
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.15;
