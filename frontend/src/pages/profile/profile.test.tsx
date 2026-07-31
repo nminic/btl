@@ -34,7 +34,7 @@ describe('the biography, cut to fit beside the widgets', () => {
     expect(shortBio(wall)).toHaveLength(361)
   })
 
-  it('leaves alone a biography that fills the card without going over', () => {
+  it('now cuts a biography that used to fit', () => {
     /* The limit came down from six hundred to three hundred and sixty when the
        widget beside it lost its heading and a row (owner, 31.07.2026). A text
        right on the old limit must now be cut, or the card grows past the two it
@@ -91,11 +91,11 @@ describe('clearing the filters', () => {
 
     expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
     // The length is a row of six now, and the one that is on says which.
-    expect(screen.getByRole('button', { name: 'Sve dužine' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Maraton' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
@@ -107,16 +107,16 @@ describe('the length, as one row of six', () => {
     const table = await screen.findByRole('table', { name: 'Rezultati' })
     const all = within(table).getAllByRole('row').length
 
-    await user.click(screen.getByRole('button', { name: 'Polumaraton' }))
+    await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
 
     const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
     expect(narrowed.length).toBeLessThan(all)
     expect(narrowed.length).toBeGreaterThan(1)
-    expect(screen.getByRole('button', { name: 'Polumaraton' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Polumaraton 21,1 km' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Sve dužine' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toHaveAttribute(
       'aria-pressed',
       'false',
     )
@@ -124,16 +124,32 @@ describe('the length, as one row of six', () => {
     expect(router.state.location.search).toContain('duzina=half')
   })
 
-  it('reads the long name at every width, and shows the short one only where it has to', async () => {
+  it('is named by both of its names, at every width', async () => {
     renderAt('/sr/takmicar/000002?sezona=sve')
 
     await screen.findByRole('table', { name: 'Rezultati' })
 
-    /* "42,2 km" and "Maraton" are the same thing said twice, so only one of them
-       is ever read out. jsdom computes no media queries, so what is checked here
-       is the naming rather than which of the two is on screen. */
-    const marathon = screen.getByRole('button', { name: 'Maraton' })
-    expect(within(marathon).getByText('42,2 km')).toHaveAttribute('aria-hidden', 'true')
+    /* Both names are always in the reading, and only one of them is on screen.
+       The first attempt hid the long one with `display: none` and the short one
+       with `aria-hidden`, which between them left the control with no accessible
+       name at all below 620px: six unnamed buttons on the width PDL P24 calls
+       the main one. */
+    expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toBeVisible()
+    expect(document.querySelector('.profile__length-short')).not.toHaveAttribute('aria-hidden')
+  })
+
+  it('hides one of the two names by moving it, never by removing it', () => {
+    /* jsdom computes no media queries, so the rule is read as text, the way the
+       badge art and the ring are tested (ADL A7). `display: none` on either name
+       is what would take it out of the reading, and it is the one thing this
+       stylesheet must not do to them. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const block = css.slice(css.indexOf('.profile__length-short'))
+
+    expect(block).not.toContain('display: none')
+    expect(block).toContain('clip-path: inset(50%)')
+    expect(block).toContain('@media (max-width: 620px)')
   })
 })
 

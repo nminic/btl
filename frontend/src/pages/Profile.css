@@ -232,6 +232,7 @@
 }
 
 .profile__length {
+  position: relative;
   flex: 0 0 auto;
   padding: 0.35rem 0.7rem;
   border: 1px solid var(--border);
@@ -256,19 +257,43 @@
   color: var(--text);
 }
 
-/* The short name is for the telephone only, and it is hidden from the reading
-   either way: "42,2 km" and "Maraton" are the same thing said twice. */
+/* Each control carries both names, and both are always read out. Only one of
+   them is on screen, and which one depends on the width.
+ *
+ * Hidden with the same rules as `visually-hidden` rather than with
+ * `display: none`, and without `aria-hidden`. The first attempt used both, which
+ * takes the name out of the accessibility tree: measured against the live page,
+ * all six buttons had an accessible name at 1280 and none at 360, so on the
+ * width PDL P24 calls the main one, the only filter on the results was six
+ * unnamed buttons (WCAG 2.2 SC 4.1.2).
+ *
+ * Reading both also settles SC 2.5.3: the name a control is spoken by has to
+ * contain the words printed on it, and "42,2 km" is nowhere inside "Maraton". */
 .profile__length-short {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @media (max-width: 620px) {
   .profile__length-full {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .profile__length-short {
-    display: inline;
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
   }
 
   .profile__length {

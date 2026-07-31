@@ -23,7 +23,7 @@
 
 .donut__track {
   fill: none;
-  stroke: var(--surface-2, var(--border));
+  stroke: var(--border);
 }
 
 .donut__seg {

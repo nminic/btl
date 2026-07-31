@@ -75,13 +75,13 @@ export function CategoryDonut({
 
   return (
     <div className="donut-block">
-      <svg
-        className="donut"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label={caption}
-        focusable="false"
-      >
+      {/* Hidden from the reading altogether, because everything in it is in the
+          table below, word for word. Chrome does not treat the children of an
+          `img` as presentational the way the specification says it may, so with
+          a name on the drawing a screen reader read every length twice: once off
+          the picture and once off the table. The table carries the caption this
+          used to be named by. */}
+      <svg className="donut" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} aria-hidden="true">
         {/* The whole ring when nothing has been run, and the gap behind the
             slices otherwise. */}
         <circle className="donut__track" cx={CX} cy={CY} r={RADIUS} strokeWidth={BAND} />
@@ -140,7 +140,7 @@ export function CategoryDonut({
       {/* The same numbers as a table, for anyone who cannot see the drawing. The
           shares are here and not on screen: on the ring the share is the size of
           the slice, which is the whole reason it is a ring. */}
-      <table className="donut__reading visually-hidden">
+      <table className="visually-hidden">
         <caption>{caption}</caption>
         <tbody>
           {callouts.map((slice) => (

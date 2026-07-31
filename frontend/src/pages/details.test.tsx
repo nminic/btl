@@ -101,9 +101,11 @@ describe('EventDetail, the results of the league members who ran it', () => {
   })
 
   it('says nothing at all about results for a race nobody has run yet', async () => {
-    // The whole of next season is like this, and "no results" on every one of
-    // those screens would mean nothing but "not yet".
-    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16')
+    /* The whole of next season is like this, and "no results" on every one of
+       those screens would mean nothing but "not yet". Read on a day before the
+       race and not on whatever day the machine happens to hold: left to the real
+       clock this test quietly turns into its own opposite on 17.01.2027. */
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16', 'visitor', null, undefined, '2026-12-01')
 
     await screen.findByRole('heading', { level: 1 })
     expect(
@@ -142,13 +144,19 @@ describe('EventDetail, the results of the league members who ran it', () => {
       })
     }) as typeof fetch
 
-    renderAt(RAN)
+    /* Put back whatever happens above, or a failing assertion leaves every later
+       test in this file reading a member list with somebody cut out of it. The
+       stub is installed once when the module loads, not per test. */
+    try {
+      renderAt(RAN)
 
-    const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+      const table = await screen.findByRole('table', { name: 'Rezultati članova' })
 
-    expect(within(table).getAllByText('000001').length).toBeGreaterThan(0)
-    expect(within(table).queryByText('Vladan Đurišić')).not.toBeInTheDocument()
-    globalThis.fetch = real
+      expect(within(table).getAllByText('000001').length).toBeGreaterThan(0)
+      expect(within(table).queryByText('Vladan Đurišić')).not.toBeInTheDocument()
+    } finally {
+      globalThis.fetch = real
+    }
   })
 
   it('is where the name of a race on a profile leads, and it has that runner in it', async () => {

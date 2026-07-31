@@ -133,21 +133,28 @@ function Row({
 export function Counters({
   totals,
   title,
+  races = true,
 }: {
   totals: Totals
   /**
    * Shown above the rows on the front page and on a team, where this widget
    * stands on its own and the heading says which season it is counting.
    *
-   * The profile hands in nothing (owner, 31.07.2026). There the widget is the
-   * left half of a row of three, the season is chosen in the control above all
-   * of them, and the ring beside it already carries the number of races in its
-   * middle. A heading saying "Zbirna statistika" over a widget that is visibly
-   * a set of totals was a line of furniture, and the race count was the same
-   * number twice on one line. Both go, and the widget keeps its name where only
-   * a screen reader needs it.
+   * The profile hands in nothing (owner, 31.07.2026). There the season is chosen
+   * in the control above the whole row, so a heading reading "Zbirna statistika"
+   * over what is visibly a set of totals was a line of furniture. The name is
+   * kept where a screen reader can still find it.
    */
   title?: string
+  /**
+   * Whether the races are counted here.
+   *
+   * The profile says no: the ring standing beside this widget carries the number
+   * of races in its middle, and the same number twice on one line is one of them
+   * wasted. Its own switch and not a corollary of the heading, because they are
+   * two decisions that only happen to be made together on one screen.
+   */
+  races?: boolean
 }) {
   const { t } = useI18n()
 
@@ -165,7 +172,7 @@ export function Counters({
 
       {/* Every row carries its own unit, so a number never stands there
           meaning whatever the reader guesses (owner, 29.07.2026). */}
-      {title !== undefined && (
+      {races && (
         <Row icon={<Flag />} label={t('home.races')} value={totals.races} counted="home.raceCount" />
       )}
       <Row

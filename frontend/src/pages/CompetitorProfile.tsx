@@ -54,11 +54,12 @@ function Biography({ text }: { text: string }) {
  * there will only ever be six, which is what makes this shape safe: a filter
  * with an open-ended set of values could not be laid out flat.
  *
- * Each one carries two names. The long one is the length as the rest of the
- * portal says it, and it is always the name a screen reader reads. The short one
- * is what fits on a telephone, where six controls have to share three hundred
- * and sixty pixels, and it is hidden from the reading because "42,2 km" and
- * "Maraton" are the same thing said twice.
+ * Each one carries two names: the length as the rest of the portal says it, and
+ * the short form that fits on a telephone, where six controls have to share
+ * three hundred and sixty pixels. Both are always read out and only one is ever
+ * on screen, which the stylesheet decides. Hiding the other one from the reading
+ * as well would leave the control with no name at all on the width where it is
+ * used most.
  */
 function LengthFilter({
   value,
@@ -89,10 +90,8 @@ function LengthFilter({
           aria-pressed={value === option.key}
           onClick={() => onChange(option.key)}
         >
-          <span className="profile__length-full">{option.full}</span>
-          <span className="profile__length-short" aria-hidden="true">
-            {option.short}
-          </span>
+          <span className="profile__length-full">{option.full}</span>{' '}
+          <span className="profile__length-short">{option.short}</span>
         </button>
       ))}
     </div>
@@ -203,7 +202,7 @@ function ProfileBody({
       />
 
       <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
-        <Counters totals={totals} />
+        <Counters totals={totals} races={false} />
 
         <section className="profile__card profile__card--donut">
           <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />

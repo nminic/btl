@@ -104,7 +104,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
 
         return (
           <>
-            <h2 className="profile__section" id="event-results">
+            <h2 className="profile__section">
               {t('event.results')} <span className="profile__count">{ran.length}</span>
             </h2>
 
@@ -114,9 +114,21 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                 <thead>
                   <tr>
                     <th scope="col">{t('event.competitor')}</th>
-                    <th scope="col">{t('profile.columns.length')}</th>
+                    {/* Both of these used to read "Dužina", one beside the
+                        other: `event.distance` is the word too. The results
+                        table on a profile has had the answer all along, and it
+                        is the kilometres that get the shorter head, because the
+                        length is a name and the kilometres are a number.
+
+                        The length goes with the phone columns as well. Left in,
+                        the table was three hundred and thirty six pixels inside
+                        a box of three hundred and twenty eight, which is the
+                        horizontal scroll PDL P24 forbids on a table. */}
                     <th scope="col" className="table__hide-phone">
-                      {t('event.distance')}
+                      {t('profile.columns.length')}
+                    </th>
+                    <th scope="col" className="table__hide-phone">
+                      {t('profile.columns.distance')}
                     </th>
                     <th scope="col">{t('profile.columns.time')}</th>
                     <th scope="col">{t('profile.columns.points')}</th>
@@ -139,7 +151,9 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                             name
                           )}
                         </td>
-                        <td>{t(`category.${result.category}`)}</td>
+                        <td className="table__hide-phone">
+                          {t(`category.${result.category}`)}
+                        </td>
                         <td className="table__hide-phone">
                           {formatNumber(result.distanceKm, locale, 2)}
                         </td>

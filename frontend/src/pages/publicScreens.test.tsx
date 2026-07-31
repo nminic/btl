@@ -464,7 +464,7 @@ describe('CompetitorProfile', () => {
 
     expect(before.length).toBeGreaterThan(1)
 
-    await user.click(screen.getByRole('button', { name: 'Maraton' }))
+    await user.click(screen.getByRole('button', { name: 'Maraton 42,2 km' }))
 
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
       .toBeLessThan(all)

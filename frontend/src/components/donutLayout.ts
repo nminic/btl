@@ -23,18 +23,34 @@ const ELBOW = 20
 /**
  * Where a name starts (right side) or ends (left side), from the centre.
  *
- * The longest name there can be is "Ultramaraton" with a count beside it, which
- * is about ninety units at the size the names are drawn. That has to fit between
- * here and the edge, and this has to clear the band, which reaches sixty-seven
- * from the centre. Both were measured in the browser rather than guessed: at the
- * first attempt "Polumaraton 4" ran eleven units past the edge and was quietly
- * clipped.
+ * Everything about this number was measured in the browser rather than guessed,
+ * twice. At the first attempt it was ninety-two and "Polumaraton 4" ran eleven
+ * units past the edge and was clipped without a sound. At the second it was
+ * eighty-five, and the widest name the real data can produce, "129
+ * Ultramaraton" on member 000007, came to ninety-four units of the ninety-five
+ * there were: one unit of room, which is not room.
+ *
+ * At seventy-six there are a hundred and four units for a name that measures
+ * ninety-four in Segoe UI and ninety-three in Arial, the two ends of the font
+ * stack that Windows actually resolves. It also has to clear the band, which
+ * reaches sixty-seven from the centre, and it does by nine.
+ *
+ * `roomForName` below is the guard, so this cannot quietly drift again.
  */
-const NAME_X = 85
+const NAME_X = 76
 /** The least vertical room two names may have between them. */
 const APART = 15
 /** How close to the top and bottom edge a name may come. */
 const MARGIN = 12
+/** Where the bend sits: past the outer edge of the band, whatever the nudging
+ *  did to its height. */
+const OUTSIDE = RADIUS + BAND / 2 + 4
+
+/** How much width a name has between where it starts and the edge of the
+ *  drawing. Both sides are the same, because the drawing is symmetric. */
+export function roomForName(): number {
+  return WIDTH / 2 - NAME_X
+}
 
 export const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
@@ -77,7 +93,8 @@ export function placeCallouts(slices: Slice[]): Callout[] {
       ...slice,
       x: CX + RADIUS * Math.cos(angle),
       y: CY + RADIUS * Math.sin(angle),
-      bendX: CX + (RADIUS + ELBOW) * Math.cos(angle),
+      // Placed in the pass below, once the height it belongs to is final.
+      bendX: CX,
       bendY: CY + (RADIUS + ELBOW) * Math.sin(angle),
       nameX: right ? CX + NAME_X : CX - NAME_X,
       right,
@@ -105,6 +122,18 @@ export function placeCallouts(slices: Slice[]): Callout[] {
 
     for (const one of column) {
       one.bendY -= lift
+
+      /* The bend follows its new height back out onto a circle that clears the
+         band, instead of staying where the slice's own angle had put it. Left
+         alone it drifted inwards as the height moved, and on member 000001 over
+         all seasons the flat run of one line crossed the band itself, which is
+         the one thing this layout exists to avoid. Where the height is already
+         past the band there is no width to add, and the bend sits straight above
+         or below the centre. */
+      const dy = one.bendY - CY
+      const dx = Math.sqrt(Math.max(OUTSIDE * OUTSIDE - dy * dy, 0))
+
+      one.bendX = one.right ? CX + dx : CX - dx
     }
   }
 
