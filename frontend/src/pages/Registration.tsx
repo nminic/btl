@@ -35,18 +35,24 @@ export function Registration() {
   }
 
   if (sent !== null) {
+    /* What happens next, and not what was typed.
+     *
+     * This used to print every field that had been submitted, under its own
+     * name in the code and with no translation: `password` and `passwordRepeat`
+     * among them, in plain sight, on the screen the owner shows first. It was a
+     * tool for reviewing the form and it read like a debugger left switched on.
+     *
+     * PDL P22 says what belongs here instead: the address the letter went to,
+     * that the letter is what activates the account, where to look if it does
+     * not arrive, and a way to ask for another one. */
     return (
       <div className="registration-done" role="status">
         <h1>{t('registration.doneTitle')}</h1>
-        <p>{t('registration.doneText')}</p>
-        <dl>
-          {Object.entries(sent).map(([name, value]) => (
-            <div key={name}>
-              <dt>{name}</dt>
-              <dd>{String(value)}</dd>
-            </div>
-          ))}
-        </dl>
+        <p>{t('registration.doneText', { email: String(sent.email) })}</p>
+        <p>{t('registration.checkSpam')}</p>
+        <button type="button" className="button button--secondary" onClick={() => setSent(null)}>
+          {t('registration.resend')}
+        </button>
       </div>
     )
   }

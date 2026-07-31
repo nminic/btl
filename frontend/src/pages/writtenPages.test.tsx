@@ -154,3 +154,42 @@ describe('the privacy policy', () => {
     expect(within(page).getByRole('heading', { name: /Maloletni članovi/ })).toBeVisible()
   })
 })
+
+describe('the page that says what membership costs', () => {
+  it('marks the row a reader is being asked to pay today', async () => {
+    /* PDL P28a put this page second under "O ligi" because it is the one that
+       leads to joining. It had five rows and five notes and left the reader to
+       work out which row was theirs. */
+    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
+
+    const table = await screen.findByRole('table')
+    const marked = within(table)
+      .getAllByRole('row')
+      .filter((row) => row.className === 'pricing__now')
+
+    expect(marked).toHaveLength(1)
+    expect(marked[0]).toHaveTextContent('1. do 5. oktobra')
+    expect(marked[0]).toHaveTextContent('važi danas')
+  })
+
+  it('leads to joining once joining is open, and says when otherwise', async () => {
+    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
+
+    const page = within(await screen.findByRole('main'))
+
+    // The header carries one too, so this asks the page itself.
+    expect(page.getByRole('link', { name: 'Učlani se' })).toHaveAttribute(
+      'href',
+      '/sr/registracija',
+    )
+  })
+
+  it('says when it opens while it is still shut', async () => {
+    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-09-20')
+
+    const page = within(await screen.findByRole('main'))
+
+    expect(page.queryByRole('link', { name: 'Učlani se' })).not.toBeInTheDocument()
+    expect(page.getByText(/Otvara se/)).toBeVisible()
+  })
+})

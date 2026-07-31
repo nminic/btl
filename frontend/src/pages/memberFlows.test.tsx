@@ -292,6 +292,13 @@ describe('a result from entry to decision', () => {
 
     await enterResult(user)
 
+    /* The entry stays on a confirmation that says what the race earned (PDL P9),
+       instead of jumping to the list without a word. */
+    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+    expect(screen.getByText(/BTL bodova/)).toBeVisible()
+
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
     // It lands among the things sent in, and says it is waiting.
     expect(await screen.findByRole('heading', { name: /Poslato na proveru/ })).toBeVisible()
     expect(screen.getByText('Čeka proveru')).toBeVisible()
@@ -325,8 +332,13 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    // No time is no race, so it carries no points rather than an error.
-    expect(await screen.findByText(/0,00 BTL points/)).toBeVisible()
+    // No time is no race, so it carries no points rather than an error, and the
+    // confirmation says so straight away.
+    expect(await screen.findByText(/0,00 BTL bodova/)).toBeVisible()
+
+    // And the way back to an empty form, for the second race of a weekend.
+    await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
+    expect(screen.getByRole('button', { name: 'Pošalji na proveru' })).toBeVisible()
   })
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {

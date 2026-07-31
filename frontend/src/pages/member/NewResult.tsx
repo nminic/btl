@@ -1,10 +1,12 @@
-import { useNavigate } from 'react-router'
+import { useState } from 'react'
+import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
 import unosRezultata from '../../forms/definitions/unos-rezultata.form.json'
 import type { FormDef, FormValues } from '../../forms/types'
 import { parseDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import { btlPoints } from '../../data/scoring'
+import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
@@ -18,8 +20,9 @@ function seconds(values: FormValues): number {
 
 export function NewResult() {
   const { locale, t } = useI18n()
-  const navigate = useNavigate()
   const { memberNumber, submit } = useSession()
+  /** The points the last entry earned, once there has been one. */
+  const [done, setDone] = useState<number | null>(null)
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -31,6 +34,7 @@ export function NewResult() {
     const descentM = Number(values.descentM)
     const total = seconds(values)
     const date = parseDate(String(values.date))
+    const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     submit({
       memberNumber: memberNumber as string,
@@ -43,12 +47,38 @@ export function NewResult() {
       startTime: String(values.startTime),
       photo: String(values.photo),
       seconds: total,
-      points: btlPoints(distanceKm, ascentM, descentM, total) ?? 0,
+      points: earned,
       category: categoryOf(distanceKm),
       link: String(values.link),
     })
 
-    navigate(`/${locale}/moji-rezultati`)
+    /* Stays on a confirmation rather than jumping to the list (PDL P9: "Član
+       odmah po unosu vidi koliko je bodova dobio"). The points were already
+       being worked out here and then thrown away, so the one thing the member
+       came to find out was the one thing the screen did not say. */
+    setDone(earned)
+  }
+
+  if (done !== null) {
+    return (
+      <div className="member" role="status">
+        <h1>{t('newResult.doneTitle')}</h1>
+        <p>{t('newResult.donePoints', { points: formatPoints(done, locale) })}</p>
+        <p>{t('newResult.doneWaiting')}</p>
+        <p className="member__actions">
+          <Link className="button" to={`/${locale}/moji-rezultati`}>
+            {t('newResult.toMine')}
+          </Link>{' '}
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => setDone(null)}
+          >
+            {t('newResult.another')}
+          </button>
+        </p>
+      </div>
+    )
   }
 
   return (

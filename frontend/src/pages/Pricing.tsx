@@ -1,5 +1,15 @@
+import { Link } from 'react-router'
 import { useToday } from '../clock/useClock'
-import { JUNIOR, PRICES, registrationOpen, seasonOnOffer } from '../data/pricing'
+import {
+  JUNIOR,
+  PRICES,
+  REGISTRATION_OPENS,
+  daysBetween,
+  priceOn,
+  registrationOpen,
+  seasonOnOffer,
+} from '../data/pricing'
+import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Pricing.css'
 
@@ -12,8 +22,13 @@ import './Pricing.css'
 const ROWS = [...PRICES, { ...JUNIOR, ranking: true }]
 
 export function Pricing() {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const today = useToday()
+  /* Which row is the one a reader is actually being asked to pay. The number was
+     already worked out for the front page and for the renewal screen; this
+     screen, whose whole job is to say what membership costs, left the reader to
+     find their own row among five. */
+  const now = priceOn(today)
 
   return (
     <div className="pricing">
@@ -31,8 +46,13 @@ export function Pricing() {
           </thead>
           <tbody>
             {ROWS.map((row) => (
-              <tr key={row.key}>
-                <td>{t(`pricing.rows.${row.key}`)}</td>
+              <tr key={row.key} className={row.key === now.key ? 'pricing__now' : undefined}>
+                <td>
+                  {t(`pricing.rows.${row.key}`)}
+                  {row.key === now.key && (
+                    <span className="pricing__badge">{t('pricing.today')}</span>
+                  )}
+                </td>
                 <td>
                   {row.eur} EUR
                   {!row.ranking && (
@@ -45,6 +65,20 @@ export function Pricing() {
           </tbody>
         </table>
       </div>
+
+      {/* PDL P28a put this page second under "O ligi" because it is "strana koja
+          vodi ka učlanjenju", and until now it led nowhere at all. */}
+      <p className="pricing__join">
+        {registrationOpen(today) ? (
+          <Link className="button" to={`/${locale}/registracija`}>
+            {t('shell.join')}
+          </Link>
+        ) : (
+          t('registration.opensOn', { date: formatDate(REGISTRATION_OPENS, locale) }) +
+          ' ' +
+          t('home.opensIn', { count: daysBetween(today, REGISTRATION_OPENS) })
+        )}
+      </p>
 
       <div className="pricing__notes">
         <p>{t('pricing.cycle')}</p>

@@ -151,7 +151,7 @@ describe('Registration once it is open', () => {
     expect(box.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('shows what would be sent once the form is correct', async () => {
+  it('says what happens next once the form is correct, and never the password', async () => {
     const user = setupUser()
     renderForm()
 
@@ -160,7 +160,21 @@ describe('Registration once it is open', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
-    expect(screen.getByText('Vladan')).toBeInTheDocument()
+    /* The address the letter went to, what it is for, where to look if it does
+       not arrive, and a way to ask for another one (PDL P22). */
+    expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
+    expect(screen.getByText(/neželjenu poštu/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Pošalji potvrdu ponovo' })).toBeVisible()
+
+    /* And never what was typed. This screen used to print every field under its
+       own name in the code, the password among them, in plain sight. */
+    expect(screen.queryByText(/trkacka2027/)).not.toBeInTheDocument()
+    expect(screen.queryByText('password')).not.toBeInTheDocument()
+
+    /* Asking for the letter again puts the form back, which is the nearest a
+       portal without a backend can come to sending one. */
+    await user.click(screen.getByRole('button', { name: 'Pošalji potvrdu ponovo' }))
+    expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()
   })
 })
 
