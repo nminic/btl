@@ -34,6 +34,21 @@ describe('the biography, cut to fit beside the widgets', () => {
     expect(shortBio(wall)).toHaveLength(361)
   })
 
+  it('cuts the long one in the data, so the third card stays level with the other two', async () => {
+    /* The rotation hands out nothing longer than two hundred and thirty seven
+       characters, so until 000009 was given a long one the limit had nothing to
+       act on and the card that has to finish where the two beside it finish was
+       never once asked to. Measured in the browser at the limit: all three cards
+       come to the same height and the words do not spill. */
+    renderAt('/sr/takmicar/000009')
+
+    const card = await screen.findByRole('heading', { name: 'Svojim rečima' })
+    const text = card.parentElement!.textContent!
+
+    expect(text).toContain('…')
+    expect(text.length).toBeLessThan(400)
+  })
+
   it('now cuts a biography that used to fit', () => {
     /* The limit came down from six hundred to three hundred and sixty when the
        widget beside it lost its heading and a row (owner, 31.07.2026). A text
