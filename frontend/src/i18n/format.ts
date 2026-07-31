@@ -117,6 +117,19 @@ export function formatShortDate(isoDate: string, locale: string): string {
   return dateFormat(locale, 'short').format(new Date(isoDate))
 }
 
+/**
+ * "12.09." from "2027-09-12": the day and the month and nothing else, for the
+ * one place that has no room for a year (owner, 31.07.2026).
+ *
+ * Cut from the string rather than formatted through Intl, because every event
+ * this stands beside is in the season being looked at, so the year would be the
+ * same digits repeated six times down a narrow column. Intl is still what writes
+ * a date anywhere the year matters.
+ */
+export function formatDayMonth(isoDate: string): string {
+  return `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.`
+}
+
 /** "maj 2027." from "2027-05", for a calendar heading. */
 export function formatMonth(month: string, locale: string): string {
   return dateFormat(locale, 'monthYear').format(new Date(`${month}-01T00:00:00Z`))

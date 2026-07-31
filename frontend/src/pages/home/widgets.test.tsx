@@ -100,8 +100,8 @@ describe('Sponsor', () => {
 })
 
 describe('TopTen', () => {
-  // Four, so that the fourth row is not on the podium and both sides of that
-  // decision are exercised.
+  // Four, so the board is short of its ten and the empty places have to be
+  // exercised as well as the full ones.
   const competitors = [
     competitor('000001'),
     competitor('000002'),
@@ -109,7 +109,9 @@ describe('TopTen', () => {
     competitor('000005'),
   ]
 
-  it('shows points once the season has been run', () => {
+  /* The board in the shape the old portal had (owner, 31.07.2026): the leader
+     large beside the heading, the other nine as a three by three block. */
+  it('puts the leader above the rest, with the points they lead by', () => {
     renderWidget(
       <TopTen
         competitors={competitors}
@@ -124,20 +126,42 @@ describe('TopTen', () => {
       />,
     )
 
-    const list = screen.getByRole('list')
-    const rows = within(list).getAllByRole('listitem')
-    expect(rows).toHaveLength(4)
-    expect(rows.filter((row) => row.className === 'podium')).toHaveLength(3)
-    expect(within(list).getByText('30,00')).toBeVisible()
+    expect(screen.getByText('30,00')).toBeVisible()
     expect(screen.queryByText(/ovo nije poredak/)).not.toBeInTheDocument()
+  })
+
+  /* The ten places are the height of the widget, so the two boards standing side
+     by side line up in January as well as in December. Only those with a result
+     are ranked, so two of the four here are on the board: one leads and one of
+     the nine slots under them is filled, and the other eight are drawn empty. */
+  it('keeps its ten places whether or not there is anybody to put in them', () => {
+    const { container } = renderWidget(
+      <TopTen
+        competitors={competitors}
+        results={[result('000001', 30), result('000002', 20)]}
+        season={2027}
+        gender="M"
+      />,
+    )
+
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(9)
+    expect(container.querySelectorAll('.portrait--empty')).toHaveLength(8)
   })
 
   it('lists who has joined, and says so, before the first race', () => {
     renderWidget(<TopTen competitors={competitors} results={[]} season={2027} gender="M" />)
 
-    // Everyone who joined, in the order they joined, and no points column.
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(9)
     expect(screen.getByText(/ovo nije poredak/)).toBeVisible()
+  })
+
+  /* Nobody of that gender at all is not the same fact as nobody scoring yet, and
+     the board that says the wrong one sends a reader looking for a fault. */
+  it('says so when there is nobody on this board at all', () => {
+    renderWidget(<TopTen competitors={[]} results={[]} season={2027} gender="F" />)
+
+    expect(screen.getByText(/još nema nikoga/)).toBeVisible()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 })
 
@@ -160,10 +184,30 @@ describe('Counters', () => {
     // Each label sits in the same pill as its number, so these match on a part
     // of the line rather than the whole of it.
     expect(await screen.findByText(/10 h 00' 00''/, {}, { timeout: 3000 })).toBeVisible()
-    expect(await screen.findByText(/3 trke/, {}, { timeout: 3000 })).toBeVisible()
+    // What is counted is results, not races: two members in one race are two of
+    // these (owner, 31.07.2026).
+    expect(await screen.findByText(/3 rezultata/, {}, { timeout: 3000 })).toBeVisible()
     expect(await screen.findByText(/5\.678 m\+/, {}, { timeout: 3000 })).toBeVisible()
     expect(await screen.findByText(/5\.000 m-/, {}, { timeout: 3000 })).toBeVisible()
     expect(await screen.findByText(/42,00 BTL poena/, {}, { timeout: 3000 })).toBeVisible()
+  })
+
+  /* The front page counts members on top of the season, and nothing else does:
+     on a team and on a profile the number of people is one or is the heading
+     (owner, 31.07.2026). */
+  it('counts the members of the league when it is given them', async () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." members={41} />)
+
+    expect(await screen.findByText(/41 član/, {}, { timeout: 3000 })).toBeVisible()
+  })
+
+  it('counts no members where nobody hands them in', async () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." />)
+
+    // Waited for, so the row is absent after the numbers have finished
+    // unrolling and not merely before they started.
+    expect(await screen.findByText(/3 rezultata/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.queryByText(/član/)).not.toBeInTheDocument()
   })
 
   it('gives the numbers straight away to anyone who asked for less motion', () => {
@@ -217,6 +261,9 @@ describe('TopByCategory', () => {
     const user = setupUser()
     renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />)
 
+    expect(
+      screen.getByRole('button', { name: 'Zaustavi smenjivanje' }).querySelectorAll('svg > *'),
+    ).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Zaustavi smenjivanje' }))
     const stopped = screen.getByText(/^Najviše/).textContent
 
@@ -228,6 +275,13 @@ describe('TopByCategory', () => {
        it: the two together announced "Nastavi smenjivanje, pressed", which is
        heard as the opposite of what is true. */
     expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
+    /* And it wears the mark of what it will do: a triangle while it is stopped,
+       two bars while it is turning (owner, 31.07.2026). Held on the drawing
+       itself, because the name alone would pass on a button with no icon in it
+       at all, which is what this button now is apart from the icon. */
+    expect(
+      screen.getByRole('button', { name: 'Nastavi smenjivanje' }).querySelectorAll('svg > *'),
+    ).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).not.toHaveAttribute(
       'aria-pressed',
     )

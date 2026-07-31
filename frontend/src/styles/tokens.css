@@ -81,6 +81,20 @@
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
   --gold-text: var(--gold-600);
+  /* A gold disc carrying an icon. Both halves flip with the theme, because the
+     disc is the only edge the control has and it has to clear 3:1 against the
+     card behind it (WCAG 2.2 SC 1.4.11), while the icon inside has to clear 3:1
+     against the disc. Light: gold-600 on white is 5,53:1 and white on it the
+     same. Dark: gold-400 on the card is 8,1:1 and the dark ink on it 6,5:1.
+     Gold-400 on a white card would have been 2,14:1, which is why the light
+     theme takes the deeper one. */
+  --gold-button: var(--gold-600);
+  --gold-button-ink: var(--white);
+  /* Hover moves away from the card, not towards it: deeper on the light theme,
+     brighter on the dark one. Reaching for the next step of the gold scale in
+     both themes would have taken the light one to 3,0:1, which is the threshold
+     and not a margin. */
+  --gold-button-hover: #6b510e;
   --up: #1a7f4b;
   --down: #b3402f;
   /* Removing something. The same values as --down, which is a fall in the
@@ -117,6 +131,9 @@
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
     --gold-text: var(--gold-300);
+    --gold-button: var(--gold-400);
+    --gold-button-ink: #3a2a02;
+    --gold-button-hover: var(--gold-300);
     --up: #4ec98a;
     --down: #ff8a72;
     --danger: #ff8a72;
@@ -142,6 +159,9 @@
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
   --gold-text: var(--gold-300);
+  --gold-button: var(--gold-400);
+  --gold-button-ink: #3a2a02;
+  --gold-button-hover: var(--gold-300);
   --up: #4ec98a;
   --down: #ff8a72;
   --danger: #ff8a72;

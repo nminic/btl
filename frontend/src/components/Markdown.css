@@ -47,6 +47,24 @@
   color: var(--text);
 }
 
+/* A link inside prose has to be found while the eye is reading a sentence, not
+   after somebody sweeps the mouse over it. The body of a written page is muted
+   grey, so the accent alone would already do it; the underline is there because
+   colour alone is not a distinction anyone who cannot separate the two can use
+   (WCAG 2.2 SC 1.4.1). Applies to every written page on the portal, which is
+   where all the prose is (owner, 31.07.2026). */
+.markdown a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  overflow-wrap: anywhere;
+}
+
+.markdown a:hover {
+  color: var(--accent-hover);
+}
+
 .markdown code {
   font-size: 0.88em;
   padding: 0.05em 0.3em;

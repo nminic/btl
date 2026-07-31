@@ -446,13 +446,6 @@ export function topTen(
     .map((competitor, index) => ({ competitor, position: index + 1, ...EMPTY_TOTALS }))
 }
 
-/** The most recently joined members, for "the community in numbers". */
-export function newestMembers(competitors: Competitor[], count: number): Competitor[] {
-  return activeOnly(competitors)
-    .sort((left, right) => right.memberNumber.localeCompare(left.memberNumber))
-    .slice(0, count)
-}
-
 /**
  * Everybody whose membership is running, which is who a screen about now shows.
  *

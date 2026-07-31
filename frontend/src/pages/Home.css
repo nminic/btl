@@ -13,24 +13,43 @@
   align-items: start;
 }
 
+/* Two thirds of the page against one (owner, 31.07.2026): the standing and the
+   prose on the left, the figures and the things to do on the right. */
+.home__split {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.home__main,
+.home__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+/* The two boards stand side by side from the width where either of them can
+   hold a three by three block of faces without the names wrapping to four
+   lines. Below it they follow one another, men then women. */
+.home__boards {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 560px) {
+  .home__boards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (min-width: 860px) {
-  /* Two to one in favour of the address, which is the ratio the owner fixed
-     (PDL P28a). The same shape as the calendar row above it by coincidence, not
-     by kinship, so it is written out rather than shared. */
-  .home__row--address {
+  .home__split {
     grid-template-columns: 2fr 1fr;
   }
 
   .home__row--calendar {
     grid-template-columns: 2fr 1fr;
-  }
-
-  .home__row--standing {
-    grid-template-columns: 1fr 1fr 2fr;
-  }
-
-  .home__row--halves {
-    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -133,16 +152,21 @@
   flex-direction: column;
 }
 
+/* Day, month, name, on one line at every width: the widget lives in the narrow
+   column now and there is no width at which it wants a second shape. */
 .extract__row {
   display: grid;
-  gap: 0.1rem 0.9rem;
-  padding: 0.55rem 0;
+  grid-template-columns: 3.4rem 1fr;
+  gap: 0.1rem 0.5rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
 }
 
 .extract__date {
   color: var(--text-muted);
   font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .extract__name a {
@@ -150,18 +174,10 @@
   text-decoration: none;
 }
 
-.extract__series,
-.extract__place {
+.extract__series {
   color: var(--text-muted);
   font-size: 0.82rem;
   font-weight: 400;
-}
-
-@media (min-width: 620px) {
-  .extract__row {
-    grid-template-columns: 7rem 1fr auto;
-    align-items: baseline;
-  }
 }
 
 /* Seasonal slot */
@@ -193,43 +209,90 @@
   color: var(--text-muted);
 }
 
-/* Top ten */
+/* Top ten, in the shape the old portal had (owner, 31.07.2026): the leader at
+   full size, the other nine as a three by three block of faces under them. */
 
-.top-ten {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  counter-reset: place;
-}
-
-.top-ten li {
+.top10__first {
   display: grid;
-  grid-template-columns: 1.4rem 1fr auto;
-  gap: 0.5rem;
-  align-items: baseline;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.9rem;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: center;
 }
 
-.top-ten__place {
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
-.top-ten .podium .top-ten__place,
-.top-ten .podium .top-ten__points {
-  color: var(--gold-text);
-}
-
-.top-ten__name {
-  text-decoration: none;
+.top10__lead {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   min-width: 0;
 }
 
-.top-ten__points {
+.top10__points {
+  color: var(--gold-text);
   font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.top10__rest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem 0.4rem;
+}
+
+.top10__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.top10__name {
+  text-decoration: none;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.top10__first .top10__name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Faces.
+   A circle of the member's own colour carrying their initials, until there are
+   photographs to put in it. The empty one holds a place the league has not
+   filled yet, so the board is the same height all season. */
+
+.portrait {
+  display: grid;
+  place-items: center;
+  inline-size: 2.9rem;
+  block-size: 2.9rem;
+  border-radius: 50%;
+  /* The same recipe the competitor cards use, so one person wears one colour
+     wherever the portal draws them. */
+  background: hsl(var(--face-hue, 214) 45% 32%);
+  color: var(--white);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.portrait--large {
+  inline-size: 4.4rem;
+  block-size: 4.4rem;
+  font-size: 1.3rem;
+}
+
+.portrait--empty {
+  background: transparent;
+  border: 1px dashed var(--border);
 }
 
 /* Rotating chart */
@@ -275,10 +338,19 @@
   gap: 0.45rem;
 }
 
-/* Six small fields in two rows rather than a tall stack: the calculator is a
-   toy beside the real widgets and must not take a screen to itself. */
+/* The calculator stands in the narrow column now (owner, 31.07.2026), where
+   three fields abreast leave no room for the labels. One under the other for
+   length, climb and fall; the three parts of a time stay side by side, because
+   hours, minutes and seconds are one number written in three boxes and reading
+   them down a column reads as three separate questions. */
 .calc--grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) and (max-width: 859px) {
+  .calc--grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .calc__time {
@@ -326,48 +398,7 @@
   font-size: 0.85rem;
 }
 
-/* How it works */
-
-.steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.steps li {
-  display: grid;
-  grid-template-columns: 1.75rem 1fr;
-  gap: 0.75rem;
-  align-items: start;
-}
-
-.steps__number {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  background: var(--blue-100);
-  color: var(--blue-800);
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-:root[data-theme='dark'] .steps__number {
-  background: #10203c;
-  color: #cfe0ff;
-}
-
-.steps__text {
-  display: block;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-}
-
-/* News, sponsor, community */
+/* News and sponsor */
 
 .news {
   list-style: none;
@@ -383,31 +414,6 @@
   font-size: 0.8rem;
 }
 
-.community__count {
-  margin: 0;
-}
-
-.community__count strong {
-  font-size: clamp(24px, 4vw, 32px);
-  color: var(--gold-text);
-}
-
-.community__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  font-size: 0.9rem;
-}
-
-.community__city {
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  margin-left: 0.35rem;
-}
-
 .sponsor-strip {
   display: flex;
   flex-wrap: wrap;
@@ -415,15 +421,4 @@
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
-}
-
-.community__count {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.community__count span {
-  color: var(--text-muted);
-  font-size: 0.9rem;
 }

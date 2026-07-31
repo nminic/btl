@@ -2,6 +2,7 @@
  * a circle at the foot of each, and a gold band underneath naming the length.
  */
 .top-cat {
+  position: relative;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
@@ -102,36 +103,46 @@
   }
 }
 
-/* The control that stops the turning (WCAG 2.2 SC 2.2.2).
+/* The control that stops the turning (WCAG 2.2 SC 2.2.2), as a discreet gold
+ * disc in the top right corner of the widget (owner, 31.07.2026).
  *
- * Its colours are pinned to the band it stands on, not taken from the theme.
- * The band is the gold gradient and the theme tokens are chosen for the page and
- * the card, so on the dark theme, which is the one the portal opens in, the
- * label measured 1,03:1 against the gold and the focus ring 1,03:1 with it: a
- * control added to satisfy one criterion, failing three others. #3a2a02 is the
- * band's own text colour and measures 4,66:1 on it, in both themes, because it
- * is a fixed value on a fixed background. */
+ * The disc is the only edge this control has, so it carries the 3:1 that SC
+ * 1.4.11 asks of a control boundary, and the icon inside it carries the 3:1 that
+ * the same criterion asks of a graphic that conveys state. Both halves flip with
+ * the theme; the measurements are on the tokens.
+ *
+ * The ring of card colour around it fixes what it is measured against: a bar can
+ * grow to full height and pass behind it, and a contrast that depends on where
+ * the tallest column happens to reach is not a contrast at all. */
 .top-cat__turn {
-  margin-left: 0.5rem;
-  padding: 0.15rem 0.5rem;
-  border: 1px solid #3a2a02;
-  border-radius: 999px;
-  background: transparent;
-  color: #3a2a02;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: inherit;
-  letter-spacing: inherit;
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+  z-index: 1;
+  inline-size: 2.1rem;
+  block-size: 2.1rem;
+  padding: 0.45rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gold-button);
+  color: var(--gold-button-ink);
+  box-shadow: 0 0 0 3px var(--surface);
   cursor: pointer;
+  transition: background var(--fast);
+}
+
+.top-cat__turn svg {
+  inline-size: 100%;
+  block-size: 100%;
 }
 
 .top-cat__turn:hover {
-  background: #3a2a02;
-  color: var(--gold-300);
+  background: var(--gold-button-hover);
 }
 
 .top-cat__turn:focus-visible {
-  outline: 2px solid #3a2a02;
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }

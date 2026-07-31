@@ -4,7 +4,11 @@ import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
-  it('lays the widgets out in the order the rulebook fixes', async () => {
+  /* Two thirds of standing and prose against one third of figures and things to
+     do (owner, 31.07.2026). The reading order is the left column whole and then
+     the right one, which is also the order on a phone, where the two columns
+     become one. */
+  it('lays the page out in two columns, the boards first and the figures beside them', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
@@ -17,16 +21,25 @@ describe('Home', () => {
       .map((heading) => heading.textContent)
 
     expect(headings).toEqual([
+      'Top 10 muškarci',
+      'Top 10 žene',
       'Reč predsednika',
       expect.stringContaining('Sezona'),
       'Priprema, pozor, SAD!',
-      expect.stringContaining('Članarina za BTL'),
-      'Top 10 muškarci',
-      'Top 10 žene',
       'BTL kalkulator',
-      'Kako radi BTL u tri koraka',
-      'Zajednica u brojkama',
+      expect.stringContaining('Članarina za BTL'),
     ])
+  })
+
+  /* Two blocks went out (owner, 31.07.2026): one explained on the front page
+     what the written pages explain properly, the other counted members, which is
+     now the first row of the counters. */
+  it('no longer explains itself in three steps, nor counts the community twice', async () => {
+    renderAt('/sr')
+
+    await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+    expect(screen.queryByRole('heading', { name: /Kako radi BTL/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Zajednica u brojkama' })).not.toBeInTheDocument()
   })
 
   it('names itself for a screen reader without showing the name again', async () => {
@@ -123,7 +136,7 @@ describe('Home', () => {
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {
     renderAt('/sr')
 
-    await screen.findByRole('heading', { name: 'Zajednica u brojkama' })
+    await screen.findByRole('heading', { name: 'Reč predsednika' })
     expect(screen.queryByRole('heading', { name: 'Vesti' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Sponzor dana' })).not.toBeInTheDocument()
   })

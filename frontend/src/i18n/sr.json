@@ -309,8 +309,8 @@
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
+    "noneRanked": "U ovoj sezoni još nema nikoga na ovoj listi.",
     "wholeStanding": "Cela tabela",
-    "wholeRulebook": "Ceo pravilnik",
     "byCategory": "Trke po dužini",
     "previousCategory": "Prethodna kategorija",
     "nextCategory": "Sledeća kategorija",
@@ -323,27 +323,9 @@
     "minutes": "min",
     "seconds": "s",
     "calcWaiting": "Unesi dužinu i vreme.",
-    "howTitle": "Kako radi BTL u tri koraka",
-    "how": {
-      "one": {
-        "title": "Trčiš gde hoćeš.",
-        "text": "Bilo koja trka, bilo gde, bilo kada u sezoni."
-      },
-      "two": {
-        "title": "Uneseš rezultat.",
-        "text": "Dužinu, uspon, spust i vreme, uz link ka zvaničnim rezultatima."
-      },
-      "three": {
-        "title": "Dobijaš bodove.",
-        "text": "Duža i teža staza nosi više, brže vreme nosi više. Bodovi se sabiraju kroz celu sezonu."
-      }
-    },
     "news": "Vesti",
     "sponsorOfTheDay": "Sponzor dana",
     "partners": "Sponzori i partneri",
-    "community": "Zajednica u brojkama",
-    "newest": "Poslednji koji su se učlanili",
-    "membersInSeason": "članova u ligi",
     "noneYet": "U ovoj sezoni još nema odtrčanih trka ove dužine.",
     "turning": "Najviše trka po dužini",
     "pauseTurning": "Zaustavi smenjivanje",
@@ -355,16 +337,22 @@
       "marathon": "Najviše maratona",
       "ultra": "Najviše ultramaratona"
     },
-    "races": "Odtrčanih trka",
-    "raceCount": {
-      "one": "{count} trka",
-      "few": "{count} trke",
-      "other": "{count} trka"
-    },
     "pointsUnit": " BTL poena",
     "ascentUnit": " m+",
     "descentUnit": " m-",
-    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama."
+    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama.",
+    "members": "Članova lige",
+    "memberCount": {
+      "one": "{count} član",
+      "few": "{count} člana",
+      "other": "{count} članova"
+    },
+    "results": "Prijavljenih rezultata",
+    "resultCount": {
+      "one": "{count} rezultat",
+      "few": "{count} rezultata",
+      "other": "{count} rezultata"
+    }
   },
   "data": {
     "loading": "Učitavanje",

@@ -41,6 +41,21 @@ function Flag() {
   )
 }
 
+/* The one row on this widget that counts people rather than something they did,
+   so it is the one row a running figure belongs on (owner, 31.07.2026). */
+function Runner() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <circle cx="14.6" cy="4.6" r="2.1" />
+      <path
+        d="M13.2 9.1L9.4 11l1.1 3.6 3.1 1.5 1.4 5.2M13.2 9.1l3.9 1.3 1.9 3.3M10.5 14.6L7.2 19"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /* The two wedges were the wrong way round: the climb has to rise to the right,
    the descent has to fall away from the left (owner, 29.07.2026). */
 function Ascent() {
@@ -135,8 +150,18 @@ export function Counters({
   totals,
   title,
   races = true,
+  members,
 }: {
   totals: Totals
+  /**
+   * How many members the league has in the season this widget counts, on top of
+   * the widget (owner, 31.07.2026).
+   *
+   * Only the front page hands it in. On a team and on a profile the number of
+   * people is either one or already the heading, and a row saying "1 član" over
+   * somebody's own totals is a row wasted.
+   */
+  members?: number
   /**
    * Shown above the rows on the front page and on a team, where this widget
    * stands on its own and the heading says which season it is counting.
@@ -173,8 +198,24 @@ export function Counters({
 
       {/* Every row carries its own unit, so a number never stands there
           meaning whatever the reader guesses (owner, 29.07.2026). */}
+      {members !== undefined && (
+        <Row
+          icon={<Runner />}
+          label={t('home.members')}
+          value={members}
+          counted="home.memberCount"
+        />
+      )}
+      {/* What is counted here is results, not races: two members who ran the
+          same race are two of these, and calling them races said the league had
+          run a hundred and seventy events (owner, 31.07.2026). */}
       {races && (
-        <Row icon={<Flag />} label={t('home.races')} value={totals.races} counted="home.raceCount" />
+        <Row
+          icon={<Flag />}
+          label={t('home.results')}
+          value={totals.races}
+          counted="home.resultCount"
+        />
       )}
       <Row
         icon={<Road />}

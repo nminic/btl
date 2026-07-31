@@ -357,11 +357,12 @@ describe('a member whose fee has run out', () => {
        profilu postoji samo dok je članarina aktivna". 000032 is the first such
        member in the data, and being the newest number they went straight to the
        top of "Najnoviji članovi" on the front page, linking to a profile this
-       change had just made unreachable. */
+       change had just made unreachable. That widget has since gone (owner,
+       31.07.2026) and the rule has not: the boards and the turning chart draw
+       the same field, so the front page is still where this is proved. */
     renderAt('/sr')
 
-    const newest = await screen.findByRole('heading', { name: /Zajednica|Najnoviji/ })
-    expect(newest).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Top 10 muškarci' })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Vojislav Antonijević/ })).not.toBeInTheDocument()
   })
 

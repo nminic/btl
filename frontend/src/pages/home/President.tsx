@@ -1,9 +1,7 @@
-import { Link } from 'react-router'
 import { Markdown } from '../../components/Markdown'
 import { Resource } from '../../components/Resource'
 import { pageOf } from '../../data/pages'
 import { usePages } from '../../data/useResource'
-import { useI18n } from '../../i18n/useI18n'
 
 /** The address is a written page the administrator maintains, not a text in the
  *  code, so the same record answers here and on "O ligi" (PDL P28a). */
@@ -20,9 +18,13 @@ export const ADDRESS_SLUG = 'rec-predsednika'
  * It reads the written pages on its own rather than through the resources the
  * rest of the front page waits on, so a failure on either side costs one widget
  * and not the page.
+ *
+ * The way to the rulebook is inside the sentence that mentions it, and so is the
+ * address of the association (owner, 31.07.2026). There was a "Ceo pravilnik"
+ * link under the text because a written page carried no links of its own; it
+ * does now, and the same destination twice in one card is one of them wasted.
  */
 export function President() {
-  const { locale, t } = useI18n()
   const state = usePages()
 
   return (
@@ -38,12 +40,6 @@ export function President() {
                 <Markdown text={section.body} />
               </article>
             ))}
-
-            {/* The text says where the rulebook is; this is the way there, since
-                a written page carries no links of its own. */}
-            <Link className="card__more" to={`/${locale}/pravilnik`}>
-              {t('home.wholeRulebook')}
-            </Link>
           </section>
         )
       }}
