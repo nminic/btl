@@ -442,6 +442,19 @@ export function upcomingSeries(events: BtlEvent[], today: string, limit: number)
     .slice(0, limit)
 }
 
+/** How many races of each length there are among these results. The ring on a
+ *  profile and the one on a team page are the same drawing over different
+ *  results, so the tally is counted in one place. */
+export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
+  const counts = new Map<RaceCategory, number>()
+
+  for (const result of results) {
+    counts.set(result.category, (counts.get(result.category) ?? 0) + 1)
+  }
+
+  return counts
+}
+
 /**
  * Which lengths an event holds, in the order the five are always named.
  *

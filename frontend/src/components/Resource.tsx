@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ResourceState } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { Loader } from './Loader'
 
 type Props<T> = {
   state: ResourceState<T>
@@ -12,12 +13,12 @@ type Props<T> = {
 export function Resource<T>({ state, children }: Props<T>) {
   const { t } = useI18n()
 
+  /* A sheet over the whole page rather than a word where the content will be
+     (owner, 31.07.2026). Nothing underneath can be pressed while it waits, so a
+     link clicked a moment before the data lands cannot take the reader
+     somewhere they did not mean to go. */
   if (state.status === 'loading') {
-    return (
-      <p className="resource-state" role="status">
-        {t('data.loading')}
-      </p>
-    )
+    return <Loader />
   }
 
   if (state.status === 'error') {

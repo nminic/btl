@@ -668,16 +668,12 @@
     "empty": "Nema timova.",
     "backToTeams": "Nazad na timove",
     "together": "Zbirno, ceo tim",
+    "about": "O timu",
+    "aboutEmpty": "Ovaj tim još nije napisao ništa o sebi.",
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
     "notFound": "Ovog tima nema.",
-    "name": "Tim",
-    "membersColumn": "Članovi tima",
-    "show": "Prikaži",
-    "hide": "Sakrij",
-    "showMembers": "Prikaži članove tima {team}",
-    "hideMembers": "Sakrij članove tima {team}",
-    "membersOf": "Članovi tima {team}"
+    "name": "Tim"
   },
   "leagues": {
     "title": "Dodatna takmičenja",

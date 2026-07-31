@@ -5,14 +5,20 @@ import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
-import { CATEGORIES, resultsOf, seasonsWithResults, totalsOf } from '../data/derive'
-import type { Competitor, RaceCategory, Result, Team } from '../data/types'
+import {
+  CATEGORIES,
+  countsByCategory,
+  resultsOf,
+  seasonsWithResults,
+  totalsOf,
+} from '../data/derive'
+import type { Competitor, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
-import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
+import { ALL_SEASONS, seasonOptions, useSeason } from '../components/season'
 
 /** What the address says when no length is chosen. The same word the season
  *  uses, and a constant of its own: they are two filters that happen to spell
@@ -20,16 +26,6 @@ import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
  *  silently change the other. */
 const ALL_LENGTHS = 'sve'
 import './Profile.css'
-
-function countsOf(results: Result[]): Map<RaceCategory, number> {
-  const counts = new Map<RaceCategory, number>()
-
-  for (const result of results) {
-    counts.set(result.category, (counts.get(result.category) ?? 0) + 1)
-  }
-
-  return counts
-}
 
 /**
  * The biography as it is published, in paragraphs, with no links inside it: a
@@ -194,7 +190,7 @@ function ProfileBody({
         <Biography text={competitor.bio} />
 
         <section className="profile__card profile__card--donut">
-          <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />
+          <CategoryDonut counts={countsByCategory(inSeason)} caption={t('profile.byCategory')} />
         </section>
 
         <Counters totals={totals} races={false} />

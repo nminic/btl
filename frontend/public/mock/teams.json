@@ -5,6 +5,7 @@
     "name": "Dunavski trkači",
     "city": "Novi Sad",
     "country": "RS",
+    "bio": "Okupljamo se sredom uveče na Štrandu i nedeljom ujutru na Kamenički put, po svakom vremenu. Tim je nastao 2014. iz društva koje je zajedno trčalo Fruškogorski, a danas nas je preko trideset, od ljudi koji trče prvu peticu do onih koji su prešli sto kilometara odjednom.\n\nNe tražimo vreme na testu. Tražimo da se dođe.",
     "organizerMemberNumber": "000001"
   },
   {
@@ -13,6 +14,7 @@
     "name": "Nišavski maraton klub",
     "city": "Niš",
     "country": "RS",
+    "bio": "Klub sa jednom idejom: da svako ko hoće maraton dobije plan, društvo na dugim trčanjima i nekoga ko ga sačeka na dvadeset petom kilometru. Treniramo na Nišavskom keju i na Bubnju.",
     "organizerMemberNumber": "000005"
   },
   {
@@ -21,6 +23,7 @@
     "name": "Vardarski krug",
     "city": "Skoplje",
     "country": "MK",
+    "bio": "Trčimo obalom Vardara i po Vodnu. Tim je otvoren i za one koji dolaze iz drugih gradova, jer nas polovina ionako putuje na trke.",
     "organizerMemberNumber": "000003"
   },
   {
@@ -29,6 +32,7 @@
     "name": "Novoosnovani tim",
     "city": "Subotica",
     "country": "RS",
+    "bio": "",
     "organizerMemberNumber": ""
   }
 ]

@@ -17,7 +17,7 @@ import {
   useTeams,
 } from '../data/useResource'
 import { awardsOf } from './profile/awards'
-import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
+import { ALL_SEASONS, seasonOptions, useSeason } from '../components/season'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
 import './Profile.css'
 

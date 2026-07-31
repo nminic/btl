@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
-import { SeasonPicker } from './SeasonPicker'
+import { SeasonPicker } from '../../components/SeasonPicker'
 import { categoryOfMember } from '../../data/derive'
 import { SEASON } from '../../data/pricing'
 import type { Competitor, Team } from '../../data/types'

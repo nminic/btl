@@ -8,9 +8,16 @@ describe('TeamDetail', () => {
     renderAt('/sr/tim/dunavski-trkaci')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Zbirno, ceo tim' })).toBeVisible()
+    /* Three of one width across the top (owner, 31.07.2026): what the team says
+       about itself, the ring of lengths, the figures. The figures wear no
+       heading any more, the same as on a profile, and keep their name where a
+       screen reader finds it. */
+    expect(screen.getByRole('heading', { name: 'O timu' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
 
-    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
+    const rows = within(screen.getByRole('table', { name: 'Članovi' }))
+      .getAllByRole('row')
+      .slice(1)
     expect(rows.length).toBeGreaterThan(1)
 
     // Ordered by what each member brought, and the top three marked. The last
@@ -22,7 +29,10 @@ describe('TeamDetail', () => {
   it('leads from a member back to their profile', async () => {
     renderAt('/sr/tim/dunavski-trkaci')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const rows = within(await screen.findByRole('table', { name: 'Članovi' }))
+      .getAllByRole('row')
+      .slice(1)
+
     expect(within(rows[0]).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/takmicar/'),
@@ -49,7 +59,7 @@ describe('TeamDetail', () => {
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     await user.click(within(rows[0]).getAllByRole('link')[0])
 
-    expect(await screen.findByRole('heading', { name: 'Zbirno, ceo tim' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'O timu' })).toBeVisible()
   })
 })
 

@@ -390,6 +390,7 @@ describe('rankTeams', () => {
     city: 'Beograd',
     country: 'RS',
     organizerMemberNumber: '000001',
+    bio: '',
   })
 
   it('sums every member, without normalising for team size', () => {

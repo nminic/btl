@@ -1,0 +1,44 @@
+/* The sheet that covers the page while it waits for data (owner, 31.07.2026).
+ *
+ * Fixed rather than absolute, so it covers what is scrolled off as well as what
+ * is in view, and `inset: 0` so nothing under it can be clicked. It is the last
+ * thing in the stacking order the portal has, above the header and the dropdowns
+ * it opens.
+ */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  /* The page shows through, so the reader keeps their place and sees that the
+     screen has not gone anywhere. Enough tint that nothing under it reads as
+     something to press. */
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.loader__ring {
+  inline-size: 3rem;
+  block-size: 3rem;
+  border: 3px solid var(--border);
+  border-block-start-color: var(--accent);
+  border-radius: 50%;
+  animation: loader-turn 900ms linear infinite;
+}
+
+@keyframes loader-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Anybody who has asked for less motion gets a ring that does not turn. It still
+   says what it is, out loud, and it still covers the page. */
+@media (prefers-reduced-motion: reduce) {
+  .loader__ring {
+    animation: none;
+    border-block-start-color: var(--accent);
+    opacity: 0.7;
+  }
+}

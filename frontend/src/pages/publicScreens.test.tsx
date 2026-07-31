@@ -758,100 +758,42 @@ describe('Teams', () => {
     expect(rows[0].className).toBe('podium')
   })
 
-  it('opens a team to show who is in it and what each of them brought', async () => {
-    const user = setupUser()
+  /* The drawer is gone (owner, 31.07.2026). Who is in a team and what each of
+     them brought lives on the team's own page, which is where somebody who
+     wants it is going anyway, so a row here is a team and a link to it. */
+  it('carries no way to open a team inside the table', async () => {
     renderAt('/sr/timovi')
 
-    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(toggle)
-
-    const drawer = within(screen.getByRole('table', { name: /^Članovi tima/ }))
-    const members = drawer.getAllByRole('row').slice(1)
-    expect(members.length).toBeGreaterThan(0)
-    // Each member is a link to their profile, and carries their own figures.
-    expect(within(members[0]).getByRole('link')).toBeVisible()
-    expect(drawer.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
-      '#',
-      'Član',
-      'Trke',
-      'd (km)',
-      'Bodovi',
-    ])
+    await standing()
+    expect(screen.queryByRole('button', { name: /članove tima/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Ovaj tim još nema članova.')).not.toBeInTheDocument()
   })
 
-  it('builds nothing for a drawer nobody opened, and still points at it', async () => {
+  /* A team is a thing of one season, so the standing is of one season and all
+     of them is not on offer (owner, 31.07.2026). */
+  it('stands for one season, chosen beside the heading, and never for all of them', async () => {
     const user = setupUser()
-    renderAt('/sr/timovi')
+    renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
 
-    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-    const drawer = document.getElementById(toggle.getAttribute('aria-controls')!)
+    await standing()
+    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
 
-    /* The row is there whether the drawer is open or not, so aria-controls never
-       points at nothing: a button that says it controls an element which does not
-       exist is a broken promise to a screen reader.
+    expect(season.value).toBe('2026')
+    expect(within(season).queryByRole('option', { name: 'Sve sezone' })).not.toBeInTheDocument()
 
-       What is inside it is not. The drawer filters all 3522 results and ranks the
-       members of its team, and a closed one did that too, on every render: fifty
-       teams meant fifty passes over the whole result set for every single click. */
-    expect(drawer).toBeInTheDocument()
-    expect(drawer).not.toHaveTextContent(/\S/)
-    expect(screen.queryByRole('table', { name: /^Članovi tima/ })).not.toBeInTheDocument()
+    /* Every team keeps its row whatever the season, so what has to change is
+       what the rows say: the points are of the season being looked at. */
+    const points = async () =>
+      (await standing())
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent)
 
-    await user.click(toggle)
-    expect(within(drawer!).getByRole('table', { name: /^Članovi tima/ })).toBeInTheDocument()
+    const before = await points()
 
-    // And it is emptied again on the way back, rather than kept for later.
-    await user.click(screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0])
-    expect(drawer).not.toHaveTextContent(/\S/)
-  })
-
-  it('reads one word on screen and the whole team out loud', async () => {
-    renderAt('/sr/timovi')
-
-    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-
-    /* The sentence used to be the visible text, and it does not wrap: at 360px
-       this column alone took 279 of the 661 pixels the table wanted inside a box
-       328 wide, so the standing scrolled sideways (PDL P24). The team is still in
-       the accessible name, because twenty buttons reading "Prikaži" are twenty
-       buttons a screen reader cannot tell apart, and the visible word is the first
-       word of that name, so what is heard contains what is seen (WCAG 2.2, 2.5.3). */
-    expect(toggle.textContent).toBe('Prikaži')
-    expect(toggle).toHaveAccessibleName(/^Prikaži članove tima \S/)
-  })
-
-  it('closes again, and says which state it is in', async () => {
-    const user = setupUser()
-    renderAt('/sr/timovi')
-
-    const open = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-    await user.click(open)
-
-    const close = screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0]
-    expect(close).toHaveAttribute('aria-expanded', 'true')
-
-    await user.click(close)
-
-    expect(screen.getAllByRole('button', { name: /^Prikaži članove tima/ })[0]).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-  })
-
-  it('says so for a team nobody has joined', async () => {
-    const user = setupUser()
-    renderAt('/sr/timovi')
-
-    // The generator leaves one team empty on purpose, which is the case a table
-    // of contributions has nothing to show for.
-    await screen.findByRole('table')
-    for (const toggle of screen.getAllByRole('button', { name: /^Prikaži članove tima/ })) {
-      await user.click(toggle)
-    }
-
-    expect(screen.getByText('Ovaj tim još nema članova.')).toBeVisible()
+    await user.selectOptions(season, '2019')
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2019')
+    expect(await points()).not.toEqual(before)
   })
 })
 
