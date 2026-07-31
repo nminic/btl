@@ -107,12 +107,20 @@ export function LeagueDetail({ part = 'results' }: { part?: 'results' | 'rules' 
           <>
             {/* The name of a competition already carries its season, so it is
                 the whole title on its own. */}
+            {/* Two addresses, two names. They shared one, and two indexable
+                pages under one title is the fault the profile already avoids by
+                naming its awards apart from itself. */}
             <PageMeta
-              title={t('seo.league.recordTitle', { name: league.name })}
-              description={t('seo.league.recordDescription', {
-                name: league.name,
-                season: league.season,
-              })}
+              title={t(
+                part === 'rules' ? 'seo.leagueRules.recordTitle' : 'seo.league.recordTitle',
+                { name: league.name },
+              )}
+              description={t(
+                part === 'rules'
+                  ? 'seo.leagueRules.recordDescription'
+                  : 'seo.league.recordDescription',
+                { name: league.name, season: league.season },
+              )}
             />
 
             <div className="profile">

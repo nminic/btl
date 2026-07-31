@@ -7,9 +7,7 @@
    costs its own line height and no more.
 
    `vertical-rl` plus a half turn gives text running upwards, which is the way a
-   turned column heading is read everywhere it is used. The height is capped so
-   one long event name cannot push the whole head of the table down the
-   screen. */
+   turned column heading is read everywhere it is used. */
 .league__race {
   vertical-align: bottom;
   padding: 0.4rem 0.15rem;
@@ -28,20 +26,39 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.78rem;
+  /* Not the capitals every other heading on the portal wears. This one is a
+     sentence somebody wrote, not a three letter column name, and turned text in
+     capitals is the hardest thing on the page to read as well as the widest. */
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--text-muted);
 }
 
 /* The name and the total are what the table is read by, so they stay put while
    the races scroll past them. Two sticky columns, the second offset by the width
-   of the first. */
+   of the first.
+
+   The width has to be forced, not suggested. `inline-size` on a cell in a table
+   laid out automatically is a hint the browser may shrink: measured, the column
+   settled at 167,5px while the second was pinned at 176, and eight and a half
+   pixels of the races scrolled through the gap between them. `min-inline-size`
+   is the one the algorithm honours. */
 .league__who,
 .league__total {
   position: sticky;
-  background: var(--surface);
+  /* The colour of what the table lies on, which is the page and not a card.
+     `--surface` left a lighter band down the left of every grid, in a shade
+     nothing else on the screen wears. */
+  background: var(--bg);
 }
 
 .league__who {
   inset-inline-start: 0;
+  inline-size: 11rem;
+  min-inline-size: 11rem;
+  max-inline-size: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: left;
   font-weight: 400;
   white-space: nowrap;
@@ -53,28 +70,37 @@
 }
 
 .league__grid th.league__who,
-.league__grid td.league__total {
+.league__grid td.league__total,
+.league__grid th.league__total {
   /* Above the cells that scroll under them, and below nothing else. */
   z-index: 1;
 }
 
-.league__grid .league__who {
-  inline-size: 11rem;
-  max-inline-size: 11rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* The hover on a row is drawn on the row, and these two carry their own
+   background, so without this the row lights up everywhere except in the two
+   columns the reader is following it by. */
+.table tbody tr:hover .league__who,
+.table tbody tr:hover .league__total {
+  background: var(--surface-hover);
 }
 
-/* A cell for a race somebody did not run. Empty on purpose: nought would say
-   they ran it and scored nothing. */
-.league__grid td:empty::after {
-  content: '';
+/* Numbers line up under numbers. The shared table rule left-aligns the first
+   three cells, which on a table of three text columns is right and here puts the
+   total and the first race out of step with every race after them.
+ *
+ * Two elements deep on purpose: `.table td:nth-child(-n + 3)` counts one class,
+ * one pseudo-class and one type, so two classes alone lose to it and the rule
+ * did nothing. */
+.league__grid tbody td.league__total,
+.league__grid tbody td.table__points,
+.league__grid thead th.league__total {
+  text-align: right;
 }
 
 @media (max-width: 620px) {
-  .league__who,
-  .league__grid .league__who {
+  .league__who {
     inline-size: 7.5rem;
+    min-inline-size: 7.5rem;
     max-inline-size: 7.5rem;
   }
 

@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { CompetitorName } from '../../components/CompetitorName'
 import { Resource } from '../../components/Resource'
+import { useToday } from '../../clock/useClock'
+import { fieldFor } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
 import { formatPoints, formatShortDate } from '../../i18n/format'
@@ -41,9 +43,15 @@ function Grid({
   competitors: Competitor[]
 }) {
   const { locale, t } = useI18n()
+  const today = useToday()
+  /* Who the grid is drawn from (PDL P11). A member whose fee has run out is not
+     in the standing of the season now, and a competition's grid is that standing
+     over a subset of its events. It does not show today, because the one such
+     member raced in 2017 and the three competitions of 2027 have no results at
+     all, which is exactly why it had to be asked for rather than noticed. */
   const table = useMemo(
-    () => leagueTable(league, events, races, results, competitors),
-    [league, events, races, results, competitors],
+    () => leagueTable(league, events, races, results, fieldFor(competitors, league.season, today)),
+    [league, events, races, results, competitors, today],
   )
 
   if (table.rows.length === 0) {
@@ -56,16 +64,28 @@ function Grid({
         <caption className="visually-hidden">{t('leagues.standing')}</caption>
         <thead>
           <tr>
-            <th scope="col">{t('rankings.columns.member')}</th>
+            {/* The heading of the first column is sticky too, or the names
+                stand still while the word above them sails away. */}
+            <th scope="col" className="league__who">
+              {t('rankings.columns.member')}
+            </th>
             <th scope="col" className="league__total">
               {t('rankings.columns.points')}
             </th>
             {table.columns.map((column) => (
               <th scope="col" key={column.raceId} className="league__race">
-                {/* The date is what tells two runnings of one event apart, and it
-                    is the shortest thing that does. */}
-                <span className="league__race-name">
-                  {column.event}, {column.race}, {formatShortDate(column.date, locale)}
+                {/* The race and the date first, the name of the event after
+                    them. A turned heading has to be cut somewhere, and the cut
+                    has to fall on the part that repeats: three races of one
+                    event on one day gave three columns all reading "BTL trening
+                    trek" with the length and the date beyond the edge, which is
+                    the one thing that told them apart. The whole of it is in the
+                    title for anyone who wants it. */}
+                <span
+                  className="league__race-name"
+                  title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
+                >
+                  {column.race}, {formatShortDate(column.date, locale)}, {column.event}
                 </span>
               </th>
             ))}

@@ -349,3 +349,122 @@ describe('a competition, in two parts', () => {
     expect(await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.')).toBeVisible()
   })
 })
+
+describe('the grid of a competition, in the details the review found unguarded', () => {
+  const RUN = '/sr/liga/brdska-2019'
+
+  it('names each row by its runner, as a heading of that row', async () => {
+    renderAt(RUN)
+
+    const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+    const rows = within(grid).getAllByRole('row').slice(1)
+
+    /* A grid of bare cells leaves a screen reader reading numbers with nothing
+       to attach them to. Every row is named by the person it belongs to. */
+    expect(within(rows[0]).getByRole('rowheader')).toBeInTheDocument()
+    expect(rows.every((row) => within(row).queryAllByRole('rowheader').length === 1)).toBe(true)
+  })
+
+  it('shows in the second column the sum of the cells beside it', async () => {
+    renderAt(RUN)
+
+    const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+    const number = (text: string | null) =>
+      text === null || text === '' ? 0 : Number(text.replace(/\./g, '').replace(',', '.'))
+
+    for (const row of within(grid).getAllByRole('row').slice(1)) {
+      const cells = within(row).getAllByRole('cell')
+      const shown = number(cells[0].textContent)
+      const races = cells.slice(1).reduce((sum, cell) => sum + number(cell.textContent), 0)
+
+      /* Two decimals of rounding per cell, and up to sixteen cells. A reader has
+         to be able to add the row up and land on the total. */
+      expect(Math.abs(shown - races)).toBeLessThan(0.01)
+    }
+  })
+
+  it('carries no link to a profile that is not there', async () => {
+    /* PDL P11 on this screen too. The grid is one of five lists of a season and
+       the rule is kept on the other four. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith('/competitors.json')) {
+        return real(input)
+      }
+
+      const all = (await (await real(input)).json()) as { active: boolean }[]
+
+      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
+        status: 200,
+      })
+    }) as typeof fetch
+
+    try {
+      renderAt(RUN)
+
+      const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+
+      expect(within(grid).getAllByRole('rowheader').length).toBeGreaterThan(0)
+      expect(within(grid).queryAllByRole('link')).toHaveLength(0)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('leaves out of the season now anyone whose fee has run out', async () => {
+    /* Read on a day inside 2019, so that competition is the season running. The
+       one member this is true of raced in 2017, so the list is made inactive to
+       give the rule something to act on. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith('/competitors.json')) {
+        return real(input)
+      }
+
+      const all = (await (await real(input)).json()) as { active: boolean }[]
+
+      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
+        status: 200,
+      })
+    }) as typeof fetch
+
+    try {
+      renderAt(RUN, 'visitor', null, undefined, '2019-06-01')
+
+      expect(
+        await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.'),
+      ).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})
+
+describe('the control that names the parts of a record', () => {
+  it('carries the query from one part to the other', async () => {
+    /* The whole reason the profile's season survives a trip to the trophies and
+       back. Nothing was holding it. */
+    renderAt('/sr/takmicar/000007?sezona=2010')
+
+    await screen.findByRole('heading', { level: 1 })
+    const parts = screen.getByRole('navigation', { name: 'Delovi profila' })
+
+    for (const link of within(parts).getAllByRole('link')) {
+      expect(link.getAttribute('href')).toContain('?sezona=2010')
+    }
+  })
+
+  it('marks the part that is open, and only that one', async () => {
+    renderAt('/sr/takmicar/000007/priznanja')
+
+    const parts = await screen.findByRole('navigation', { name: 'Delovi profila' })
+    const open = within(parts)
+      .getAllByRole('link')
+      .filter((one) => one.getAttribute('aria-current') !== null)
+
+    /* Without `end` on the first one, the overview counts itself as open on
+       every part below it and both are marked at once. */
+    expect(open).toHaveLength(1)
+    expect(open[0].textContent).toBe('Priznanja i nagrade')
+  })
+})

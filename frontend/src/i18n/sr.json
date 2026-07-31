@@ -180,7 +180,9 @@
     },
     "leagueRules": {
       "title": "Propozicije takmičenja",
-      "description": "Pravila i nagrade jednog takmičenja uz glavnu ligu, onako kako ih je napisao organizator."
+      "description": "Pravila i nagrade jednog takmičenja, onako kako ih je napisao organizator.",
+      "recordTitle": "{name}, propozicije",
+      "recordDescription": "Propozicije i nagrade takmičenja {name}, onako kako ih je napisao organizator."
     },
     "message": {
       "title": "Poruka",
