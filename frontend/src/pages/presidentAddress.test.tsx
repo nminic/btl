@@ -49,8 +49,8 @@ describe('the address of the president', () => {
     const counters = screen.getByRole('heading', { level: 2, name: /Sezona/ })
 
     // Same column as the boards, and last in it.
-    expect(address.closest('section')?.parentElement).toBe(
-      board.closest('.home__boards')?.parentElement,
+    expect(address.closest('article')?.parentElement?.parentElement).toBe(
+      board.closest('section')?.parentElement?.parentElement,
     )
     expect(
       board.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -68,7 +68,7 @@ describe('the address of the president', () => {
     renderAt('/sr')
 
     const address = await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
-    const card = address.closest('section') as HTMLElement
+    const card = address.closest('article') as HTMLElement
 
     expect(within(card).getByRole('link', { name: 'pravilnik' })).toHaveAttribute(
       'href',

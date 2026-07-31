@@ -33,14 +33,14 @@ export function President() {
         const page = pageOf(pages, ADDRESS_SLUG)
 
         return (
-          <section className="card">
+          <div className="card">
             {page.sections.map((section) => (
               <article className="address" key={section.heading}>
                 <h2 className="address__title">{section.heading}</h2>
                 <Markdown text={section.body} />
               </article>
             ))}
-          </section>
+          </div>
         )
       }}
     </Resource>

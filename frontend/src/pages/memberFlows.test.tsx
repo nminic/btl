@@ -295,7 +295,7 @@ describe('a result from entry to decision', () => {
     /* The entry stays on a confirmation that says what the race earned (PDL P9),
        instead of jumping to the list without a word. */
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText(/BTL bodova/)).toBeVisible()
+    expect(screen.getByText(/BTL poena/)).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
@@ -334,7 +334,7 @@ describe('a result from entry to decision', () => {
 
     // No time is no race, so it carries no points rather than an error, and the
     // confirmation says so straight away.
-    expect(await screen.findByText(/0,00 BTL bodova/)).toBeVisible()
+    expect(await screen.findByText(/0,00 BTL poena/)).toBeVisible()
 
     // And the way back to an empty form, for the second race of a weekend.
     await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))

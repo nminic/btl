@@ -1,4 +1,5 @@
 import {
+  boardOfTen,
   categoriesOf,
   topByCategory,
   defaultMonth,
@@ -867,5 +868,63 @@ describe('bestSingleRaces', () => {
 
   it('stops at the limit it is given', () => {
     expect(bestSingleRaces(competitors, results, 2027, 2)).toHaveLength(2)
+  })
+})
+
+/* The board of the front page (PDL P14). The places that are won come first, and
+ * the rest are held by members who have joined and not yet raced, so the widget
+ * is never a row of empty rings in the first weeks of a season. */
+describe('boardOfTen', () => {
+  const twelve = Array.from({ length: 12 }, (_, index) =>
+    competitor(String(index + 1).padStart(6, '0')),
+  )
+
+  it('puts everybody who has scored first, in order, and marks them as ranked', () => {
+    const board = boardOfTen(
+      twelve,
+      [result('000005', '2027-03-01', 20), result('000009', '2027-03-01', 40)],
+      2027,
+      'M',
+    )
+
+    expect(board.slice(0, 2)).toEqual([
+      { competitor: twelve[8], points: 40, ranked: true },
+      { competitor: twelve[4], points: 20, ranked: true },
+    ])
+  })
+
+  it('fills the rest with those who joined earliest, and marks them as waiting', () => {
+    const board = boardOfTen(twelve, [result('000009', '2027-03-01', 40)], 2027, 'M')
+
+    expect(board).toHaveLength(10)
+    expect(board[0].competitor.memberNumber).toBe('000009')
+    // The order they joined in, and 000009 is not taken twice.
+    expect(board.slice(1).map((slot) => slot.competitor.memberNumber)).toEqual([
+      '000001',
+      '000002',
+      '000003',
+      '000004',
+      '000005',
+      '000006',
+      '000007',
+      '000008',
+      '000010',
+    ])
+    expect(board.slice(1).every((slot) => !slot.ranked && slot.points === 0)).toBe(true)
+  })
+
+  it('never goes past ten, however many have scored', () => {
+    const results = twelve.map((one) => result(one.memberNumber, '2027-03-01', 5))
+
+    expect(boardOfTen(twelve, results, 2027, 'M')).toHaveLength(10)
+    expect(boardOfTen(twelve, results, 2027, 'M').every((slot) => slot.ranked)).toBe(true)
+  })
+
+  it('holds only the places of its own gender', () => {
+    const mixed = [competitor('000001'), competitor('000002', { gender: 'F' })]
+
+    expect(boardOfTen(mixed, [], 2027, 'F').map((slot) => slot.competitor.memberNumber)).toEqual([
+      '000002',
+    ])
   })
 })

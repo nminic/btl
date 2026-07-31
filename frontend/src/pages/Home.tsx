@@ -94,7 +94,7 @@ export function Home() {
                 </div>
               </div>
 
-              <div className="home__row home__row--calendar">
+              <div className="home__row home__row--news">
                 <News items={NEWS} today={today} />
                 <Sponsor sponsors={SPONSORS} />
               </div>

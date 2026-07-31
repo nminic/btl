@@ -126,16 +126,20 @@ describe('TopTen', () => {
       />,
     )
 
-    expect(screen.getByText('30,00')).toBeVisible()
+    expect(screen.getByText(/^30,00 BTL poena$/)).toBeVisible()
+    // Every number on this page carries its unit (PDL P28a): the leader's total
+    // stands alone now, where before it was one of ten in a column.
+    expect(screen.getByText('1.')).toBeVisible()
     expect(screen.queryByText(/ovo nije poredak/)).not.toBeInTheDocument()
   })
 
   /* The ten places are the height of the widget, so the two boards standing side
-     by side line up in January as well as in December. Only those with a result
-     are ranked, so two of the four here are on the board: one leads and one of
-     the nine slots under them is filled, and the other eight are drawn empty. */
-  it('keeps its ten places whether or not there is anybody to put in them', () => {
-    const { container } = renderWidget(
+     by side line up in January as well as in December. Two of the four here have
+     raced and the other two hold places behind them (PDL P14), which leaves six
+     places drawn and empty. An empty place is out of the reading entirely, so
+     the two counts are what tells them apart. */
+  it('keeps its ten places, and tops them up with members who have not raced', () => {
+    renderWidget(
       <TopTen
         competitors={competitors}
         results={[result('000001', 30), result('000002', 20)]}
@@ -144,15 +148,21 @@ describe('TopTen', () => {
       />,
     )
 
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(9)
-    expect(container.querySelectorAll('.portrait--empty')).toHaveLength(8)
+    const block = screen.getByRole('list')
+
+    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
+    expect(within(block).getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByText(/Preostala mesta drže članovi/)).toBeVisible()
   })
 
   it('lists who has joined, and says so, before the first race', () => {
     renderWidget(<TopTen competitors={competitors} results={[]} season={2027} gender="M" />)
 
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(9)
+    expect(within(screen.getByRole('list')).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
     expect(screen.getByText(/ovo nije poredak/)).toBeVisible()
+    // Not the other kind of incomplete: nobody has raced, so no place is
+    // being held behind anybody.
+    expect(screen.queryByText(/Preostala mesta drže/)).not.toBeInTheDocument()
   })
 
   /* Nobody of that gender at all is not the same fact as nobody scoring yet, and

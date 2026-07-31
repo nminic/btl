@@ -308,12 +308,12 @@
     },
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
+    "place": "{place}.",
     "topBeforeSeason": "Sezona još nije počela, pa ovo nije poredak nego spisak onih koji su se već učlanili, redom kojim su stigli.",
+    "topPartlyFilled": "Preostala mesta drže članovi koji još nemaju rezultat u ovoj sezoni.",
     "noneRanked": "U ovoj sezoni još nema nikoga na ovoj listi.",
     "wholeStanding": "Cela tabela",
     "byCategory": "Trke po dužini",
-    "previousCategory": "Prethodna kategorija",
-    "nextCategory": "Sledeća kategorija",
     "calculator": "BTL kalkulator",
     "calcLength": "Dužina staze (km)",
     "calcAscent": "Uspon (m)",
@@ -342,17 +342,7 @@
     "descentUnit": " m-",
     "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama.",
     "members": "Članova lige",
-    "memberCount": {
-      "one": "{count} član",
-      "few": "{count} člana",
-      "other": "{count} članova"
-    },
-    "results": "Prijavljenih rezultata",
-    "resultCount": {
-      "one": "{count} rezultat",
-      "few": "{count} rezultata",
-      "other": "{count} rezultata"
-    }
+    "results": "Prijavljenih rezultata"
   },
   "data": {
     "loading": "Učitavanje",
@@ -448,6 +438,11 @@
       "one": "{count} član",
       "few": "{count} člana",
       "other": "{count} članova"
+    },
+    "resultCount": {
+      "one": "{count} rezultat",
+      "few": "{count} rezultata",
+      "other": "{count} rezultata"
     }
   },
   "rankings": {
@@ -750,7 +745,7 @@
     "startTimeHint": "Kad je trka krenula. Ne vreme koje si istrčao.",
     "photo": "Fotografija kao dokaz",
     "doneTitle": "Rezultat je poslat",
-    "donePoints": "Ova trka ti donosi {points} BTL bodova.",
+    "donePoints": "Ova trka ti donosi {points} BTL poena.",
     "doneWaiting": "Moderator je proverava. Kad je potvrdi, ulazi u rang liste i u tvoj profil.",
     "toMine": "Moji rezultati",
     "another": "Unesi još jedan",

@@ -48,7 +48,7 @@
     grid-template-columns: 2fr 1fr;
   }
 
-  .home__row--calendar {
+  .home__row--news {
     grid-template-columns: 2fr 1fr;
   }
 }
@@ -164,6 +164,7 @@
 }
 
 .extract__date {
+  display: block;
   color: var(--text-muted);
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
@@ -211,6 +212,17 @@
 
 /* Top ten, in the shape the old portal had (owner, 31.07.2026): the leader at
    full size, the other nine as a three by three block of faces under them. */
+
+/* Every place carries its number, as it did on the old portal. */
+.top10__place {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.top10__first .top10__place {
+  font-size: 0.8rem;
+}
 
 .top10__first {
   display: grid;
@@ -290,45 +302,13 @@
   font-size: 1.3rem;
 }
 
+/* Drawn in the colour of a control's edge and not a surface's: this ring is the
+   only thing saying the place exists and is waiting, and at the colour of a
+   surface edge it measured 1,49:1 on the light theme and 1,42:1 on the dark
+   one, where the block simply read as though cells were missing. */
 .portrait--empty {
   background: transparent;
-  border: 1px dashed var(--border);
-}
-
-/* Rotating chart */
-
-.chart__bar-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.chart__arrows {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.chart__arrows button {
-  font: inherit;
-  font-size: 1.1rem;
-  line-height: 1;
-  width: 1.9rem;
-  height: 1.9rem;
-  cursor: pointer;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
-}
-
-.chart__arrows button:hover {
-  background: var(--surface-hover);
-}
-
-.chart__current {
-  margin: 0;
-  font-weight: 700;
+  border: 1px dashed var(--control-border);
 }
 
 /* Calculator */

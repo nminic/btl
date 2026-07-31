@@ -3,24 +3,13 @@ import { Link } from 'react-router'
 import { CATEGORIES, topByCategory } from '../../data/derive'
 import type { Competitor, Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
+import { Portrait } from './Portrait'
 import './TopByCategory.css'
 
 /** How long one category stays up before the next one comes round. */
 const TURN_MS = 6000
 
 const TOP = 10
-
-/* Initials in a circle, because there are no photographs yet. The old portal
- * put faces above the columns and that is what made the widget worth looking
- * at; a monogram holds the place until the photographs exist. */
-function Face({ competitor }: { competitor: Competitor }) {
-  return (
-    <span className="top-cat__face" aria-hidden="true">
-      {competitor.firstName.slice(0, 1)}
-      {competitor.lastName.slice(0, 1)}
-    </span>
-  )
-}
 
 /* Two bars and a triangle: the marks every player in the world uses, so the
  * button says what it does without a word on it (owner, 31.07.2026). The name
@@ -135,7 +124,9 @@ export function TopByCategory({
     <section className="top-cat" aria-label={t('home.turning')}>
       {/* A discreet gold disc in the corner rather than a labelled pill on the
           band below (owner, 31.07.2026). The name it carried is now the
-          accessible name and the tooltip; an icon is not a name.
+          accessible name; an icon is not a name. It is the name and nothing
+          else: a hidden label and a tooltip carrying the same words are read
+          out one after the other.
 
           There is no `aria-pressed` beside it, and there was none before: the
           name says the whole state, and the two together contradicted each
@@ -143,8 +134,12 @@ export function TopByCategory({
           itself as pressed, which is heard as "resuming is on", the opposite of
           what is true. A button that renames itself is what the guidance for
           WCAG 2.2 SC 2.2.2 means by a pause control. */}
-      <button type="button" className="top-cat__turn" onClick={() => setTurning((on) => !on)} title={name}>
-        <span className="visually-hidden">{name}</span>
+      <button
+        type="button"
+        className="top-cat__turn"
+        aria-label={name}
+        onClick={() => setTurning((on) => !on)}
+      >
         {turning ? <PauseMark /> : <PlayMark />}
       </button>
 
@@ -154,7 +149,7 @@ export function TopByCategory({
         <ol className="top-cat__columns">
           {columns.map((column) => (
             <li key={column.competitor.memberNumber} className="top-cat__column">
-              <Face competitor={column.competitor} />
+              <Portrait competitor={column.competitor} />
               <Bar column={column} highest={highest} />
             </li>
           ))}

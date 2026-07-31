@@ -14,7 +14,11 @@
 .top-cat__columns {
   list-style: none;
   margin: 0;
-  padding: 0.8rem 0.6rem 0;
+  /* The top of this box is the disc's, not the bars'. When every column is
+     the same height, which is the ordinary state of the first weeks of a season
+     and the permanent state of the ultra board, the tenth face reached the top
+     right corner and the disc sat on it. */
+  padding: 3.1rem 0.6rem 0;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;

@@ -203,7 +203,7 @@ export function Counters({
           icon={<Runner />}
           label={t('home.members')}
           value={members}
-          counted="home.memberCount"
+          counted="units.memberCount"
         />
       )}
       {/* What is counted here is results, not races: two members who ran the
@@ -214,7 +214,7 @@ export function Counters({
           icon={<Flag />}
           label={t('home.results')}
           value={totals.races}
-          counted="home.resultCount"
+          counted="units.resultCount"
         />
       )}
       <Row
