@@ -66,7 +66,7 @@ export function NewResult() {
         <p>{t('newResult.donePoints', { points: formatPoints(done, locale) })}</p>
         <p>{t('newResult.doneWaiting')}</p>
         <p className="member__actions">
-          <Link className="button" to={`/${locale}/moji-rezultati`}>
+          <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
             {t('newResult.toMine')}
           </Link>{' '}
           <button

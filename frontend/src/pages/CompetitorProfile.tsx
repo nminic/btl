@@ -13,6 +13,12 @@ import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
 import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
+
+/** What the address says when no length is chosen. The same word the season
+ *  uses, and a constant of its own: they are two filters that happen to spell
+ *  their "everything" the same way, and one of them changing its mind must not
+ *  silently change the other. */
+const ALL_LENGTHS = 'sve'
 import './Profile.css'
 
 function countsOf(results: Result[]): Map<RaceCategory, number> {
@@ -70,7 +76,7 @@ function LengthFilter({
 }) {
   const { t } = useI18n()
   const options = [
-    { key: ALL_SEASONS, full: t('profile.allLengths'), short: t('profile.lengthsShort.all') },
+    { key: ALL_LENGTHS, full: t('profile.allLengths'), short: t('profile.lengthsShort.all') },
     ...CATEGORIES.map((one) => ({
       key: one,
       full: t(`category.${one}`),
@@ -142,14 +148,14 @@ function ProfileBody({
   const length =
     askedLength !== null && (CATEGORIES as string[]).includes(askedLength)
       ? askedLength
-      : ALL_SEASONS
+      : ALL_LENGTHS
 
   const inSeason = useMemo(
     () => mine.filter((result) => season === ALL_SEASONS || result.date.startsWith(season)),
     [mine, season],
   )
   const shown = useMemo(
-    () => inSeason.filter((result) => length === ALL_SEASONS || result.category === length),
+    () => inSeason.filter((result) => length === ALL_LENGTHS || result.category === length),
     [inSeason, length],
   )
 
@@ -159,7 +165,7 @@ function ProfileBody({
   function changeLength(value: string) {
     const merged = new URLSearchParams(params)
 
-    if (value === ALL_SEASONS) {
+    if (value === ALL_LENGTHS) {
       merged.delete('duzina')
     } else {
       merged.set('duzina', value)
@@ -193,7 +199,7 @@ function ProfileBody({
         {shown.length === 0 ? (
           <div className="profile__results-empty">
             <p>{emptyText(t, mine.length, season, length)}</p>
-            {(season !== ALL_SEASONS || length !== ALL_SEASONS) && (
+            {(season !== ALL_SEASONS || length !== ALL_LENGTHS) && (
               <button
                 type="button"
                 className="button button--secondary"
@@ -281,7 +287,7 @@ function emptyText(
     return t('profile.noResults')
   }
 
-  if (season !== ALL_SEASONS && length !== ALL_SEASONS) {
+  if (season !== ALL_SEASONS && length !== ALL_LENGTHS) {
     return t('profile.noneInFilter')
   }
 

@@ -15,6 +15,12 @@ import './CategoryDonut.css'
  * a slice is, is answered by pointing at it, and the same five colours stand
  * beside the distances in the table below, so the two read as one thing.
  *
+ * Pointing at it has to work on a telephone too, where there is no hover: a
+ * touch chooses a slice as a mouse does, and the answer is written in the middle
+ * of the ring rather than in a tooltip, because a tooltip is a thing a finger
+ * cannot open. Without that the ring on a telephone was five unnamed colours,
+ * which is WCAG 2.2 SC 1.4.1 with nothing else carrying the meaning.
+ *
  * No charting library: five numbers do not justify one, and the table below,
  * which only a screen reader reads, is what makes the drawing readable without
  * eyes.
@@ -68,6 +74,8 @@ export function CategoryDonut({
     offset += share
   }
 
+  const chosen = slices.find((slice) => slice.one === pointed)
+
   return (
     <div className="donut-block">
       <svg className="donut" viewBox={`0 0 ${SIDE} ${SIDE}`} aria-hidden="true">
@@ -87,8 +95,17 @@ export function CategoryDonut({
               stroke={COLOURS[slice.one]}
               strokeDasharray={`${slice.share * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
               strokeDashoffset={-slice.offset * CIRCUMFERENCE}
-              onMouseEnter={() => setPointed(slice.one)}
-              onMouseLeave={() => setPointed(null)}
+              /* Pointer rather than mouse, so a finger and a stylus choose a
+                 slice the same way. The choice sticks until another slice is
+                 chosen or the ring is left, which is what a touch needs and what
+                 a mouse gets anyway. */
+              onPointerEnter={() => setPointed(slice.one)}
+              onPointerDown={() => setPointed(slice.one)}
+              onPointerLeave={(event) => {
+                if (event.pointerType === 'mouse') {
+                  setPointed(null)
+                }
+              }}
             >
               {/* The browser's own tooltip, which is also what a screen reader
                   reads off a shape. One element, both jobs. */}
@@ -100,13 +117,16 @@ export function CategoryDonut({
         </g>
 
         <text className="donut__total" x={CENTRE} y={CENTRE + 6} textAnchor="middle">
-          {formatNumber(total, locale)}
+          {formatNumber(chosen === undefined ? total : chosen.value, locale)}
         </text>
-        {/* The word declines with the number, the way it does on the front page:
-            1 trka, 3 trke, 5 trka. The count is handed in for the rules to read
-            and never printed, because the number is already above it. */}
+        {/* Whose number it is. Left alone that is the word for races, declined
+            with the count the way it is on the front page: 1 trka, 3 trke, 5
+            trka. While a slice is chosen it is the name of that length, which is
+            the only way somebody on a telephone can find out. */}
         <text className="donut__unit" x={CENTRE} y={CENTRE + 28} textAnchor="middle">
-          {t('profile.racesWord', { count: total })}
+          {chosen === undefined
+            ? t('profile.racesWord', { count: total })
+            : t(`category.${chosen.one}`)}
         </text>
       </svg>
 

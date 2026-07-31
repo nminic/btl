@@ -400,4 +400,15 @@ describe('the season, over both parts of the profile', () => {
 
     expect(season.value).toBe('2022')
   })
+
+  it('will not take a year that only looks like one', async () => {
+    /* Four digits, not merely digits: `02010` is not 2010, and letting it
+       through puts the control on a value none of its own options carry, so the
+       table shows one year and the control shows another. */
+    renderAt('/sr/takmicar/000001?sezona=02010', 'visitor', null, undefined, '2022-06-01')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2022')
+  })
 })

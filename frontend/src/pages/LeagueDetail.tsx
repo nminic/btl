@@ -208,10 +208,7 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
                   )}
                 </>
               ) : (
-                <>
-                  <LeagueResults league={league} events={events} />
-
-                </>
+                <LeagueResults league={league} events={events} />
               )}
             </div>
           </>

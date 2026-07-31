@@ -47,7 +47,7 @@ describe('Registration while it is shut', () => {
 
     expect(screen.getByRole('heading', { name: 'Registracija još nije otvorena' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
-    expect(screen.getByText(/Otvara se za 11 dana/)).toBeVisible()
+    expect(screen.getByText(/Učlanjenje se otvara .*, za 11 dana\./)).toBeVisible()
   })
 
   it('is shut on the route today, since October has not come', async () => {
@@ -171,10 +171,13 @@ describe('Registration once it is open', () => {
     expect(screen.queryByText(/trkacka2027/)).not.toBeInTheDocument()
     expect(screen.queryByText('password')).not.toBeInTheDocument()
 
-    /* Asking for the letter again puts the form back, which is the nearest a
-       portal without a backend can come to sending one. */
+    /* Asking for the letter again says so and stays where it is. It used to
+       empty the confirmation and hand back a blank form, so nothing said the
+       letter had gone out and everything typed was lost. */
     await user.click(screen.getByRole('button', { name: 'Pošalji potvrdu ponovo' }))
-    expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()
+    expect(screen.getByText(/poslata ponovo/)).toBeVisible()
+    expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
   })
 })
 

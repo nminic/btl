@@ -397,6 +397,7 @@
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",
+    "resent": "Potvrda je poslata ponovo. Ako ni sada ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
     "doneText": "Poslali smo poruku na {email}. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada.",
     "password": "Lozinka",
     "passwordHint": "Najmanje 10 znakova. Njome se posle prijavljuješ na portal.",
@@ -407,7 +408,12 @@
     "closedText": "Od 15. do 30. septembra portal je otvoren samo za razgledanje. Kalendar i rang liste rade, ali se članstvo tada ne prodaje.",
     "opensOn": "Otvara se {date}.",
     "firstSeason": "Takmičim se u kategoriji Prva sezona",
-    "firstSeasonHint": "Za one koji su nov u ligi. U toj kategoriji se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan. Ako je ne izabereš, takmičiš se u svojoj starosnoj kategoriji."
+    "firstSeasonHint": "Za one koji su nov u ligi. U toj kategoriji se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan. Ako je ne izabereš, takmičiš se u svojoj starosnoj kategoriji.",
+    "opensIn": {
+      "one": "Učlanjenje se otvara {date}, za {count} dan.",
+      "few": "Učlanjenje se otvara {date}, za {count} dana.",
+      "other": "Učlanjenje se otvara {date}, za {count} dana."
+    }
   },
   "country": {
     "RS": "Srbija",

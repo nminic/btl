@@ -44,7 +44,10 @@ const LINK = /^\[([^\]]+)\]\(([^)\s]+)\)$/
  * page somebody else typed is a script on the portal. Anything outside this list
  * stays literal text, so nothing is silently swallowed either. */
 function addressOf(url: string): { inside: boolean; href: string } | undefined {
-  if (url.startsWith('/')) {
+  /* One slash is a page of this portal. Two is another host, which a browser
+     reads as a scheme-relative address and the router would turn into a path of
+     ours; neither is what somebody writing a page meant. */
+  if (url.startsWith('/') && !url.startsWith('//')) {
     return { inside: true, href: url }
   }
 

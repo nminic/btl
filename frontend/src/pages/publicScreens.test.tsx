@@ -3,6 +3,19 @@ import { loadResource } from '../data/client'
 import { hueFor } from './competitorFace'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
+import type { Result } from '../data/types'
+
+/** Every distance this member has raced, newest first, written the way the table
+ *  writes them. Read out of the record so a test about which column is which
+ *  cannot be satisfied by whatever number happens to stand there. */
+async function distancesOf(memberNumber: string): Promise<string[]> {
+  const results = await loadResource<Result[]>('results')
+
+  return results
+    .filter((one) => one.memberNumber === memberNumber)
+    .sort((left, right) => right.date.localeCompare(left.date))
+    .map((one) => one.distanceKm.toFixed(2).replace('.', ','))
+}
 
 /* One file for the screens a visitor sees. They share a shape: read the data
  * layer, sort it, put it in a table. */
@@ -601,14 +614,36 @@ describe('CompetitorProfile', () => {
     /* The length has no column of its own any more: it is the colour of the dot
        beside the distance, and its name is there for a screen reader, which is
        what this reads. */
-    const results = within(screen.getByRole('table', { name: 'Rezultati' }))
+    const cells = within(screen.getByRole('table', { name: 'Rezultati' }))
       .getAllByRole('row')
       .slice(1)
-      .map((row) => within(row).getAllByRole('cell')[2].textContent!.split(':')[0])
+      .map((row) => within(row).getAllByRole('cell')[2].textContent!)
+    const results = cells.map((one) => one.split(':')[0])
 
     expect(named.length).toBeGreaterThan(0)
     expect(named.length).toBeLessThan(5)
     expect([...named].sort()).toEqual([...new Set(results)].sort())
+
+    /* And the number beside the name is the distance and not one of the two
+       columns of climb it now stands next to. Read from the record rather than
+       written out here, so a change in the data cannot make this pass for the
+       wrong reason. */
+    const shown = cells.map((one) => one.split(': ')[1])
+    const distances = await distancesOf('000007')
+
+    expect(shown).toEqual(distances)
+
+    /* And the dot beside each distance wears that row's own length. It is the
+       one thing on the row that says which of the five it is, and every row
+       taking the same colour looked exactly like every row taking its own. */
+    const dots = within(screen.getByRole('table', { name: 'Rezultati' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.querySelector('.profile__dot')?.className.split('--')[1])
+    const kinds = results.map((one) => one)
+
+    expect(new Set(dots).size).toBe(new Set(kinds).size)
+    expect(dots.every((one) => one !== undefined)).toBe(true)
   })
 
   it('says which of the four kinds of nothing it is', async () => {

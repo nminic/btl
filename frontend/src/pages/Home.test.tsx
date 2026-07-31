@@ -31,6 +31,28 @@ describe('Home', () => {
     ])
   })
 
+  /* Whose season it is, counted the way every other widget on this page counts
+     it (PDL P11): a member whose fee has run out is not in the season now, so
+     the count of members is the count of the field and not of everybody the
+     league has ever had. The data has 32 members and 31 of them active, which is
+     the whole point of that one difference. */
+  it('counts the members of the running season, not everybody there has ever been', async () => {
+    renderAt('/sr')
+
+    /* Waited out rather than caught in flight. The numbers unroll from zero, so
+       a test that waits for "31" also passes when the number is on its way to
+       32 and 31 was one frame of the climb. The kilometres of this season land
+       on a value no frame before them equals, and every row unrolls over the
+       same nine hundred milliseconds, so once that one has landed they all
+       have. */
+    await screen.findByText('3.569,66 km', {}, { timeout: 3000 })
+
+    // 32 members in the data, 31 of them active. Which of the two this says is
+    // the whole of PDL P11 on the front page.
+    expect(screen.getByText('31 član')).toBeVisible()
+    expect(screen.queryByText('32 člana')).not.toBeInTheDocument()
+  })
+
   /* Two blocks went out (owner, 31.07.2026): one explained on the front page
      what the written pages explain properly, the other counted members, which is
      now the first row of the counters. */

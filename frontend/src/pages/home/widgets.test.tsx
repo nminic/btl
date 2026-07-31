@@ -55,7 +55,7 @@ describe('News', () => {
     id: 'a',
     date: '2026-07-20',
     titleKey: 'home.news',
-    textKey: 'home.newest',
+    textKey: 'home.seeCalendar',
   }
 
   it('shows nothing at all when nothing is fresh', () => {
@@ -153,6 +153,26 @@ describe('TopTen', () => {
     expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
     expect(within(block).getAllByRole('listitem')).toHaveLength(3)
     expect(screen.getByText(/Preostala mesta drže članovi/)).toBeVisible()
+  })
+
+  /* The circle is the face until there are photographs. Two things it has to
+     do: carry that person's initials, and carry a colour that is theirs and not
+     everybody's. Both survived being taken away. */
+  it('gives each face its own initials and its own colour', () => {
+    const { container } = renderWidget(
+      <TopTen competitors={competitors} results={[]} season={2027} gender="M" />,
+    )
+
+    // Only the ones with somebody in them: an empty place carries no colour.
+    const faces = [
+      ...container.querySelectorAll('.portrait:not(.portrait--empty)'),
+    ] as HTMLElement[]
+
+    // "Ime" and the member number, which is what the fixture calls people.
+    expect(faces[0].textContent).toBe('I0')
+    expect(new Set(faces.map((one) => one.style.getPropertyValue('--face-hue'))).size).toBe(
+      competitors.length,
+    )
   })
 
   it('lists who has joined, and says so, before the first race', () => {

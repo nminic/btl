@@ -293,9 +293,14 @@ describe('a result from entry to decision', () => {
     await enterResult(user)
 
     /* The entry stays on a confirmation that says what the race earned (PDL P9),
-       instead of jumping to the list without a word. */
+       instead of jumping to the list without a word.
+
+       The number, not the unit beside it. Matching on "BTL poena" also matched
+       "0,00 BTL poena", so the one thing the member came to find out was the one
+       thing the test never looked at: 21,1 km with 540 up and 540 down in
+       1:52:10 is 23,55 by the formula in the rulebook. */
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText(/BTL poena/)).toBeVisible()
+    expect(screen.getByText('Ova trka ti donosi 23,55 BTL poena.')).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 

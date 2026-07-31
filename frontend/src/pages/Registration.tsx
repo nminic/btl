@@ -7,12 +7,13 @@ import { REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/prici
 import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 
-/* The form itself is the JSON definition; this screen only decides what
- * happens with the values. Until the backend exists, it shows what was
- * captured, which is what makes the flow reviewable. */
+/* The form itself is the JSON definition; this screen only decides what happens
+ * with the values: until the backend exists, it holds them long enough to say
+ * where the letter of confirmation went. */
 export function Registration() {
   const { locale, t } = useI18n()
   const [sent, setSent] = useState<FormValues | null>(null)
+  const [resent, setResent] = useState(false)
   /* Which side of 1 October the portal is on, from the one clock the whole
      portal reads (src/clock). It used to be a prop with the machine's date
      behind it, which meant this screen could be shown one day and the price
@@ -27,8 +28,10 @@ export function Registration() {
         <h1>{t('registration.closed')}</h1>
         <p>{t('registration.closedText')}</p>
         <p>
-          {t('registration.opensOn', { date: formatDate(REGISTRATION_OPENS, locale) })}{' '}
-          {t('home.opensIn', { count: daysBetween(today, REGISTRATION_OPENS) })}
+          {t('registration.opensIn', {
+            date: formatDate(REGISTRATION_OPENS, locale),
+            count: daysBetween(today, REGISTRATION_OPENS),
+          })}
         </p>
       </div>
     )
@@ -37,8 +40,8 @@ export function Registration() {
   if (sent !== null) {
     /* What happens next, and not what was typed.
      *
-     * This used to print every field that had been submitted, under its own
-     * name in the code and with no translation: `password` and `passwordRepeat`
+     * It used to print every field that had been submitted, under its own name
+     * in the code and with no translation: `password` and `passwordRepeat`
      * among them, in plain sight, on the screen the owner shows first. It was a
      * tool for reviewing the form and it read like a debugger left switched on.
      *
@@ -50,9 +53,23 @@ export function Registration() {
         <h1>{t('registration.doneTitle')}</h1>
         <p>{t('registration.doneText', { email: String(sent.email) })}</p>
         <p>{t('registration.checkSpam')}</p>
-        <button type="button" className="button button--secondary" onClick={() => setSent(null)}>
-          {t('registration.resend')}
-        </button>
+        {/* Asking again says so and stays where it is. It used to empty `sent`,
+            which unmounted this confirmation and handed back a blank form:
+            nothing said the letter had gone out again, and everything typed was
+            gone. A control has to do what it is called. */}
+        {resent ? (
+          <p className="registration-done__resent" role="status">
+            {t('registration.resent')}
+          </p>
+        ) : (
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => setResent(true)}
+          >
+            {t('registration.resend')}
+          </button>
+        )}
       </div>
     )
   }

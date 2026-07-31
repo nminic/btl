@@ -163,13 +163,14 @@ describe('the page that says what membership costs', () => {
     renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
 
     const table = await screen.findByRole('table')
+    /* Found by what it says rather than by what it is called: the badge is the
+       thing the reader sees, and a class name is not. */
     const marked = within(table)
       .getAllByRole('row')
-      .filter((row) => row.className === 'pricing__now')
+      .filter((row) => row.textContent?.includes('važi danas'))
 
     expect(marked).toHaveLength(1)
     expect(marked[0]).toHaveTextContent('1. do 5. oktobra')
-    expect(marked[0]).toHaveTextContent('važi danas')
   })
 
   it('leads to joining once joining is open, and says when otherwise', async () => {
@@ -190,6 +191,9 @@ describe('the page that says what membership costs', () => {
     const page = within(await screen.findByRole('main'))
 
     expect(page.queryByRole('link', { name: 'Učlani se' })).not.toBeInTheDocument()
-    expect(page.getByText(/Otvara se/)).toBeVisible()
+    /* One sentence, not two glued together: the two of them wrote the date's
+       full stop and the dictionary's one after another and announced the
+       opening twice. */
+    expect(page.getByText(/^Učlanjenje se otvara .*, za \d+ dana\.$/)).toBeVisible()
   })
 })

@@ -254,11 +254,17 @@
   gap: 0.6rem 0.4rem;
 }
 
+/* A place keeps its height whether or not somebody is standing in it: the
+   circle, the number over it, and room for two lines of a name. Without this the
+   rows of the block collapse around the empty cells, and the board that was
+   supposed to be the same height all season was only ever the same height as the
+   board beside it, which is a different promise. */
 .top10__cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
+  min-block-size: 5.9rem;
   min-width: 0;
   text-align: center;
 }
@@ -281,7 +287,7 @@
    photographs to put in it. The empty one holds a place the league has not
    filled yet, so the board is the same height all season. */
 
-.portrait {
+.home .portrait {
   display: grid;
   place-items: center;
   inline-size: 2.9rem;
@@ -296,7 +302,7 @@
   letter-spacing: 0.02em;
 }
 
-.portrait--large {
+.home .portrait--large {
   inline-size: 4.4rem;
   block-size: 4.4rem;
   font-size: 1.3rem;
@@ -306,7 +312,7 @@
    only thing saying the place exists and is waiting, and at the colour of a
    surface edge it measured 1,49:1 on the light theme and 1,42:1 on the dark
    one, where the block simply read as though cells were missing. */
-.portrait--empty {
+.home .portrait--empty {
   background: transparent;
   border: 1px dashed var(--control-border);
 }

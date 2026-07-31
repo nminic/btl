@@ -123,4 +123,32 @@ describe('pointing at a slice', () => {
     // The browser's own tooltip, and what a screen reader reads off a shape.
     expect(document.querySelector('.donut__seg title')?.textContent).toBe('Maraton: 4')
   })
+
+  /* A tooltip is a thing a finger cannot open, and the ring has no names on it
+     any more, so on a telephone it was five unnamed colours (WCAG 2.2 SC 1.4.1).
+     A touch chooses a slice and the middle of the ring answers. */
+  it('answers in the middle of the ring, so a finger can ask too', async () => {
+    const user = setupUser()
+    renderDonut(
+      new Map<RaceCategory, number>([
+        ['short', 3],
+        ['marathon', 1],
+      ]),
+    )
+
+    // Left alone it is the total and the word for races.
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('trke')).toBeInTheDocument()
+
+    await user.pointer({ target: document.querySelectorAll('.donut__seg')[1], keys: '[TouchA]' })
+
+    /* Chosen, it is that length and its own count. Read off the drawing and not
+       off the page, because the name of the length also stands in the table
+       underneath, which is where a screen reader reads it. */
+    const middle = document.querySelector('.donut__unit')
+    const number = document.querySelector('.donut__total')
+
+    expect(middle?.textContent).toBe('Maraton')
+    expect(number?.textContent).toBe('1')
+  })
 })

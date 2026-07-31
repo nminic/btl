@@ -70,13 +70,19 @@ export function Pricing() {
           vodi ka učlanjenju", and until now it led nowhere at all. */}
       <p className="pricing__join">
         {registrationOpen(today) ? (
-          <Link className="button" to={`/${locale}/registracija`}>
+          <Link className="button button--primary" to={`/${locale}/registracija`}>
             {t('shell.join')}
           </Link>
         ) : (
-          t('registration.opensOn', { date: formatDate(REGISTRATION_OPENS, locale) }) +
-          ' ' +
-          t('home.opensIn', { count: daysBetween(today, REGISTRATION_OPENS) })
+          /* One sentence out of the dictionary, not two glued together in the
+             code. The two of them read "Otvara se 1. oktobar 2026.. Otvara se za
+             62 dana.", with the date already carrying its own full stop and the
+             opening announced twice. Where a sentence breaks is the
+             dictionary's business, not this screen's. */
+          t('registration.opensIn', {
+            date: formatDate(REGISTRATION_OPENS, locale),
+            count: daysBetween(today, REGISTRATION_OPENS),
+          })
         )}
       </p>
 
