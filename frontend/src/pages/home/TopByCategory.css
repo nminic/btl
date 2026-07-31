@@ -5,6 +5,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  block-size: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -24,7 +25,10 @@
   grid-auto-columns: 1fr;
   gap: 0.3rem;
   align-items: end;
-  block-size: 15rem;
+  /* The chart fills the row it shares with the calendar beside it, so the bars
+     get whatever height that row came out (owner, 31.07.2026). */
+  flex: 1;
+  min-block-size: 15rem;
 }
 
 /* Centred, not stretched (owner, 31.07.2026). Stretching handed the face the
@@ -77,16 +81,18 @@
   font-weight: 700;
 }
 
+/* The same block of gold the boards above wear, at the same size, so the three
+   widgets read as one family (owner, 31.07.2026). */
 .top-cat__caption {
   margin: 0;
-  padding: 0.45rem 0.6rem;
+  padding: 0.5rem 0.7rem;
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
   color: #3a2a02;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .top-cat .card__empty {

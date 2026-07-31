@@ -375,3 +375,10 @@
     white-space: nowrap;
   }
 }
+
+/* Nothing written yet. The card is there for everybody (owner, 31.07.2026), so
+   an empty one has to say what it is rather than stand blank. */
+.profile__bio-text--none {
+  color: var(--text-muted);
+  font-style: italic;
+}

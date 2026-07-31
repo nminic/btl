@@ -8,7 +8,7 @@ describe('Home', () => {
      do (owner, 31.07.2026). The reading order is the left column whole and then
      the right one, which is also the order on a phone, where the two columns
      become one. */
-  it('lays the page out in two columns, the boards first and the figures beside them', async () => {
+  it('lays the widgets out in the order a phone reads them', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
@@ -20,12 +20,16 @@ describe('Home', () => {
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent)
 
+    /* The order in the markup is the order on a phone (owner, 31.07.2026): the
+       two boards, the figures of the season, the turning chart, what is next,
+       the address, the calculator, the membership slot. On a wide screen the
+       grid puts them in two columns without moving them in the markup. */
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
-      'Reč predsednika',
       expect.stringContaining('Sezona'),
       'Priprema, pozor, SAD!',
+      'Reč predsednika',
       'BTL kalkulator',
       expect.stringContaining('Članarina za BTL'),
     ])

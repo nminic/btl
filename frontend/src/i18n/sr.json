@@ -337,7 +337,7 @@
     "pointsUnit": " BTL poena",
     "ascentUnit": " m+",
     "descentUnit": " m-",
-    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama.",
+    "noRanking": "Profil i rezultati, bez rangiranja.",
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
     "calcResult": "BTL poeni:"
@@ -460,7 +460,6 @@
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
     "columns": {
       "position": "#",
-      "delta": "Δ",
       "member": "Član",
       "category": "Kat.",
       "races": "Trke",
@@ -607,8 +606,36 @@
       "few": "trke",
       "other": "trka"
     },
+    "categoryWord": {
+      "short": {
+        "one": "kraća trka",
+        "few": "kraće trke",
+        "other": "kraćih trka"
+      },
+      "long": {
+        "one": "duža trka",
+        "few": "duže trke",
+        "other": "dužih trka"
+      },
+      "half": {
+        "one": "polumaraton",
+        "few": "polumaratona",
+        "other": "polumaratona"
+      },
+      "marathon": {
+        "one": "maraton",
+        "few": "maratona",
+        "other": "maratona"
+      },
+      "ultra": {
+        "one": "ultramaraton",
+        "few": "ultramaratona",
+        "other": "ultramaratona"
+      }
+    },
     "stats": "Zbirna statistika",
     "bio": "Svojim rečima",
+    "bioEmpty": "Ovaj takmičar još nije napisao ništa o sebi.",
     "length": "Dužina",
     "allLengths": "Sve dužine",
     "lengthsShort": {

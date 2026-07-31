@@ -31,8 +31,15 @@ function countsOf(results: Result[]): Map<RaceCategory, number> {
   return counts
 }
 
-/** The biography as it is published, in paragraphs, with no links inside it: a
- *  link in text somebody else wrote is an address that has to be policed. */
+/**
+ * The biography as it is published, in paragraphs, with no links inside it: a
+ * link in text somebody else wrote is an address that has to be policed.
+ *
+ * The card stands on every profile, empty or not (owner, 31.07.2026). Everybody
+ * will have one, since it is written at the moment of joining, and a row of
+ * three that is sometimes a row of two changes shape from person to person for
+ * no reason the reader can see.
+ */
 function Biography({ text }: { text: string }) {
   const { t } = useI18n()
 
@@ -41,13 +48,17 @@ function Biography({ text }: { text: string }) {
       <h2 className="profile__card-title" id="profile-bio">
         {t('profile.bio')}
       </h2>
-      {shortBio(text)
-        .split(/\n{2,}/)
-        .map((paragraph) => (
-          <p className="profile__bio-text" key={paragraph}>
-            {paragraph}
-          </p>
-        ))}
+      {text === '' ? (
+        <p className="profile__bio-text profile__bio-text--none">{t('profile.bioEmpty')}</p>
+      ) : (
+        shortBio(text)
+          .split(/\n{2,}/)
+          .map((paragraph) => (
+            <p className="profile__bio-text" key={paragraph}>
+              {paragraph}
+            </p>
+          ))
+      )}
     </section>
   )
 }
@@ -179,8 +190,8 @@ function ProfileBody({
       <ProfileHead competitor={competitor} team={team} seasons={options} />
       <ProfileParts memberNumber={competitor.memberNumber} />
 
-      <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
-        {competitor.bio !== '' && <Biography text={competitor.bio} />}
+      <div className="profile__row profile__row--bio">
+        <Biography text={competitor.bio} />
 
         <section className="profile__card profile__card--donut">
           <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />

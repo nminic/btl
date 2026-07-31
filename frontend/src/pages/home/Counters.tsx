@@ -42,14 +42,14 @@ function Flag() {
 }
 
 /* The one row on this widget that counts people rather than something they did,
-   so it is the one row a running figure belongs on (owner, 31.07.2026).
+   so it is the one row a figure of a person belongs on.
 
-   Drawn as three long strokes and a head rather than as a knot of short ones:
-   the arms are one line through the shoulders, the body and the leading leg are
-   another, and the trailing leg is the third. At twenty pixels a figure is read
-   by its outline, and an outline made of six separate limbs turns into a blot
-   (owner, 31.07.2026). */
-function Runner() {
+   A champion, not a runner (owner, 31.07.2026). A runner mid-stride is four
+   limbs at four angles, and at twenty pixels four angles are a blot however they
+   are drawn; twice it was drawn and twice it was a blot. Somebody with both arms
+   up is one symmetrical shape, read whole before it is read at all, and it says
+   the same thing about a league of runners. */
+function Champion() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -60,10 +60,10 @@ function Runner() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="15.6" cy="4.9" r="2.1" />
-      <path d="M18.6 11.2 14.1 8.9 9.6 10.4" />
-      <path d="M14.1 8.9 10.7 13.4 13.4 16.5 12.6 21" />
-      <path d="M10.7 13.4 6.8 15.1 5.2 19.4" />
+      <circle cx="12" cy="4.6" r="2.3" />
+      <path d="M12 9v6" />
+      <path d="M5.6 4.4 8.4 10.2 15.6 10.2 18.4 4.4" />
+      <path d="M12 15 8.2 20.6M12 15l3.8 5.6" />
     </svg>
   )
 }
@@ -220,7 +220,7 @@ export function Counters({
       {members !== undefined && (
         <Row
           countMs={countMs}
-          icon={<Runner />}
+          icon={<Champion />}
           label={t('home.members')}
           value={members}
           counted="units.memberCount"

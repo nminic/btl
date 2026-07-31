@@ -1,7 +1,7 @@
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { defaultSeason, totalsOf, fieldFor } from '../data/derive'
-import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
+import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
@@ -25,20 +25,32 @@ import './Home.css'
  * Right, top to bottom: the counters of the running season, what is next in the
  * calendar, the calculator, and the membership slot.
  *
+ * One grid holds all seven, rather than two columns holding four and three
+ * (owner, 31.07.2026). The rows are what the owner asked for: the boards end
+ * where the counters end, and the chart ends where the calendar does. Two
+ * columns side by side cannot do that, because neither knows how tall the other
+ * came out; one grid does it by itself, and the chart's bars get the height they
+ * were missing.
+ *
+ * The order in the markup is the order on a phone, where the grid becomes one
+ * column and the placement below does nothing: the two boards, the figures of
+ * the season, the turning chart, what is next, the address, the calculator, the
+ * membership slot (owner, 31.07.2026). It is not the order of either column,
+ * because on one screen the two columns interleave: somebody scrolling wants the
+ * standing, then the numbers behind it, then the calendar, and the prose after
+ * all of them.
+ *
  * Two blocks went out with this: "Kako radi BTL u 3 koraka", which explained on
  * the front page what the written pages explain properly, and "Zajednica u
- * brojkama", whose member count is now the first row of the counters where it
- * stands beside the rest of the season (owner, 31.07.2026).
+ * brojkama", whose member count is now the first row of the counters.
  *
  * News, the sponsor of the day and the strip of partners keep the full width
  * under both columns. They are the only part of the page that has nothing to say
  * most of the time, and they disappear entirely when they do.
- *
- * On a phone it is one column, left before right.
  */
 export function Home() {
   const { t } = useI18n()
-  const state = combineResources(useCompetitors(), useEvents(), useResults())
+  const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
   const today = useToday()
 
   return (
@@ -49,7 +61,7 @@ export function Home() {
       <h1 className="visually-hidden">{t('app.name')}</h1>
 
       <Resource state={state}>
-        {([competitors, events, results]) => {
+        {([competitors, events, results, races]) => {
           // The running season once it has results; until then the fullest one
           // there is, so the widgets can be judged before the first race.
           const season = defaultSeason(results, today)
@@ -65,31 +77,32 @@ export function Home() {
           return (
             <>
               <div className="home__split">
-                <div className="home__main">
-                  <div className="home__boards">
-                    <TopTen
-                      competitors={field}
-                      results={results}
-                      season={season}
-                      gender="M"
-                    />
-                    <TopTen
-                      competitors={field}
-                      results={results}
-                      season={season}
-                      gender="F"
-                    />
-                  </div>
+                <div className="home__boards">
+                  <TopTen competitors={field} results={results} season={season} gender="M" />
+                  <TopTen competitors={field} results={results} season={season} gender="F" />
+                </div>
 
+                <div className="home__figures">
+                  <Counters totals={totals} title={label} members={field.length} />
+                </div>
+
+                <div className="home__chart">
                   <TopByCategory competitors={field} results={results} season={season} />
+                </div>
 
+                <div className="home__next">
+                  <CalendarExtract events={events} races={races} today={today} />
+                </div>
+
+                <div className="home__address">
                   <President />
                 </div>
 
-                <div className="home__side">
-                  <Counters totals={totals} title={label} members={field.length} />
-                  <CalendarExtract events={events} today={today} />
+                <div className="home__calc">
                   <Calculator />
+                </div>
+
+                <div className="home__slot">
                   <EnrolmentSlot today={today} />
                 </div>
               </div>

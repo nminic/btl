@@ -54,9 +54,11 @@
   fill: var(--text);
 }
 
+/* Small capitals were fine for one word of five letters and unreadable for
+   "ultramaratona": the caps took the shape out of the word and the spacing
+   pushed it past the hole in the middle (owner, 31.07.2026). */
 .donut__unit {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 13px;
+  letter-spacing: 0.01em;
   fill: var(--text-muted);
 }

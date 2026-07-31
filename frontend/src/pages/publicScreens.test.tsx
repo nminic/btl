@@ -413,11 +413,10 @@ describe('Competitors', () => {
 })
 
 describe('CompetitorProfile', () => {
-  it('opens on the newest season this person raced, not on all of them', async () => {
-    /* Owner's design decision, 30.07.2026. Member 000021 has two hundred and
-       seventy-seven results; opening on all of them is twenty-three screens on a
-       telephone, and the counters above were career totals under a heading that
-       names a season. All seasons is one choice away. */
+  it('opens on all of them, which is what a profile is', async () => {
+    /* Owner, 31.07.2026, reversing the decision of the day before: a profile is
+       somebody's whole running life, and the question it answers first is what
+       they have done rather than what they have done since January. */
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
@@ -427,8 +426,9 @@ describe('CompetitorProfile', () => {
       .map((one) => Number(one.getAttribute('value')))
       .filter((one) => !Number.isNaN(one))
 
-    // The newest of them, named: "not all seasons" would pass on the oldest.
-    expect(season.value).toBe(String(Math.max(...years)))
+    // All of them, and the years are still on offer one choice away.
+    expect(season.value).toBe('sve')
+    expect(years.length).toBeGreaterThan(1)
     /* The widget wears no heading any more (owner, 31.07.2026): the season is
        chosen above it and the ring beside it carries the race count. It keeps
        its name where a screen reader can still find it. */
@@ -577,12 +577,15 @@ describe('CompetitorProfile', () => {
     expect(await screen.findByRole('heading', { name: 'Svojim rečima' })).toBeVisible()
   })
 
-  it('draws no biography card for the members who have not written one', async () => {
-    // Most of them, which is the state the row has to look right in.
+  it('draws the biography card for the members who have not written one too', async () => {
+    /* Owner, 31.07.2026: the card stands on every profile. Everybody will have
+       one, since it is written at the moment of joining, and a row of three
+       that is sometimes a row of two changes shape from person to person for no
+       reason the reader can see. */
     renderAt('/sr/takmicar/000002')
 
-    await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByRole('heading', { name: 'Svojim rečima' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Svojim rečima' })).toBeVisible()
+    expect(screen.getByText(/još nije napisao ništa/)).toBeVisible()
   })
 
   it('hides the profile of a member who is no longer active', async () => {
@@ -683,8 +686,13 @@ describe('CompetitorProfile', () => {
   it('leads to the team page', async () => {
     renderAt('/sr/takmicar/000007')
 
-    await screen.findByRole('heading', { level: 1 })
-    expect(screen.getByRole('link', { name: /trkači|klub|krug/i })).toHaveAttribute(
+    /* Scoped to the head of the page: over the whole career the table below
+       carries dozens of event names, and some of them are clubs too. */
+    const head = (await screen.findByRole('heading', { level: 1 })).closest(
+      'header',
+    ) as HTMLElement
+
+    expect(within(head).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/tim/'),
     )

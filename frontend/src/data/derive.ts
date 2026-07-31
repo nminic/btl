@@ -1,5 +1,5 @@
 import { categoryCodeFor } from './categories'
-import type { BtlEvent, Competitor, Gender, RaceCategory, Result, Team } from './types'
+import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -133,9 +133,14 @@ export type Placed<T> = T & { position: number }
  * the number after them is skipped, so a shared first place reads 1, 1, 3, and
  * inside a shared place the smaller member number comes first (PDL P12).
  *
- * That inner order is not a measure and means nothing. It is there so the table
- * does not shuffle on every recount and the Δ column does not invent arrows up
- * and down, which is a fault nobody could explain to a member.
+ * That inner order is there so the table does not shuffle on every recount.
+ *
+ * It is about to become more than that: the owner decided on 31.07.2026 that
+ * there is no shared place at all, and that the lower member number is the last
+ * measure that separates two people, so that the trophy for second is always
+ * given to somebody. Until that is carried through here the places are still
+ * shared, and the two have to move together, because a table that shares places
+ * and an award list that does not would disagree in public.
  *
  * `compare` is the ladder the list was sorted by, so two rows count as level
  * only when every rung of it leaves them equal.
@@ -435,6 +440,22 @@ export function upcomingSeries(events: BtlEvent[], today: string, limit: number)
     .map((runs) => ({ name: runs[0].name, next: runs[0], more: runs.length - 1 }))
     .sort((left, right) => left.next.date.localeCompare(right.next.date))
     .slice(0, limit)
+}
+
+/**
+ * Which lengths an event holds, in the order the five are always named.
+ *
+ * The coloured dots beside an event, on the front page and in the calendar
+ * (owner, 31.07.2026): one dot per length that is actually run there, never one
+ * per race, so an event with four half marathons carries one green dot rather
+ * than four.
+ */
+export function categoriesAt(event: BtlEvent, races: Race[]): RaceCategory[] {
+  const held = new Set(
+    races.filter((race) => event.raceIds.includes(race.id)).map((race) => race.category),
+  )
+
+  return CATEGORIES.filter((one) => held.has(one))
 }
 
 /** How many places a front page board keeps, whatever the league can fill. */

@@ -48,16 +48,19 @@ describe('the address of the president', () => {
     const board = screen.getByRole('heading', { level: 2, name: 'Top 10 muškarci' })
     const counters = screen.getByRole('heading', { level: 2, name: /Sezona/ })
 
-    // Same column as the boards, and last in it.
-    expect(address.closest('article')?.parentElement?.parentElement).toBe(
+    /* Same grid as the boards, and after them: one grid holds the whole page
+       now, so the two are cells of it rather than children of one column. */
+    expect(address.closest('article')?.parentElement?.parentElement?.parentElement).toBe(
       board.closest('section')?.parentElement?.parentElement,
     )
     expect(
       board.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    // The figures are the other column, and they follow.
+    /* The figures come before it in the markup, because on a phone somebody
+       wants the standing, then the numbers behind it, and the prose after both
+       (owner, 31.07.2026). On a wide screen the grid puts them side by side. */
     expect(
-      address.compareDocumentPosition(counters) & Node.DOCUMENT_POSITION_FOLLOWING,
+      counters.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 

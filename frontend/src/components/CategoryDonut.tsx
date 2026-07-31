@@ -30,13 +30,19 @@ import './CategoryDonut.css'
 const SIDE = 200
 const CENTRE = SIDE / 2
 /** Radius of the middle of the band. */
-const RADIUS = 74
-const BAND = 34
-/** How much wider the slice being pointed at gets. It grows on both edges, so
- *  the ring keeps its middle and the figures in it do not move. */
-const GROWTH = 10
-
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+const RADIUS = 70
+const BAND = 30
+/**
+ * How much the slice being pointed at grows, and it grows outwards only (owner,
+ * 31.07.2026).
+ *
+ * It used to grow on both edges, half in and half out, which kept the ring's
+ * middle still but ate into the room the figures stand in and made the growth
+ * itself half as visible. Outwards it is one clear movement, and the hole in the
+ * middle never changes size. The band and the radius came down to make room for
+ * it: the outer edge of a grown slice reaches 97 of the 100 there are.
+ */
+const GROWTH = 12
 
 /** One colour per length, named rather than written: the values are per theme
  *  and live in styles/tokens.css. */
@@ -84,17 +90,26 @@ export function CategoryDonut({
         <circle className="donut__track" cx={CENTRE} cy={CENTRE} r={RADIUS} strokeWidth={BAND} />
 
         <g className="donut__ring">
-          {slices.map((slice) => (
+          {slices.map((slice) => {
+            /* Growing outwards means a wider band on a longer radius, so the
+               arc has to be measured on its own circle: the same share of a
+               bigger circle is a longer arc, and a slice drawn to the old
+               measure would slide round as it grew. */
+            const grown = pointed === slice.one
+            const radius = grown ? RADIUS + GROWTH / 2 : RADIUS
+            const round = 2 * Math.PI * radius
+
+            return (
             <circle
               key={slice.one}
               className="donut__seg"
               cx={CENTRE}
               cy={CENTRE}
-              r={RADIUS}
-              strokeWidth={pointed === slice.one ? BAND + GROWTH : BAND}
+              r={radius}
+              strokeWidth={grown ? BAND + GROWTH : BAND}
               stroke={COLOURS[slice.one]}
-              strokeDasharray={`${slice.share * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-              strokeDashoffset={-slice.offset * CIRCUMFERENCE}
+              strokeDasharray={`${slice.share * round} ${round}`}
+              strokeDashoffset={-slice.offset * round}
               /* Pointer rather than mouse, so a finger and a stylus choose a
                  slice the same way. The choice sticks until another slice is
                  chosen or the ring is left, which is what a touch needs and what
@@ -113,7 +128,8 @@ export function CategoryDonut({
                 {t(`category.${slice.one}`)}: {formatNumber(slice.value, locale)}
               </title>
             </circle>
-          ))}
+            )
+          })}
         </g>
 
         <text className="donut__total" x={CENTRE} y={CENTRE + 6} textAnchor="middle">
@@ -126,7 +142,7 @@ export function CategoryDonut({
         <text className="donut__unit" x={CENTRE} y={CENTRE + 28} textAnchor="middle">
           {chosen === undefined
             ? t('profile.racesWord', { count: total })
-            : t(`category.${chosen.one}`)}
+            : t(`profile.categoryWord.${chosen.one}`, { count: chosen.value })}
         </text>
       </svg>
 

@@ -1,5 +1,4 @@
 import { useSearchParams } from 'react-router'
-import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
 import { ALL_SEASONS, useSeason } from './season'
 
@@ -19,15 +18,14 @@ export function SeasonPicker({ seasons }: { seasons: number[] }) {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
   const season = useSeason()
-  const today = useToday()
 
   function choose(value: string) {
     const merged = new URLSearchParams(params)
 
     /* Written into the address unless it is the default, so an address stays as
-       short as it can be, and choosing all of them has to be said out loud:
-       deleting the parameter would put the reader back on the running season. */
-    if (value === today.slice(0, 4)) {
+       short as it can be. The default is all of them (owner, 31.07.2026), so
+       that is the one value the address does not carry. */
+    if (value === ALL_SEASONS) {
       merged.delete('sezona')
     } else {
       merged.set('sezona', value)

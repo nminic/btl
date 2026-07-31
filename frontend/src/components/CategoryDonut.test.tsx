@@ -117,6 +117,17 @@ describe('pointing at a slice', () => {
     ).toEqual(before)
   })
 
+  it('declines the word in the middle with the number above it', async () => {
+    const user = setupUser()
+    renderDonut(new Map<RaceCategory, number>([['marathon', 3]]))
+
+    await user.pointer({ target: document.querySelectorAll('.donut__seg')[0], keys: '[TouchA]' })
+
+    // Three is the count that tells the forms apart: one and five both take the
+    // same one in Serbian.
+    expect(document.querySelector('.donut__unit')?.textContent).toBe('maratona')
+  })
+
   it('says which length it is, and how many', () => {
     renderDonut(new Map<RaceCategory, number>([['marathon', 4]]))
 
@@ -148,7 +159,10 @@ describe('pointing at a slice', () => {
     const middle = document.querySelector('.donut__unit')
     const number = document.querySelector('.donut__total')
 
-    expect(middle?.textContent).toBe('Maraton')
+    /* The word declines with the number above it, and it is not in capitals:
+       "ultramaratona" in small caps with spacing does not fit the hole in the
+       middle and loses the shape the eye reads a word by (owner, 31.07.2026). */
+    expect(middle?.textContent).toBe('maraton')
     expect(number?.textContent).toBe('1')
   })
 })
