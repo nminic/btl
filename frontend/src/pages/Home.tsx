@@ -1,6 +1,6 @@
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { defaultSeason, totalsOf } from '../data/derive'
+import { defaultSeason, totalsOf, fieldFor } from '../data/derive'
 import { combineResources, useCompetitors, useEvents, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
@@ -51,6 +51,10 @@ export function Home() {
           // The running season once it has results; until then the fullest one
           // there is, so the widgets can be judged before the first race.
           const season = defaultSeason(results, today)
+          /* Who the widgets of this season are drawn from (PDL P11): a member
+             whose fee has run out is not in the season now at all, and the top
+             ten and the chart are that season's standing in another shape. */
+          const field = fieldFor(competitors, season, today)
           const totals = totalsOf(results.filter((one) => one.date.startsWith(String(season))))
           // The running season is the calendar year, not the year the
           // membership is sold for.
@@ -71,9 +75,9 @@ export function Home() {
               </div>
 
               <div className="home__row home__row--standing">
-                <TopTen competitors={competitors} results={results} season={season} gender="M" />
-                <TopTen competitors={competitors} results={results} season={season} gender="F" />
-                <TopByCategory competitors={competitors} results={results} season={season} />
+                <TopTen competitors={field} results={results} season={season} gender="M" />
+                <TopTen competitors={field} results={results} season={season} gender="F" />
+                <TopByCategory competitors={field} results={results} season={season} />
               </div>
 
               <div className="home__row home__row--halves">

@@ -12,6 +12,7 @@ import {
   topByKilometers,
   topByProgress,
   topByTimeOnCourse,
+  fieldFor,
 } from '../data/derive'
 import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
@@ -159,6 +160,10 @@ function Boards({
   const seasons = useMemo(() => seasonsWithResults(results), [results])
   const fallback = useMemo(() => defaultSeason(results, today), [results, today])
   const season = seasonParam === null ? fallback : Number(seasonParam)
+  /* Who the boards of this season are drawn from (PDL P11). Article 56 is the
+     standing of a season in eleven shapes, so the rule that holds for the table
+     holds here. */
+  const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
 
   /* One pass over the results per board, and the season only changes when
    * somebody changes it, so the boards are not rebuilt on every render. */
@@ -175,7 +180,7 @@ function Boards({
       title: t(`topBoards.byLength.${category}`),
       valueLabel: t('topBoards.columns.races'),
       empty: noResults,
-      places: topByCategory(competitors, results, season, category, PLACES).map((column) => ({
+      places: topByCategory(field, results, season, category, PLACES).map((column) => ({
         to: profile(column.competitor),
         key: column.competitor.memberNumber,
         position: column.position,
@@ -196,7 +201,7 @@ function Boards({
         title: t('topBoards.kilometers'),
         valueLabel: t('topBoards.columns.distance'),
         empty: noResults,
-        places: topByKilometers(competitors, results, season, PLACES).map((row) => ({
+        places: topByKilometers(field, results, season, PLACES).map((row) => ({
           to: profile(row.competitor),
           key: row.competitor.memberNumber,
           position: row.position,
@@ -209,7 +214,7 @@ function Boards({
         title: t('topBoards.onCourse'),
         valueLabel: t('topBoards.columns.time'),
         empty: noResults,
-        places: topByTimeOnCourse(competitors, results, season, PLACES).map((row) => ({
+        places: topByTimeOnCourse(field, results, season, PLACES).map((row) => ({
           to: profile(row.competitor),
           key: row.competitor.memberNumber,
           position: row.position,
@@ -223,7 +228,7 @@ function Boards({
         valueLabel: t('topBoards.columns.points'),
         detailLabel: t('topBoards.columns.event'),
         empty: noResults,
-        places: bestSingleRaces(competitors, results, season, PLACES).map((row) => ({
+        places: bestSingleRaces(field, results, season, PLACES).map((row) => ({
           to: profile(row.competitor),
           key: row.result.id,
           position: row.position,
@@ -246,7 +251,7 @@ function Boards({
         detailLabel: t('topBoards.columns.previousSeason'),
         detailIsNumber: true,
         empty: t('topBoards.progressEmpty'),
-        places: topByProgress(competitors, results, season, PLACES).map((row) => ({
+        places: topByProgress(field, results, season, PLACES).map((row) => ({
           to: profile(row.competitor),
           key: row.competitor.memberNumber,
           position: row.position,
@@ -290,7 +295,7 @@ function Boards({
       },
       ...lengths,
     ]
-  }, [competitors, results, teams, season, locale, t])
+  }, [competitors, field, results, teams, season, locale, t])
 
   return (
     <>

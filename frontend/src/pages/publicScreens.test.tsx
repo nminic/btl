@@ -889,3 +889,17 @@ describe('the top boards, when a member on them has left the league', () => {
     }
   })
 })
+
+describe('the front page, in the season running now', () => {
+  it('has nobody on it whose fee has run out', async () => {
+    /* PDL P11: they are not in the season now at all, and the top ten and the
+       turning chart are that season's standing in another shape. Read on a day
+       inside the one season 000032 raced, so they would be there if the rule
+       were not kept. */
+    renderAt('/sr', 'visitor', null, undefined, '2017-06-01')
+
+    await screen.findAllByRole('heading', { name: /Top 10/ })
+    expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
+  })
+
+})

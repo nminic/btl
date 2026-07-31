@@ -269,11 +269,14 @@ describe('TopByCategory', () => {
   })
 })
 
-describe('a member whose fee has run out, on the front page', () => {
-  /* PDL P11: their profile is hidden as though it did not exist, so nothing may
-     link to it. The rule was kept on two screens out of eight, and the six that
-     were not keeping it did not look wrong, because the data has one such member
-     and they are in none of those lists. */
+describe('a member whose fee has run out, in a widget of a season they did race', () => {
+  /* Two halves of PDL P11, and these widgets keep the second one.
+   *
+   * The first half, that they are not in the season running now at all, belongs
+   * to the page: `Home` narrows the field before it hands it over, and so does
+   * the page of boards. The second half, that nothing links to a profile that is
+   * hidden, belongs here, because these are the same widgets that draw a season
+   * already run. */
   const gone = competitor('000099', false)
   const still = competitor('000001')
 

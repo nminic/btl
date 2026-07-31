@@ -8,9 +8,10 @@ import { setupUser } from '../test/user'
  * application has to do by hand: put the reader at the top of the new screen and
  * take the keyboard there with them.
  *
- * The scroll is the other half of this and is not testable here, because jsdom
- * lays nothing out and has nothing to scroll. It is `ScrollRestoration` in the
- * shell, and it is checked in the browser. */
+ * The scroll is the other half, and `ScrollRestoration` in the shell does it.
+ * jsdom lays nothing out, so nothing here can watch the page move; what it can
+ * watch is what the shell asks the browser for, and that turns out to be enough
+ * to tell the two cases apart. */
 
 describe('arriving on a new screen', () => {
   it('leaves the focus where the browser put it when the page first loads', async () => {
@@ -68,24 +69,35 @@ describe('the scroll, on the way between screens', () => {
     await screen.findByRole('heading', { level: 1, name: /\w/ })
 
     /* A data router turns the browser's own handling off, so a profile opened
-       from the foot of a long list opened halfway down. jsdom lays nothing out,
-       so what is checked here is that the shell asked for it. */
+       from the foot of a long list opened halfway down. */
     expect(window.scrollTo).toHaveBeenCalled()
   })
 
-  /* Whether a filter leaves the scroll alone is not settled here, and is not
-     settled anywhere yet.
-   *
-   * The router restores the position saved under the key it is given, so with
-   * the key on the path alone a filter finds its own screen's position waiting
-   * and puts it back, which is a no-op. In jsdom every position is nought, so
-   * the call looks identical either way, and the browser this was built in does
-   * not composite frames, so nothing scrolls there to be measured. What is known
-   * is the half that was measured: without a key of its own the router asked for
-   * the top on every keystroke typed into the table's search box.
-   *
-   * This is the one claim in this change that rests on the router's documented
-   * behaviour rather than on a measurement, and it wants a look on QA. */
+  it('asks for the position it was at when only a filter changes', async () => {
+    /* The router saves the scroll under the key it is given and puts it back. On
+       the path alone, a filter finds its own screen's position waiting and
+       restores it, which changes nothing; with the default key it finds nothing
+       and asks for the top, so the table jumped on every keystroke typed into
+       the search and the row of six lengths threw the reader up the page on
+       every click.
+     *
+     * jsdom scrolls nothing, but it will hold a position if one is put there,
+     * and that is enough: what is compared is not whether the call happened but
+     * what it asked for. */
+    const user = setupUser()
+    renderAt('/sr/takmicar/000002?sezona=sve')
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+
+    Object.defineProperty(window, 'scrollY', { value: 800, writable: true, configurable: true })
+    Object.defineProperty(window, 'pageYOffset', { value: 800, writable: true, configurable: true })
+    vi.mocked(window.scrollTo).mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
+    await new Promise((wait) => setTimeout(wait, 50))
+
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 800)
+  })
 })
 
 describe('the width of a screen', () => {
@@ -96,6 +108,9 @@ describe('the width of a screen', () => {
        rule is read as text, the way the badge art is tested (ADL A7). */
     const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf-8')
 
-    expect(css).toMatch(/:root\s*\{[\s\S]*?scrollbar-gutter: stable/)
+    const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')))
+
+    expect(root).toContain('scrollbar-gutter: stable')
+    expect(css).not.toContain('scrollbar-gutter: auto')
   })
 })

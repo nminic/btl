@@ -7,6 +7,7 @@ import {
   categoriesOf,
   categoryOfMember,
   defaultSeason,
+  fieldFor,
   rankingFor,
   seasonsWithResults,
 } from '../data/derive'
@@ -60,27 +61,13 @@ function Standing({
     return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
   }, [competitors, results, gender, seasonParam, today])
 
-  /* Who this season's table has in it (PDL P11).
-   *
-   * A member whose fee has run out is not in the table of the season now,
-   * because this season they are not a member; in the seasons they did race
-   * they stand exactly as they stood. Which season is "now" comes from the one
-   * clock the portal reads (ADL A7) and not from the SEASON constant: the
-   * constant is 2027 forever, so on the day 2027 became history it would have
-   * gone on hiding them from the one archive table the league then had, and
-   * would never have hidden them from 2028.
+  /* Who this season's table is drawn from (PDL P11, and `fieldFor` for why).
    *
    * At the call site rather than inside `rankingFor`, because it is a rule about
-   * what a table shows and not about how a standing is worked out. Inside, it
+   * what a list shows and not about how a standing is worked out. Inside, it
    * would also have reached the awards, where taking a row out shifts everybody
    * below it and quietly rewrites who came third in a season already run. */
-  const field = useMemo(
-    () =>
-      season === Number(today.slice(0, 4))
-        ? competitors.filter((one) => one.active)
-        : competitors,
-    [competitors, season, today],
-  )
+  const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
 
   const rows = useMemo(
     () => rankingFor(field, results, { season, gender, categoryCode: category, search }),
