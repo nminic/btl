@@ -421,6 +421,15 @@ describe('CompetitorProfile', () => {
        its name where a screen reader can still find it. */
     expect(screen.getByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Zbirna statistika' })).not.toBeInTheDocument()
+    /* And it counts everything except the races, which the ring beside it
+       carries. The number itself is not lost: it is in the ring's own reading,
+       which is what a screen reader gets instead of the drawing. */
+    expect(screen.queryByText(/Odtrčanih trka/)).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('table', { name: 'Trke po dužini' })).getByRole('rowheader', {
+        name: 'Zbirno',
+      }).parentElement,
+    ).toHaveTextContent(/\d+ trk/)
     expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
       .toBeGreaterThan(1)
   })
@@ -580,9 +589,11 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007?sezona=sve')
 
     const chart = await screen.findByRole('table', { name: 'Trke po dužini' })
+    // Everything the ring names, less the total, which is not a length.
     const named = within(chart)
       .getAllByRole('rowheader')
       .map((one) => one.textContent)
+      .filter((one) => one !== 'Zbirno')
 
     const results = within(screen.getByRole('table', { name: 'Rezultati' }))
       .getAllByRole('row')

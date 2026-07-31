@@ -139,7 +139,13 @@ export function CategoryDonut({
 
       {/* The same numbers as a table, for anyone who cannot see the drawing. The
           shares are here and not on screen: on the ring the share is the size of
-          the slice, which is the whole reason it is a ring. */}
+          the slice, which is the whole reason it is a ring.
+
+          Everything the drawing says has to be here, the total included. It was
+          not, for one commit: hiding the drawing took the number in the middle
+          of the ring with it, and the widget beside it had stopped counting
+          races in the same change, so the one number this whole card is about
+          was on screen and nowhere else. */}
       <table className="visually-hidden">
         <caption>{caption}</caption>
         <tbody>
@@ -151,6 +157,14 @@ export function CategoryDonut({
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">{t('profile.totals')}</th>
+            <td colSpan={2}>
+              {formatNumber(total, locale)} {t('profile.racesWord', { count: total })}
+            </td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   )

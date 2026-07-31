@@ -145,11 +145,15 @@ describe('the length, as one row of six', () => {
        is what would take it out of the reading, and it is the one thing this
        stylesheet must not do to them. */
     const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
-    const block = css.slice(css.indexOf('.profile__length-short'))
 
-    expect(block).not.toContain('display: none')
-    expect(block).toContain('clip-path: inset(50%)')
-    expect(block).toContain('@media (max-width: 620px)')
+    /* Matched on the rules themselves rather than on everything after the first
+       mention of one. A slice to the end of the file catches any `display: none`
+       written below it, for any selector at all, and misses one written above. */
+    expect(css).toMatch(/\.profile__length-short\s*\{[^}]*clip-path: inset\(50%\)/)
+    expect(css).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
+    )
+    expect(css).not.toMatch(/\.profile__length-(full|short)\s*\{[^}]*display:\s*none/)
   })
 })
 

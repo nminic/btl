@@ -21,13 +21,29 @@ describe('CategoryDonut', () => {
       ]),
     )
 
-    // Two run, so two names beside the ring and two rows in the reading. The
+    // Two run, so two names beside the ring and two of them in the reading. The
     // three never run are not drawn at nought, which is what they used to be.
-    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
     expect(screen.getByRole('rowheader', { name: 'Kraća trka' })).toBeInTheDocument()
     expect(screen.getByRole('rowheader', { name: 'Maraton' })).toBeInTheDocument()
     expect(screen.queryByRole('rowheader', { name: 'Ultramaraton' })).not.toBeInTheDocument()
     expect(screen.getByText('75%')).toBeInTheDocument()
+  })
+
+  it('says the total in words as well as in the middle of the ring', () => {
+    /* The number in the middle of the drawing is the one number this card is
+       about, and the drawing is hidden from the reading. Without this row it
+       existed nowhere else: the widget beside it stopped counting races in the
+       same change that hid the ring. */
+    renderDonut(
+      new Map<RaceCategory, number>([
+        ['short', 3],
+        ['marathon', 1],
+      ]),
+    )
+
+    const total = within(screen.getByRole('table')).getByRole('rowheader', { name: 'Zbirno' })
+
+    expect(total.parentElement).toHaveTextContent('4 trke')
   })
 
   it('declines the word in the middle with the number above it', () => {
@@ -64,7 +80,10 @@ describe('CategoryDonut', () => {
     expect(screen.getByText('0')).toBeInTheDocument()
     expect(document.querySelectorAll('.donut__seg')).toHaveLength(0)
     expect(document.querySelectorAll('.donut__leader')).toHaveLength(0)
-    expect(within(screen.getByRole('table')).queryAllByRole('row')).toHaveLength(0)
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(1)
+    expect(
+      within(screen.getByRole('table')).getByRole('rowheader', { name: 'Zbirno' }).parentElement,
+    ).toHaveTextContent('0 trka')
   })
 
   it('is read once, off the table, and not a second time off the drawing', () => {
@@ -122,20 +141,26 @@ describe('placeCallouts', () => {
   })
 
   it('keeps the bend clear of the band after moving a name', () => {
-    /* Two slivers at the top: the second is pushed down, and its bend has to
-       follow the new height back out onto a circle that clears the band. Left
-       where the slice's own angle put it, the flat run of the line crossed the
-       ring it belongs to. */
+    /* Two slivers at twelve o'clock, which is where this actually goes wrong.
+       Their bends start almost straight above the centre, so once the second
+       name is pushed down its bend has to move sideways to stay outside the
+       band. Slivers at three o'clock, which is what this test used to ask
+       about, are already far enough out sideways to pass whatever the code
+       does: with the old formula restored the whole suite still went green. */
     const placed = placeCallouts([
-      { one: 'short', value: 1, share: 0.01, offset: 0.24 },
-      { one: 'long', value: 1, share: 0.01, offset: 0.25 },
+      { one: 'short', value: 1, share: 0.01, offset: 0 },
+      { one: 'long', value: 1, share: 0.01, offset: 0.01 },
     ])
 
     const outer = RADIUS + BAND / 2
 
+    expect(placed[1].bendY - placed[0].bendY).toBeCloseTo(15, 5)
+
     for (const one of placed) {
-      const away = Math.hypot(one.bendX - CX, one.bendY - CY)
-      expect(away).toBeGreaterThanOrEqual(outer)
+      expect(Math.hypot(one.bendX - CX, one.bendY - CY)).toBeGreaterThanOrEqual(outer)
+      // And the line still starts where the owner asked, on the middle of the
+      // slice itself.
+      expect(Math.hypot(one.x - CX, one.y - CY)).toBeCloseTo(RADIUS, 5)
     }
   })
 

@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
+import { loadResource } from '../data/client'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -108,9 +109,18 @@ describe('EventDetail, the results of the league members who ran it', () => {
     renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16', 'visitor', null, undefined, '2026-12-01')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(
-      screen.queryByRole('table', { name: 'Rezultati članova' }),
-    ).not.toBeInTheDocument()
+
+    /* The results have to have arrived before their absence means anything. The
+       heading above comes from the events file; the results are a second request
+       over a file of more than a megabyte, so without this the two assertions
+       below ran before the section could have existed either way, and passed on
+       a version that always drew the sentence. */
+    await act(async () => {
+      await loadResource('results')
+      await loadResource('competitors')
+    })
+
+    expect(screen.queryByRole('table', { name: 'Rezultati članova' })).not.toBeInTheDocument()
     expect(screen.queryByText('Sa ovog događaja nema unetih rezultata.')).not.toBeInTheDocument()
   })
 
