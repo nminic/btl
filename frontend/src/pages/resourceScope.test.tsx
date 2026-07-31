@@ -27,6 +27,68 @@ function breakResource(name: ResourceName) {
   }
 }
 
+/** Serves every resource as usual, except the one named, which never arrives. */
+function stallResource(name: ResourceName) {
+  const real = globalThis.fetch
+
+  globalThis.fetch = (async (input: RequestInfo | URL) =>
+    String(input).endsWith(`/${name}.json`)
+      ? new Promise<Response>(() => {})
+      : real(input)) as typeof fetch
+
+  return () => {
+    globalThis.fetch = real
+  }
+}
+
+/* The other half of the same idea, from the other end: a screen that loads a
+ * part separately must not be covered while it waits for it.
+ *
+ * The sheet over the page is right for a screen that is waiting as a whole
+ * (owner, 31.07.2026). Three screens open a second Resource inside their own,
+ * and there the sheet undid the very thing the split was for: the heading, the
+ * date and the organiser arrive first and are useful, and a sheet hid them until
+ * the heaviest half landed. Two stacked sheets on one screen also took the page
+ * to about 95% opaque and said "Učitavanje" twice. */
+describe('a part of a screen waits without covering the page', () => {
+  let restore = () => {}
+
+  afterEach(() => {
+    restore()
+  })
+
+  it('keeps the event readable while its races are still on their way', async () => {
+    restore = stallResource('races')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+
+    expect(await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })).toBeVisible()
+    // A sheet is a `.loader` that is not the inline one. There must be none.
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+  })
+
+  it('names each part it is waiting for rather than saying the same thing twice', async () => {
+    restore = stallResource('results')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+
+    await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })
+    const said = screen.getAllByRole('status').map((one) => one.textContent)
+
+    /* Two parts of this screen wait on results, and the shell announces the
+       page title, so three regions speak. Every one of them has to say
+       something different, which is what the name is for. */
+    expect(new Set(said).size).toBe(said.length)
+    expect(said).toContain('Učitavanje: Rezultati članova')
+  })
+
+  it('keeps the front page readable while the president is still on his way', async () => {
+    restore = stallResource('pages')
+    renderAt('/sr')
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+  })
+})
+
 describe('a screen waits only on the data it shows', () => {
   let restore = () => {}
 

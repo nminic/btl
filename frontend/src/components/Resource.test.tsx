@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import type { ResourceState } from '../data/useResource'
 import { renderWithI18n } from '../test/render'
@@ -22,11 +24,45 @@ describe('Resource', () => {
   it('shows nothing of the screen underneath while it waits', () => {
     const state: ResourceState<string> = { status: 'loading' }
 
-    renderWithI18n(<Resource<string> state={state}>{(data) => <span>{data}</span>}</Resource>)
+    renderWithI18n(
+      <Resource<string> state={state}>{() => <a href="/sr/kalendar">Kalendar</a>}</Resource>,
+    )
 
-    // The children are not rendered at all, so there is nothing to click even
-    // if the sheet were somehow not there.
-    expect(screen.queryByText('podaci')).not.toBeInTheDocument()
+    /* The children are not rendered at all, so there is nothing to click and
+       nothing to tab to even if the sheet were somehow not there. The child
+       ignores the data on purpose: one that printed it would render nothing
+       while loading anyway, and the assertion could not fail. By text and not by
+       role, because a sheet drawn over the content rather than instead of it
+       would mark the content aria-hidden, which takes it out of a role query
+       while leaving every link under it focusable and clickable. */
+    expect(screen.queryByText('Kalendar')).not.toBeInTheDocument()
+  })
+
+  it('stands where a part of a screen will be, without covering the page', () => {
+    const state: ResourceState<string> = { status: 'loading' }
+    const { container } = renderWithI18n(
+      <Resource<string> state={state} inline label="Trke">
+        {(data) => <span>{data}</span>}
+      </Resource>,
+    )
+
+    /* A part of a screen waiting must not hide the parts that have arrived:
+       that is the whole reason it loads separately. It still says what it is
+       waiting for, and now says which part. */
+    expect(container.querySelector('.loader--inline')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Učitavanje: Trke')
+  })
+
+  it('leaves a part waiting where it stands, with no sheet over the page', () => {
+    /* jsdom applies no stylesheet, so the one thing that decides whether the
+       page is covered is read off disk, the way the tokens are (ADL A7). Drop
+       any of these three and the inline form becomes a sheet again. */
+    const css = readFileSync(join(process.cwd(), 'src/components/Loader.css'), 'utf-8')
+    const rule = css.slice(css.indexOf('.loader--inline {'))
+
+    expect(rule).toMatch(/position:\s*static/)
+    expect(rule).toMatch(/background:\s*none/)
+    expect(rule).toMatch(/backdrop-filter:\s*none/)
   })
 
   it('announces an error', () => {

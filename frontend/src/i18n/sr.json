@@ -344,6 +344,7 @@
   },
   "data": {
     "loading": "Učitavanje",
+    "loadingPart": "Učitavanje: {part}",
     "error": "Podaci se ne mogu učitati.",
     "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."

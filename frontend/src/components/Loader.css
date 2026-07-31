@@ -1,9 +1,12 @@
-/* The sheet that covers the page while it waits for data (owner, 31.07.2026).
+/* What waiting looks like (owner, 31.07.2026). Two forms, and only the first
+ * covers anything.
  *
- * Fixed rather than absolute, so it covers what is scrolled off as well as what
- * is in view, and `inset: 0` so nothing under it can be clicked. It is the last
- * thing in the stacking order the portal has, above the header and the dropdowns
- * it opens.
+ * The page-level form is a sheet over the whole page. Fixed rather than
+ * absolute, so it covers what is scrolled off as well as what is in view, and
+ * `inset: 0` so nothing under it can be clicked. It is the last thing in the
+ * stacking order the portal has, above the header and the dropdowns it opens.
+ *
+ * The inline form is for a part of a screen and covers nothing at all.
  */
 .loader {
   position: fixed;
@@ -16,6 +19,27 @@
      something to press. */
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   backdrop-filter: blur(2px);
+}
+
+/* One part of a screen waiting, where that part will be. No sheet, no tint and
+   no blur, because the parts that have already arrived are the reason this
+   Resource is separate from the screen's own. The height keeps the page from
+   jumping the moment the part lands with nothing, though a part that arrives
+   full still moves what is under it. */
+.loader--inline {
+  position: static;
+  z-index: auto;
+  min-block-size: 6rem;
+  background: none;
+  backdrop-filter: none;
+}
+
+/* The ring is the only thing a sighted reader gets here, so it is drawn on the
+   border made for controls rather than the faint one made for rules: 3.35:1
+   against the page, where the other measures 1.38:1 (WCAG 2.2 SC 1.4.11). */
+.loader--inline .loader__ring {
+  border-color: var(--control-border);
+  border-block-start-color: var(--accent);
 }
 
 .loader__ring {
@@ -34,7 +58,7 @@
 }
 
 /* Anybody who has asked for less motion gets a ring that does not turn. It still
-   says what it is, out loud, and it still covers the page. */
+   says what it is, out loud, and the page-level one still covers the page. */
 @media (prefers-reduced-motion: reduce) {
   .loader__ring {
     animation: none;

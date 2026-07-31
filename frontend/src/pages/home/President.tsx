@@ -27,8 +27,11 @@ export const ADDRESS_SLUG = 'rec-predsednika'
 export function President() {
   const state = usePages()
 
+  /* Inline, and with no name: the only heading this part has is inside the
+     record it is waiting for, and the address is kept out of the code on
+     purpose (PDL P28a), so there is no static string to name it with. */
   return (
-    <Resource state={state}>
+    <Resource state={state} inline>
       {(pages) => {
         const page = pageOf(pages, ADDRESS_SLUG)
 
