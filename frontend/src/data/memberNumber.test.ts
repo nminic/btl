@@ -19,13 +19,14 @@ describe('nextMemberNumber', () => {
     expect(nextMemberNumber(['000001', '000002'])).toBe('000003')
   })
 
-  it('fills a hole rather than carrying on past the highest', () => {
-    /* Deleting a member on request removes the link between the number and the
-       person, which frees the number (PDL P23). One past the highest would leave
-       every freed number unused for good, and would eventually run out of six
-       digits with most of them spent on nobody. */
-    expect(nextMemberNumber(['000001', '000003', '000004'])).toBe('000002')
-    expect(nextMemberNumber(['000002', '000003'])).toBe('000001')
+  it('carries on past the highest rather than filling a hole', () => {
+    /* A number is never handed out twice (owner, 31.07.2026). Deleting a member
+       on request takes the link between the number and the person away (PDL
+       P23); it used to take the number back into circulation with it, so the
+       next person to join inherited a number that appears in old results, old
+       tables and somebody's printed card. */
+    expect(nextMemberNumber(['000001', '000003', '000004'])).toBe('000005')
+    expect(nextMemberNumber(['000002', '000003'])).toBe('000004')
   })
 
   it('skips a number taken by a record entered during this visit', () => {
@@ -39,28 +40,23 @@ describe('nextMemberNumber', () => {
   })
 
   it('says so rather than handing out a seventh digit', () => {
-    /* With 000001 to 999999 all spoken for it used to return '1000000', seven
-       digits out of the function whose whole subject is that a member number has
-       six, and on to a row key, a profile address and a printed card without a
-       word. Six digits were chosen to outlive the league (PDL P8), so nobody is
-       expected to reach this; running past it in silence is what must not happen. */
-    const all = new Set(
-      Array.from({ length: 999_999 }, (_, index) => formatMemberNumber(index + 1)),
-    )
+    /* With 999999 handed out it used to return '1000000', seven digits out of
+       the function whose whole subject is that a member number has six, and on
+       to a row key, a profile address and a printed card without a word. Six
+       digits were chosen to outlive the league (PDL P8), so nobody is expected
+       to reach this; running past it in silence is what must not happen. */
+    expect(() => nextMemberNumber(['999999'])).toThrow(/999999/)
 
-    expect(() => nextMemberNumber(all)).toThrow(/999999/)
-
-    // One free in the middle of a full range is still handed out normally.
-    all.delete('000127')
-    expect(nextMemberNumber(all)).toBe('000127')
+    // A hole below the highest changes nothing: the numbering only counts up.
+    expect(nextMemberNumber(['999998'])).toBe('999999')
   })
 
   it('does not care what order it is given them in, or what else is in the list', () => {
-    // It is a set of what is gone, not a sequence to be continued.
-    expect(nextMemberNumber(['000004', '000001', '000002'])).toBe('000003')
+    // What it wants is the highest one ever handed out, wherever it stands.
+    expect(nextMemberNumber(['000004', '000001', '000002'])).toBe('000005')
     expect(nextMemberNumber(['000001', '000001', '000002'])).toBe('000003')
     // A registration waiting to be activated carries no number at all, and an
-    // empty string is not a number that blocks anything.
+    // empty string is not a number that raises the highest.
     expect(nextMemberNumber(['', '000001'])).toBe('000002')
   })
 })

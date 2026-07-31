@@ -5,7 +5,16 @@ import { totalsByMember, EMPTY_TOTALS } from '../../data/derive'
 import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
 import { inYearlyWindow } from '../../data/season'
 import { useResults } from '../../data/useResource'
-import { epcPayload, ipsPayload, methodsFor } from '../../data/paymentQr'
+import {
+  epcPayload,
+  ipsPayload,
+  methodsFor,
+  paymentPurpose,
+  paymentReference,
+  RECIPIENT_ACCOUNT,
+  RECIPIENT_ADDRESS,
+  RECIPIENT_NAME,
+} from '../../data/paymentQr'
 import {
   JUNIOR,
   priceOn,
@@ -18,12 +27,15 @@ import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
 
-/* Placeholders until the association's real details exist. They are marked so
- * nobody mistakes them for the real account. */
-const ACCOUNT = '000000000000000000'
+/* The dinar account, the name and the seat are the association's own and live
+ * with the payloads (owner, 31.07.2026). The euro account does not exist yet:
+ * the foreign currency account and the business card are the slowest thing on
+ * the September list, so these two stay marked placeholders until the bank
+ * answers. */
 const IBAN = 'RS00000000000000000000'
 const BIC = 'XXXXRSBG'
-const RECIPIENT = 'Sportsko udruzenje BTL'
+const RECIPIENT = `${RECIPIENT_NAME}
+${RECIPIENT_ADDRESS}`
 
 /** Eight euros per member brought in, credited when their fee is activated. */
 const REFERRAL_EUR = 8
@@ -61,8 +73,13 @@ export function Membership() {
         const methods = methodsFor(me.country)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have
-           said 2028 while the reference said 2027. */
-        const purpose = `Clanarina BTL ${nextSeason} ${me.memberNumber}`
+           said 2028 while the reference said 2027.
+
+           The purpose says what the money is for and the reference says whose it
+           is, which is the split a bank statement is reconciled by (owner,
+           31.07.2026). */
+        const purpose = paymentPurpose(nextSeason)
+        const reference = paymentReference(nextSeason, me.memberNumber)
 
         return (
           <div className="member">
@@ -153,6 +170,29 @@ export function Membership() {
                     {t('membership.byCountry', { country: me.country })}
                   </p>
 
+                  {/* The same four facts the code carries, in writing, because a
+                      code is no use to somebody typing a payment into their bank
+                      on a telephone they are also holding the code on (owner,
+                      31.07.2026). The reference is what the statement is
+                      reconciled by, so it is called out under them. */}
+                  <dl className="pay__details">
+                    <dt>{t('membership.toWhom')}</dt>
+                    <dd>
+                      {RECIPIENT_NAME}
+                      <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
+                    </dd>
+                    <dt>{t('membership.account')}</dt>
+                    <dd>{RECIPIENT_ACCOUNT}</dd>
+                    <dt>{t('membership.reference')}</dt>
+                    <dd>
+                      <strong>{reference}</strong>
+                    </dd>
+                    <dt>{t('membership.purposeLabel')}</dt>
+                    <dd>{purpose}</dd>
+                  </dl>
+
+                  <p className="member__note">{t('membership.referenceNote')}</p>
+
                   {/* Every way of paying is one way of doing what the slip
                       above is for, so they sit under it rather than beside
                       it. As third level headings they read as four more
@@ -164,11 +204,11 @@ export function Membership() {
                       <div className="pay__code">
                         <QrCode
                           text={ipsPayload({
-                            account: ACCOUNT,
+                            account: RECIPIENT_ACCOUNT,
                             recipient: RECIPIENT,
                             amountRsd: price.rsd,
                             purpose,
-                            reference: '',
+                            reference,
                           })}
                           label={t('membership.ipsQrLabel')}
                         />
@@ -176,11 +216,11 @@ export function Membership() {
                           <summary>{t('membership.showPayload')}</summary>
                           <pre className="pay__payload">
                             {ipsPayload({
-                              account: ACCOUNT,
+                              account: RECIPIENT_ACCOUNT,
                               recipient: RECIPIENT,
                               amountRsd: price.rsd,
                               purpose,
-                              reference: '',
+                              reference,
                             })}
                           </pre>
                         </details>

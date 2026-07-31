@@ -345,11 +345,19 @@ export function categoriesOf(
   ].sort()
 }
 
+/**
+ * The events of one month, oldest first.
+ *
+ * A cancelled event is not among them (owner, 31.07.2026). It keeps its record
+ * rather than being deleted, because somebody has it in their calendar and a
+ * subscription has to be able to say it is off; what it loses is its square in
+ * the grid, where it would otherwise read as something still to come.
+ */
 export function eventsInMonth(events: BtlEvent[], year: number, month: number): BtlEvent[] {
   const prefix = `${year}-${String(month).padStart(2, '0')}`
 
   return events
-    .filter((event) => event.date.startsWith(prefix))
+    .filter((event) => event.date.startsWith(prefix) && event.status !== 'cancelled')
     .sort((left, right) => left.date.localeCompare(right.date))
 }
 

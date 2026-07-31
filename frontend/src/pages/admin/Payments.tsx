@@ -16,6 +16,66 @@ import './Verification.css'
  *  remembered under, and the name to put on the box. */
 type Refusing = { key: string; name: string }
 
+/**
+ * The bank statement, as the way a hundred payments are reconciled at once
+ * (owner, 31.07.2026).
+ *
+ * Every slip carries a reference of the form 2027-37, so a statement can say
+ * whose money each line is without anybody reading names. Turning the file into
+ * decisions is the server's work and the server does not exist yet, so what this
+ * does today is take the file and say so; the row by row confirmation below it
+ * is what actually settles anything, and it is not going away when the parsing
+ * arrives, because a payment that arrives without a reference will always need a
+ * person.
+ *
+ * It refuses anything that is not a PDF rather than accepting it and failing
+ * later, which is the one check that can honestly be made here.
+ */
+function Statement() {
+  const { t } = useI18n()
+  const [taken, setTaken] = useState<string | null>(null)
+  const [refused, setRefused] = useState(false)
+
+  return (
+    <section className="statement" aria-labelledby="statement-heading">
+      <h2 className="profile__section" id="statement-heading">
+        {t('review.statement.title')}
+      </h2>
+      <p className="member__note">{t('review.statement.hint')}</p>
+
+      <label className="statement__pick">
+        <span className="button button--secondary">{t('review.statement.choose')}</span>
+        <input
+          type="file"
+          accept="application/pdf"
+          className="visually-hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+
+            if (file === undefined) {
+              return
+            }
+
+            setRefused(file.type !== 'application/pdf')
+            setTaken(file.type === 'application/pdf' ? file.name : null)
+          }}
+        />
+      </label>
+
+      {refused && (
+        <p className="member__note statement__refused" role="status">
+          {t('review.statement.wrongKind')}
+        </p>
+      )}
+      {taken !== null && (
+        <p className="member__note" role="status">
+          {t('review.statement.taken', { name: taken })}
+        </p>
+      )}
+    </section>
+  )
+}
+
 /* Everyone who opened an account and is waiting to become a full member.
  *
  * Registration is approved by itself and then the fee is waited for; the member
@@ -95,6 +155,8 @@ export function Payments() {
 
           return (
             <>
+              <Statement />
+
               <h2 className="profile__section">
                 {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
               </h2>

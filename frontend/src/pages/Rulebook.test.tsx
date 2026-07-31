@@ -20,9 +20,23 @@ describe('the rulebook', () => {
     await openRulebook()
 
     expect(screen.getByRole('heading', { level: 2, name: '5. Šta se boduje' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: /Član 28. Formula/ })).toBeVisible()
-    // The formula is the one thing in here that may not be paraphrased.
-    expect(screen.getByText('BTL = (40 × Le)^3.257 / (2 × Tsec^2.137)')).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: /Član 28. Bodovanje/ })).toBeVisible()
+  })
+
+  /* The formula is not published, and the rulebook is a public page, so it is
+     not in the rulebook either (owner, 31.07.2026). What is left is what the
+     scoring does, in words: longer and harder is worth more, faster is worth
+     more, and a metre of climb is worth more than a metre of descent. */
+  it('says what the scoring does without saying how', async () => {
+    await openRulebook()
+
+    expect(screen.getByText(/Formula se ne objavljuje/)).toBeVisible()
+
+    const printed = document.body.textContent ?? ''
+
+    expect(printed).not.toContain('3.257')
+    expect(printed).not.toContain('2.137')
+    expect(printed).not.toContain('1.25')
   })
 
   it('lists every section beside the text', async () => {

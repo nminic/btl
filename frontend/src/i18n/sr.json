@@ -810,7 +810,13 @@
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
     "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
     "askToJoin": "Pošalji zahtev timu",
-    "payNow": "Uplatnica"
+    "payNow": "Uplatnica",
+    "details": "Podaci za uplatu",
+    "toWhom": "Primalac",
+    "account": "Račun",
+    "reference": "Poziv na broj",
+    "purposeLabel": "Svrha uplate",
+    "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -827,7 +833,14 @@
     "decision": "Odluka",
     "confirmSendBack": "Vrati uz ovaj razlog",
     "cancel": "Odustani",
-    "explanation": "Obrazloženje"
+    "explanation": "Obrazloženje",
+    "statement": {
+      "title": "Izvod iz banke",
+      "hint": "Priloži izvod u PDF-u i uplate se rasknjižavaju po pozivu na broj. Bez izvoda se svaka uplata potvrđuje ručno, red po red, kao i do sada.",
+      "choose": "Izaberi PDF izvoda",
+      "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radi server; do tada uplate potvrđuješ ručno.",
+      "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen."
+    }
   },
   "admin": {
     "title": "Administracija",

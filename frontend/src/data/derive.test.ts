@@ -280,6 +280,17 @@ describe('calendar helpers', () => {
     expect(eventsInMonth(events, 2027, 12)).toEqual([])
   })
 
+  it('leaves a cancelled event out of the grid, and keeps its record', () => {
+    /* Owner, 31.07.2026: a cancelled event keeps its record, because somebody
+       has it in their calendar and a subscription has to be able to say it is
+       off; what it loses is its square in the grid, where it would read as
+       something still to come. */
+    const called: BtlEvent[] = [...events, { ...events[0], id: 'd', slug: 'd', status: 'cancelled' }]
+
+    expect(eventsInMonth(called, 2027, 3).map((event) => event.id)).toEqual(['b', 'a'])
+    expect(called.some((event) => event.id === 'd')).toBe(true)
+  })
+
   it('lists the months that hold something, oldest first', () => {
     expect(monthsWithEvents(events)).toEqual(['2027-03', '2027-04'])
   })

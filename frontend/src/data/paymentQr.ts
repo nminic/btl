@@ -13,6 +13,34 @@
  * (PDL P8).
  */
 
+/* Who the money goes to. One place, because the same four facts appear on the
+ * slip, in the QR code and in the sentence telling somebody what to type into
+ * their bank, and three copies of an account number is two too many.
+ *
+ * The account and the address are the association's own (owner, 31.07.2026). */
+export const RECIPIENT_NAME = 'Sportsko udruženje BTL'
+export const RECIPIENT_ADDRESS = 'Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd'
+export const RECIPIENT_ACCOUNT = '105000000000328471'
+
+/**
+ * What the member writes in the reference field, and what the administrator
+ * reads off the statement to know whose money this is (owner, 31.07.2026).
+ *
+ * The season and the member number without its leading noughts: 2027-37. The
+ * season is in it because the same person pays every year and the number alone
+ * would not say which year was paid; the noughts are out because nobody copying
+ * a reference from a screen into a banking application types four of them
+ * correctly.
+ */
+export function paymentReference(season: number, memberNumber: string): string {
+  return `${season}-${Number(memberNumber)}`
+}
+
+/** What the money is for, in the words the statement will carry. */
+export function paymentPurpose(season: number): string {
+  return `Članarina za ${season}. godinu`
+}
+
 export type IpsPayment = {
   /** Account in the Serbian 18 digit form, without dashes. */
   account: string
@@ -44,6 +72,15 @@ export function ipsAmount(amountRsd: number): string {
  * N the recipient, I the amount, SF the payment code and S the purpose. RO
  * carries the reference and is left out when there is none, rather than sent
  * empty, which some readers reject.
+ *
+ * N takes the name and then the address, one per line, which is how the
+ * standard carries a recipient with a seat.
+ *
+ * RO begins with two digits naming the model, and `00` is what a reference with
+ * no model uses. The reference itself is handed in, so this is the one place
+ * that says which model the association's slips use. **Confirm with the bank
+ * before the first real payment**: a wrong model is a payment that arrives and
+ * cannot be reconciled.
  */
 export function ipsPayload(payment: IpsPayment): string {
   const parts = [
@@ -58,7 +95,7 @@ export function ipsPayload(payment: IpsPayment): string {
   ]
 
   if (payment.reference !== '') {
-    parts.push(`RO:${payment.reference}`)
+    parts.push(`RO:00${payment.reference}`)
   }
 
   return parts.join('|')

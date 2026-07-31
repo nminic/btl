@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -14,7 +14,7 @@ import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
 import { RIGHTS } from './admin/rights'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
-import { epcPayload, ipsPayload, methodsFor } from '../data/paymentQr'
+import { epcPayload, ipsPayload, paymentPurpose, paymentReference, methodsFor } from '../data/paymentQr'
 
 /** A session holding results in the states the panel has to tell apart. */
 /** Every box in the matrix ticked, for the tests about a screen doing its
@@ -389,16 +389,76 @@ describe('payment payloads', () => {
     expect(payload).not.toContain('RO:')
   })
 
-  it('carries the reference when there is one', () => {
+  /* The statement, as the way a hundred payments are reconciled at once (owner,
+     31.07.2026). Turning the file into decisions is the server's work and the
+     server does not exist yet, so what it does today is take the file and say
+     so; what it can honestly refuse is a file that is not a statement at all. */
+  it('takes a statement in PDF and says what it did with it', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
+
+    await user.upload(pick, new File(['%PDF-1.7'], 'izvod-jul.pdf', { type: 'application/pdf' }))
+
+    expect(screen.getByText(/Primljen izvod izvod-jul\.pdf/)).toBeVisible()
+    expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
+  })
+
+  it('refuses a file that is not a statement, and says why', async () => {
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+
+    /* Handed over rather than picked through the control: `accept` already
+       turns a CSV away in the dialog, and `user.upload` honours that, so the
+       one case worth testing is the one `accept` cannot cover, which is
+       somebody choosing "all files" and handing over a CSV anyway. */
+    fireEvent.change(pick, {
+      target: { files: [new File(['ime;iznos'], 'izvod.csv', { type: 'text/csv' })] },
+    })
+
+    expect(screen.getByText(/mora biti PDF/)).toBeVisible()
+    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing at all when the picking was called off', async () => {
+    /* Opening the dialog and closing it again fires the same event with an
+       empty list, and a screen that answers "primljen izvod" to a file nobody
+       chose is worse than one that says nothing. */
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+
+    fireEvent.change(pick, { target: { files: [] } })
+
+    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
+  })
+
+  it('carries the reference when there is one, under the model that has none', () => {
+    /* The tag begins with two digits naming the model, and `00` is what a
+       reference with no model uses. The reference the association hands out is
+       the season and the member number, so what goes in is 002027-37. */
     const payload = ipsPayload({
       account: '000000000000000000',
       recipient: 'x',
       amountRsd: 100,
       purpose: 'y',
-      reference: '97-1234',
+      reference: '2027-37',
     })
 
-    expect(payload).toContain('RO:97-1234')
+    expect(payload).toContain('RO:002027-37')
+  })
+
+  it('writes the reference as the season and the member number without its noughts', () => {
+    /* Whose money it is, in the one field a bank statement carries through
+       (owner, 31.07.2026). The season is in it because the same person pays
+       every year; the noughts are out because nobody copies four of them
+       correctly. */
+    expect(paymentReference(2027, '000037')).toBe('2027-37')
+    expect(paymentReference(2027, '000001')).toBe('2027-1')
+    expect(paymentPurpose(2027)).toBe('Članarina za 2027. godinu')
   })
 
   it('builds the EPC payload line by line, blank lines included', () => {

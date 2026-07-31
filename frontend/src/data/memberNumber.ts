@@ -23,35 +23,37 @@ export function formatMemberNumber(value: number): string {
 }
 
 /**
- * The first free member number, given every one that is spoken for.
+ * The next member number: one past the highest ever handed out.
  *
- * First free rather than one past the highest, because the sequence has holes in
- * it: deleting a member on request removes the link between the number and the
- * person, which frees the number (PDL P23). A member who is merely pausing keeps
- * theirs, so the hole only ever appears where a record really went away.
+ * Never the first free one (owner, 31.07.2026). Deleting a member on request
+ * takes the link between the number and the person away (PDL P23), and it used
+ * to take the number back into circulation with it, so the next person to join
+ * inherited a number that appears in old results, old tables and somebody's
+ * printed card. Two people, one number, and nothing on the portal able to say
+ * which of them a row from 2029 belongs to.
  *
- * Whatever is handed in counts as spoken for, which is how the numbers taken by
- * records entered during this visit are skipped: the caller hands in the list it
- * shows, not the file it read.
+ * A number therefore only ever counts up. In the prototype "ever handed out" is
+ * the highest number in the list handed in; when the members live in a database
+ * it is a sequence, which is the only form that survives the row being deleted
+ * (recorded in PDL P8).
  *
- * With every number from 000001 to 999999 spoken for there is no next one, and it
- * says so. It used to return '1000000': seven digits out of a function whose whole
- * subject is that the number has six, handed on to a key, an address and a
- * printed card without a word. Six digits were chosen to outlive the league (PDL
- * P8), so this is a line nobody is expected to reach; running past it in silence
- * is what must not happen.
+ * With 999999 handed out there is no next one, and it says so. It used to return
+ * '1000000': seven digits out of a function whose whole subject is that the
+ * number has six, handed on to a key, an address and a printed card without a
+ * word. Six digits were chosen to outlive the league (PDL P8), so this is a line
+ * nobody is expected to reach; running past it in silence is what must not
+ * happen.
  */
 export function nextMemberNumber(taken: Iterable<string>): string {
-  const spokenFor = new Set(taken)
-  let candidate = 1
+  let highest = 0
 
-  while (spokenFor.has(formatMemberNumber(candidate))) {
-    candidate += 1
+  for (const one of taken) {
+    highest = Math.max(highest, Number(one))
   }
 
-  if (candidate > HIGHEST) {
+  if (highest >= HIGHEST) {
     throw new Error(`No member number left: all ${HIGHEST} of them are spoken for`)
   }
 
-  return formatMemberNumber(candidate)
+  return formatMemberNumber(highest + 1)
 }

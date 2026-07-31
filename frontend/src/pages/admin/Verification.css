@@ -82,3 +82,21 @@
   margin: 0;
   font-weight: 600;
 }
+
+/* The bank statement, above the queue it is meant to empty. */
+.statement {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-block-end: 1.25rem;
+}
+
+.statement__pick {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.statement__refused {
+  color: var(--danger);
+}
