@@ -158,6 +158,7 @@ const DETAILS: RouteObject[] = [
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
   { path: 'liga/:slug', element: <LeagueDetail /> },
+  { path: 'liga/:slug/propozicije', element: <LeagueDetail part="rules" /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
   /* The eight verification queues (PDL P28a). The addresses live in QUEUES,

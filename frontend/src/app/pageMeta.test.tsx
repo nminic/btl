@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import sr from '../i18n/sr.json'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -220,5 +220,32 @@ describe('PageMeta', () => {
     )
 
     logged.mockRestore()
+  })
+})
+
+describe('the two parts of a competition', () => {
+  const meta = () => document.querySelector('meta[name="description"]')?.getAttribute('content')
+
+  it('name themselves apart, so no two addresses share a title', async () => {
+    /* Both parts are indexable and both carried the same title and the same
+       description. The profile has named its awards apart from itself since
+       30.07.2026; this is the same rule on the competition.
+
+       Waited for rather than read straight away: until the record arrives the
+       address shows its own generic name, and the generic names do differ, so
+       reading too early would pass on a page that never names the record at
+       all. */
+    renderAt('/sr/liga/brdska-2019')
+    await waitFor(() => expect(document.title).toContain('Brdska liga 2019'))
+    const standing = { title: document.title, description: meta() }
+
+    cleanup()
+
+    renderAt('/sr/liga/brdska-2019/propozicije')
+    await waitFor(() => expect(document.title).toContain('Brdska liga 2019'))
+
+    expect(document.title).not.toBe(standing.title)
+    expect(document.title).toContain('propozicije')
+    expect(meta()).not.toBe(standing.description)
   })
 })

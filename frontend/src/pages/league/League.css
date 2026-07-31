@@ -1,0 +1,122 @@
+/* The grid of a competition: everybody down the side, every race across the
+   top. */
+
+/* The heading of a race column, turned on its side (owner, 31.07.2026). The
+   widest competition in the data has forty six races; laid flat those headings
+   would be several thousand pixels of table before a single number. Turned, each
+   costs its own line height and no more.
+
+   `vertical-rl` plus a half turn gives text running upwards, which is the way a
+   turned column heading is read everywhere it is used. */
+.league__race {
+  vertical-align: bottom;
+  padding: 0.4rem 0.15rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.league__race-name {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  /* The length of the line, which in vertical writing runs down the page and is
+     therefore the inline axis. Capping the block axis instead capped the width
+     of the column and let the head grow to four hundred pixels. */
+  max-inline-size: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  /* Not the capitals every other heading on the portal wears. This one is a
+     sentence somebody wrote, not a three letter column name, and turned text in
+     capitals is the hardest thing on the page to read as well as the widest. */
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
+/* The name and the total are what the table is read by, so they stay put while
+   the races scroll past them. Two sticky columns, the second offset by the width
+   of the first.
+
+   The width has to be forced, not suggested. `inline-size` on a cell in a table
+   laid out automatically is a hint the browser may shrink: measured, the column
+   settled at 167,5px while the second was pinned at 176, and eight and a half
+   pixels of the races scrolled through the gap between them. `min-inline-size`
+   is the one the algorithm honours. */
+.league__who,
+.league__total {
+  position: sticky;
+  /* The colour of what the table lies on, which is the page and not a card.
+     `--surface` left a lighter band down the left of every grid, in a shade
+     nothing else on the screen wears. */
+  background: var(--bg);
+}
+
+.league__who {
+  inset-inline-start: 0;
+  inline-size: 11rem;
+  min-inline-size: 11rem;
+  max-inline-size: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.league__total {
+  inset-inline-start: 11rem;
+  font-weight: 700;
+}
+
+.league__grid th.league__who,
+.league__grid td.league__total,
+.league__grid th.league__total {
+  /* Above the cells that scroll under them, and below nothing else. */
+  z-index: 1;
+}
+
+/* The hover on a row is drawn on the row, and these two carry their own
+   background, so without this the row lights up everywhere except in the two
+   columns the reader is following it by. */
+.table tbody tr:hover .league__who,
+.table tbody tr:hover .league__total {
+  background: var(--surface-hover);
+}
+
+/* Numbers line up under numbers. The shared table rule left-aligns the first
+   three cells, which on a table of three text columns is right and here puts the
+   total and the first race out of step with every race after them.
+ *
+ * Two elements deep on purpose: `.table td:nth-child(-n + 3)` counts one class,
+ * one pseudo-class and one type, so two classes alone lose to it and the rule
+ * did nothing. */
+.league__grid tbody td.league__total,
+.league__grid tbody td.table__points,
+.league__grid thead th.league__total {
+  text-align: right;
+}
+
+/* And the turned headings sit in the middle of their own column. The same
+   shared rule left-aligned the first of them and no other, so one column's
+   heading stood twelve pixels off from all the rest. */
+.league__grid thead th.league__race {
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .league__who {
+    inline-size: 7.5rem;
+    min-inline-size: 7.5rem;
+    max-inline-size: 7.5rem;
+  }
+
+  .league__total {
+    inset-inline-start: 7.5rem;
+  }
+
+  .league__race-name {
+    max-inline-size: 6.5rem;
+    font-size: 0.72rem;
+  }
+}

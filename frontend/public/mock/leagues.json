@@ -83,5 +83,26 @@
     "rules": "",
     "prizes": "",
     "eventIds": []
+  },
+  {
+    "id": "league-brdska-2019",
+    "slug": "brdska-2019",
+    "name": "Brdska liga 2019",
+    "season": 2019,
+    "groupsByCategory": false,
+    "rules": "Boduju se samo dogadjaji sa spiska ispod. Plasman je zbir BTL bodova sa svih trka lige, bez odbacivanja najlosijeg rezultata. Ko je istrcao bar jednu trku, na tabeli je.",
+    "prizes": "Pehari za prva tri mesta, bez podele po kategorijama. Dodeljuju se na zavrsnoj trci sezone.",
+    "eventIds": [
+      "evt-mrazijada-2019-01-05",
+      "evt-sidski-novogodisnji-maraton-2019-01-14",
+      "evt-btl-trening-trek-2019-01-27",
+      "evt-zimski-nocni-polumaraton-2019-02-09",
+      "evt-sretenjska-atletska-trka-na-ibru-2019-02-15",
+      "evt-avala-night-skytrail-2019-02-23",
+      "evt-splitski-polumaraton-2019-02-24",
+      "evt-srebrno-jezero-polumaraton-2019-03-02",
+      "evt-novosadski-polumaraton-2019-03-24",
+      "evt-malaga-media-marathon-2019-03-24"
+    ]
   }
 ]

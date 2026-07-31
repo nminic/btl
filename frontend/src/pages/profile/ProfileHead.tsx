@@ -1,4 +1,5 @@
-import { Link, NavLink, useLocation } from 'react-router'
+import { Link } from 'react-router'
+import { PartsNav } from '../../components/PartsNav'
 import { categoryOfMember } from '../../data/derive'
 import { SEASON } from '../../data/pricing'
 import type { Competitor, Team } from '../../data/types'
@@ -103,34 +104,36 @@ export function ProfileParts({
   season?: SeasonChoice
 }) {
   const { locale, t } = useI18n()
-  const { search } = useLocation()
   const base = `/${locale}/takmicar/${memberNumber}`
 
   return (
-    <nav className="profile__parts" aria-label={t('profile.parts.label')}>
-      <span className="profile__part-group">
-        <NavLink end to={{ pathname: base, search }} className="profile__part">
-          {t('profile.parts.overview')}
-        </NavLink>
-
-        {season !== undefined && (
-          <label className="profile__part-season">
-            <span className="visually-hidden">{t('rankings.season')}</span>
-            <select value={season.value} onChange={(event) => season.onChange(event.target.value)}>
-              <option value="sve">{t('profile.allTime')}</option>
-              {season.options.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </span>
-
-      <NavLink to={{ pathname: `${base}/priznanja`, search }} className="profile__part">
-        {t('profile.parts.awards')}
-      </NavLink>
-    </nav>
+    <PartsNav
+      label={t('profile.parts.label')}
+      parts={[
+        {
+          to: base,
+          end: true,
+          label: t('profile.parts.overview'),
+          extra:
+            season === undefined ? undefined : (
+              <label className="parts__season">
+                <span className="visually-hidden">{t('rankings.season')}</span>
+                <select
+                  value={season.value}
+                  onChange={(event) => season.onChange(event.target.value)}
+                >
+                  <option value="sve">{t('profile.allTime')}</option>
+                  {season.options.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ),
+        },
+        { to: `${base}/priznanja`, label: t('profile.parts.awards') },
+      ]}
+    />
   )
 }
