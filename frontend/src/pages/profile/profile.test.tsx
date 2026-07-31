@@ -75,7 +75,7 @@ describe('what a competitor has won', () => {
   })
 
   it('lists the seasons a place was taken in, newest first', async () => {
-    renderAt('/sr/takmicar/000001/priznanja')
+    renderAt('/sr/takmicar/000001/priznanja?sezona=sve')
 
     const table = await screen.findByRole('table', { name: 'Pehari i plakete' })
     const seasons = within(table)
@@ -139,6 +139,21 @@ describe('the length, as one row of six', () => {
     expect(router.state.location.search).toContain('duzina=half')
   })
 
+  it('drops the length out of the address again when all of them are chosen', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/takmicar/000002?sezona=sve&duzina=half')
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+    expect(router.state.location.search).toContain('duzina=half')
+
+    await user.click(screen.getByRole('button', { name: 'Sve dužine Sve' }))
+
+    // Written into the address only where it differs from the default, so an
+    // address stays as short as it can be.
+    expect(router.state.location.search).not.toContain('duzina')
+    expect(router.state.location.search).toContain('sezona=sve')
+  })
+
   it('is named by both of its names, at every width', async () => {
     renderAt('/sr/takmicar/000002?sezona=sve')
 
@@ -172,21 +187,29 @@ describe('the length, as one row of six', () => {
   })
 })
 
-describe('the line that ties a name to its slice', () => {
-  it('is white on the theme the portal opens in, and readable on the other', () => {
-    /* The owner asked for a white line. White is right where the line ends, on
-       the band itself, but the stretch that crosses the card behind it would be
-       white on white in the light theme. So the colour is a token with a value
-       per theme. jsdom computes no media queries and no custom properties, so
-       the rule is read as text, the way the badge art is tested (ADL A7). */
+describe('the five lengths, as five colours', () => {
+  it('carries a value for each of them in both themes', () => {
+    /* Blue, green, yellow, orange, red, shortest to longest (owner,
+       31.07.2026). Per theme, because a colour that reads on a white card
+       disappears on a dark one. jsdom computes no custom properties, so the
+       tokens are read as text, the way the badge art is tested (ADL A7). */
+    const css = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
+
+    for (const name of ['short', 'half', 'long', 'marathon', 'ultra']) {
+      // Once for the light theme and twice for the dark one, which is written
+      // out for the media query and for the switch.
+      expect(css.match(new RegExp(`--length-${name}:`, 'g'))).toHaveLength(3)
+    }
+  })
+
+  it('turns the slices and not the figures in the middle of them', () => {
     const css = readFileSync(join(process.cwd(), 'src/components/CategoryDonut.css'), 'utf-8')
 
-    expect(css).toContain('--donut-leader: #ffffff')
-    expect(css).toContain("[data-theme='dark']")
-    expect(css).toContain('stroke: var(--donut-leader)')
-    // The ring turns, the text does not.
     expect(css).toContain('.donut__ring')
-    expect(css).not.toContain('container-type: inline-size')
+    expect(css).toContain('transform: rotate(-90deg)')
+    // The names beside the ring, and the lines that ran to them, are gone.
+    expect(css).not.toContain('donut-leader')
+    expect(css).not.toContain('writing-mode')
   })
 })
 
@@ -283,8 +306,10 @@ describe('the address stays as short as it can be', () => {
   })
 
   it('names the board a place was taken on, in both kinds', async () => {
-    // 000005 has taken a place in the general standing as well as in a category.
-    renderAt('/sr/takmicar/000005/priznanja')
+    /* 000005 has taken a place in the general standing as well as in a
+       category. Over the whole career: the trophies are narrowed by the season
+       now (owner, 31.07.2026), and the season now has none in it. */
+    renderAt('/sr/takmicar/000005/priznanja?sezona=sve')
 
     const table = await screen.findByRole('table', { name: 'Pehari i plakete' })
     const boards = within(table)
@@ -345,5 +370,33 @@ describe('a member whose fee has run out', () => {
 
     await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
     expect(screen.queryByText('Vojislav Antonijević')).not.toBeInTheDocument()
+  })
+})
+
+describe('the season, over both parts of the profile', () => {
+  it('narrows the trophies too, and says which kind of empty it is', async () => {
+    /* One control at the top of the page governs the results and the trophies
+       alike (owner, 31.07.2026). 000001 has trophies, but not in every season,
+       so a season without one has to say that rather than that there are none
+       at all. */
+    renderAt('/sr/takmicar/000001/priznanja?sezona=2010')
+
+    expect(
+      await screen.findByText('U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.'),
+    ).toBeVisible()
+    expect(screen.queryByText('Ovaj takmičar još nema nijedan pehar ni plaketu.')).not.toBeInTheDocument()
+  })
+
+  it('opens on the season now rather than on the last one this person raced', async () => {
+    /* Read on a simulated day, which is the only way the portal is allowed to
+       know what day it is (ADL A7), and 2022 is a year 000001 did not race. It
+       used to open on the newest season they had, so two profiles opened on two
+       different years and neither on the year the reader is living in. */
+    renderAt('/sr/takmicar/000001', 'visitor', null, undefined, '2022-06-01')
+
+    await screen.findByRole('heading', { level: 1 })
+    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
+
+    expect(season.value).toBe('2022')
   })
 })

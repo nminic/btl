@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useParams } from 'react-router'
+import { useToday } from '../clock/useClock'
 import { PageMeta } from '../app/PageMeta'
 import { BadgeArt } from '../components/BadgeArt'
 import { Resource } from '../components/Resource'
@@ -16,6 +17,7 @@ import {
   useTeams,
 } from '../data/useResource'
 import { awardsOf } from './profile/awards'
+import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
 import './Profile.css'
 
@@ -80,10 +82,27 @@ function AwardsFor({
   team: Parameters<typeof ProfileHead>[0]['team']
 }) {
   const { locale, t } = useI18n()
+  const today = useToday()
+  const season = useSeason()
 
-  const awards = useMemo(
+  const all = useMemo(
     () => awardsOf(competitor, competitors, results),
     [competitor, competitors, results],
+  )
+  /* Narrowed by the same season the overview is read in (owner, 31.07.2026). The
+     control stands at the top of the page and governs both parts, so a season
+     chosen among the results is still chosen among the trophies.
+
+     The badges below are not narrowed and cannot be: a badge is won over a
+     career and carries no season, which is the same reason the note above the
+     two sections says what it says. */
+  const awards = useMemo(
+    () => all.filter((one) => season === ALL_SEASONS || String(one.season) === season),
+    [all, season],
+  )
+  const seasons = useMemo(
+    () => seasonOptions([...new Set(all.map((one) => one.season))], season, today),
+    [all, season, today],
   )
   const earned = useMemo(
     () => earnedBadges(competitor, results, badges),
@@ -99,7 +118,7 @@ function AwardsFor({
         description={t('seo.competitor.awardsDescription', { name })}
       />
 
-      <ProfileHead competitor={competitor} team={team} />
+      <ProfileHead competitor={competitor} team={team} seasons={seasons} />
       <ProfileParts memberNumber={competitor.memberNumber} />
 
       <p className="profile__scope">{t('awards.note')}</p>
@@ -110,7 +129,9 @@ function AwardsFor({
         </h2>
 
         {awards.length === 0 ? (
-          <p className="profile__empty">{t('awards.empty')}</p>
+          <p className="profile__empty">
+            {all.length === 0 ? t('awards.empty') : t('awards.noneInSeason')}
+          </p>
         ) : (
           <div className="table-scroll">
             <table className="table">

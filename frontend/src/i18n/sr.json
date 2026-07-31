@@ -176,13 +176,13 @@
       "title": "Takmičenje u ligi",
       "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
       "recordTitle": "{name}",
-      "recordDescription": "{name}: poredak i događaji koji u sezoni {season} ulaze u ovo takmičenje."
+      "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
     },
-    "leagueRules": {
-      "title": "Propozicije takmičenja",
-      "description": "Pravila i nagrade jednog takmičenja, onako kako ih je napisao organizator.",
-      "recordTitle": "{name}, propozicije",
-      "recordDescription": "Propozicije i nagrade takmičenja {name}, onako kako ih je napisao organizator."
+    "leagueResults": {
+      "title": "Poredak takmičenja",
+      "description": "Poredak jednog takmičenja uz glavnu ligu: ko je trčao koju trku i sa koliko bodova.",
+      "recordTitle": "{name}, rezultati",
+      "recordDescription": "Poredak takmičenja {name} u sezoni {season}: ko je trčao koju trku i sa koliko bodova."
     },
     "message": {
       "title": "Poruka",
@@ -411,6 +411,7 @@
     "city": "Grad",
     "country": "Država",
     "countryHint": "Od države zavisi koji načini plaćanja ti se nude.",
+    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda pre nego što se pojave na tvom profilu.",
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
@@ -1155,6 +1156,7 @@
     "category": "Kategorija {category}",
     "position": "{position}. mesto",
     "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
+    "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.",
     "noBadges": "Još nijedna značka."
   }
 }

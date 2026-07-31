@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -34,6 +34,9 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
   await user.type(screen.getByLabelText(/Grad/), 'Beograd')
   await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
+  /* Required since 31.07.2026: the biography is written here, at the moment of
+     joining, and goes from here to a moderator for approval. */
+  await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
   await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
   await user.click(screen.getByLabelText(/zdravstveno sposoban/))
 }
@@ -158,5 +161,29 @@ describe('Registration once it is open', () => {
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.getByText('Vladan')).toBeInTheDocument()
+  })
+})
+
+describe('the biography, at the moment of joining', () => {
+  it('will not let the form through without it', async () => {
+    /* Owner, 31.07.2026: it is written when the profile is created and goes from
+       there for approval. Until now it was a field somewhere in the member area
+       that most people never found, which is why most profiles in the data have
+       none. */
+    const user = setupUser()
+    renderForm()
+
+    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
+    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const summary = screen.getByRole('alert')
+    expect(within(summary).getByRole('link', { name: /Svojim rečima/ })).toBeInTheDocument()
+  })
+
+  it('says what happens to it, beside the field', async () => {
+    renderForm()
+
+    expect(screen.getByText(/Moderator ih pregleda pre nego što se pojave/)).toBeVisible()
   })
 })

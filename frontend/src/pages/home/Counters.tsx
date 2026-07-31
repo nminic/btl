@@ -20,12 +20,13 @@ import { useCountUp } from './useCountUp'
    the mark for the one row that is not about running at all: every other row on
    this widget is also something a runner did, so the figure said nothing, and at
    this size its limbs turned into a knot. A road narrowing into the distance
-   says length and says it at twenty pixels. */
+   says length and says it at twenty pixels, and it narrows upwards, which is the
+   way a road going away from you looks (owner, 31.07.2026). */
 function Road() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <path d="M8.4 21L6.2 3.5" strokeLinecap="round" />
-      <path d="M15.6 21l2.2-17.5" strokeLinecap="round" />
+      <path d="M6.2 21L8.4 3.5" strokeLinecap="round" />
+      <path d="M17.8 21l-2.2-17.5" strokeLinecap="round" />
       <path d="M12 5.6v2.6M12 11.4v2.6M12 17.2v2.6" strokeLinecap="round" />
     </svg>
   )

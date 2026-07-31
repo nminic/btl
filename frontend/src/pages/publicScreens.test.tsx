@@ -434,18 +434,20 @@ describe('CompetitorProfile', () => {
       .toBeGreaterThan(1)
   })
 
-  it('chooses the season inside the control that names the part', async () => {
-    /* The season used to sit on a rule of its own with a sentence under it
-       saying what it governed. Both are gone; the control that says "Pregled"
-       carries it (owner, 31.07.2026). */
+  it('chooses the season at the top of the page, level with the name', async () => {
+    /* It has been three things in two days: a band of its own with a sentence
+       under it, then inside the control that names the part, and now beside the
+       name (owner, 31.07.2026). It governs both parts, so it stands over both. */
     renderAt('/sr/takmicar/000007')
 
-    await screen.findByRole('heading', { level: 1 })
-    const parts = screen.getByRole('navigation', { name: 'Delovi profila' })
+    const heading = await screen.findByRole('heading', { level: 1 })
+    const title = heading.parentElement!
 
-    expect(within(parts).getByLabelText('Sezona')).toBeVisible()
+    expect(within(title).getByLabelText('Sezona')).toBeVisible()
+    expect(
+      within(screen.getByRole('navigation', { name: 'Delovi profila' })).queryByLabelText('Sezona'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText(/Sezona se bira jednom/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Izbor sezone važi za sve/)).not.toBeInTheDocument()
   })
 
   it('narrows only the table by length, and leaves the widgets on the season', async () => {
@@ -545,8 +547,9 @@ describe('CompetitorProfile', () => {
     await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
 
     expect(await screen.findByRole('heading', { name: /Pehari i plakete/ })).toBeVisible()
-    // Not season-scoped: what is won is never taken away (PDL P11).
-    expect(screen.queryByLabelText('Sezona')).not.toBeInTheDocument()
+    /* The season control stands on this part too, and narrows it (owner,
+       31.07.2026): one choice at the top of the page governs both. */
+    expect(screen.getByLabelText('Sezona')).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Pregled' }))
     expect(await screen.findByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
@@ -595,10 +598,13 @@ describe('CompetitorProfile', () => {
       .map((one) => one.textContent)
       .filter((one) => one !== 'Zbirno')
 
+    /* The length has no column of its own any more: it is the colour of the dot
+       beside the distance, and its name is there for a screen reader, which is
+       what this reads. */
     const results = within(screen.getByRole('table', { name: 'Rezultati' }))
       .getAllByRole('row')
       .slice(1)
-      .map((row) => within(row).getAllByRole('cell')[2].textContent)
+      .map((row) => within(row).getAllByRole('cell')[2].textContent!.split(':')[0])
 
     expect(named.length).toBeGreaterThan(0)
     expect(named.length).toBeLessThan(5)
@@ -623,8 +629,9 @@ describe('CompetitorProfile', () => {
   })
 
   it('handles a competitor who has never raced', async () => {
-    // 000031 is the deliberately empty profile in the generated data.
-    renderAt('/sr/takmicar/000031')
+    // 000031 is the deliberately empty profile in the generated data. Read over
+    // the whole career, or the season now would be the reason the table is empty.
+    renderAt('/sr/takmicar/000031?sezona=sve')
 
     expect(await screen.findByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
     // Nothing to filter, so nothing to reset.

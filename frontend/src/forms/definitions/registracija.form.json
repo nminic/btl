@@ -53,7 +53,10 @@
       "hintKey": "registration.parentConsentHint",
       "required": true,
       "maxLength": 120,
-      "showWhenYoungerThan": { "field": "birthDate", "years": 16 }
+      "showWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      }
     },
     {
       "name": "gender",
@@ -61,8 +64,14 @@
       "labelKey": "registration.gender",
       "required": true,
       "options": [
-        { "value": "M", "labelKey": "registration.genderMale" },
-        { "value": "F", "labelKey": "registration.genderFemale" }
+        {
+          "value": "M",
+          "labelKey": "registration.genderMale"
+        },
+        {
+          "value": "F",
+          "labelKey": "registration.genderFemale"
+        }
       ]
     },
     {
@@ -80,19 +89,48 @@
       "required": true
     },
     {
+      "name": "bio",
+      "type": "textarea",
+      "labelKey": "profile.bio",
+      "required": true,
+      "maxLength": 360,
+      "hintKey": "registration.bioHint"
+    },
+    {
       "name": "shirtSize",
       "type": "select",
       "labelKey": "registration.shirtSize",
       "hintKey": "registration.shirtSizeHint",
       "required": true,
       "options": [
-        { "value": "XS", "labelKey": "shirt.XS" },
-        { "value": "S", "labelKey": "shirt.S" },
-        { "value": "M", "labelKey": "shirt.M" },
-        { "value": "L", "labelKey": "shirt.L" },
-        { "value": "XL", "labelKey": "shirt.XL" },
-        { "value": "XXL", "labelKey": "shirt.XXL" },
-        { "value": "XXXL", "labelKey": "shirt.XXXL" }
+        {
+          "value": "XS",
+          "labelKey": "shirt.XS"
+        },
+        {
+          "value": "S",
+          "labelKey": "shirt.S"
+        },
+        {
+          "value": "M",
+          "labelKey": "shirt.M"
+        },
+        {
+          "value": "L",
+          "labelKey": "shirt.L"
+        },
+        {
+          "value": "XL",
+          "labelKey": "shirt.XL"
+        },
+        {
+          "value": "XXL",
+          "labelKey": "shirt.XXL"
+        },
+        {
+          "value": "XXXL",
+          "labelKey": "shirt.XXXL"
+        }
       ]
     },
     {

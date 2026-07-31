@@ -75,7 +75,7 @@ function EditableText({
  * writing, because it is the key to the columns above it: the grid names a race
  * and a date, and this says where and how many.
  */
-export function LeagueDetail({ part = 'results' }: { part?: 'results' | 'rules' } = {}) {
+export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } = {}) {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   /* The rules and the prizes of a competition are the league record, so the
@@ -112,12 +112,12 @@ export function LeagueDetail({ part = 'results' }: { part?: 'results' | 'rules' 
                 naming its awards apart from itself. */}
             <PageMeta
               title={t(
-                part === 'rules' ? 'seo.leagueRules.recordTitle' : 'seo.league.recordTitle',
+                part === 'results' ? 'seo.leagueResults.recordTitle' : 'seo.league.recordTitle',
                 { name: league.name },
               )}
               description={t(
-                part === 'rules'
-                  ? 'seo.leagueRules.recordDescription'
+                part === 'results'
+                  ? 'seo.leagueResults.recordDescription'
                   : 'seo.league.recordDescription',
                 { name: league.name, season: league.season },
               )}
@@ -129,18 +129,18 @@ export function LeagueDetail({ part = 'results' }: { part?: 'results' | 'rules' 
                   <Link to={`/${locale}/lige`}>{t('leagues.backToLeagues')}</Link>
                 </p>
                 <h1>{league.name}</h1>
-                <p className="profile__meta">
-                  {t('leagues.season', { season: league.season })}
-                  {' · '}
-                  {league.groupsByCategory ? t('leagues.byCategory') : t('leagues.byGenderOnly')}
-                </p>
+                {/* Nothing under the name (owner, 31.07.2026). The season is in
+                    the name of every competition already, and how the field is
+                    grouped is a rule of the competition, so it belongs in its
+                    terms rather than in a label. The parts follow straight
+                    after. */}
               </header>
 
               <PartsNav
                 label={t('leagues.parts.label')}
                 parts={[
-                  { to: base, end: true, label: t('leagues.parts.results') },
-                  { to: `${base}/propozicije`, label: t('leagues.parts.rules') },
+                  { to: base, end: true, label: t('leagues.parts.rules') },
+                  { to: `${base}/rezultati`, label: t('leagues.parts.results') },
                 ]}
               />
 
@@ -167,11 +167,11 @@ export function LeagueDetail({ part = 'results' }: { part?: 'results' | 'rules' 
                     canEdit={may('entity:leagues')}
                     onSave={(text) => edit(league.id, 'prizes', text)}
                   />
-                </>
-              ) : (
-                <>
-                  <LeagueResults league={league} events={events} />
 
+                  {/* The events that count, under what is written about them
+                      (owner, 31.07.2026). They are the terms of the competition
+                      rather than its result: which races you have to run is part
+                      of what the organiser is telling you. */}
                   <h2 className="profile__section">
                     {t('leagues.countingEvents')}{' '}
                     <span className="profile__count">{counting.length}</span>
@@ -206,6 +206,11 @@ export function LeagueDetail({ part = 'results' }: { part?: 'results' | 'rules' 
                       </table>
                     </div>
                   )}
+                </>
+              ) : (
+                <>
+                  <LeagueResults league={league} events={events} />
+
                 </>
               )}
             </div>

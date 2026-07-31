@@ -58,7 +58,7 @@ describe('changing data in administration', () => {
 describe('the text of a competition', () => {
   it('is written by whoever runs it, and only by them', async () => {
     const user = setupUser()
-    renderAt('/sr/liga/runtrace-2027/propozicije', 'superadmin')
+    renderAt('/sr/liga/runtrace-2027', 'superadmin')
 
     await screen.findByRole('heading', { level: 1 })
 
@@ -77,7 +77,7 @@ describe('the text of a competition', () => {
   })
 
   it('is not offered to a visitor, and an empty one is not shown at all', async () => {
-    renderAt('/sr/liga/runtrace-2027/propozicije')
+    renderAt('/sr/liga/runtrace-2027')
 
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
@@ -85,7 +85,7 @@ describe('the text of a competition', () => {
   })
 
   it('is shown to a visitor once it has been written', async () => {
-    renderAt('/sr/liga/btl-2027/propozicije')
+    renderAt('/sr/liga/btl-2027')
 
     expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
@@ -123,7 +123,7 @@ describe('the last few branches these screens have', () => {
 
   it('leaves an already written competition text alone unless it is changed', async () => {
     const user = setupUser()
-    renderAt('/sr/liga/btl-2027/propozicije', 'superadmin')
+    renderAt('/sr/liga/btl-2027', 'superadmin')
 
     const prizes = (await screen.findByRole('heading', { name: 'Nagrade' })).closest('section')!
     const before = prizes.querySelector('.profile__text')!.textContent
