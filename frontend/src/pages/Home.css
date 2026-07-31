@@ -120,12 +120,16 @@
   min-width: 0;
 }
 
+/* The name of a widget. Navy on a light page and white on a dark one (owner,
+   31.07.2026): muted grey read as a caption on something rather than as the
+   name of it, and the navy is the one out of the scoreboard's own pill, so the
+   two belong together. */
 .card__title {
   margin: 0;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: var(--text-muted);
+  color: var(--heading);
   font-weight: 700;
 }
 
@@ -155,12 +159,6 @@
   flex-direction: column;
   gap: 0.6rem;
   min-width: 0;
-}
-
-.home .address__title {
-  margin: 0;
-  font-size: clamp(19px, 2.8vw, 24px);
-  letter-spacing: -0.01em;
 }
 
 /* Calendar extract */

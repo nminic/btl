@@ -663,7 +663,6 @@
       "members": "Članova",
       "points": "Bodovi"
     },
-    "note": "Poredak timova je čist zbir bodova svih članova, bez normalizacije.",
     "empty": "Nema timova.",
     "backToTeams": "Nazad na timove",
     "together": "Zbirno, ceo tim",

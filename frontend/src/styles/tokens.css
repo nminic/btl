@@ -80,6 +80,11 @@
   --length-ultra: #c0362b;
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
+  /* The name of a widget or of a card: navy on the light page, white on the
+     dark one (owner, 31.07.2026). Muted grey read as a caption on the thing
+     rather than as the name of it. The navy is the one the scoreboard's own
+     pill is made of, so a heading and the figures under it belong together. */
+  --heading: var(--blue-900);
   --gold-text: var(--gold-600);
   /* A gold disc carrying an icon. Both halves flip with the theme, because the
      disc is the only edge the control has and it has to clear 3:1 against the
@@ -130,6 +135,7 @@
     --length-ultra: #f4726a;
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
+    --heading: var(--white);
     --gold-text: var(--gold-300);
     --gold-button: var(--gold-400);
     --gold-button-ink: #3a2a02;
@@ -158,6 +164,7 @@
   --length-ultra: #f4726a;
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
+  --heading: var(--white);
   --gold-text: var(--gold-300);
   --gold-button: var(--gold-400);
   --gold-button-ink: #3a2a02;

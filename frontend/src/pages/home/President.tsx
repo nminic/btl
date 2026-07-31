@@ -36,7 +36,7 @@ export function President() {
           <div className="card">
             {page.sections.map((section) => (
               <article className="address" key={section.heading}>
-                <h2 className="address__title">{section.heading}</h2>
+                <h2 className="card__title">{section.heading}</h2>
                 <Markdown text={section.body} />
               </article>
             ))}

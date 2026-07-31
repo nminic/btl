@@ -94,8 +94,6 @@ export function Teams() {
 
           return (
             <>
-              <p className="rankings__note">{t('teams.note')}</p>
-
               <div className="table-scroll">
                 <table className="table">
                   <thead>
