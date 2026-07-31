@@ -143,6 +143,7 @@ describe('monogramFor', () => {
     active: true,
     membershipBasis: 'payment',
     teamId: null,
+    teamSince: null,
     bio: '',
   }
 

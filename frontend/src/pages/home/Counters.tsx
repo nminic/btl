@@ -16,13 +16,17 @@ import { useCountUp } from './useCountUp'
  * same word twice on one screen (owner, 30.07.2026).
  */
 
-function Runner() {
+/* Kilometres are a road, not a runner (owner, 31.07.2026). A running figure was
+   the mark for the one row that is not about running at all: every other row on
+   this widget is also something a runner did, so the figure said nothing, and at
+   this size its limbs turned into a knot. A road narrowing into the distance
+   says length and says it at twenty pixels. */
+function Road() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-      <circle cx="15" cy="4.6" r="1.9" fill="currentColor" stroke="none" />
-      <path d="M13.6 9.4L9.2 11l-2.1 3.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 21l3.2-5 3.4-2-1-4.6 3.4 2.6 2.6.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3.4 19.6L8 15" strokeLinecap="round" />
+      <path d="M8.4 21L6.2 3.5" strokeLinecap="round" />
+      <path d="M15.6 21l2.2-17.5" strokeLinecap="round" />
+      <path d="M12 5.6v2.6M12 11.4v2.6M12 17.2v2.6" strokeLinecap="round" />
     </svg>
   )
 }
@@ -90,7 +94,16 @@ function Row({
   decimals?: number
 }) {
   const { locale, t } = useI18n()
-  const shown = useCountUp(value)
+  const running = useCountUp(value)
+
+  /* A row that shows no decimals must not count in them either (owner,
+     31.07.2026). The number unrolling behind this is a fraction on every frame,
+     and the races row hands it straight to the plural rules: Serbian picks a
+     form per number, so a count of 812.4 chose the form for "other" and the word
+     beside the number flickered between cases all the way up. Rounding here
+     fixes the word as well as the digits, and the rows that do show decimals are
+     untouched. */
+  const shown = decimals === 0 ? Math.round(running) : running
 
   function reading(): string {
     if (text !== undefined) {
@@ -117,20 +130,46 @@ function Row({
   )
 }
 
-export function Counters({ totals, title }: { totals: Totals; title: string }) {
+export function Counters({
+  totals,
+  title,
+}: {
+  totals: Totals
+  /**
+   * Shown above the rows on the front page and on a team, where this widget
+   * stands on its own and the heading says which season it is counting.
+   *
+   * The profile hands in nothing (owner, 31.07.2026). There the widget is the
+   * left half of a row of three, the season is chosen in the control above all
+   * of them, and the ring beside it already carries the number of races in its
+   * middle. A heading saying "Zbirna statistika" over a widget that is visibly
+   * a set of totals was a line of furniture, and the race count was the same
+   * number twice on one line. Both go, and the widget keeps its name where only
+   * a screen reader needs it.
+   */
+  title?: string
+}) {
   const { t } = useI18n()
 
   return (
-    <section className="scoreboard" aria-labelledby="counters-heading">
-      <h2 className="scoreboard__title" id="counters-heading">
-        {title}
-      </h2>
+    <section
+      className="scoreboard"
+      aria-labelledby={title === undefined ? undefined : 'counters-heading'}
+      aria-label={title === undefined ? t('profile.stats') : undefined}
+    >
+      {title !== undefined && (
+        <h2 className="scoreboard__title" id="counters-heading">
+          {title}
+        </h2>
+      )}
 
       {/* Every row carries its own unit, so a number never stands there
           meaning whatever the reader guesses (owner, 29.07.2026). */}
-      <Row icon={<Flag />} label={t('home.races')} value={totals.races} counted="home.raceCount" />
+      {title !== undefined && (
+        <Row icon={<Flag />} label={t('home.races')} value={totals.races} counted="home.raceCount" />
+      )}
       <Row
-        icon={<Runner />}
+        icon={<Road />}
         label={t('home.kilometers')}
         value={totals.kilometers}
         unit=" km"

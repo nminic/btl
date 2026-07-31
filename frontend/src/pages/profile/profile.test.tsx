@@ -19,7 +19,7 @@ describe('the biography, cut to fit beside the widgets', () => {
     const long = `${'reč '.repeat(200)}kraj`
     const cut = shortBio(long)
 
-    expect(cut.length).toBeLessThanOrEqual(601)
+    expect(cut.length).toBeLessThanOrEqual(361)
     expect(cut.endsWith('…')).toBe(true)
     // The character before the ellipsis is the end of a word, not half of one.
     expect(cut.slice(-2, -1)).not.toBe(' ')
@@ -31,7 +31,18 @@ describe('the biography, cut to fit beside the widgets', () => {
     // else might, and the layout still has to survive it.
     const wall = 'a'.repeat(900)
 
-    expect(shortBio(wall)).toHaveLength(601)
+    expect(shortBio(wall)).toHaveLength(361)
+  })
+
+  it('leaves alone a biography that fills the card without going over', () => {
+    /* The limit came down from six hundred to three hundred and sixty when the
+       widget beside it lost its heading and a row (owner, 31.07.2026). A text
+       right on the old limit must now be cut, or the card grows past the two it
+       stands beside and the row of three stops being a row. */
+    const wasFine = 'reč '.repeat(150).trim()
+
+    expect(wasFine.length).toBeGreaterThan(361)
+    expect(shortBio(wasFine).endsWith('…')).toBe(true)
   })
 })
 
@@ -79,21 +90,68 @@ describe('clearing the filters', () => {
     await user.click(screen.getByRole('button', { name: 'Poništi filtere' }))
 
     expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
-    expect((screen.getByLabelText('Dužina') as HTMLSelectElement).value).toBe('sve')
+    // The length is a row of six now, and the one that is on says which.
+    expect(screen.getByRole('button', { name: 'Sve dužine' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Maraton' })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
-describe('the ring beside its legend', () => {
-  it('breaks on the width of the box it stands in, not on the width of the window', () => {
-    /* Inside a 316px column on a wide desktop a viewport query insisted the ring
-       sat beside a legend that needs 194px, and the two collided. jsdom computes
-       no container queries, so the rule is read as text, the way the badge art
-       is tested (ADL A7). */
+describe('the length, as one row of six', () => {
+  it('narrows the table on one click and says which one is on', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/takmicar/000002?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Rezultati' })
+    const all = within(table).getAllByRole('row').length
+
+    await user.click(screen.getByRole('button', { name: 'Polumaraton' }))
+
+    const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
+    expect(narrowed.length).toBeLessThan(all)
+    expect(narrowed.length).toBeGreaterThan(1)
+    expect(screen.getByRole('button', { name: 'Polumaraton' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Sve dužine' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    // One click, and the choice is in the address so the link carries it.
+    expect(router.state.location.search).toContain('duzina=half')
+  })
+
+  it('reads the long name at every width, and shows the short one only where it has to', async () => {
+    renderAt('/sr/takmicar/000002?sezona=sve')
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+
+    /* "42,2 km" and "Maraton" are the same thing said twice, so only one of them
+       is ever read out. jsdom computes no media queries, so what is checked here
+       is the naming rather than which of the two is on screen. */
+    const marathon = screen.getByRole('button', { name: 'Maraton' })
+    expect(within(marathon).getByText('42,2 km')).toHaveAttribute('aria-hidden', 'true')
+  })
+})
+
+describe('the line that ties a name to its slice', () => {
+  it('is white on the theme the portal opens in, and readable on the other', () => {
+    /* The owner asked for a white line. White is right where the line ends, on
+       the band itself, but the stretch that crosses the card behind it would be
+       white on white in the light theme. So the colour is a token with a value
+       per theme. jsdom computes no media queries and no custom properties, so
+       the rule is read as text, the way the badge art is tested (ADL A7). */
     const css = readFileSync(join(process.cwd(), 'src/components/CategoryDonut.css'), 'utf-8')
 
-    expect(css).toContain('container-type: inline-size')
-    expect(css).toContain('@container donut (min-width: 380px)')
-    expect(css).not.toContain('@media (min-width: 620px)')
+    expect(css).toContain('--donut-leader: #ffffff')
+    expect(css).toContain("[data-theme='dark']")
+    expect(css).toContain('stroke: var(--donut-leader)')
+    // The ring turns, the text does not.
+    expect(css).toContain('.donut__ring')
+    expect(css).not.toContain('container-type: inline-size')
   })
 })
 
@@ -115,6 +173,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     active: true,
     membershipBasis: 'payment' as const,
     teamId: null,
+    teamSince: null,
     bio: '',
   })
 
@@ -123,6 +182,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     memberNumber,
     raceId: 'r1',
     eventName: 'Proba',
+    eventSlug: 'proba',
     date: '2027-05-01',
     distanceKm: 10,
     ascentM: 0,
@@ -166,11 +226,16 @@ describe('a season in which both a trophy and a plaque were taken', () => {
 describe('the address stays as short as it can be', () => {
   it('drops the season from it again when the season chosen is the one it opens on', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000007?sezona=sve')
+    const { router } = renderAt('/sr/takmicar/000007?sezona=sve')
 
     await screen.findByRole('heading', { level: 1 })
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
     const opensOn = within(season).getAllByRole('option')[1].getAttribute('value')!
+
+    /* The address it started on, which has to be the one that changes. Read from
+       the router: a memory router never touches window.location, so the old
+       assertion against it passed no matter what the screen did. */
+    expect(router.state.location.search).toBe('?sezona=sve')
 
     await user.selectOptions(season, opensOn)
 
@@ -179,7 +244,7 @@ describe('the address stays as short as it can be', () => {
        has to be on the address: the value of the control is the same either
        way. */
     expect(season.value).toBe(opensOn)
-    expect(window.location.search).toBe('')
+    expect(router.state.location.search).toBe('')
   })
 
   it('names the board a place was taken on, in both kinds', async () => {

@@ -33,6 +33,7 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   active: true,
   membershipBasis: 'payment',
   teamId: null,
+  teamSince: null,
   bio: '',
   ...extra,
 })
@@ -42,6 +43,7 @@ const result = (memberNumber: string, date: string, points: number, extra: Parti
   memberNumber,
   raceId: 'race',
   eventName: 'Trka',
+  eventSlug: 'trka',
   date,
   distanceKm: 10,
   ascentM: 100,

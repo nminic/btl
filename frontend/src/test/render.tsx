@@ -37,7 +37,15 @@ export function moderatorWith(rights: string[]): Moderator {
  */
 const ANY_MODERATOR = moderatorWith(RIGHTS.map((right) => right.key))
 
-/** Mounts the real route table at a real address, in a memory router. */
+/**
+ * Mounts the real route table at a real address, in a memory router.
+ *
+ * The router comes back with the render result, and any test that says something
+ * about the address has to read it there. `window.location` is the wrong place
+ * to look: a memory router never writes to it, so `expect(window.location.search)
+ * .toBe('')` passes whatever the screen does, and one such assertion had been
+ * sitting in the profile tests proving nothing.
+ */
 export function renderAt(
   path: string,
   role: Role = 'visitor',
@@ -49,15 +57,18 @@ export function renderAt(
 ) {
   const router = createMemoryRouter(routeObjects, { initialEntries: [path] })
 
-  return render(
-    <ClockProvider simulatedDay={today}>
-      <RoleProvider initialRole={role} initialModerator={role === 'moderator' ? moderator : null}>
-        <SessionProvider initialMemberNumber={memberNumber}>
-          <RouterProvider router={router} />
-        </SessionProvider>
-      </RoleProvider>
-    </ClockProvider>,
-  )
+  return {
+    ...render(
+      <ClockProvider simulatedDay={today}>
+        <RoleProvider initialRole={role} initialModerator={role === 'moderator' ? moderator : null}>
+          <SessionProvider initialMemberNumber={memberNumber}>
+            <RouterProvider router={router} />
+          </SessionProvider>
+        </RoleProvider>
+      </ClockProvider>,
+    ),
+    router,
+  }
 }
 
 /**

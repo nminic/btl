@@ -67,28 +67,86 @@
 .profile__name {
   margin: 0 0 0.4rem;
   font-size: clamp(26px, 4.5vw, 36px);
-  /* The heading can wrap now that the team is inside it, and the root 1.55 gapes
-     on a wrapped 36px display line. */
+  /* A long name can wrap, and the root 1.55 gapes on a wrapped 36px display
+     line. */
   line-height: 1.15;
   letter-spacing: -0.02em;
-  /* A forty character team name with no space in it must not push the page
+  /* A forty character surname with no space in it must not push the page
      sideways. */
   overflow-wrap: anywhere;
 }
 
-/* The bracket group wraps as one, so an opening bracket is never left alone at
-   the end of a line. */
-.profile__team {
+/* The club, in the line under the name and after how long this person has been
+   in the league. It wraps as one piece, so "U klubu" is never left at the end of
+   a line with the club's name on the next. */
+.profile__club {
   display: inline-block;
-  font-size: clamp(15px, 0.55em, 22px);
-  font-weight: 400;
-  color: var(--text-muted);
 }
 
 .profile__parts {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+/* The overview and its season, drawn as one control (owner, 31.07.2026). Two
+   pills side by side would have said they were two choices; they are one choice
+   and its setting. */
+.profile__part-group {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.profile__part-group:has(.profile__part-season) .profile__part {
+  border-right: 0;
+  border-radius: 999px 0 0 999px;
+}
+
+.profile__part-season {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+  padding-right: 0.4rem;
+}
+
+/* The seam between the two halves, so the group reads as two parts of one thing
+   rather than as one wide pill with a number floating in it. */
+.profile__part-season::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  border-left: 1px solid var(--border);
+}
+
+.profile__part-season select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 1.1rem 0.4rem 0.7rem;
+  cursor: pointer;
+}
+
+/* The caret the native control lost with appearance: none. Drawn on the wrapper
+   and not clickable, so the whole width still opens the list. */
+.profile__part-season::after {
+  content: '';
+  position: absolute;
+  right: 0.75rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: translateY(-0.12rem) rotate(45deg);
+  pointer-events: none;
 }
 
 .profile__part {
@@ -114,28 +172,9 @@
   color: var(--text);
 }
 
-/* Ruled off and full width, so it reads as a control over the page and not as
-   one belonging to the card nearest it. */
-.profile__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding-block: 0.75rem;
-  border-block: 1px solid var(--border);
-}
-
-.profile__controls .rankings__field {
-  flex: 1 1 12rem;
-  max-width: 22rem;
-}
-
-.profile__scope {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
+/* The band that used to hold the season, and the sentence under it explaining
+   what the season governed, are both gone: the season moved inside the control
+   that names the part (owner, 31.07.2026). */
 
 .profile__row {
   display: grid;
@@ -174,18 +213,68 @@
   color: var(--text);
 }
 
-.profile__list-controls {
+/* The six lengths, flat in one row instead of behind a list that has to be
+   opened (owner, 31.07.2026). The row is scrollable rather than wrapping,
+   because a filter that becomes two rows on one telephone and one on another is
+   a control that moves the table under the reader's thumb. Every one of the six
+   is a button, so a keyboard reaches the ones past the edge by tabbing to them
+   and the browser brings them into view. */
+.profile__lengths {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.25rem;
   margin-bottom: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.profile__list-controls .rankings__field {
-  flex: 1 1 12rem;
-  max-width: 20rem;
+.profile__lengths::-webkit-scrollbar {
+  display: none;
+}
+
+.profile__length {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile__length:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.profile__length--on {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* The short name is for the telephone only, and it is hidden from the reading
+   either way: "42,2 km" and "Maraton" are the same thing said twice. */
+.profile__length-short {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .profile__length-full {
+    display: none;
+  }
+
+  .profile__length-short {
+    display: inline;
+  }
+
+  .profile__length {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.78rem;
+  }
 }
 
 /* The empty state of the results table alone. `.profile__empty` is a muted
