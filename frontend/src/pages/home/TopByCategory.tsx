@@ -22,6 +22,46 @@ function Face({ competitor }: { competitor: Competitor }) {
   )
 }
 
+/**
+ * One column of the chart: a bar as tall as the share of races it stands for,
+ * carrying the number and, out of sight, the name it belongs to.
+ *
+ * A link while there is a profile to link to, and a plain block otherwise, the
+ * same rule the tables keep: a member whose fee has run out is hidden as though
+ * they did not exist (PDL P11), so a link to them is a door onto a wall.
+ */
+function Bar({
+  column,
+  highest,
+}: {
+  column: { competitor: Competitor; races: number }
+  highest: number
+}) {
+  const { locale } = useI18n()
+  const name = `${column.competitor.firstName} ${column.competitor.lastName}`
+  const inside = (
+    <>
+      <span className="top-cat__count">{column.races}</span>
+      <span className="visually-hidden">{name}</span>
+    </>
+  )
+  const shape = {
+    className: 'top-cat__bar',
+    style: { blockSize: `${(column.races / highest) * 100}%` },
+    title: name,
+  }
+
+  if (!column.competitor.active) {
+    return <span {...shape}>{inside}</span>
+  }
+
+  return (
+    <Link {...shape} to={`/${locale}/takmicar/${column.competitor.memberNumber}`}>
+      {inside}
+    </Link>
+  )
+}
+
 /* The bar chart from the old portal: who has run the most races of one length
  * this season, one category after another, round and round.
  *
@@ -47,7 +87,7 @@ export function TopByCategory({
   /** Only a test shortens this; nothing in the application passes it. */
   turnMs?: number
 }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const [shown, setShown] = useState(0)
   const [turning, setTurning] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -78,17 +118,7 @@ export function TopByCategory({
           {columns.map((column) => (
             <li key={column.competitor.memberNumber} className="top-cat__column">
               <Face competitor={column.competitor} />
-              <Link
-                className="top-cat__bar"
-                style={{ blockSize: `${(column.races / highest) * 100}%` }}
-                to={`/${locale}/takmicar/${column.competitor.memberNumber}`}
-                title={`${column.competitor.firstName} ${column.competitor.lastName}`}
-              >
-                <span className="top-cat__count">{column.races}</span>
-                <span className="visually-hidden">
-                  {column.competitor.firstName} {column.competitor.lastName}
-                </span>
-              </Link>
+              <Bar column={column} highest={highest} />
             </li>
           ))}
         </ol>

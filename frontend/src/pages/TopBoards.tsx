@@ -43,8 +43,12 @@ const BY_RULEBOOK: RaceCategory[] = ['ultra', 'marathon', 'long', 'half', 'short
 
 type Place = {
   /** Where the name leads. A profile on most boards, a team page on the team
-   *  board, because the row is about the team and not about one member. */
-  to: string
+   *  board, because the row is about the team and not about one member.
+   *
+   *  Missing where there is nothing to lead to: a member whose fee has run out
+   *  has no visible profile (PDL P11), so their name stands in the board with no
+   *  link on it, the same as in the tables. */
+  to?: string
   /** Unique within one board, which a member number is not on the race board:
    *  the same runner can hold two of the ten best races. */
   key: string
@@ -118,7 +122,7 @@ function Board({
                 <tr key={place.key} className={place.position <= PODIUM ? 'podium' : undefined}>
                   <td className="table__position">{place.position}</td>
                   <td>
-                    <Link to={place.to}>{place.name}</Link>
+                    {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
                   </td>
                   {place.detail !== undefined && <td className={detailClass}>{place.detail}</td>}
                   <td className="table__points">{place.value}</td>
@@ -159,7 +163,8 @@ function Boards({
   /* One pass over the results per board, and the season only changes when
    * somebody changes it, so the boards are not rebuilt on every render. */
   const boards = useMemo<BoardData[]>(() => {
-    const profile = (memberNumber: string) => `/${locale}/takmicar/${memberNumber}`
+    const profile = (who: Competitor) =>
+      who.active ? `/${locale}/takmicar/${who.memberNumber}` : undefined
     const noResults = t('topBoards.empty')
 
     /* Boards seven to eleven of Article 56, in the order the article names them:
@@ -171,7 +176,7 @@ function Boards({
       valueLabel: t('topBoards.columns.races'),
       empty: noResults,
       places: topByCategory(competitors, results, season, category, PLACES).map((column) => ({
-        to: profile(column.competitor.memberNumber),
+        to: profile(column.competitor),
         key: column.competitor.memberNumber,
         position: column.position,
         name: nameOf(column.competitor),
@@ -192,7 +197,7 @@ function Boards({
         valueLabel: t('topBoards.columns.distance'),
         empty: noResults,
         places: topByKilometers(competitors, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor.memberNumber),
+          to: profile(row.competitor),
           key: row.competitor.memberNumber,
           position: row.position,
           name: nameOf(row.competitor),
@@ -205,7 +210,7 @@ function Boards({
         valueLabel: t('topBoards.columns.time'),
         empty: noResults,
         places: topByTimeOnCourse(competitors, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor.memberNumber),
+          to: profile(row.competitor),
           key: row.competitor.memberNumber,
           position: row.position,
           name: nameOf(row.competitor),
@@ -219,7 +224,7 @@ function Boards({
         detailLabel: t('topBoards.columns.event'),
         empty: noResults,
         places: bestSingleRaces(competitors, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor.memberNumber),
+          to: profile(row.competitor),
           key: row.result.id,
           position: row.position,
           name: nameOf(row.competitor),
@@ -242,7 +247,7 @@ function Boards({
         detailIsNumber: true,
         empty: t('topBoards.progressEmpty'),
         places: topByProgress(competitors, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor.memberNumber),
+          to: profile(row.competitor),
           key: row.competitor.memberNumber,
           position: row.position,
           name: nameOf(row.competitor),

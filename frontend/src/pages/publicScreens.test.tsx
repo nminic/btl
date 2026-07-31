@@ -852,3 +852,40 @@ describe('a member whose fee has run out, in the tables', () => {
     expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
   })
 })
+
+describe('the top boards, when a member on them has left the league', () => {
+  it('keep the name on the board and take the link off it', async () => {
+    /* PDL P11 again, on the one page that builds its links from a helper rather
+       than from the shared component. Nobody in the generated data is both
+       inactive and on a board, so the list is made inactive here: without it the
+       branch exists and nothing ever walks it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith('/competitors.json')) {
+        return real(input)
+      }
+
+      const all = (await (await real(input)).json()) as { active: boolean }[]
+
+      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
+        status: 200,
+      })
+    }) as typeof fetch
+
+    try {
+      renderAt('/sr/top-liste?sezona=2019')
+
+      const board = await screen.findByRole('table', { name: 'Najviše kilometara' })
+      const names = within(board)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent)
+
+      expect(names.length).toBeGreaterThan(0)
+      expect(names.every((one) => one !== null && one.trim() !== '')).toBe(true)
+      expect(within(board).queryAllByRole('link')).toHaveLength(0)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})

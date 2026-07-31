@@ -18,7 +18,7 @@ function renderWidget(ui: React.ReactNode) {
   )
 }
 
-const competitor = (memberNumber: string): Competitor => ({
+const competitor = (memberNumber: string, active = true): Competitor => ({
   memberNumber,
   firstName: 'Ime',
   lastName: memberNumber,
@@ -28,11 +28,11 @@ const competitor = (memberNumber: string): Competitor => ({
   birthYear: 1985,
   firstSeason2027: false,
   firstSeason: 2027,
-  active: true,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
   bio: '',
+  active,
 })
 
 const result = (memberNumber: string, points: number): Result => ({
@@ -266,5 +266,45 @@ describe('TopByCategory', () => {
 
     expect(screen.getByText('Najviše kraćih trka')).toBeVisible()
     expect(screen.getByText('U ovoj sezoni još nema odtrčanih trka ove dužine.')).toBeVisible()
+  })
+})
+
+describe('a member whose fee has run out, on the front page', () => {
+  /* PDL P11: their profile is hidden as though it did not exist, so nothing may
+     link to it. The rule was kept on two screens out of eight, and the six that
+     were not keeping it did not look wrong, because the data has one such member
+     and they are in none of those lists. */
+  const gone = competitor('000099', false)
+  const still = competitor('000001')
+
+  it('has a bar in the chart, and the bar is not a link', () => {
+    renderWidget(
+      <TopByCategory
+        competitors={[gone, still]}
+        results={[result('000099', 1), result('000099', 2), result('000001', 3)]}
+        season={2027}
+      />,
+    )
+
+    const bars = screen.getAllByRole('listitem')
+    expect(bars).toHaveLength(2)
+    // One of the two names is a link and the other is not.
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByTitle('Ime 000099').tagName).toBe('SPAN')
+  })
+
+  it('is named in the top ten without a link on the name', () => {
+    renderWidget(
+      <TopTen
+        competitors={[gone, still]}
+        results={[result('000099', 20), result('000001', 10)]}
+        season={2027}
+        gender="M"
+      />,
+    )
+
+    expect(screen.getByText('Ime 000099')).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Ime 000099' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ime 000001' })).toBeInTheDocument()
   })
 })
