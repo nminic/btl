@@ -6,7 +6,6 @@ import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
 import { inYearlyWindow } from '../../data/season'
 import { useResults } from '../../data/useResource'
 import {
-  epcPayload,
   ipsPayload,
   methodsFor,
   paymentPurpose,
@@ -27,15 +26,14 @@ import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
 
-/* The dinar account, the name and the seat are the association's own and live
- * with the payloads (owner, 31.07.2026). The euro account does not exist yet:
- * the foreign currency account and the business card are the slowest thing on
- * the September list, so these two stay marked placeholders until the bank
- * answers. */
-const IBAN = 'RS00000000000000000000'
-const BIC = 'XXXXRSBG'
-const RECIPIENT = `${RECIPIENT_NAME}
-${RECIPIENT_ADDRESS}`
+/* The account, the name and the seat are the association's own and live with the
+ * payload (owner, 31.07.2026).
+ *
+ * The name alone goes into the code. The seat went in for a while, on a second
+ * line, and the field it sits in has a length limit the two together were
+ * pushing at. It is on the screen beside the code, in writing, which is where it
+ * is read anyway. */
+const RECIPIENT = RECIPIENT_NAME
 
 /** Eight euros per member brought in, credited when their fee is activated. */
 const REFERRAL_EUR = 8
@@ -221,37 +219,6 @@ export function Membership() {
                               amountRsd: price.rsd,
                               purpose,
                               reference,
-                            })}
-                          </pre>
-                        </details>
-                      </div>
-                    </div>
-                  )}
-
-                  {methods.includes('epc') && (
-                    <div className="pay">
-                      <h4>{t('membership.epc')}</h4>
-                      <p className="member__note">{t('membership.epcNote')}</p>
-                      <div className="pay__code">
-                        <QrCode
-                          text={epcPayload({
-                            iban: IBAN,
-                            bic: BIC,
-                            recipient: RECIPIENT,
-                            amountEur: price.eur,
-                            purpose,
-                          })}
-                          label={t('membership.epcQrLabel')}
-                        />
-                        <details>
-                          <summary>{t('membership.showPayload')}</summary>
-                          <pre className="pay__payload">
-                            {epcPayload({
-                              iban: IBAN,
-                              bic: BIC,
-                              recipient: RECIPIENT,
-                              amountEur: price.eur,
-                              purpose,
                             })}
                           </pre>
                         </details>

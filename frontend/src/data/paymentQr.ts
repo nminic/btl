@@ -1,16 +1,17 @@
-/* The payloads behind the payment QR codes.
+/* The payload behind the payment QR code.
  *
- * Two standards, not one, and they are not interchangeable:
+ * One standard, and only inside one country: NBS IPS, for a member paying from
+ * Serbia, in dinars, to the association's dinar account.
  *
- *   NBS IPS  for a member paying from Serbia, in dinars, to a Serbian account.
- *   EPC 069  for a member paying from a SEPA country, in euros, by IBAN.
+ * There is no code for anybody else (owner, 31.07.2026). A member abroad pays by
+ * PayPal or by card, and never sees a code at all: the association has no
+ * foreign currency account yet, and a European code would be a second account
+ * number to keep right, a second standard to get wrong, and a second thing to
+ * explain, for a way of paying that two other ways already cover.
  *
- * Only the text is built here. Turning it into an image is a separate step and
- * a separate decision; the string is the part that has to be exactly right, and
- * it is the part worth testing.
- *
- * Bosnia is in neither: it is not in SEPA, so a member there pays by PayPal
- * (PDL P8).
+ * Only the text is built here. Turning it into an image is a separate step and a
+ * separate decision; the string is the part that has to be exactly right, and it
+ * is the part worth testing.
  */
 
 /* Who the money goes to. One place, because the same four facts appear on the
@@ -55,14 +56,6 @@ export type IpsPayment = {
   reference: string
 }
 
-export type EpcPayment = {
-  iban: string
-  bic: string
-  recipient: string
-  amountEur: number
-  purpose: string
-}
-
 /** Dinars in the IPS form: "RSD" then the amount with a comma. */
 export function ipsAmount(amountRsd: number): string {
   return `RSD${amountRsd.toFixed(2).replace('.', ',')}`
@@ -103,47 +96,21 @@ export function ipsPayload(payment: IpsPayment): string {
   return parts.join('|')
 }
 
-/**
- * The EPC payload, which is line based rather than tag based. Every line counts,
- * including the empty ones: readers go by position, so a missing blank line
- * shifts everything after it.
- */
-export function epcPayload(payment: EpcPayment): string {
-  return [
-    'BCD',
-    '002',
-    '1',
-    'SCT',
-    payment.bic,
-    payment.recipient,
-    payment.iban,
-    `EUR${payment.amountEur.toFixed(2)}`,
-    '',
-    '',
-    payment.purpose,
-  ].join('\n')
-}
-
-/** SEPA covers these; Bosnia is deliberately not among them. */
-export const SEPA_COUNTRIES = ['HR', 'ME', 'MK', 'SI']
-
-export type PaymentMethod = 'ips' | 'epc' | 'paypal' | 'card'
+export type PaymentMethod = 'ips' | 'paypal' | 'card'
 
 /**
  * What a member is offered, by the country on their profile.
  *
- * PayPal must never appear for a member in Serbia. Payments through it between
- * residents of Serbia are not allowed under the foreign exchange act, so this
- * is a legal boundary and not a preference (PDL P8).
+ * Two rules, and both of them are boundaries rather than preferences.
+ *
+ * PayPal must never appear for a member in Serbia: payments through it between
+ * residents of Serbia are not allowed under the foreign exchange act (PDL P8).
+ *
+ * The slip with the code must never appear for anybody else (owner,
+ * 31.07.2026): it pays into a dinar account at a Serbian bank, and from abroad
+ * that is the slowest and dearest way there is. Abroad it is PayPal or a card,
+ * and nothing else.
  */
 export function methodsFor(country: string): PaymentMethod[] {
-  if (country === 'RS') {
-    return ['ips', 'card']
-  }
-
-  if (SEPA_COUNTRIES.includes(country)) {
-    return ['epc', 'paypal']
-  }
-
-  return ['paypal']
+  return country === 'RS' ? ['ips', 'card'] : ['paypal', 'card']
 }

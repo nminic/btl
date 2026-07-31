@@ -288,7 +288,19 @@ describe('calendar helpers', () => {
     const called: BtlEvent[] = [...events, { ...events[0], id: 'd', slug: 'd', status: 'cancelled' }]
 
     expect(eventsInMonth(called, 2027, 3).map((event) => event.id)).toEqual(['b', 'a'])
-    expect(called.some((event) => event.id === 'd')).toBe(true)
+  })
+
+  /* The same question asked twice has to get the same answer. Asking it in one
+     place and not the other put a month whose only event was cancelled on the
+     list of months that hold something, so the calendar could open on a month
+     with nothing in it. */
+  it('leaves a month out entirely when its only event was cancelled', () => {
+    const called: BtlEvent[] = [
+      events[0],
+      { ...events[2], id: 'd', slug: 'd', status: 'cancelled' },
+    ]
+
+    expect(monthsWithEvents(called)).toEqual(['2027-03'])
   })
 
   it('lists the months that hold something, oldest first', () => {

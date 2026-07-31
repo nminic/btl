@@ -28,13 +28,31 @@ type Refusing = { key: string; name: string }
  * arrives, because a payment that arrives without a reference will always need a
  * person.
  *
- * It refuses anything that is not a PDF rather than accepting it and failing
- * later, which is the one check that can honestly be made here.
+ * It refuses anything that is not a PDF by reading the first five bytes rather
+ * than by believing what the operating system called the file. A statement saved
+ * without a type is still a statement, and anything at all renamed to `.pdf` is
+ * still not one; only the file itself knows.
  */
 function Statement() {
   const { t } = useI18n()
-  const [taken, setTaken] = useState<string | null>(null)
-  const [refused, setRefused] = useState(false)
+  /* One region, always on the page, and only its text changes. A region that is
+     added to the page together with its text is one that a screen reader often
+     misses, because there was nothing there to be watching. */
+  const [said, setSaid] = useState<{ key: string; name?: string } | null>(null)
+
+  async function look(file: File | undefined) {
+    if (file === undefined) {
+      return
+    }
+
+    const opening = await file.slice(0, 5).text()
+
+    setSaid(
+      opening === '%PDF-'
+        ? { key: 'review.statement.taken', name: file.name }
+        : { key: 'review.statement.wrongKind' },
+    )
+  }
 
   return (
     <section className="statement" aria-labelledby="statement-heading">
@@ -49,29 +67,20 @@ function Statement() {
           type="file"
           accept="application/pdf"
           className="visually-hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-
-            if (file === undefined) {
-              return
-            }
-
-            setRefused(file.type !== 'application/pdf')
-            setTaken(file.type === 'application/pdf' ? file.name : null)
-          }}
+          onChange={(event) => void look(event.target.files?.[0])}
         />
       </label>
 
-      {refused && (
-        <p className="member__note statement__refused" role="status">
-          {t('review.statement.wrongKind')}
-        </p>
-      )}
-      {taken !== null && (
-        <p className="member__note" role="status">
-          {t('review.statement.taken', { name: taken })}
-        </p>
-      )}
+      <p
+        className={
+          said?.key === 'review.statement.wrongKind'
+            ? 'member__note statement__refused'
+            : 'member__note'
+        }
+        role="status"
+      >
+        {said === null ? '' : t(said.key, { name: said.name ?? '' })}
+      </p>
     </section>
   )
 }

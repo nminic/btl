@@ -781,8 +781,6 @@
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
-    "epc": "SEPA uplata sa EPC QR kodom",
-    "epcNote": "Skeniraj kod u aplikaciji svoje banke. Jeftinije od PayPala za zemlje u SEPA području.",
     "card": "Kartica",
     "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
     "paypal": "PayPal",
@@ -793,7 +791,6 @@
     "balance": "na balansu",
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu, ne prenosi se drugom članu, i briše se posle prve godine bez aktivne članarine.",
     "ipsQrLabel": "IPS QR kod za uplatnicu",
-    "epcQrLabel": "EPC QR kod za SEPA uplatu",
     "showPayload": "Prikaži sadržaj koda",
     "renewal": "Obnova članarine za {season}.",
     "renewalOpen": "Obnova je otvorena. Ne registruješ se ponovo: članski broj, profil i istorija ostaju tvoji.",
@@ -836,9 +833,9 @@
     "explanation": "Obrazloženje",
     "statement": {
       "title": "Izvod iz banke",
-      "hint": "Priloži izvod u PDF-u i uplate se rasknjižavaju po pozivu na broj. Bez izvoda se svaka uplata potvrđuje ručno, red po red, kao i do sada.",
+      "hint": "Priloži izvod u PDF-u i uplate će se rasknjižiti po pozivu na broj. Do tada svaku uplatu potvrđuješ ručno, red po red, kao i sada.",
       "choose": "Izaberi PDF izvoda",
-      "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radi server; do tada uplate potvrđuješ ručno.",
+      "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radiće server; do tada uplate potvrđuješ ručno.",
       "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen."
     }
   },

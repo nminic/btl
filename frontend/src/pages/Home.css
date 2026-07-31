@@ -215,25 +215,39 @@
    carrying the number of their place, and nothing else. The heading and the
    leader share the first line, the other nine are a three by three block. */
 
-.top10__first {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.7rem;
-  align-items: center;
-}
-
-.top10__rest {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* One grid of three columns holds the heading and all ten places: the heading
+   takes the first two cells of the first row, the leader takes the third, and
+   the other nine fill the rows under it. The list itself lays out nothing, so
+   the places are cells of the block rather than of a grid inside it. */
+.top10__block {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.6rem 0.4rem;
+  align-items: center;
   justify-items: center;
 }
 
+.top10__block .card__title {
+  grid-column: span 2;
+  justify-self: start;
+  align-self: center;
+}
+
+.top10__places {
+  display: contents;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* The number sits on the corner of the face, as it did on the old portal, so a
-   place is one thing to look at rather than a circle with a caption. */
+   place is one thing to look at rather than a circle with a caption.
+
+   The ring of card colour around the badge is what separates it from the face,
+   and it is there because the two on their own do not: gold on a face measured
+   1,62:1 on the light theme, and the face wears one of three hundred and sixty
+   colours, so no pair of values can be relied on. Against the card it is 5,53:1
+   and 8,12:1. Same reasoning as the disc on the turning chart. */
 .top10__cell {
   position: relative;
   display: grid;
@@ -262,6 +276,7 @@
   border-radius: 50%;
   background: var(--gold-button);
   color: var(--gold-button-ink);
+  box-shadow: 0 0 0 2px var(--surface);
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;

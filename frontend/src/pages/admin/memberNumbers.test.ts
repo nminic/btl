@@ -70,3 +70,23 @@ describe('handOutMemberNumber', () => {
     ).toBe('000003')
   })
 })
+
+/* A number is never handed out twice (PDL P8, owner 31.07.2026). Deleting a
+ * member takes them off every screen, and it used to take their number back into
+ * circulation with them, because the list this reads is the list the screen
+ * shows and a deleted member is not on it. */
+describe('a member number that has been handed out', () => {
+  it('stays spent after the member holding it is deleted', () => {
+    const members = [member('000001'), member('000002'), member('000003')]
+    const sources = { ...NOTHING, deletions: { members: ['000003'] } }
+
+    expect(takenMemberNumbers(members, sources)).toContain('000003')
+    expect(handOutMemberNumber(members, sources)).toBe('000004')
+  })
+
+  it('stays spent even when it is the only member there ever was', () => {
+    const sources = { ...NOTHING, deletions: { members: ['000001'] } }
+
+    expect(handOutMemberNumber([member('000001')], sources)).toBe('000002')
+  })
+})

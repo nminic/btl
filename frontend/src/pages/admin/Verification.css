@@ -92,9 +92,18 @@
   margin-block-end: 1.25rem;
 }
 
+/* The control is a hidden file input inside a label that looks like a button, so
+   the thing that takes focus and the thing that is seen are two different
+   elements. Without this the focus ring was drawn on the hidden input, one pixel
+   wide and clipped away, and keyboard users had no idea where they were. */
 .statement__pick {
   display: inline-block;
   cursor: pointer;
+}
+
+.statement__pick:focus-within .button {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .statement__refused {

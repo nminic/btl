@@ -147,9 +147,10 @@ describe('TopTen', () => {
 
     const block = screen.getByRole('list')
 
-    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(9)
-    expect(within(block).getAllByRole('listitem')).toHaveLength(3)
-    // The leader stands outside the block, so the board carries four faces.
+    /* Ten places in one list, the leader among them: a board headed "Top 10"
+       that reports nine to a screen reader is not the board it says it is. */
+    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
+    expect(within(block).getAllByRole('listitem')).toHaveLength(4)
     expect(screen.getAllByRole('link', { name: /^\d+\. Ime/ })).toHaveLength(4)
   })
 
@@ -191,12 +192,15 @@ describe('TopTen', () => {
   })
 
   it('draws a circle and no link at all where the league has nobody', () => {
-    const { container } = renderWidget(
-      <TopTen competitors={[]} results={[]} season={2027} gender="F" />,
-    )
+    renderWidget(<TopTen competitors={[]} results={[]} season={2027} gender="F" />)
 
     expect(screen.queryByRole('link', { name: /Ime/ })).not.toBeInTheDocument()
-    expect(container.querySelectorAll('.portrait--empty')).toHaveLength(10)
+    /* Ten empty places, and every one of them out of the reading: a board of ten
+       circles with nobody in them is not ten facts. */
+    const block = screen.getByRole('list')
+
+    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
+    expect(within(block).queryAllByRole('listitem')).toHaveLength(0)
   })
 })
 

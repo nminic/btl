@@ -346,24 +346,34 @@ export function categoriesOf(
 }
 
 /**
- * The events of one month, oldest first.
+ * Whether an event is drawn in the calendar at all.
  *
- * A cancelled event is not among them (owner, 31.07.2026). It keeps its record
- * rather than being deleted, because somebody has it in their calendar and a
- * subscription has to be able to say it is off; what it loses is its square in
- * the grid, where it would otherwise read as something still to come.
+ * A cancelled one is not (owner, 31.07.2026). It keeps its record rather than
+ * being deleted, because somebody has it in their calendar and a subscription
+ * has to be able to say it is off; what it loses is its square in the grid,
+ * where it would otherwise read as something still to come.
+ *
+ * One predicate for every question the calendar asks. Asking it in one place and
+ * not the other put a month whose only event was cancelled on the list of months
+ * that hold something, and opening the calendar on an empty month is the worst
+ * of the three outcomes this file is written to avoid.
  */
+function inCalendar(event: BtlEvent): boolean {
+  return event.status !== 'cancelled'
+}
+
+/** The events of one month, oldest first. */
 export function eventsInMonth(events: BtlEvent[], year: number, month: number): BtlEvent[] {
   const prefix = `${year}-${String(month).padStart(2, '0')}`
 
   return events
-    .filter((event) => event.date.startsWith(prefix) && event.status !== 'cancelled')
+    .filter((event) => event.date.startsWith(prefix) && inCalendar(event))
     .sort((left, right) => left.date.localeCompare(right.date))
 }
 
 /** Every month that holds at least one event, oldest first, as "YYYY-MM". */
 export function monthsWithEvents(events: BtlEvent[]): string[] {
-  return [...new Set(events.map((event) => event.date.slice(0, 7)))].sort()
+  return [...new Set(events.filter(inCalendar).map((event) => event.date.slice(0, 7)))].sort()
 }
 
 /**

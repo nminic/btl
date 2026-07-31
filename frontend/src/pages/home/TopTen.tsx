@@ -72,40 +72,39 @@ export function TopTen({
   const { locale, t } = useI18n()
   const slots = boardOfTen(competitors, results, season, gender)
   const headingId = `top-ten-${gender}`
-  const rest = Array.from({ length: BOARD_PLACES - 1 }, (_, index) => slots[index + 1])
+  const places = Array.from({ length: BOARD_PLACES }, (_, index) => slots[index])
 
   return (
     <section className="card top10" aria-labelledby={headingId}>
-      <div className="top10__first">
+      {/* The heading takes the first two cells of the block and the leader takes
+          the third, which is the shape the old portal had. The list is what
+          holds all ten places, so what a screen reader meets is one list of ten
+          and not a list of nine with somebody standing outside it. `role` is
+          written out because `display: contents` and a list with no markers are
+          each enough, on their own, to make a browser forget it is a list. */}
+      <div className="top10__block">
         <h2 className="card__title" id={headingId}>
           {t(gender === 'M' ? 'home.topMen' : 'home.topWomen')}
         </h2>
 
-        <div className="top10__cell">
-          <Face slot={slots[0]?.competitor} place={1} />
-          <span className="top10__place" aria-hidden="true">
-            {t('home.place', { place: 1 })}
-          </span>
-        </div>
+        <ol className="top10__places" role="list">
+          {places.map((slot, index) => (
+            <li
+              className="top10__cell"
+              key={slot?.competitor.memberNumber ?? `empty-${index}`}
+              /* A place with nobody in it is a circle and no more, and it is out
+                 of the reading entirely: "place five, empty" is not a fact
+                 anybody needs read out to them. */
+              aria-hidden={slot === undefined ? 'true' : undefined}
+            >
+              <Face slot={slot?.competitor} place={index + 1} />
+              <span className="top10__place" aria-hidden="true">
+                {t('home.place', { place: index + 1 })}
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
-
-      <ol className="top10__rest">
-        {rest.map((slot, index) => (
-          <li
-            className="top10__cell"
-            key={slot?.competitor.memberNumber ?? `empty-${index}`}
-            /* A place with nobody in it is a circle and no more, and it is out
-               of the reading entirely: "place five, empty" is not a fact
-               anybody needs read out to them. */
-            aria-hidden={slot === undefined ? 'true' : undefined}
-          >
-            <Face slot={slot?.competitor} place={index + 2} />
-            <span className="top10__place" aria-hidden="true">
-              {t('home.place', { place: index + 2 })}
-            </span>
-          </li>
-        ))}
-      </ol>
 
       {/* The standing lives at /tabela; /top-liste is the page of Top 10 boards
           beside it (PDL P28a). */}
