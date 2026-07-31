@@ -97,6 +97,13 @@
   text-align: right;
 }
 
+/* And the turned headings sit in the middle of their own column. The same
+   shared rule left-aligned the first of them and no other, so one column's
+   heading stood twelve pixels off from all the rest. */
+.league__grid thead th.league__race {
+  text-align: center;
+}
+
 @media (max-width: 620px) {
   .league__who {
     inline-size: 7.5rem;

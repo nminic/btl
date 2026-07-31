@@ -176,7 +176,7 @@
       "title": "Takmičenje u ligi",
       "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
       "recordTitle": "{name}",
-      "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
+      "recordDescription": "{name}: poredak i događaji koji u sezoni {season} ulaze u ovo takmičenje."
     },
     "leagueRules": {
       "title": "Propozicije takmičenja",

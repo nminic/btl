@@ -85,7 +85,9 @@ function Grid({
                   className="league__race-name"
                   title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
                 >
-                  {column.race}, {formatShortDate(column.date, locale)}, {column.event}
+                  {column.ambiguous
+                    ? `${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`
+                    : `${column.race}, ${formatShortDate(column.date, locale)}, ${column.event}`}
                 </span>
               </th>
             ))}

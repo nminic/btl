@@ -16,6 +16,18 @@ export type LeagueColumn = {
   event: string
   race: string
   date: string
+  /**
+   * Whether this race and this date belong to more than one event in the
+   * competition.
+   *
+   * The heading is turned on its side and has to be cut somewhere, and the cut
+   * has to fall on the part that repeats. Usually that is the name of the event,
+   * because one event holds several races on one day. Twice in the main
+   * competition of 2027 it is the other way round: "10.00 km, 4. 9. 2027." is
+   * both 10K Belgrade and Beljanica trail. Where that happens the name goes
+   * first instead.
+   */
+  ambiguous: boolean
   /** Only for the ordering. Within one day the shorter race comes first, and
    *  by name "10 km" would come before "5 km". */
   distanceKm: number
@@ -74,10 +86,29 @@ export function leagueTable(
               race: race.name,
               date: event.date,
               distanceKm: race.distanceKm,
+              ambiguous: false,
             },
           ]
     })
     .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
+
+  const seen = new Map<string, number>()
+
+  for (const column of columns) {
+    const key = `${column.race}|${column.date}`
+    seen.set(key, (seen.get(key) ?? 0) + 1)
+  }
+
+  /* The keys that more than one event holds. Kept as a set rather than read back
+     out of the counts with a fallback: every column was just counted into them,
+     so the fallback is a branch that can never be taken. */
+  const shared = new Set(
+    [...seen.entries()].filter(([, howMany]) => howMany > 1).map(([key]) => key),
+  )
+
+  for (const column of columns) {
+    column.ambiguous = shared.has(`${column.race}|${column.date}`)
+  }
 
   const counts = new Set(columns.map((one) => one.raceId))
   const byMember = new Map<string, Map<string, number>>()

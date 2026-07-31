@@ -161,3 +161,27 @@ describe('the grid of a competition', () => {
     expect(table.rows[0].total).toBe(17)
   })
 })
+
+describe('a heading that has to be cut somewhere', () => {
+  it('puts the event first when the race and the date do not tell two columns apart', () => {
+    /* Twice in the main competition of 2027 two different events hold the same
+       length on the same day: "10.00 km, 4. 9. 2027." is both 10K Belgrade and
+       Beljanica trail. The turned heading is cut at its end, so what repeats has
+       to go last, and which part repeats is not the same every time. */
+    const table = leagueTable(
+      { ...league, eventIds: ['e1', 'e2'] },
+      [event('e1', '2019-05-01'), event('e2', '2019-05-01')],
+      [race('r1', 'e1', '10 km'), race('r2', 'e2', '10 km')],
+      [],
+      [],
+    )
+
+    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
+  })
+
+  it('leaves the event last when the race and the date already tell them apart', () => {
+    const table = leagueTable(league, events, races, [], [])
+
+    expect(table.columns.every((one) => one.ambiguous)).toBe(false)
+  })
+})
