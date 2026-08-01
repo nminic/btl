@@ -18,7 +18,9 @@ import {
   seasonsWithResults,
   totalsOf,
   withPlaces,
+  monthFrom,
 } from './derive'
+import { at, first } from '../test/at'
 import type { BtlEvent, Competitor, Result, Team } from './types'
 
 const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Competitor => ({
@@ -125,10 +127,12 @@ describe('rankingFor', () => {
   })
 
   it('sums every race of the season and no other season', () => {
-    const [first, second] = rankingFor(competitors, results, { season: 2027, gender: 'M' })
+    const men = rankingFor(competitors, results, { season: 2027, gender: 'M' })
+    const leader = first(men)
+    const second = at(men, 1)
 
-    expect(first.points).toBe(10)
-    expect(first.races).toBe(2)
+    expect(leader.points).toBe(10)
+    expect(leader.races).toBe(2)
     expect(second.points).toBe(10)
     // 99 points from 2026 must not leak into the 2027 standing.
     expect(second.races).toBe(1)
@@ -138,9 +142,9 @@ describe('rankingFor', () => {
     const men = rankingFor(competitors, results, { season: 2027, gender: 'M' })
 
     // 000001 and 000002 both have 10 points; 000002 ran twice for them.
-    expect(men[0].competitor.memberNumber).toBe('000002')
-    expect(men[0].position).toBe(1)
-    expect(men[1].position).toBe(2)
+    expect(first(men).competitor.memberNumber).toBe('000002')
+    expect(first(men).position).toBe(1)
+    expect(at(men, 1).position).toBe(2)
   })
 
   it('leaves out anyone who did not race that season', () => {
@@ -172,8 +176,8 @@ describe('rankingFor', () => {
 
     expect(byName).toHaveLength(1)
     // Position 3 and not 1: searching narrows the view, it does not re-rank.
-    expect(byName[0].position).toBe(3)
-    expect(byNumber[0].competitor.memberNumber).toBe('000001')
+    expect(first(byName).position).toBe(3)
+    expect(first(byNumber).competitor.memberNumber).toBe('000001')
   })
 
   it('ignores an empty search', () => {
@@ -260,20 +264,23 @@ describe('categoriesOf', () => {
 })
 
 describe('calendar helpers', () => {
-  const events: BtlEvent[] = [
-    {
-      id: 'a', slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
-      organizer: 'x', status: 'confirmed', raceIds: [],
-    },
-    {
-      id: 'b', slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
-      organizer: 'x', status: 'announced', raceIds: [],
-    },
-    {
-      id: 'c', slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
-      organizer: 'x', status: 'announced', raceIds: [],
-    },
-  ]
+  /* Named one by one rather than reached for by position, because the tests
+     below take a copy of a particular one and call it off, and "the event of 6
+     March" says which one that is where an index only says where it sits. */
+  const sixthOfMarch: BtlEvent = {
+    id: 'a', slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
+    organizer: 'x', status: 'confirmed', raceIds: [],
+  }
+  const secondOfMarch: BtlEvent = {
+    id: 'b', slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
+    organizer: 'x', status: 'announced', raceIds: [],
+  }
+  const tenthOfApril: BtlEvent = {
+    id: 'c', slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
+    organizer: 'x', status: 'announced', raceIds: [],
+  }
+
+  const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
 
   it('takes one month, in date order', () => {
     expect(eventsInMonth(events, 2027, 3).map((event) => event.id)).toEqual(['b', 'a'])
@@ -285,7 +292,10 @@ describe('calendar helpers', () => {
        has it in their calendar and a subscription has to be able to say it is
        off; what it loses is its square in the grid, where it would read as
        something still to come. */
-    const called: BtlEvent[] = [...events, { ...events[0], id: 'd', slug: 'd', status: 'cancelled' }]
+    const called: BtlEvent[] = [
+      ...events,
+      { ...sixthOfMarch, id: 'd', slug: 'd', status: 'cancelled' },
+    ]
 
     expect(eventsInMonth(called, 2027, 3).map((event) => event.id)).toEqual(['b', 'a'])
   })
@@ -296,8 +306,8 @@ describe('calendar helpers', () => {
      with nothing in it. */
   it('leaves a month out entirely when its only event was cancelled', () => {
     const called: BtlEvent[] = [
-      events[0],
-      { ...events[2], id: 'd', slug: 'd', status: 'cancelled' },
+      sixthOfMarch,
+      { ...tenthOfApril, id: 'd', slug: 'd', status: 'cancelled' },
     ]
 
     expect(monthsWithEvents(called)).toEqual(['2027-03'])
@@ -382,6 +392,27 @@ describe('defaultSeason', () => {
   })
 })
 
+describe('monthFrom', () => {
+  /* `?mesec=2026` has a year and no month. It passed straight through, and
+     `Number('')` is 0 rather than NaN, so the calendar drew a thirty-one day
+     grid headed January 2026 over the columns of December 2025 with every real
+     event missing. Nothing threw. */
+  it.each([
+    ['2027-05', '2027-05'],
+    ['2026', '2026-08'],
+    ['2027-13', '2026-08'],
+    ['2027-00', '2026-08'],
+    ['mesec', '2026-08'],
+    ['', '2026-08'],
+  ])('reads %s as %s', (asked, expected) => {
+    expect(monthFrom(asked, '2026-08')).toBe(expected)
+  })
+
+  it('falls back when the address says nothing at all', () => {
+    expect(monthFrom(null, '2026-08')).toBe('2026-08')
+  })
+})
+
 describe('rankTeams', () => {
   const team = (id: string): Team => ({
     id,
@@ -423,10 +454,10 @@ describe('rankTeams', () => {
       result('000004', '2027-01-01', 10),
     ]
 
-    const ranked = rankTeams(teams, competitors, results, 2027)
+    const winner = first(rankTeams(teams, competitors, results, 2027))
 
-    expect(ranked[0].team.id).toBe('big')
-    expect(ranked[0].members).toBe(2)
+    expect(winner.team.id).toBe('big')
+    expect(winner.members).toBe(2)
   })
 
   /* The rest of the ladder from PDL P12, below the member count: the kilometres
@@ -502,15 +533,15 @@ describe('rankTeams', () => {
     ]
     const results = [result('000001', '2020-05-01', 30), result('000002', '2020-05-01', 40)]
 
-    const in2020 = rankTeams(teams, competitors, results, 2020)[0]
-    expect(in2020?.members).toBe(0)
-    expect(in2020?.totals.points).toBe(0)
+    const in2020 = first(rankTeams(teams, competitors, results, 2020))
+    expect(in2020.members).toBe(0)
+    expect(in2020.totals.points).toBe(0)
 
-    const in2021 = rankTeams(teams, competitors, results, 2021)[0]
-    expect(in2021?.members).toBe(1)
-    expect(in2021?.totals.points).toBe(30)
+    const in2021 = first(rankTeams(teams, competitors, results, 2021))
+    expect(in2021.members).toBe(1)
+    expect(in2021.totals.points).toBe(30)
 
-    expect(rankTeams(teams, competitors, results, 2027)[0]?.members).toBe(2)
+    expect(first(rankTeams(teams, competitors, results, 2027)).members).toBe(2)
   })
 })
 
@@ -647,8 +678,8 @@ describe('topByCategory', () => {
     const columns = topByCategory(competitors, results, 2027, 'short', 10)
 
     expect(columns.map((one) => one.competitor.memberNumber)).toEqual(['000001', '000002'])
-    expect(columns[0].races).toBe(2)
-    expect(columns[0].position).toBe(1)
+    expect(first(columns).races).toBe(2)
+    expect(first(columns).position).toBe(1)
   })
 
   it('leaves out anyone who ran none of that length', () => {
@@ -783,7 +814,7 @@ describe('topByKilometers', () => {
       '000008',
     ])
     expect(rows.map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 5])
-    expect(rows[0].kilometers).toBe(30)
+    expect(first(rows).kilometers).toBe(30)
   })
 
   it('counts one season and stops at the limit it is given', () => {
@@ -844,7 +875,7 @@ describe('rankMembers', () => {
 
     expect(rows).toHaveLength(3)
     expect(rows.map((row) => row.position)).toEqual([1, 2, 2])
-    expect(rows[0].competitor.memberNumber).toBe('000002')
+    expect(first(rows).competitor.memberNumber).toBe('000002')
   })
 })
 
@@ -944,7 +975,7 @@ describe('boardOfTen', () => {
     const board = boardOfTen(twelve, [result('000009', '2027-03-01', 40)], 2027, 'M')
 
     expect(board).toHaveLength(10)
-    expect(board[0].competitor.memberNumber).toBe('000009')
+    expect(first(board).competitor.memberNumber).toBe('000009')
     // The order they joined in, and 000009 is not taken twice.
     expect(board.slice(1).map((slot) => slot.competitor.memberNumber)).toEqual([
       '000001',

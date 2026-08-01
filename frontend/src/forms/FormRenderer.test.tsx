@@ -1,9 +1,26 @@
+import { useState } from 'react'
 import { screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
 import type { FormDef } from './types'
+
+/* The renderer keeps its values in state, seeded once from the definition it was
+ * first given. A screen that swaps one definition for another without remounting
+ * therefore hands it fields it is holding nothing for, and those must draw empty
+ * rather than draw `undefined` or fall over. The entity editor is the screen
+ * that can do it: it renders one FormRenderer with no key and picks the
+ * definition by which entity is being edited. */
+const grown: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'ime', type: 'text', labelKey: 'proba.ime', required: true },
+    { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+  ],
+}
 
 const everyType: FormDef = {
   id: 'proba',
@@ -187,5 +204,37 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/Veličina majice/)).toBeInTheDocument()
     expect(screen.getByText('Od države zavisi koji načini plaćanja ti se nude.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeInTheDocument()
+  })
+})
+
+describe('a definition swapped under a form that is already on screen', () => {
+  it('draws a field it is holding nothing for as empty, not as undefined', async () => {
+    const smaller: FormDef = { ...grown, fields: grown.fields.slice(0, 1) }
+
+    function Swapping() {
+      const [form, setForm] = useState(smaller)
+
+      return (
+        <>
+          <button type="button" onClick={() => setForm(grown)}>
+            zameni
+          </button>
+          <FormRenderer form={form} onSubmit={() => {}} />
+        </>
+      )
+    }
+
+    const user = setupUser()
+    renderWithI18n(<Swapping />)
+
+    expect(screen.queryByLabelText(/proba.dopisano/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'zameni' }))
+
+    /* Empty, and not the word "undefined", which is what an unguarded lookup
+       would put in the box. The state was seeded from the first definition and
+       is not reseeded, so this field is the one case the renderer holds nothing
+       for. */
+    expect(screen.getByLabelText(/proba.dopisano/)).toHaveValue('')
   })
 })

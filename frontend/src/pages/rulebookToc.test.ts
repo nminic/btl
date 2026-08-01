@@ -23,14 +23,14 @@ describe('tableOfContents', () => {
   })
 
   it('falls back to the position when two headings read the same', () => {
-    const entries = tableOfContents(['Nagrade', 'Nagrade'])
-
-    expect(entries[0].id).toBe('nagrade')
-    expect(entries[1].id).toBe('sekcija-2')
+    expect(tableOfContents(['Nagrade', 'Nagrade'])).toEqual([
+      { heading: 'Nagrade', id: 'nagrade' },
+      { heading: 'Nagrade', id: 'sekcija-2' },
+    ])
   })
 
   it('falls back to the position when a heading holds no letters', () => {
-    expect(tableOfContents(['***'])[0].id).toBe('sekcija-1')
+    expect(tableOfContents(['***'])).toEqual([{ heading: '***', id: 'sekcija-1' }])
   })
 
   it('goes past the fallback when a heading already reads like one', () => {

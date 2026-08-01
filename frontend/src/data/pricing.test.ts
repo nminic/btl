@@ -7,6 +7,7 @@ import {
   registrationOpen,
   seasonOnOffer,
 } from './pricing'
+import { first, last } from '../test/at'
 
 describe('the four periods', () => {
   it('tile the year with no gap and no overlap', () => {
@@ -15,14 +16,19 @@ describe('the four periods', () => {
        list runs out. If a period is ever moved, this is what says so. */
     const inOrder = [...PRICES].sort((left, right) => left.from.localeCompare(right.from))
 
-    expect(inOrder[0].from).toBe('01-01')
-    expect(inOrder[inOrder.length - 1].to).toBe('12-31')
+    expect(first(inOrder).from).toBe('01-01')
+    expect(last(inOrder).to).toBe('12-31')
 
-    inOrder.slice(1).forEach((row, index) => {
-      const before = inOrder[index]
+    /* Each period against the one before it, walked rather than indexed: reduce
+       without a starting value hands the row before to every step, and the pair
+       is what "no gap and no overlap" is a claim about. It is also how priceOn
+       walks the same list. */
+    inOrder.reduce((before, row) => {
       const dayAfter = new Date(Date.parse(`2027-${before.to}T00:00:00Z`) + 86_400_000)
 
       expect(row.from).toBe(dayAfter.toISOString().slice(5, 10))
+
+      return row
     })
   })
 })

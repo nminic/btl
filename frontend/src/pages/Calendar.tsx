@@ -2,7 +2,14 @@ import type { CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { defaultMonth, eventsInMonth, monthDays } from '../data/derive'
+import {
+  defaultMonth,
+  eventsInMonth,
+  monthDays,
+  monthFrom,
+  monthNumbers,
+  shiftMonth,
+} from '../data/derive'
 import type { BtlEvent, Race } from '../data/types'
 import { combinePair, useEvents, useRaces } from '../data/useResource'
 import { formatDate, formatMonth } from '../i18n/format'
@@ -18,13 +25,6 @@ import './Calendar.css'
 const EVENTS_PER_DAY = 5
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
-
-function shiftMonth(month: string, by: number): string {
-  const [year, index] = month.split('-').map(Number)
-  const moved = new Date(Date.UTC(year, index - 1 + by, 1))
-
-  return `${moved.getUTCFullYear()}-${String(moved.getUTCMonth() + 1).padStart(2, '0')}`
-}
 
 /**
  * One day of the month.
@@ -117,8 +117,8 @@ export function Calendar() {
 
       <Resource state={state}>
         {([events, races]) => {
-          const month = params.get('mesec') ?? defaultMonth(events, today)
-          const [year, index] = month.split('-').map(Number)
+          const month = monthFrom(params.get('mesec'), defaultMonth(events, today))
+          const { year, index } = monthNumbers(month)
           const { days, offset } = monthDays(year, index)
           const byDay = new Map<string, BtlEvent[]>()
 

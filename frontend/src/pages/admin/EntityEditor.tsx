@@ -4,7 +4,7 @@ import { shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldOption, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { idFor, takenIdentity, type EntityDef, type Editing } from './entityForms'
+import { fieldValues, idFor, takenIdentity, type EntityDef, type Editing } from './entityForms'
 import './Entity.css'
 
 /* One record of one entity, opened whole.
@@ -83,10 +83,15 @@ export function EntityEditor({
           <h2 id="entity-saved-title">{t('admin.form.saved')}</h2>
           <p>{t('admin.form.savedNote')}</p>
           <dl>
-            {form.fields.map((field) => (
+            {/* Every value that was saved, beside the field it was saved in.
+                Read as pairs so that what the confirmation shows is what was
+                written down, rather than a field of the form standing over
+                whatever the values happened to hold for its name
+                (entityForms.ts, fieldValues). */}
+            {fieldValues(form, saved).map(({ field, value }) => (
               <div key={field.name}>
                 <dt>{t(field.labelKey)}</dt>
-                <dd>{t(shownValue(field, saved[field.name], options))}</dd>
+                <dd>{t(shownValue(field, value, options))}</dd>
               </div>
             ))}
             {/* What was saved without being asked for, read off the rest of it. */}

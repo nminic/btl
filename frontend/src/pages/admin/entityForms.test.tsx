@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
+import { at, first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { BADGE_KINDS } from '../../data/badgeRule'
@@ -128,7 +129,7 @@ describe('every entity can be opened and changed whole', () => {
     renderAt(`/sr/${path}`, 'superadmin')
 
     const table = await screen.findByRole('table', { name: list })
-    await user.click(within(table).getAllByRole('button', { name: /^Otvori:/ })[0])
+    await user.click(first(within(table).getAllByRole('button', { name: /^Otvori:/ })))
 
     expect(screen.getByRole('heading', { level: 2, name: title })).toBeVisible()
 
@@ -161,7 +162,7 @@ describe('the confirmation that a record was saved', () => {
     renderAt('/sr/administracija/timovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Timovi' })
-    await user.click(within(table).getAllByRole('button', { name: /^Otvori:/ })[0])
+    await user.click(first(within(table).getAllByRole('button', { name: /^Otvori:/ })))
     await user.click(open(title).getByRole('button', { name: t('form.submit') }))
 
     /* The whole form goes away and the confirmation takes its place, so the button
@@ -227,7 +228,7 @@ describe('a record that is entered rather than changed', () => {
 
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
     // The generated members hold 000001 to 000031, so the first free one is next.
-    const row = within(list.getByText('000033').closest('tr')!)
+    const row = within(must(list.getByText('000033').closest('tr'), 'tr'))
 
     expect(row.getByText('Milica Pavlović')).toBeVisible()
     // The year of birth is on this screen and on no other (PDL P11, P23).
@@ -266,7 +267,7 @@ describe('a record that is entered rather than changed', () => {
        the generated badges have rules of their own and some of them read the
        same way. */
     for (const name of ['Prvih deset', 'Prvih sto']) {
-      const row = within(list.getByText(name).closest('tr')!)
+      const row = within(must(list.getByText(name).closest('tr'), 'tr'))
       expect(row.getByText(/ukupno kilometara bude najmanje 100/)).toBeVisible()
     }
 
@@ -350,8 +351,8 @@ describe('the identity of a record', () => {
     /* The second must not read the file and hand out 000033 again: what the screen
        shows is what counts as taken, records entered a moment ago included. */
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(within(list.getByText('000033').closest('tr')!).getByText(/Milica/)).toBeVisible()
-    expect(within(list.getByText('000034').closest('tr')!).getByText(/Jelena/)).toBeVisible()
+    expect(within(must(list.getByText('000033').closest('tr'), 'tr')).getByText(/Milica/)).toBeVisible()
+    expect(within(must(list.getByText('000034').closest('tr'), 'tr')).getByText(/Jelena/)).toBeVisible()
   })
 
   it('is refused for a written page whose address answers already', async () => {
@@ -389,7 +390,7 @@ describe('the identity of a record', () => {
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     const list = within(await screen.findByRole('table', { name: 'Statične strane' }))
-    const row = within(list.getByRole('link', { name: '/nova-strana' }).closest('tr')!)
+    const row = within(must(list.getByRole('link', { name: '/nova-strana' }).closest('tr'), 'tr'))
 
     expect(row.getByRole('button', { name: 'Otvori: Drugi pravilnik' })).toBeVisible()
     // Exactly one row more: the refused attempt left nothing behind either.
@@ -402,7 +403,7 @@ describe('the identity of a record', () => {
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
-    await user.click(within(table).getAllByRole('button', { name: /^Otvori:/ })[0])
+    await user.click(first(within(table).getAllByRole('button', { name: /^Otvori:/ })))
 
     const form = open(title)
     await user.clear(form.getByLabelText(labelled(t('admin.field.city'))))
@@ -432,7 +433,8 @@ describe('the category of a race', () => {
     expect(form.getByText(t('admin.field.categoryFromDistance'))).toBeVisible()
 
     const events = form.getByLabelText(labelled(t('admin.field.event'))) as HTMLSelectElement
-    await user.selectOptions(events, events.options[1].value)
+    // The first option is the empty one, so the first event offered is the second.
+    await user.selectOptions(events, at(events.options, 1).value)
     await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera kategorije')
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')

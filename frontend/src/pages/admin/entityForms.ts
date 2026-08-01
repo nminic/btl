@@ -10,7 +10,7 @@ import znacka from '../../forms/definitions/admin-znacka.form.json'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { applyChanges, recordValue } from '../../forms/records'
-import type { DerivedField, FieldError, FormDef, FormValues } from '../../forms/types'
+import type { DerivedField, FieldDef, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Deletions, Edits } from '../../session/context'
 
 /* The nine entities administration owns, described rather than programmed.
@@ -306,12 +306,34 @@ export function takenIdentity(
     : {}
 }
 
+/**
+ * What a form holds, value by value, with the field each value belongs to.
+ *
+ * Walked from the values and matched to the fields, rather than walked from the
+ * fields and reaching into the values by name. The two are one thing seen twice:
+ * a form's values are written from that same form's fields and cover them
+ * exactly (forms/validate.ts, emptyValues). Reaching in by name is nevertheless
+ * a question that can be asked about a field the values say nothing about, and
+ * whatever the answer to that question were, it would be a value nobody typed
+ * being written into a record or shown on a confirmation as though somebody had.
+ * Paired this way there is no such question: every value that comes out arrived
+ * with the field that describes it.
+ */
+export function fieldValues<T extends string | boolean>(
+  form: FormDef,
+  values: Record<string, T>,
+): { field: FieldDef; value: T }[] {
+  return Object.entries(values).flatMap(([name, value]) =>
+    form.fields.filter((field) => field.name === name).map((field) => ({ field, value })),
+  )
+}
+
 /** A created record in the shape the lists read. */
 export function recordFrom(entity: EntityDef, created: Created): Record<string, unknown> {
   const record: Record<string, unknown> = { ...entity.blank }
 
-  for (const field of entity.form.fields) {
-    record[field.name] = recordValue(field, created.values[field.name])
+  for (const { field, value } of fieldValues(entity.form, created.values)) {
+    record[field.name] = recordValue(field, value)
   }
 
   /* What the form did not ask for but the record carries all the same, read off

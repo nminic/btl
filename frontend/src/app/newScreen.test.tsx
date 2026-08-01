@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen } from '@testing-library/react'
+import { first } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -29,7 +30,7 @@ describe('arriving on a new screen', () => {
     renderAt('/sr/takmicari')
 
     await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
-    await user.click((await screen.findAllByRole('link', { name: /000/ }))[0])
+    await user.click(first(await screen.findAllByRole('link', { name: /000/ })))
     await screen.findByRole('heading', { level: 1, name: /\w/ })
 
     /* Otherwise the focus stays on `body`: a screen reader carries on from the
@@ -65,7 +66,7 @@ describe('the scroll, on the way between screens', () => {
     await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
     vi.mocked(window.scrollTo).mockClear()
 
-    await user.click((await screen.findAllByRole('link', { name: /000/ }))[0])
+    await user.click(first(await screen.findAllByRole('link', { name: /000/ })))
     await screen.findByRole('heading', { level: 1, name: /\w/ })
 
     /* A data router turns the browser's own handling off, so a profile opened

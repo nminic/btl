@@ -49,7 +49,15 @@ describe('every administrative address', () => {
   it('names a right that exists, wherever it names one', () => {
     /* A need pointing at a key no box in the matrix carries would be a screen
        nobody could ever be given, and it would fail silently: unticked is the
-       same shape as unknown. */
+       same shape as unknown.
+
+       Narrower than it was, and the reason is worth knowing. The rights of the
+       eight queues and the nine entities are now built by one pair of functions
+       that both the matrix and the needs call, so for those the two sides can no
+       longer disagree and this cannot go red. What it still catches is a need
+       written by hand, and an entity whose right is filtered out of the matrix
+       by `superadminOnly` while the need still asks for it, which is a real
+       shape and the one that made this test worth writing. */
     const keys = new Set(RIGHTS.map((right) => right.key))
     const wrong = Object.values(NEEDS).filter(
       (need) => need.of === 'right' && !keys.has(need.right.key),

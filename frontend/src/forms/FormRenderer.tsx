@@ -285,7 +285,11 @@ export function FormRenderer({
         <Field
           key={field.name}
           field={field}
-          value={values[field.name]}
+          /* A field the form is holding nothing for shows empty, which is what
+             a form nobody has typed into yet is: `emptyValues` puts a value
+             there for every field of the definition, and a checkbox reads an
+             empty string as unchecked. */
+          value={values[field.name] ?? ''}
           error={errors[field.name]}
           choices={optionsFor(field, options)}
           onChange={handleChange}

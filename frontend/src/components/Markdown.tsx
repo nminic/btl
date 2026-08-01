@@ -21,12 +21,19 @@ type Block =
   | { kind: 'table'; rows: string[][] }
   | { kind: 'rule' }
 
+/* What a line can be. Each shape says where the mark ends and nothing more, and
+ * the piece that carries the text is cut out of the line itself: a capture group
+ * hands its text back as something that might not be there, and answering for a
+ * heading with no words on it is a decision that belongs to nobody, about a case
+ * the shape has already ruled out. Every shape is read by one function, once. */
 const RULE = /^-{3,}$/
-const HEADING = /^(#{2,6})\s+(.+)$/
-const BULLET = /^[-*]\s+(.+)$/
-const NUMBERED = /^\d+\.\s+(.+)$/
-const ROW = /^\|(.*)\|$/
+const HEADING = /^#{2,6}\s+(?=\S)/
+const BULLET = /^[-*]\s+(?=\S)/
+const NUMBERED = /^\d+\.\s+(?=\S)/
+const ROW = /^\|.*\|$/
 const SEPARATOR = /^:?-{2,}:?$/
+/* The one that does capture, because splitting on it is what the group is for:
+ * it hands back the marked segments along with the plain text between them. */
 const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\))/g
 /* The same three shapes, anchored. Splitting on INLINE hands back the marked
  * segments and the plain text between them in one array, and only a segment that
@@ -34,7 +41,7 @@ const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\))/g
  * wrote and never closed, and cutting two characters off it eats the text. */
 const BOLD = /^\*\*[^*]+\*\*$/
 const CODE = /^`[^`]+`$/
-const LINK = /^\[([^\]]+)\]\(([^)\s]+)\)$/
+const LINK = /^\[[^\]]+\]\([^)\s]+\)$/
 
 /* Which addresses a written page is allowed to point at.
  *
@@ -56,6 +63,40 @@ function addressOf(url: string): { inside: boolean; href: string } | undefined {
   }
 
   return undefined
+}
+
+/** The level of a heading and the words on it, or nothing when the line is not
+ *  one. The level is how many hashes it opens with. */
+function headingOf(line: string): { level: number; text: string } | undefined {
+  const marker = HEADING.exec(line)
+
+  if (marker === null) {
+    return undefined
+  }
+
+  return {
+    // A section already carries an h2, so the deepest a body may start is h3.
+    level: Math.max(marker[0].trimEnd().length, 3),
+    text: line.slice(marker[0].length),
+  }
+}
+
+/**
+ * The words of a link and the address under them, or nothing when the part is
+ * not a link.
+ *
+ * The words hold no `]` (the shape above says so), so the first `](` in the part
+ * is the one that separates the two, and both pieces are slices of the part
+ * itself.
+ */
+function linkOf(part: string): { text: string; url: string } | undefined {
+  if (!LINK.test(part)) {
+    return undefined
+  }
+
+  const middle = part.indexOf('](')
+
+  return { text: part.slice(1, middle), url: part.slice(middle + 2, -1) }
 }
 
 function cellsOf(line: string): string[] {
@@ -91,18 +132,15 @@ function parseBlocks(text: string): Block[] {
       continue
     }
 
-    const heading = HEADING.exec(line)
+    const heading = headingOf(line)
 
-    if (heading !== null) {
+    if (heading !== undefined) {
       close()
-      // A section already carries an h2, so the deepest a body may start is h3.
-      blocks.push({ kind: 'heading', level: Math.max(heading[1].length, 3), text: heading[2] })
+      blocks.push({ kind: 'heading', ...heading })
       continue
     }
 
-    const row = ROW.exec(line)
-
-    if (row !== null) {
+    if (ROW.test(line)) {
       const cells = cellsOf(line)
 
       if (open?.kind !== 'table') {
@@ -118,12 +156,12 @@ function parseBlocks(text: string): Block[] {
       continue
     }
 
-    const bullet = BULLET.exec(line)
-    const numbered = NUMBERED.exec(line)
+    const ordered = NUMBERED.test(line)
+    const mark = ordered ? NUMBERED : BULLET
 
-    if (bullet !== null || numbered !== null) {
-      const ordered = numbered !== null
-      const item = ordered ? numbered[1] : (bullet as RegExpExecArray)[1]
+    if (ordered || BULLET.test(line)) {
+      // The item is the line with the mark that opened it taken off the front.
+      const item = line.replace(mark, '')
 
       if (open?.kind !== 'list' || open.ordered !== ordered) {
         close()
@@ -159,10 +197,10 @@ function inline(text: string, locale: string): ReactNode[] {
       return <code key={index}>{part.slice(1, -1)}</code>
     }
 
-    const link = LINK.exec(part)
+    const link = linkOf(part)
 
-    if (link !== null) {
-      const address = addressOf(link[2])
+    if (link !== undefined) {
+      const address = addressOf(link.url)
 
       if (address === undefined) {
         return part
@@ -172,11 +210,11 @@ function inline(text: string, locale: string): ReactNode[] {
          it is written without the language and gets it here (ADL A2). */
       return address.inside ? (
         <Link key={index} to={`/${locale}${address.href}`}>
-          {link[1]}
+          {link.text}
         </Link>
       ) : (
         <a key={index} href={address.href}>
-          {link[1]}
+          {link.text}
         </a>
       )
     }
@@ -186,16 +224,17 @@ function inline(text: string, locale: string): ReactNode[] {
 }
 
 function Table({ rows, locale }: { rows: string[][]; locale: string }) {
+  const [head, ...body] = rows
+
   // A table that held nothing but the dashed line under the head has no rows
   // left once that line is dropped.
-  if (rows.length === 0) {
+  if (head === undefined) {
     return null
   }
 
-  const [first, ...body] = rows
   // A table whose first row is empty everywhere is a list of facts in two
   // columns, not a table with a head. An empty head row would only add noise.
-  const hasHead = first.some((cell) => cell !== '')
+  const hasHead = head.some((cell) => cell !== '')
 
   return (
     <div className="table-scroll">
@@ -203,7 +242,7 @@ function Table({ rows, locale }: { rows: string[][]; locale: string }) {
         {hasHead && (
           <thead>
             <tr>
-              {first.map((cell, index) => (
+              {head.map((cell, index) => (
                 <th key={index} scope="col">
                   {inline(cell, locale)}
                 </th>

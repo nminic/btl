@@ -4,6 +4,7 @@ import { livePage } from '../../data/pages'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
+import { first, must } from '../../test/at'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { Entities } from './Entities'
@@ -30,11 +31,11 @@ describe('a record entered under an identity a deletion had just freed', () => {
     await screen.findByRole('table', { name: 'Članovi' })
 
     // Change something about the first member, then delete them.
-    const first = table().getAllByRole('button', { name: /^Obriši:/ })[0]
-    const name = first.getAttribute('aria-label')!.replace('Obriši: ', '')
+    const remove = first(table().getAllByRole('button', { name: /^Obriši:/ }))
+    const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
     const before = table().getAllByRole('row').length
 
-    await user.click(first)
+    await user.click(remove)
     await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
 
     expect(table().getAllByRole('row')).toHaveLength(before - 1)
@@ -99,10 +100,10 @@ describe('the focus after a row is deleted', () => {
     const table = () => within(screen.getByRole('table', { name: 'Timovi' }))
     await screen.findByRole('table', { name: 'Timovi' })
 
-    const first = table().getAllByRole('button', { name: /^Obriši:/ })[0]
-    const name = first.getAttribute('aria-label')!.replace('Obriši: ', '')
+    const remove = first(table().getAllByRole('button', { name: /^Obriši:/ }))
+    const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
 
-    await user.click(first)
+    await user.click(remove)
     await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
 
     /* Without this the focus is on a button that is no longer on the page and

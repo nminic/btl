@@ -4,6 +4,7 @@ import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
+import { first } from '../test/at'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
@@ -212,7 +213,7 @@ describe('messages', () => {
 
     expect(await screen.findByText('1 nepročitana')).toBeVisible()
 
-    await user.click(screen.getAllByRole('button', { name: 'Označi kao pročitano' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Označi kao pročitano' })))
 
     expect(screen.getByText('0 nepročitanih')).toBeVisible()
   })

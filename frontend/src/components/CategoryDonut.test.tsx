@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { at, first } from '../test/at'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import type { RaceCategory } from '../data/types'
@@ -98,17 +99,19 @@ describe('pointing at a slice', () => {
     const slices = [...document.querySelectorAll('.donut__seg')]
     const before = slices.map((one) => one.getAttribute('stroke-width'))
 
-    await user.hover(slices[0])
+    await user.hover(first(slices))
 
     const during = [...document.querySelectorAll('.donut__seg')].map((one) =>
       one.getAttribute('stroke-width'),
     )
 
-    /* It grows outwards, so the hole in the middle never changes size. */
-    expect(Number(during[0])).toBeGreaterThan(Number(before[0]))
-    expect(during[1]).toBe(before[1])
+    /* It grows outwards, so the hole in the middle never changes size. The two
+       widths are read through `at`, because a ring drawn with one slice fewer
+       must fail this rather than find nothing on both sides and agree. */
+    expect(Number(first(during))).toBeGreaterThan(Number(first(before)))
+    expect(at(during, 1)).toBe(at(before, 1))
 
-    await user.unhover(slices[0])
+    await user.unhover(first(slices))
     expect(
       [...document.querySelectorAll('.donut__seg')].map((one) =>
         one.getAttribute('stroke-width'),
@@ -120,7 +123,10 @@ describe('pointing at a slice', () => {
     const user = setupUser()
     renderDonut(new Map<RaceCategory, number>([['marathon', 3]]))
 
-    await user.pointer({ target: document.querySelectorAll('.donut__seg')[0], keys: '[TouchA]' })
+    await user.pointer({
+      target: first(document.querySelectorAll('.donut__seg')),
+      keys: '[TouchA]',
+    })
 
     // Three is the count that tells the forms apart: one and five both take the
     // same one in Serbian.
@@ -141,7 +147,14 @@ describe('pointing at a slice', () => {
     )
 
     const read = (one: Element) => {
-      const [drawn, round] = (one.getAttribute('stroke-dasharray') ?? '').split(' ').map(Number)
+      /* The dash pattern is a pair: the length of line the browser draws, and
+         the circumference it is measured against. Read through `at`, so a slice
+         that has lost the attribute fails here saying which of the two was
+         missing, rather than arriving three assertions further down as a NaN
+         that could have come from any of them. */
+      const dash = (one.getAttribute('stroke-dasharray') ?? '').split(' ').map(Number)
+      const drawn = first(dash)
+      const round = at(dash, 1)
 
       return {
         radius: Number(one.getAttribute('r')),
@@ -152,11 +165,15 @@ describe('pointing at a slice', () => {
       }
     }
 
-    const before = read(document.querySelectorAll('.donut__seg')[1])
+    /* The marathon, which is the smaller of the two slices. Asked for again
+       each time, because hovering draws a new one in its place. */
+    const marathon = () => at(document.querySelectorAll('.donut__seg'), 1)
 
-    await user.hover(document.querySelectorAll('.donut__seg')[1])
+    const before = read(marathon())
 
-    const after = read(document.querySelectorAll('.donut__seg')[1])
+    await user.hover(marathon())
+
+    const after = read(marathon())
 
     // Outwards: the middle of the band moves out by half of what the band gains,
     // so the inner edge stands still.
@@ -196,7 +213,10 @@ describe('pointing at a slice', () => {
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('trke')).toBeInTheDocument()
 
-    await user.pointer({ target: document.querySelectorAll('.donut__seg')[1], keys: '[TouchA]' })
+    await user.pointer({
+      target: at(document.querySelectorAll('.donut__seg'), 1),
+      keys: '[TouchA]',
+    })
 
     /* Chosen, it is that length and its own count. Read off the drawing and not
        off the page, because the name of the length also stands in the table

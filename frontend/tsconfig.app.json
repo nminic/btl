@@ -18,6 +18,10 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    /* Every read of an array or a record by key now says it may find nothing.
+       Turned on last, after all 250 places it reports were fixed on their own
+       merit, so every commit before this one builds green (ADL A14). */
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

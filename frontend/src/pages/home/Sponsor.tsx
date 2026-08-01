@@ -3,8 +3,11 @@ import type { SponsorEntry } from './content'
 
 export function Sponsor({ sponsors }: { sponsors: SponsorEntry[] }) {
   const { t } = useI18n()
+  // The one whose day it is, and nothing at all on a day with no sponsor: an
+  // empty card under a heading reads as a sponsor whose name failed to load.
+  const [ofTheDay] = sponsors
 
-  if (sponsors.length === 0) {
+  if (ofTheDay === undefined) {
     return null
   }
 
@@ -13,7 +16,7 @@ export function Sponsor({ sponsors }: { sponsors: SponsorEntry[] }) {
       <h2 className="card__title" id="sponsor-heading">
         {t('home.sponsorOfTheDay')}
       </h2>
-      <p className="sponsor__name">{sponsors[0].name}</p>
+      <p className="sponsor__name">{ofTheDay.name}</p>
     </section>
   )
 }

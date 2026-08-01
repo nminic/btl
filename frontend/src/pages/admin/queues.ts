@@ -1,5 +1,5 @@
 import type { Decisions } from '../../session/context'
-import { waitingIn, type PendingItem } from './pending'
+import { waitingIn, type PendingItem, type PendingQueueId } from './pending'
 
 /* "Red za proveru" was one queue for results. It is now one story, because a
  * moderator approves a great deal more than results, and every one of these
@@ -41,8 +41,19 @@ import { waitingIn, type PendingItem } from './pending'
  */
 export type QueueOutcome = 'sendBack' | 'instruct' | 'delete' | 'editAndPublish'
 
+/**
+ * Which eight there are.
+ *
+ * The seven that wait in the file, plus the results a competitor sends in during
+ * the visit and which therefore live in the session rather than in the file
+ * (pending.ts). Written as those two and not as a third list of names, so a
+ * queue added to the file and forgotten here, or the other way round, is a
+ * compilation error rather than a screen that quietly serves nothing.
+ */
+export type QueueId = PendingQueueId | 'results'
+
 export type Queue = {
-  id: string
+  id: QueueId
   labelKey: string
   sourceKey: string
   path: string
@@ -54,70 +65,84 @@ export type Queue = {
 
 const ADDRESS = 'administracija/verifikacija'
 
-export const QUEUES: Queue[] = [
-  {
+/**
+ * The eight, each under its own id, so a screen can be handed the queue it
+ * serves instead of looking it up and then proving it found something.
+ *
+ * Written down as the record and not as a list, which is the way round it used
+ * to be: the list was what was written and the record was made from it with
+ * `Object.fromEntries`. That gives a record typed by "any string at all", so
+ * `QUEUE.teams` was a queue that might not be there, and fourteen entries in the
+ * route table, two screens and the counter each had to answer for a ninth id
+ * that has never been written anywhere. This way every one of the eight is there
+ * because the type says which eight there are, and nothing is proved twice.
+ *
+ * The type also ties the key to the id: `Queue & { id: K }` refuses an entry
+ * filed under a name other than its own, which is the one mistake a record of
+ * this shape invites and the one a list could not make.
+ */
+export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
+  results: {
     id: 'results',
     labelKey: 'verification.results',
     sourceKey: 'verification.fromResults',
     path: `${ADDRESS}/rezultati`,
     outcome: 'sendBack',
   },
-  {
+  payments: {
     id: 'payments',
     labelKey: 'verification.payments',
     sourceKey: 'verification.fromPayments',
     path: `${ADDRESS}/uplate`,
     outcome: 'sendBack',
   },
-  {
+  leagues: {
     id: 'leagues',
     labelKey: 'verification.leagues',
     sourceKey: 'verification.fromLeagues',
     path: `${ADDRESS}/lige`,
     outcome: 'sendBack',
   },
-  {
+  teams: {
     id: 'teams',
     labelKey: 'verification.teams',
     sourceKey: 'verification.fromTeams',
     path: `${ADDRESS}/timovi`,
     outcome: 'sendBack',
   },
-  {
+  bios: {
     id: 'bios',
     labelKey: 'verification.bios',
     sourceKey: 'verification.fromBios',
     path: `${ADDRESS}/biografije`,
     outcome: 'editAndPublish',
   },
-  {
+  photos: {
     id: 'photos',
     labelKey: 'verification.photos',
     sourceKey: 'verification.fromPhotos',
     path: `${ADDRESS}/slike`,
     outcome: 'instruct',
   },
-  {
+  comments: {
     id: 'comments',
     labelKey: 'verification.comments',
     sourceKey: 'verification.fromComments',
     path: `${ADDRESS}/komentari`,
     outcome: 'delete',
   },
-  {
+  schedule: {
     id: 'schedule',
     labelKey: 'verification.schedule',
     sourceKey: 'verification.fromSchedule',
     path: `${ADDRESS}/termini`,
     outcome: 'sendBack',
   },
-]
+}
 
-/** The same eight by id, so a screen can be handed the queue it serves instead
- *  of looking it up and then proving it found something. */
-export const QUEUE: Record<string, Queue> = Object.fromEntries(
-  QUEUES.map((one) => [one.id, one]),
-)
+/** The same eight as a list, in the order they are shown in, which is the order
+ *  they stand in above. */
+export const QUEUES: Queue[] = Object.values(QUEUE)
 
 /**
  * Whether this item can be handed back at all.
@@ -158,7 +183,7 @@ export type Waiting = {
 }
 
 /**
- * How many items each queue holds. One function, because the number beside a
+ * How many items one queue holds. One function, because the number beside a
  * queue, the number on the verification list and the number beside Verification
  * in the navigation are the same number, and two ways of counting it would
  * eventually be two different numbers.
@@ -179,14 +204,18 @@ export type Waiting = {
  * back when an event carries the date of its last confirmation, who confirmed it
  * and from where, which arrives with the database.
  */
-export function countsFor({ pendingResults, items, decisions }: Waiting): Record<string, number> {
+export function countFor({ pendingResults, items, decisions }: Waiting, queue: Queue): number {
+  return queue.id === 'results' ? pendingResults : waitingIn(items, decisions, queue.id).length
+}
+
+/** The same number for all eight at once, which is what the list of queues and
+ *  the section navigation draw beside the names. */
+export function countsFor(waiting: Waiting): Record<string, number> {
   const counts: Record<string, number> = {}
 
   for (const queue of QUEUES) {
-    counts[queue.id] = waitingIn(items, decisions, queue.id).length
+    counts[queue.id] = countFor(waiting, queue)
   }
-
-  counts.results = pendingResults
 
   return counts
 }
@@ -200,7 +229,6 @@ export function countsFor({ pendingResults, items, decisions }: Waiting): Record
  * seven would send him looking for work he cannot reach and cannot see.
  */
 export function totalWaiting(waiting: Waiting, queues: Queue[] = QUEUES): number {
-  const counts = countsFor(waiting)
-
-  return queues.reduce((sum, queue) => sum + counts[queue.id], 0)
+  return queues.reduce((sum, queue) => sum + countFor(waiting, queue), 0)
 }
+

@@ -1,7 +1,7 @@
 import { isStaff, type Role } from '../../roles/context'
-import { ENTITY_FORMS } from './entityForms'
-import { QUEUES } from './queues'
-import { RIGHT, type Right } from './rights'
+import { ENTITY_FORMS, type EntityDef } from './entityForms'
+import { QUEUES, type Queue } from './queues'
+import { entityRight, queueRight, type Right } from './rights'
 
 /**
  * What every administrative address asks of whoever opens it.
@@ -45,22 +45,33 @@ const HUB_NEEDS: Record<string, Need> = {
   'administracija/verifikacija': { of: 'anyQueue' },
 }
 
+/**
+ * What one entity's screen asks of whoever opens it, and what one queue asks.
+ *
+ * The right is made from the entity or the queue in hand rather than fetched out
+ * of the matrix by a key made from it (rights.ts). The same fact reached two
+ * ways is two facts as soon as one of them is edited, and the fetched one could
+ * come back empty besides: an entity whose right was filed under a name spelt
+ * differently produced a door that asked for nothing at all, which is a door
+ * standing open.
+ */
+function needForEntity(entity: EntityDef): Need {
+  return entity.superadminOnly === true
+    ? { of: 'superadmin' }
+    : { of: 'right', right: entityRight(entity) }
+}
+
+function needForQueue(queue: Queue): Need {
+  return { of: 'right', right: queueRight(queue) }
+}
+
 /* Read off the same two lists the matrix is built from, so an entity or a queue
  * arrives with its guard on the day it arrives, and cannot arrive with a column
  * in the matrix and no door on the screen behind it. */
 export const NEEDS: Record<string, Need> = {
   ...HUB_NEEDS,
-  ...Object.fromEntries(
-    ENTITY_FORMS.map((entity) => [
-      entity.path,
-      entity.superadminOnly === true
-        ? ({ of: 'superadmin' } as Need)
-        : ({ of: 'right', right: RIGHT[`entity:${entity.id}`] } as Need),
-    ]),
-  ),
-  ...Object.fromEntries(
-    QUEUES.map((queue) => [queue.path, { of: 'right', right: RIGHT[`queue:${queue.id}`] } as Need]),
-  ),
+  ...Object.fromEntries(ENTITY_FORMS.map((entity) => [entity.path, needForEntity(entity)])),
+  ...Object.fromEntries(QUEUES.map((queue) => [queue.path, needForQueue(queue)])),
 }
 
 /** What an address asks for, or nothing where it asks for nothing: every screen
@@ -92,7 +103,12 @@ export function mayOpen(need: Need, role: Role, may: (right: string) => boolean)
   }
 
   if (need.of === 'anyQueue') {
-    return QUEUES.some((queue) => mayOpen(NEEDS[queue.path], role, may))
+    /* Asked of the queue itself rather than of its entry in the table above.
+       The queue is in hand, and its address is only the name the table files it
+       under, so going out to the table by that name is a lookup that has to
+       answer for an address the table has never heard of. It is the same
+       question either way, put to the thing that answers it. */
+    return QUEUES.some((queue) => mayOpen(needForQueue(queue), role, may))
   }
 
   if (need.of === 'anyEntity') {
@@ -101,7 +117,7 @@ export function mayOpen(need: Need, role: Role, may: (right: string) => boolean)
        offered "Entiteti" to a moderator whose one entity right is the price
        list, and the section it opened was empty. */
     return ENTITY_FORMS.some(
-      (entity) => entity.fixed !== true && mayOpen(NEEDS[entity.path], role, may),
+      (entity) => entity.fixed !== true && mayOpen(needForEntity(entity), role, may),
     )
   }
 

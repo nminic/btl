@@ -1,3 +1,4 @@
+import { must } from '../test/at'
 import { screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -114,7 +115,7 @@ describe('Home', () => {
     )!
     const titles = within(card)
       .getAllByRole('listitem')
-      .map((row) => row.textContent!.replace(/[\d./]/g, ''))
+      .map((row) => must(row.textContent, 'text').replace(/[\d./]/g, ''))
 
     // No event name appears twice: repeats collapse into a single row.
     expect(new Set(titles).size).toBe(titles.length)
@@ -133,7 +134,7 @@ describe('Home', () => {
   it('shows both top tens and links to the whole standing', async () => {
     renderAt('/sr')
 
-    const men = (await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section')!
+    const men = must((await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section'), 'section')
 
     expect(within(men).getAllByRole('listitem').length).toBeGreaterThan(0)
     // The standing moved to /tabela; /top-liste is the page of Top 10 boards now.
