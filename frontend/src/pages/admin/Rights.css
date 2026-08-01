@@ -11,7 +11,7 @@
  */
 
 .rights-wrap {
-  margin-block-start: 0.75rem;
+  margin-block-start: var(--space-12);
 }
 
 /* The list above the matrix, at 360 pixels.
@@ -53,17 +53,17 @@
 .rights__row {
   display: block;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.75rem 0.9rem 0.4rem;
-  margin-block-end: 1rem;
+  border-radius: var(--radius-8);
+  padding: var(--space-12) var(--space-14) var(--space-6);
+  margin-block-end: var(--space-16);
 }
 
 .rights__who {
   display: block;
   text-align: left;
-  padding: 0 0 0.5rem;
+  padding: 0 0 var(--space-8);
   border-block-end: 1px solid var(--border);
-  margin-block-end: 0.35rem;
+  margin-block-end: var(--space-6);
   font-size: 1rem;
   font-weight: 700;
   text-transform: none;
@@ -98,14 +98,14 @@
    the wording beside each box carries the rest. */
 .rights__cell--group {
   border-block-start: 1px solid var(--border);
-  margin-block-start: 0.5rem;
-  padding-block-start: 0.35rem;
+  margin-block-start: var(--space-8);
+  padding-block-start: var(--space-6);
 }
 
 .rights__box {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-10);
   /* The whole line is the target, not the fourteen pixel square in it
      (WCAG 2.2 AA, 2.5.8). */
   min-block-size: 2.75rem;
@@ -132,6 +132,12 @@
   text-transform: uppercase;
 }
 
+/* Nine hundred, not the eight hundred and twenty the rest of the portal switches
+   at. This one is set by its content: sixteen columns of checkboxes beside a
+   twelve rem column of names, with every heading turned on its side. It was not
+   moved onto the page scale because it cannot be checked from the outside
+   without signing in as a moderator, and a table that is one column too wide is
+   a worse outcome than a breakpoint that is eighty pixels off the scale. */
 @media (min-width: 900px) {
   .rights {
     display: table;
@@ -156,7 +162,7 @@
   }
 
   .rights__group {
-    padding: 0.4rem 0.5rem;
+    padding: var(--space-6) var(--space-8);
     border-block-end: 1px solid var(--border);
     font-size: 0.7rem;
     letter-spacing: 0.05em;
@@ -176,7 +182,7 @@
     inline-size: 12rem;
     vertical-align: bottom;
     text-align: left;
-    padding: 0.4rem 0.5rem;
+    padding: var(--space-6) var(--space-8);
     font-size: 0.7rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -186,7 +192,7 @@
 
   .rights__column {
     vertical-align: bottom;
-    padding: 0.35rem 0;
+    padding: var(--space-6) 0;
     border-block-end: 2px solid var(--border);
     font-weight: 700;
     font-size: 0.75rem;
@@ -202,13 +208,13 @@
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     white-space: nowrap;
-    padding-block-end: 0.35rem;
+    padding-block-end: var(--space-6);
   }
 
   .rights__who {
     display: table-cell;
     vertical-align: middle;
-    padding: 0.5rem 0.5rem 0.5rem 0;
+    padding: var(--space-8) var(--space-8) var(--space-8) 0;
     border-block-end: 1px solid var(--border);
     border-inline-end: 1px solid var(--border);
     font-size: 0.9rem;
@@ -218,7 +224,7 @@
     display: table-cell;
     vertical-align: middle;
     text-align: center;
-    padding: 0.35rem 0;
+    padding: var(--space-6) 0;
     border-block-end: 1px solid var(--border);
   }
 
@@ -226,7 +232,7 @@
     border-block-start: 0;
     border-inline-start: 2px solid var(--border);
     margin-block-start: 0;
-    padding-block-start: 0.35rem;
+    padding-block-start: var(--space-6);
   }
 
   .rights__box {

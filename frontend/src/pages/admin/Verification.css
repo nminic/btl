@@ -25,7 +25,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--space-8);
 }
 
 .pending__editor {
@@ -55,7 +55,7 @@
   margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem 1.2rem;
+  gap: var(--space-2) var(--space-20);
 }
 
 .pending__facts div {
@@ -67,7 +67,7 @@
    one word must not end up in a column beside two dates. */
 .pending__facts .pending__text {
   flex: 1 0 100%;
-  gap: 0.15rem;
+  gap: var(--space-2);
 }
 
 .pending__facts dt {
@@ -88,8 +88,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
-  margin-block-end: 1.25rem;
+  gap: var(--space-8);
+  margin-block-end: var(--space-20);
 }
 
 /* The control is a hidden file input inside a label that looks like a button, so

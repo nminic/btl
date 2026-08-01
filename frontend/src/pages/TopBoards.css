@@ -1,27 +1,27 @@
 @import '../styles/table.css';
 
 .boards h1 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-12);
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
 
 .boards__intro {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-16);
   color: var(--text-muted);
   font-size: 0.85rem;
   border-left: 3px solid var(--gold-500);
-  padding-left: 0.8rem;
+  padding-left: var(--space-12);
 }
 
 .boards__filters {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-16);
 }
 
 .boards__field {
   display: inline-flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-4);
   font-size: 0.75rem;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -38,15 +38,15 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
-  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-8);
+  padding: var(--space-8);
 }
 
 /* One column on a phone, and as many as fit after that. The boards are short
    and narrow, so they read badly stretched across a desktop. */
 .boards__grid {
   display: grid;
-  gap: 1rem;
+  gap: var(--space-16);
   /* minmax(0, …) rather than a bare 1fr: the smallest a track may be is
      otherwise the widest thing in it, and a table row that does not wrap is
      wider than a phone. The column would then push the whole page sideways
@@ -56,13 +56,13 @@
 
 .boards__board {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
-  padding: 1rem;
+  padding: var(--space-16);
 }
 
 .boards__title {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-8);
   font-size: 1.05rem;
 }
 
@@ -101,6 +101,11 @@
   }
 }
 
+/* Eleven hundred, not the thousand the rest of the portal switches at. Its
+   content sets it: three boards side by side inside a page of 1100 leaves each
+   table 311px, and starting them at 1000 leaves 278px, which is narrower than
+   the two columns that band had before and narrow enough for the widest board's
+   headings to start their own scrollbar. */
 @media (min-width: 1100px) {
   .boards__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

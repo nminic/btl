@@ -3,13 +3,13 @@
 @import '../styles/table.css';
 
 .profile__head h1 {
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-6);
   font-size: clamp(26px, 4.5vw, 36px);
   letter-spacing: -0.02em;
 }
 
 .profile__meta {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-4);
   color: var(--text-muted);
   font-size: 0.9rem;
 }
@@ -30,7 +30,7 @@
    and nothing on the portal has ever drawn .counter. */
 
 .profile__section {
-  margin: 1.5rem 0 0.5rem;
+  margin: var(--space-24) 0 var(--space-8);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -61,7 +61,7 @@
 .profile--competitor {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-20);
 }
 
 /* The name and the season, level with each other (owner, 31.07.2026). The
@@ -72,7 +72,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-12);
 }
 
 /* The control the years are chosen in.
@@ -83,9 +83,9 @@
  * light grey on white and the years could not be read. */
 .profile__season select {
   appearance: none;
-  padding: 0.4rem 2rem 0.4rem 0.8rem;
+  padding: var(--space-6) var(--space-32) var(--space-6) var(--space-12);
   border: 1px solid var(--control-border);
-  border-radius: 999px;
+  border-radius: var(--radius-round);
   background: var(--surface);
   color: var(--text);
   font: inherit;
@@ -118,7 +118,7 @@
 }
 
 .profile__name {
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-6);
   font-size: clamp(26px, 4.5vw, 36px);
   /* A long name can wrap, and the root 1.55 gapes on a wrapped 36px display
      line. */
@@ -142,19 +142,19 @@
 
 .profile__row {
   display: grid;
-  gap: 1.25rem;
+  gap: var(--space-20);
   align-items: stretch;
   grid-template-columns: minmax(0, 1fr);
 }
 
 .profile .profile__card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
-  padding: 1rem;
+  padding: var(--space-16);
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-10);
   min-width: 0;
 }
 
@@ -191,8 +191,8 @@
    and the browser brings them into view. */
 .profile__lengths {
   display: flex;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-12);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -204,9 +204,9 @@
 .profile__length {
   position: relative;
   flex: 0 0 auto;
-  padding: 0.35rem 0.7rem;
+  padding: var(--space-6) var(--space-12);
   border: 1px solid var(--control-border);
-  border-radius: 999px;
+  border-radius: var(--radius-round);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -248,6 +248,9 @@
   white-space: nowrap;
 }
 
+/* Six hundred and twenty. The width at which the six length buttons swap the
+   word for the distance, which is a change of what they say and not of how they
+   are spaced, so it stays where it was measured. */
 @media (max-width: 620px) {
   .profile__length-full {
     position: absolute;
@@ -267,7 +270,7 @@
   }
 
   .profile__length {
-    padding: 0.3rem 0.45rem;
+    padding: var(--space-4) var(--space-8);
     font-size: 0.78rem;
   }
 }
@@ -278,7 +281,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: var(--space-12);
   color: var(--text-muted);
 }
 
@@ -288,14 +291,14 @@
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: 1rem;
+  gap: var(--space-16);
 }
 
 .awards__badge {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-6);
   text-align: center;
   --badge-art-size: clamp(4.5rem, 20vw, 6.5rem);
 }
@@ -339,7 +342,7 @@
   inline-size: 0.6rem;
   block-size: 0.6rem;
   border-radius: 50%;
-  margin-inline-end: 0.45rem;
+  margin-inline-end: var(--space-8);
   vertical-align: -0.05rem;
 }
 
@@ -367,7 +370,7 @@
    table wider than the screen (PDL P24: a table there has no horizontal scroll).
    Nothing is lost to a screen reader, which reads the whole of the link, and the
    date beside it is the other half of what identifies a race. */
-@media (max-width: 620px) {
+@media (max-width: 699.98px) {
   .profile__results .table tbody td:nth-child(2) {
     max-inline-size: 8.5rem;
     overflow: hidden;
