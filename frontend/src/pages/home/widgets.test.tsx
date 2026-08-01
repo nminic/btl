@@ -287,6 +287,26 @@ describe('TopByCategory', () => {
     expect(screen.queryByText('000004')).not.toBeInTheDocument()
   })
 
+  it('leads to the same thing it is showing, not to the whole of a running life', async () => {
+    /* Owner, 01.08.2026: a bar under "Najviše kraćih trka" led to somebody's
+       profile with no filter, so the reader had to find the short races again by
+       hand. The season is written out as well, because a profile opens on all
+       seasons by default and leaving it out would widen exactly what was
+       pressed. */
+    renderWidget(
+      <TopByCategory
+        competitors={[competitor('000001')]}
+        results={[result('000001', 1)]}
+        season={2027}
+      />,
+    )
+
+    expect(screen.getByRole('link')).toHaveAttribute(
+      'href',
+      '/sr/takmicar/000001?sezona=2027&duzina=short',
+    )
+  })
+
   it('turns to the next length by itself', async () => {
     renderWidget(
       <TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />,

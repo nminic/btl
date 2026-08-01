@@ -10,7 +10,6 @@ export type FieldType =
   | 'password'
   | 'date'
   /** Time of day, hh:mm on a 24 hour clock, which reads the same everywhere. */
-  | 'time'
   | 'number'
   | 'select'
   /** The whole world, with the region the league runs in on top. Its own type

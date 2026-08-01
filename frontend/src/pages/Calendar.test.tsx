@@ -40,40 +40,85 @@ describe('Calendar', () => {
     expect(await screen.findByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
   })
 
-  it('opens a day from its date and closes it again', async () => {
-    const user = setupUser()
-    renderAt('/sr/kalendar?mesec=2027-05')
+  it('draws only the days of the month, never a square of nothing', async () => {
+    /* May 2027 has 31 days and begins on a Saturday (owner, 31.07.2026: no dead
+       cells). Padded to whole weeks it would carry five empty squares before the
+       month and six after it, and those read as days with nothing on rather than
+       as days of another month. The first day is placed in its own column
+       instead. */
+    const { container } = renderAt('/sr/kalendar?mesec=2027-05')
 
-    const dayButtons = await screen.findAllByRole('button', { name: /Prikaži ceo dan/ })
-    await user.click(dayButtons[0])
+    await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
 
-    const detail = screen.getByRole('region')
-    expect(within(detail).getByRole('heading', { level: 2 })).toBeVisible()
-
-    await user.click(within(detail).getByRole('button', { name: 'Zatvori dan' }))
-    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    const days = container.querySelectorAll('.day')
+    expect(days).toHaveLength(31)
+    expect((days[0] as HTMLElement).style.gridColumnStart).toBe('6')
   })
 
-  it('shows an empty day as empty when its date is opened', async () => {
-    const user = setupUser()
-    renderAt('/sr/kalendar?mesec=2029-01')
+  it('rings today, and only today', async () => {
+    const { container } = renderAt(
+      '/sr/kalendar?mesec=2026-08',
+      'visitor',
+      null,
+      undefined,
+      '2026-08-13',
+    )
 
-    const dayButtons = await screen.findAllByRole('button', { name: /Prikaži ceo dan/ })
-    await user.click(dayButtons[0])
+    await screen.findByRole('heading', { level: 2 })
 
-    expect(within(screen.getByRole('region')).getByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
+    expect(container.querySelectorAll('.day--today')).toHaveLength(1)
+    /* The ring is gold, and a colour cannot be the only way to know which day it
+       is, so the word travels with it. */
+    expect(screen.getByText(', Danas')).toBeInTheDocument()
   })
 
-  it('collapses a crowded day behind a button that opens it', async () => {
+  it('goes back to the running month from wherever it has been walked to', async () => {
     const user = setupUser()
-    // 1 June 2019 holds six events, more than a cell shows.
+    renderAt('/sr/kalendar?mesec=2019-06', 'visitor', null, undefined, '2026-08-13')
+
+    await screen.findByRole('heading', { level: 2, name: 'jun 2019.' })
+    await user.click(screen.getByRole('button', { name: 'Prikaži tekući mesec' }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'avgust 2026.' })).toBeVisible()
+  })
+
+  it('sends a day with more on it than fits to a page of its own', async () => {
+    const user = setupUser()
+    // 1 June 2019 holds six events, one more than a day shows.
     renderAt('/sr/kalendar?mesec=2019-06')
 
     await screen.findByRole('heading', { level: 2, name: 'jun 2019.' })
-    await user.click(screen.getByRole('button', { name: /Još 3/ }))
+    await user.click(screen.getByRole('link', { name: /Još 1/ }))
 
-    const detail = screen.getByRole('region')
-    expect(within(detail).getAllByRole('listitem')).toHaveLength(6)
+    /* A page and not a panel: a day is a thing somebody sends to somebody else,
+       and the panel used to draw itself under the whole grid, which on a
+       telephone is under everything. */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /1\. jun 2019\./ }),
+    ).toBeVisible()
+    expect(within(screen.getByRole('list', { name: '' })).getAllByRole('listitem')).toHaveLength(6)
+  })
+
+  it('says a day it does not recognise the same way it says an empty one', async () => {
+    renderAt('/sr/kalendar/dan/nije-datum')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
+    expect(screen.getByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
+  })
+
+  it('names the lengths a day holds, in colour and in words', async () => {
+    const { container } = renderAt('/sr/kalendar?mesec=2019-06')
+
+    await screen.findByRole('heading', { level: 2, name: 'jun 2019.' })
+
+    /* A colour on its own says nothing to anybody who cannot separate two of
+       them, so every dot is drawn aria-hidden beside a name a screen reader
+       reads. The legend under the grid says what the colours mean. */
+    const dots = container.querySelectorAll('.chip .length-dot')
+    expect(dots.length).toBeGreaterThan(0)
+    expect([...dots].every((dot) => dot.getAttribute('aria-hidden') === 'true')).toBe(true)
+    expect(within(screen.getByRole('list', { name: 'Boje kružića' })).getAllByRole('listitem'))
+      .toHaveLength(5)
   })
 
   it('leads from a chip to the event', async () => {

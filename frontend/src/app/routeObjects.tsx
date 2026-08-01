@@ -6,6 +6,7 @@ import { Calendar } from '../pages/Calendar'
 import { Competitors } from '../pages/Competitors'
 import { CompetitorAwards } from '../pages/CompetitorAwards'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
+import { CalendarDay } from '../pages/CalendarDay'
 import { EventDetail } from '../pages/EventDetail'
 import { LeagueDetail } from '../pages/LeagueDetail'
 import { TeamDetail } from '../pages/TeamDetail'
@@ -153,6 +154,7 @@ function guarded(path: string, screen: ReactElement): ReactElement {
 /* Detail screens. They are addresses, not navigation entries, so they are not
  * in ROUTES. */
 const DETAILS: RouteObject[] = [
+  { path: 'kalendar/dan/:date', element: <CalendarDay /> },
   { path: 'kalendar/:slug', element: <EventDetail /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },

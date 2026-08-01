@@ -44,7 +44,6 @@ export function NewResult() {
       distanceKm,
       ascentM,
       descentM,
-      startTime: String(values.startTime),
       photo: String(values.photo),
       seconds: total,
       points: earned,

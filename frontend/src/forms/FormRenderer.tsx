@@ -184,9 +184,6 @@ const Field = memo(function Field({
         />
       )}
 
-      {field.type === 'time' && (
-        <input {...shared} type="time" value={String(value)} onChange={(e) => change(e.target.value)} />
-      )}
 
       {(field.type === 'text' ||
         field.type === 'email' ||

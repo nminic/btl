@@ -46,6 +46,12 @@
       "title": "Kalendar trka",
       "description": "Sve trke sezone po mesecima, sa datumom, mestom, dužinom i statusom priprema."
     },
+    "calendarDay": {
+      "title": "Jedan dan u kalendaru",
+      "description": "Sve trke jednog dana iz kalendara Balkanske trkačke lige.",
+      "recordTitle": "Trke {date}",
+      "recordDescription": "Sve trke koje se {date} održavaju, iz kalendara Balkanske trkačke lige."
+    },
     "myProfile": {
       "title": "Moj profil",
       "description": "Profil člana kako ga vidi ceo portal, sa radnjama koje su dostupne samo vlasniku naloga."
@@ -515,13 +521,15 @@
   },
   "calendar": {
     "title": "Kalendar",
+    "today": "Danas",
+    "toToday": "Prikaži tekući mesec",
+    "legend": "Boje kružića",
+    "wholeDay": "Sve trke tog dana",
+    "dayTitle": "Trke {date}",
     "previousMonth": "Prethodni mesec",
     "nextMonth": "Sledeći mesec",
-    "today": "Danas",
     "empty": "U ovom mesecu nema nijednog događaja.",
     "more": "Još {count}",
-    "showDay": "Prikaži ceo dan",
-    "closeDay": "Zatvori dan",
     "weekdays": {
       "1": "Pon",
       "2": "Uto",
@@ -770,8 +778,6 @@
     "seconds": "Sekundi",
     "link": "Link ka zvaničnim rezultatima",
     "linkHint": "Obavezno. Bez njega rezultat ne može da se proveri.",
-    "startTime": "Vreme starta",
-    "startTimeHint": "Kad je trka krenula. Ne vreme koje si istrčao.",
     "photo": "Fotografija kao dokaz",
     "doneTitle": "Rezultat je poslat",
     "donePoints": "Ova trka ti donosi {points} BTL poena.",

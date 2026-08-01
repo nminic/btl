@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { CATEGORIES, topByCategory } from '../../data/derive'
-import type { Competitor, Result } from '../../data/types'
+import type { Competitor, RaceCategory, Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { Portrait } from './Portrait'
 import './TopByCategory.css'
@@ -42,9 +42,17 @@ function PlayMark() {
 function Bar({
   column,
   highest,
+  category,
+  season,
 }: {
   column: { competitor: Competitor; races: number }
   highest: number
+  /* What the chart is showing, carried through to the profile so it opens on the
+     same thing that was pressed (owner, 01.08.2026). A bar under "Najviše
+     polumaratona" led to the whole of somebody's running life, and the reader
+     had to find the half marathons again by hand. */
+  category: RaceCategory
+  season: number
 }) {
   const { locale } = useI18n()
   const name = `${column.competitor.firstName} ${column.competitor.lastName}`
@@ -65,7 +73,13 @@ function Bar({
   }
 
   return (
-    <Link {...shape} to={`/${locale}/takmicar/${column.competitor.memberNumber}`}>
+    <Link
+      {...shape}
+      /* The season is written out even though the chart is of the running one:
+         a profile opens on all of them by default (owner, 31.07.2026), so
+         leaving it out would widen the very thing the bar was showing. */
+      to={`/${locale}/takmicar/${column.competitor.memberNumber}?sezona=${season}&duzina=${category}`}
+    >
       {inside}
     </Link>
   )
@@ -150,7 +164,7 @@ export function TopByCategory({
           {columns.map((column) => (
             <li key={column.competitor.memberNumber} className="top-cat__column">
               <Portrait competitor={column.competitor} />
-              <Bar column={column} highest={highest} />
+              <Bar column={column} highest={highest} category={category} season={season} />
             </li>
           ))}
         </ol>
