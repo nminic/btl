@@ -35,7 +35,7 @@
   color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   transition: background var(--fast);
 }
 
@@ -66,8 +66,8 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-8) var(--space-8);
+  border-radius: var(--radius-8);
+  padding: var(--space-8);
 }
 
 .rankings__field--wide {

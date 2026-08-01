@@ -14,7 +14,7 @@
 
 .leagues__item {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
   padding: var(--space-16);
 }

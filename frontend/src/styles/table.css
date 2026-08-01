@@ -86,7 +86,7 @@
 
 /* On a phone the table keeps four columns: position, name, category, points.
    Everything else would force a horizontal scroll nobody reads. */
-@media (max-width: 700px) {
+@media (max-width: 699.98px) {
   .table__hide-phone {
     display: none;
   }

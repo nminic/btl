@@ -28,7 +28,7 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   cursor: pointer;
   transition: border-color var(--fast);
 }
@@ -68,7 +68,7 @@
 .rulebook__toc-link {
   display: block;
   padding: var(--space-8) var(--space-10);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   border-left: 2px solid transparent;
   color: var(--text-muted);
   text-decoration: none;
@@ -103,7 +103,7 @@
   flex-direction: column;
   gap: var(--space-8);
   /* A section jumped to must not start hard against the top edge. */
-  scroll-margin-top: 1rem;
+  scroll-margin-top: var(--space-16);
 }
 
 .rulebook__body section:focus-visible {
@@ -137,7 +137,7 @@
 
   .rulebook__toc {
     position: sticky;
-    top: 1rem;
+    top: var(--space-16);
     /* Nineteen sections are taller than a short window, so the list scrolls
        inside itself rather than running off the screen. */
     max-height: calc(100svh - 2rem);

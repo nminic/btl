@@ -18,7 +18,7 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   cursor: pointer;
   transition: border-color var(--fast);
 }
@@ -51,7 +51,7 @@
   justify-content: space-between;
   gap: var(--space-10);
   padding: var(--space-8) var(--space-10);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   border-left: 2px solid transparent;
   color: var(--text-muted);
   text-decoration: none;
@@ -81,7 +81,10 @@
 .adminsection__count {
   flex: none;
   min-width: 1.8rem;
-  padding: var(--space-2) var(--space-6);
+  /* Under the smallest step the grid has. Two pixels here is two and a half
+     times what was measured, and the pill is the tallest thing in its row, so
+     the whole navigation would grow with it. */
+  padding: 0.05rem var(--space-6);
   border-radius: var(--radius-round);
   background: var(--surface-hover);
   color: var(--text-muted);
@@ -102,7 +105,7 @@
 .adminsection__alarm {
   margin: var(--space-10) 0 0;
   padding: var(--space-8) var(--space-10);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.8rem;
@@ -132,7 +135,7 @@
 
   .adminsection__nav {
     position: sticky;
-    top: 1rem;
+    top: var(--space-16);
     /* Nine entries plus the section itself are taller than a short window, so
        the list scrolls inside itself rather than running off the screen. */
     max-height: calc(100svh - 2rem);

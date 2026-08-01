@@ -3,13 +3,19 @@ import { join } from 'node:path'
 
 /* The scale, and the thing that keeps it a scale.
  *
- * Space, corner radii and the widths at which the portal changes shape were all
- * written as numbers where they were used. They spread: thirty near values for
- * space, ten for a corner, eleven widths. Nobody chose 0,35 over 0,4 over 0,45;
- * they were each typed once, next to each other, and then copied.
+ * Space and corner radii were written as numbers where they were used. They
+ * spread: thirty near values for space, nine for a corner. Nobody chose 0,35
+ * over 0,4 over 0,45; they were each typed once, next to each other, and then
+ * copied.
  *
- * Putting them on a scale is a morning's work. Keeping them there is this file:
+ * Putting them on a grid is a morning's work. Keeping them there is this file:
  * without it the next hurried rule writes 0,45rem again and nothing says so.
+ *
+ * What this does not cover is written down rather than left to be discovered.
+ * Sizes are not swept: about a hundred and forty widths and heights are still
+ * written out, and several of them are on the same rhythm as the padding beside
+ * them. That is the next pass, not this one, and saying so here is cheaper than
+ * a reader assuming the portal is tidier than it is.
  */
 
 const SRC = join(process.cwd(), 'src')
@@ -28,31 +34,69 @@ function stylesheets(dir = SRC, prefix = ''): { path: string; css: string }[] {
   })
 }
 
-const SPACING = /(?<![-\w])((?:padding|margin|gap|row-gap|column-gap|inset)[a-z-]*)\s*:\s*([^;{}]+);/g
+/* Both ways of writing the same thing. `inset-block-start` and `top` are one
+   measurement, and a sweep that asks for a token from one and not the other
+   makes the scale a matter of which spelling somebody reached for. */
+const SPACING =
+  /(?<![-\w])((?:padding|margin|gap|row-gap|column-gap|inset|top|right|bottom|left|scroll-margin)[a-z-]*)\s*:\s*([^;{}]+);/g
 
-/* What is allowed to stay a number, and why. Each one is a measurement of a
-   thing rather than a step of a rhythm, or a value the scale has no business
-   holding. */
+/* Every fixed number with a unit. Percentages and viewport units are left out
+   on purpose: they are relative to something that moves, so they are not steps
+   of a grid and putting them on one would mean nothing. */
+const VALUE = /(-?\d*\.?\d+)(rem|px|em|ch)/g
+
+/**
+ * What may stay a number, keyed by where it is.
+ *
+ * Keyed on the rule and not on the value alone: keyed on the value, allowing
+ * `7,5rem` once allows it everywhere, and the reason written beside it stops
+ * being true the moment somebody uses it for something else.
+ */
 const ALLOWED = new Map([
-  ['-1px', 'a hairline pulled back over its own border'],
-  ['-0.2rem', 'a control pulled back over the padding around it'],
-  ['7.5rem', 'the size of a portrait'],
-  ['11rem', 'the width of a column of names'],
-  ['0', 'nothing is nothing on any scale'],
-  /* In em on purpose: the padding around a piece of code inside a sentence has
-     to grow with the code, not with the page. */
-  ['0.05em', 'the padding around inline code, in its own text size'],
-  ['0.3em', 'the padding around inline code, in its own text size'],
+  ['index.css | margin | -1px', 'a hairline pulled back over its own border'],
+  ['pages/Badges.css | margin | -1px', 'a hairline pulled back over its own border'],
+  ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
+  ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
+  ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
+  [
+    'pages/league/League.css | inset-inline-start | 7.5rem',
+    'the second sticky column starts where the first one ends, so it is that column measured, not a step',
+  ],
+  [
+    'pages/league/League.css | inset-inline-start | 11rem',
+    'the same, at the width the wide layout gives that column',
+  ],
+  [
+    'components/Markdown.css | padding | 0.05em 0.3em',
+    'in em on purpose: the padding around code inside a sentence grows with the code, not with the page',
+  ],
+  [
+    'pages/home/TopByCategory.css | padding | 3.1rem var(--space-10) 0',
+    'the measured clearance that keeps the pause control off the tenth face',
+  ],
+  [
+    'pages/admin/SectionNav.css | padding | 0.05rem var(--space-6)',
+    'under the smallest step the grid has, on the tallest thing in its row',
+  ],
+  /* Four offsets that pull a thing back over the corner it sits on. Each is one
+     more value nobody chose, and each is invisible; they are named here rather
+     than swept because moving them is a decision about how far a badge hangs
+     off an icon, which is not what this pass is. */
+  ['app/Shell.css | top | -0.35rem', 'a badge pulled up over the icon it counts'],
+  ['app/Shell.css | right | -0.35rem', 'the same, sideways'],
+  ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
+  ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {
   const sheets = stylesheets().filter((one) => one.path !== 'styles/tokens.css')
 
   it('reads every stylesheet in the portal', () => {
-    /* Without this the two below pass on an empty list, which is the shape every
-       sweeping test fails in. */
-    expect(sheets.length).toBeGreaterThan(25)
+    /* Without this the checks below pass on an empty list, which is the shape
+       every sweeping test fails in. */
+    expect(sheets.length).toBeGreaterThan(30)
     expect(sheets.some((one) => one.path === 'pages/Home.css')).toBe(true)
+    expect(sheets.some((one) => one.path === 'app/Shell.css')).toBe(true)
   })
 
   it('leaves no bare space value outside the ones named here', () => {
@@ -60,10 +104,21 @@ describe('space and corners are chosen from the scale, not typed', () => {
 
     for (const sheet of sheets) {
       for (const rule of sheet.css.matchAll(SPACING)) {
-        for (const [, value] of (rule[2] ?? '').matchAll(/(?<![\w(])(-?\d*\.?\d+(?:rem|px|em))/g)) {
-          if (value !== undefined && !ALLOWED.has(value)) {
-            bare.push(`${sheet.path}: ${rule[1]}: ${value}`)
-          }
+        const property = rule[1] as string
+        const value = (rule[2] as string).trim()
+        /* The whole value, so a failure names what is actually written rather
+           than the first number a reader of the regex happens to reach. */
+        const key = `${sheet.path} | ${property} | ${value}`
+
+        if (ALLOWED.has(key) || !VALUE.test(value)) {
+          VALUE.lastIndex = 0
+          continue
+        }
+        VALUE.lastIndex = 0
+
+        /* A value is clean when every number in it came from a token. */
+        if (value.replaceAll(/var\(--[a-z0-9-]+\)/g, '').match(VALUE) !== null) {
+          bare.push(key)
         }
       }
     }
@@ -71,18 +126,27 @@ describe('space and corners are chosen from the scale, not typed', () => {
     expect(bare).toEqual([])
   })
 
-  it('leaves no bare corner outside a circle', () => {
+  it('leaves no bare corner outside a circle and two measured ones', () => {
+    const measured = new Set([
+      'app/Shell.css | border-radius | 2.5px',
+      'pages/home/TopByCategory.css | border-radius | 2px 2px 0 0',
+    ])
     const bare: string[] = []
 
     for (const sheet of sheets) {
       for (const rule of sheet.css.matchAll(/(?<![-\w])([a-z-]*radius[a-z-]*)\s*:\s*([^;{}]+);/g)) {
-        /* A circle is a shape and not a step, so 50% stays written out. */
-        const value = (rule[2] ?? '').replaceAll('50%', '')
+        const value = (rule[2] as string).trim()
+        const key = `${sheet.path} | ${rule[1]} | ${value}`
 
-        for (const [, found] of value.matchAll(/(?<![\w(])(\d*\.?\d+(?:rem|px|em))/g)) {
-          if (found !== undefined && found !== '0') {
-            bare.push(`${sheet.path}: ${rule[1]}: ${found}`)
-          }
+        if (measured.has(key)) {
+          continue
+        }
+
+        /* A circle is a shape and not a step, so 50% stays written out. */
+        const left = value.replaceAll(/var\(--[a-z0-9-]+\)|50%|(?<![\d.])0(?![\d.])/g, '')
+
+        if (left.match(VALUE) !== null) {
+          bare.push(key)
         }
       }
     }
@@ -90,30 +154,45 @@ describe('space and corners are chosen from the scale, not typed', () => {
     expect(bare).toEqual([])
   })
 
-  it('changes shape at the widths the token file lists, and at two named others', () => {
+  it('changes shape only at the widths listed here, each of which says why', () => {
     /* A custom property cannot be used in a media query, so these are the one
-       thing here that cannot become a token. The set is held instead: four
-       widths for the page, and two screens whose own content sets theirs, each
-       of which says so where it is written. */
-    const widths = new Set<string>()
+       thing here that cannot become a token. They are held instead.
+     *
+     * They also turned out not to be the drift the rest of this was: eleven
+     * widths went to ten, because six of the eight moves changed a layout and
+     * had to go back. Each width that is not one of the four the page uses
+     * carries a comment where it is written saying what sets it.
+     *
+     * The pattern is deliberately loose about how the query is spelled: `@media
+     * screen and (...)`, a second condition in the same query, and a missing
+     * space all used to slip past a stricter one. */
+    const widths: string[] = []
 
     for (const sheet of sheets) {
-      for (const query of sheet.css.matchAll(/@media \(m[ai][nx]-width: (\d+)px\)/g)) {
-        widths.add(query[1] as string)
+      /* Only `@media`. A container query asks the same question of a box rather
+         than of the window, so its widths are a property of one component and
+         not a place where the portal changes shape. */
+      const queries = [...sheet.css.matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '')
+
+      for (const query of queries.join(' ').matchAll(/\(\s*(?:min|max)-width\s*:\s*([\d.]+)([a-z]+)\s*\)/g)) {
+        /* In pixels, always: a breakpoint in em moves with the reader's text
+           size while every other width here does not. */
+        expect(query[2], `${sheet.path} sets a breakpoint in ${query[2]}`).toBe('px')
+        widths.push(query[1] as string)
       }
     }
 
-    expect([...widths].map(Number).sort((left, right) => left - right)).toEqual([
-      560,
-      700,
-      // The other half of 820, for the rules that stop where the wide layout starts.
-      819,
-      820,
-      // The front page: ten faces stop fitting the chart's column below this.
-      860,
-      // The moderator's rights table, which is sixteen columns wide.
-      900,
-      1000,
+    expect([...new Set(widths)].map(Number).sort((left, right) => left - right)).toEqual([
+      // A telephone stops being a telephone. Its other half, so the two do not
+      // both fire on the pixel where they meet.
+      559.98, 560,
+      // A narrow window, where a table gives up its columns. Same, and its half.
+      620, 699.98, 700,
+      // The wide layout, and the navigation stops folding away. 819 is its half.
+      780, 819, 820,
+      // Set by their own content, each said where it is written: the front page
+      // at 860, the rights table at 900, the boards at 1100.
+      860, 900, 1000, 1100,
     ])
   })
 })

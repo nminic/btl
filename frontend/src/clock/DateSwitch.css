@@ -12,7 +12,7 @@
 .date-switch__day {
   height: 2.4rem;
   padding: 0 var(--space-8);
-  border-radius: var(--radius);
+  border-radius: var(--radius-12);
   border: 1px solid var(--control-border);
   background: var(--surface);
   color: var(--text);
@@ -47,7 +47,7 @@
   place-items: center;
   width: 2.4rem;
   height: 2.4rem;
-  border-radius: var(--radius);
+  border-radius: var(--radius-12);
   border: 1px solid var(--control-border);
   background: var(--surface);
   color: var(--text);
@@ -64,7 +64,7 @@
 
 /* On a phone the header strip wraps, and a control that reads as one thing must
    not be broken across two lines. */
-@media (max-width: 560px) {
+@media (max-width: 559.98px) {
   .date-switch__day {
     font-size: 0.76rem;
     padding: 0 var(--space-6);

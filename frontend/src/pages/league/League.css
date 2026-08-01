@@ -104,7 +104,7 @@
   text-align: center;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 699.98px) {
   .league__who {
     inline-size: 7.5rem;
     min-inline-size: 7.5rem;

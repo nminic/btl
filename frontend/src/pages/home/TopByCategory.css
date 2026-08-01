@@ -7,7 +7,7 @@
   flex-direction: column;
   block-size: 100%;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
   overflow: hidden;
 }
@@ -19,7 +19,10 @@
      the same height, which is the ordinary state of the first weeks of a season
      and the permanent state of the ultra board, the tenth face reached the top
      right corner and the disc sat on it. */
-  padding: var(--space-48) var(--space-10) 0;
+  /* Measured, not chosen: the disc reaches 45,6px down from the outer edge, so
+     this is the clearance that keeps it off the tenth face. Off the scale on
+     purpose, the same as the sizes of the faces themselves. */
+  padding: 3.1rem var(--space-10) 0;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -53,7 +56,7 @@
   display: block;
   inline-size: 100%;
   min-block-size: 2.4rem;
-  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  border-radius: 2px 2px 0 0;
   background: #1f7ad6;
   text-decoration: none;
   transition: background var(--fast);
@@ -101,7 +104,7 @@
 }
 
 /* On a phone ten columns are unreadable, so the last four drop away. */
-@media (max-width: 560px) {
+@media (max-width: 559.98px) {
   .top-cat__column:nth-child(n + 7) {
     display: none;
   }

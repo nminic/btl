@@ -19,7 +19,7 @@
   color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   transition:
     border-color var(--fast),
     color var(--fast);
@@ -38,10 +38,10 @@
 .datepicker__pop {
   position: absolute;
   z-index: 6;
-  top: calc(100% + 0.4rem);
+  top: calc(100% + var(--space-8));
   left: 0;
   padding: var(--space-10);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
@@ -70,7 +70,7 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
 }
 
 .datepicker__bar button:hover {
@@ -101,7 +101,7 @@
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-6);
 }
 
 .datepicker__day:hover {

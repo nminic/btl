@@ -162,7 +162,7 @@ describe('the length, as one row of six', () => {
     /* Both names are always in the reading, and only one of them is on screen.
        The first attempt hid the long one with `display: none` and the short one
        with `aria-hidden`, which between them left the control with no accessible
-       name at all below 700px: six unnamed buttons on the width PDL P24 calls
+       name at all below 620px: six unnamed buttons on the width PDL P24 calls
        the main one. */
     expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toBeVisible()
@@ -181,7 +181,7 @@ describe('the length, as one row of six', () => {
        written below it, for any selector at all, and misses one written above. */
     expect(css).toMatch(/\.profile__length-short\s*\{[^}]*clip-path: inset\(50%\)/)
     expect(css).toMatch(
-      /@media \(max-width: 700px\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
+      /@media \(max-width: 620px\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
     )
     expect(css).not.toMatch(/\.profile__length-(full|short)\s*\{[^}]*display:\s*none/)
   })

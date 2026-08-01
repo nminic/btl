@@ -19,7 +19,7 @@
   height: 100%;
   padding: var(--space-20) var(--space-16) var(--space-16);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-14);
   background: var(--surface);
   color: var(--text);
   text-decoration: none;

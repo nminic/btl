@@ -53,7 +53,10 @@
 /* Eight hundred and sixty, and not the eight hundred and twenty the rest of the
    portal switches at. This one is set by its content rather than by the page:
    the turning chart stands ten faces wide, and in the two thirds column it is
-   given at 820 each column comes out 44px under a 46px face. At 860 they fit.
+   given at 820 each column comes out 45,4px under a 46,4px face. Measured after
+   this sweep, not before it: the gap and the padding around those columns both
+   moved onto the scale, so the clearance this decision rests on moved with them,
+   from 1,64px to 1,0px. It still holds, and it is thinner than it was.
    Narrowing the faces instead would make ten of them unreadable, which is what
    the phone rule already does by dropping four. */
 @media (min-width: 860px) {
@@ -84,7 +87,7 @@
   display: inline-block;
   font-weight: 600;
   padding: var(--space-10) var(--space-20);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   border: 1px solid transparent;
   text-decoration: none;
   transition: background var(--fast);
@@ -117,7 +120,7 @@
 
 .home .card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
   padding: var(--space-16);
   display: flex;
@@ -290,7 +293,7 @@
   justify-self: stretch;
   align-self: center;
   padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
   color: var(--gold-band-ink);
   font-size: 1.15rem;
@@ -443,8 +446,8 @@
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-8) var(--space-8);
+  border-radius: var(--radius-8);
+  padding: var(--space-8);
   min-width: 0;
 }
 

@@ -53,7 +53,7 @@
 .rights__row {
   display: block;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   padding: var(--space-12) var(--space-14) var(--space-6);
   margin-block-end: var(--space-16);
 }

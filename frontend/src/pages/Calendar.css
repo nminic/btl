@@ -25,7 +25,7 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   cursor: pointer;
   transition: background var(--fast);
 }
@@ -58,7 +58,7 @@
 
 .day {
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   padding: var(--space-8);
   background: var(--surface);
 }
@@ -94,7 +94,7 @@
   gap: var(--space-6);
   margin-top: var(--space-6);
   padding: var(--space-6) var(--space-8);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-6);
   background: var(--blue-100);
   color: var(--blue-800);
   font-size: 0.75rem;
@@ -145,7 +145,7 @@
   cursor: pointer;
   background: transparent;
   border: 1px dashed var(--control-border);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-6);
   color: var(--text-muted);
   font: 700 0.75rem/1.2 inherit;
   /* A link now, not a button, so it has to be told the two things a button knew
@@ -182,7 +182,7 @@
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   transition:
     border-color var(--fast),
     color var(--fast);
@@ -243,7 +243,12 @@
   font-size: 0.85rem;
 }
 
-@media (min-width: 820px) {
+/* Seven hundred and eighty, not the eight hundred and twenty the rest of the
+   portal switches at. Its content sets it: below this the month is one column of
+   days, and moving it to 820 took the grid, the weekday headings and the ring on
+   today away from every window between 780 and 819, which is a tablet held
+   upright. A calendar that is not a grid is not a calendar. */
+@media (min-width: 780px) {
   /* Working days are all the same width and the weekend is wider. The widths
      stay the same from month to month, so they are learned once. */
   .calendar__grid {

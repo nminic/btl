@@ -1,7 +1,7 @@
 .qr {
   display: block;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-8);
   /* White and black regardless of the theme: a reader needs the contrast the
      standard assumes, and a dark mode QR code is a QR code nobody can scan. */
   background: #ffffff;

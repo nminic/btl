@@ -149,7 +149,7 @@
 
 .profile .profile__card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-10);
   background: var(--surface);
   padding: var(--space-16);
   display: flex;
@@ -248,7 +248,10 @@
   white-space: nowrap;
 }
 
-@media (max-width: 700px) {
+/* Six hundred and twenty. The width at which the six length buttons swap the
+   word for the distance, which is a change of what they say and not of how they
+   are spaced, so it stays where it was measured. */
+@media (max-width: 620px) {
   .profile__length-full {
     position: absolute;
     width: 1px;
@@ -367,7 +370,7 @@
    table wider than the screen (PDL P24: a table there has no horizontal scroll).
    Nothing is lost to a screen reader, which reads the whole of the link, and the
    date beside it is the other half of what identifies a race. */
-@media (max-width: 700px) {
+@media (max-width: 699.98px) {
   .profile__results .table tbody td:nth-child(2) {
     max-inline-size: 8.5rem;
     overflow: hidden;
