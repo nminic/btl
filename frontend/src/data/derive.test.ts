@@ -396,9 +396,9 @@ describe('rankTeams', () => {
   it('sums every member, without normalising for team size', () => {
     const teams = [team('a'), team('b')]
     const competitors = [
-      competitor('000001', { teamId: 'a' }),
-      competitor('000002', { teamId: 'b' }),
-      competitor('000004', { teamId: 'b' }),
+      competitor('000001', { teamId: 'a', teamSince: 2027 }),
+      competitor('000002', { teamId: 'b', teamSince: 2027 }),
+      competitor('000004', { teamId: 'b', teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 30),
@@ -407,15 +407,15 @@ describe('rankTeams', () => {
     ]
 
     // b wins with 40 against 30, although its average per member is lower.
-    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual(['b', 'a'])
+    expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual(['b', 'a'])
   })
 
   it('breaks a tie in favour of the bigger team', () => {
     const teams = [team('small'), team('big')]
     const competitors = [
-      competitor('000001', { teamId: 'small' }),
-      competitor('000002', { teamId: 'big' }),
-      competitor('000004', { teamId: 'big' }),
+      competitor('000001', { teamId: 'small', teamSince: 2027 }),
+      competitor('000002', { teamId: 'big', teamSince: 2027 }),
+      competitor('000004', { teamId: 'big', teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 20),
@@ -423,7 +423,7 @@ describe('rankTeams', () => {
       result('000004', '2027-01-01', 10),
     ]
 
-    const ranked = rankTeams(teams, competitors, results)
+    const ranked = rankTeams(teams, competitors, results, 2027)
 
     expect(ranked[0].team.id).toBe('big')
     expect(ranked[0].members).toBe(2)
@@ -436,15 +436,15 @@ describe('rankTeams', () => {
   it('goes on to the kilometres of every member when the size is level too', () => {
     const teams = [team('fewer'), team('more')]
     const competitors = [
-      competitor('000001', { teamId: 'fewer' }),
-      competitor('000002', { teamId: 'more' }),
+      competitor('000001', { teamId: 'fewer', teamSince: 2027 }),
+      competitor('000002', { teamId: 'more', teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 10, { distanceKm: 10 }),
       result('000002', '2027-01-01', 10, { distanceKm: 30 }),
     ]
 
-    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual([
+    expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
       'more',
       'fewer',
     ])
@@ -453,8 +453,8 @@ describe('rankTeams', () => {
   it('goes on to the races of every member when the kilometres are level too', () => {
     const teams = [team('one-race'), team('two-races')]
     const competitors = [
-      competitor('000001', { teamId: 'one-race' }),
-      competitor('000002', { teamId: 'two-races' }),
+      competitor('000001', { teamId: 'one-race', teamSince: 2027 }),
+      competitor('000002', { teamId: 'two-races', teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 20, { distanceKm: 20 }),
@@ -463,7 +463,7 @@ describe('rankTeams', () => {
     ]
 
     // Same points and same kilometres, and the bigger volume of races wins.
-    expect(rankTeams(teams, competitors, results).map((row) => row.team.id)).toEqual([
+    expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
       'two-races',
       'one-race',
     ])
@@ -472,9 +472,9 @@ describe('rankTeams', () => {
   it('shows a tie the whole ladder leaves standing as a shared place', () => {
     const teams = [team('b'), team('a'), team('c')]
     const competitors = [
-      competitor('000001', { teamId: 'a' }),
-      competitor('000002', { teamId: 'b' }),
-      competitor('000004', { teamId: 'c' }),
+      competitor('000001', { teamId: 'a', teamSince: 2027 }),
+      competitor('000002', { teamId: 'b', teamSince: 2027 }),
+      competitor('000004', { teamId: 'c', teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 10),
@@ -482,12 +482,35 @@ describe('rankTeams', () => {
       result('000004', '2027-01-01', 5),
     ]
 
-    const ranked = rankTeams(teams, competitors, results)
+    const ranked = rankTeams(teams, competitors, results, 2027)
 
     // 1, 1, 3, and inside the shared place the smaller id first, so the board
     // does not shuffle between two recounts of the same data (PDL P12).
     expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
     expect(ranked.map((row) => row.team.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('counts the roster of the season being shown, not of today', () => {
+    /* A team is a thing of one season, so a standing headed by a year has to be
+       that year's team. Somebody who joined in 2021 was not in it in 2020, and
+       somebody who joins for 2027 is not in it in 2026 however much they raced. */
+    const teams = [team('a')]
+    const competitors = [
+      competitor('000001', { teamId: 'a', teamSince: 2021 }),
+      competitor('000002', { teamId: 'a', teamSince: 2027 }),
+      competitor('000003'),
+    ]
+    const results = [result('000001', '2020-05-01', 30), result('000002', '2020-05-01', 40)]
+
+    const in2020 = rankTeams(teams, competitors, results, 2020)[0]
+    expect(in2020?.members).toBe(0)
+    expect(in2020?.totals.points).toBe(0)
+
+    const in2021 = rankTeams(teams, competitors, results, 2021)[0]
+    expect(in2021?.members).toBe(1)
+    expect(in2021?.totals.points).toBe(30)
+
+    expect(rankTeams(teams, competitors, results, 2027)[0]?.members).toBe(2)
   })
 })
 

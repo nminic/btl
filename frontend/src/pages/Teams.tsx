@@ -45,7 +45,7 @@ export function Teams() {
           )
           const season = offeredSeason(asked, seasons, running)
           const inSeason = results.filter((one) => seasonOf(one) === Number(season))
-          const rows = rankTeams(teams, competitors, inSeason)
+          const rows = rankTeams(teams, competitors, inSeason, Number(season))
 
           return (
             <>
@@ -71,7 +71,14 @@ export function Teams() {
                   </thead>
                   <tbody>
                     {rows.map((row) => (
-                      <tr key={row.team.id} className={row.position === 1 ? 'podium' : undefined}>
+                      <tr
+                        key={row.team.id}
+                        /* Gold for a lead, not for being first in an empty
+                           table: in a season nobody has raced yet every team is
+                           level on nothing, and the top row is only the one the
+                           sort happened to leave there. */
+                        className={row.position === 1 && row.totals.points > 0 ? 'podium' : undefined}
+                      >
                         {/* The place, not the row number: a tie nothing separates
                             is shared, so the column can read 1, 1, 3 (PDL P12). */}
                         <td className="table__position">{row.position}</td>

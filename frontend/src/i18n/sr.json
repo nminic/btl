@@ -673,6 +673,7 @@
     "aboutEmpty": "Ovaj tim još nije napisao ništa o sebi.",
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
+    "noMembersThatSeason": "Ovaj tim te sezone nije imao članova.",
     "notFound": "Ovog tima nema.",
     "name": "Tim"
   },

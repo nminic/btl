@@ -292,11 +292,14 @@ describe('TopBoards', () => {
       .slice(1)
       .map((row) => row.textContent)
 
-    await user.selectOptions(screen.getByLabelText('Sezona'), '2012')
+    await user.selectOptions(screen.getByLabelText('Sezona'), '2017')
 
-    // 2012 has two results in it, and both belong to the same team.
+    /* 2017 has two teams with anybody in them, against three in 2019. The year
+       was 2012 until the roster was scoped to the season being shown: nobody was
+       in a team that early, so the board emptied and the test read a table that
+       was no longer there. */
     const after = board('Najbolji tim').getAllByRole('row').slice(1)
-    expect(after).toHaveLength(1)
+    expect(after).toHaveLength(2)
     expect(after.map((row) => row.textContent)).not.toEqual(before)
   })
 

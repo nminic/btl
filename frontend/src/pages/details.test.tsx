@@ -4,10 +4,27 @@ import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
 describe('TeamDetail', () => {
-  it('shows the team, its totals and its members with what each contributed', async () => {
-    renderAt('/sr/tim/dunavski-trkaci')
+  it('says a team had nobody that season, which is not the same as never having anybody', async () => {
+    /* Nišavski maraton klub has five members today and none of them had joined
+       by 2014, a season the control offers because those same people were racing
+       then, under nobody's colours. The sentence has to tell those two silences
+       apart: a team nobody has ever joined, and a team that had nobody that
+       year. */
+    renderAt('/sr/tim/nisavski-maraton-klub?sezona=2014', 'visitor', null, undefined, '2026-06-01')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+    expect(screen.getByText('Ovaj tim te sezone nije imao članova.')).toBeVisible()
+    expect(screen.queryByText('Ovaj tim još nema članova.')).not.toBeInTheDocument()
+  })
+
+  it('shows the team, its totals and its members with what each contributed', async () => {
+    /* Vardarski krug in 2026: five in the team that season, four of whom raced.
+       Dunavski trkači was the example until the roster was scoped to the season
+       being read, which took away the member who joins for 2027 and with them
+       the row of zeros this case is about. */
+    renderAt('/sr/tim/vardarski-krug', 'visitor', null, undefined, '2026-06-01')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Vardarski krug' })).toBeVisible()
     /* Three of one width across the top (owner, 31.07.2026): what the team says
        about itself, the ring of lengths, the figures. The figures wear no
        heading any more, the same as on a profile, and keep their name where a

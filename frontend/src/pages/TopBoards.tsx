@@ -268,7 +268,7 @@ function Boards({
         detailLabel: t('topBoards.columns.members'),
         detailIsNumber: true,
         empty: noResults,
-        places: rankTeams(teams, competitors, inSeason)
+        places: rankTeams(teams, competitors, inSeason, season)
           .filter((row) => row.totals.races > 0)
           .slice(0, PLACES)
           .map((row) => ({

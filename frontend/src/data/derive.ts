@@ -302,16 +302,46 @@ const BY_TEAM = byLadder<TeamRow>([
  * not shuffle between two recounts of the same data.
  *
  * The results are taken as given, so the caller decides whether the board is
- * one season or the whole history.
+ * one season or the whole history. The roster is not: the season is handed in
+ * and the members are scoped to it here, because both callers need the same
+ * thing done to the same argument and a rule each of them has to remember to
+ * apply is exactly the shape of the bug this closes. A standing headed by a year
+ * was counting today's roster, so 2019 read as what the people who are in these
+ * teams now happened to score in 2019, credited to whichever team each of them
+ * has since joined.
  */
+/**
+ * Whether somebody was in their team in a given season.
+ *
+ * A team is a thing of one season (PDL P13), so a figure headed by a year has to
+ * be that year's team and not today's. `teamSince` is what the data knows, and
+ * it answers both cases that arise: somebody still in a team counts from the
+ * season they joined, and somebody who has left contributes nothing, which is
+ * what the exit rule orders anyway (PDL P13, 31.07.2026: leaving mid-season
+ * deletes the whole contribution to that team for that season).
+ *
+ * It also keeps out the member who has paid for next season and joined a team
+ * for it, who is a member today and deliberately not in this season's tables.
+ *
+ * What it cannot express is the member who left cleanly on 1 January and keeps
+ * their earlier contribution. Nothing in the data names that person's old team,
+ * so no rule here can restore them.
+ */
+export function inTeamIn(competitor: Competitor, season: number): boolean {
+  return competitor.teamSince !== null && competitor.teamSince <= season
+}
+
 export function rankTeams(
   teams: Team[],
   competitors: Competitor[],
   results: Result[],
+  season: number,
 ): Placed<TeamRow>[] {
   const rows = teams.map((team) => {
     const numbers = new Set(
-      competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
+      competitors
+        .filter((one) => one.teamId === team.id && inTeamIn(one, season))
+        .map((one) => one.memberNumber),
     )
 
     return {

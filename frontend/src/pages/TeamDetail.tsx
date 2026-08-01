@@ -9,6 +9,7 @@ import { Counters } from './home/Counters'
 import {
   categoryOfMember,
   countsByCategory,
+  inTeamIn,
   rankMembers,
   seasonOf,
   seasonsWithResults,
@@ -50,17 +51,24 @@ export function TeamDetail() {
           return <h1>{t('teams.notFound')}</h1>
         }
 
-        const members = competitors.filter((one) => one.teamId === team.id)
-        const numbers = new Set(members.map((one) => one.memberNumber))
+        /* Everybody in the team today, for the control alone: which seasons
+           this team can be asked about must not move when one of them is
+           chosen. */
+        const everMembers = competitors.filter((one) => one.teamId === team.id)
+        const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
            the default and a control cannot open on an option it does not have.
            Worked out before the choice, because the choice is held against it. */
         const seasons = [
           ...new Set([Number(running), ...seasonsWithResults(results.filter(
-            (one) => numbers.has(one.memberNumber),
+            (one) => everNumbers.has(one.memberNumber),
           ))]),
         ].sort((left, right) => right - left)
         const season = offeredSeason(asked, seasons, running)
+        /* The roster of the season being read, not of today: a page headed by
+           a year has to be that year's team (PDL P13). */
+        const members = everMembers.filter((one) => inTeamIn(one, Number(season)))
+        const numbers = new Set(members.map((one) => one.memberNumber))
         const inSeason = results.filter((one) => seasonOf(one) === Number(season))
         const mine = inSeason.filter((one) => numbers.has(one.memberNumber))
         const totals = totalsOf(mine)
@@ -89,7 +97,7 @@ export function TeamDetail() {
                 <p className="profile__meta">
                   {team.city}
                   {' · '}
-                  {t('units.memberCount', { count: members.length })}
+                  {t('units.memberCount', { count: everMembers.length })}
                 </p>
               </header>
 
@@ -123,7 +131,11 @@ export function TeamDetail() {
               <h2 className="profile__section">{t('teams.members')}</h2>
 
               {rows.length === 0 ? (
-                <p className="profile__empty">{t('teams.noMembers')}</p>
+                /* Two different silences: a team nobody has ever joined, and a
+                   team that existed but had nobody in it that season. */
+                <p className="profile__empty">
+                  {t(everMembers.length === 0 ? 'teams.noMembers' : 'teams.noMembersThatSeason')}
+                </p>
               ) : (
                 <div className="table-scroll">
                   <table className="table">
