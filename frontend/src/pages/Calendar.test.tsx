@@ -52,7 +52,13 @@ describe('Calendar', () => {
 
     const days = container.querySelectorAll('.day')
     expect(days).toHaveLength(31)
-    expect((days[0] as HTMLElement).style.gridColumnStart).toBe('6')
+    /* The column is handed to CSS as a value, never written on the element:
+       written on it, the day was placed in column six on a telephone too, where
+       there is no seven column grid, and the implicit grid grew to hold it. */
+    expect((days[0] as HTMLElement).style.gridColumnStart).toBe('')
+    expect((days[0] as HTMLElement).style.getPropertyValue('--day-start')).toBe('6')
+    expect(days[0]).toHaveClass('day--first')
+    expect(container.querySelectorAll('.day--first')).toHaveLength(1)
   })
 
   it('rings today, and only today', async () => {
@@ -99,11 +105,22 @@ describe('Calendar', () => {
     expect(within(screen.getByRole('list', { name: '' })).getAllByRole('listitem')).toHaveLength(6)
   })
 
-  it('says a day it does not recognise the same way it says an empty one', async () => {
-    renderAt('/sr/kalendar/dan/nije-datum')
+  it.each([
+    ['nije-datum', 'not a date at all'],
+    ['2019-13-45', 'the right shape and not a date'],
+    ['2019-02-31', 'a day February does not have'],
+    ['9999-99-99', 'nothing at either end'],
+  ])('says it does not know the day named by %s, rather than falling over', async (date) => {
+    /* The shape used to be the whole test, so a date of the right shape that is
+       not a date reached the formatter, which threw, and the error boundary
+       replaced the whole screen. 2019-02-31 is the quieter one: the parser rolls
+       it forward to 3 March, so the page would have been headed with a day
+       nobody asked for. */
+    renderAt(`/sr/kalendar/dan/${date}`)
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
-    expect(screen.getByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
+    expect(screen.getByText('Tog dana nema nijednog događaja.')).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('names the lengths a day holds, in colour and in words', async () => {

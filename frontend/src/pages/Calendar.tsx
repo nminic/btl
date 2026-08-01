@@ -44,14 +44,15 @@ function Day({
   today,
   events,
   races,
-  style,
+  first,
 }: {
   day: number
   month: string
   today: string
   events: BtlEvent[]
   races: Race[]
-  style?: CSSProperties
+  /** Which column the first of the month sits in, on the days it is the first. */
+  first?: number
 }) {
   const { locale, t } = useI18n()
   const date = `${month}-${String(day).padStart(2, '0')}`
@@ -59,7 +60,16 @@ function Day({
   const hidden = events.length - shown.length
 
   return (
-    <div className={date === today ? 'day day--today' : 'day'} style={style}>
+    <div
+      className={[
+        'day',
+        date === today ? 'day--today' : '',
+        first === undefined ? '' : 'day--first',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={first === undefined ? undefined : ({ '--day-start': first } as CSSProperties)}
+    >
       {/* The number is not a control any more. Pressing a day used to open a
           panel under the whole grid, which on a telephone is under everything,
           so it looked like nothing had happened. What leads somewhere is the
@@ -91,6 +101,20 @@ export function Calendar() {
 
   return (
     <div className="calendar">
+      {/* Outside the Resource: the heading and the way back to the running month
+          need no data, and a screen that says nothing at all while it waits is
+          the one thing every other screen here avoids. */}
+      <div className="calendar__head">
+        <h1>{t('calendar.title')}</h1>
+        <button
+          type="button"
+          className="calendar__today"
+          onClick={() => setParams({ mesec: today.slice(0, 7) })}
+        >
+          {t('calendar.toToday')}
+        </button>
+      </div>
+
       <Resource state={state}>
         {([events, races]) => {
           const month = params.get('mesec') ?? defaultMonth(events, today)
@@ -104,19 +128,6 @@ export function Calendar() {
 
           return (
             <>
-              {/* Level with the heading and to its right, the same place the
-                  season control sits on a competitor (owner, 31.07.2026). */}
-              <div className="calendar__head">
-                <h1>{t('calendar.title')}</h1>
-                <button
-                  type="button"
-                  className="calendar__today"
-                  onClick={() => setParams({ mesec: today.slice(0, 7) })}
-                >
-                  {t('calendar.toToday')}
-                </button>
-              </div>
-
               <div className="calendar__bar">
                 <button
                   type="button"
@@ -152,12 +163,19 @@ export function Calendar() {
                     today={today}
                     events={byDay.get(`${month}-${String(day).padStart(2, '0')}`) ?? []}
                     races={races}
-                    /* The first of the month is put in its own column and the
-                       rest follow it. Nothing is drawn for the days of the month
-                       before or the month after: they were squares of nothing,
-                       and they read as days with nothing on rather than as days
-                       belonging to another month. */
-                    style={day === 1 ? { gridColumnStart: offset + 1 } : undefined}
+                    /* The first of the month carries which column it belongs in
+                       and the rest follow it. Nothing is drawn for the days of
+                       the month before or the month after: they were squares of
+                       nothing, and they read as days with nothing on rather than
+                       as days of another month.
+
+                       The column is handed to CSS as a value and applied there,
+                       never here. Written straight onto the element it placed
+                       day one in column six on a telephone as well, where there
+                       is no seven column grid to be in: the implicit grid then
+                       grew six columns to hold it and the month spilled a
+                       thousand pixels off the side of the screen. */
+                    first={day === 1 ? offset + 1 : undefined}
                   />
                 ))}
               </div>

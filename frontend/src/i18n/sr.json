@@ -49,8 +49,8 @@
     "calendarDay": {
       "title": "Jedan dan u kalendaru",
       "description": "Sve trke jednog dana iz kalendara Balkanske trkačke lige.",
-      "recordTitle": "Trke {date}",
-      "recordDescription": "Sve trke koje se {date} održavaju, iz kalendara Balkanske trkačke lige."
+      "recordTitle": "Trke, {date}",
+      "recordDescription": "{date}: sve trke tog dana, iz kalendara Balkanske trkačke lige."
     },
     "myProfile": {
       "title": "Moj profil",
@@ -524,8 +524,8 @@
     "today": "Danas",
     "toToday": "Prikaži tekući mesec",
     "legend": "Boje kružića",
-    "wholeDay": "Sve trke tog dana",
-    "dayTitle": "Trke {date}",
+    "dayTitle": "Trke, {date}",
+    "dayEmpty": "Tog dana nema nijednog događaja.",
     "previousMonth": "Prethodni mesec",
     "nextMonth": "Sledeći mesec",
     "empty": "U ovom mesecu nema nijednog događaja.",

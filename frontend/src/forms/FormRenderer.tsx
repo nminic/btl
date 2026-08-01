@@ -184,7 +184,6 @@ const Field = memo(function Field({
         />
       )}
 
-
       {(field.type === 'text' ||
         field.type === 'email' ||
         field.type === 'password' ||

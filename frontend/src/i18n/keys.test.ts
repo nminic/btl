@@ -124,7 +124,7 @@ describe('the seo entry of every address', () => {
   it('names each of the five records after the record itself', () => {
     // The screen replaces both texts once it has loaded the record (PageMeta).
     // The message is the one that must not: its subject is personal data (P23).
-    const missing = ['competitor', 'event', 'team', 'league']
+    const missing = ['competitor', 'event', 'team', 'league', 'calendarDay']
       .flatMap((key) => [`seo.${key}.recordTitle`, `seo.${key}.recordDescription`])
       .filter((key) => !resolves(key))
 
