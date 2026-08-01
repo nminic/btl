@@ -14,27 +14,34 @@
 }
 
 /* Two thirds of the page against one (owner, 31.07.2026): the standing and the
-   prose on the left, the figures and the things to do on the right. */
+   prose on the left, the figures and the things to do on the right.
+
+   One grid rather than two columns, so a row ends where its neighbour ends: the
+   boards with the counters, the chart with the calendar (owner, 31.07.2026).
+   Two columns side by side cannot do that, since neither knows how tall the
+   other came out. */
 .home__split {
   display: grid;
   gap: 1.25rem;
-  align-items: start;
 }
 
-.home__main,
-.home__side {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.home__split > * {
   min-width: 0;
 }
 
+/* Every widget fills the row it was given, which is what makes the two columns
+   line up. */
+.home__split > * > * {
+  block-size: 100%;
+}
+
 /* The two boards stand side by side from the width where either of them can
-   hold a three by three block of faces without the names wrapping to four
-   lines. Below it they follow one another, men then women. */
+   hold a three by three block of faces. Below it they follow one another, men
+   then women. */
 .home__boards {
   display: grid;
   gap: 1.25rem;
+  align-items: stretch;
 }
 
 @media (min-width: 560px) {
@@ -46,7 +53,21 @@
 @media (min-width: 860px) {
   .home__split {
     grid-template-columns: 2fr 1fr;
+    grid-template-areas:
+      'boards figures'
+      'chart next'
+      'address calc'
+      'address slot';
+    align-items: stretch;
   }
+
+  .home__boards { grid-area: boards; }
+  .home__chart { grid-area: chart; }
+  .home__address { grid-area: address; }
+  .home__figures { grid-area: figures; }
+  .home__next { grid-area: next; }
+  .home__calc { grid-area: calc; }
+  .home__slot { grid-area: slot; }
 
   .home__row--news {
     grid-template-columns: 2fr 1fr;
@@ -99,12 +120,16 @@
   min-width: 0;
 }
 
+/* The name of a widget. Navy on a light page and white on a dark one (owner,
+   31.07.2026): muted grey read as a caption on something rather than as the
+   name of it, and the navy is the one out of the scoreboard's own pill, so the
+   two belong together. */
 .card__title {
   margin: 0;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: var(--text-muted);
+  color: var(--heading);
   font-weight: 700;
 }
 
@@ -136,12 +161,6 @@
   min-width: 0;
 }
 
-.home .address__title {
-  margin: 0;
-  font-size: clamp(19px, 2.8vw, 24px);
-  letter-spacing: -0.01em;
-}
-
 /* Calendar extract */
 
 .extract {
@@ -152,16 +171,22 @@
   flex-direction: column;
 }
 
-/* Day, month, then the name, on one line at every width (owner, 31.07.2026).
-   The first column is fixed and the figures are tabular, so every name in the
-   widget starts on the same vertical line however wide the numbers are. */
+/* Day, month, the lengths, then the name, on one line at every width (owner,
+   31.07.2026). The first two columns are fixed and the figures are tabular, so
+   every name in the widget starts on the same vertical line. */
 .extract__row {
   display: grid;
-  grid-template-columns: 3.2rem 1fr;
-  gap: 0.1rem 0.75rem;
-  align-items: baseline;
+  grid-template-columns: 3.2rem auto 1fr;
+  gap: 0 0.375rem;
+  align-items: center;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.extract__lengths {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
 }
 
 .extract__date {
@@ -171,8 +196,31 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Never two lines: a name that wraps here takes this widget out of step with
+   the chart beside it, and the two of them sharing a row is the point (owner,
+   31.07.2026). Not in bold either; the date and the dots carry the weight. */
+.extract__name {
+  min-width: 0;
+  /* `clip` rather than `hidden`, with room left for the focus ring: the ring is
+     drawn two pixels wide two pixels outside the link, and a box that cuts at
+     its own edge cuts the ring off with it. On a name long enough to be
+     shortened the ring was outside the box on all four sides and could not be
+     seen at all, which is WCAG 2.2 SC 2.4.7. The ellipsis works the same
+     either way.
+
+     Six pixels and not four, which is where the ring's outer edge lands: at
+     exactly four there is no room for rounding at a fractional device pixel
+     ratio, so the outermost line of the ring goes. Known and accepted: Firefox
+     81 to 101 took `clip` before it took the margin, drops this line, and there
+     clips at the edge again. Every other engine shipped the two together, and an
+     engine with neither falls back to `visible`, where the ring is whole. */
+  overflow: clip;
+  overflow-clip-margin: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .extract__name a {
-  font-weight: 700;
   text-decoration: none;
 }
 
@@ -227,10 +275,41 @@
   justify-items: center;
 }
 
+/* The title as a block of gold with dark ink, in the shape the old portal had
+   and at a size that reads as the name of the board rather than as a caption
+   over it (owner, 31.07.2026). The same treatment is on the band under the
+   turning chart, so the two read as one family. */
 .top10__block .card__title {
   grid-column: span 2;
-  justify-self: start;
+  justify-self: stretch;
   align-self: center;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+  color: var(--gold-band-ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+/* The faces are as large as the block will take them, so a board that fills its
+   column fills it with circles rather than with air (owner, 31.07.2026). A
+   fixed size rather than a share of the cell: the cells centre what is in them,
+   so a share of the cell is a share of whatever the circle already is, and the
+   circle collapses to its own text. Written with the page in the selector
+   because the plain rule further down sets a size too, and two selectors of the
+   same weight are settled by which came last. */
+.home .top10 .portrait {
+  inline-size: 4rem;
+  block-size: 4rem;
+  font-size: 1.15rem;
+}
+
+.top10__block {
+  align-content: space-between;
+  block-size: 100%;
 }
 
 .top10__places {
@@ -248,10 +327,14 @@
    1,62:1 on the light theme, and the face wears one of three hundred and sixty
    colours, so no pair of values can be relied on. Against the card it is 5,53:1
    and 8,12:1. Same reasoning as the disc on the turning chart. */
+/* A place keeps its height whether or not somebody is standing in it, so the
+   block is the same height all season. */
 .top10__cell {
   position: relative;
   display: grid;
   justify-items: center;
+  align-content: center;
+  min-block-size: 4.6rem;
   min-width: 0;
 }
 
@@ -359,14 +442,16 @@
   min-width: 0;
 }
 
-/* The label is always there and the number arrives beside it, so the line does
-   not appear and disappear while somebody types. */
+/* The label is always there and the number arrives beside it, and the line
+   keeps the height of the taller of the two answers, so the card does not grow
+   and shrink as somebody types (owner, 31.07.2026). */
 .calc__result {
   margin: 0;
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.4rem;
+  min-block-size: 2.1rem;
 }
 
 .calc__label {

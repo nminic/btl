@@ -88,6 +88,33 @@ export function combineResources<A, B, C>(
   return { status: 'ready', data: [first.data, second.data, third.data] }
 }
 
+/** Four of them, for the front page, which reads competitors, events, results
+ *  and races. */
+export function combineFour<A, B, C, D>(
+  first: ResourceState<A>,
+  second: ResourceState<B>,
+  third: ResourceState<C>,
+  fourth: ResourceState<D>,
+): ResourceState<[A, B, C, D]> {
+  const all = [first, second, third, fourth]
+  const failed = all.find((state) => state.status === 'error')
+
+  if (failed !== undefined) {
+    return failed as ResourceState<[A, B, C, D]>
+  }
+
+  if (
+    first.status !== 'ready' ||
+    second.status !== 'ready' ||
+    third.status !== 'ready' ||
+    fourth.status !== 'ready'
+  ) {
+    return { status: 'loading' }
+  }
+
+  return { status: 'ready', data: [first.data, second.data, third.data, fourth.data] }
+}
+
 /** The same idea for the common case of exactly two resources. */
 export function combinePair<A, B>(
   first: ResourceState<A>,

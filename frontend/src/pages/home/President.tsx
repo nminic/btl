@@ -27,8 +27,11 @@ export const ADDRESS_SLUG = 'rec-predsednika'
 export function President() {
   const state = usePages()
 
+  /* Inline, and with no name: the only heading this part has is inside the
+     record it is waiting for, and the address is kept out of the code on
+     purpose (PDL P28a), so there is no static string to name it with. */
   return (
-    <Resource state={state}>
+    <Resource state={state} inline>
       {(pages) => {
         const page = pageOf(pages, ADDRESS_SLUG)
 
@@ -36,7 +39,7 @@ export function President() {
           <div className="card">
             {page.sections.map((section) => (
               <article className="address" key={section.heading}>
-                <h2 className="address__title">{section.heading}</h2>
+                <h2 className="card__title">{section.heading}</h2>
                 <Markdown text={section.body} />
               </article>
             ))}

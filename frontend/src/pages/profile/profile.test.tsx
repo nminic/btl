@@ -282,26 +282,26 @@ describe('a season in which both a trophy and a plaque were taken', () => {
 })
 
 describe('the address stays as short as it can be', () => {
-  it('drops the season from it again when the season chosen is the one it opens on', async () => {
+  it('carries the season only where it differs from the default', async () => {
     const user = setupUser()
-    const { router } = renderAt('/sr/takmicar/000007?sezona=sve')
+    const { router } = renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
-    const opensOn = within(season).getAllByRole('option')[1].getAttribute('value')!
+    const another = within(season).getAllByRole('option')[1].getAttribute('value')!
 
-    /* The address it started on, which has to be the one that changes. Read from
-       the router: a memory router never touches window.location, so the old
-       assertion against it passed no matter what the screen did. */
-    expect(router.state.location.search).toBe('?sezona=sve')
+    /* All of them is the default (owner, 31.07.2026), so the bare address is
+       the one that means it. Read from the router: a memory router never
+       touches window.location, so an assertion against it passes no matter
+       what the screen does. */
+    expect(season.value).toBe('sve')
+    expect(router.state.location.search).toBe('')
 
-    await user.selectOptions(season, opensOn)
+    await user.selectOptions(season, another)
+    expect(router.state.location.search).toBe(`?sezona=${another}`)
 
-    /* Written into the address only where it differs from the default, so a
-       shared link carries what the reader chose and nothing more. The assertion
-       has to be on the address: the value of the control is the same either
-       way. */
-    expect(season.value).toBe(opensOn)
+    // And choosing all of them again takes it back out.
+    await user.selectOptions(season, 'sve')
     expect(router.state.location.search).toBe('')
   })
 
@@ -388,17 +388,17 @@ describe('the season, over both parts of the profile', () => {
     expect(screen.queryByText('Ovaj takmičar još nema nijedan pehar ni plaketu.')).not.toBeInTheDocument()
   })
 
-  it('opens on the season now rather than on the last one this person raced', async () => {
-    /* Read on a simulated day, which is the only way the portal is allowed to
-       know what day it is (ADL A7), and 2022 is a year 000001 did not race. It
-       used to open on the newest season they had, so two profiles opened on two
-       different years and neither on the year the reader is living in. */
+  it('opens on all of them, which is what a profile is', async () => {
+    /* Owner, 31.07.2026. A profile is somebody's whole running life, and the
+       question it answers first is what they have done rather than what they
+       have done since January; opening on the running season leaves it empty
+       for the first weeks of every year. It opened on the running season for
+       part of one day, and on the newest season they had raced before that. */
     renderAt('/sr/takmicar/000001', 'visitor', null, undefined, '2022-06-01')
 
     await screen.findByRole('heading', { level: 1 })
-    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
 
-    expect(season.value).toBe('2022')
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('sve')
   })
 
   it('will not take a year that only looks like one', async () => {
@@ -409,6 +409,20 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2022')
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('sve')
+  })
+
+  /* The choice travels between the two parts of one profile, because it lives
+     in the address and every link in the control carries the query. */
+  it('keeps the season chosen while moving between the two parts', async () => {
+    const user = setupUser()
+    renderAt('/sr/takmicar/000001?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1 })
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2019')
+
+    await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
+
+    expect((await screen.findByLabelText('Sezona')) as HTMLSelectElement).toHaveValue('2019')
   })
 })

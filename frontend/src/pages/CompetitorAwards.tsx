@@ -17,7 +17,7 @@ import {
   useTeams,
 } from '../data/useResource'
 import { awardsOf } from './profile/awards'
-import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
+import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
 import './Profile.css'
 
@@ -83,7 +83,7 @@ function AwardsFor({
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
-  const season = useSeason()
+  const asked = useSeason()
 
   const all = useMemo(
     () => awardsOf(competitor, competitors, results),
@@ -96,13 +96,16 @@ function AwardsFor({
      The badges below are not narrowed and cannot be: a badge is won over a
      career and carries no season, which is the same reason the note above the
      two sections says what it says. */
+  const seasons = useMemo(
+    () => seasonOptions([...new Set(all.map((one) => one.season))], asked, today),
+    [all, asked, today],
+  )
+  /* Held against the list before anything is read in it, so the control and the
+     trophies below it cannot show two different years. */
+  const season = offeredSeason(asked, seasons, undefined)
   const awards = useMemo(
     () => all.filter((one) => season === ALL_SEASONS || String(one.season) === season),
     [all, season],
-  )
-  const seasons = useMemo(
-    () => seasonOptions([...new Set(all.map((one) => one.season))], season, today),
-    [all, season, today],
   )
   const earned = useMemo(
     () => earnedBadges(competitor, results, badges),
@@ -118,7 +121,7 @@ function AwardsFor({
         description={t('seo.competitor.awardsDescription', { name })}
       />
 
-      <ProfileHead competitor={competitor} team={team} seasons={seasons} />
+      <ProfileHead competitor={competitor} team={team} seasons={seasons} season={season} />
       <ProfileParts memberNumber={competitor.memberNumber} />
 
       <p className="profile__scope">{t('awards.note')}</p>

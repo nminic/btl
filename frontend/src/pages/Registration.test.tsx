@@ -32,7 +32,11 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
   await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
   await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
-  await user.type(screen.getByLabelText(/Grad/), 'Beograd')
+  /* Required since 31.07.2026: the shirt and the finisher medal are posted
+     together once a member reaches twelve points, and a parcel needs an
+     address. */
+  await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+  await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
   await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
@@ -178,6 +182,24 @@ describe('Registration once it is open', () => {
     expect(screen.getByText(/poslata ponovo/)).toBeVisible()
     expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the address, at the moment of joining', () => {
+  /* Required since 31.07.2026: the shirt and the finisher medal are posted
+     together once a member reaches twelve points, and a parcel needs an
+     address. */
+  it('will not let the form through without it', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12031990')
+    await user.clear(screen.getByLabelText(/^Adresa za slanje$/))
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Adresa za slanje$/ })).toBeVisible()
   })
 })
 

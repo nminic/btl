@@ -1,0 +1,68 @@
+/* What waiting looks like (owner, 31.07.2026). Two forms, and only the first
+ * covers anything.
+ *
+ * The page-level form is a sheet over the whole page. Fixed rather than
+ * absolute, so it covers what is scrolled off as well as what is in view, and
+ * `inset: 0` so nothing under it can be clicked. It is the last thing in the
+ * stacking order the portal has, above the header and the dropdowns it opens.
+ *
+ * The inline form is for a part of a screen and covers nothing at all.
+ */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  /* The page shows through, so the reader keeps their place and sees that the
+     screen has not gone anywhere. Enough tint that nothing under it reads as
+     something to press. */
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+/* One part of a screen waiting, where that part will be. No sheet, no tint and
+   no blur, because the parts that have already arrived are the reason this
+   Resource is separate from the screen's own. The height keeps the page from
+   jumping the moment the part lands with nothing, though a part that arrives
+   full still moves what is under it. */
+.loader--inline {
+  position: static;
+  z-index: auto;
+  min-block-size: 6rem;
+  background: none;
+  backdrop-filter: none;
+}
+
+/* The ring is the only thing a sighted reader gets here, so it is drawn on the
+   border made for controls rather than the faint one made for rules: 3.35:1
+   against the page, where the other measures 1.38:1 (WCAG 2.2 SC 1.4.11). */
+.loader--inline .loader__ring {
+  border-color: var(--control-border);
+  border-block-start-color: var(--accent);
+}
+
+.loader__ring {
+  inline-size: 3rem;
+  block-size: 3rem;
+  border: 3px solid var(--border);
+  border-block-start-color: var(--accent);
+  border-radius: 50%;
+  animation: loader-turn 900ms linear infinite;
+}
+
+@keyframes loader-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Anybody who has asked for less motion gets a ring that does not turn. It still
+   says what it is, out loud, and the page-level one still covers the page. */
+@media (prefers-reduced-motion: reduce) {
+  .loader__ring {
+    animation: none;
+    border-block-start-color: var(--accent);
+    opacity: 0.7;
+  }
+}

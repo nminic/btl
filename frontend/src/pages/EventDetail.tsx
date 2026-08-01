@@ -15,7 +15,7 @@ function RaceTable({ eventId }: { eventId: string }) {
   const races = useRaces()
 
   return (
-    <Resource state={races}>
+    <Resource state={races} inline label={t('event.races')}>
       {(all) => (
         <div className="table-scroll">
           <table className="table">
@@ -78,8 +78,15 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
   const today = useToday()
   const state = combinePair(useResults(), useCompetitors())
 
+  /* An event still to be run draws no section here at all, so while its data is
+     on its way it must not hold a box open either: the reader would watch a
+     space that resolves into nothing. */
+  if (date > today && state.status === 'loading') {
+    return null
+  }
+
   return (
-    <Resource state={state}>
+    <Resource state={state} inline label={t('event.results')}>
       {([results, competitors]) => {
         const ran = results
           .filter((one) => one.eventSlug === slug)

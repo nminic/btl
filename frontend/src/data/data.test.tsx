@@ -3,6 +3,7 @@ import { loadResource, type ResourceName } from './client'
 import type { Competitor } from './types'
 import {
   combinePair,
+  combineFour,
   combineResources,
   dataOr,
   failed,
@@ -125,6 +126,33 @@ describe('combineResources', () => {
 
   it('lets an error win over loading', () => {
     expect(combineResources(loading, failed, ready(1))).toBe(failed)
+  })
+})
+
+/* Four of them, for the front page, which reads competitors, events, results
+ * and races. The same three rules as the three-way one, held separately,
+ * because a copy that drifts is a screen that shows half its data. */
+describe('combineFour', () => {
+  const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
+  const loading: ResourceState<never> = { status: 'loading' }
+  const failed: ResourceState<never> = { status: 'error', error: new Error('pukla veza') }
+
+  it('is ready only when all four are ready', () => {
+    expect(combineFour(ready(1), ready('dva'), ready(true), ready('četiri'))).toEqual({
+      status: 'ready',
+      data: [1, 'dva', true, 'četiri'],
+    })
+  })
+
+  it('is loading while any of the four is loading', () => {
+    expect(combineFour(loading, ready(1), ready(1), ready(1)).status).toBe('loading')
+    expect(combineFour(ready(1), loading, ready(1), ready(1)).status).toBe('loading')
+    expect(combineFour(ready(1), ready(1), loading, ready(1)).status).toBe('loading')
+    expect(combineFour(ready(1), ready(1), ready(1), loading).status).toBe('loading')
+  })
+
+  it('lets an error win over loading', () => {
+    expect(combineFour(loading, failed, ready(1), ready(1))).toBe(failed)
   })
 })
 

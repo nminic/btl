@@ -292,11 +292,14 @@ describe('TopBoards', () => {
       .slice(1)
       .map((row) => row.textContent)
 
-    await user.selectOptions(screen.getByLabelText('Sezona'), '2012')
+    await user.selectOptions(screen.getByLabelText('Sezona'), '2017')
 
-    // 2012 has two results in it, and both belong to the same team.
+    /* 2017 has two teams with anybody in them, against three in 2019. The year
+       was 2012 until the roster was scoped to the season being shown: nobody was
+       in a team that early, so the board emptied and the test read a table that
+       was no longer there. */
     const after = board('Najbolji tim').getAllByRole('row').slice(1)
-    expect(after).toHaveLength(1)
+    expect(after).toHaveLength(2)
     expect(after.map((row) => row.textContent)).not.toEqual(before)
   })
 
@@ -413,11 +416,10 @@ describe('Competitors', () => {
 })
 
 describe('CompetitorProfile', () => {
-  it('opens on the newest season this person raced, not on all of them', async () => {
-    /* Owner's design decision, 30.07.2026. Member 000021 has two hundred and
-       seventy-seven results; opening on all of them is twenty-three screens on a
-       telephone, and the counters above were career totals under a heading that
-       names a season. All seasons is one choice away. */
+  it('opens on all of them, which is what a profile is', async () => {
+    /* Owner, 31.07.2026, reversing the decision of the day before: a profile is
+       somebody's whole running life, and the question it answers first is what
+       they have done rather than what they have done since January. */
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
@@ -427,8 +429,9 @@ describe('CompetitorProfile', () => {
       .map((one) => Number(one.getAttribute('value')))
       .filter((one) => !Number.isNaN(one))
 
-    // The newest of them, named: "not all seasons" would pass on the oldest.
-    expect(season.value).toBe(String(Math.max(...years)))
+    // All of them, and the years are still on offer one choice away.
+    expect(season.value).toBe('sve')
+    expect(years.length).toBeGreaterThan(1)
     /* The widget wears no heading any more (owner, 31.07.2026): the season is
        chosen above it and the ring beside it carries the race count. It keeps
        its name where a screen reader can still find it. */
@@ -577,12 +580,15 @@ describe('CompetitorProfile', () => {
     expect(await screen.findByRole('heading', { name: 'Svojim rečima' })).toBeVisible()
   })
 
-  it('draws no biography card for the members who have not written one', async () => {
-    // Most of them, which is the state the row has to look right in.
+  it('draws the biography card for the members who have not written one too', async () => {
+    /* Owner, 31.07.2026: the card stands on every profile. Everybody will have
+       one, since it is written at the moment of joining, and a row of three
+       that is sometimes a row of two changes shape from person to person for no
+       reason the reader can see. */
     renderAt('/sr/takmicar/000002')
 
-    await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByRole('heading', { name: 'Svojim rečima' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Svojim rečima' })).toBeVisible()
+    expect(screen.getByText(/još nije napisao ništa/)).toBeVisible()
   })
 
   it('hides the profile of a member who is no longer active', async () => {
@@ -683,8 +689,13 @@ describe('CompetitorProfile', () => {
   it('leads to the team page', async () => {
     renderAt('/sr/takmicar/000007')
 
-    await screen.findByRole('heading', { level: 1 })
-    expect(screen.getByRole('link', { name: /trkači|klub|krug/i })).toHaveAttribute(
+    /* Scoped to the head of the page: over the whole career the table below
+       carries dozens of event names, and some of them are clubs too. */
+    const head = (await screen.findByRole('heading', { level: 1 })).closest(
+      'header',
+    ) as HTMLElement
+
+    expect(within(head).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/tim/'),
     )
@@ -750,100 +761,77 @@ describe('Teams', () => {
     expect(rows[0].className).toBe('podium')
   })
 
-  it('opens a team to show who is in it and what each of them brought', async () => {
-    const user = setupUser()
+  /* The drawer is gone (owner, 31.07.2026). Who is in a team and what each of
+     them brought lives on the team's own page, which is where somebody who
+     wants it is going anyway, so a row here is a team and a link to it. */
+  it('carries no way to open a team inside the table', async () => {
     renderAt('/sr/timovi')
 
-    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(toggle)
-
-    const drawer = within(screen.getByRole('table', { name: /^Članovi tima/ }))
-    const members = drawer.getAllByRole('row').slice(1)
-    expect(members.length).toBeGreaterThan(0)
-    // Each member is a link to their profile, and carries their own figures.
-    expect(within(members[0]).getByRole('link')).toBeVisible()
-    expect(drawer.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
-      '#',
-      'Član',
-      'Trke',
-      'd (km)',
-      'Bodovi',
-    ])
+    await standing()
+    expect(screen.queryByRole('button', { name: /članove tima/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Ovaj tim još nema članova.')).not.toBeInTheDocument()
   })
 
-  it('builds nothing for a drawer nobody opened, and still points at it', async () => {
+  /* A team is a thing of one season, so the standing is of one season and all
+     of them is not on offer (owner, 31.07.2026). */
+  it('stands for one season, chosen beside the heading, and never for all of them', async () => {
     const user = setupUser()
-    renderAt('/sr/timovi')
+    renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
 
-    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-    const drawer = document.getElementById(toggle.getAttribute('aria-controls')!)
+    await standing()
+    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
 
-    /* The row is there whether the drawer is open or not, so aria-controls never
-       points at nothing: a button that says it controls an element which does not
-       exist is a broken promise to a screen reader.
+    expect(season.value).toBe('2026')
+    expect(within(season).queryByRole('option', { name: 'Sve sezone' })).not.toBeInTheDocument()
 
-       What is inside it is not. The drawer filters all 3522 results and ranks the
-       members of its team, and a closed one did that too, on every render: fifty
-       teams meant fifty passes over the whole result set for every single click. */
-    expect(drawer).toBeInTheDocument()
-    expect(drawer).not.toHaveTextContent(/\S/)
-    expect(screen.queryByRole('table', { name: /^Članovi tima/ })).not.toBeInTheDocument()
+    /* Every team keeps its row whatever the season, so what has to change is
+       what the rows say: the points are of the season being looked at. */
+    const points = async () =>
+      (await standing())
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent)
 
-    await user.click(toggle)
-    expect(within(drawer!).getByRole('table', { name: /^Članovi tima/ })).toBeInTheDocument()
+    const before = await points()
 
-    // And it is emptied again on the way back, rather than kept for later.
-    await user.click(screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0])
-    expect(drawer).not.toHaveTextContent(/\S/)
+    await user.selectOptions(season, '2019')
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2019')
+    expect(await points()).not.toEqual(before)
   })
 
-  it('reads one word on screen and the whole team out loud', async () => {
-    renderAt('/sr/timovi')
+  it('says so plainly when there is no team at all', async () => {
+    /* Every other screen says what an empty one means rather than showing an
+       empty table with headings over nothing. The standing had the sentence
+       written and never reached it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/teams.json')
+        ? new Response('[]', { headers: { 'content-type': 'application/json' } })
+        : real(input)) as typeof fetch
 
-    const toggle = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
+    try {
+      renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
 
-    /* The sentence used to be the visible text, and it does not wrap: at 360px
-       this column alone took 279 of the 661 pixels the table wanted inside a box
-       328 wide, so the standing scrolled sideways (PDL P24). The team is still in
-       the accessible name, because twenty buttons reading "Prikaži" are twenty
-       buttons a screen reader cannot tell apart, and the visible word is the first
-       word of that name, so what is heard contains what is seen (WCAG 2.2, 2.5.3). */
-    expect(toggle.textContent).toBe('Prikaži')
-    expect(toggle).toHaveAccessibleName(/^Prikaži članove tima \S/)
-  })
-
-  it('closes again, and says which state it is in', async () => {
-    const user = setupUser()
-    renderAt('/sr/timovi')
-
-    const open = (await standing()).getAllByRole('button', { name: /^Prikaži članove tima/ })[0]
-    await user.click(open)
-
-    const close = screen.getAllByRole('button', { name: /^Sakrij članove tima/ })[0]
-    expect(close).toHaveAttribute('aria-expanded', 'true')
-
-    await user.click(close)
-
-    expect(screen.getAllByRole('button', { name: /^Prikaži članove tima/ })[0]).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-  })
-
-  it('says so for a team nobody has joined', async () => {
-    const user = setupUser()
-    renderAt('/sr/timovi')
-
-    // The generator leaves one team empty on purpose, which is the case a table
-    // of contributions has nothing to show for.
-    await screen.findByRole('table')
-    for (const toggle of screen.getAllByRole('button', { name: /^Prikaži članove tima/ })) {
-      await user.click(toggle)
+      expect(await screen.findByText('Nema timova.')).toBeVisible()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    } finally {
+      globalThis.fetch = real
     }
+  })
 
-    expect(screen.getByText('Ovaj tim još nema članova.')).toBeVisible()
+  it('ignores a season in the address that it does not offer', async () => {
+    /* A shared link naming 1999 names a season the league never ran. Taking it
+       left the control with no option to sit on, so it rendered blank, while
+       the table below showed every team at 0,00 with nothing saying which year
+       that was. The address picks from the options; it does not add to them. */
+    renderAt('/sr/timovi?sezona=1999', 'visitor', null, undefined, '2026-06-01')
+
+    await standing()
+
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2026')
+    expect(
+      within(screen.getByLabelText('Sezona')).queryByRole('option', { name: '1999' }),
+    ).not.toBeInTheDocument()
   })
 })
 

@@ -80,6 +80,11 @@
   --length-ultra: #c0362b;
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
+  /* The name of a widget or of a card: navy on the light page, white on the
+     dark one (owner, 31.07.2026). Muted grey read as a caption on the thing
+     rather than as the name of it. The navy is the one the scoreboard's own
+     pill is made of, so a heading and the figures under it belong together. */
+  --heading: var(--blue-900);
   --gold-text: var(--gold-600);
   /* A gold disc carrying an icon. Both halves flip with the theme, because the
      disc is the only edge the control has and it has to clear 3:1 against the
@@ -95,6 +100,15 @@
      both themes would have taken the light one to 3,0:1, which is the threshold
      and not a margin. */
   --gold-button-hover: #6b510e;
+  /* The gold band that names a board: the title over the top ten and the caption
+     under the turning chart. Unlike the disc above, the band is painted straight
+     on the gold scale, so it is the same block of gold in both themes. That is
+     why its ink is one value and not a pair. Dark ink is 6,49:1 on gold-400 and
+     4,66:1 on gold-500, so both ends of the gradient clear 4,5:1.
+     It must not take the button ink, which flips with the theme because the disc
+     under it flips too. This background does not flip, and white on gold-400 is
+     2,14:1. */
+  --gold-band-ink: #3a2a02;
   --up: #1a7f4b;
   --down: #b3402f;
   /* Removing something. The same values as --down, which is a fall in the
@@ -130,6 +144,7 @@
     --length-ultra: #f4726a;
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
+    --heading: var(--white);
     --gold-text: var(--gold-300);
     --gold-button: var(--gold-400);
     --gold-button-ink: #3a2a02;
@@ -158,6 +173,7 @@
   --length-ultra: #f4726a;
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
+  --heading: var(--white);
   --gold-text: var(--gold-300);
   --gold-button: var(--gold-400);
   --gold-button-ink: #3a2a02;

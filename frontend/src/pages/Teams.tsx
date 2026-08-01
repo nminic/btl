@@ -1,88 +1,35 @@
-import { useState } from 'react'
 import { Link } from 'react-router'
+import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { rankMembers, rankTeams } from '../data/derive'
-import type { Competitor, Result, Team } from '../data/types'
+import { SeasonPicker } from '../components/SeasonPicker'
+import { offeredSeason, useSeason } from '../components/season'
+import { rankTeams, seasonOf, seasonsWithResults } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
-import { CompetitorName } from '../components/CompetitorName'
 
-/** How many columns the team row has, so the drawer underneath can span them. */
-const COLUMNS = 6
-
-/* Who is in the team and what each of them brought to its total.
+/**
+ * The standing of the teams, for one season.
  *
- * The team standing is a plain sum with no normalisation (PDL P12), so the only
- * honest way to read a team's position is to see whose races add up to it. That
- * is why this opens inside the standing rather than only on the team's own page:
- * the question "why are they ahead of us" is asked while looking at the table.
+ * The season is chosen beside the heading and it is the running one by default,
+ * with no "all of them" on offer (owner, 31.07.2026): a team is a thing of one
+ * season, its members change from year to year, and a standing summed over every
+ * season since the league began would be a list of who has been around longest.
+ *
+ * A row is a team and nothing else. It used to open a drawer with every member
+ * and what each of them contributed; that lives on the team's own page now
+ * (owner, 31.07.2026), which is where somebody who wants it is going anyway. The
+ * drawer also cost more than it looked: it ranked the members of its team out of
+ * the whole result set, so a page of fifty closed drawers was fifty passes over
+ * everything waiting to happen.
  */
-function MemberContributions({
-  team,
-  competitors,
-  results,
-}: {
-  team: Team
-  competitors: Competitor[]
-  results: Result[]
-}) {
-  const { locale, t } = useI18n()
-  const own = competitors.filter((one) => one.teamId === team.id)
-
-  if (own.length === 0) {
-    return <p className="rankings__empty">{t('teams.noMembers')}</p>
-  }
-
-  const numbers = new Set(own.map((one) => one.memberNumber))
-  const rows = rankMembers(
-    own,
-    results.filter((result) => numbers.has(result.memberNumber)),
-  )
-
-  return (
-    <div className="contributions__pane">
-      <div className="table-scroll">
-        <table className="table contributions">
-          <caption className="visually-hidden">{t('teams.membersOf', { team: team.name })}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{t('rankings.columns.position')}</th>
-              <th scope="col">{t('rankings.columns.member')}</th>
-              <th scope="col">{t('rankings.columns.races')}</th>
-              <th scope="col">{t('rankings.columns.distance')}</th>
-              <th scope="col">{t('rankings.columns.points')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.competitor.memberNumber}>
-                <td className="table__position">{row.position}</td>
-                <td>
-                  <CompetitorName competitor={row.competitor} />
-                </td>
-                <td>{formatNumber(row.races, locale)}</td>
-                <td>{formatNumber(row.kilometers, locale, 2)}</td>
-                <td className="table__points">{formatPoints(row.points, locale)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 export function Teams() {
   const { locale, t } = useI18n()
-  const [open, setOpen] = useState<string[]>([])
+  const today = useToday()
+  const running = today.slice(0, 4)
+  const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
-
-  const toggle = (id: string) =>
-    setOpen((current) =>
-      current.includes(id) ? current.filter((one) => one !== id) : [...current, id],
-    )
 
   return (
     <div className="rankings">
@@ -90,14 +37,28 @@ export function Teams() {
 
       <Resource state={state}>
         {([teams, competitors, results]) => {
-          const rows = rankTeams(teams, competitors, results)
+          /* The seasons anybody has raced in, and the running one, which is the
+             default and a control cannot open on an option it does not have.
+             Worked out before the choice, because the choice is held against it. */
+          const seasons = [...new Set([Number(running), ...seasonsWithResults(results)])].sort(
+            (left, right) => right - left,
+          )
+          const season = offeredSeason(asked, seasons, running)
+          const inSeason = results.filter((one) => seasonOf(one) === Number(season))
+          const rows = rankTeams(teams, competitors, inSeason, Number(season))
 
           return (
             <>
-              <p className="rankings__note">{t('teams.note')}</p>
+              <div className="rankings__season">
+                <SeasonPicker seasons={seasons} season={season} fallback={running} />
+              </div>
 
+              {rows.length === 0 ? (
+                <p className="rankings__empty">{t('teams.empty')}</p>
+              ) : (
               <div className="table-scroll">
                 <table className="table">
+                  <caption className="visually-hidden">{t('teams.title')}</caption>
                   <thead>
                     <tr>
                       <th scope="col">{t('rankings.columns.position')}</th>
@@ -109,83 +70,33 @@ export function Teams() {
                         {t('teams.columns.members')}
                       </th>
                       <th scope="col">{t('teams.columns.points')}</th>
-                      <th scope="col">
-                        <span className="visually-hidden">{t('teams.membersColumn')}</span>
-                      </th>
                     </tr>
                   </thead>
-
-                  {/* One tbody per team, so the drawer belongs to the row above it
-                      rather than floating between rows of other teams. */}
-                  {rows.map((row) => {
-                    const shown = open.includes(row.team.id)
-                    const drawerId = `team-members-${row.team.id}`
-
-                    return (
-                      <tbody key={row.team.id}>
-                        <tr className={row.position === 1 ? 'podium' : undefined}>
-                          {/* The place, not the row number: a tie nothing separates
-                              is shared, so the column can read 1, 1, 3 (PDL P12). */}
-                          <td className="table__position">{row.position}</td>
-                          <td>
-                            <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
-                          </td>
-                          <td className="table__hide-phone">{row.team.city}</td>
-                          <td className="table__hide-phone">
-                            {formatNumber(row.members, locale)}
-                          </td>
-                          <td className="table__points">
-                            {formatPoints(row.totals.points, locale)}
-                          </td>
-                          <td>
-                            {/* One word to read and the whole sentence to hear. The
-                                sentence used to be the visible text and it does not
-                                wrap, so on a telephone this column alone was 279 of
-                                the 661 pixels the table wanted inside a box 328 wide
-                                (PDL P24). A screen reader still gets the team it
-                                belongs to, because twenty buttons called "Prikaži"
-                                are twenty buttons it cannot tell apart. The visible
-                                word is the first word of the label, so what is read
-                                out contains what is on screen (WCAG 2.2, 2.5.3). */}
-                            <button
-                              type="button"
-                              className="contributions__toggle"
-                              aria-expanded={shown}
-                              aria-controls={drawerId}
-                              aria-label={
-                                shown
-                                  ? t('teams.hideMembers', { team: row.team.name })
-                                  : t('teams.showMembers', { team: row.team.name })
-                              }
-                              onClick={() => toggle(row.team.id)}
-                            >
-                              {shown ? t('teams.hide') : t('teams.show')}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {/* The row stays whether the drawer is open or not, so
-                            aria-controls always points at an element that exists.
-                            What is inside it does not: the drawer filters all 3522
-                            results and ranks the members of its team, and with fifty
-                            teams a closed drawer meant fifty passes over the whole
-                            set on every single click. */}
-                        <tr id={drawerId} hidden={!shown}>
-                          <td colSpan={COLUMNS} className="contributions__cell">
-                            {shown && (
-                              <MemberContributions
-                                team={row.team}
-                                competitors={competitors}
-                                results={results}
-                              />
-                            )}
-                          </td>
-                        </tr>
-                      </tbody>
-                    )
-                  })}
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr
+                        key={row.team.id}
+                        /* Gold for a lead, not for being first in an empty
+                           table: in a season nobody has raced yet every team is
+                           level on nothing, and the top row is only the one the
+                           sort happened to leave there. */
+                        className={row.position === 1 && row.totals.points > 0 ? 'podium' : undefined}
+                      >
+                        {/* The place, not the row number: a tie nothing separates
+                            is shared, so the column can read 1, 1, 3 (PDL P12). */}
+                        <td className="table__position">{row.position}</td>
+                        <td>
+                          <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
+                        </td>
+                        <td className="table__hide-phone">{row.team.city}</td>
+                        <td className="table__hide-phone">{formatNumber(row.members, locale)}</td>
+                        <td className="table__points">{formatPoints(row.totals.points, locale)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
+              )}
             </>
           )
         }}

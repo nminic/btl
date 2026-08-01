@@ -5,14 +5,20 @@ import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { Counters } from './home/Counters'
-import { CATEGORIES, resultsOf, seasonsWithResults, totalsOf } from '../data/derive'
-import type { Competitor, RaceCategory, Result, Team } from '../data/types'
+import {
+  CATEGORIES,
+  countsByCategory,
+  resultsOf,
+  seasonsWithResults,
+  totalsOf,
+} from '../data/derive'
+import type { Competitor, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
-import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
+import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
 
 /** What the address says when no length is chosen. The same word the season
  *  uses, and a constant of its own: they are two filters that happen to spell
@@ -21,18 +27,15 @@ import { ALL_SEASONS, seasonOptions, useSeason } from './profile/season'
 const ALL_LENGTHS = 'sve'
 import './Profile.css'
 
-function countsOf(results: Result[]): Map<RaceCategory, number> {
-  const counts = new Map<RaceCategory, number>()
-
-  for (const result of results) {
-    counts.set(result.category, (counts.get(result.category) ?? 0) + 1)
-  }
-
-  return counts
-}
-
-/** The biography as it is published, in paragraphs, with no links inside it: a
- *  link in text somebody else wrote is an address that has to be policed. */
+/**
+ * The biography as it is published, in paragraphs, with no links inside it: a
+ * link in text somebody else wrote is an address that has to be policed.
+ *
+ * The card stands on every profile, empty or not (owner, 31.07.2026). Everybody
+ * will have one, since it is written at the moment of joining, and a row of
+ * three that is sometimes a row of two changes shape from person to person for
+ * no reason the reader can see.
+ */
 function Biography({ text }: { text: string }) {
   const { t } = useI18n()
 
@@ -41,13 +44,17 @@ function Biography({ text }: { text: string }) {
       <h2 className="profile__card-title" id="profile-bio">
         {t('profile.bio')}
       </h2>
-      {shortBio(text)
-        .split(/\n{2,}/)
-        .map((paragraph) => (
-          <p className="profile__bio-text" key={paragraph}>
-            {paragraph}
-          </p>
-        ))}
+      {text === '' ? (
+        <p className="profile__bio-text profile__bio-text--none">{t('profile.bioEmpty')}</p>
+      ) : (
+        shortBio(text)
+          .split(/\n{2,}/)
+          .map((paragraph) => (
+            <p className="profile__bio-text" key={paragraph}>
+              {paragraph}
+            </p>
+          ))
+      )}
     </section>
   )
 }
@@ -129,7 +136,7 @@ function ProfileBody({
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
   const today = useToday()
-  const season = useSeason()
+  const asked = useSeason()
 
   const mine = useMemo(
     () => resultsOf(results, competitor.memberNumber),
@@ -137,9 +144,12 @@ function ProfileBody({
   )
   const seasons = useMemo(() => seasonsWithResults(mine), [mine])
   const options = useMemo(
-    () => seasonOptions(seasons, season, today),
-    [seasons, season, today],
+    () => seasonOptions(seasons, asked, today),
+    [seasons, asked, today],
   )
+  /* Held against the list before anything is read in it, so the control and the
+     table below it cannot show two different years. */
+  const season = offeredSeason(asked, options, undefined)
 
   /* The length has no such treatment as the season: an unknown length is nothing
      the row of six can show as chosen and nothing a table can narrow by, so it
@@ -176,14 +186,14 @@ function ProfileBody({
 
   return (
     <div className="profile profile--competitor">
-      <ProfileHead competitor={competitor} team={team} seasons={options} />
+      <ProfileHead competitor={competitor} team={team} seasons={options} season={season} />
       <ProfileParts memberNumber={competitor.memberNumber} />
 
-      <div className={competitor.bio === '' ? 'profile__row' : 'profile__row profile__row--bio'}>
-        {competitor.bio !== '' && <Biography text={competitor.bio} />}
+      <div className="profile__row profile__row--bio">
+        <Biography text={competitor.bio} />
 
         <section className="profile__card profile__card--donut">
-          <CategoryDonut counts={countsOf(inSeason)} caption={t('profile.byCategory')} />
+          <CategoryDonut counts={countsByCategory(inSeason)} caption={t('profile.byCategory')} />
         </section>
 
         <Counters totals={totals} races={false} />

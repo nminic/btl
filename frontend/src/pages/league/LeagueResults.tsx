@@ -118,10 +118,11 @@ function Grid({
 }
 
 export function LeagueResults({ league, events }: { league: League; events: BtlEvent[] }) {
+  const { t } = useI18n()
   const state = combineResources(useRaces(), useResults(), useCompetitors())
 
   return (
-    <Resource state={state}>
+    <Resource state={state} inline label={t('leagues.standing')}>
       {([races, results, competitors]) => (
         <Grid
           league={league}

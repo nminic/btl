@@ -103,6 +103,14 @@ export type Team = {
   city: string
   country: string
   organizerMemberNumber: string
+  /**
+   * What the team says about itself, as published.
+   *
+   * The first third of the team page (owner, 31.07.2026), beside the races and
+   * the figures. Empty on a team that has just been founded, which is the state
+   * the page has to look right in.
+   */
+  bio: string
 }
 
 export type League = {

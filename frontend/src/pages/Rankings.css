@@ -81,68 +81,8 @@
   font-size: 0.85rem;
 }
 
-/* The drawer under a team row: who is in it and what each of them brought to the
-   total. The team standing is a plain sum (PDL P12), so the only honest way to
-   read a position is to see whose races add up to it. */
-
-/* No nowrap: the label is one word now, and a column that refuses to wrap sets
-   the width of the whole table from inside a cell. */
-.contributions__toggle {
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color var(--fast),
-    color var(--fast);
-}
-
-.contributions__toggle:hover,
-.contributions__toggle[aria-expanded='true'] {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.contributions__cell {
-  padding: 0.35rem 0.75rem 0.9rem;
-  background: var(--surface-hover);
-}
-
-/* The drawer must not be what decides how wide the table around it is.
-
-   A cell in a table laid out automatically is as wide as its contents want to
-   be, and that width travels up into the table: the inner table asked for 639
-   pixels, the cell gave it 639, and the scroll box around it never had anything
-   to scroll, because its client width and its scroll width were the same number.
-   The outer table meanwhile grew past the box holding it and the page scrolled
-   sideways, which is the one thing that must not happen (PDL P24, ADL A7).
-
-   One grid track of minmax(0, 1fr) is a width of nothing under a minimum
-   measurement, so the cell stops asking for room on the drawer's behalf; the
-   track then takes the width the cell was given and the box inside it scrolls for
-   real. It is a wrapper rather than the cell itself, because a td that is its own
-   flex or grid container falls out of the table and its rows lose their shared
-   baseline (ADL A4d). */
-.contributions__pane {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* Four figures per member is the point of the drawer (PDL P28a), so this table
-   keeps all five of its columns on a telephone rather than hiding two of them
-   the way the standing above it does. Measured at 360px it still fits, because
-   the names wrap; if a longer name ever stops it fitting, the frame around it
-   scrolls and the page does not (PDL P24). */
-.contributions {
-  margin: 0;
-}
-
-.contributions th,
-.contributions td {
-  font-size: 0.85rem;
+.rankings__season {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: 0.75rem;
 }

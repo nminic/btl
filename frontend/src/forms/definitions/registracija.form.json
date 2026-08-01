@@ -66,6 +66,14 @@
       ]
     },
     {
+      "name": "address",
+      "type": "text",
+      "labelKey": "registration.address",
+      "hintKey": "registration.addressHint",
+      "required": true,
+      "maxLength": 120
+    },
+    {
       "name": "city",
       "type": "text",
       "labelKey": "registration.city",

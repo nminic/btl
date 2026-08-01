@@ -104,8 +104,7 @@ describe('pointing at a slice', () => {
       one.getAttribute('stroke-width'),
     )
 
-    /* It grows on both edges, so the ring keeps its middle and the number in it
-       does not jump. */
+    /* It grows outwards, so the hole in the middle never changes size. */
     expect(Number(during[0])).toBeGreaterThan(Number(before[0]))
     expect(during[1]).toBe(before[1])
 
@@ -115,6 +114,63 @@ describe('pointing at a slice', () => {
         one.getAttribute('stroke-width'),
       ),
     ).toEqual(before)
+  })
+
+  it('declines the word in the middle with the number above it', async () => {
+    const user = setupUser()
+    renderDonut(new Map<RaceCategory, number>([['marathon', 3]]))
+
+    await user.pointer({ target: document.querySelectorAll('.donut__seg')[0], keys: '[TouchA]' })
+
+    // Three is the count that tells the forms apart: one and five both take the
+    // same one in Serbian.
+    expect(document.querySelector('.donut__unit')?.textContent).toBe('maratona')
+  })
+
+  /* The geometry of the growth, which is the whole of the change and which two
+     mutations used to walk straight through: growing on both edges instead of
+     outwards, and measuring the longer arc on the old circle so the slice slides
+     round the ring as it grows. */
+  it('grows outwards, keeps its place on the ring, and stays inside the drawing', async () => {
+    const user = setupUser()
+    renderDonut(
+      new Map<RaceCategory, number>([
+        ['short', 3],
+        ['marathon', 1],
+      ]),
+    )
+
+    const read = (one: Element) => {
+      const [drawn, round] = (one.getAttribute('stroke-dasharray') ?? '').split(' ').map(Number)
+
+      return {
+        radius: Number(one.getAttribute('r')),
+        width: Number(one.getAttribute('stroke-width')),
+        round,
+        share: drawn / round,
+        offset: Number(one.getAttribute('stroke-dashoffset')) / round,
+      }
+    }
+
+    const before = read(document.querySelectorAll('.donut__seg')[1])
+
+    await user.hover(document.querySelectorAll('.donut__seg')[1])
+
+    const after = read(document.querySelectorAll('.donut__seg')[1])
+
+    // Outwards: the middle of the band moves out by half of what the band gains,
+    // so the inner edge stands still.
+    expect(after.radius).toBeCloseTo(before.radius + (after.width - before.width) / 2, 6)
+    // And the slice is the same slice: same share of the circle, same place on it.
+    expect(after.share).toBeCloseTo(before.share, 6)
+    expect(after.offset).toBeCloseTo(before.offset, 6)
+    /* Measured on its own circle, which is what keeps it there. A longer arc
+       measured on the smaller circle is the same length of line laid on a wider
+       ring, so the slice covers fewer degrees and slides round as it grows. */
+    expect(after.round).toBeCloseTo(2 * Math.PI * after.radius, 6)
+    expect(before.round).toBeCloseTo(2 * Math.PI * before.radius, 6)
+    // The outer edge stays inside the square the drawing is given.
+    expect(after.radius + after.width / 2).toBeLessThanOrEqual(100)
   })
 
   it('says which length it is, and how many', () => {
@@ -148,7 +204,10 @@ describe('pointing at a slice', () => {
     const middle = document.querySelector('.donut__unit')
     const number = document.querySelector('.donut__total')
 
-    expect(middle?.textContent).toBe('Maraton')
+    /* The word declines with the number above it, and it is not in capitals:
+       "ultramaratona" in small caps with spacing does not fit the hole in the
+       middle and loses the shape the eye reads a word by (owner, 31.07.2026). */
+    expect(middle?.textContent).toBe('maraton')
     expect(number?.textContent).toBe('1')
   })
 })

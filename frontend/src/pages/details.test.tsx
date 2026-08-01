@@ -4,13 +4,37 @@ import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
 describe('TeamDetail', () => {
+  it('says a team had nobody that season, which is not the same as never having anybody', async () => {
+    /* Nišavski maraton klub has five members today and none of them had joined
+       by 2014, a season the control offers because those same people were racing
+       then, under nobody's colours. The sentence has to tell those two silences
+       apart: a team nobody has ever joined, and a team that had nobody that
+       year. */
+    renderAt('/sr/tim/nisavski-maraton-klub?sezona=2014', 'visitor', null, undefined, '2026-06-01')
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+    expect(screen.getByText('Ovaj tim te sezone nije imao članova.')).toBeVisible()
+    expect(screen.queryByText('Ovaj tim još nema članova.')).not.toBeInTheDocument()
+  })
+
   it('shows the team, its totals and its members with what each contributed', async () => {
-    renderAt('/sr/tim/dunavski-trkaci')
+    /* Vardarski krug in 2026: five in the team that season, four of whom raced.
+       Dunavski trkači was the example until the roster was scoped to the season
+       being read, which took away the member who joins for 2027 and with them
+       the row of zeros this case is about. */
+    renderAt('/sr/tim/vardarski-krug', 'visitor', null, undefined, '2026-06-01')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Zbirno, ceo tim' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Vardarski krug' })).toBeVisible()
+    /* Three of one width across the top (owner, 31.07.2026): what the team says
+       about itself, the ring of lengths, the figures. The figures wear no
+       heading any more, the same as on a profile, and keep their name where a
+       screen reader finds it. */
+    expect(screen.getByRole('heading', { name: 'O timu' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
 
-    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
+    const rows = within(screen.getByRole('table', { name: 'Članovi' }))
+      .getAllByRole('row')
+      .slice(1)
     expect(rows.length).toBeGreaterThan(1)
 
     // Ordered by what each member brought, and the top three marked. The last
@@ -22,7 +46,10 @@ describe('TeamDetail', () => {
   it('leads from a member back to their profile', async () => {
     renderAt('/sr/tim/dunavski-trkaci')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const rows = within(await screen.findByRole('table', { name: 'Članovi' }))
+      .getAllByRole('row')
+      .slice(1)
+
     expect(within(rows[0]).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/takmicar/'),
@@ -49,7 +76,7 @@ describe('TeamDetail', () => {
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     await user.click(within(rows[0]).getAllByRole('link')[0])
 
-    expect(await screen.findByRole('heading', { name: 'Zbirno, ceo tim' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'O timu' })).toBeVisible()
   })
 })
 

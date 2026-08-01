@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { BtlEvent } from '../../data/types'
+import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { CalendarExtract } from './CalendarExtract'
 import { EnrolmentSlot } from './EnrolmentSlot'
@@ -57,7 +57,7 @@ describe('EnrolmentSlot', () => {
        said this nowhere. */
     renderWidget(<EnrolmentSlot today="2027-06-01" />)
 
-    expect(screen.getByText(/ne i mesto u rang listama/)).toBeVisible()
+    expect(screen.getByText('Profil i rezultati, bez rangiranja.')).toBeVisible()
   })
 
   it('still counts the days to a rise where there is one', () => {
@@ -84,8 +84,14 @@ describe('CalendarExtract', () => {
     raceIds: [],
   })
 
+  const races: Race[] = [
+    { id: 'r1', eventId: 'd', name: 'Maraton', distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon' },
+    { id: 'r2', eventId: 'd', name: 'Ultra', distanceKm: 100, ascentM: 0, descentM: 0, category: 'ultra' },
+    { id: 'r3', eventId: 'd', name: 'Drugi maraton', distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon' },
+  ]
+
   it('says so when there is nothing ahead', () => {
-    renderWidget(<CalendarExtract events={[]} today="2026-07-29" />)
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" />)
 
     expect(screen.getByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
   })
@@ -99,6 +105,7 @@ describe('CalendarExtract', () => {
           event('c', 'BTL sreda', '2026-12-16'),
           event('d', 'Fruškogorski maraton', '2026-12-05'),
         ]}
+        races={races}
         today="2026-11-01"
       />,
     )
@@ -108,6 +115,29 @@ describe('CalendarExtract', () => {
     expect(rows[0]).toHaveTextContent('i još 2 termina')
     // A one-off says nothing about repeats.
     expect(rows[1]).not.toHaveTextContent('i još')
+  })
+
+  /* One dot per length actually run there, never one per race, and the names
+     travel with them because a colour on its own says nothing to anybody who
+     cannot separate two of them (owner, 31.07.2026). */
+  it('marks the lengths an event holds, once each', () => {
+    const { container } = renderWidget(
+      <CalendarExtract
+        events={[{ ...event('d', 'Fruškogorski maraton', '2026-12-05'), raceIds: ['r1', 'r2', 'r3'] }]}
+        races={races}
+        today="2026-11-01"
+      />,
+    )
+
+    /* Three races, two lengths between them, so the row names two: the marathon
+       run twice is named once. The sentence is what a screen reader is given and
+       the dots are what everybody else sees, so both are counted: the sentence
+       alone survived the dots disappearing altogether, which is the one thing
+       moving them between stylesheets could have done. */
+    expect(screen.getByText('Maraton, Ultramaraton')).toBeInTheDocument()
+    expect(
+      [...container.querySelectorAll('.length-dot')].map((dot) => dot.getAttribute('aria-hidden')),
+    ).toEqual(['true', 'true'])
   })
 })
 

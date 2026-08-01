@@ -1,5 +1,5 @@
 import { categoryCodeFor } from './categories'
-import type { BtlEvent, Competitor, Gender, RaceCategory, Result, Team } from './types'
+import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -133,9 +133,14 @@ export type Placed<T> = T & { position: number }
  * the number after them is skipped, so a shared first place reads 1, 1, 3, and
  * inside a shared place the smaller member number comes first (PDL P12).
  *
- * That inner order is not a measure and means nothing. It is there so the table
- * does not shuffle on every recount and the Δ column does not invent arrows up
- * and down, which is a fault nobody could explain to a member.
+ * That inner order is there so the table does not shuffle on every recount.
+ *
+ * It is about to become more than that: the owner decided on 31.07.2026 that
+ * there is no shared place at all, and that the lower member number is the last
+ * measure that separates two people, so that the trophy for second is always
+ * given to somebody. Until that is carried through here the places are still
+ * shared, and the two have to move together, because a table that shares places
+ * and an award list that does not would disagree in public.
  *
  * `compare` is the ladder the list was sorted by, so two rows count as level
  * only when every rung of it leaves them equal.
@@ -297,16 +302,46 @@ const BY_TEAM = byLadder<TeamRow>([
  * not shuffle between two recounts of the same data.
  *
  * The results are taken as given, so the caller decides whether the board is
- * one season or the whole history.
+ * one season or the whole history. The roster is not: the season is handed in
+ * and the members are scoped to it here, because both callers need the same
+ * thing done to the same argument and a rule each of them has to remember to
+ * apply is exactly the shape of the bug this closes. A standing headed by a year
+ * was counting today's roster, so 2019 read as what the people who are in these
+ * teams now happened to score in 2019, credited to whichever team each of them
+ * has since joined.
  */
+/**
+ * Whether somebody was in their team in a given season.
+ *
+ * A team is a thing of one season (PDL P13), so a figure headed by a year has to
+ * be that year's team and not today's. `teamSince` is what the data knows, and
+ * it answers both cases that arise: somebody still in a team counts from the
+ * season they joined, and somebody who has left contributes nothing, which is
+ * what the exit rule orders anyway (PDL P13, 31.07.2026: leaving mid-season
+ * deletes the whole contribution to that team for that season).
+ *
+ * It also keeps out the member who has paid for next season and joined a team
+ * for it, who is a member today and deliberately not in this season's tables.
+ *
+ * What it cannot express is the member who left cleanly on 1 January and keeps
+ * their earlier contribution. Nothing in the data names that person's old team,
+ * so no rule here can restore them.
+ */
+export function inTeamIn(competitor: Competitor, season: number): boolean {
+  return competitor.teamSince !== null && competitor.teamSince <= season
+}
+
 export function rankTeams(
   teams: Team[],
   competitors: Competitor[],
   results: Result[],
+  season: number,
 ): Placed<TeamRow>[] {
   const rows = teams.map((team) => {
     const numbers = new Set(
-      competitors.filter((one) => one.teamId === team.id).map((one) => one.memberNumber),
+      competitors
+        .filter((one) => one.teamId === team.id && inTeamIn(one, season))
+        .map((one) => one.memberNumber),
     )
 
     return {
@@ -435,6 +470,35 @@ export function upcomingSeries(events: BtlEvent[], today: string, limit: number)
     .map((runs) => ({ name: runs[0].name, next: runs[0], more: runs.length - 1 }))
     .sort((left, right) => left.next.date.localeCompare(right.next.date))
     .slice(0, limit)
+}
+
+/** How many races of each length there are among these results. The ring on a
+ *  profile and the one on a team page are the same drawing over different
+ *  results, so the tally is counted in one place. */
+export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
+  const counts = new Map<RaceCategory, number>()
+
+  for (const result of results) {
+    counts.set(result.category, (counts.get(result.category) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+/**
+ * Which lengths an event holds, in the order the five are always named.
+ *
+ * The coloured dots beside an event, on the front page and in the calendar
+ * (owner, 31.07.2026): one dot per length that is actually run there, never one
+ * per race, so an event with four half marathons carries one green dot rather
+ * than four.
+ */
+export function categoriesAt(event: BtlEvent, races: Race[]): RaceCategory[] {
+  const held = new Set(
+    races.filter((race) => event.raceIds.includes(race.id)).map((race) => race.category),
+  )
+
+  return CATEGORIES.filter((one) => held.has(one))
 }
 
 /** How many places a front page board keeps, whatever the league can fill. */

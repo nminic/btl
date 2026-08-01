@@ -174,7 +174,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: var(--text-muted);
+  color: var(--heading);
 }
 
 .profile__bio-text {
@@ -374,4 +374,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* Nothing written yet. The card is there for everybody (owner, 31.07.2026), so
+   an empty one has to say what it is rather than stand blank. */
+.profile__bio-text--none {
+  color: var(--text-muted);
+  font-style: italic;
 }

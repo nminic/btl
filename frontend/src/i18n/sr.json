@@ -337,13 +337,14 @@
     "pointsUnit": " BTL poena",
     "ascentUnit": " m+",
     "descentUnit": " m-",
-    "noRanking": "Ova cena nosi profil i rezultate, ali ne i mesto u rang listama.",
+    "noRanking": "Profil i rezultati, bez rangiranja.",
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
     "calcResult": "BTL poeni:"
   },
   "data": {
     "loading": "Učitavanje",
+    "loadingPart": "Učitavanje: {part}",
     "error": "Podaci se ne mogu učitati.",
     "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."
@@ -384,7 +385,9 @@
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
-    "city": "Grad",
+    "address": "Adresa za slanje",
+    "addressHint": "Ulica i broj, na koje ti stižu majica i finišerska medalja. Nikad se ne prikazuje javno.",
+    "city": "Mesto",
     "country": "Država",
     "countryHint": "Od države zavisi koji načini plaćanja ti se nude.",
     "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda pre nego što se pojave na tvom profilu.",
@@ -460,7 +463,6 @@
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
     "columns": {
       "position": "#",
-      "delta": "Δ",
       "member": "Član",
       "category": "Kat.",
       "races": "Trke",
@@ -607,8 +609,36 @@
       "few": "trke",
       "other": "trka"
     },
+    "categoryWord": {
+      "short": {
+        "one": "kraća trka",
+        "few": "kraće trke",
+        "other": "kraćih trka"
+      },
+      "long": {
+        "one": "duža trka",
+        "few": "duže trke",
+        "other": "dužih trka"
+      },
+      "half": {
+        "one": "polumaraton",
+        "few": "polumaratona",
+        "other": "polumaratona"
+      },
+      "marathon": {
+        "one": "maraton",
+        "few": "maratona",
+        "other": "maratona"
+      },
+      "ultra": {
+        "one": "ultramaraton",
+        "few": "ultramaratona",
+        "other": "ultramaratona"
+      }
+    },
     "stats": "Zbirna statistika",
     "bio": "Svojim rečima",
+    "bioEmpty": "Ovaj takmičar još nije napisao ništa o sebi.",
     "length": "Dužina",
     "allLengths": "Sve dužine",
     "lengthsShort": {
@@ -636,20 +666,15 @@
       "members": "Članova",
       "points": "Bodovi"
     },
-    "note": "Poredak timova je čist zbir bodova svih članova, bez normalizacije.",
     "empty": "Nema timova.",
     "backToTeams": "Nazad na timove",
-    "together": "Zbirno, ceo tim",
+    "about": "O timu",
+    "aboutEmpty": "Ovaj tim još nije napisao ništa o sebi.",
     "members": "Članovi",
     "noMembers": "Ovaj tim još nema članova.",
+    "noMembersThatSeason": "Ovaj tim te sezone nije imao članova.",
     "notFound": "Ovog tima nema.",
-    "name": "Tim",
-    "membersColumn": "Članovi tima",
-    "show": "Prikaži",
-    "hide": "Sakrij",
-    "showMembers": "Prikaži članove tima {team}",
-    "hideMembers": "Sakrij članove tima {team}",
-    "membersOf": "Članovi tima {team}"
+    "name": "Tim"
   },
   "leagues": {
     "title": "Dodatna takmičenja",
