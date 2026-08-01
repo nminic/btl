@@ -1,13 +1,13 @@
 @import '../styles/table.css';
 
 .pricing h1 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-12);
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
 
 .pricing__lead {
-  margin: 0 0 1.25rem;
+  margin: 0 0 var(--space-20);
   color: var(--text-muted);
   font-size: 1.05rem;
 }
@@ -27,12 +27,12 @@
 }
 
 .pricing__notes {
-  margin-top: 1.25rem;
+  margin-top: var(--space-20);
   display: grid;
-  gap: 0.6rem;
+  gap: var(--space-10);
 }
 
-@media (min-width: 780px) {
+@media (min-width: 820px) {
   /* Two columns rather than one narrow ribbon down the middle of a wide page. */
   .pricing__notes {
     grid-template-columns: 1fr 1fr;
@@ -41,7 +41,7 @@
 
 .pricing__notes p {
   margin: 0;
-  padding-left: 0.8rem;
+  padding-left: var(--space-12);
   border-left: 3px solid var(--border);
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -54,10 +54,10 @@
 }
 
 .pricing__badge {
-  margin-inline-start: 0.5rem;
-  padding: 0.1rem 0.5rem;
+  margin-inline-start: var(--space-8);
+  padding: var(--space-2) var(--space-8);
   border: 1px solid var(--accent);
-  border-radius: 999px;
+  border-radius: var(--radius-round);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -66,5 +66,5 @@
 }
 
 .pricing__join {
-  margin: 1.25rem 0 0;
+  margin: var(--space-20) 0 0;
 }

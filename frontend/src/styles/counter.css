@@ -5,14 +5,14 @@
   background: linear-gradient(168deg, var(--blue-800), var(--blue-900) 62%);
   border: 1px solid rgba(240, 201, 74, 0.28);
   border-radius: var(--radius);
-  padding: 0.9rem 1rem 1rem;
+  padding: var(--space-14) var(--space-16) var(--space-16);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--space-8);
 }
 
 .scoreboard__title {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-4);
   text-align: center;
   color: var(--white);
   font-size: clamp(17px, 2.6vw, 21px);
@@ -22,7 +22,7 @@
 .score {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--space-8);
 }
 
 .score__mark {
@@ -45,8 +45,8 @@
 .score__pill {
   flex: 1;
   min-width: 0;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
+  padding: var(--space-6) var(--space-14);
+  border-radius: var(--radius-round);
   background: linear-gradient(180deg, #3f9bf0, #1f7ad6);
   color: var(--white);
   font-weight: 600;
@@ -57,7 +57,7 @@
 }
 
 .scoreboard__note {
-  margin: 0.35rem 0 0;
+  margin: var(--space-6) 0 0;
   text-align: center;
   color: #9fb4dd;
   font-size: 0.7rem;

@@ -1,7 +1,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-20);
   max-width: 34rem;
 }
 
@@ -14,7 +14,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-4);
 }
 
 .field__label {
@@ -35,7 +35,7 @@
 
 .field__control {
   font: inherit;
-  padding: 0.6rem 0.7rem;
+  padding: var(--space-10) var(--space-12);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
@@ -64,7 +64,7 @@
   font: inherit;
   font-weight: 600;
   align-self: flex-start;
-  padding: 0.7rem 1.2rem;
+  padding: var(--space-12) var(--space-20);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--accent);
@@ -80,22 +80,22 @@
 .form__summary {
   border: 2px solid var(--down);
   border-radius: var(--radius-sm);
-  padding: 0.9rem 1rem;
+  padding: var(--space-14) var(--space-16);
 }
 
 .form__summary-title {
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-6);
   font-weight: 700;
   color: var(--down);
 }
 
 .form__summary ul {
   margin: 0;
-  padding-left: 1.2rem;
+  padding-left: var(--space-20);
 }
 
 .field--checkbox {
-  gap: 0.4rem;
+  gap: var(--space-6);
 }
 
 /* A value the form shows without asking for it. Deliberately not a box: there is
@@ -113,7 +113,7 @@
 .field__confirm {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: var(--space-10);
 }
 
 .field__confirm .field__label {

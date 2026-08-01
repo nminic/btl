@@ -6,13 +6,13 @@
 .date-switch {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-4);
 }
 
 .date-switch__day {
   height: 2.4rem;
-  padding: 0 0.5rem;
-  border-radius: 12px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius);
   border: 1px solid var(--control-border);
   background: var(--surface);
   color: var(--text);
@@ -47,7 +47,7 @@
   place-items: center;
   width: 2.4rem;
   height: 2.4rem;
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--control-border);
   background: var(--surface);
   color: var(--text);
@@ -64,9 +64,9 @@
 
 /* On a phone the header strip wraps, and a control that reads as one thing must
    not be broken across two lines. */
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .date-switch__day {
     font-size: 0.76rem;
-    padding: 0 0.35rem;
+    padding: 0 var(--space-6);
   }
 }

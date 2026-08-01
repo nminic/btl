@@ -1,5 +1,5 @@
 .calendar h1 {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-16);
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
@@ -8,8 +8,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--space-12);
+  margin-bottom: var(--space-16);
 }
 
 .calendar__month {
@@ -21,7 +21,7 @@
 .calendar__step {
   font: inherit;
   font-size: 0.85rem;
-  padding: 0.45rem 0.8rem;
+  padding: var(--space-8) var(--space-12);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
@@ -42,7 +42,7 @@
    from tablet width up. */
 .calendar__grid {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--space-8);
   align-items: start;
 }
 
@@ -53,13 +53,13 @@
   letter-spacing: 0.09em;
   font-weight: 700;
   color: var(--text-muted);
-  padding-bottom: 0.25rem;
+  padding-bottom: var(--space-4);
 }
 
 .day {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.5rem;
+  padding: var(--space-8);
   background: var(--surface);
 }
 
@@ -91,10 +91,10 @@
 .chip {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 6px;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-xs);
   background: var(--blue-100);
   color: var(--blue-800);
   font-size: 0.75rem;
@@ -133,19 +133,19 @@
 
 .chip__lengths {
   display: flex;
-  gap: 0.2rem;
+  gap: var(--space-4);
   flex-shrink: 0;
 }
 
 .day__more {
   display: block;
   width: 100%;
-  margin-top: 0.4rem;
-  padding: 0.25rem;
+  margin-top: var(--space-6);
+  padding: var(--space-4);
   cursor: pointer;
   background: transparent;
   border: 1px dashed var(--control-border);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   color: var(--text-muted);
   font: 700 0.75rem/1.2 inherit;
   /* A link now, not a button, so it has to be told the two things a button knew
@@ -167,7 +167,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-16);
   flex-wrap: wrap;
 }
 
@@ -177,7 +177,7 @@
 
 .calendar__today {
   font: 600 0.85rem/1.2 inherit;
-  padding: 0.45rem 0.8rem;
+  padding: var(--space-8) var(--space-12);
   cursor: pointer;
   color: var(--text);
   background: var(--surface);
@@ -200,8 +200,8 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.4rem 0.9rem;
-  margin-top: 1rem;
+  gap: var(--space-6) var(--space-14);
+  margin-top: var(--space-16);
   font-size: 0.8rem;
   color: var(--text-muted);
 }
@@ -213,7 +213,7 @@
 .legend__items {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 0.9rem;
+  gap: var(--space-6) var(--space-14);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -222,7 +222,7 @@
 .legend__item {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-4);
 }
 
 /* Everything on one day, on its own page: the same chips, one under another,
@@ -235,15 +235,15 @@
 
 .day-list .chip {
   font-size: 0.9rem;
-  padding: 0.6rem 0.7rem;
+  padding: var(--space-10) var(--space-12);
 }
 
 .calendar__back {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-8);
   font-size: 0.85rem;
 }
 
-@media (min-width: 780px) {
+@media (min-width: 820px) {
   /* Working days are all the same width and the weekend is wider. The widths
      stay the same from month to month, so they are learned once. */
   .calendar__grid {

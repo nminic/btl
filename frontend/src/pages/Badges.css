@@ -7,10 +7,10 @@
 
 .rankings .badges {
   list-style: none;
-  margin: 1rem 0 0;
+  margin: var(--space-16) 0 0;
   padding: 0;
   display: grid;
-  gap: 0.9rem;
+  gap: var(--space-14);
   align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr));
   /* How large the mark is drawn, and the reason it is set from here rather than
@@ -33,8 +33,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  padding: 1rem 0.85rem;
+  gap: var(--space-4);
+  padding: var(--space-16) var(--space-14);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -48,10 +48,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-8);
   width: 100%;
   min-width: 0;
-  padding: 0.25rem;
+  padding: var(--space-4);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -94,8 +94,8 @@
   position: static;
   width: auto;
   height: auto;
-  margin: 0.4rem 0 0;
-  padding-top: 0.5rem;
+  margin: var(--space-6) 0 0;
+  padding-top: var(--space-8);
   border-top: 1px solid var(--border);
   overflow: visible;
   clip-path: none;
@@ -103,7 +103,7 @@
 }
 
 .badge__hint p {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-4);
   font-size: 0.82rem;
   line-height: 1.35;
   color: var(--text-muted);
@@ -119,7 +119,7 @@
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
-  padding: 0.45rem 0.9rem;
+  padding: var(--space-8) var(--space-14);
   cursor: pointer;
   color: var(--text);
   background: var(--surface);

@@ -34,14 +34,14 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
-  padding: 0.6rem 0.5rem;
+  padding: var(--space-10) var(--space-8);
   border-bottom: 2px solid var(--border);
   font-weight: 700;
   white-space: nowrap;
 }
 
 .table td {
-  padding: 0.8rem 0.5rem;
+  padding: var(--space-12) var(--space-8);
   border-bottom: 1px solid var(--border);
   text-align: right;
 }
