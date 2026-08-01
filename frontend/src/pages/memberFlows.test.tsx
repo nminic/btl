@@ -257,7 +257,6 @@ describe('a result from entry to decision', () => {
   async function enterResult(user: ReturnType<typeof setupUser>) {
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-    await user.type(screen.getByLabelText(/Vreme starta/), '09:00')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
@@ -331,7 +330,6 @@ describe('a result from entry to decision', () => {
 
     await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka bez vremena')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-    await user.type(screen.getByLabelText(/Vreme starta/), '09:00')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')

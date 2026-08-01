@@ -425,16 +425,43 @@ export function defaultMonth(events: BtlEvent[], today: string): string {
 
 /** Days of a month laid out Monday to Sunday, with the leading and trailing
  *  blanks the grid needs. Null is a cell outside the month. */
-export function monthGrid(year: number, month: number): (number | null)[] {
+/**
+ * The days of one month, and which column the first of them falls in.
+ *
+ * Only real days (owner, 31.07.2026). The grid used to be padded with nulls at
+ * both ends so that every row held seven cells, and those cells were drawn as
+ * empty squares: on a month beginning on a Saturday that is five boxes of
+ * nothing before the month starts and five after it ends, and they read as days
+ * with nothing on rather than as days of another month.
+ *
+ * The offset is handed back instead, and the first day is placed in its column.
+ * A week starts on Monday, so `offset` is 0 for a month starting on a Monday and
+ * 6 for one starting on a Sunday.
+ */
+export function monthDays(year: number, month: number): { days: number[]; offset: number } {
   const first = new Date(Date.UTC(year, month - 1, 1))
-  const days = new Date(Date.UTC(year, month, 0)).getUTCDate()
-  // getUTCDay() is 0 for Sunday; the week here starts on Monday.
-  const lead = (first.getUTCDay() + 6) % 7
-  const cells: (number | null)[] = Array.from({ length: lead }, () => null)
+  const length = new Date(Date.UTC(year, month, 0)).getUTCDate()
 
-  for (let day = 1; day <= days; day += 1) {
-    cells.push(day)
+  return {
+    // getUTCDay() is 0 for Sunday; the week here starts on Monday.
+    offset: (first.getUTCDay() + 6) % 7,
+    days: Array.from({ length }, (_, index) => index + 1),
   }
+}
+
+/**
+ * The same month as a padded grid of seven columns, nulls where the month has
+ * not started or has already ended.
+ *
+ * The calendar screen does not use this any more: empty squares there read as
+ * days with nothing on (owner, 31.07.2026). The field for choosing a date still
+ * does, because there the grid is a control and a day has to keep its column
+ * under the finger; it is built out of `monthDays` so the two cannot disagree
+ * about what a month is.
+ */
+export function monthGrid(year: number, month: number): (number | null)[] {
+  const { days, offset } = monthDays(year, month)
+  const cells: (number | null)[] = [...Array.from({ length: offset }, () => null), ...days]
 
   while (cells.length % 7 !== 0) {
     cells.push(null)

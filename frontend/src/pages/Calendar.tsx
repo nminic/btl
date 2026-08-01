@@ -1,17 +1,21 @@
-import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { defaultMonth, eventsInMonth, monthGrid } from '../data/derive'
-import type { BtlEvent } from '../data/types'
-import { useEvents } from '../data/useResource'
+import { defaultMonth, eventsInMonth, monthDays } from '../data/derive'
+import type { BtlEvent, Race } from '../data/types'
+import { combinePair, useEvents, useRaces } from '../data/useResource'
 import { formatDate, formatMonth } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { EventChip } from './calendar/DayChips'
+import { LengthLegend } from './calendar/LengthLegend'
 import './Calendar.css'
 
-/* How many chips a day cell shows before it collapses the rest behind a
- * button. Three fits the tallest weekday cell without pushing the row. */
-const CHIPS_PER_DAY = 3
+/* How many events a day shows before the rest go to the day's own page (owner,
+ * 31.07.2026). Five: a day with six is rare enough that sending it to a page of
+ * its own costs almost nobody a click, and a day with twelve would otherwise
+ * make its whole row twelve chips tall. */
+const EVENTS_PER_DAY = 5
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
 
@@ -22,62 +26,68 @@ function shiftMonth(month: string, by: number): string {
   return `${moved.getUTCFullYear()}-${String(moved.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
-function EventChip({ event }: { event: BtlEvent }) {
-  const { locale, t } = useI18n()
-
-  return (
-    <Link className="chip" to={`/${locale}/kalendar/${event.slug}`}>
-      {/* The name wraps over as many lines as it needs and is never cut. */}
-      {event.name}
-      <i>
-        {event.city}
-        {', '}
-        {t('units.raceCount', { count: event.raceIds.length })}
-      </i>
-    </Link>
-  )
-}
-
+/**
+ * One day of the month.
+ *
+ * The row is as tall as its tallest day and a day is as tall as what is on it
+ * (owner, 31.07.2026). No cell of a fixed height and nothing scrolling inside a
+ * day: a scroll bar inside a square a seventh of the page wide is a thing nobody
+ * finds, and a fixed height meant either cutting a Saturday with four races or
+ * giving every empty Tuesday room for four.
+ *
+ * Today is ringed in gold and is the only day that is, so the ring means one
+ * thing.
+ */
 function Day({
   day,
   month,
+  today,
   events,
-  onOpen,
+  races,
+  first,
 }: {
-  day: number | null
+  day: number
   month: string
+  today: string
   events: BtlEvent[]
-  onOpen: (date: string) => void
+  races: Race[]
+  /** Which column the first of the month sits in, on the days it is the first. */
+  first?: number
 }) {
   const { locale, t } = useI18n()
-
-  if (day === null) {
-    return <div className="day day--outside" aria-hidden="true" />
-  }
-
   const date = `${month}-${String(day).padStart(2, '0')}`
-  const shown = events.slice(0, CHIPS_PER_DAY)
+  const shown = events.slice(0, EVENTS_PER_DAY)
   const hidden = events.length - shown.length
 
   return (
-    <div className="day">
-      <button
-        type="button"
-        className="day__number"
-        onClick={() => onOpen(date)}
-        aria-label={`${formatDate(date, locale)}, ${t('calendar.showDay')}`}
-      >
+    <div
+      className={[
+        'day',
+        date === today ? 'day--today' : '',
+        first === undefined ? '' : 'day--first',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={first === undefined ? undefined : ({ '--day-start': first } as CSSProperties)}
+    >
+      {/* The number is not a control any more. Pressing a day used to open a
+          panel under the whole grid, which on a telephone is under everything,
+          so it looked like nothing had happened. What leads somewhere is the
+          event, and the day itself only when it holds more than fits. */}
+      <span className="day__number">
         {day}
-      </button>
+        {date === today && <span className="visually-hidden">, {t('calendar.today')}</span>}
+      </span>
 
       {shown.map((event) => (
-        <EventChip key={event.id} event={event} />
+        <EventChip key={event.id} event={event} races={races} />
       ))}
 
       {hidden > 0 && (
-        <button type="button" className="day__more" onClick={() => onOpen(date)}>
+        <Link className="day__more" to={`/${locale}/kalendar/dan/${date}`}>
           {t('calendar.more', { count: hidden })}
-        </button>
+          <span className="visually-hidden">, {formatDate(date, locale)}</span>
+        </Link>
       )}
     </div>
   )
@@ -86,45 +96,57 @@ function Day({
 export function Calendar() {
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
-  const [openDay, setOpenDay] = useState<string | null>(null)
-  const state = useEvents()
+  const state = combinePair(useEvents(), useRaces())
   const today = useToday()
 
   return (
     <div className="calendar">
-      <h1>{t('calendar.title')}</h1>
+      {/* Outside the Resource: the heading and the way back to the running month
+          need no data, and a screen that says nothing at all while it waits is
+          the one thing every other screen here avoids. */}
+      <div className="calendar__head">
+        <h1>{t('calendar.title')}</h1>
+        <button
+          type="button"
+          className="calendar__today"
+          onClick={() => setParams({ mesec: today.slice(0, 7) })}
+        >
+          {t('calendar.toToday')}
+        </button>
+      </div>
 
       <Resource state={state}>
-        {(events) => {
+        {([events, races]) => {
           const month = params.get('mesec') ?? defaultMonth(events, today)
           const [year, index] = month.split('-').map(Number)
-          const inMonth = eventsInMonth(events, year, index)
+          const { days, offset } = monthDays(year, index)
           const byDay = new Map<string, BtlEvent[]>()
 
-          for (const event of inMonth) {
+          for (const event of eventsInMonth(events, year, index)) {
             byDay.set(event.date, [...(byDay.get(event.date) ?? []), event])
           }
-
-          const goTo = (next: string) => {
-            setOpenDay(null)
-            setParams({ mesec: next })
-          }
-
-          const dayEvents = openDay === null ? [] : (byDay.get(openDay) ?? [])
 
           return (
             <>
               <div className="calendar__bar">
-                <button type="button" className="calendar__step" onClick={() => goTo(shiftMonth(month, -1))}>
+                <button
+                  type="button"
+                  className="calendar__step"
+                  onClick={() => setParams({ mesec: shiftMonth(month, -1) })}
+                >
                   {t('calendar.previousMonth')}
                 </button>
                 <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
-                <button type="button" className="calendar__step" onClick={() => goTo(shiftMonth(month, 1))}>
+                <button
+                  type="button"
+                  className="calendar__step"
+                  onClick={() => setParams({ mesec: shiftMonth(month, 1) })}
+                >
                   {t('calendar.nextMonth')}
                 </button>
               </div>
 
-              {inMonth.length === 0 && <p className="calendar__empty">{t('calendar.empty')}</p>}
+              {byDay.size === 0 && <p className="calendar__empty">{t('calendar.empty')}</p>}
 
               <div className="calendar__grid">
                 {WEEKDAYS.map((weekday) => (
@@ -133,42 +155,32 @@ export function Calendar() {
                   </div>
                 ))}
 
-                {monthGrid(year, index).map((day, cell) => (
+                {days.map((day) => (
                   <Day
-                    key={cell}
+                    key={day}
                     day={day}
                     month={month}
-                    events={
-                      day === null ? [] : (byDay.get(`${month}-${String(day).padStart(2, '0')}`) ?? [])
-                    }
-                    onOpen={setOpenDay}
+                    today={today}
+                    events={byDay.get(`${month}-${String(day).padStart(2, '0')}`) ?? []}
+                    races={races}
+                    /* The first of the month carries which column it belongs in
+                       and the rest follow it. Nothing is drawn for the days of
+                       the month before or the month after: they were squares of
+                       nothing, and they read as days with nothing on rather than
+                       as days of another month.
+
+                       The column is handed to CSS as a value and applied there,
+                       never here. Written straight onto the element it placed
+                       day one in column six on a telephone as well, where there
+                       is no seven column grid to be in: the implicit grid then
+                       grew six columns to hold it and the month spilled a
+                       thousand pixels off the side of the screen. */
+                    first={day === 1 ? offset + 1 : undefined}
                   />
                 ))}
               </div>
 
-              {openDay !== null && (
-                <section className="calendar__day-detail" aria-labelledby="day-detail-heading">
-                  <h2 id="day-detail-heading">{formatDate(openDay, locale)}</h2>
-                  {dayEvents.length === 0 ? (
-                    <p>{t('calendar.empty')}</p>
-                  ) : (
-                    <ul>
-                      {dayEvents.map((event) => (
-                        <li key={event.id}>
-                          <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
-                          {', '}
-                          {event.city}
-                          {', '}
-                          {t(`calendar.status.${event.status}`)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <button type="button" className="calendar__step" onClick={() => setOpenDay(null)}>
-                    {t('calendar.closeDay')}
-                  </button>
-                </section>
-              )}
+              <LengthLegend />
             </>
           )
         }}

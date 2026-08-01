@@ -287,6 +287,38 @@ describe('TopByCategory', () => {
     expect(screen.queryByText('000004')).not.toBeInTheDocument()
   })
 
+  it('leads to the same thing it is showing, not to the whole of a running life', async () => {
+    /* Owner, 01.08.2026: a bar under "Najviše kraćih trka" led to somebody's
+       profile with no filter, so the reader had to find the short races again by
+       hand. The season is written out as well, because a profile opens on all
+       seasons by default and leaving it out would widen exactly what was
+       pressed.
+
+       Two lengths and a turn, because one frame proves nothing: the chart opens
+       on the short races, so a bar wired to the word "short" rather than to what
+       is on screen would pass the first assertion and fail the second. */
+    renderWidget(
+      <TopByCategory
+        competitors={[competitor('000001')]}
+        results={[result('000001', 1), { ...result('000001', 2), id: 'long', category: 'long' }]}
+        season={2027}
+        turnMs={20}
+      />,
+    )
+
+    expect(screen.getByRole('link')).toHaveAttribute(
+      'href',
+      '/sr/takmicar/000001?sezona=2027&duzina=short',
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('link')).toHaveAttribute(
+        'href',
+        '/sr/takmicar/000001?sezona=2027&duzina=long',
+      ),
+    )
+  })
+
   it('turns to the next length by itself', async () => {
     renderWidget(
       <TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />,

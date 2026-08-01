@@ -18,13 +18,6 @@
       "required": true
     },
     {
-      "name": "startTime",
-      "type": "time",
-      "labelKey": "newResult.startTime",
-      "hintKey": "newResult.startTimeHint",
-      "required": true
-    },
-    {
       "name": "distanceKm",
       "type": "number",
       "labelKey": "newResult.distanceKm",

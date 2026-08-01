@@ -21,7 +21,6 @@ function Probe() {
             distanceKm: 10,
             ascentM: 0,
             descentM: 0,
-            startTime: '10:00',
             seconds: 3000,
             photo: '',
             points: 1,

@@ -63,33 +63,35 @@
   background: var(--surface);
 }
 
-/* A cell outside the month keeps its column width so nothing jumps between
-   months, but takes no height it does not need. */
-.day--outside {
-  display: none;
-}
-
 .day__number {
-  font: inherit;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  padding: 0.05rem 0.2rem;
-  margin: -0.05rem -0.2rem;
-  cursor: pointer;
-  transition: background var(--fast);
 }
 
-.day__number:hover {
-  background: var(--surface-hover);
-  color: var(--text);
+/* Today, and the only day that is ringed, so the ring says one thing (owner,
+   31.07.2026). Two pixels of gold rather than a fill, because a fill would have
+   to be light enough for the chips to stay readable on it and would then be too
+   faint to find. The word is also spoken beside the number, since a colour
+   cannot be the only way to know which day it is (WCAG 2.2 SC 1.4.1).
+
+   The ring is drawn on the gold that flips with the theme, not on gold-500:
+   gold-500 measures 2,98:1 against a white card and 2,75:1 against the page, and
+   a graphic somebody needs in order to read the screen owes 3:1 (SC 1.4.11).
+   This one is 5,53:1 on the light theme and 10,88:1 on the dark. */
+.day--today {
+  border-color: var(--gold-text);
+  box-shadow: inset 0 0 0 1px var(--gold-text);
+}
+
+.day--today .day__number {
+  color: var(--gold-text);
 }
 
 .chip {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin-top: 0.4rem;
   padding: 0.4rem 0.5rem;
   border-radius: 6px;
@@ -118,11 +120,21 @@
   transform: translateX(2px);
 }
 
-.chip i {
-  display: block;
-  font-style: normal;
-  font-weight: 400;
-  color: var(--text-muted);
+/* The name gives way and the dots do not: the dots are the part somebody scans
+   for, and a name cut with an ellipsis still says which race it is once the
+   whole of it is in the title and on the day's own page. */
+.chip__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip__lengths {
+  display: flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
 }
 
 .day__more {
@@ -136,6 +148,10 @@
   border-radius: 6px;
   color: var(--text-muted);
   font: 700 0.75rem/1.2 inherit;
+  /* A link now, not a button, so it has to be told the two things a button knew
+     by itself. */
+  text-align: center;
+  text-decoration: none;
   transition:
     border-color var(--fast),
     color var(--fast);
@@ -146,20 +162,85 @@
   color: var(--accent);
 }
 
-.calendar__day-detail {
-  margin-top: 1.25rem;
-  border-left: 3px solid var(--gold-500);
-  padding: 0.25rem 0 0.25rem 0.9rem;
+/* The heading and the way back to the running month, level with each other. */
+.calendar__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.calendar__day-detail h2 {
+.calendar__head h1 {
+  margin: 0;
+}
+
+.calendar__today {
+  font: 600 0.85rem/1.2 inherit;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--fast),
+    color var(--fast);
+}
+
+.calendar__today:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* What the colours mean, under the grid rather than over it: somebody who came
+   for the calendar wants the calendar, and looks for this once they have
+   noticed the dots. */
+.legend {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.legend__title {
+  font-weight: 700;
+}
+
+.legend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Everything on one day, on its own page: the same chips, one under another,
+   at the width of the page rather than a seventh of it. */
+.day-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-list .chip {
+  font-size: 0.9rem;
+  padding: 0.6rem 0.7rem;
+}
+
+.calendar__back {
   margin: 0 0 0.5rem;
-  font-size: 1rem;
-}
-
-.calendar__day-detail ul {
-  margin: 0 0 0.75rem;
-  padding-left: 1.1rem;
+  font-size: 0.85rem;
 }
 
 @media (min-width: 780px) {
@@ -177,10 +258,11 @@
     min-height: 5.75rem;
   }
 
-  .day--outside {
-    display: block;
-    border-style: dashed;
-    min-height: 2.75rem;
-    opacity: 0.5;
+  /* Where the first of the month goes, and only here: below this width the days
+     stack in one column and there is no grid for a column six to be in. Placing
+     it anyway grew the implicit grid to six columns and pushed the month a
+     thousand pixels off the side of a telephone. */
+  .day--first {
+    grid-column-start: var(--day-start);
   }
 }

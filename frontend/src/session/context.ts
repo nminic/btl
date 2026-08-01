@@ -22,8 +22,6 @@ export type Submission = {
   distanceKm: number
   ascentM: number
   descentM: number
-  /** When the race started, hh:mm. Not the time it took to finish it. */
-  startTime: string
   seconds: number
   points: number
   /** File name of the picture attached as proof, or empty. Deleted from the
