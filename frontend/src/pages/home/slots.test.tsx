@@ -121,7 +121,7 @@ describe('CalendarExtract', () => {
      travel with them because a colour on its own says nothing to anybody who
      cannot separate two of them (owner, 31.07.2026). */
   it('marks the lengths an event holds, once each', () => {
-    renderWidget(
+    const { container } = renderWidget(
       <CalendarExtract
         events={[{ ...event('d', 'Fruškogorski maraton', '2026-12-05'), raceIds: ['r1', 'r2', 'r3'] }]}
         races={races}
@@ -130,9 +130,14 @@ describe('CalendarExtract', () => {
     )
 
     /* Three races, two lengths between them, so the row names two: the marathon
-       run twice is named once. What is read out is what is drawn, so counting
-       the drawing separately would be counting the same thing twice. */
+       run twice is named once. The sentence is what a screen reader is given and
+       the dots are what everybody else sees, so both are counted: the sentence
+       alone survived the dots disappearing altogether, which is the one thing
+       moving them between stylesheets could have done. */
     expect(screen.getByText('Maraton, Ultramaraton')).toBeInTheDocument()
+    expect(
+      [...container.querySelectorAll('.length-dot')].map((dot) => dot.getAttribute('aria-hidden')),
+    ).toEqual(['true', 'true'])
   })
 })
 

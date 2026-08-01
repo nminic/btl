@@ -199,7 +199,7 @@ describe('the address, at the moment of joining', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Adresa/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Adresa za slanje$/ })).toBeVisible()
   })
 })
 

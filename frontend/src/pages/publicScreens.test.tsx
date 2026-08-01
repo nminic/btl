@@ -799,6 +799,26 @@ describe('Teams', () => {
     expect(await points()).not.toEqual(before)
   })
 
+  it('says so plainly when there is no team at all', async () => {
+    /* Every other screen says what an empty one means rather than showing an
+       empty table with headings over nothing. The standing had the sentence
+       written and never reached it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/teams.json')
+        ? new Response('[]', { headers: { 'content-type': 'application/json' } })
+        : real(input)) as typeof fetch
+
+    try {
+      renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
+
+      expect(await screen.findByText('Nema timova.')).toBeVisible()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
   it('ignores a season in the address that it does not offer', async () => {
     /* A shared link naming 1999 names a season the league never ran. Taking it
        left the control with no option to sit on, so it rendered blank, while

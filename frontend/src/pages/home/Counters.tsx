@@ -10,10 +10,10 @@ import { useCountUp } from './useCountUp'
  *
  * One thing did change: the points are called BTL points and no longer BTLs.
  *
- * The heading is handed in rather than being the season. On the front page and
- * on a team it is what it always was; on a profile the season is chosen once,
- * above the widget and the one beside it, and repeating it inside would be the
- * same word twice on one screen (owner, 30.07.2026).
+ * The heading is handed in rather than being the season, and only the front
+ * page hands one in. On a profile, and now on a team as well, the season is
+ * chosen once above the widget and the one beside it, and repeating it inside
+ * would be the same word twice on one screen (owner, 30.07.2026).
  */
 
 /* Kilometres are a road, not a runner (owner, 31.07.2026). A running figure was

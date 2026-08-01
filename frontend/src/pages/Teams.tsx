@@ -53,6 +53,9 @@ export function Teams() {
                 <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 
+              {rows.length === 0 ? (
+                <p className="rankings__empty">{t('teams.empty')}</p>
+              ) : (
               <div className="table-scroll">
                 <table className="table">
                   <caption className="visually-hidden">{t('teams.title')}</caption>
@@ -93,6 +96,7 @@ export function Teams() {
                   </tbody>
                 </table>
               </div>
+              )}
             </>
           )
         }}
