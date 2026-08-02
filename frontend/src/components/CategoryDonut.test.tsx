@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { at, first } from '../test/at'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -98,8 +98,13 @@ describe('pointing at a slice', () => {
 
     const slices = [...document.querySelectorAll('.donut__seg')]
     const before = slices.map((one) => one.getAttribute('stroke-width'))
+    /* Hovered on the layer that reads the pointer, read off the layer that
+       draws. They are the same slices in the same order; keeping them apart is
+       what stops a grown slice from moving its own hit area (owner,
+       01.08.2026). */
+    const hits = [...document.querySelectorAll('.donut__hit')]
 
-    await user.hover(first(slices))
+    await user.hover(first(hits))
 
     const during = [...document.querySelectorAll('.donut__seg')].map((one) =>
       one.getAttribute('stroke-width'),
@@ -111,7 +116,7 @@ describe('pointing at a slice', () => {
     expect(Number(first(during))).toBeGreaterThan(Number(first(before)))
     expect(at(during, 1)).toBe(at(before, 1))
 
-    await user.unhover(first(slices))
+    await user.unhover(first(hits))
     expect(
       [...document.querySelectorAll('.donut__seg')].map((one) =>
         one.getAttribute('stroke-width'),
@@ -124,7 +129,7 @@ describe('pointing at a slice', () => {
     renderDonut(new Map<RaceCategory, number>([['marathon', 3]]))
 
     await user.pointer({
-      target: first(document.querySelectorAll('.donut__seg')),
+      target: first(document.querySelectorAll('.donut__hit')),
       keys: '[TouchA]',
     })
 
@@ -167,11 +172,14 @@ describe('pointing at a slice', () => {
 
     /* The marathon, which is the smaller of the two slices. Asked for again
        each time, because hovering draws a new one in its place. */
-    const marathon = () => at(document.querySelectorAll('.donut__seg'), 1)
+    /* The drawing is read; the layer over it is what the pointer touches. They
+     are the same slices in the same order, so index 1 is the marathon in both. */
+  const marathon = () => at(document.querySelectorAll('.donut__seg'), 1)
+  const marathonHit = () => at(document.querySelectorAll('.donut__hit'), 1)
 
     const before = read(marathon())
 
-    await user.hover(marathon())
+    await user.hover(marathonHit())
 
     const after = read(marathon())
 
@@ -194,7 +202,7 @@ describe('pointing at a slice', () => {
     renderDonut(new Map<RaceCategory, number>([['marathon', 4]]))
 
     // The browser's own tooltip, and what a screen reader reads off a shape.
-    expect(document.querySelector('.donut__seg title')?.textContent).toBe('Maraton: 4')
+    expect(document.querySelector('.donut__hit title')?.textContent).toBe('Maraton: 4')
   })
 
   /* A tooltip is a thing a finger cannot open, and the ring has no names on it
@@ -214,7 +222,7 @@ describe('pointing at a slice', () => {
     expect(screen.getByText('trke')).toBeInTheDocument()
 
     await user.pointer({
-      target: at(document.querySelectorAll('.donut__seg'), 1),
+      target: at(document.querySelectorAll('.donut__hit'), 1),
       keys: '[TouchA]',
     })
 
@@ -229,5 +237,49 @@ describe('pointing at a slice', () => {
        middle and loses the shape the eye reads a word by (owner, 31.07.2026). */
     expect(middle?.textContent).toBe('maraton')
     expect(number?.textContent).toBe('1')
+  })
+})
+
+describe('the line between two slices', () => {
+  it('reads the pointer off a layer that never changes shape', () => {
+    /* Reported from a screen recording: with the pointer resting on the line
+       between two slices the ring swapped between them, over and over, without
+       the mouse moving.
+
+       The cause is geometric rather than accidental. The drawing caught the
+       pointer, and a slice that grows moves its own edge: choosing the second
+       slice grew it over the line, which put the pointer inside the first
+       slice's grown body, which chose the first, which grew it back over the
+       line, and so on for as long as the mouse stood still.
+
+       jsdom lays nothing out, so what is held here is the arrangement that makes
+       it impossible: every slice of the layer that reads the pointer is drawn at
+       the resting radius and the resting width, whatever is chosen, and the
+       layer that grows is not touchable at all. */
+    renderDonut(
+      new Map<RaceCategory, number>([
+        ['short', 3],
+        ['marathon', 1],
+      ]),
+    )
+
+    const resting = (one: Element) => [one.getAttribute('r'), one.getAttribute('stroke-width')]
+    const hits = [...document.querySelectorAll('.donut__hit')]
+    const before = hits.map(resting)
+    const drawn = [...document.querySelectorAll('.donut__seg')].map(resting)
+
+    expect(hits).toHaveLength(2)
+    expect(new Set(before.map(String)).size).toBe(1)
+
+    fireEvent.pointerEnter(first(hits), { pointerType: 'mouse' })
+
+    /* The chosen slice has grown, and not one of the hit areas has moved. The
+       drawing is compared against its own earlier width rather than against the
+       hit layer's: the hit layer is drawn at the size a chosen slice reaches, so
+       the two are equal once one is chosen and that comparison would prove
+       nothing. */
+    expect([...document.querySelectorAll('.donut__hit')].map(resting)).toEqual(before)
+    expect(Number(first(document.querySelectorAll('.donut__seg')).getAttribute('stroke-width')))
+      .toBeGreaterThan(Number(first(drawn)[1]))
   })
 })

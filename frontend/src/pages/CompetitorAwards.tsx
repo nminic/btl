@@ -117,7 +117,7 @@ function AwardsFor({
   return (
     <div className="profile profile--competitor">
       <PageMeta
-        title={t('seo.competitor.awardsTitle', { name, number: competitor.memberNumber })}
+        title={t('seo.competitor.awardsTitle', { name })}
         description={t('seo.competitor.awardsDescription', { name })}
       />
 

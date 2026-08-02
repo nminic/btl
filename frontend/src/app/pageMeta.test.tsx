@@ -25,7 +25,7 @@ describe('the name of a page', () => {
   it('gives the home page the league and its slogan, and never the word "Naslovna"', async () => {
     renderAt('/sr')
 
-    await waitFor(() => expect(document.title).toBe(`Svaka trka se broji · ${LEAGUE}`))
+    await waitFor(() => expect(document.title).toBe('Balkanska trkačka liga - svaka trka se broji!'))
     expect(document.title).not.toContain('Naslovna')
   })
 
@@ -43,14 +43,14 @@ describe('the name of a page', () => {
     // up saying what the front page says.
     renderAt('/sr/ovoga-nema')
 
-    await waitFor(() => expect(document.title).toBe(`Svaka trka se broji · ${LEAGUE}`))
+    await waitFor(() => expect(document.title).toBe('Balkanska trkačka liga - svaka trka se broji!'))
   })
 
   it('carries the person on a competitor profile, not "Ove strane nema"', async () => {
     renderAt('/sr/takmicar/000007')
 
     await waitFor(() =>
-      expect(document.title).toBe(`Strahinja Vukićević (000007) · ${LEAGUE}`),
+      expect(document.title).toBe(`Strahinja Vukićević, Banja Luka · ${LEAGUE}`),
     )
     expect(content('name', 'description')).toContain('Strahinja Vukićević')
   })
@@ -245,7 +245,7 @@ describe('the two parts of a competition', () => {
     await waitFor(() => expect(document.title).toContain('Brdska liga 2019'))
 
     expect(document.title).not.toBe(standing.title)
-    expect(document.title).toContain('rezultati')
+    expect(document.title).toContain('poredak')
     expect(meta()).not.toBe(standing.description)
   })
 })

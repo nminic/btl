@@ -170,7 +170,33 @@ const Field = memo(function Field({
       )}
 
       {field.type === 'textarea' && (
-        <textarea {...shared} value={String(value)} onChange={(e) => change(e.target.value)} />
+        <>
+          <textarea
+            {...shared}
+            /* Tall enough for what fits, and no taller. Ten is where a box
+               stops being a box and becomes the screen: the page editor holds
+               eight thousand characters, which at sixty to a line is a hundred
+               and thirty-four rows. */
+            rows={field.maxLength === undefined ? undefined : Math.min(10, Math.ceil(field.maxLength / 60))}
+            value={String(value)}
+            /* The limit is refused at the door rather than reported afterwards
+               (owner, 01.08.2026). `maxLength` on the element does the refusing,
+               so a paste that is too long is cut rather than accepted and then
+               marked wrong. */
+            maxLength={field.maxLength}
+            onChange={(e) => change(e.target.value)}
+          />
+          {field.maxLength !== undefined && (
+            /* How much room is left, counted down. Polite rather than assertive:
+               a count that interrupted after every keystroke would make the
+               field unusable with a screen reader. */
+            <p className="field__left" aria-live="polite">
+              {String(value).length >= field.maxLength
+                ? t('registration.bioFull', { count: field.maxLength })
+                : t('registration.bioLeft', { count: field.maxLength - String(value).length })}
+            </p>
+          )}
+        </>
       )}
 
       {field.type === 'date' && (
@@ -187,6 +213,7 @@ const Field = memo(function Field({
       {(field.type === 'text' ||
         field.type === 'email' ||
         field.type === 'password' ||
+        field.type === 'tel' ||
         field.type === 'number') && (
         <input
           {...shared}

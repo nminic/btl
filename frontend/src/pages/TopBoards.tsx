@@ -18,6 +18,7 @@ import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import './Rankings.css'
 import './TopBoards.css'
 
 /* The Top 10 boards: the lists the rulebook counts out in Article 56, which
@@ -30,9 +31,6 @@ import './TopBoards.css'
  * file only lays them out.
  */
 const PLACES = 10
-
-/** Podium places carry gold here for the same reason they do in the table. */
-const PODIUM = 3
 
 /**
  * The five lengths in the order Article 56 counts them out, longest first (PDL
@@ -120,7 +118,7 @@ function Board({
             </thead>
             <tbody>
               {places.map((place) => (
-                <tr key={place.key} className={place.position <= PODIUM ? 'podium' : undefined}>
+                <tr key={place.key}>
                   <td className="table__position">{place.position}</td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
@@ -299,7 +297,7 @@ function Boards({
 
   return (
     <>
-      <div className="boards__filters">
+      <div className="boards__filters rankings__head-tool">
         <label className="boards__field">
           <span>{t('topBoards.season')}</span>
           <select value={season} onChange={(event) => onSeason(event.target.value)}>
@@ -334,7 +332,7 @@ export function TopBoards() {
   }
 
   return (
-    <div className="boards">
+    <div className="boards rankings--tooled">
       <h1>{t('topBoards.title')}</h1>
       <p className="boards__intro">{t('topBoards.intro')}</p>
 

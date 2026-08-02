@@ -50,7 +50,7 @@ function CompetitorCards({
 
   return (
     <>
-      <div className="rankings__filters">
+      <div className="rankings__head-tool">
         <label className="rankings__field rankings__field--wide">
           <span>{t('competitors.search')}</span>
           <input
@@ -61,8 +61,6 @@ function CompetitorCards({
           />
         </label>
       </div>
-
-      <p className="rankings__count">{t('competitors.count', { count: cards.length })}</p>
 
       {cards.length === 0 ? (
         <p className="rankings__empty">{t('competitors.empty')}</p>
@@ -123,7 +121,7 @@ export function Competitors() {
   const state = combinePair(useCompetitors(), useResults())
 
   return (
-    <div className="rankings">
+    <div className="rankings rankings--tooled">
       <h1>{t('competitors.title')}</h1>
 
       <Resource state={state}>

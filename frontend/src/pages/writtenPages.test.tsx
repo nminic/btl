@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { JUNIOR, PRICES, type PriceRow } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
+import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate, type Dictionary } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
@@ -33,7 +34,6 @@ describe('the written pages', () => {
     ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027'],
     // Contact left the written pages: it is a mail address in the footer now,
     // and the history of the league took its place (PDL P28a).
-    ['/sr/istorijat', 'Istorijat'],
     ['/sr/politika-privatnosti', 'Politika privatnosti'],
     ['/sr/uslovi-koriscenja', 'Uslovi korišćenja'],
   ])('%s carries written text, not a placeholder', async (path, title) => {
@@ -223,5 +223,123 @@ describe('the page that says what membership costs', () => {
        full stop and the dictionary's one after another and announced the
        opening twice. */
     expect(page.getByText(/^Učlanjenje se otvara .*, za \d+ dana\.$/)).toBeVisible()
+  })
+})
+
+const NEWLINE = String.fromCharCode(10)
+
+describe('how a written page is set', () => {
+  const pages = Object.entries(written as Record<string, { sections: { heading: string; body: string }[] }>)
+
+  it('reads every written page there is', () => {
+    /* Without this the two below pass on an empty list. */
+    expect(pages.length).toBeGreaterThan(4)
+    expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
+  })
+
+  it('keeps bold for a sub-heading and takes it off everything else', () => {
+    /* Owner, 01.08.2026. Two hundred and fifty-eight runs of bold were spread
+       through the prose, a keyword at a time. A page where a fifth of the words
+       are heavy has no emphasis at all: the eye stops picking anything out and
+       the reader is left with the noise of somebody shouting evenly.
+
+       What may stay is a whole paragraph that names what follows it and stops,
+       "U Srbiji:" and its kind, plus the signature under the president's
+       address. A whole sentence in bold is a rule somebody shouted and it goes
+       back to being a sentence. */
+    const shouted: string[] = []
+
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        for (const line of section.body.split(NEWLINE)) {
+          const t = line.trim()
+          const whole = t.startsWith('**') && t.endsWith('**') && t.split('**').length === 3
+
+          if (whole && t.slice(0, -2).endsWith('.')) {
+            shouted.push(`${slug}: ${t.slice(0, 60)}`)
+          }
+
+          if (!whole && t.includes('**')) {
+            shouted.push(`${slug}: ${t.slice(0, 60)}`)
+          }
+        }
+      }
+    }
+
+    expect(shouted).toEqual([])
+  })
+
+  it('writes an address as a link and never as a piece of code', () => {
+    /* Owner, 01.08.2026: legible, the way the president's address on the front
+       page writes it. Backticks made an e-mail address look like something to
+       be typed into a terminal. */
+    const code: string[] = []
+
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        for (const found of section.body.matchAll(/`([^`]*)`/g)) {
+          const inside = found[1] ?? ''
+
+          if (inside.includes('@') || inside.includes('balkanskatrkackaliga')) {
+            code.push(`${slug}: ${inside}`)
+          }
+        }
+      }
+    }
+
+    expect(code).toEqual([])
+  })
+
+  it('points every in-portal link at an address the router has', () => {
+    /* The language is added when the link is drawn (ADL A7), so writing it here
+       makes /sr/sr/pravilnik, which is no address at all and falls through to
+       the front page. Two of those went out on the terms, which is a legal
+       document with a dead link in it. */
+    const wrong: string[] = []
+
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        for (const link of section.body.matchAll(/\]\((\/[^)]*)\)/g)) {
+          if (/^\/(sr|en)\//.test(link[1] ?? '')) {
+            wrong.push(`${slug}: ${link[1]}`)
+          }
+        }
+      }
+    }
+
+    expect(wrong).toEqual([])
+  })
+
+  it('sends a reader to the section it names', () => {
+    /* Deleting a section moves every number after it, and a sentence that names
+       one does not move with it. Both of the terms' own references pointed at
+       the awards clause after the first section went. */
+    for (const [slug, page] of pages) {
+      const numbered = new Map(
+        page.sections
+          .map((section) => /^(\d+)\. (.*)$/.exec(section.heading))
+          .filter((found): found is RegExpExecArray => found !== null)
+          .map((found) => [Number(found[1]), found[2] ?? '']),
+      )
+
+      for (const section of page.sections) {
+        for (const found of section.body.matchAll(/sekcij\w+ (\d+)/g)) {
+          expect(
+            numbered.has(Number(found[1])),
+            `${slug} names section ${found[1]}, which it does not have`,
+          ).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('carries no telephone number anywhere', () => {
+    /* Owner, 01.08.2026: the association's number is on none of these pages.
+       The one a member gives at registration is collected and never shown. */
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        expect(section.body, `${slug} prints a telephone number`).not.toMatch(/\+381[\d\s]/)
+      }
+    }
   })
 })

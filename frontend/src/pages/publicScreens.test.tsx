@@ -62,14 +62,17 @@ describe('Rankings', () => {
     expect(screen.getAllByRole('row').length).toBeGreaterThan(2)
   })
 
-  it('orders by points, with the podium marked', async () => {
+  it('orders by points, and marks no row gold at the top', async () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     const points = rows.map(lastNumberIn)
 
     expect([...points].sort((a, b) => b - a)).toEqual(points)
-    expect(rows.filter((row) => row.className === 'podium')).toHaveLength(3)
+    /* The three gold rows are gone (owner, 01.08.2026). The place is already in
+       the first column of every row, so the colour repeated what the number
+       said, and made the first three read as a different kind of thing. */
+    expect(rows.filter((row) => row.className === 'podium')).toEqual([])
   })
 
   it('keeps men and women apart', async () => {
@@ -183,7 +186,7 @@ describe('TopBoards', () => {
 
       expect(rows.length).toBeGreaterThan(0)
       expect(rows.length).toBeLessThanOrEqual(10)
-      expect(rows.filter((row) => row.className === 'podium').length).toBeLessThanOrEqual(3)
+      expect(rows.filter((row) => row.className === 'podium')).toEqual([])
     }
   })
 

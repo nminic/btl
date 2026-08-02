@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import { first } from '../test/at'
 import { renderAt } from '../test/render'
@@ -18,6 +20,16 @@ describe('Calendar', () => {
     renderAt('/sr/kalendar?mesec=2027-05')
 
     expect(await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })).toBeVisible()
+  })
+
+  it('names its two steps, which are drawn as arrows and nothing else', async () => {
+    /* A symbol is a drawing, and a drawing is not a label. Somebody reading the
+       screen with their ears gets the same two words a sighted reader used to
+       get in the buttons themselves. */
+    renderAt('/sr/kalendar?mesec=2027-05')
+
+    expect(await screen.findByRole('button', { name: 'Prethodni mesec' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sledeći mesec' })).toBeVisible()
   })
 
   it('walks to the previous and the next month', async () => {
@@ -63,6 +75,19 @@ describe('Calendar', () => {
     expect(container.querySelectorAll('.day--first')).toHaveLength(1)
   })
 
+  it('lets every day of a row take the row height', () => {
+    /* jsdom lays nothing out, so the rule is read off disk the way the tokens
+       and the scale are. `align-items: start` on the grid is the opposite of
+       what the owner asked for: it gives each box only its own height, so one
+       Saturday with two races stands tall beside six short weekdays. Stretch is
+       the default and is what a row means. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Calendar.css'), 'utf-8')
+    const grid = css.slice(css.indexOf('.calendar__grid {'), css.indexOf('}', css.indexOf('.calendar__grid {')))
+
+    expect(grid).toContain('display: grid')
+    expect(grid).not.toMatch(/align-items:\s*(start|flex-start|baseline)/)
+  })
+
   it('rings today, and only today', async () => {
     const { container } = renderAt(
       '/sr/kalendar?mesec=2026-08',
@@ -85,9 +110,12 @@ describe('Calendar', () => {
     renderAt('/sr/kalendar?mesec=2019-06', 'visitor', null, undefined, '2026-08-13')
 
     await screen.findByRole('heading', { level: 2, name: 'jun 2019.' })
-    await user.click(screen.getByRole('button', { name: 'Prikaži tekući mesec' }))
+    await user.click(screen.getByRole('button', { name: 'Danas' }))
 
     expect(screen.getByRole('heading', { level: 2, name: 'avgust 2026.' })).toBeVisible()
+    /* Nothing to go back to once it is here, and the control says so rather
+       than disappearing and moving the two arrows under the pointer. */
+    expect(screen.getByRole('button', { name: 'Danas' })).toBeDisabled()
   })
 
   it('sends a day with more on it than fits to a page of its own', async () => {
@@ -136,7 +164,7 @@ describe('Calendar', () => {
     const dots = container.querySelectorAll('.chip .length-dot')
     expect(dots.length).toBeGreaterThan(0)
     expect([...dots].every((dot) => dot.getAttribute('aria-hidden') === 'true')).toBe(true)
-    expect(within(screen.getByRole('list', { name: 'Boje kružića' })).getAllByRole('listitem'))
+    expect(within(screen.getByRole('list', { name: 'Legenda' })).getAllByRole('listitem'))
       .toHaveLength(5)
   })
 

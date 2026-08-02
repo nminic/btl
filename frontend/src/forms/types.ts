@@ -8,6 +8,10 @@ export type FieldType =
   | 'text'
   | 'email'
   | 'password'
+  /* A telephone number, which is not a number: it carries a plus, spaces and a
+     leading nought, and every one of those is lost the moment a browser treats
+     it as arithmetic. */
+  | 'tel'
   | 'date'
   | 'number'
   | 'select'

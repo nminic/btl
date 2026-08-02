@@ -67,7 +67,6 @@ describe('the group "O ligi"', () => {
       'pravilnik',
       'clanarina',
       'znacke',
-      'istorijat',
     ])
   })
 

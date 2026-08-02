@@ -86,7 +86,13 @@ export function addressOf(locale: Locale, path: string): string {
 }
 
 export function applyHead(head: PageHead): void {
-  const title = `${head.title} · ${head.siteName}`
+  /* The name of the league goes on the end of every title, and exactly once.
+     The front page and the main competition already begin with it, so adding it
+     again would read "Balkanska trkačka liga 2027 · Balkanska trkačka liga".
+     One check, and nothing anywhere else has to know about the exception. */
+  const title = head.title.startsWith(head.siteName)
+    ? head.title
+    : `${head.title} · ${head.siteName}`
   const canonical = addressOf(head.textLocale, head.path)
 
   document.title = title

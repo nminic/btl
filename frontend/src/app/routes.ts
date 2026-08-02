@@ -58,7 +58,6 @@ export const NAV: NavSection[] = [
       { path: 'pravilnik', labelKey: 'nav.rules', seoKey: 'rulebook' },
       { path: 'clanarina', labelKey: 'nav.pricing', seoKey: 'pricing' },
       { path: 'znacke', labelKey: 'nav.badges', seoKey: 'badges' },
-      { path: 'istorijat', labelKey: 'nav.history', seoKey: 'history' },
     ],
   },
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
@@ -90,7 +89,6 @@ export const NAV: NavSection[] = [
         labelKey: 'nav.verification',
         seoKey: 'adminVerification',
       },
-      { path: 'administracija/znacke', labelKey: 'admin.badges', seoKey: 'adminBadges' },
       /* Beside the two sections rather than inside one: the price list has four
          fixed rows, and nothing is created or removed on it (owner,
          30.07.2026), which is what the section of entities is for. */
@@ -153,6 +151,10 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: '', seoKey: 'home' },
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
   { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
+  /* Reached from the section of records rather than from the navigation of the
+     administration, which offered it twice (owner, 01.08.2026). It is still an
+     address and still needs a name. */
+  { path: 'administracija/znacke', seoKey: 'adminBadges' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },

@@ -100,34 +100,73 @@ export function CategoryDonut({
             const round = 2 * Math.PI * radius
 
             return (
-            <circle
-              key={slice.one}
-              className="donut__seg"
-              cx={CENTRE}
-              cy={CENTRE}
-              r={radius}
-              strokeWidth={grown ? BAND + GROWTH : BAND}
-              stroke={COLOURS[slice.one]}
-              strokeDasharray={`${slice.share * round} ${round}`}
-              strokeDashoffset={-slice.offset * round}
-              /* Pointer rather than mouse, so a finger and a stylus choose a
-                 slice the same way. The choice sticks until another slice is
-                 chosen or the ring is left, which is what a touch needs and what
-                 a mouse gets anyway. */
-              onPointerEnter={() => setPointed(slice.one)}
-              onPointerDown={() => setPointed(slice.one)}
-              onPointerLeave={(event) => {
-                if (event.pointerType === 'mouse') {
-                  setPointed(null)
-                }
-              }}
-            >
-              {/* The browser's own tooltip, which is also what a screen reader
-                  reads off a shape. One element, both jobs. */}
-              <title>
-                {t(`category.${slice.one}`)}: {formatNumber(slice.value, locale)}
-              </title>
-            </circle>
+              <circle
+                key={slice.one}
+                className="donut__seg"
+                cx={CENTRE}
+                cy={CENTRE}
+                r={radius}
+                strokeWidth={grown ? BAND + GROWTH : BAND}
+                stroke={COLOURS[slice.one]}
+                strokeDasharray={`${slice.share * round} ${round}`}
+                strokeDashoffset={-slice.offset * round}
+              />
+            )
+          })}
+        </g>
+
+        {/* What the pointer actually touches: the same slices at the size they
+            are when nothing is chosen, drawn over the top and never seen (owner,
+            01.08.2026).
+
+            The drawing above used to catch the pointer itself, and a slice that
+            grows moves its own edge. On the line between two slices that made
+            the ring flicker: the pointer chose the second slice, the second
+            slice grew over the line, the pointer was now inside the second
+            slice's grown body but the first slice's grown body had already
+            taken the ground back, and the two swapped for as long as the mouse
+            stood still. The hit area cannot be allowed to move, so it is a layer
+            of its own that never does. */}
+        <g className="donut__hits">
+          {slices.map((slice) => {
+            /* Drawn at the size a chosen slice reaches, not at the resting size:
+               the outer growth of the chosen one is visibly the slice, and a hit
+               band that stopped short of it let the pointer walk out of its own
+               slice and snap it back. It still never changes shape, which is the
+               whole point of the layer. */
+            const radius = RADIUS + GROWTH / 2
+            const round = 2 * Math.PI * radius
+
+            return (
+              <circle
+                key={slice.one}
+                className="donut__hit"
+                cx={CENTRE}
+                cy={CENTRE}
+                r={radius}
+                strokeWidth={BAND + GROWTH}
+                strokeDasharray={`${slice.share * round} ${round}`}
+                strokeDashoffset={-slice.offset * round}
+                /* Pointer rather than mouse, so a finger and a stylus choose a
+                   slice the same way. The choice sticks until another slice is
+                   chosen or the ring is left, which is what a touch needs and
+                   what a mouse gets anyway. */
+                onPointerEnter={() => setPointed(slice.one)}
+                onPointerDown={() => setPointed(slice.one)}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === 'mouse') {
+                    setPointed(null)
+                  }
+                }}
+              >
+                {/* On the layer that reads the pointer, because that is the one
+                    the browser draws a tooltip for. It used to sit on the
+                    drawing, which no longer takes pointer events at all, so the
+                    tooltip had quietly stopped appearing. */}
+                <title>
+                  {t(`category.${slice.one}`)}: {formatNumber(slice.value, locale)}
+                </title>
+              </circle>
             )
           })}
         </g>

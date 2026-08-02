@@ -23,9 +23,19 @@
 }
 
 /* Only the slices turn, so the figures in the middle stay upright. */
-.donut__ring {
+.donut__ring,
+.donut__hits {
   transform: rotate(-90deg);
   transform-origin: 100px 100px;
+}
+
+/* Where the pointer is actually read: the slices at the size they are when
+   nothing is chosen, over the top of the drawing and never seen. It never
+   changes shape, so what is under the pointer never changes by itself. */
+.donut__hit {
+  fill: none;
+  stroke: transparent;
+  cursor: pointer;
 }
 
 .donut__track {
@@ -33,9 +43,13 @@
   stroke: var(--border);
 }
 
+/* The drawing does not catch the pointer; the layer below does. A slice that
+   grows moves its own edge, and an edge that moves under a still mouse makes
+   the ring flicker between two slices for as long as the pointer stands on the
+   line between them. */
 .donut__seg {
   fill: none;
-  cursor: pointer;
+  pointer-events: none;
   /* The one being pointed at grows outwards, so the hole in the middle never
      changes size. Both halves of that have to move together: the radius carries
      the inner edge outwards while the width carries the outer edge, and

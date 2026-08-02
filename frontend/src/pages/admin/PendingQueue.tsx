@@ -181,9 +181,38 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
           return (
             <>
-              <h2 className="profile__section" id={waitingId}>
-                {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
-              </h2>
+              <div className="pending__bar">
+                <h2 className="profile__section" id={waitingId}>
+                  {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
+                </h2>
+
+                {/* One decision for the whole queue (owner, 01.08.2026). It asks
+                    first, because there is nothing to undo: approving is what
+                    puts a thing on the portal, and a queue of forty approved by
+                    a misplaced click is forty things to find again by hand. */}
+                {waiting.length > 0 && (
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      if (!window.confirm(t('verification.approveAllAsk', { count: waiting.length }))) {
+                        return
+                      }
+
+                      for (const item of waiting) {
+                        settle(item.id, {
+                          status: 'approved',
+                          note: queue.outcome === 'editAndPublish' ? textOf(item) : '',
+                          basis: '',
+                          memberNumber: '',
+                        })
+                      }
+                    }}
+                  >
+                    {t('verification.approveAll')}
+                  </button>
+                )}
+              </div>
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>

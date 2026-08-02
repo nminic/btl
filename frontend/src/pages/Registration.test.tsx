@@ -36,6 +36,10 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
      together once a member reaches twelve points, and a parcel needs an
      address. */
+  /* Required since 01.08.2026: the association needs a way to reach a member
+     about a payment, a prize or a result nobody can read. Never shown on the
+     portal. */
+  await user.type(screen.getByLabelText(/Broj telefona/), '+381601234567')
   await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
   await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
@@ -232,5 +236,40 @@ describe('the biography, at the moment of joining', () => {
     renderForm()
 
     expect(screen.getByText(/Moderator ih pregleda pre nego što se pojave/)).toBeVisible()
+  })
+})
+
+describe('the box a member writes about themselves in', () => {
+  it('counts down what is left and refuses more than the limit', async () => {
+    /* Owner, 01.08.2026. Three hundred and sixty is the limit the form has
+       always carried; what it did with it was mark the field wrong after the
+       fact. It refuses at the door now, and says how much room is left before
+       anybody runs out of it. */
+    const user = setupUser()
+    renderForm()
+
+    const box = screen.getByLabelText(/Svojim rečima/)
+
+    expect(screen.getByText('Još 360 znakova')).toBeVisible()
+
+    await user.type(box, 'Trčim zbog druženja.')
+    expect(screen.getByText('Još 340 znakova')).toBeVisible()
+
+    /* Tall enough for the whole of it from the start, so nothing that fits has
+       to be read through a scrollbar. */
+    expect(box).toHaveAttribute('rows', '6')
+    expect(box).toHaveAttribute('maxlength', '360')
+  })
+
+  it('says so when there is no room left, rather than counting nought', async () => {
+    const user = setupUser()
+    renderForm()
+
+    const box = screen.getByLabelText(/Svojim rečima/)
+    await user.click(box)
+    await user.paste('x'.repeat(400))
+
+    expect(box).toHaveValue('x'.repeat(360))
+    expect(screen.getByText('Dosta je, granica je 360 znakova.')).toBeVisible()
   })
 })

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { first } from '../../test/at'
 import { setupUser } from '../../test/user'
@@ -6,6 +8,8 @@ import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
+import { CATEGORIES } from '../../data/derive'
+import { FIRST, NEXT } from './rotation'
 import { TopByCategory } from './TopByCategory'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
@@ -318,6 +322,58 @@ describe('TopByCategory', () => {
         '/sr/takmicar/000001?sezona=2027&duzina=long',
       ),
     )
+  })
+
+  it('makes the face and the bar one link, which lights as a whole', () => {
+    /* Owner, 01.08.2026: a pointer over the face or over the bar rings the face,
+       darkens the bar and prints the name, and the whole column leads to that
+       person. Two links to one place would have given the keyboard two stops for
+       one destination, one of them named "SV".
+
+       Read off disk, because jsdom applies no stylesheet and has no hover. What
+       is checked here is that each of the three states is written for the
+       keyboard as well: a state only a mouse can reach does not exist for
+       somebody who types. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/home/TopByCategory.css'), 'utf-8')
+
+    for (const part of ['.portrait', '.top-cat__bar', '.top-cat__who']) {
+      expect(css, `nothing lights ${part} on hover`).toContain(`.top-cat__link:hover ${part}`)
+      expect(css, `${part} lights for the mouse only`).toContain(
+        `.top-cat__link:focus-visible ${part}`,
+      )
+    }
+  })
+
+  it('leads from the face as well as from the bar, by one link', () => {
+    renderWidget(
+      <TopByCategory
+        competitors={[competitor('000001')]}
+        results={[result('000001', 1)]}
+        season={2027}
+      />,
+    )
+
+    const links = screen.getAllByRole('link')
+
+    expect(links).toHaveLength(1)
+    expect(first(links)).toContainElement(screen.getByText('I0'))
+  })
+
+  it('turns through the five in the order they are shown in', async () => {
+    /* The order was put right in CATEGORIES on 01.08.2026 and the chart kept a
+       map of its own, so the front page went on cycling short, long, half. The
+       caption changing was all that was ever checked, and a caption changes
+       whatever the order is. */
+    const round: string[] = []
+    let at = FIRST
+
+    for (const _ of CATEGORIES) {
+      round.push(at)
+      at = NEXT[at]
+    }
+
+    expect(round).toEqual(CATEGORIES)
+    expect(NEXT[at]).toBe(NEXT[FIRST])
   })
 
   it('turns to the next length by itself', async () => {

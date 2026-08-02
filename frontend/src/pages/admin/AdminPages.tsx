@@ -11,7 +11,7 @@ import { PAGES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
-/* The written pages: the rulebook, the history, the privacy policy, the terms,
+/* The written pages: the rulebook, the privacy policy, the terms,
  * and the address of the president.
  *
  * A page is a title and a list of sections. The form reaches the first section,

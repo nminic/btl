@@ -75,7 +75,6 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/verifikacija': <Verification />,
   'administracija/clanovi': <AdminMembers />,
   'administracija/dogadjaji': <AdminEvents />,
-  'administracija/znacke': <AdminBadges />,
   'administracija/cenovnik': <AdminPricing />,
   'administracija/trke': <AdminRaces />,
   'administracija/timovi': <AdminTeams />,
@@ -85,7 +84,6 @@ const SCREENS: Record<string, ReactElement> = {
   znacke: <Badges />,
   'o-ligi': <StaticPage slug="o-ligi" />,
   pravilnik: <Rulebook />,
-  istorijat: <StaticPage slug="istorijat" />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
 }
@@ -188,6 +186,13 @@ export const routeObjects: RouteObject[] = [
         path: route.path,
         element: guarded(route.path, screenFor(route)),
       })),
+      /* Badges are edited from the section of records like the other eight, so
+         they are no longer a navigation entry of their own (owner, 01.08.2026).
+         The address stays, because the section links to it. */
+      {
+        path: 'administracija/znacke',
+        element: guarded('administracija/znacke', <AdminBadges />),
+      },
       ...DETAILS,
       { path: '*', element: <NotFound /> },
     ],
