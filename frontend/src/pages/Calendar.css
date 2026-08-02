@@ -178,19 +178,6 @@
   color: var(--accent);
 }
 
-/* The heading and the way back to the running month, level with each other. */
-.calendar__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-16);
-  flex-wrap: wrap;
-}
-
-.calendar__head h1 {
-  margin: 0;
-}
-
 .calendar__today {
   font: 600 0.85rem/1.2 inherit;
   padding: var(--space-8) var(--space-16);

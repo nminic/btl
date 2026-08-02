@@ -1820,11 +1820,16 @@ describe('the section of entities', () => {
     // Through the header rather than through the panel, which is the road that
     // used to leave it standing open.
     await user.click(screen.getByRole('button', { name: 'Administracija' }))
-    await user.click(screen.getByRole('link', { name: 'Cenovnik' }))
-    await screen.findByRole('heading', { level: 1, name: 'Cenovnik' })
+    /* By a pattern, because the count of what is waiting is part of the name of
+       that link: "Verifikacija, 17 na čekanju". */
+    await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
+    await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' })
 
-    /* Gone rather than collapsed. The section belongs to the addresses inside
-       it, so leaving them takes it with you. */
+    /* Verifikacija and not Cenovnik: the price list sits outside the section of
+       records, so the section is gone there whatever the code does and the
+       assertion would hold with the behaviour entirely broken. Verifikacija is
+       the other section, so the panel of this one has to be put away rather than
+       be absent by construction. */
     expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
   })
 })

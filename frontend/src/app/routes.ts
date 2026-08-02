@@ -151,12 +151,12 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: '', seoKey: 'home' },
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
   { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
-  /* Before the event, because the static segment has to win: /kalendar/dan/... is
-     a day and never a race whose address happens to begin with "dan". */
   /* Reached from the section of records rather than from the navigation of the
      administration, which offered it twice (owner, 01.08.2026). It is still an
      address and still needs a name. */
   { path: 'administracija/znacke', seoKey: 'adminBadges' },
+  /* Before the event, because the static segment has to win: /kalendar/dan/... is
+     a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },
   { path: 'kalendar/:slug', seoKey: 'event' },
   { path: 'tim/:slug', seoKey: 'team' },

@@ -8,6 +8,8 @@ import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
+import { CATEGORIES } from '../../data/derive'
+import { FIRST, NEXT } from './rotation'
 import { TopByCategory } from './TopByCategory'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
@@ -355,6 +357,23 @@ describe('TopByCategory', () => {
 
     expect(links).toHaveLength(1)
     expect(first(links)).toContainElement(screen.getByText('I0'))
+  })
+
+  it('turns through the five in the order they are shown in', async () => {
+    /* The order was put right in CATEGORIES on 01.08.2026 and the chart kept a
+       map of its own, so the front page went on cycling short, long, half. The
+       caption changing was all that was ever checked, and a caption changes
+       whatever the order is. */
+    const round: string[] = []
+    let at = FIRST
+
+    for (const _ of CATEGORIES) {
+      round.push(at)
+      at = NEXT[at]
+    }
+
+    expect(round).toEqual(CATEGORIES)
+    expect(NEXT[at]).toBe(NEXT[FIRST])
   })
 
   it('turns to the next length by itself', async () => {

@@ -173,7 +173,11 @@ const Field = memo(function Field({
         <>
           <textarea
             {...shared}
-            rows={field.maxLength === undefined ? undefined : Math.ceil(field.maxLength / 60)}
+            /* Tall enough for what fits, and no taller. Ten is where a box
+               stops being a box and becomes the screen: the page editor holds
+               eight thousand characters, which at sixty to a line is a hundred
+               and thirty-four rows. */
+            rows={field.maxLength === undefined ? undefined : Math.min(10, Math.ceil(field.maxLength / 60))}
             value={String(value)}
             /* The limit is refused at the door rather than reported afterwards
                (owner, 01.08.2026). `maxLength` on the element does the refusing,

@@ -202,7 +202,7 @@ describe('pointing at a slice', () => {
     renderDonut(new Map<RaceCategory, number>([['marathon', 4]]))
 
     // The browser's own tooltip, and what a screen reader reads off a shape.
-    expect(document.querySelector('.donut__seg title')?.textContent).toBe('Maraton: 4')
+    expect(document.querySelector('.donut__hit title')?.textContent).toBe('Maraton: 4')
   })
 
   /* A tooltip is a thing a finger cannot open, and the ring has no names on it
@@ -266,15 +266,20 @@ describe('the line between two slices', () => {
     const resting = (one: Element) => [one.getAttribute('r'), one.getAttribute('stroke-width')]
     const hits = [...document.querySelectorAll('.donut__hit')]
     const before = hits.map(resting)
+    const drawn = [...document.querySelectorAll('.donut__seg')].map(resting)
 
     expect(hits).toHaveLength(2)
     expect(new Set(before.map(String)).size).toBe(1)
 
     fireEvent.pointerEnter(first(hits), { pointerType: 'mouse' })
 
-    /* The chosen slice has grown, and not one of the hit areas has moved. */
+    /* The chosen slice has grown, and not one of the hit areas has moved. The
+       drawing is compared against its own earlier width rather than against the
+       hit layer's: the hit layer is drawn at the size a chosen slice reaches, so
+       the two are equal once one is chosen and that comparison would prove
+       nothing. */
     expect([...document.querySelectorAll('.donut__hit')].map(resting)).toEqual(before)
     expect(Number(first(document.querySelectorAll('.donut__seg')).getAttribute('stroke-width')))
-      .toBeGreaterThan(Number(first(before)[1]))
+      .toBeGreaterThan(Number(first(drawn)[1]))
   })
 })

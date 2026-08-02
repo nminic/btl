@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { topByCategory } from '../../data/derive'
 import type { Competitor, RaceCategory, Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
+import { FIRST, NEXT } from './rotation'
 import { Portrait } from './Portrait'
 import './TopByCategory.css'
 
@@ -10,27 +11,6 @@ import './TopByCategory.css'
 const TURN_MS = 6000
 
 const TOP = 10
-
-/* Which length the chart turns to next, and back to the first after the last.
- *
- * The round used to be a counter into CATEGORIES, and a number that grows says
- * nothing about staying inside a list: what is wanted here is the next length,
- * not the next number, so the round is written as the lengths themselves. Every
- * step of it is then a length that is known to be there, and a sixth length
- * added to the five would be asked for here by the compiler.
- *
- * It reads the same way round as CATEGORIES (src/data/derive.ts), which is the
- * order the five are always shown in. */
-const NEXT: Record<RaceCategory, RaceCategory> = {
-  short: 'long',
-  long: 'half',
-  half: 'marathon',
-  marathon: 'ultra',
-  ultra: 'short',
-}
-
-/** Where the round starts, which is the first of the five. */
-const FIRST: RaceCategory = 'short'
 
 /* Two bars and a triangle: the marks every player in the world uses, so the
  * button says what it does without a word on it (owner, 31.07.2026). The name

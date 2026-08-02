@@ -7,7 +7,9 @@ export type Gender = 'M' | 'F'
 
 /** The five length categories from PDL P5. Marathon and half marathon are
  *  recognised by the exact value 42.2 and 21.1, with no tolerance. */
-export type RaceCategory = 'short' | 'long' | 'half' | 'marathon' | 'ultra'
+/* Shortest to longest, the same order as CATEGORIES in derive.ts, which is
+   where the order is decided and where a test holds it. */
+export type RaceCategory = 'short' | 'half' | 'long' | 'marathon' | 'ultra'
 
 export type EventStatus = 'announced' | 'confirmed' | 'checking' | 'cancelled'
 

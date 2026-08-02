@@ -186,7 +186,7 @@ describe('TopBoards', () => {
 
       expect(rows.length).toBeGreaterThan(0)
       expect(rows.length).toBeLessThanOrEqual(10)
-      expect(rows.filter((row) => row.className === 'podium').length).toBeLessThanOrEqual(3)
+      expect(rows.filter((row) => row.className === 'podium')).toEqual([])
     }
   })
 

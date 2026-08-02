@@ -110,13 +110,7 @@ export function CategoryDonut({
                 stroke={COLOURS[slice.one]}
                 strokeDasharray={`${slice.share * round} ${round}`}
                 strokeDashoffset={-slice.offset * round}
-              >
-                {/* The browser's own tooltip, which is also what a screen reader
-                    reads off a shape. One element, both jobs. */}
-                <title>
-                  {t(`category.${slice.one}`)}: {formatNumber(slice.value, locale)}
-                </title>
-              </circle>
+              />
             )
           })}
         </g>
@@ -135,7 +129,13 @@ export function CategoryDonut({
             of its own that never does. */}
         <g className="donut__hits">
           {slices.map((slice) => {
-            const round = 2 * Math.PI * RADIUS
+            /* Drawn at the size a chosen slice reaches, not at the resting size:
+               the outer growth of the chosen one is visibly the slice, and a hit
+               band that stopped short of it let the pointer walk out of its own
+               slice and snap it back. It still never changes shape, which is the
+               whole point of the layer. */
+            const radius = RADIUS + GROWTH / 2
+            const round = 2 * Math.PI * radius
 
             return (
               <circle
@@ -143,8 +143,8 @@ export function CategoryDonut({
                 className="donut__hit"
                 cx={CENTRE}
                 cy={CENTRE}
-                r={RADIUS}
-                strokeWidth={BAND}
+                r={radius}
+                strokeWidth={BAND + GROWTH}
                 strokeDasharray={`${slice.share * round} ${round}`}
                 strokeDashoffset={-slice.offset * round}
                 /* Pointer rather than mouse, so a finger and a stylus choose a
@@ -158,7 +158,15 @@ export function CategoryDonut({
                     setPointed(null)
                   }
                 }}
-              />
+              >
+                {/* On the layer that reads the pointer, because that is the one
+                    the browser draws a tooltip for. It used to sit on the
+                    drawing, which no longer takes pointer events at all, so the
+                    tooltip had quietly stopped appearing. */}
+                <title>
+                  {t(`category.${slice.one}`)}: {formatNumber(slice.value, locale)}
+                </title>
+              </circle>
             )
           })}
         </g>

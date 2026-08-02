@@ -90,8 +90,13 @@
    do not each reserve a line nobody is reading. */
 .top-cat__who {
   position: absolute;
-  inset-block-end: 100%;
-  inset-inline: -1rem;
+  /* Above the bar and below the face, not above the column: the top of the
+     column is the band the pause disc reserves, and the disc carries a
+     z-index of its own, so a name put up there is painted over on the last
+     column at every width. */
+  inset-block-end: calc(100% - 2.8rem);
+  inset-inline: -0.5rem;
+  z-index: 2;
   margin-block-end: var(--space-4);
   padding: var(--space-4) var(--space-6);
   border-radius: var(--radius-6);

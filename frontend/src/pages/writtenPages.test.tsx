@@ -290,6 +290,49 @@ describe('how a written page is set', () => {
     expect(code).toEqual([])
   })
 
+  it('points every in-portal link at an address the router has', () => {
+    /* The language is added when the link is drawn (ADL A7), so writing it here
+       makes /sr/sr/pravilnik, which is no address at all and falls through to
+       the front page. Two of those went out on the terms, which is a legal
+       document with a dead link in it. */
+    const wrong: string[] = []
+
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        for (const link of section.body.matchAll(/\]\((\/[^)]*)\)/g)) {
+          if (/^\/(sr|en)\//.test(link[1] ?? '')) {
+            wrong.push(`${slug}: ${link[1]}`)
+          }
+        }
+      }
+    }
+
+    expect(wrong).toEqual([])
+  })
+
+  it('sends a reader to the section it names', () => {
+    /* Deleting a section moves every number after it, and a sentence that names
+       one does not move with it. Both of the terms' own references pointed at
+       the awards clause after the first section went. */
+    for (const [slug, page] of pages) {
+      const numbered = new Map(
+        page.sections
+          .map((section) => /^(\d+)\. (.*)$/.exec(section.heading))
+          .filter((found): found is RegExpExecArray => found !== null)
+          .map((found) => [Number(found[1]), found[2] ?? '']),
+      )
+
+      for (const section of page.sections) {
+        for (const found of section.body.matchAll(/sekcij\w+ (\d+)/g)) {
+          expect(
+            numbered.has(Number(found[1])),
+            `${slug} names section ${found[1]}, which it does not have`,
+          ).toBe(true)
+        }
+      }
+    }
+  })
+
   it('carries no telephone number anywhere', () => {
     /* Owner, 01.08.2026: the association's number is on none of these pages.
        The one a member gives at registration is collected and never shown. */

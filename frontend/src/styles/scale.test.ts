@@ -87,8 +87,12 @@ const ALLOWED = new Map([
   ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
   ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],
   [
-    'pages/home/TopByCategory.css | inset-inline | -1rem',
-    'the name over a column reaches past it on both sides, because a name is wider than a bar',
+    'pages/home/TopByCategory.css | inset-inline | -0.5rem',
+    'the name over a bar reaches past it on both sides, because a name is wider than a bar',
+  ],
+  [
+    'pages/home/TopByCategory.css | inset-block-end | calc(100% - 2.8rem)',
+    'measured against the face above it, so the name clears the bar and stays out of the band the pause control reserves',
   ],
 ])
 

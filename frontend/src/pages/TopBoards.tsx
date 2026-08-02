@@ -18,6 +18,7 @@ import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import './Rankings.css'
 import './TopBoards.css'
 
 /* The Top 10 boards: the lists the rulebook counts out in Article 56, which
