@@ -5,14 +5,15 @@ import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
-import type { FormDef } from './types'
+import type { FormDef, FormValues } from './types'
 
-/* The renderer keeps its values in state, seeded once from the definition it was
- * first given. A screen that swaps one definition for another without remounting
- * therefore hands it fields it is holding nothing for, and those must draw empty
- * rather than draw `undefined` or fall over. The entity editor is the screen
- * that can do it: it renders one FormRenderer with no key and picks the
- * definition by which entity is being edited. */
+/* A caller may hand the renderer a different definition without remounting it.
+ * No screen does today, and every one of the nine admin screens passes a
+ * module-level constant, so this is a contract of the component rather than a
+ * path anybody walks. It is held anyway, because the fault it guards is not the
+ * empty box: a field the state is not holding used to be saved as the string
+ * "undefined", since `textFrom` in records.ts is `String(value)`. Blank on
+ * screen and a word in the record is worse than the fault it replaced. */
 const grown: FormDef = {
   id: 'proba',
   titleKey: 'proba.naslov',
@@ -211,8 +212,9 @@ describe('FormRenderer', () => {
 })
 
 describe('a definition swapped under a form that is already on screen', () => {
-  it('draws a field it is holding nothing for as empty, not as undefined', async () => {
+  it('draws a field it is holding nothing for as empty, and does not save the word undefined', async () => {
     const smaller: FormDef = { ...grown, fields: grown.fields.slice(0, 1) }
+    const sent: FormValues[] = []
 
     function Swapping() {
       const [form, setForm] = useState(smaller)
@@ -222,7 +224,7 @@ describe('a definition swapped under a form that is already on screen', () => {
           <button type="button" onClick={() => setForm(grown)}>
             zameni
           </button>
-          <FormRenderer form={form} onSubmit={() => {}} />
+          <FormRenderer form={form} onSubmit={(values) => sent.push(values)} />
         </>
       )
     }
@@ -234,10 +236,14 @@ describe('a definition swapped under a form that is already on screen', () => {
 
     await user.click(screen.getByRole('button', { name: 'zameni' }))
 
-    /* Empty, and not the word "undefined", which is what an unguarded lookup
-       would put in the box. The state was seeded from the first definition and
-       is not reseeded, so this field is the one case the renderer holds nothing
-       for. */
     expect(screen.getByLabelText(/proba.dopisano/)).toHaveValue('')
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* The half that mattered. The box looked blank either way; what is saved is
+       what somebody reads back out of the record a year later. */
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.dopisano).toBe('')
   })
 })

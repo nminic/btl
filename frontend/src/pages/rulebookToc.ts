@@ -58,6 +58,4 @@ export function withIds<T extends { heading: string }>(items: T[]): (T & { id: s
 
 /** The same for headings on their own, which is the contents of a page without
  *  the text under it. */
-export function tableOfContents(headings: string[]): TocEntry[] {
-  return withIds(headings.map((heading) => ({ heading })))
-}
+

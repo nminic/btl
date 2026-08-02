@@ -434,6 +434,10 @@ export function defaultMonth(events: BtlEvent[], today: string): string {
   return ahead ?? months[months.length - 1] ?? today.slice(0, 7)
 }
 
+export function monthFrom(asked: string | null, fallback: string): string {
+  return asked !== null && MONTH.test(asked) ? asked : fallback
+}
+
 /**
  * The two numbers behind the name of a month.
  *
@@ -464,10 +468,6 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
  * Held here rather than at the screen, so that `monthNumbers` below can go on
  * assuming it is handed a month.
  */
-export function monthFrom(asked: string | null, fallback: string): string {
-  return asked !== null && MONTH.test(asked) ? asked : fallback
-}
-
 export function monthNumbers(month: string): { year: number; index: number } {
   return { year: Number(month.slice(0, 4)), index: Number(month.slice(5, 7)) }
 }

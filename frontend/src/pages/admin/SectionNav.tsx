@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { usePermittedEntities, usePermittedQueues } from './mayOpen'
 import { usePending } from './pending'
-import { countsFor } from './queues'
+import { countFor } from './queues'
 import './SectionNav.css'
 
 /* The two administrative sections are worked through rather than visited: the
@@ -169,11 +169,11 @@ export function VerificationSection({ children }: { children: ReactNode }) {
   /* Read for what it is worth rather than waited for, exactly as the header
      reads it: a section that waited for the file would hold up the screen behind
      it, which is the work itself. */
-  const counts = countsFor({
+  const waiting = {
     pendingResults: submissions.filter((one) => one.status === 'pending').length,
     items: dataOr(items, []),
     decisions,
-  })
+  }
 
   return (
     <Section
@@ -182,7 +182,11 @@ export function VerificationSection({ children }: { children: ReactNode }) {
       items={queues.map((queue) => ({
         path: queue.path,
         label: t(queue.labelKey),
-        count: counts[queue.id],
+        /* Counted for this queue rather than looked up in a record of counts.
+           The lookup answered `number | undefined`, and the prop takes an
+           optional number, so a queue missing from the record drew no badge at
+           all, which is the one thing the note below says must not happen. */
+        count: countFor(waiting, queue),
       }))}
       /* Beside the numbers, because that is where the numbers are now. A file
          that failed counts every queue it feeds as nought, and eight quiet

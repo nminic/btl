@@ -216,6 +216,13 @@ export function FormRenderer({
 }: Props) {
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
+  /* The state is seeded from the definition it was first handed, and a caller may
+     hand it another one without remounting. Filled here rather than only where a
+     field is drawn: the guard used to sit on the drawn value alone, so a field
+     the state was not holding showed empty and then saved the string
+     "undefined", because `textFrom` in records.ts is `String(value)`. Blank on
+     screen and a word in the record is worse than the fault it replaced. */
+  const filled: FormValues = { ...emptyValues(form), ...values }
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
   /* One day for showing a field and for validating it. They used to read the
      clock separately, one on every draw and one on submit, so a form filled in
@@ -226,6 +233,14 @@ export function FormRenderer({
   // signature appears the moment the date of birth says it is needed, which is
   // why visibility is derived from the values rather than from a blur event.
   const visible = form.fields.filter((field) => isVisible(field, values, today))
+  /* Each visible field beside its own value, rather than each field looking its
+     value up by name. `filled` is built from the definition, so the pairing is
+     total and the value that comes out is a value: no fallback, and so no branch
+     that cannot be taken. Order is the definition's, because that is the order
+     `emptyValues` writes its keys in (ADL A14 rule 4). */
+  const drawn = Object.entries(filled).flatMap(([name, value]) =>
+    visible.filter((field) => field.name === name).map((field) => ({ field, value })),
+  )
   const broken = visible.filter((field) => errors[field.name] !== undefined)
   const titleId = `form-${form.id}-title`
 
@@ -237,7 +252,7 @@ export function FormRenderer({
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
-      onSubmit(trimValues(values))
+      onSubmit(trimValues(filled))
     }
   }
 
@@ -281,15 +296,11 @@ export function FormRenderer({
         </div>
       )}
 
-      {visible.map((field) => (
+      {drawn.map(({ field, value }) => (
         <Field
           key={field.name}
           field={field}
-          /* A field the form is holding nothing for shows empty, which is what
-             a form nobody has typed into yet is: `emptyValues` puts a value
-             there for every field of the definition, and a checkbox reads an
-             empty string as unchecked. */
-          value={values[field.name] ?? ''}
+          value={value}
           error={errors[field.name]}
           choices={optionsFor(field, options)}
           onChange={handleChange}

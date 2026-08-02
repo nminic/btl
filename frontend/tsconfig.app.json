@@ -18,6 +18,10 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    /* Written out rather than left to the compiler's default. The flag below is
+       a no-op without strictNullChecks, so a downgrade or somebody turning this
+       off would disable that whole pass with a green build and nothing said. */
+    "strict": true,
     /* Every read of an array or a record by key now says it may find nothing.
        Turned on last, after all 250 places it reports were fixed on their own
        merit, so every commit before this one builds green (ADL A14). */
