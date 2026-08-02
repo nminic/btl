@@ -86,6 +86,10 @@ const ALLOWED = new Map([
   ['app/Shell.css | right | -0.35rem', 'the same, sideways'],
   ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
   ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],
+  [
+    'pages/home/TopByCategory.css | inset-inline | -1rem',
+    'the name over a column reaches past it on both sides, because a name is wider than a bar',
+  ],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {

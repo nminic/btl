@@ -79,23 +79,27 @@ function Bar({
   const name = `${column.competitor.firstName} ${column.competitor.lastName}`
   const inside = (
     <>
-      <span className="top-cat__count">{column.races}</span>
-      <span className="visually-hidden">{name}</span>
+      <Portrait competitor={column.competitor} />
+      <span className="top-cat__bar" style={{ blockSize: `${(column.races / highest) * 100}%` }}>
+        <span className="top-cat__count">{column.races}</span>
+      </span>
+      {/* Seen on hover and on focus, read out always. */}
+      <span className="top-cat__who">{name}</span>
     </>
   )
-  const shape = {
-    className: 'top-cat__bar',
-    style: { blockSize: `${(column.races / highest) * 100}%` },
-    title: name,
-  }
 
   if (!column.competitor.active) {
-    return <span {...shape}>{inside}</span>
+    return (
+      <span className="top-cat__link" title={name}>
+        {inside}
+      </span>
+    )
   }
 
   return (
     <Link
-      {...shape}
+      className="top-cat__link"
+      title={name}
       /* The season is written out even though the chart is of the running one:
          a profile opens on all of them by default (owner, 31.07.2026), so
          leaving it out would widen the very thing the bar was showing. */
@@ -183,7 +187,6 @@ export function TopByCategory({
         <ol className="top-cat__columns">
           {columns.map((column) => (
             <li key={column.competitor.memberNumber} className="top-cat__column">
-              <Portrait competitor={column.competitor} />
               <Bar column={column} highest={highest} category={category} season={season} />
             </li>
           ))}
