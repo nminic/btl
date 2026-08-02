@@ -101,19 +101,9 @@ export function Calendar() {
 
   return (
     <div className="calendar">
-      {/* Outside the Resource: the heading and the way back to the running month
-          need no data, and a screen that says nothing at all while it waits is
-          the one thing every other screen here avoids. */}
-      <div className="calendar__head">
-        <h1>{t('calendar.title')}</h1>
-        <button
-          type="button"
-          className="calendar__today"
-          onClick={() => setParams({ mesec: today.slice(0, 7) })}
-        >
-          {t('calendar.toToday')}
-        </button>
-      </div>
+      {/* Outside the Resource: a screen that says nothing at all while it waits
+          is the one thing every other screen here avoids. */}
+      <h1>{t('calendar.title')}</h1>
 
       <Resource state={state}>
         {([events, races]) => {
@@ -128,22 +118,38 @@ export function Calendar() {
 
           return (
             <>
+              {/* Danas, then the two steps, then the month (owner, 01.08.2026).
+                  The steps are arrows and nothing else, so each carries a name of
+                  its own: a symbol is a drawing and a drawing is not a label. */}
               <div className="calendar__bar">
                 <button
                   type="button"
-                  className="calendar__step"
-                  onClick={() => setParams({ mesec: shiftMonth(month, -1) })}
+                  className="calendar__today"
+                  /* Nothing to go back to when it is already here. Disabled
+                     rather than hidden, so the row does not change shape under
+                     somebody stepping through the months. */
+                  disabled={month === today.slice(0, 7)}
+                  onClick={() => setParams({ mesec: today.slice(0, 7) })}
                 >
-                  {t('calendar.previousMonth')}
+                  {t('calendar.today')}
                 </button>
-                <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
                 <button
                   type="button"
                   className="calendar__step"
+                  aria-label={t('calendar.previousMonth')}
+                  onClick={() => setParams({ mesec: shiftMonth(month, -1) })}
+                >
+                  <span aria-hidden="true">&#8249;</span>
+                </button>
+                <button
+                  type="button"
+                  className="calendar__step"
+                  aria-label={t('calendar.nextMonth')}
                   onClick={() => setParams({ mesec: shiftMonth(month, 1) })}
                 >
-                  {t('calendar.nextMonth')}
+                  <span aria-hidden="true">&#8250;</span>
                 </button>
+                <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
               </div>
 
               {byDay.size === 0 && <p className="calendar__empty">{t('calendar.empty')}</p>}

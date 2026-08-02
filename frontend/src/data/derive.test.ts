@@ -1,4 +1,5 @@
 import {
+  CATEGORIES,
   boardOfTen,
   categoriesOf,
   topByCategory,
@@ -389,6 +390,22 @@ describe('defaultSeason', () => {
 
   it('falls back to the running season when there is nothing at all', () => {
     expect(defaultSeason([], '2027-03-01')).toBe(2027)
+  })
+})
+
+describe('the five lengths, in one order', () => {
+  it('runs shortest to longest, and nothing else decides it', () => {
+    /* The ring on a profile, the legend under the calendar, the turning chart on
+       the front page and the row of filter buttons all take their order from
+       this one array (owner, 01.08.2026). It read short, long, half, marathon,
+       ultra until then, which put the long races between the short ones and the
+       half marathons, and nothing in the suite noticed when it was put right,
+       which is why this is here. */
+    expect(CATEGORIES).toEqual(['short', 'half', 'long', 'marathon', 'ultra'])
+  })
+
+  it('names every length exactly once, so nothing can be shown twice or dropped', () => {
+    expect(new Set(CATEGORIES).size).toBe(CATEGORIES.length)
   })
 })
 

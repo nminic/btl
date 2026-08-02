@@ -12,7 +12,13 @@ import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } f
  */
 
 /** The five length categories, in the order they are always shown. */
-export const CATEGORIES: RaceCategory[] = ['short', 'long', 'half', 'marathon', 'ultra']
+/* Shortest to longest, and that is the whole rule (owner, 01.08.2026). It read
+   short, long, half, marathon, ultra, which put the long races between the short
+   ones and the half marathons; a reader scanning the ring, the legend or the row
+   of buttons on a profile met them out of order and had no way to know it was
+   deliberate, because it was not. This one array is where the ring, the legend,
+   the turning chart and the profile's filter row all take their order from. */
+export const CATEGORIES: RaceCategory[] = ['short', 'half', 'long', 'marathon', 'ultra']
 
 export type Totals = {
   races: number

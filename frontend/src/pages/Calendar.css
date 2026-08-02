@@ -7,8 +7,12 @@
 .calendar__bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
+  /* Danas, the two arrows, then the month, in that order and packed to the left
+     (owner, 01.08.2026). It used to push the two steps to the ends of the row
+     with the month between them, which put a pixel of distance between two
+     controls that belong together. */
+  justify-content: flex-start;
+  gap: var(--space-8);
   margin-bottom: var(--space-16);
 }
 
@@ -20,8 +24,16 @@
 
 .calendar__step {
   font: inherit;
-  font-size: 0.85rem;
-  padding: var(--space-8) var(--space-12);
+  /* An arrow and nothing else (owner, 01.08.2026). Square and two rem across, so
+     the pair reads as two steps of one control and so a finger finds them: SC
+     2.5.8 asks for 24 by 24 and this is 32. */
+  inline-size: 2rem;
+  block-size: 2rem;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
@@ -43,7 +55,11 @@
 .calendar__grid {
   display: grid;
   gap: var(--space-8);
-  align-items: start;
+  /* Every day of a row is as tall as the tallest day in it (owner, 31.07.2026).
+     Written as `start` first, which is the opposite: each box took only its own
+     height, so one Saturday with two races stood tall beside six short weekdays
+     and the row looked broken rather than full. Stretch is the default and is
+     what the rule asks for; the rule is about the row, not about the box. */
 }
 
 .calendar__weekday {
@@ -177,20 +193,28 @@
 
 .calendar__today {
   font: 600 0.85rem/1.2 inherit;
-  padding: var(--space-8) var(--space-12);
+  padding: var(--space-8) var(--space-16);
+  margin-inline-end: var(--space-8);
   cursor: pointer;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius-8);
+  border-radius: var(--radius-round);
   transition:
     border-color var(--fast),
     color var(--fast);
 }
 
-.calendar__today:hover {
+.calendar__today:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Already here, so there is nowhere to go. Dimmed rather than taken away, so
+   the row keeps its shape while somebody steps through the months. */
+.calendar__today:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* What the colours mean, under the grid rather than over it: somebody who came
@@ -199,6 +223,10 @@
 .legend {
   display: flex;
   align-items: baseline;
+  /* At the right of its own row (owner, 01.08.2026). It is a key to the thing
+     above it rather than a heading of its own, so it sits where the eye lands
+     after the last column. */
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--space-6) var(--space-14);
   margin-top: var(--space-16);
