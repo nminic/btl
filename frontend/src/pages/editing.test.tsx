@@ -13,7 +13,7 @@ describe('changing data in administration', () => {
     // Named, because the row also carries the control that opens the whole
     // record on a form.
     const city = within(row).getByRole('button', { name: /^Mesto:/ })
-    const before = city.textContent
+    const before = must(city.textContent, 'the place on the row')
 
     await user.click(city)
     const box = within(row).getByRole('textbox')
@@ -22,7 +22,7 @@ describe('changing data in administration', () => {
     await user.tab()
 
     expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
-    expect(within(row).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before!)
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before)
   })
 
   it('lets an edit be abandoned', async () => {
@@ -31,13 +31,16 @@ describe('changing data in administration', () => {
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
     const row = at(within(table).getAllByRole('row'), 1)
-    const before = within(row).getByRole('button', { name: /^Mesto:/ }).textContent
+    const before = must(
+      within(row).getByRole('button', { name: /^Mesto:/ }).textContent,
+      'the place on the row',
+    )
 
     await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
     await user.type(within(row).getByRole('textbox'), 'nešto')
     await user.keyboard('{Escape}')
 
-    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before!)
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before)
   })
 
   it('changes the name and the place of an event', async () => {
@@ -126,11 +129,14 @@ describe('the last few branches these screens have', () => {
     renderAt('/sr/liga/btl-2027', 'superadmin')
 
     const prizes = must((await screen.findByRole('heading', { name: 'Nagrade' })).closest('section'), 'section')
-    const before = prizes.querySelector('.profile__text')!.textContent
+    const before = must(
+      must(prizes.querySelector('.profile__text'), 'the prose of the prizes').textContent,
+      'text',
+    )
 
     await user.click(within(prizes).getByRole('button', { name: 'Izmeni' }))
     await user.tab()
 
-    expect(prizes.querySelector('.profile__text')).toHaveTextContent(before!)
+    expect(prizes.querySelector('.profile__text')).toHaveTextContent(before)
   })
 })

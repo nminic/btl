@@ -13,6 +13,6 @@
         "allowConstantExport": true
       }
     ],
-    "typescript/no-non-null-assertion": "warn"
+    "typescript/no-non-null-assertion": "error"
   }
 }

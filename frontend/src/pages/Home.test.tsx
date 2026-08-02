@@ -110,9 +110,10 @@ describe('Home', () => {
   it('groups a recurring event into one row instead of five', async () => {
     renderAt('/sr')
 
-    const card = (await screen.findByRole('heading', { name: 'Priprema, pozor, SAD!' })).closest(
-      'section',
-    )!
+    const card = must(
+      (await screen.findByRole('heading', { name: 'Priprema, pozor, SAD!' })).closest('section'),
+      'the widget around that heading',
+    )
     const titles = within(card)
       .getAllByRole('listitem')
       .map((row) => must(row.textContent, 'text').replace(/[\d./]/g, ''))
@@ -124,9 +125,10 @@ describe('Home', () => {
   it('says what membership costs and when that changes', async () => {
     renderAt('/sr')
 
-    const slot = (await screen.findByRole('heading', { name: /Članarina za BTL/ })).closest(
-      'section',
-    )!
+    const slot = must(
+      (await screen.findByRole('heading', { name: /Članarina za BTL/ })).closest('section'),
+      'the widget around that heading',
+    )
 
     expect(within(slot).getByText(/Otvara se za|Cena raste/)).toBeVisible()
   })
@@ -156,9 +158,10 @@ describe('Home', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const calc = (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest(
-      'section',
-    )!
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
     /* The label of the answer stands there from the start (owner, 31.07.2026),
        so the card does not change height as somebody types; what arrives is the
        number. */

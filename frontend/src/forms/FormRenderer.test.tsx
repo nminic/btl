@@ -1,3 +1,4 @@
+import { must } from '../test/at'
 import { useState } from 'react'
 import { screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
@@ -73,7 +74,9 @@ describe('FormRenderer', () => {
     const hintId = input.getAttribute('aria-describedby')
 
     expect(hintId).toBe('field-mejl-hint')
-    expect(document.getElementById(hintId!)).toHaveTextContent('proba.mejlPravilo')
+    expect(
+      document.getElementById(must(hintId, 'an id joining the field to its hint')),
+    ).toHaveTextContent('proba.mejlPravilo')
   })
 
   it('marks the fields that are not obligatory', () => {

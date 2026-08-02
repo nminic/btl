@@ -1301,9 +1301,12 @@ describe('the six queues read from the file', () => {
     await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
 
     const card = within(
-      within(waitingList()).getAllByRole('listitem').find((one) =>
-        within(one).queryByText('Damjan Krstić') !== null,
-      )!,
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Damjan Krstić') !== null),
+        'a waiting card for Damjan Krstić',
+      ),
     )
 
     await user.click(card.getByRole('button', { name: 'Vrati na doradu' }))

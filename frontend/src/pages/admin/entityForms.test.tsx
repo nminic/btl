@@ -54,9 +54,12 @@ function control(field: FieldDef, title: string): HTMLElement {
 /** The first field a person can type words into that is not the identity of the
  *  record, which is the one field a change must not touch. */
 function writable(entity: EntityDef): FieldDef {
-  return entity.form.fields.find(
-    (one) => (one.type === 'text' || one.type === 'textarea') && one.name !== entity.idField,
-  )!
+  return must(
+    entity.form.fields.find(
+      (one) => (one.type === 'text' || one.type === 'textarea') && one.name !== entity.idField,
+    ),
+    `a text field on the ${entity.id} form that is not its own number`,
+  )
 }
 
 type Screen = {
@@ -108,7 +111,10 @@ describe('every entity has a form for a record that does not exist yet', () => {
     await user.click(await screen.findByRole('button', { name: title }))
     await user.click(open(title).getByRole('button', { name: t('form.submit') }))
 
-    const required = entity.form.fields.find((one) => one.required === true)!
+    const required = must(
+    entity.form.fields.find((one) => one.required === true),
+    'a required field on the form',
+  )
     const field = control(required, title)
 
     expect(field).toHaveAttribute('aria-invalid', 'true')
@@ -452,9 +458,12 @@ describe('the category of a race', () => {
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     const row = within(
-      within(await screen.findByRole('table', { name: 'Trke' }))
-        .getByText('Provera kategorije')
-        .closest('tr')!,
+      must(
+        within(await screen.findByRole('table', { name: 'Trke' }))
+          .getByText('Provera kategorije')
+          .closest('tr'),
+        'the row of the race called Provera kategorije',
+      ),
     )
     expect(row.getByText(t('category.marathon'))).toBeVisible()
   })
@@ -548,7 +557,11 @@ describe('the words the eight forms need', () => {
        the portal promises never to show as certain. Cancelled stays in the type,
        because the iCal feed has to send it (STATUS:CANCELLED), and it is not
        something anybody types on this form. */
-    const options = EVENTS.form.fields.find((one) => one.name === 'status')!.options ?? []
+    const options =
+      must(
+        EVENTS.form.fields.find((one) => one.name === 'status'),
+        'a status field on the event form',
+      ).options ?? []
 
     expect(options.map((one) => one.value)).toEqual(['confirmed', 'checking'])
   })
@@ -566,7 +579,11 @@ describe('the words the eight forms need', () => {
   it('offer the badge kinds the rule engine knows, and no others', () => {
     // Two closed lists that must never drift apart: the one on the form and the
     // one the sentence is built from.
-    const options = BADGES.form.fields.find((one) => one.name === 'kind')!.options ?? []
+    const options =
+      must(
+        BADGES.form.fields.find((one) => one.name === 'kind'),
+        'a kind field on the badge form',
+      ).options ?? []
 
     expect(options.map((one) => one.value)).toEqual([...BADGE_KINDS])
   })

@@ -155,7 +155,10 @@ describe('Registration once it is open', () => {
     renderForm()
 
     const box = screen.getByLabelText(/zdravstveno sposoban/)
-    const label = must(box.parentElement, 'a parent').querySelector('label')!
+    const label = must(
+      must(box.parentElement, 'a parent').querySelector('label'),
+      'a label beside the box',
+    )
 
     expect(box.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

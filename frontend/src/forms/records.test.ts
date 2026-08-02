@@ -1,3 +1,4 @@
+import { must } from '../test/at'
 import { fieldDate, isoDate } from './dateField'
 import {
   applyChanges,
@@ -31,7 +32,11 @@ const form: FormDef = {
   ],
 }
 
-const field = (name: string): FieldDef => form.fields.find((one) => one.name === name)!
+const field = (name: string): FieldDef =>
+  must(
+    form.fields.find((one) => one.name === name),
+    `a field called "${name}"`,
+  )
 
 describe('a date between the two shapes it has', () => {
   it('is shown the way the region reads it', () => {
