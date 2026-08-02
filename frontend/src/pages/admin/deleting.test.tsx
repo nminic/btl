@@ -184,3 +184,83 @@ describe('the front page is where a closed door ends', () => {
     await expectFrontPage()
   })
 })
+
+describe('one decision for a whole queue', () => {
+  it('settles every waiting item at once, after asking', async () => {
+    /* Owner, 01.08.2026. It asks first because there is nothing to undo:
+       approving is what puts a thing on the portal, and a queue of forty
+       approved by a misplaced click is forty things to find again by hand. */
+    const user = setupUser()
+    const asked: string[] = []
+    const confirm = vi.spyOn(window, 'confirm').mockImplementation((message) => {
+      asked.push(String(message))
+      return true
+    })
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const before = within(waiting).getAllByRole('listitem').length
+      expect(before).toBeGreaterThan(1)
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(asked).toHaveLength(1)
+      expect(first(asked)).toContain(String(before))
+      expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+      expect(
+        within(screen.getByRole('table', { name: 'Rešeno' })).getAllByRole('row').slice(1),
+      ).toHaveLength(before)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('carries the published text out with it, on the queue that publishes', async () => {
+    /* Biographies are the one queue where approving means publishing what the
+       moderator left, so the settled row has to carry the text rather than go
+       back for it. One decision for the whole queue must write the same thing
+       one decision at a time writes. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/biografije', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const first_text = must(
+        within(waiting).getAllByRole('listitem')[0]?.textContent,
+        'the first waiting biography',
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      const settled = within(screen.getByRole('table', { name: 'Rešeno' }))
+      const words = must(first_text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')
+
+      expect(settled.getAllByText(new RegExp(words[0])).length).toBeGreaterThan(0)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('settles nothing when the question is answered no', async () => {
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const before = within(waiting).getAllByRole('listitem').length
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(within(await screen.findByRole('list', { name: /Čeka/ })).getAllByRole('listitem'))
+        .toHaveLength(before)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+})

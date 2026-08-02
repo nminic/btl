@@ -109,3 +109,17 @@
 .statement__refused {
   color: var(--danger);
 }
+
+/* The heading of the waiting list and the one decision that settles all of it,
+   level with each other (owner, 01.08.2026). */
+.pending__bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.pending__bar .profile__section {
+  margin-block-end: 0;
+}
