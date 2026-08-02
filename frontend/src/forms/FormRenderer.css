@@ -33,6 +33,16 @@
   color: var(--text-muted);
 }
 
+/* How much room is left in a box that has a limit. Under the box and at its
+   right, where the eye already is when the typing stops. */
+.field__left {
+  margin: 0;
+  align-self: flex-end;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .field__control {
   font: inherit;
   padding: var(--space-10) var(--space-12);
