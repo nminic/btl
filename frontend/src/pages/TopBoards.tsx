@@ -296,7 +296,7 @@ function Boards({
 
   return (
     <>
-      <div className="boards__filters">
+      <div className="boards__filters rankings__head-tool">
         <label className="boards__field">
           <span>{t('topBoards.season')}</span>
           <select value={season} onChange={(event) => onSeason(event.target.value)}>
@@ -331,7 +331,7 @@ export function TopBoards() {
   }
 
   return (
-    <div className="boards">
+    <div className="boards rankings--tooled">
       <h1>{t('topBoards.title')}</h1>
       <p className="boards__intro">{t('topBoards.intro')}</p>
 

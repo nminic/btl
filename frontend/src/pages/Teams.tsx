@@ -32,7 +32,7 @@ export function Teams() {
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
   return (
-    <div className="rankings">
+    <div className="rankings rankings--tooled">
       <h1>{t('teams.title')}</h1>
 
       <Resource state={state}>
@@ -49,7 +49,7 @@ export function Teams() {
 
           return (
             <>
-              <div className="rankings__season">
+              <div className="rankings__head-tool">
                 <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 

@@ -6,6 +6,50 @@
   letter-spacing: -0.02em;
 }
 
+/* The one control a screen carries stands level with its heading, at the far
+   right (owner, 01.08.2026): the search on the competitors, the season on the
+   teams and on the top ten boards. Level rather than under, because a control
+   on its own line reads as a heading of its own and pushes the content down by
+   a whole row for the sake of one field.
+
+   On a telephone they stack, and the control comes second: the heading says
+   what the screen is and has to be read first. */
+.rankings--tooled {
+  --tool-gap: var(--space-16);
+}
+
+.rankings--tooled > h1 {
+  margin-block-end: var(--space-8);
+}
+
+@media (min-width: 560px) {
+  .rankings--tooled {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    column-gap: var(--tool-gap);
+  }
+
+  .rankings--tooled > h1 {
+    margin-block-end: var(--space-12);
+  }
+
+  /* Everything else in the screen takes the whole width under the two of them. */
+  .rankings--tooled > *:not(h1):not(.rankings__head-tool) {
+    grid-column: 1 / -1;
+  }
+}
+
+.rankings__head-tool {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: var(--space-12);
+}
+
+.rankings__head-tool .rankings__field {
+  margin: 0;
+}
+
 .rankings__note {
   margin: 0 0 var(--space-16);
   color: var(--text-muted);

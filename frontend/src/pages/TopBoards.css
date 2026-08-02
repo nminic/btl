@@ -14,8 +14,24 @@
   padding-left: var(--space-12);
 }
 
+/* Level with the heading, at the far right (owner, 01.08.2026). It is drawn
+   inside the Resource, which comes after the heading and its sentence, so it is
+   placed rather than ordered: first row, second column. */
 .boards__filters {
   margin-bottom: var(--space-16);
+}
+
+@media (min-width: 560px) {
+  .rankings--tooled > .boards__filters {
+    grid-row: 1;
+    grid-column: 2;
+    margin-bottom: 0;
+  }
+
+  /* The sentence under the heading keeps the left column to itself. */
+  .rankings--tooled > .boards__intro {
+    grid-column: 1;
+  }
 }
 
 .boards__field {
