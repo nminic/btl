@@ -54,6 +54,15 @@ export function CalendarExtract({
                 <time className="extract__date" dateTime={entry.next.date}>
                   {formatDayMonth(entry.next.date)}
                 </time>
+                <span className="extract__name">
+                  <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>
+                  {entry.more > 0 && (
+                    <span className="extract__series">
+                      {' '}
+                      {t('home.moreRuns', { count: entry.more })}
+                    </span>
+                  )}
+                </span>
                 <span className="extract__lengths">
                   {lengths.map((one) => (
                     <span
@@ -67,15 +76,6 @@ export function CalendarExtract({
                   <span className="visually-hidden">
                     {lengths.map((one) => t(`category.${one}`)).join(', ')}
                   </span>
-                </span>
-                <span className="extract__name">
-                  <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>
-                  {entry.more > 0 && (
-                    <span className="extract__series">
-                      {' '}
-                      {t('home.moreRuns', { count: entry.more })}
-                    </span>
-                  )}
                 </span>
               </li>
             )

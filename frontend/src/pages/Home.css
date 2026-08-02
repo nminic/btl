@@ -180,12 +180,13 @@
   flex-direction: column;
 }
 
-/* Day, month, the lengths, then the name, on one line at every width (owner,
-   31.07.2026). The first two columns are fixed and the figures are tabular, so
-   every name in the widget starts on the same vertical line. */
+/* Date, then the name, then the dots (owner, 01.08.2026). The name used to sit
+   last and the dots before it, which made the name start further right the more
+   lengths an event held: a race with five colours pushed its own name off. The
+   dots take what they need at the end instead, and the name gives way. */
 .extract__row {
   display: grid;
-  grid-template-columns: 3.2rem auto 1fr;
+  grid-template-columns: 3.2rem 1fr auto;
   gap: 0 var(--space-6);
   align-items: center;
   padding: var(--space-8) 0;
@@ -457,16 +458,26 @@
 .calc__result {
   margin: 0;
   display: flex;
-  align-items: baseline;
+  /* Along the bottom rather than along the first line of text (owner,
+     01.08.2026). "BTL poeni:" is small and the figure is large, so on a shared
+     baseline the words sat where the tall number's baseline is and then rose
+     when the words "Unesi dužinu i vreme" took its place. Along the bottom they
+     do not move at all, whichever of the two is beside them. */
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: var(--space-6);
-  min-block-size: 2.1rem;
+  /* Fixed and not a minimum. A minimum lets the box grow when the figure
+     arrives, and a box that grows moves the words in it however they are
+     aligned. Tall enough for the largest the figure gets. */
+  block-size: 2.6rem;
 }
 
 .calc__label {
   color: var(--text-muted);
   font-size: 0.8rem;
   font-weight: 600;
+  /* Down with the figure, not up with the top of the line. */
+  padding-block-end: var(--space-2);
 }
 
 .calc__result strong {
@@ -475,9 +486,13 @@
   letter-spacing: -0.02em;
 }
 
+/* In italics (owner, 01.08.2026): it is a instruction standing in for an answer,
+   and the slope says so without a second colour or a second size. */
 .calc__waiting {
   color: var(--text-muted);
   font-size: 0.85rem;
+  font-style: italic;
+  padding-block-end: var(--space-2);
 }
 
 /* News and sponsor */
