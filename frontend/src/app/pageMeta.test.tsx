@@ -5,7 +5,7 @@ import sr from '../i18n/sr.json'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-import { SITE_ORIGIN } from './head'
+import { applyHead, SITE_ORIGIN } from './head'
 import { PageMeta } from './PageMeta'
 
 const LEAGUE = 'Balkanska trkačka liga'
@@ -253,6 +253,18 @@ describe('the two parts of a competition', () => {
   })
 })
 
+/** Every text under `seo` whose name says it is a description, wherever it sits:
+ *  `description` on a screen, `recordDescription` and its like on the screens
+ *  named after one record. Paired with the path it was found at, so a failure
+ *  says which one. */
+function descriptions(): [string, string][] {
+  return Object.entries(sr.seo).flatMap(([screen, entry]) =>
+    Object.entries(entry)
+      .filter(([key, text]) => key.toLowerCase().includes('description') && typeof text === 'string')
+      .map(([key, text]): [string, string] => [`${screen}.${key}`, String(text)]),
+  )
+}
+
 describe('the titles as a set, rather than one at a time', () => {
   /* Every screen is named in one dictionary and each name was chosen against
      the screen it belongs to. What nobody checks that way is the set: two
@@ -295,12 +307,19 @@ describe('the titles as a set, rather than one at a time', () => {
   it('keeps every description short enough to be shown whole', () => {
     /* A search result shows about a hundred and sixty characters and cuts the
        rest mid-word. The limit is written in the type of PageHead; nothing had
-       ever measured against it. */
-    const tooLong = Object.entries(sr.seo)
-      .filter(([, entry]) => entry.description.length > 160)
-      .map(([key, entry]) => `${key}: ${entry.description.length}`)
+       ever measured against it.
+
+       Every description under `seo`, not only the ones called `description`. The
+       screens that are named after a record carry `recordDescription`, and those
+       are the ones a long name is interpolated into, so they are the ones nearest
+       the limit rather than the ones furthest from it. */
+    const tooLong = descriptions().filter(([, text]) => text.length > 160)
 
     expect(tooLong).toEqual([])
+  })
+
+  it('has descriptions under every one of those names, so the sweep is not empty', () => {
+    expect(descriptions().length).toBeGreaterThan(Object.keys(sr.seo).length)
   })
 })
 
@@ -316,12 +335,27 @@ describe('the title in index.html', () => {
   const held = (pattern: RegExp, what: string) =>
     must(pattern.exec(html), `${what} u index.html`)[1]
 
-  it('is the front page title, and so are the two that a shared link shows', () => {
-    expect(held(/<title>([^<]*)<\/title>/, 'naslov')).toBe(sr.seo.home.title)
-    expect(held(/<meta\s+property="og:title"\s+content="([^"]*)"/, 'og:title')).toBe(sr.seo.home.title)
-    expect(held(/<meta\s+name="twitter:title"\s+content="([^"]*)"/, 'twitter:title')).toBe(
-      sr.seo.home.title,
-    )
+  it('is the front page title as the portal itself writes it', () => {
+    /* Measured through applyHead rather than against the dictionary entry.
+       applyHead adds the name of the league unless the title already begins
+       with it, and today the front page title does, so the two happen to be the
+       same string. Comparing against the entry would let somebody rename the
+       front page to "Početna", copy that into this file, and go green while the
+       browser shows "Početna" before the scripts run and "Početna · Balkanska
+       trkačka liga" after. */
+    applyHead({
+      title: sr.seo.home.title,
+      description: sr.seo.home.description,
+      siteName: sr.app.name,
+      path: '',
+      textLocale: 'sr',
+    })
+
+    const written = document.title
+
+    expect(held(/<title>([^<]*)<\/title>/, 'naslov')).toBe(written)
+    expect(held(/<meta\s+property="og:title"\s+content="([^"]*)"/, 'og:title')).toBe(written)
+    expect(held(/<meta\s+name="twitter:title"\s+content="([^"]*)"/, 'twitter:title')).toBe(written)
   })
 
   it('carries the front page description, the same three times over', () => {

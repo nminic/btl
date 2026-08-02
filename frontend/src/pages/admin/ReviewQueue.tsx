@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
+import { Swept } from './Swept'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
    for the whole queue. Every sheet is bundled into one and the class would work
@@ -30,6 +31,8 @@ export function ReviewQueue() {
   const { submissions, decide } = useSession()
   const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState('')
+  /** How many the last sweep settled, and null until there has been one. */
+  const [swept, setSwept] = useState<number | null>(null)
 
   const waiting = submissions.filter((one) => one.status === 'pending')
   const decided = submissions.filter((one) => one.status !== 'pending')
@@ -75,11 +78,14 @@ export function ReviewQueue() {
                  the sweep has just approved, confirming it would refuse what
                  was approved a moment ago and say nothing about it. */
               setOpen(null)
+              setSwept(waiting.length)
             }}
           >
             {t('verification.approveAll')}
           </button>
         )}
+
+        <Swept count={swept} />
       </div>
 
       {waiting.length === 0 ? (

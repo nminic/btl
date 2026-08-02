@@ -211,6 +211,28 @@ describe('FormRenderer', () => {
   })
 })
 
+describe('a long box with no limit on it', () => {
+  /* Nothing in the portal has one and a guard keeps it that way
+     (definitions.test.ts), but the renderer is handed a definition and is in no
+     position to insist. With no limit there is no room to run out of, so it
+     counts nothing down and loses nothing to a paste. */
+  it('counts nothing down and says nothing about a paste', async () => {
+    const user = setupUser()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    const box = screen.getByLabelText(/proba.beleska/)
+
+    expect(box).not.toHaveAttribute('maxlength')
+    expect(box).not.toHaveAttribute('aria-describedby')
+
+    await user.click(box)
+    await user.paste('x'.repeat(5000))
+
+    expect(box).toHaveValue('x'.repeat(5000))
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
 describe('a definition swapped under a form that is already on screen', () => {
   it('draws a field it is holding nothing for as empty, and does not save the word undefined', async () => {
     const smaller: FormDef = { ...grown, fields: grown.fields.slice(0, 1) }

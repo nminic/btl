@@ -4,12 +4,12 @@ import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { nextMemberNumber } from '../../data/memberNumber'
-import { handOutMemberNumber, takenMemberNumbers } from './memberNumbers'
+import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
 import { usePending, waitingIn, settledWith } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
+import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
@@ -117,6 +117,8 @@ export function Payments() {
   const session = useSession()
   const { decisions, settle } = session
   const [open, setOpen] = useState<Refusing | null>(null)
+  /** How many the last sweep activated, and null until there has been one. */
+  const [swept, setSwept] = useState<number | null>(null)
   /* The member list is read for one reason only: a number can only be handed out
      against every number that is already gone. */
   const state = combinePair(usePending(), useCompetitors())
@@ -170,26 +172,21 @@ export function Payments() {
            * The same activation for every registration waiting, on the ground of
            * a paid fee.
            *
-           * It counts the numbers up itself rather than calling `activate` in a
-           * loop, and that is the whole reason it exists. A number is worked out
-           * against everything already spoken for, and what is spoken for is read
-           * off the session as this render sees it. The session does not change
-           * while a loop runs, so twenty activations in a loop would every one of
-           * them be handed the same number: twenty members answering to 000032,
-           * which is precisely the fault the numbering was moved into one module
-           * to stop (memberNumbers.ts, PDL P8).
-           *
-           * So the list of what is taken is made once and grows as the sweep
-           * hands numbers out, and each registration is written down with the
-           * number that was actually its own.
+           * It asks for every number in one go rather than calling `activate` in
+           * a loop. A number is worked out against everything already spoken for,
+           * and what is spoken for is read off the session as this render sees
+           * it; the session does not change while a loop runs, so a loop would
+           * hand the same number to all of them. The counting belongs to the one
+           * module that is allowed to do it (memberNumbers.ts, PDL P8), which is
+           * where it now is.
            */
           const activateAll = (ids: string[]) => {
-            const taken = takenMemberNumbers(competitors, session)
-
-            for (const id of ids) {
-              const given = nextMemberNumber(taken)
-              taken.push(given)
-              settle(id, { status: 'approved', note: '', basis: 'payment', memberNumber: given })
+            for (const { id, memberNumber } of handOutMemberNumbersFor(
+              competitors,
+              session,
+              ids,
+            )) {
+              settle(id, { status: 'approved', note: '', basis: 'payment', memberNumber })
             }
 
             /* Every one of them has been decided, so nothing the box could be
@@ -226,11 +223,14 @@ export function Payments() {
                       }
 
                       activateAll(waiting.map((one) => one.id))
+                      setSwept(waiting.length)
                     }}
                   >
                     {t('verification.activateAllPayment')}
                   </button>
                 )}
+
+                <Swept count={swept} />
               </div>
 
               {waiting.length === 0 ? (

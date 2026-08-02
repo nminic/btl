@@ -374,9 +374,9 @@
     "restOfWorld": "Ostatak sveta",
     "openCalendar": "Otvori kalendar",
     "pasteCut": {
-      "one": "Nalepljeni tekst je bio {count} znak duži nego što staje. Taj znak nije primljen.",
-      "few": "Nalepljeni tekst je bio {count} znaka duži nego što staje. Ta {count} znaka nisu primljena.",
-      "other": "Nalepljeni tekst je bio {count} znakova duži nego što staje. Tih {count} znakova nije primljeno."
+      "one": "Nalepljeni tekst je bio {count} znak duži nego što staje, pa taj višak nije primljen.",
+      "few": "Nalepljeni tekst je bio {count} znaka duži nego što staje, pa taj višak nije primljen.",
+      "other": "Nalepljeni tekst je bio {count} znakova duži nego što staje, pa taj višak nije primljen."
     }
   },
   "registration": {
@@ -1192,9 +1192,14 @@
     "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se vrati. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
     "activateAllPayment": "Aktiviraj sve po osnovu uplate",
     "activateAllAsk": {
-      "one": "Aktivirati {count} članstvo po osnovu uplate? Dodeljuje se članski broj i ovo se ne može opozvati.",
-      "few": "Aktivirati {count} članstva po osnovu uplate? Dodeljuju se članski brojevi i ovo se ne može opozvati.",
-      "other": "Aktivirati {count} članstava po osnovu uplate? Dodeljuju se članski brojevi i ovo se ne može opozvati."
+      "one": "Aktivirati {count} članstvo po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
+      "few": "Aktivirati {count} članstva po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
+      "other": "Aktivirati {count} članstava po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati."
+    },
+    "approveAllDone": {
+      "one": "Rešena je {count} stavka.",
+      "few": "Rešene su {count} stavke.",
+      "other": "Rešeno je {count} stavki."
     }
   },
   "rulebook": {

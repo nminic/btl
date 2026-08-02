@@ -4,7 +4,7 @@ import { livePage } from '../../data/pages'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
-import { first, must } from '../../test/at'
+import { at, first, must } from '../../test/at'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { Entities } from './Entities'
@@ -265,16 +265,47 @@ describe('one decision for a whole queue', () => {
       await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
 
       const settled = within(screen.getByRole('table', { name: 'Rešeno' }))
+      /* The second cell is the column headed "Članski broj". Read by its place
+         in the row rather than by a class name, which is a fact about the
+         stylesheet and not about the table. */
       const numbers = settled
         .getAllByRole('row')
         .slice(1)
-        .map((row) => must(row.querySelector('.table__member-number')?.textContent, 'broj'))
+        .map((row) => at(within(row).getAllByRole('cell'), 1).textContent)
 
       expect(numbers).toHaveLength(before)
       expect(new Set(numbers).size).toBe(before)
       /* And every one of them is a membership on the ground of a fee, which is
          what the words on the button say it writes down. */
       expect(settled.getAllByText('Uplata')).toHaveLength(before)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('says what it did and takes the focus, rather than leaving it nowhere', async () => {
+    /* The button is drawn only while something is waiting, so the sweep takes it
+       off the screen in the same render that empties the queue. Without an
+       answer the focus falls to the document: the next Tab starts the page from
+       the skip link, and for anybody being read to nothing happened at all,
+       because the only sign was a table appearing further down. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const before = within(waiting).getAllByRole('listitem').length
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      /* One, two and five are three different sentences in Serbian, so what is
+         matched is the shape rather than one of the three. */
+      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+
+      expect(said).toBeVisible()
+      expect(said).toHaveFocus()
     } finally {
       confirm.mockRestore()
     }

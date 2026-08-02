@@ -74,3 +74,33 @@ export function handOutMemberNumber(
 ): string {
   return nextMemberNumber(takenMemberNumbers(competitors, sources))
 }
+
+/**
+ * A number for each of several at once, paired with what it was given to.
+ *
+ * Here rather than as a loop around `handOutMemberNumber`, because such a loop
+ * quietly hands out one number as many times as it runs. What is spoken for is
+ * read off the session as the caller's render sees it, and the session does not
+ * change while a loop runs: twenty activations in a loop are twenty members
+ * answering to 000032, which is the exact fault this module exists to make
+ * impossible. A caller cannot walk into it without coming through here.
+ *
+ * Paired rather than returned as a bare list, so nothing at the other end has to
+ * line two lists up by counting. Lining them up by counting is how a number ends
+ * up against the wrong person, which is the same fault wearing different
+ * clothes.
+ */
+export function handOutMemberNumbersFor(
+  competitors: Competitor[],
+  sources: NumberSources,
+  ids: string[],
+): { id: string; memberNumber: string }[] {
+  const taken = takenMemberNumbers(competitors, sources)
+
+  return ids.map((id) => {
+    const memberNumber = nextMemberNumber(taken)
+    taken.push(memberNumber)
+
+    return { id, memberNumber }
+  })
+}

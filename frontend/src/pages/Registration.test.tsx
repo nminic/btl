@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -300,12 +300,13 @@ describe('the box a member writes about themselves in', () => {
     await user.paste('x'.repeat(360))
 
     expect(box).toHaveValue('x'.repeat(360))
-    /* Twice on the screen and that is deliberate: the counter under the box for
-       whoever can see it, and a region that is empty the rest of the time for
-       whoever is being read to. It used to be one region that changed on every
-       keystroke, which queues three hundred and fifty-nine announcements in
-       front of anything else the reader might have to say. */
-    expect(screen.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(2)
+    /* Once on the screen, and no live region of its own. It used to be one that
+       changed on every keystroke, which queues three hundred and fifty-nine
+       announcements of a number in front of anything else the reader might have
+       to say; that a box is full is on screen, is in `aria-describedby` on the
+       way in, and is felt at the keyboard the moment nothing more appears. */
+    expect(screen.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(1)
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
@@ -320,15 +321,64 @@ describe('the box a member writes about themselves in', () => {
     await user.click(box)
     await user.paste('x'.repeat(400))
 
-    expect(
-      screen.getAllByText(
-        'Nalepljeni tekst je bio 40 znakova duži nego što staje. Tih 40 znakova nije primljeno.',
-      ).length,
-    ).toBeGreaterThan(0)
+    const said = 'Nalepljeni tekst je bio 40 znakova duži nego što staje, pa taj višak nije primljen.'
 
-    /* And it goes the moment the writer does anything themselves, because from
-       then on the box holds what they left in it. */
-    await user.type(box, '{Backspace}')
+    /* Once in the document, and it is the sentence itself that is announced
+       rather than a second hidden copy: two copies are read twice by anybody
+       going through the page rather than tabbing through it. */
+    expect(screen.getAllByText(said)).toHaveLength(1)
+    expect(screen.getByRole('status')).toHaveTextContent(said)
+
+    /* And it goes the moment the writer does anything themselves. Not when the
+       box drops below its limit, which was the first rule and left the message
+       standing through every edit that kept the length: typing over a selected
+       character is an edit the writer made and the length does not move. */
+    await user.type(box, '{Backspace}x')
+    expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
+  })
+
+  it('counts what a paste over a selection really loses, not what it brought', async () => {
+    /* Pasting over the whole box is not an overflow: what the selection gives
+       back is room. Without this the rule is arithmetic no test touches, so
+       taking the two the wrong way round would go green.
+
+       The event is dispatched rather than performed, because neither Ctrl+A nor
+       a selection set on the element moves the selection userEvent pastes
+       against, and a paste into a box that is full is the other case, not this
+       one. What is being checked is the arithmetic the handler does with the
+       selection it is given, and that is exactly what this hands it. */
+    const user = setupUser()
+    renderForm()
+
+    const box = must(
+      screen.getByLabelText(/Svojim rečima/).closest('textarea'),
+      'polje za biografiju',
+    )
+    await user.click(box)
+    await user.paste('x'.repeat(360))
+
+    box.setSelectionRange(0, 360)
+    fireEvent.paste(box, { clipboardData: { getData: () => 'y'.repeat(380) } })
+
+    expect(
+      screen.getByText(
+        'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
+      ),
+    ).toBeVisible()
+  })
+
+  it('does not charge a Windows clipboard for its line endings', async () => {
+    /* The clipboard carries CR LF and a textarea keeps LF, so counting the
+       clipboard as it comes charges the writer one character per line for
+       something the box never held. Ten lines of thirty-six, which is 360 in
+       the box and 369 on the clipboard: it all fits, and nothing is lost. */
+    const user = setupUser()
+    renderForm()
+
+    const box = screen.getByLabelText(/Svojim rečima/)
+    await user.click(box)
+    await user.paste(Array.from({ length: 10 }, () => 'x'.repeat(35)).join('\r\n'))
+
     expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
   })
 

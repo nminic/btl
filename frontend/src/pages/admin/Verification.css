@@ -123,3 +123,13 @@
 .pending__bar .profile__section {
   margin-block-end: 0;
 }
+
+/* What one decision for a whole queue did. It takes the focus as it arrives and
+   needs no ring of its own: the one rule in index.css gives every focused
+   element one, and it gives it only when the last thing anybody touched was the
+   keyboard, which is exactly when a line being focused needs to be seen to be. */
+.pending__swept {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

@@ -1,4 +1,4 @@
-import { memo, useCallback, useState, type FormEvent } from 'react'
+import { memo, useCallback, useRef, useState, type FormEvent } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import type {
@@ -85,19 +85,24 @@ const Field = memo(function Field({
    * there is nothing to work it out from: what was dropped never reached React.
    */
   const [dropped, setDropped] = useState(0)
+  /**
+   * Whether the change about to arrive is the paste's own.
+   *
+   * A paste raises the message and then delivers a change, so clearing on every
+   * change puts the message up and takes it down inside one event and nobody
+   * ever sees it. This lets that one change through and clears on the next,
+   * which is the first thing the writer does themselves.
+   *
+   * Set only when the paste will actually deliver a change: pasting into a box
+   * that is already full is refused whole, no change follows, and a flag left
+   * standing would eat the writer's next keystroke instead.
+   */
+  const fromPaste = useRef(false)
   const change = useCallback(
     (next: string | boolean) => {
-      /* The message stays while the box is still full of the paste that caused
-         it, and goes the moment there is room again.
-       *
-       * Not "goes on the next change", which was the first attempt and cleared
-       * it instantly: a paste raises the message and then delivers its own
-       * change, so the message was put up and taken down inside one event and
-       * nobody ever saw it. Length is what tells the two apart. The paste leaves
-       * the box at exactly the limit; deleting a character is the first thing
-       * that leaves it under, and from then on what the box holds is what the
-       * writer left in it. */
-      if (typeof next !== 'string' || field.maxLength === undefined || next.length < field.maxLength) {
+      if (fromPaste.current) {
+        fromPaste.current = false
+      } else {
         setDropped(0)
       }
 
@@ -238,16 +243,25 @@ const Field = memo(function Field({
             onPaste={(event) => {
               const box = event.currentTarget
               const replacing = box.selectionEnd - box.selectionStart
-              /* Read as a number rather than asked about. Every textarea the
-                 portal has carries a limit, and one that does not cannot be
-                 written: `definitions.test.ts` refuses a definition that leaves
-                 it out, and a box a member can paste a novel into is not a thing
-                 anybody wants by accident. Asking here would be a branch on a
-                 case that cannot happen, which is worse than the rule it would
-                 be guarding. */
-              const room = Number(field.maxLength) - String(value).length + replacing
-              const brought = event.clipboardData.getData('text').length
+              /* No limit is unbounded room, which is what `Infinity` says.
+                 Absence has a meaning here rather than standing in for a value
+                 nobody worked out, which is the case a fallback is for (ADL A14,
+                 rule 2). Every textarea the portal has does carry a limit and
+                 `definitions.test.ts` keeps it that way, but the renderer is
+                 handed a definition and is in no position to insist. */
+              const limit = field.maxLength ?? Infinity
+              /* Never below nought. A record can be longer than the limit that
+                 was put on the field after it was written, and a negative room
+                 would report the whole of that overrun as something this paste
+                 lost. */
+              const room = Math.max(0, limit - String(value).length + replacing)
+              /* Line endings as the box will hold them. The clipboard carries
+                 CR LF on Windows and a textarea keeps LF, so counting the
+                 clipboard as it comes charges the writer one character per line
+                 for something the box never had. */
+              const brought = event.clipboardData.getData('text').replace(/\r\n/g, '\n').length
 
+              fromPaste.current = brought > 0 && room > 0
               setDropped(Math.max(0, brought - room))
             }}
             onChange={(e) => change(e.target.value)}
@@ -274,21 +288,24 @@ const Field = memo(function Field({
               </p>
 
               {/* What the last paste lost. Said in full, in its own words, and
-                  not left to be worked out from a counter that has gone to
-                  zero. */}
+                  not left to be worked out from a counter that has gone to zero.
+               *
+                  The one thing here worth interrupting a writer for, and it is
+                  announced by being the sentence itself rather than by a second
+                  copy hidden beside it: two copies are read twice by anybody
+                  going through the page rather than tabbing. It exists only while
+                  there is something to say, so it says it once.
+               *
+                  The counter above has no region of its own on purpose. That a
+                  box is full is on the screen, is in `aria-describedby` on the
+                  way in, and is felt at the keyboard the moment nothing more
+                  appears. Losing text that was already written is not any of
+                  those, which is why this one speaks. */}
               {dropped > 0 && (
-                <p className="field__dropped">{t('form.pasteCut', { count: dropped })}</p>
+                <p className="field__dropped" role="status">
+                  {t('form.pasteCut', { count: dropped })}
+                </p>
               )}
-
-              {/* The two things worth interrupting a writer for, and nothing
-                  else. Empty the rest of the time, so it says something at most
-                  once rather than once per keystroke. */}
-              <p className="visually-hidden" role="status">
-                {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
-                {dropped === 0 && String(value).length >= field.maxLength
-                  ? t('registration.bioFull', { count: field.maxLength })
-                  : ''}
-              </p>
             </>
           )}
         </>

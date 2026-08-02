@@ -9,6 +9,7 @@ import { usePending, waitingIn, type PendingItem, settledWith } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, type Queue, type QueueOutcome } from './queues'
 import { SendBack } from './SendBack'
+import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
@@ -123,6 +124,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * (src/app/Dropdown.tsx).
    */
   const [closed, setClosed] = useState<string | null>(null)
+  /** How many the last sweep settled, and null until there has been one. */
+  const [swept, setSwept] = useState<number | null>(null)
   const state = usePending()
 
   /* Both dates of a reported change, so the difference is the thing on screen
@@ -207,11 +210,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           memberNumber: '',
                         })
                       }
+
+                      setSwept(waiting.length)
                     }}
                   >
                     {t('verification.approveAll')}
                   </button>
                 )}
+
+                <Swept count={swept} />
               </div>
 
               {waiting.length === 0 ? (

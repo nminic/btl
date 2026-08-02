@@ -21,16 +21,20 @@ const FORMS = readdirSync(HERE)
 
 describe('every form definition in the portal', () => {
   it('is there to be checked at all', () => {
-    /* So the whole file cannot pass by finding nothing. */
+    /* So the file cannot pass by finding nothing: not the forms, and not the
+       long boxes the rule below is about, which are five today. Delete them all
+       and that rule goes green over an empty list. */
     expect(FORMS.length).toBeGreaterThan(5)
+    expect(FORMS.flatMap(({ form }) => form.fields.filter((one) => one.type === 'textarea')).length)
+      .toBeGreaterThan(4)
   })
 
   it('gives every long box a limit', () => {
     /* A box with no limit is a box somebody can paste a novel into, and the
-       column underneath it is not that wide. The renderer relies on this: it
-       refuses at the door with the element's own `maxLength`, counts down what
-       is left, and says how much a paste lost, and all three read the number
-       without asking whether there is one. */
+       column underneath it is not that wide. It is also the one field on the
+       form that says nothing about how much room is left, because there is
+       nothing to count down from: the renderer draws no counter without a limit
+       and refuses nothing at the door. */
     const missing = FORMS.flatMap(({ name, form }) =>
       form.fields
         .filter((field) => field.type === 'textarea' && field.maxLength === undefined)
@@ -62,7 +66,12 @@ describe('every form definition in the portal', () => {
 
   it('never asks for less than it will accept', () => {
     /* A field that wants at least fifty characters and takes at most forty can
-       be filled in no way at all. */
+       be filled in no way at all.
+
+       Nothing in the portal has both a floor and a ceiling today, so this
+       sweeps an empty list and says so rather than pretending to have checked
+       something. It is here for the field that gets both, which is the moment
+       the two can disagree. */
     const impossible = FORMS.flatMap(({ name, form }) =>
       form.fields
         .filter(
