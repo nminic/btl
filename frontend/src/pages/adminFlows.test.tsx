@@ -131,7 +131,11 @@ describe('the panel', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Administracija' })).toBeVisible()
     expect(screen.getByText('Čeka proveru')).toBeVisible()
-    expect(screen.getAllByRole('link', { name: 'Značke' }).length).toBeGreaterThan(0)
+    /* Badges are edited from the section of records like the other eight, so
+       the panel no longer offers a road of its own to them (owner, 01.08.2026).
+       What it offers is the two sections. */
+    expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Značke' })).not.toBeInTheDocument()
   })
 
   it('counts everything that is waiting, not results alone', async () => {
@@ -1815,14 +1819,12 @@ describe('the section of entities', () => {
 
     // Through the header rather than through the panel, which is the road that
     // used to leave it standing open.
-    const header = within(screen.getByRole('navigation', { name: 'Glavna navigacija' }))
-    await user.click(header.getByRole('button', { name: 'Administracija' }))
-    await user.click(header.getByRole('link', { name: 'Značke' }))
-    await screen.findByRole('heading', { level: 1, name: 'Značke' })
+    await user.click(screen.getByRole('button', { name: 'Administracija' }))
+    await user.click(screen.getByRole('link', { name: 'Cenovnik' }))
+    await screen.findByRole('heading', { level: 1, name: 'Cenovnik' })
 
-    expect(screen.getByRole('button', { name: 'Podaci' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
+    /* Gone rather than collapsed. The section belongs to the addresses inside
+       it, so leaving them takes it with you. */
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
   })
 })

@@ -111,6 +111,21 @@
    themselves, 1.25rem (owner, 31.07.2026): forty pixels of nothing between the
    navigation and the first widget read as a hole rather than as breathing room.
    The foot keeps its own room, since nothing follows it. */
+/* The router moves the focus here after every navigation, so that a screen
+   reader starts at the new screen and the next Tab goes into it rather than back
+   to the skip link (useNewScreen). The browser remembers what the reader last
+   used, and typing an address is using the keyboard, so Chrome then treats that
+   programmatic focus as one worth drawing: a two pixel ring around the whole
+   body of the page, which looked like a fault and was reported as one.
+
+   Taken off here and nowhere else. SC 2.4.7 asks for a visible focus on things
+   that can be operated by keyboard; this landmark is not in the tab order and
+   cannot be activated, and a ring around everything says nothing to anybody
+   while drawing the eye away from the ring on the control that earned it. */
+.shell__main:focus-visible {
+  outline: none;
+}
+
 .shell__main {
   flex: 1;
   padding-block-start: var(--space-20);

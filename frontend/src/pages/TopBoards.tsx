@@ -31,9 +31,6 @@ import './TopBoards.css'
  */
 const PLACES = 10
 
-/** Podium places carry gold here for the same reason they do in the table. */
-const PODIUM = 3
-
 /**
  * The five lengths in the order Article 56 counts them out, longest first (PDL
  * P28a). This one screen is that article on a page, so the article decides the
@@ -120,7 +117,7 @@ function Board({
             </thead>
             <tbody>
               {places.map((place) => (
-                <tr key={place.key} className={place.position <= PODIUM ? 'podium' : undefined}>
+                <tr key={place.key}>
                   <td className="table__position">{place.position}</td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}

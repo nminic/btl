@@ -17,10 +17,6 @@ import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
 
-/* Podium places carry gold, and nothing else on this screen does. Gold means
- * achievement here, so it is spent on the three rows that earned it. */
-const PODIUM = 3
-
 type Filters = {
   gender: Gender
   category: string | undefined
@@ -164,7 +160,10 @@ function Standing({
               {rows.map((row) => (
                 <tr
                   key={row.competitor.memberNumber}
-                  className={row.position <= PODIUM ? 'podium' : undefined}
+                  /* No gold at the top (owner, 01.08.2026). The place is in the
+                     first column of every row, so the colour said again what the
+                     number already said, and it said it in a way that made the
+                     first rows read as a different kind of thing. */
                 >
                   <td className="table__position">{row.position}</td>
                   <td>

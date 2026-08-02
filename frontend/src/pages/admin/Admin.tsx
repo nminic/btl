@@ -18,7 +18,6 @@ import '../member/Member.css'
 const SCREENS = [
   { path: 'administracija/verifikacija', key: 'nav.verification' },
   { path: 'administracija/entiteti', key: 'nav.entities' },
-  { path: 'administracija/znacke', key: 'admin.badges' },
 ]
 
 export function Admin() {
