@@ -349,7 +349,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
               <PageMeta
                 title={t('seo.competitor.recordTitle', {
                   name,
-                  number: competitor.memberNumber,
+                  city: competitor.city,
                 })}
                 description={t('seo.competitor.recordDescription', { name })}
               />

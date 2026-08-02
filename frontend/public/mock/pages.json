@@ -155,6 +155,26 @@
       {
         "heading": "Sezona",
         "body": "Sezona traje celu kalendarsku godinu, od 1. januara do 31. decembra.\n\nUčlanjenje i obnova članarine kreću 1. oktobra i traju do kraja godine. U istom roku se dogovaraju i promene tima. Ko se učlani tokom sezone dobija profil i prati svoje rezultate, ali ne konkuriše za mesta u rang listama."
+      },
+      {
+        "heading": "Kako je počelo",
+        "body": "Liga je nastala 2014. iz jednostavne potrebe: rekreativci u regionu trčali su iste trke, a nisu imali gde da uporede šta su uradili tokom godine.\n\n`[TREBA POPUNITI: priča osnivača, kako je došlo do ideje]`"
+      },
+      {
+        "heading": "Prve sezone, 2014 do 2016",
+        "body": "Rezultati su se javljali mejlom, a tabela se vodila ručno. Broj trka po sezoni rastao je iz godine u godinu.\n\n`[TREBA POPUNITI: najvažnije trke i imena iz tih sezona]`"
+      },
+      {
+        "heading": "Godine uspona, 2017 do 2019",
+        "body": "Najjače sezone stare lige. Kalendar je pokrivao celu godinu, a takmičari su putovali na trke po celom regionu.\n\n`[TREBA POPUNITI: rekordi, brojke, priče]`"
+      },
+      {
+        "heading": "Prekid, 2020 do 2026",
+        "body": "Sezona 2020. prekinuta je zabranama okupljanja. Posle nje liga više nije vraćena u redovan ritam, iako su pojedinačni rezultati nastavili da se beleže.\n\n`[TREBA POPUNITI: šta se tačno dešavalo i zašto je stalo]`"
+      },
+      {
+        "heading": "Šta sada",
+        "body": "Sezona 2027. je novi početak, sa portalom koji vodi evidenciju umesto tabele u tabelarnom programu. Pravila su ostala ista u srcu: svaka trka se broji."
       }
     ]
   },
@@ -236,31 +256,6 @@
       {
         "heading": "19. Izmene pravilnika i završne odredbe",
         "body": "### Član 87. Nova verzija svake sezone\n\nPravilnik se piše iznova za svaku sezonu i objavljuje se **pre početka te sezone**. Verzija koja je važila u jednoj sezoni ostaje objavljena, jer je zvanični rezultat te sezone donet po njoj.\n\n### Član 88. Izmene u toku sezone\n\n`[TREBA POPUNITI: da li se pravilnik sme menjati u toku sezone, po kom postupku i sa kojim dejstvom na već osvojene bodove]`\n\n### Član 89. Tumačenje\n\nPravilnik tumači i primenjuje udruženje. Slučaj koji pravilnikom nije pokriven rešava se u duhu njegovih načela, a rešenje se upisuje u narednu verziju pravilnika, da se isto pitanje ne bi rešavalo dvaput različito.\n\n### Član 90. Kontakt\n\nPitanja o primeni pravilnika šaljite na `info@balkanskatrkackaliga.net`.\n\n---\n\nSportsko udruženje BTL, `balkanskatrkackaliga.net`\nSvaka trka se broji."
-      }
-    ]
-  },
-  "istorijat": {
-    "title": "Istorijat",
-    "sections": [
-      {
-        "heading": "Kako je počelo",
-        "body": "Liga je nastala 2014. iz jednostavne potrebe: rekreativci u regionu trčali su iste trke, a nisu imali gde da uporede šta su uradili tokom godine.\n\n`[TREBA POPUNITI: priča osnivača, kako je došlo do ideje]`"
-      },
-      {
-        "heading": "Prve sezone, 2014 do 2016",
-        "body": "Rezultati su se javljali mejlom, a tabela se vodila ručno. Broj trka po sezoni rastao je iz godine u godinu.\n\n`[TREBA POPUNITI: najvažnije trke i imena iz tih sezona]`"
-      },
-      {
-        "heading": "Godine uspona, 2017 do 2019",
-        "body": "Najjače sezone stare lige. Kalendar je pokrivao celu godinu, a takmičari su putovali na trke po celom regionu.\n\n`[TREBA POPUNITI: rekordi, brojke, priče]`"
-      },
-      {
-        "heading": "Prekid, 2020 do 2026",
-        "body": "Sezona 2020. prekinuta je zabranama okupljanja. Posle nje liga više nije vraćena u redovan ritam, iako su pojedinačni rezultati nastavili da se beleže.\n\n`[TREBA POPUNITI: šta se tačno dešavalo i zašto je stalo]`"
-      },
-      {
-        "heading": "Šta sada",
-        "body": "Sezona 2027. je novi početak, sa portalom koji vodi evidenciju umesto tabele u tabelarnom programu. Pravila su ostala ista u srcu: svaka trka se broji."
       }
     ]
   }

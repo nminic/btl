@@ -85,7 +85,6 @@ const SCREENS: Record<string, ReactElement> = {
   znacke: <Badges />,
   'o-ligi': <StaticPage slug="o-ligi" />,
   pravilnik: <Rulebook />,
-  istorijat: <StaticPage slug="istorijat" />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
 }

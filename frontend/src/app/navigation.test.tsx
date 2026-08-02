@@ -174,7 +174,7 @@ describe('navigation', () => {
        the badge (PDL P28a), and something is always waiting, so the number is
        part of what a screen reader hears here. */
     expect(screen.getByRole('link', { name: /^Verifikacija/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Entiteti' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
   })
 
   it('opens and closes the mobile menu', async () => {

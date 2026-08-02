@@ -7,43 +7,39 @@
   },
   "seo": {
     "home": {
-      "title": "Svaka trka se broji",
-      "description": "Balkanska trkačka liga spaja trkače regiona: kalendar trka, tabela sezone, Top 10 liste i profili takmičara."
+      "title": "Balkanska trkačka liga - svaka trka se broji!",
+      "description": "Svaka trka se broji. Kalendar trka, tabela sezone, Top 10 liste i profili takmičara Balkanske trkačke lige."
     },
     "notFound": {
       "title": "Ove strane nema",
       "description": "Adresa ne postoji ili je strana uklonjena. Naslovna strana vodi do svega ostalog."
     },
     "rulebook": {
-      "title": "Pravilnik lige",
+      "title": "BTL pravilnik",
       "description": "Zvanična pravila takmičenja: šta se boduje, kako se računaju bodovi i kako se rezultati prijavljuju i proveravaju."
     },
-    "history": {
-      "title": "Istorijat lige",
-      "description": "Kako je liga nastala i šta se u njoj dogodilo od prve sezone do danas."
-    },
     "competitors": {
-      "title": "Takmičari lige",
+      "title": "BTL takmičari",
       "description": "Svi članovi lige sa kategorijom, brojem trka i osvojenim bodovima, i veza ka profilu svakog od njih."
     },
     "teams": {
-      "title": "Timovi lige",
+      "title": "BTL timovi",
       "description": "Timovi koji se takmiče u ligi, sa mestom, brojem članova i bodovima koje su osvojili zajedno."
     },
     "table": {
-      "title": "Tabela sezone",
+      "title": "BTL tabela",
       "description": "Zvanična tabela sezone po BTL bodovima, sa izborom sezone, pola i kategorije."
     },
     "topBoards": {
-      "title": "Top 10 liste",
+      "title": "BTL top 10 liste",
       "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, parovi i trke po dužini."
     },
     "leagues": {
-      "title": "Dodatna takmičenja",
+      "title": "BTL dodatna takmičenja",
       "description": "Takmičenja koja se voze uz glavnu ligu: koji događaji ulaze u njih i kako se grupišu takmičari."
     },
     "calendar": {
-      "title": "Kalendar trka",
+      "title": "BTL kalendar",
       "description": "Sve trke sezone po mesecima, sa datumom, mestom, dužinom i statusom priprema."
     },
     "calendarDay": {
@@ -53,15 +49,15 @@
       "recordDescription": "{date}: sve trke tog dana, iz kalendara Balkanske trkačke lige."
     },
     "myProfile": {
-      "title": "Moj profil",
+      "title": "Moj BTL profil",
       "description": "Profil člana kako ga vidi ceo portal, sa radnjama koje su dostupne samo vlasniku naloga."
     },
     "myResults": {
-      "title": "Moji rezultati",
+      "title": "Moji trkački rezultati",
       "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
     },
     "membership": {
-      "title": "Moja članarina",
+      "title": "Moja BTL članarina",
       "description": "Stanje članstva, plaćanje članarine i uplatnica sa QR kodom."
     },
     "messages": {
@@ -81,23 +77,23 @@
       "description": "Pravila korišćenja portala: nalog, članarina, obaveze članova i odgovornost udruženja."
     },
     "aboutLeague": {
-      "title": "Priča o ligi",
+      "title": "O Balkanskoj trkačkoj ligi",
       "description": "Zašto Balkanska trkačka liga postoji, kako radi i ko je čini."
     },
     "badges": {
-      "title": "Značke",
+      "title": "BTL značke i kako ih osvojiti",
       "description": "Značke koje se osvajaju u ligi i uslov koji za svaku od njih treba ispuniti."
     },
     "pricing": {
-      "title": "Članarina",
+      "title": "Članarina u BTL",
       "description": "Koliko košta članstvo u ligi, šta donosi i do kada važi koja cena."
     },
     "register": {
-      "title": "Registracija",
+      "title": "Učlanjenje u BTL",
       "description": "Otvaranje naloga i učlanjenje u ligu. Za takmičare mlađe od 16 godina prijavu potvrđuje roditelj."
     },
     "signIn": {
-      "title": "Prijava",
+      "title": "Prijava na BTL nalog",
       "description": "Prijava na članski nalog portala Balkanske trkačke lige."
     },
     "admin": {
@@ -105,7 +101,7 @@
       "description": "Ulaz u administrativni deo portala, sa redovima čekanja i svim entitetima lige."
     },
     "adminEntities": {
-      "title": "Entiteti (administracija)",
+      "title": "Podaci (administracija)",
       "description": "Članovi, događaji, trke, timovi i lige na jednom mestu, za unos i ispravku."
     },
     "adminVerification": {
@@ -141,7 +137,7 @@
       "description": "Redovi cenovnika članarine, svaki sa periodom važenja, iznosom i valutom."
     },
     "adminPages": {
-      "title": "Pisane strane (administracija)",
+      "title": "Statične strane (administracija)",
       "description": "Pisane strane portala: pravilnik, uslovi korišćenja i politika privatnosti."
     },
     "adminModerators": {
@@ -149,7 +145,7 @@
       "description": "Ko moderira portal i koja mu je prava Superadmin dodelio, po entitetu i po redu."
     },
     "newResult": {
-      "title": "Prijava rezultata",
+      "title": "Novi rezultat sa trke",
       "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
     },
     "verificationQueue": {
@@ -161,9 +157,9 @@
     "competitor": {
       "title": "Profil takmičara",
       "description": "Trke, bodovi i statistika jednog takmičara Balkanske trkačke lige.",
-      "recordTitle": "{name} ({number})",
+      "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
-      "awardsTitle": "{name} ({number}), priznanja",
+      "awardsTitle": "{name}, priznanja",
       "awardsDescription": "{name}: pehari, plakete i značke osvojene u Balkanskoj trkačkoj ligi."
     },
     "event": {
@@ -179,7 +175,7 @@
       "recordDescription": "{name}: sastav tima i bodovi koje su njegovi članovi osvojili u Balkanskoj trkačkoj ligi."
     },
     "league": {
-      "title": "Takmičenje u ligi",
+      "title": "Propozicije takmičenja",
       "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
       "recordTitle": "{name}",
       "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
@@ -187,8 +183,8 @@
     "leagueResults": {
       "title": "Poredak takmičenja",
       "description": "Poredak jednog takmičenja uz glavnu ligu: ko je trčao koju trku i sa koliko bodova.",
-      "recordTitle": "{name}, rezultati",
-      "recordDescription": "Poredak takmičenja {name} u sezoni {season}: ko je trčao koju trku i sa koliko bodova."
+      "recordTitle": "{name}, poredak",
+      "recordDescription": "{name}, poredak u sezoni {season}: ko je trčao koju trku i sa koliko bodova."
     },
     "message": {
       "title": "Poruka",
@@ -247,9 +243,8 @@
     "messages": "Poruke",
     "admin": "Administracija",
     "aboutLeague": "Priča o ligi",
-    "history": "Istorijat",
     "competitions": "Takmičenja",
-    "entities": "Entiteti",
+    "entities": "Podaci",
     "verification": "Verifikacija",
     "settings": "Podešavanja",
     "stats": "Rangiranje",
@@ -526,7 +521,6 @@
   "calendar": {
     "title": "Kalendar",
     "today": "Danas",
-
     "legend": "Legenda",
     "dayTitle": "Trke, {date}",
     "dayEmpty": "Tog dana nema nijednog događaja.",
@@ -1137,7 +1131,7 @@
     }
   },
   "entities": {
-    "title": "Entiteti"
+    "title": "Podaci"
   },
   "verification": {
     "title": "Verifikacija",

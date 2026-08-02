@@ -180,7 +180,7 @@ describe('a competitor', () => {
     renderAt('/sr/administracija/cenovnik', 'competitor')
 
     await expectFrontPage()
-    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
   })
 })
 
@@ -227,7 +227,7 @@ describe('the role switch', () => {
     /* And the price list has left the section beside her. Before the matrix was
        enforced the box was remembered and read by nothing at all; before this it
        was read by the door alone, so the screen was named and then refused. */
-    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Entiteti' }))
+    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Podaci' }))
 
     expect(nav.queryByRole('link', { name: t('admin.pricing') })).not.toBeInTheDocument()
     expect(nav.getByRole('link', { name: t('admin.members') })).toBeVisible()

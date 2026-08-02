@@ -101,7 +101,7 @@ describe('administration is closed to everyone else', () => {
     expect(
       screen.queryByRole('navigation', { name: 'Odeljak Verifikacija' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
   })
 
   it('turns a moderator away from a queue he has no right to, section and all', async () => {
@@ -121,7 +121,7 @@ describe('administration is closed to everyone else', () => {
     renderAt('/sr/administracija/moderatori', 'moderator')
 
     await expectFrontPage()
-    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
   })
 })
 
@@ -235,7 +235,7 @@ describe('the price list', () => {
     await screen.findByRole('table', { name: 'Cenovnik' })
 
     // Nothing is created or removed on it, which is what the section is for.
-    expect(screen.queryByRole('navigation', { name: 'Odeljak Entiteti' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
   })
 
   it('changes what a period costs and what it is called, and nothing else', async () => {
@@ -1097,7 +1097,7 @@ describe('the queue of memberships waiting to be activated', () => {
 
     // The same visit, walked the way an administrator walks it: no reload.
     await user.click(screen.getByRole('button', { name: 'Administracija' }))
-    await user.click(screen.getByRole('link', { name: 'Entiteti' }))
+    await user.click(screen.getByRole('link', { name: 'Podaci' }))
     await user.click(await screen.findByRole('link', { name: 'Članovi' }))
 
     await user.click(await screen.findByRole('button', { name: 'Novi član' }))
@@ -1622,13 +1622,13 @@ describe('countsFor', () => {
 describe('the section of entities', () => {
   /** The section standing beside the work, which is where the entities are now
    *  (owner, 30.07.2026). */
-  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Entiteti' }))
+  const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Podaci' }))
 
   /** The section has no screen of its own: its address opens the first entity
    *  this person may work on, which for the superadmin is the members. */
   const openSection = async (role: 'superadmin' | 'moderator' = 'superadmin') => {
     renderAt('/sr/administracija/entiteti', role)
-    await screen.findByRole('navigation', { name: 'Odeljak Entiteti' })
+    await screen.findByRole('navigation', { name: 'Odeljak Podaci' })
   }
 
   it('offers every entity administration owns, screen or not', async () => {
@@ -1692,7 +1692,7 @@ describe('the section of entities', () => {
       moderatorWith(['entity:teams', 'entity:leagues']),
     )
 
-    await screen.findByRole('navigation', { name: 'Odeljak Entiteti' })
+    await screen.findByRole('navigation', { name: 'Odeljak Podaci' })
     const nav = sectionNav()
 
     expect(nav.getByRole('link', { name: 'Timovi' })).toBeVisible()
@@ -1741,7 +1741,7 @@ describe('the section of entities', () => {
        that the button says whether the list is open, and that following an
        entry closes it again rather than leaving it over the screen it just
        opened. */
-    const toggle = screen.getByRole('button', { name: 'Entiteti' })
+    const toggle = screen.getByRole('button', { name: 'Podaci' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(toggle)
@@ -1753,7 +1753,7 @@ describe('the section of entities', () => {
 
     await user.click(toggle)
     await user.click(sectionNav().getByRole('link', { name: 'Lige' }))
-    expect(screen.getByRole('button', { name: 'Entiteti' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Podaci' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
@@ -1811,7 +1811,7 @@ describe('the section of entities', () => {
     const user = setupUser()
     await openSection()
 
-    await user.click(screen.getByRole('button', { name: 'Entiteti' }))
+    await user.click(screen.getByRole('button', { name: 'Podaci' }))
 
     // Through the header rather than through the panel, which is the road that
     // used to leave it standing open.
@@ -1820,7 +1820,7 @@ describe('the section of entities', () => {
     await user.click(header.getByRole('link', { name: 'Značke' }))
     await screen.findByRole('heading', { level: 1, name: 'Značke' })
 
-    expect(screen.getByRole('button', { name: 'Entiteti' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Podaci' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )

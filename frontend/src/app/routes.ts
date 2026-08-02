@@ -58,7 +58,6 @@ export const NAV: NavSection[] = [
       { path: 'pravilnik', labelKey: 'nav.rules', seoKey: 'rulebook' },
       { path: 'clanarina', labelKey: 'nav.pricing', seoKey: 'pricing' },
       { path: 'znacke', labelKey: 'nav.badges', seoKey: 'badges' },
-      { path: 'istorijat', labelKey: 'nav.history', seoKey: 'history' },
     ],
   },
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
