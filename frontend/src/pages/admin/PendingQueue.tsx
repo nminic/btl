@@ -5,7 +5,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Decision } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import { settledIn, usePending, waitingIn, type PendingItem } from './pending'
+import { usePending, waitingIn, type PendingItem, settledWith } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, type Queue, type QueueOutcome } from './queues'
 import { SendBack } from './SendBack'
@@ -174,7 +174,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       <Resource state={state}>
         {(items) => {
           const waiting = waitingIn(items, decisions, queue.id)
-          const settled = settledIn(items, decisions, queue.id)
+          /* Each settled item with the decision that settled it, so the row
+             below shows what was decided instead of going back for it
+             (queues.ts). */
+          const settled = settledWith(items, decisions, queue.id)
 
           return (
             <>
@@ -362,15 +365,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {settled.map((one) => (
-                          <tr key={one.id}>
-                            <td>{one.subject}</td>
+                        {settled.map(({ item, decision }) => (
+                          <tr key={item.id}>
+                            <td>{item.subject}</td>
                             <td>
-                              <span className={`tag tag--${decisions[one.id].status}`}>
-                                {t(stateKey(decisions[one.id].status))}
+                              <span className={`tag tag--${decision.status}`}>
+                                {t(stateKey(decision.status))}
                               </span>
                             </td>
-                            {settledColumn !== undefined && <td>{decisions[one.id].note}</td>}
+                            {settledColumn !== undefined && <td>{decision.note}</td>}
                           </tr>
                         ))}
                       </tbody>

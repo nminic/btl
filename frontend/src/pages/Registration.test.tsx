@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
+import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
@@ -139,7 +140,11 @@ describe('Registration once it is open', () => {
     const file = new File(['sadržaj'], 'sat.jpg', { type: 'image/jpeg' })
 
     await user.upload(field, file)
-    expect(field.files?.[0].name).toBe('sat.jpg')
+    /* A field holding nothing answers `null` here and one that was emptied
+       answers a list of length nought, and both mean the same thing: no
+       photograph was taken. Read as the empty list, so that either way this
+       fails saying the list was empty rather than passing on an undefined. */
+    expect(first(field.files ?? []).name).toBe('sat.jpg')
 
     // Clearing it must leave nothing behind rather than the word undefined.
     await user.upload(field, [])
@@ -150,7 +155,10 @@ describe('Registration once it is open', () => {
     renderForm()
 
     const box = screen.getByLabelText(/zdravstveno sposoban/)
-    const label = box.parentElement!.querySelector('label')!
+    const label = must(
+      must(box.parentElement, 'a parent').querySelector('label'),
+      'a label beside the box',
+    )
 
     expect(box.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

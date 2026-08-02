@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
+import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { awardsOf } from './awards'
@@ -43,7 +44,7 @@ describe('the biography, cut to fit beside the widgets', () => {
     renderAt('/sr/takmicar/000009')
 
     const card = await screen.findByRole('heading', { name: 'Svojim rečima' })
-    const text = card.parentElement!.textContent!
+    const text = must(must(card.parentElement, 'a parent').textContent, 'text')
 
     expect(text).toContain('…')
     expect(text.length).toBeLessThan(400)
@@ -81,7 +82,7 @@ describe('what a competitor has won', () => {
     const seasons = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => Number(within(row).getAllByRole('cell')[0].textContent))
+      .map((row) => Number(first(within(row).getAllByRole('cell')).textContent))
 
     expect(seasons.length).toBeGreaterThan(0)
     expect([...seasons].sort((left, right) => right - left)).toEqual(seasons)
@@ -265,8 +266,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
        better place is listed first. */
     expect(awards.map((one) => one.kind)).toEqual(['category', 'overall'])
     expect(awards.map((one) => one.position)).toEqual([2, 3])
-    expect(awards[0].category).not.toBe('')
-    expect(awards[1].category).toBe('')
+    expect(first(awards).category).not.toBe('')
+    expect(at(awards, 1).category).toBe('')
   })
 
   it('carries nothing from a season the competitor was not in the top three of', () => {
@@ -288,7 +289,7 @@ describe('the address stays as short as it can be', () => {
 
     await screen.findByRole('heading', { level: 1 })
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
-    const another = within(season).getAllByRole('option')[1].getAttribute('value')!
+    const another = must(at(within(season).getAllByRole('option'), 1).getAttribute('value'), 'value')
 
     /* All of them is the default (owner, 31.07.2026), so the bare address is
        the one that means it. Read from the router: a memory router never
@@ -315,7 +316,7 @@ describe('the address stays as short as it can be', () => {
     const boards = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => within(row).getAllByRole('cell')[1].textContent)
+      .map((row) => at(within(row).getAllByRole('cell'), 1).textContent)
 
     expect(boards.some((one) => one === 'Generalni plasman')).toBe(true)
     expect(boards.some((one) => one?.startsWith('Kategorija'))).toBe(true)

@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { first } from '../test/at'
 import { loadResource, type ResourceName } from './client'
 import type { Competitor } from './types'
 import {
@@ -49,7 +50,7 @@ describe('loadResource', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
 
     expect(competitors.length).toBeGreaterThan(0)
-    expect(competitors[0].memberNumber).toMatch(/^\d{6}$/)
+    expect(first(competitors).memberNumber).toMatch(/^\d{6}$/)
   })
 
   it('rejects when the resource is not served', async () => {

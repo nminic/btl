@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
+import { at, first } from '../test/at'
 import { renderWithI18n } from '../test/render'
 import { Markdown } from './Markdown'
 
@@ -51,12 +52,14 @@ describe('Markdown', () => {
     render(<Markdown text={'- prvo\n- drugo\n\n1. korak\n2. korak dva'} />)
 
     const lists = screen.getAllByRole('list')
+    const bullets = first(lists)
+    const numbered = at(lists, 1)
 
     expect(lists).toHaveLength(2)
-    expect(within(lists[0]).getAllByRole('listitem')).toHaveLength(2)
-    expect(within(lists[1]).getAllByRole('listitem')[1]).toHaveTextContent('korak dva')
-    expect(lists[0].tagName).toBe('UL')
-    expect(lists[1].tagName).toBe('OL')
+    expect(within(bullets).getAllByRole('listitem')).toHaveLength(2)
+    expect(at(within(numbered).getAllByRole('listitem'), 1)).toHaveTextContent('korak dva')
+    expect(bullets.tagName).toBe('UL')
+    expect(numbered.tagName).toBe('OL')
   })
 
   it('renders a table with a head', () => {

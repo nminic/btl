@@ -5,7 +5,7 @@ import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { handOutMemberNumber } from './memberNumbers'
-import { settledIn, usePending, waitingIn } from './pending'
+import { usePending, waitingIn, settledWith } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
@@ -135,7 +135,10 @@ export function Payments() {
       <Resource state={state}>
         {([items, competitors]) => {
           const waiting = waitingIn(items, decisions, queue.id)
-          const settled = settledIn(items, decisions, queue.id)
+          /* Each settled registration with the decision that settled it, so the
+             row below shows what was decided instead of going back for it
+             (queues.ts). */
+          const settled = settledWith(items, decisions, queue.id)
 
           /**
            * Activation, and the reason box shut behind it.
@@ -270,42 +273,38 @@ export function Payments() {
                         </tr>
                       </thead>
                       <tbody>
-                        {settled.map((one) => {
-                          const decision = decisions[one.id]
-
-                          return (
-                            <tr key={one.id}>
-                              <td>
-                                {one.who}
-                                <span className="pending__country">{one.email}</span>
-                              </td>
-                              <td>
-                                {decision.memberNumber === '' ? (
-                                  ''
-                                ) : (
-                                  <span className="table__member-number">
-                                    {decision.memberNumber}
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                <span className={`tag tag--${decision.status}`}>
-                                  {t(`status.${decision.status}`)}
+                        {settled.map(({ item, decision }) => (
+                          <tr key={item.id}>
+                            <td>
+                              {item.who}
+                              <span className="pending__country">{item.email}</span>
+                            </td>
+                            <td>
+                              {decision.memberNumber === '' ? (
+                                ''
+                              ) : (
+                                <span className="table__member-number">
+                                  {decision.memberNumber}
                                 </span>
-                              </td>
-                              <td>
-                                {decision.basis === '' ? (
-                                  ''
-                                ) : (
-                                  <span className={`tag tag--${decision.basis}`}>
-                                    {t(`admin.basisValue.${decision.basis}`)}
-                                  </span>
-                                )}
-                              </td>
-                              <td>{decision.note}</td>
-                            </tr>
-                          )
-                        })}
+                              )}
+                            </td>
+                            <td>
+                              <span className={`tag tag--${decision.status}`}>
+                                {t(`status.${decision.status}`)}
+                              </span>
+                            </td>
+                            <td>
+                              {decision.basis === '' ? (
+                                ''
+                              ) : (
+                                <span className={`tag tag--${decision.basis}`}>
+                                  {t(`admin.basisValue.${decision.basis}`)}
+                                </span>
+                              )}
+                            </td>
+                            <td>{decision.note}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>

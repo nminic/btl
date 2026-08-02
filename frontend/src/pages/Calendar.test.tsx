@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import { first } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -55,9 +56,10 @@ describe('Calendar', () => {
     /* The column is handed to CSS as a value, never written on the element:
        written on it, the day was placed in column six on a telephone too, where
        there is no seven column grid, and the implicit grid grew to hold it. */
-    expect((days[0] as HTMLElement).style.gridColumnStart).toBe('')
-    expect((days[0] as HTMLElement).style.getPropertyValue('--day-start')).toBe('6')
-    expect(days[0]).toHaveClass('day--first')
+    const opening = first(days) as HTMLElement
+    expect(opening.style.gridColumnStart).toBe('')
+    expect(opening.style.getPropertyValue('--day-start')).toBe('6')
+    expect(opening).toHaveClass('day--first')
     expect(container.querySelectorAll('.day--first')).toHaveLength(1)
   })
 
@@ -146,7 +148,7 @@ describe('Calendar', () => {
     const chips = screen.getAllByRole('link').filter((link) => link.className === 'chip')
 
     expect(chips.length).toBeGreaterThan(0)
-    await user.click(chips[0])
+    await user.click(first(chips))
 
     expect(
       await screen.findByRole('link', { name: 'Nazad na kalendar' }, { timeout: 4000 }),

@@ -1,3 +1,4 @@
+import { at, must } from '../test/at'
 import { render, screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -96,7 +97,7 @@ describe('the sizes the mark is drawn at', () => {
        guards: the component's own fallback is then the only size there is. */
     expect(clamp).not.toBeNull()
 
-    return Number(clamp![1]) * 16
+    return Number(at(must(clamp, 'a clamp on the badge art'), 1)) * 16
   }
 
   /** Every density step in the drawing, as the width it cuts at. */

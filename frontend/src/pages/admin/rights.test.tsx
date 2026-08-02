@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
+import { first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { ENTITY_FORMS } from './entityForms'
@@ -79,7 +80,7 @@ describe('every box in the matrix', () => {
        well as ticking: a right somebody arrived holding and had taken away is
        not the same as one they never had, and a store of what is switched on
        could not tell those apart. */
-    await user.click(screen.getAllByRole('button', { name: /^Otvori:/ })[0])
+    await user.click(first(screen.getAllByRole('button', { name: /^Otvori:/ })))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     const back = await matrix()
@@ -99,7 +100,7 @@ describe('a moderator with no right at all', () => {
     expect(row.getByText(t('rights.none'))).toBeVisible()
 
     const boxes = within(
-      table.getByRole('rowheader', { name: /Milena Šarić/ }).closest('tr')!,
+      must(table.getByRole('rowheader', { name: /Milena Šarić/ }).closest('tr'), 'tr'),
     ).getAllByRole('checkbox')
 
     expect(boxes).toHaveLength(RIGHTS.length)
@@ -209,7 +210,7 @@ describe('the columns of the matrix', () => {
   it('draw the line between the two groups from the groups, not from a number', () => {
     // Written into the stylesheet as "the ninth column", it would move silently
     // the day a tenth entity arrives.
-    expect([...GROUP_STARTS]).toEqual([`queue:${QUEUES[0].id}`])
+    expect([...GROUP_STARTS]).toEqual([`queue:${first(QUEUES).id}`])
   })
 
   it('carry no key the dictionary cannot answer', () => {

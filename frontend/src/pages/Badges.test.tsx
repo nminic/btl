@@ -3,6 +3,7 @@ import { ruleSentence, thresholdOf, type Badge } from '../data/badgeRule'
 import { loadResource } from '../data/client'
 import sr from '../i18n/sr.json'
 import { translate, type Dictionary } from '../i18n/translate'
+import { at, first } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -40,8 +41,11 @@ describe('the badges screen', () => {
     expect(items).toHaveLength(badges.length)
     expect(badges.length).toBeGreaterThan(10)
 
-    items.forEach((item, index) => {
-      const badge = badges[index]
+    /* Walked over the badges rather than the cards, so the badge each assertion
+       is about is held rather than looked up, and the card facing it is asked
+       for by position because the position is what pairs the two. */
+    badges.forEach((badge, index) => {
+      const item = at(items, index)
 
       expect(item).toHaveTextContent(badge.name)
       // The threshold is on the mark itself, written for this language.
@@ -58,8 +62,8 @@ describe('the badges screen', () => {
 
     expect(bare).toBeGreaterThan(-1)
 
-    const item = within(await wall()).getAllByRole('listitem')[bare]
-    expect(hintOf(item)).toHaveTextContent(ruleSentence(badges[bare], t, 'sr'))
+    const item = at(within(await wall()).getAllByRole('listitem'), bare)
+    expect(hintOf(item)).toHaveTextContent(ruleSentence(at(badges, bare), t, 'sr'))
   })
 
   it('carries the label of a badge that has one, and nothing in its place where there is none', async () => {
@@ -70,7 +74,7 @@ describe('the badges screen', () => {
 
     const items = within(await wall()).getAllByRole('listitem')
 
-    expect(items[withLabel]).toHaveTextContent(badges[withLabel].label)
+    expect(at(items, withLabel)).toHaveTextContent(at(badges, withLabel).label)
 
     /* And the card with none says nothing where one would have stood. This used
        to assert that the card contains the name of its badge, which is true of
@@ -79,11 +83,11 @@ describe('the badges screen', () => {
        sort of thing somebody adds as a kindness (badgeRule.ts). Everything the
        card is allowed to say is listed, and whatever is left over is the thing
        that should not be there. */
-    const bare = badges[without]
+    const bare = at(badges, without)
     const said = [thresholdOf(bare, 'sr'), bare.name, ruleSentence(bare, t, 'sr'), bare.description]
     const left = said.reduce(
       (text, part) => text.replace(part, ''),
-      items[without].textContent ?? '',
+      at(items, without).textContent ?? '',
     )
 
     expect(left.trim()).toBe('')
@@ -131,10 +135,10 @@ describe('the badges the administrator has defined', () => {
        badge cannot be won in. */
     const wrong = badges.filter((badge) => {
       const years = [...badge.label.matchAll(/\d{4}/g)].map((match) => Number(match[0]))
-      const first = badge.from === '' ? -Infinity : Number(badge.from.slice(0, 4))
-      const last = badge.to === '' ? Infinity : Number(badge.to.slice(0, 4))
+      const fromYear = badge.from === '' ? -Infinity : Number(badge.from.slice(0, 4))
+      const toYear = badge.to === '' ? Infinity : Number(badge.to.slice(0, 4))
 
-      return years.some((year) => year < first || year > last)
+      return years.some((year) => year < fromYear || year > toYear)
     })
 
     expect(wrong.map((badge) => badge.id)).toEqual([])
@@ -245,7 +249,7 @@ describe('the hint that says how a badge is earned', () => {
     const user = setupUser()
     renderAt('/sr/znacke')
 
-    const face = within(await wall()).getAllByRole('button')[0]
+    const face = first(within(await wall()).getAllByRole('button'))
 
     expect(face).toHaveAttribute('aria-expanded', 'false')
 
@@ -260,7 +264,7 @@ describe('the hint that says how a badge is earned', () => {
     const user = setupUser()
     renderAt('/sr/znacke')
 
-    const face = within(await wall()).getAllByRole('button')[0]
+    const face = first(within(await wall()).getAllByRole('button'))
 
     await user.click(face)
     await user.keyboard('{ArrowDown}')
@@ -273,7 +277,7 @@ describe('the hint that says how a badge is earned', () => {
   it('sits on a control the keyboard can reach, which a hover alone is not', async () => {
     renderAt('/sr/znacke')
 
-    const face = within(await wall()).getAllByRole('button')[0]
+    const face = first(within(await wall()).getAllByRole('button'))
     face.focus()
 
     expect(face).toHaveFocus()

@@ -1,4 +1,16 @@
+import { must } from '../test/at'
 import { btlPoints, effectiveLengthKm } from './scoring'
+
+/**
+ * The score of one race, and a failure rather than a null.
+ *
+ * `btlPoints` answers null for a race it cannot score, which is a real answer
+ * the portal has to handle. In a test of the formula it is never the answer
+ * being looked for, and comparing a null is how a test of arithmetic quietly
+ * stops testing arithmetic.
+ */
+const scored = (km: number, up: number, down: number, seconds: number): number =>
+  must(btlPoints(km, up, down, seconds), `a score for ${km} km in ${seconds} seconds`)
 
 describe('effectiveLengthKm', () => {
   it('folds the climb in, weighing ascent above descent', () => {
@@ -25,12 +37,12 @@ describe('btlPoints', () => {
     [37813, '38.21'],
     [37850, '38.13'],
   ])('gives %i seconds %s points', (seconds, expected) => {
-    expect(btlPoints(62.07, 3456, 3133, seconds)!.toFixed(2)).toBe(expected)
+    expect(scored(62.07, 3456, 3133, seconds).toFixed(2)).toBe(expected)
   })
 
   it('rewards a faster time and a longer race at the same pace', () => {
-    expect(btlPoints(42.2, 0, 0, 12600)!).toBeGreaterThan(btlPoints(42.2, 0, 0, 14400)!)
-    expect(btlPoints(42.2, 0, 0, 42.2 * 360)!).toBeGreaterThan(btlPoints(21.1, 0, 0, 21.1 * 360)!)
+    expect(scored(42.2, 0, 0, 12600)).toBeGreaterThan(scored(42.2, 0, 0, 14400))
+    expect(scored(42.2, 0, 0, 42.2 * 360)).toBeGreaterThan(scored(21.1, 0, 0, 21.1 * 360))
   })
 
   it('refuses anything that is not a race', () => {

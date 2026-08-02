@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import { at, first, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -8,20 +9,20 @@ describe('changing data in administration', () => {
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
-    const first = within(table).getAllByRole('row')[1]
+    const row = at(within(table).getAllByRole('row'), 1)
     // Named, because the row also carries the control that opens the whole
     // record on a form.
-    const city = within(first).getByRole('button', { name: /^Mesto:/ })
-    const before = city.textContent
+    const city = within(row).getByRole('button', { name: /^Mesto:/ })
+    const before = must(city.textContent, 'the place on the row')
 
     await user.click(city)
-    const box = within(first).getByRole('textbox')
+    const box = within(row).getByRole('textbox')
     await user.clear(box)
     await user.type(box, 'Vršac')
     await user.tab()
 
-    expect(within(first).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
-    expect(within(first).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before!)
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before)
   })
 
   it('lets an edit be abandoned', async () => {
@@ -29,14 +30,17 @@ describe('changing data in administration', () => {
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
-    const first = within(table).getAllByRole('row')[1]
-    const before = within(first).getByRole('button', { name: /^Mesto:/ }).textContent
+    const row = at(within(table).getAllByRole('row'), 1)
+    const before = must(
+      within(row).getByRole('button', { name: /^Mesto:/ }).textContent,
+      'the place on the row',
+    )
 
-    await user.click(within(first).getByRole('button', { name: /^Mesto:/ }))
-    await user.type(within(first).getByRole('textbox'), 'nešto')
+    await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
+    await user.type(within(row).getByRole('textbox'), 'nešto')
     await user.keyboard('{Escape}')
 
-    expect(within(first).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before!)
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before)
   })
 
   it('changes the name and the place of an event', async () => {
@@ -44,14 +48,14 @@ describe('changing data in administration', () => {
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Događaji' })
-    const first = within(table).getAllByRole('row')[1]
+    const row = at(within(table).getAllByRole('row'), 1)
 
-    await user.click(within(first).getAllByRole('button')[0])
-    const box = within(first).getByRole('textbox')
+    await user.click(first(within(row).getAllByRole('button')))
+    const box = within(row).getByRole('textbox')
     await user.clear(box)
     await user.type(box, 'Novi naziv trke{Enter}')
 
-    expect(within(first).getAllByRole('button')[0]).toHaveTextContent('Novi naziv trke')
+    expect(first(within(row).getAllByRole('button'))).toHaveTextContent('Novi naziv trke')
   })
 })
 
@@ -63,7 +67,7 @@ describe('the text of a competition', () => {
     await screen.findByRole('heading', { level: 1 })
 
     // Nobody has written the rules yet, and staff are offered the chance to.
-    const rules = screen.getByRole('heading', { name: 'Propozicije' }).closest('section')!
+    const rules = must(screen.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'section')
     expect(within(rules).getByText('Još nije napisano.')).toBeVisible()
 
     await user.click(within(rules).getByRole('button', { name: 'Izmeni' }))
@@ -124,12 +128,15 @@ describe('the last few branches these screens have', () => {
     const user = setupUser()
     renderAt('/sr/liga/btl-2027', 'superadmin')
 
-    const prizes = (await screen.findByRole('heading', { name: 'Nagrade' })).closest('section')!
-    const before = prizes.querySelector('.profile__text')!.textContent
+    const prizes = must((await screen.findByRole('heading', { name: 'Nagrade' })).closest('section'), 'section')
+    const before = must(
+      must(prizes.querySelector('.profile__text'), 'the prose of the prizes').textContent,
+      'text',
+    )
 
     await user.click(within(prizes).getByRole('button', { name: 'Izmeni' }))
     await user.tab()
 
-    expect(prizes.querySelector('.profile__text')).toHaveTextContent(before!)
+    expect(prizes.querySelector('.profile__text')).toHaveTextContent(before)
   })
 })

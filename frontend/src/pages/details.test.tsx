@@ -1,5 +1,6 @@
 import { act, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
+import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -39,8 +40,8 @@ describe('TeamDetail', () => {
 
     // Ordered by what each member brought, and the top three marked. The last
     // row is a member who has not raced yet, and shows zeros rather than a gap.
-    expect(rows[0].className).toBe('podium')
-    expect(rows[rows.length - 1]).toHaveTextContent('0,00')
+    expect(first(rows).className).toBe('podium')
+    expect(last(rows)).toHaveTextContent('0,00')
   })
 
   it('leads from a member back to their profile', async () => {
@@ -50,7 +51,7 @@ describe('TeamDetail', () => {
       .getAllByRole('row')
       .slice(1)
 
-    expect(within(rows[0]).getByRole('link')).toHaveAttribute(
+    expect(within(first(rows)).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/takmicar/'),
     )
@@ -74,7 +75,7 @@ describe('TeamDetail', () => {
     renderAt('/sr/timovi')
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
-    await user.click(within(rows[0]).getAllByRole('link')[0])
+    await user.click(first(within(first(rows)).getAllByRole('link')))
 
     expect(await screen.findByRole('heading', { name: 'O timu' })).toBeVisible()
   })
@@ -95,7 +96,7 @@ describe('EventDetail, the results of the league members who ran it', () => {
     const points = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => Number(within(row).getAllByRole('cell')[4].textContent!.replace(',', '.')))
+      .map((row) => Number(must(at(within(row).getAllByRole('cell'), 4).textContent, 'text').replace(',', '.')))
 
     expect(points.length).toBeGreaterThan(1)
     expect([...points].sort((left, right) => right - left)).toEqual(points)
@@ -202,11 +203,12 @@ describe('EventDetail, the results of the league members who ran it', () => {
 
     // Whose profile this is, taken from the screen rather than written down, so
     // the test does not have to be edited when the generated names change.
-    const runner = (await screen.findByRole('heading', { level: 1 })).textContent!
+    const runner = must((await screen.findByRole('heading', { level: 1 })).textContent, 'text')
     const results = screen.getByRole('table', { name: 'Rezultati' })
-    const first = within(results).getAllByRole('row')[1]
-    const race = within(first).getAllByRole('link')[0]
-    const event = race.textContent!
+    // Row 1 is the first result under the heading row, whichever race it is.
+    const firstResult = at(within(results).getAllByRole('row'), 1)
+    const race = first(within(firstResult).getAllByRole('link'))
+    const event = must(race.textContent, 'text')
 
     await user.click(race)
 
@@ -236,7 +238,7 @@ describe('LeagueDetail', () => {
 
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
     expect(rows.length).toBeGreaterThan(1)
-    expect(within(rows[0]).getByRole('link')).toHaveAttribute(
+    expect(within(first(rows)).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/kalendar/'),
     )
@@ -337,7 +339,7 @@ describe('a competition, in two parts', () => {
     const totals = within(grid)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => Number(within(row).getAllByRole('cell')[0].textContent!.replace(',', '.')))
+      .map((row) => Number(must(first(within(row).getAllByRole('cell')).textContent, 'text').replace(',', '.')))
 
     expect(totals.length).toBeGreaterThan(1)
     expect([...totals].sort((left, right) => right - left)).toEqual(totals)
@@ -390,7 +392,7 @@ describe('the grid of a competition, in the details the review found unguarded',
 
     /* A grid of bare cells leaves a screen reader reading numbers with nothing
        to attach them to. Every row is named by the person it belongs to. */
-    expect(within(rows[0]).getByRole('rowheader')).toBeInTheDocument()
+    expect(within(first(rows)).getByRole('rowheader')).toBeInTheDocument()
     expect(rows.every((row) => within(row).queryAllByRole('rowheader').length === 1)).toBe(true)
   })
 
@@ -403,7 +405,7 @@ describe('the grid of a competition, in the details the review found unguarded',
 
     for (const row of within(grid).getAllByRole('row').slice(1)) {
       const cells = within(row).getAllByRole('cell')
-      const shown = number(cells[0].textContent)
+      const shown = number(first(cells).textContent)
       const races = cells.slice(1).reduce((sum, cell) => sum + number(cell.textContent), 0)
 
       /* Two decimals of rounding per cell, and up to sixteen cells. A reader has
@@ -494,6 +496,6 @@ describe('the control that names the parts of a record', () => {
     /* Without `end` on the first one, the overview counts itself as open on
        every part below it and both are marked at once. */
     expect(open).toHaveLength(1)
-    expect(open[0].textContent).toBe('Priznanja i nagrade')
+    expect(first(open).textContent).toBe('Priznanja i nagrade')
   })
 })

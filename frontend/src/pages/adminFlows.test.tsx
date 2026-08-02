@@ -4,6 +4,7 @@ import { PageMetaContext } from '../app/pageMetaContext'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
+import { at, first, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
@@ -148,7 +149,7 @@ describe('the panel', () => {
       </I18nProvider>,
     )
 
-    const waiting = (await screen.findByText('Čeka proveru')).closest('div')!
+    const waiting = must((await screen.findByText('Čeka proveru')).closest('div'), 'div')
     /* Two results are waiting, three memberships, and fourteen items in the six
        queues read from the file. The tile counted the two while the navigation
        counted the lot, which is two numbers disagreeing on one screen. The sum
@@ -693,11 +694,14 @@ describe('verification', () => {
     // not an entry, because there is no longer anything at it.
     const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
     const rows = nav.getAllByRole('listitem')
-    expect(rows).toHaveLength(QUEUES.length)
 
-    rows.forEach((row, index) => {
-      expect(within(row).getByRole('link')).toHaveAttribute('href', `/sr/${QUEUES[index].path}`)
-    })
+    /* One comparison rather than a walk with an index in it: the whole list of
+       addresses against the whole list of queues, in order. It fails on a
+       missing row, an extra one, a wrong address and a wrong order alike, and
+       when it fails it prints both lists instead of one href. */
+    expect(rows.map((row) => within(row).getByRole('link').getAttribute('href'))).toEqual(
+      QUEUES.map((queue) => `/sr/${queue.path}`),
+    )
 
     // Nought is shown as well, unlike the badge in the header: here it is the
     // answer to "is there anything left", and nothing is not an answer.
@@ -939,10 +943,10 @@ describe('the queue of memberships waiting to be activated', () => {
   it('activates on a recorded payment, and on honorary membership', async () => {
     const user = await openPayments()
 
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
-    await user.click(screen.getAllByRole('button', { name: 'Počasno članstvo' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Počasno članstvo' })))
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
 
     /* Both grounds exist because the fortnight before registration opens is
@@ -961,8 +965,8 @@ describe('the queue of memberships waiting to be activated', () => {
        is what the administrator passes on to the member, so it is on screen the
        moment it is given (PDL P8, 30.07.2026). Two of them, because one number
        twice is the fault this is here to catch. */
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
-    await user.click(screen.getAllByRole('button', { name: 'Počasno članstvo' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Počasno članstvo' })))
 
     const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
     expect(decided.getByText('000033')).toBeVisible()
@@ -972,7 +976,7 @@ describe('the queue of memberships waiting to be activated', () => {
   it('hands out no number to a membership it sends back', async () => {
     const user = await openPayments()
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
     await user.type(screen.getByLabelText('Razlog vraćanja'), 'Uplata nije vidljiva na izvodu.')
     await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
 
@@ -982,14 +986,14 @@ describe('the queue of memberships waiting to be activated', () => {
     const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
     expect(decided.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
     expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
   })
 
   it('will not send a membership back without a reason', async () => {
     const user = await openPayments()
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
 
     const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
     expect(confirm).toBeDisabled()
@@ -1009,7 +1013,7 @@ describe('the queue of memberships waiting to be activated', () => {
   it('does not take spaces for a reason', async () => {
     const user = await openPayments()
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
 
     const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
     /* Three spaces are not a reason. The rule is one rule on all seven queues,
@@ -1029,11 +1033,18 @@ describe('the queue of memberships waiting to be activated', () => {
   it('says whose membership is being refused, and forgets it once it is settled', async () => {
     const user = await openPayments()
 
-    const rows = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' }))
-      .getAllByRole('row')
-      .slice(1)
+    /* Asked for by the name written in it rather than by its place in the table.
+       What this test is about is that the box and the buttons are on the same
+       person, so the person is what the row is found by, and a table that no
+       longer holds him fails saying his name. Held rather than asked for twice,
+       because the second click is what takes the row out of the table. */
+    const row = within(
+      within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' })).getByRole('row', {
+        name: /Miodrag Stanković/,
+      }),
+    )
 
-    await user.click(within(rows[0]).getByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(row.getByRole('button', { name: 'Vrati na doradu' }))
 
     /* The box hangs below the table, so on a list of twenty there is nothing on
        screen that says whose membership it decides unless it says so itself. The
@@ -1049,7 +1060,7 @@ describe('the queue of memberships waiting to be activated', () => {
        the box stayed open over a member who was already active, and confirming it
        replaced the activation with a refusal, quietly, and the ground of the
        membership went with it. */
-    await user.click(within(rows[0]).getByRole('button', { name: 'Evidentiraj uplatu' }))
+    await user.click(row.getByRole('button', { name: 'Evidentiraj uplatu' }))
 
     expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
     const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
@@ -1061,7 +1072,7 @@ describe('the queue of memberships waiting to be activated', () => {
   it('closes the reason without deciding anything', async () => {
     const user = await openPayments()
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
     expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
@@ -1081,7 +1092,7 @@ describe('the queue of memberships waiting to be activated', () => {
        number, changing the town of one of them changed both. That is the fault
        the check for uniqueness used to catch before the field left the form (PDL
        P8, 30.07.2026; ADL A4d). */
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
     expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
 
     // The same visit, walked the way an administrator walks it: no reload.
@@ -1092,13 +1103,17 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(await screen.findByRole('button', { name: 'Novi član' }))
     const form = within(screen.getByRole('form', { name: 'Novi član' }))
 
+    /* Pairs rather than a list of lists. Written plainly this is `string[][]`,
+       and taking two names out of a list of unknown length is exactly the shape
+       that has to be guarded; fixed as pairs, both the label and the value the
+       loop takes apart are known to be there. */
     for (const [label, value] of [
       ['Ime', 'Milica'],
       ['Prezime', 'Pavlović'],
       ['Godina rođenja', '1991'],
       ['Mesto', 'Kraljevo'],
       ['U ligi od sezone', '2027'],
-    ]) {
+    ] as const) {
       await user.type(form.getByLabelText(new RegExp(`^${label}`)), value)
     }
     await user.selectOptions(form.getByLabelText(/^Pol/), 'F')
@@ -1111,7 +1126,7 @@ describe('the queue of memberships waiting to be activated', () => {
        hand it out again: the new member is 000034. */
     const list = within(await screen.findByRole('table', { name: 'Članovi' }))
     expect(list.queryByText('000033')).not.toBeInTheDocument()
-    expect(within(list.getByText('000034').closest('tr')!).getByText(/Milica/)).toBeVisible()
+    expect(within(must(list.getByText('000034').closest('tr'), 'tr')).getByText(/Milica/)).toBeVisible()
   })
 
   it('says so once every membership has been decided', async () => {
@@ -1119,9 +1134,9 @@ describe('the queue of memberships waiting to be activated', () => {
 
     // Three are waiting, and the row of whoever is decided leaves the table, so
     // the first button is a different member every time.
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
-    await user.click(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
 
     expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
     expect(
@@ -1166,7 +1181,7 @@ describe('the six queues read from the file', () => {
       expect(screen.getAllByRole('button', { name: 'Vrati na doradu' })).toHaveLength(waiting)
 
       // The rule on these queues: no reason, no sending back.
-      await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+      await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
       expect(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })).toBeDisabled()
       expect(
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
@@ -1174,7 +1189,7 @@ describe('the six queues read from the file', () => {
       await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
       // Approving needs none, and the counter falls the moment it happens.
-      await user.click(screen.getAllByRole('button', { name: 'Odobri' })[0])
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
       expect(
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting - 1}` }),
       ).toBeVisible()
@@ -1192,7 +1207,7 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button', { name: 'Obriši' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Obriši' })))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Razlog vraćanja' })).not.toBeInTheDocument()
@@ -1216,7 +1231,7 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
 
-    const card = within(within(waitingList()).getAllByRole('listitem')[0])
+    const card = within(first(within(waitingList()).getAllByRole('listitem')))
 
     await user.click(card.getByRole('button', { name: 'Izmeni' }))
     const box = card.getByRole('textbox', { name: 'Tekst biografije' })
@@ -1241,12 +1256,12 @@ describe('the six queues read from the file', () => {
   it('publishes a biography nobody touched exactly as it came in', async () => {
     const user = await open('bios', 'Trkačke biografije')
 
-    const first = within(waitingList()).getAllByRole('listitem')[0]
+    const card = within(first(within(waitingList()).getAllByRole('listitem')))
     // Two paragraphs with an empty line between them, which is what a biography
     // looks like and what has to survive being published untouched.
-    const sent = within(first).getByText(/Rekreativac iz Čačka/).textContent
+    const sent = card.getByText(/Rekreativac iz Čačka/).textContent
 
-    await user.click(within(first).getByRole('button', { name: 'Objavi' }))
+    await user.click(card.getByRole('button', { name: 'Objavi' }))
 
     const cells = within(screen.getByRole('table', { name: 'Rešeno' })).getAllByRole('cell')
     expect(cells.map((cell) => cell.textContent)).toContain(sent)
@@ -1260,7 +1275,7 @@ describe('the six queues read from the file', () => {
   it('asks the picture queue for a reason precise enough to work from', async () => {
     const user = await open('photos', 'Profilne slike')
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
 
     // The name of the field is the one every queue uses, so a member is never
     // told about two different things.
@@ -1286,9 +1301,12 @@ describe('the six queues read from the file', () => {
     await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
 
     const card = within(
-      within(waitingList()).getAllByRole('listitem').find((one) =>
-        within(one).queryByText('Damjan Krstić') !== null,
-      )!,
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Damjan Krstić') !== null),
+        'a waiting card for Damjan Krstić',
+      ),
     )
 
     await user.click(card.getByRole('button', { name: 'Vrati na doradu' }))
@@ -1379,7 +1397,7 @@ describe('the six queues read from the file', () => {
     expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('2'))
       .toBeVisible()
 
-    await user.click(screen.getAllByRole('button', { name: 'Odobri' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('1'))
@@ -1402,7 +1420,7 @@ describe('the six queues read from the file', () => {
        one would be waiting on the next. */
     const user = await open('leagues', 'Predložene lige')
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
     expect(screen.getByLabelText('Razlog vraćanja')).toBeVisible()
 
     // Away without cancelling, then back.
@@ -1424,7 +1442,7 @@ describe('the six queues read from the file', () => {
     // (PDL P22, 30.07.2026), so there is nothing to refuse on that queue.
     const user = await open('teams', 'Novi timovi')
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
 
     const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
     expect(confirm).toBeDisabled()
@@ -1442,8 +1460,8 @@ describe('the six queues read from the file', () => {
   it('says so when the last item has been decided', async () => {
     const user = await open('leagues', 'Predložene lige')
 
-    await user.click(screen.getAllByRole('button', { name: 'Odobri' })[0])
-    await user.click(screen.getAllByRole('button', { name: 'Odobri' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
     expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
@@ -1453,7 +1471,9 @@ describe('the six queues read from the file', () => {
     await open('bios', 'Trkačke biografije')
 
     const cards = within(waitingList()).getAllByRole('listitem')
-    const longest = cards.map((card) => card.textContent).sort((a, b) => b.length - a.length)[0]
+    const longest = first(
+      cards.map((card) => card.textContent).sort((a, b) => b.length - a.length),
+    )
 
     // People really do write this much about themselves, and the card wraps it
     // rather than pushing the page sideways.
@@ -1482,7 +1502,7 @@ describe('the six queues read from the file', () => {
     // The button is open to people with no account at all (PDL P10).
     expect(screen.getByText('Prijavio posetilac bez naloga')).toBeVisible()
 
-    await user.click(screen.getAllByRole('button', { name: 'Odobri' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
     expect(screen.getAllByRole('heading', { level: 3, name: 'Beogradski maraton' })).toHaveLength(1)
@@ -1491,7 +1511,7 @@ describe('the six queues read from the file', () => {
   it('closes the reason without deciding anything', async () => {
     const user = await open('photos', 'Profilne slike')
 
-    await user.click(screen.getAllByRole('button', { name: 'Vrati na doradu' })[0])
+    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
     expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
@@ -1501,7 +1521,9 @@ describe('the six queues read from the file', () => {
   it('keeps the focus on the card in both directions', async () => {
     const user = await open('photos', 'Profilne slike')
     const cards = within(waitingList()).getAllByRole('listitem')
-    const second = within(cards[1])
+    // The second and not the first, because the fault being held is the focus
+    // landing on the top card instead of the one the moderator was working on.
+    const second = within(at(cards, 1))
 
     /* The box takes the place of the buttons of its own card, so both directions
        used to drop the focus onto the document and the next Tab started the page
@@ -1514,7 +1536,7 @@ describe('the six queues read from the file', () => {
     expect(second.getByRole('button', { name: 'Vrati na doradu' })).toHaveFocus()
 
     // And the card it came from is the one that has it, not the first on screen.
-    expect(within(cards[0]).getByRole('button', { name: 'Vrati na doradu' })).not.toHaveFocus()
+    expect(within(first(cards)).getByRole('button', { name: 'Vrati na doradu' })).not.toHaveFocus()
   })
 
   it('carries no dates on a queue that has none', async () => {
@@ -1746,10 +1768,10 @@ describe('the section of entities', () => {
 
     const table = () => within(screen.getByRole('table', { name: 'Timovi' }))
     const before = (await screen.findAllByRole('button', { name: /^Obriši:/ })).length
-    const first = table().getAllByRole('button', { name: /^Obriši:/ })[0]
-    const name = first.getAttribute('aria-label')!.replace('Obriši: ', '')
+    const remove = first(table().getAllByRole('button', { name: /^Obriši:/ }))
+    const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
 
-    await user.click(first)
+    await user.click(remove)
     // Asking is not doing: the row is still there while the question stands.
     expect(table().getByText(name)).toBeVisible()
 
@@ -1766,7 +1788,7 @@ describe('the section of entities', () => {
     const table = () => within(screen.getByRole('table', { name: 'Timovi' }))
     const before = (await screen.findAllByRole('button', { name: /^Obriši:/ })).length
 
-    await user.click(table().getAllByRole('button', { name: /^Obriši:/ })[0])
+    await user.click(first(table().getAllByRole('button', { name: /^Obriši:/ })))
     await user.click(table().getByRole('button', { name: /^Odustani od brisanja:/ }))
 
     expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before)

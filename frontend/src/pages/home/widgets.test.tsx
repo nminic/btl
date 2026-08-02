@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { first } from '../../test/at'
 import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
@@ -185,7 +186,7 @@ describe('TopTen', () => {
     ] as HTMLElement[]
 
     // "Ime" and the member number, which is what the fixture calls people.
-    expect(faces[0].textContent).toBe('I0')
+    expect(first(faces).textContent).toBe('I0')
     expect(new Set(faces.map((one) => one.style.getPropertyValue('--face-hue'))).size).toBe(
       competitors.length,
     )
@@ -324,9 +325,9 @@ describe('TopByCategory', () => {
       <TopByCategory competitors={[]} results={[]} season={2027} turnMs={20} />,
     )
 
-    const first = screen.getByText(/^Najviše/).textContent
+    const shown = screen.getByText(/^Najviše/).textContent
 
-    await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(first))
+    await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(shown))
   })
 
   it('can be stopped, and stays stopped', async () => {
@@ -372,11 +373,11 @@ describe('TopByCategory', () => {
     try {
       renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={10} />)
 
-      const first = screen.getByText(/^Najviše/).textContent
+      const shown = screen.getByText(/^Najviše/).textContent
       expect(screen.getByRole('button', { name: 'Nastavi smenjivanje' })).toBeVisible()
 
       await new Promise((wait) => setTimeout(wait, 60))
-      expect(screen.getByText(/^Najviše/).textContent).toBe(first)
+      expect(screen.getByText(/^Najviše/).textContent).toBe(shown)
     } finally {
       window.matchMedia = previous
     }

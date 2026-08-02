@@ -4,6 +4,7 @@ import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { sectionsOf } from '../data/pages'
 import type { StaticPage } from '../data/types'
+import { first } from '../test/at'
 import { renderAt } from '../test/render'
 import { ADDRESS_SLUG } from './home/President'
 
@@ -14,11 +15,28 @@ import { ADDRESS_SLUG } from './home/President'
 
 const pagesOf = () => loadResource<Record<string, StaticPage>>('pages')
 
+/** The record kept under that address.
+ *
+ *  Whether a record is there at all is the thing these tests are about, so a
+ *  slug that answers nothing fails here, naming the slug. Read any other way it
+ *  would go on as an empty page and the assertions below would then be about
+ *  nothing: `expect(within(page).getByText(''))` finds every node there is. */
+async function pageAt(slug: string): Promise<StaticPage> {
+  const stored = (await pagesOf())[slug]
+
+  if (stored === undefined) {
+    throw new Error(`no written page is stored under "${slug}"`)
+  }
+
+  return stored
+}
+
 /** The opening paragraph of the address, straight out of the record. */
 async function opening(): Promise<string> {
-  const pages = await pagesOf()
+  const address = await pageAt(ADDRESS_SLUG)
+  const written = first(address.sections).body
 
-  return pages[ADDRESS_SLUG].sections[0].body.split('\n\n')[0]
+  return first(written.split('\n\n'))
 }
 
 /** Every source file of the application, so that a text can be looked for in the
@@ -114,8 +132,7 @@ describe('the address of the president', () => {
   })
 
   it('is stored once, so a correction cannot land on one of the two pages', async () => {
-    const pages = await pagesOf()
-    const about = pages['o-ligi']
+    const about = await pageAt('o-ligi')
 
     // "O ligi" takes the record in; it does not hold a copy of the words.
     expect(about.includes).toContain(ADDRESS_SLUG)
@@ -140,10 +157,14 @@ describe('the address of the president', () => {
 })
 
 describe('sectionsOf', () => {
-  const pages: Record<string, StaticPage> = {
+  /* Written with `satisfies` rather than typed as the record it is handed to:
+     the two pages of this fixture are known by name here, and `prva` is then a
+     page rather than a page that might not be there. The function still takes it
+     as the open record it takes on the screens. */
+  const pages = {
     prva: { title: 'Prva', sections: [{ heading: 'Svoja', body: 'x' }], includes: ['druga', 'nema'] },
     druga: { title: 'Druga', sections: [{ heading: 'Uzeta', body: 'y' }] },
-  }
+  } satisfies Record<string, StaticPage>
 
   it('puts what a page takes in above what it wrote itself', () => {
     expect(sectionsOf(pages, pages.prva).map((section) => section.heading)).toEqual([

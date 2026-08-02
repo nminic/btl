@@ -150,28 +150,39 @@ export function withPlaces<T extends object>(
   compare: (left: T, right: T) => number,
   memberNumberOf: (row: T) => string,
 ): Placed<T>[] {
-  const placed: Placed<T>[] = []
-  let start = 0
+  /* The rows gathered into the places they share, in one pass over them. Every
+   * row is compared with the row that opened the place it might join rather
+   * than with the one before it, so a ladder that leaves three rows level gives
+   * all three the same number.
+   *
+   * By row rather than by index: walking two indices over the list means asking
+   * for rows the list is only known to hold because the arithmetic says so. */
+  const places: { head: T; tied: T[] }[] = []
 
-  while (start < rows.length) {
-    /* How far the shared place reaches. Every row in it is compared with the
-     * first one rather than with the one before it, so a ladder that leaves
-     * three rows level gives all three the same number. */
-    let end = start + 1
+  for (const row of rows) {
+    const open = places[places.length - 1]
 
-    while (end < rows.length && compare(rows[start], rows[end]) === 0) {
-      end += 1
+    if (open === undefined || compare(open.head, row) !== 0) {
+      places.push({ head: row, tied: [row] })
+    } else {
+      open.tied.push(row)
     }
+  }
 
-    const tied = rows
-      .slice(start, end)
-      .sort((left, right) => memberNumberOf(left).localeCompare(memberNumberOf(right)))
+  const placed: Placed<T>[] = []
+
+  for (const place of places) {
+    /* Everybody sharing a place takes the number of the first of them, and the
+     * numbers the rest would have had are skipped, so a shared first place
+     * reads 1, 1, 3. */
+    const position = placed.length + 1
+    const tied = place.tied.sort((left, right) =>
+      memberNumberOf(left).localeCompare(memberNumberOf(right)),
+    )
 
     for (const row of tied) {
-      placed.push({ ...row, position: start + 1 })
+      placed.push({ ...row, position })
     }
-
-    start = end
   }
 
   return placed
@@ -423,6 +434,52 @@ export function defaultMonth(events: BtlEvent[], today: string): string {
   return ahead ?? months[months.length - 1] ?? today.slice(0, 7)
 }
 
+export function monthFrom(asked: string | null, fallback: string): string {
+  return asked !== null && MONTH.test(asked) ? asked : fallback
+}
+
+/**
+ * The two numbers behind the name of a month.
+ *
+ * A month is named "YYYY-MM" everywhere on the portal: it is what the address
+ * bar of the calendar carries, what `defaultMonth` hands back and what a grid is
+ * asked for. Splitting that name on the dash at each of the four places that
+ * needed it was four chances to take the halves in the wrong order, and each of
+ * those places then had to answer for a half that was not there.
+ *
+ * The name is fixed width, so both numbers are slices of it. A name that is not
+ * a month gives NaN, and a grid of NaN is a month with no days in it: the
+ * calendar is reached by an address a visitor can type, so a wrong one has to
+ * be survivable rather than fatal.
+ *
+ * `index` is the month itself, 1 for January, which is the way `monthDays` and
+ * `eventsInMonth` are asked for one.
+ */
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
+
+/**
+ * The month the address names, or the one to fall back on.
+ *
+ * The shape is not the value, the same lesson the day page learned. `?mesec=2026`
+ * has a year and no month, and `Number('')` is 0 rather than NaN, so it drew a
+ * thirty-one day grid headed January 2026 over the columns of December 2025 with
+ * every real event missing. Nothing threw and nothing looked broken.
+ *
+ * Held here rather than at the screen, so that `monthNumbers` below can go on
+ * assuming it is handed a month.
+ */
+export function monthNumbers(month: string): { year: number; index: number } {
+  return { year: Number(month.slice(0, 4)), index: Number(month.slice(5, 7)) }
+}
+
+/** The month `by` months away from this one, named the same way. */
+export function shiftMonth(month: string, by: number): string {
+  const { year, index } = monthNumbers(month)
+  const moved = new Date(Date.UTC(year, index - 1 + by, 1))
+
+  return `${moved.getUTCFullYear()}-${String(moved.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
 /** Days of a month laid out Monday to Sunday, with the leading and trailing
  *  blanks the grid needs. Null is a cell outside the month. */
 /**
@@ -487,14 +544,24 @@ export function upcomingSeries(events: BtlEvent[], today: string, limit: number)
     .filter((event) => event.date >= today && event.status !== 'cancelled')
     .sort((left, right) => left.date.localeCompare(right.date))
 
-  const byName = new Map<string, BtlEvent[]>()
+  /* The row a name gets, built as the runs of it are met rather than gathered
+     into a list and read back afterwards. `ahead` is in date order, so the
+     first run of a name is the next one and every run after it only adds to the
+     count: the row that stands for a series is never a row nobody wrote. */
+  const byName = new Map<string, SeriesEntry>()
 
   for (const event of ahead) {
-    byName.set(event.name, [...(byName.get(event.name) ?? []), event])
+    const open = byName.get(event.name)
+
+    byName.set(
+      event.name,
+      open === undefined
+        ? { name: event.name, next: event, more: 0 }
+        : { ...open, more: open.more + 1 },
+    )
   }
 
   return [...byName.values()]
-    .map((runs) => ({ name: runs[0].name, next: runs[0], more: runs.length - 1 }))
     .sort((left, right) => left.next.date.localeCompare(right.next.date))
     .slice(0, limit)
 }

@@ -3,8 +3,8 @@ import type { Moderator } from '../../data/types'
 import { useRole } from '../../roles/useRole'
 import type { Rights } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import { ENTITY_FORMS } from './entityForms'
-import { QUEUES } from './queues'
+import { ENTITY_FORMS, type EntityDef } from './entityForms'
+import { QUEUES, type Queue } from './queues'
 
 /* What a moderator may do, one box at a time (PDL P21, P28a, ADL A8).
  *
@@ -68,21 +68,41 @@ export type RightGroup = {
  * moderator who got the same refusal as before. A promise the specification
  * forbids anyone to keep is worse than no promise.
  */
+/**
+ * The right that opens one entity, and the one that opens one queue.
+ *
+ * Made from the thing they guard rather than looked up by a key made from it,
+ * which is what the door used to do: it built "queue:teams" out of the queue in
+ * its hand and went to fetch the right filed under that name, from a record
+ * typed by "any string at all". So a right that was certain to be there had to
+ * be treated as one that might not be, and the only thing standing between a
+ * misspelt key and a screen nobody could ever open was that the two spellings
+ * were written the same way twice (needs.ts). Built here, the key is spelt once
+ * and the right cannot be missing, because there is nothing to look up.
+ */
+export function entityRight(entity: EntityDef): Right {
+  return {
+    key: `entity:${entity.id}`,
+    group: 'entities',
+    nameKey: `rights.column.entity.${entity.id}`,
+    actionKey: `rights.action.entity.${entity.id}`,
+  }
+}
+
+export function queueRight(queue: Queue): Right {
+  return {
+    key: `queue:${queue.id}`,
+    group: 'queues',
+    nameKey: `rights.column.queue.${queue.id}`,
+    actionKey: `rights.action.queue.${queue.id}`,
+  }
+}
+
 const ENTITY_RIGHTS: Right[] = ENTITY_FORMS.filter(
   (entity) => entity.superadminOnly !== true,
-).map((entity) => ({
-  key: `entity:${entity.id}`,
-  group: 'entities',
-  nameKey: `rights.column.entity.${entity.id}`,
-  actionKey: `rights.action.entity.${entity.id}`,
-}))
+).map(entityRight)
 
-const QUEUE_RIGHTS: Right[] = QUEUES.map((queue) => ({
-  key: `queue:${queue.id}`,
-  group: 'queues',
-  nameKey: `rights.column.queue.${queue.id}`,
-  actionKey: `rights.action.queue.${queue.id}`,
-}))
+const QUEUE_RIGHTS: Right[] = QUEUES.map(queueRight)
 
 /* A group carries its heading and nothing else. It used to carry a note as well,
  * under two keys that were never written into the dictionary and never rendered;
@@ -97,12 +117,6 @@ export const RIGHT_GROUPS: RightGroup[] = [
 /** Every box in the matrix, in the order it is drawn. */
 export const RIGHTS: Right[] = RIGHT_GROUPS.flatMap((group) => group.rights)
 
-/** The same ones by key, so a screen can be handed the right that guards it
- *  instead of looking it up and then having to prove it found something. */
-export const RIGHT: Record<string, Right> = Object.fromEntries(
-  RIGHTS.map((one) => [one.key, one]),
-)
-
 /**
  * The first right of every group after the first, which is where the line
  * between two groups is drawn.
@@ -111,9 +125,16 @@ export const RIGHT: Record<string, Right> = Object.fromEntries(
  * ninth column. A tenth entity would move that line silently and leave it
  * drawn through the middle of the entities, which is exactly the sort of thing
  * nobody notices for a year.
+ *
+ * The first right of a group is taken as the first one of the few rather than
+ * by its number, so a group that has none draws no line: there is no column for
+ * it to be drawn before, and asking for the first of nothing is a question with
+ * no answer where taking the few gives none.
  */
 export const GROUP_STARTS: Set<string> = new Set(
-  RIGHT_GROUPS.slice(1).map((group) => group.rights[0].key),
+  RIGHT_GROUPS.slice(1)
+    .flatMap((group) => group.rights.slice(0, 1))
+    .map((right) => right.key),
 )
 
 /**

@@ -1,4 +1,5 @@
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
+import { at, first } from '../../test/at'
 import { leagueTable } from './leagueTable'
 
 const person = (memberNumber: string): Competitor => ({
@@ -82,7 +83,7 @@ describe('the grid of a competition', () => {
        shorter race comes first, and it is the distance that says which is
        shorter: by name "10 km" would stand in front of "5 km". */
     expect(table.columns.map((one) => one.raceId)).toEqual(['r2', 'r4', 'r1'])
-    expect(table.columns[0].event).toBe('Događaj e2')
+    expect(first(table.columns).event).toBe('Događaj e2')
   })
 
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
@@ -116,8 +117,8 @@ describe('the grid of a competition', () => {
        in neither the row nor the total; a reader has to be able to add the row
        up and land on the second column. */
     expect(table.rows.map((one) => one.total)).toEqual([40, 15])
-    expect(table.rows[0].competitor.memberNumber).toBe('000002')
-    expect(table.rows[1].points.get('r3')).toBeUndefined()
+    expect(first(table.rows).competitor.memberNumber).toBe('000002')
+    expect(at(table.rows, 1).points.get('r3')).toBeUndefined()
   })
 
   it('leaves a race somebody did not run out of the row rather than at nought', () => {
@@ -130,8 +131,8 @@ describe('the grid of a competition', () => {
     )
 
     // Nought would be a claim: it says they ran it and scored nothing.
-    expect(table.rows[0].points.get('r1')).toBe(10)
-    expect(table.rows[0].points.has('r2')).toBe(false)
+    expect(first(table.rows).points.get('r1')).toBe(10)
+    expect(first(table.rows).points.has('r2')).toBe(false)
   })
 
   it('settles a tie by member number rather than by chance', () => {
@@ -157,8 +158,8 @@ describe('the grid of a competition', () => {
       [person('000001')],
     )
 
-    expect(table.rows[0].points.get('r1')).toBe(17)
-    expect(table.rows[0].total).toBe(17)
+    expect(first(table.rows).points.get('r1')).toBe(17)
+    expect(first(table.rows).total).toBe(17)
   })
 })
 

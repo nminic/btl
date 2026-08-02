@@ -46,10 +46,39 @@ describe('every administrative address', () => {
     expect(needFor('znacke')).toBeUndefined()
   })
 
+  it('leaves no box in the matrix that no screen ever asks for', () => {
+    /* Turned round. It used to check that every need names a right the matrix
+       carries, and after the rights of the queues and the entities came to be
+       built by one pair of functions that both sides call, that could no longer
+       go red: the two cannot disagree by construction.
+    
+       The risk that is left runs the other way. A right can be given to a
+       moderator, and ticked, and mean nothing, because no screen asks for it.
+       Unticked and unasked-for look the same from the outside, which is what
+       made the old direction worth testing and makes this one worth testing
+       now. */
+    const asked = new Set(
+      Object.values(NEEDS)
+        .filter((need) => need.of === 'right')
+        .map((need) => need.right.key),
+    )
+    const orphans = RIGHTS.map((right) => right.key).filter((key) => !asked.has(key))
+
+    expect(orphans).toEqual([])
+  })
+
   it('names a right that exists, wherever it names one', () => {
     /* A need pointing at a key no box in the matrix carries would be a screen
        nobody could ever be given, and it would fail silently: unticked is the
-       same shape as unknown. */
+       same shape as unknown.
+
+       Narrower than it was, and the reason is worth knowing. The rights of the
+       eight queues and the nine entities are now built by one pair of functions
+       that both the matrix and the needs call, so for those the two sides can no
+       longer disagree and this cannot go red. What it still catches is a need
+       written by hand, and an entity whose right is filtered out of the matrix
+       by `superadminOnly` while the need still asks for it, which is a real
+       shape and the one that made this test worth writing. */
     const keys = new Set(RIGHTS.map((right) => right.key))
     const wrong = Object.values(NEEDS).filter(
       (need) => need.of === 'right' && !keys.has(need.right.key),

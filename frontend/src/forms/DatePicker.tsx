@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useToday } from '../clock/useClock'
-import { monthGrid } from '../data/derive'
+import { monthGrid, monthNumbers, shiftMonth } from '../data/derive'
 import { formatMonth } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { maskDate, parseDate } from './dateField'
@@ -17,13 +17,6 @@ function monthOf(value: string, today: string): string {
   }
 
   return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}`
-}
-
-function shiftMonth(month: string, by: number): string {
-  const [year, index] = month.split('-').map(Number)
-  const moved = new Date(Date.UTC(year, index - 1 + by, 1))
-
-  return `${moved.getUTCFullYear()}-${String(moved.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 /**
@@ -84,7 +77,7 @@ export function DatePicker({
     }
   }, [open])
 
-  const [year, index] = month.split('-').map(Number)
+  const { year, index } = monthNumbers(month)
   const chosen = parseDate(value)
 
   function pick(day: number) {

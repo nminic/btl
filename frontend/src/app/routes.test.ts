@@ -10,6 +10,31 @@ import {
   seoKeyFor,
 } from './routes'
 
+/**
+ * Every address the router table serves, in the order it serves them.
+ *
+ * The children of all the top-level entries rather than of the one at a known
+ * position: the redirect at the root has no children of its own, so the table
+ * can be read whole and there is no index here to keep in step with the one in
+ * routeObjects.
+ */
+function servedPaths(): string[] {
+  /* The children of the locale layout, and only those. A child path is relative
+     to its parent, so two layouts could each legitimately serve `dashboard` and
+     flattening them into one list would report a clash that is not one, and hand
+     `seoKeyFor` a path from a namespace it does not answer for. There is one
+     parent with children today; naming it is what keeps that from being a fact
+     the test silently depends on. */
+  const locale = routeObjects.filter((route) => route.path === '/:locale')
+
+  expect(locale).toHaveLength(1)
+
+  return locale
+    .flatMap((route) => route.children ?? [])
+    .map((child) => child.path)
+    .filter((path): path is string => path !== undefined)
+}
+
 describe('navForRole', () => {
   it('shows the sections in the order the design fixes', () => {
     expect(navForRole('superadmin').map((section) => section.id)).toEqual([
@@ -52,9 +77,7 @@ describe('the group "O ligi"', () => {
        list on the same day: an entry in both would be one address with two router
        entries, and the second would never be reached. Read out of the real router
        table rather than out of ROUTES, because that is what is served. */
-    const served = (routeObjects[1].children ?? [])
-      .map((child) => child.path)
-      .filter((path): path is string => path !== undefined)
+    const served = servedPaths()
 
     expect(new Set(served).size).toBe(served.length)
     expect(served).toContain('o-ligi')
@@ -140,9 +163,7 @@ describe('seoKeyFor', () => {
        words to go with it fails here rather than quietly showing up in a browser
        tab as "Ove strane nema", which is how the detail screens got that name in
        the first place. */
-    const served = (routeObjects[1].children ?? [])
-      .map((child) => child.path)
-      .filter((path): path is string => path !== undefined && path !== '*')
+    const served = servedPaths().filter((path) => path !== '*')
 
     expect(served.length).toBeGreaterThan(30)
     expect(served.filter((path) => seoKeyFor(path) === undefined)).toEqual([])

@@ -5,17 +5,23 @@
  * to be sure what the digits mean.
  */
 
-const SHAPE = /^(\d{2})\/(\d{2})\/(\d{4})$/
+const SHAPE = /^\d{2}\/\d{2}\/\d{4}$/
 
 /** The date, or null when the text is not a real date in that shape. */
 export function parseDate(text: string): Date | null {
-  const match = SHAPE.exec(text.trim())
+  const written = text.trim()
 
-  if (match === null) {
+  if (!SHAPE.test(written)) {
     return null
   }
 
-  const [, day, month, year] = match.map(Number)
+  /* The shape is fixed width, so the three numbers are slices of it. Reading
+     them out of capture groups instead hands back three values that might not
+     be there, and a date field then has to say what it means by a day with no
+     month, which is a case the shape has already ruled out. */
+  const day = Number(written.slice(0, 2))
+  const month = Number(written.slice(3, 5))
+  const year = Number(written.slice(6))
   const date = new Date(Date.UTC(year, month - 1, day))
 
   // Rejects 31/02/2027, which Date would otherwise roll into March.
@@ -54,9 +60,9 @@ export function fieldDate(iso: string): string {
     return ''
   }
 
-  const [year, month, day] = iso.split('-')
-
-  return `${day}/${month}/${year}`
+  // Fixed width on both sides of the move, so the three pieces are slices, the
+  // same way round as they are read out of what a member types.
+  return `${iso.slice(8)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
 }
 
 /** And back again, which is how a date is stored. Empty when it is not a date,

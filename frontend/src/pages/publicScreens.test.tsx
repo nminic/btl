@@ -1,9 +1,34 @@
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { hueFor } from './competitorFace'
+import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import type { Result } from '../data/types'
+
+/**
+ * The figure in the last cell of a row, read the way the portal writes it: a
+ * dot every three digits and a comma before the decimals.
+ *
+ * Every board on these screens puts the number it ranks by last, so four tests
+ * were reading that cell with four copies of the same line. One reader, and it
+ * says what went wrong: a cell that is empty or holds a word is a column that
+ * has moved, and left to itself it would arrive as a nought or a NaN and turn
+ * "sorted by points" into an assertion about a list of noughts.
+ */
+function lastNumberIn(row: HTMLElement): number {
+  const text = last(within(row).getAllByRole('cell')).textContent
+  const figure =
+    text === null || text.trim() === ''
+      ? Number.NaN
+      : Number(text.replace(/\./g, '').replace(',', '.'))
+
+  if (Number.isNaN(figure)) {
+    throw new Error(`the last cell of the row reads "${text}", which is not a figure`)
+  }
+
+  return figure
+}
 
 /** Every distance this member has raced, newest first, written the way the table
  *  writes them. Read out of the record so a test about which column is which
@@ -41,10 +66,7 @@ describe('Rankings', () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
-    const points = rows.map((row) => {
-      const cells = within(row).getAllByRole('cell')
-      return Number(cells[cells.length - 1].textContent!.replace(/\./g, '').replace(',', '.'))
-    })
+    const points = rows.map(lastNumberIn)
 
     expect([...points].sort((a, b) => b - a)).toEqual(points)
     expect(rows.filter((row) => row.className === 'podium')).toHaveLength(3)
@@ -102,7 +124,7 @@ describe('Rankings', () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
-    const link = within(rows[0]).getByRole('link')
+    const link = within(first(rows)).getByRole('link')
 
     expect(link).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
   })
@@ -173,13 +195,7 @@ describe('TopBoards', () => {
 
     expect(races.getByRole('columnheader', { name: 'Događaj' })).toBeInTheDocument()
 
-    const points = races
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => {
-        const cells = within(row).getAllByRole('cell')
-        return Number(cells[cells.length - 1].textContent!.replace(/\./g, '').replace(',', '.'))
-      })
+    const points = races.getAllByRole('row').slice(1).map(lastNumberIn)
 
     expect([...points].sort((left, right) => right - left)).toEqual(points)
   })
@@ -214,13 +230,7 @@ describe('TopBoards', () => {
     expect(progress.getByRole('columnheader', { name: 'Prirast' })).toBeInTheDocument()
     expect(progress.getByRole('columnheader', { name: 'Prethodna sezona' })).toBeInTheDocument()
 
-    const gains = progress
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => {
-        const cells = within(row).getAllByRole('cell')
-        return Number(cells[cells.length - 1].textContent!.replace(/\./g, '').replace(',', '.'))
-      })
+    const gains = progress.getAllByRole('row').slice(1).map(lastNumberIn)
 
     expect(gains.length).toBeGreaterThan(1)
     expect(gains.length).toBeLessThanOrEqual(10)
@@ -269,14 +279,11 @@ describe('TopBoards', () => {
     expect(rows.length).toBeGreaterThan(1)
     expect(rows.length).toBeLessThanOrEqual(10)
 
-    const points = rows.map((row) => {
-      const cells = within(row).getAllByRole('cell')
-      return Number(cells[cells.length - 1].textContent!.replace(/\./g, '').replace(',', '.'))
-    })
+    const points = rows.map(lastNumberIn)
     expect([...points].sort((left, right) => right - left)).toEqual(points)
 
     // The row is about the team, so the name leads to the team page.
-    expect(within(rows[0]).getByRole('link')).toHaveAttribute(
+    expect(within(first(rows)).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/tim/'),
     )
@@ -307,9 +314,10 @@ describe('TopBoards', () => {
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
-    const first = board('Najviše kilometara').getAllByRole('row')[1]
+    // The first row of the board, which is the second row of the table.
+    const top = at(board('Najviše kilometara').getAllByRole('row'), 1)
 
-    expect(within(first).getByRole('link')).toHaveAttribute(
+    expect(within(top).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/sr/takmicar/'),
     )
@@ -361,10 +369,10 @@ describe('Competitors', () => {
     const cards = within(await screen.findByRole('list')).getAllByRole('listitem')
     expect(cards.length).toBeGreaterThan(20)
 
-    const first = within(cards[0])
-    expect(first.getByRole('link')).toBeVisible()
-    expect(first.getByText('Trke')).toBeVisible()
-    expect(first.getByText('Bodovi')).toBeVisible()
+    const card = within(first(cards))
+    expect(card.getByRole('link')).toBeVisible()
+    expect(card.getByText('Trke')).toBeVisible()
+    expect(card.getByText('Bodovi')).toBeVisible()
   })
 
   it('searches, and says so when nothing matches', async () => {
@@ -457,7 +465,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     const heading = await screen.findByRole('heading', { level: 1 })
-    const title = heading.parentElement!
+    const title = must(heading.parentElement, 'a parent')
 
     expect(within(title).getByLabelText('Sezona')).toBeVisible()
     expect(
@@ -623,7 +631,7 @@ describe('CompetitorProfile', () => {
     const cells = within(screen.getByRole('table', { name: 'Rezultati' }))
       .getAllByRole('row')
       .slice(1)
-      .map((row) => within(row).getAllByRole('cell')[2].textContent!)
+      .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'text'))
     const results = cells.map((one) => one.split(':')[0])
 
     expect(named.length).toBeGreaterThan(0)
@@ -758,7 +766,7 @@ describe('Teams', () => {
     const rows = (await standing()).getAllByRole('row').slice(1)
 
     expect(rows.length).toBeGreaterThan(1)
-    expect(rows[0].className).toBe('podium')
+    expect(first(rows).className).toBe('podium')
   })
 
   /* The drawer is gone (owner, 31.07.2026). Who is in a team and what each of
@@ -910,7 +918,7 @@ describe('the top boards, when a member on them has left the league', () => {
       const names = within(board)
         .getAllByRole('row')
         .slice(1)
-        .map((row) => within(row).getAllByRole('cell')[0].textContent)
+        .map((row) => first(within(row).getAllByRole('cell')).textContent)
 
       expect(names.length).toBeGreaterThan(0)
       expect(names.every((one) => one !== null && one.trim() !== '')).toBe(true)

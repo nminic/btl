@@ -6,7 +6,7 @@ import { usePages } from '../data/useResource'
 import type { StaticPage } from '../data/types'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
-import { tableOfContents } from './rulebookToc'
+import { withIds } from './rulebookToc'
 import './Rulebook.css'
 
 const SLUG = 'pravilnik'
@@ -28,7 +28,11 @@ function useCurrentSection(ids: string[]): string {
 
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') {
-      setCurrent(ids[0])
+      /* A page with no sections has none to stand as the current one, and the
+         marker stays where it started, which is nowhere. Written as a walk over
+         at most one id rather than as a fallback, because the fallback could not
+         be reached and an unreachable branch is a claim nothing checks. */
+      ids.slice(0, 1).forEach(setCurrent)
       return
     }
 
@@ -78,12 +82,12 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
 
-  const sections = useMemo(() => sectionsOf(pages, page), [pages, page])
-  const entries = useMemo(
-    () => tableOfContents(sections.map((section) => section.heading)),
-    [sections],
-  )
-  const ids = useMemo(() => entries.map((entry) => entry.id), [entries])
+  /* The heading, the text under it and the id its link points at, on one row.
+     The contents and the body used to be two lists lined up by position, so the
+     section drawn third took the id of the third entry of the contents and
+     nothing said the two lists were the same length. */
+  const sections = useMemo(() => withIds(sectionsOf(pages, page)), [pages, page])
+  const ids = useMemo(() => sections.map((section) => section.id), [sections])
   const current = useCurrentSection(ids)
 
   return (
@@ -112,17 +116,17 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
             <p className="rulebook__toc-title">{t('rulebook.onThisPage')}</p>
 
             <ol className="rulebook__toc-list">
-              {entries.map((entry) => (
-                <li key={entry.id}>
+              {sections.map((section) => (
+                <li key={section.id}>
                   <a
                     className="rulebook__toc-link"
-                    href={`#${entry.id}`}
+                    href={`#${section.id}`}
                     /* Colour alone would leave the reader who cannot see it
                        without the answer, so the state is in the markup too. */
-                    aria-current={current === entry.id ? 'location' : undefined}
+                    aria-current={current === section.id ? 'location' : undefined}
                     onClick={() => setOpen(false)}
                   >
-                    {entry.heading}
+                    {section.heading}
                   </a>
                 </li>
               ))}
@@ -131,10 +135,10 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
         </nav>
 
         <div className="rulebook__body">
-          {sections.map((section, index) => (
+          {sections.map((section) => (
             <section
-              key={entries[index].id}
-              id={entries[index].id}
+              key={section.id}
+              id={section.id}
               /* Following a link has to move the reading position as well as
                  the scroll position, and only a focusable element does that. */
               tabIndex={-1}

@@ -1,9 +1,28 @@
+import { must } from '../test/at'
+import { useState } from 'react'
 import { screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
-import type { FormDef } from './types'
+import type { FormDef, FormValues } from './types'
+
+/* A caller may hand the renderer a different definition without remounting it.
+ * No screen does today, and every one of the nine admin screens passes a
+ * module-level constant, so this is a contract of the component rather than a
+ * path anybody walks. It is held anyway, because the fault it guards is not the
+ * empty box: a field the state is not holding used to be saved as the string
+ * "undefined", since `textFrom` in records.ts is `String(value)`. Blank on
+ * screen and a word in the record is worse than the fault it replaced. */
+const grown: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'ime', type: 'text', labelKey: 'proba.ime', required: true },
+    { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+  ],
+}
 
 const everyType: FormDef = {
   id: 'proba',
@@ -56,7 +75,9 @@ describe('FormRenderer', () => {
     const hintId = input.getAttribute('aria-describedby')
 
     expect(hintId).toBe('field-mejl-hint')
-    expect(document.getElementById(hintId!)).toHaveTextContent('proba.mejlPravilo')
+    expect(
+      document.getElementById(must(hintId, 'an id joining the field to its hint')),
+    ).toHaveTextContent('proba.mejlPravilo')
   })
 
   it('marks the fields that are not obligatory', () => {
@@ -187,5 +208,42 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/Veličina majice/)).toBeInTheDocument()
     expect(screen.getByText('Od države zavisi koji načini plaćanja ti se nude.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeInTheDocument()
+  })
+})
+
+describe('a definition swapped under a form that is already on screen', () => {
+  it('draws a field it is holding nothing for as empty, and does not save the word undefined', async () => {
+    const smaller: FormDef = { ...grown, fields: grown.fields.slice(0, 1) }
+    const sent: FormValues[] = []
+
+    function Swapping() {
+      const [form, setForm] = useState(smaller)
+
+      return (
+        <>
+          <button type="button" onClick={() => setForm(grown)}>
+            zameni
+          </button>
+          <FormRenderer form={form} onSubmit={(values) => sent.push(values)} />
+        </>
+      )
+    }
+
+    const user = setupUser()
+    renderWithI18n(<Swapping />)
+
+    expect(screen.queryByLabelText(/proba.dopisano/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'zameni' }))
+
+    expect(screen.getByLabelText(/proba.dopisano/)).toHaveValue('')
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* The half that mattered. The box looked blank either way; what is saved is
+       what somebody reads back out of the record a year later. */
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.dopisano).toBe('')
   })
 })

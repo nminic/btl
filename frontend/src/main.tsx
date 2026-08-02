@@ -3,7 +3,13 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './app/App.tsx'
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')
+
+if (root === null) {
+  throw new Error('index.html carries no #root for the portal to be drawn into')
+}
+
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,

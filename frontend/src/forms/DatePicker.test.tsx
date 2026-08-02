@@ -1,3 +1,4 @@
+import { must } from '../test/at'
 import { render, screen, within } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -121,7 +122,7 @@ describe('DatePicker', () => {
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
 
-    const heading = screen.getByRole('button', { name: 'Sledeći mesec' }).previousElementSibling!
+    const heading = must(screen.getByRole('button', { name: 'Sledeći mesec' }).previousElementSibling, 'an element before it')
     expect(heading.textContent).toContain('jul 2026')
   })
 
@@ -135,7 +136,7 @@ describe('DatePicker', () => {
        (src/clock). A calendar that opened on the machine's month while the
        price beside it was quoted for another would read as a bug in the portal
        rather than as one half of it not having heard. */
-    const heading = screen.getByRole('button', { name: 'Sledeći mesec' }).previousElementSibling!
+    const heading = must(screen.getByRole('button', { name: 'Sledeći mesec' }).previousElementSibling, 'an element before it')
     expect(heading.textContent).toContain('jul 2026')
   })
 
