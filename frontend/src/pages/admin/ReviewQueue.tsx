@@ -5,6 +5,11 @@ import { useSession } from '../../session/useSession'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import '../member/Member.css'
+/* For `.pending__bar`, the row that carries the heading and the one decision
+   for the whole queue. Every sheet is bundled into one and the class would work
+   without the import; the import is what says where the class comes from, so
+   deleting the sheet breaks the build rather than the screen (ADL A7). */
+import './Verification.css'
 
 /* Every result that has been sent in and not yet decided, as one table.
  *
@@ -37,9 +42,45 @@ export function ReviewQueue() {
           tab, and what stood above the work is gone (owner, 30.07.2026). */}
       <h1 className="visually-hidden">{t('review.title')}</h1>
 
-      <h2 className="profile__section">
-        {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
-      </h2>
+      <div className="pending__bar">
+        <h2 className="profile__section">
+          {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
+        </h2>
+
+        {/* One decision for the whole queue, as on the six that share a screen
+            (owner, 01.08.2026). This is the queue he described it for: thirty
+            results in a week, most of them from members who have been sending
+            the same kind of thing for years.
+
+            It asks first, because there is nothing to undo. Approving is what
+            puts a result into the standings, and a queue of thirty approved by
+            a misplaced click is thirty results to find again by hand.
+
+            Nothing is written down on an approval here, the same as pressing
+            the button in every row: a reason belongs to a refusal. */}
+        {waiting.length > 0 && (
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => {
+              if (!window.confirm(t('verification.approveAllAsk', { count: waiting.length }))) {
+                return
+              }
+
+              for (const one of waiting) {
+                decide(one.id, 'approved', '')
+              }
+
+              /* The box stands below the table. Left open over a result that
+                 the sweep has just approved, confirming it would refuse what
+                 was approved a moment ago and say nothing about it. */
+              setOpen(null)
+            }}
+          >
+            {t('verification.approveAll')}
+          </button>
+        )}
+      </div>
 
       {waiting.length === 0 ? (
         <p className="profile__empty">{t('review.empty')}</p>

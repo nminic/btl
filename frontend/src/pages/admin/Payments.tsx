@@ -4,7 +4,8 @@ import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { handOutMemberNumber } from './memberNumbers'
+import { nextMemberNumber } from '../../data/memberNumber'
+import { handOutMemberNumber, takenMemberNumbers } from './memberNumbers'
 import { usePending, waitingIn, settledWith } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
@@ -165,13 +166,72 @@ export function Payments() {
             setOpen((current) => (current?.key === id ? null : current))
           }
 
+          /**
+           * The same activation for every registration waiting, on the ground of
+           * a paid fee.
+           *
+           * It counts the numbers up itself rather than calling `activate` in a
+           * loop, and that is the whole reason it exists. A number is worked out
+           * against everything already spoken for, and what is spoken for is read
+           * off the session as this render sees it. The session does not change
+           * while a loop runs, so twenty activations in a loop would every one of
+           * them be handed the same number: twenty members answering to 000032,
+           * which is precisely the fault the numbering was moved into one module
+           * to stop (memberNumbers.ts, PDL P8).
+           *
+           * So the list of what is taken is made once and grows as the sweep
+           * hands numbers out, and each registration is written down with the
+           * number that was actually its own.
+           */
+          const activateAll = (ids: string[]) => {
+            const taken = takenMemberNumbers(competitors, session)
+
+            for (const id of ids) {
+              const given = nextMemberNumber(taken)
+              taken.push(given)
+              settle(id, { status: 'approved', note: '', basis: 'payment', memberNumber: given })
+            }
+
+            /* Every one of them has been decided, so nothing the box could be
+               open on is still waiting. Confirming it after the sweep would
+               overwrite an activation with a refusal (see `activate`). */
+            setOpen(null)
+          }
+
           return (
             <>
               <Statement />
 
-              <h2 className="profile__section">
-                {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
-              </h2>
+              <div className="pending__bar">
+                <h2 className="profile__section">
+                  {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
+                </h2>
+
+                {/* One decision for the whole queue, as everywhere else (owner,
+                    01.08.2026), and on this queue that decision has a ground.
+                    Only the fee: honorary membership is entered person by person
+                    during the fortnight before registration opens, against a
+                    list the owner is reading, so there is nothing to sweep.
+
+                    The words say which ground it is, because the two buttons in
+                    the row do and a third that said only "all" would be the one
+                    control on the screen that hides what it writes down. */}
+                {waiting.length > 0 && (
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      if (!window.confirm(t('verification.activateAllAsk', { count: waiting.length }))) {
+                        return
+                      }
+
+                      activateAll(waiting.map((one) => one.id))
+                    }}
+                  >
+                    {t('verification.activateAllPayment')}
+                  </button>
+                )}
+              </div>
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>

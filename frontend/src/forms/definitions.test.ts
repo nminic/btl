@@ -1,0 +1,79 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import type { FormDef } from './types'
+
+/* What every form definition has to be true of, checked over all of them at
+ * once rather than one form at a time.
+ *
+ * A form is data (PDL P30), so the rules a form obeys cannot live in the
+ * component that draws it: the owner edits a JSON file and the component never
+ * hears about it. This file is where a rule about the data itself goes.
+ */
+
+const HERE = join(process.cwd(), 'src', 'forms', 'definitions')
+
+const FORMS = readdirSync(HERE)
+  .filter((name) => name.endsWith('.form.json'))
+  .map((name) => ({
+    name,
+    form: JSON.parse(readFileSync(join(HERE, name), 'utf-8')) as FormDef,
+  }))
+
+describe('every form definition in the portal', () => {
+  it('is there to be checked at all', () => {
+    /* So the whole file cannot pass by finding nothing. */
+    expect(FORMS.length).toBeGreaterThan(5)
+  })
+
+  it('gives every long box a limit', () => {
+    /* A box with no limit is a box somebody can paste a novel into, and the
+       column underneath it is not that wide. The renderer relies on this: it
+       refuses at the door with the element's own `maxLength`, counts down what
+       is left, and says how much a paste lost, and all three read the number
+       without asking whether there is one. */
+    const missing = FORMS.flatMap(({ name, form }) =>
+      form.fields
+        .filter((field) => field.type === 'textarea' && field.maxLength === undefined)
+        .map((field) => `${name}: ${field.name}`),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('gives every field a name of its own', () => {
+    /* Two fields under one name are one field as far as the values are
+       concerned: the second overwrites the first, and the form quietly asks for
+       something it then throws away. */
+    const clashes = FORMS.flatMap(({ name, form }) => {
+      const seen = new Set<string>()
+
+      return form.fields
+        .filter((field) => {
+          const twice = seen.has(field.name)
+          seen.add(field.name)
+
+          return twice
+        })
+        .map((field) => `${name}: ${field.name}`)
+    })
+
+    expect(clashes).toEqual([])
+  })
+
+  it('never asks for less than it will accept', () => {
+    /* A field that wants at least fifty characters and takes at most forty can
+       be filled in no way at all. */
+    const impossible = FORMS.flatMap(({ name, form }) =>
+      form.fields
+        .filter(
+          (field) =>
+            field.minLength !== undefined &&
+            field.maxLength !== undefined &&
+            field.minLength > field.maxLength,
+        )
+        .map((field) => `${name}: ${field.name}`),
+    )
+
+    expect(impossible).toEqual([])
+  })
+})

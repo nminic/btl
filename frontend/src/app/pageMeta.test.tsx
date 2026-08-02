@@ -1,5 +1,8 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import sr from '../i18n/sr.json'
+import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { SITE_ORIGIN } from './head'
@@ -247,5 +250,89 @@ describe('the two parts of a competition', () => {
     expect(document.title).not.toBe(standing.title)
     expect(document.title).toContain('poredak')
     expect(meta()).not.toBe(standing.description)
+  })
+})
+
+describe('the titles as a set, rather than one at a time', () => {
+  /* Every screen is named in one dictionary and each name was chosen against
+     the screen it belongs to. What nobody checks that way is the set: two
+     screens can be given the same name months apart and each reads fine on its
+     own, while a search engine is handed two pages that claim to be the same
+     one and keeps whichever it likes. */
+  it('gives no two screens the same name', () => {
+    const titles = Object.entries(sr.seo).map(([key, entry]) => [key, entry.title] as const)
+    const seen = new Map<string, string>()
+    const clashes: string[] = []
+
+    for (const [key, title] of titles) {
+      const first = seen.get(title)
+
+      if (first === undefined) {
+        seen.set(title, key)
+      } else {
+        clashes.push(`${first} i ${key}: "${title}"`)
+      }
+    }
+
+    expect(clashes).toEqual([])
+  })
+
+  it('gives no two screens the same description either', () => {
+    const seen = new Set<string>()
+    const clashes: string[] = []
+
+    for (const [key, entry] of Object.entries(sr.seo)) {
+      if (seen.has(entry.description)) {
+        clashes.push(key)
+      }
+
+      seen.add(entry.description)
+    }
+
+    expect(clashes).toEqual([])
+  })
+
+  it('keeps every description short enough to be shown whole', () => {
+    /* A search result shows about a hundred and sixty characters and cuts the
+       rest mid-word. The limit is written in the type of PageHead; nothing had
+       ever measured against it. */
+    const tooLong = Object.entries(sr.seo)
+      .filter(([, entry]) => entry.description.length > 160)
+      .map(([key, entry]) => `${key}: ${entry.description.length}`)
+
+    expect(tooLong).toEqual([])
+  })
+})
+
+describe('the title in index.html', () => {
+  /* The one title that is not applied by applyHead. It is what a search engine
+     and a link preview see before any script has run, and what somebody with
+     scripting off sees for good, so it has to be the front page's own title
+     word for word. Nothing held it there: sr.json could be edited and the file
+     would go on claiming last month's title, on the one page the portal most
+     wants found. */
+  const html = readFileSync(join(process.cwd(), 'index.html'), 'utf-8')
+
+  const held = (pattern: RegExp, what: string) =>
+    must(pattern.exec(html), `${what} u index.html`)[1]
+
+  it('is the front page title, and so are the two that a shared link shows', () => {
+    expect(held(/<title>([^<]*)<\/title>/, 'naslov')).toBe(sr.seo.home.title)
+    expect(held(/<meta\s+property="og:title"\s+content="([^"]*)"/, 'og:title')).toBe(sr.seo.home.title)
+    expect(held(/<meta\s+name="twitter:title"\s+content="([^"]*)"/, 'twitter:title')).toBe(
+      sr.seo.home.title,
+    )
+  })
+
+  it('carries the front page description, the same three times over', () => {
+    expect(held(/<meta\s+name="description"\s+content="([^"]*)"/, 'opis')).toBe(
+      sr.seo.home.description,
+    )
+    expect(held(/<meta\s+property="og:description"\s+content="([^"]*)"/, 'og:description')).toBe(
+      sr.seo.home.description,
+    )
+    expect(held(/<meta\s+name="twitter:description"\s+content="([^"]*)"/, 'twitter:description')).toBe(
+      sr.seo.home.description,
+    )
   })
 })

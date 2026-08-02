@@ -466,10 +466,18 @@
   align-items: flex-end;
   flex-wrap: wrap;
   gap: var(--space-6);
-  /* Fixed and not a minimum. A minimum lets the box grow when the figure
-     arrives, and a box that grows moves the words in it however they are
-     aligned. Tall enough for the largest the figure gets. */
-  block-size: 2.6rem;
+  /* A minimum, and tall enough that it is what governs in both states: the
+     figure at its largest is a little over two rem and the words are shorter
+     than that, so the line is 2.6rem whether there is an answer yet or not, and
+     nothing in the card moves as somebody types.
+   *
+     Fixed height was the first attempt and it held the card still by clipping.
+     Everything here fits on one line until it does not: a narrower card, a
+     longer word for the label in another language, or a reader who has told the
+     browser to use larger text, and then the line wraps and a fixed box cuts the
+     second one off. A minimum holds the card still in the case it was written
+     for and gets out of the way in the case it was not. */
+  min-block-size: 2.6rem;
 }
 
 .calc__label {

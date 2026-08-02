@@ -69,11 +69,59 @@ const Field = memo(function Field({
   onChange: (field: FieldDef, value: string | boolean) => void
 }) {
   const { t } = useI18n()
-  const change = useCallback((next: string | boolean) => onChange(field, next), [field, onChange])
+  /**
+   * How many characters the last paste lost, and zero once anything else has
+   * happened in the box.
+   *
+   * The limit is refused at the door by `maxLength` on the element (owner,
+   * 01.08.2026), and the browser refuses it in silence: paste nine thousand
+   * characters into a box that holds eight and it keeps eight, drops a thousand,
+   * and says nothing at all. The counter then reads "the box is full", which is
+   * read as "I filled it" and not as "a thousand characters of what you brought
+   * are gone". Somebody moving the rules of a competition across from a document
+   * loses the last page and finds out when a member asks about it.
+   *
+   * Kept here rather than worked out from the value, because after the event
+   * there is nothing to work it out from: what was dropped never reached React.
+   */
+  const [dropped, setDropped] = useState(0)
+  const change = useCallback(
+    (next: string | boolean) => {
+      /* The message stays while the box is still full of the paste that caused
+         it, and goes the moment there is room again.
+       *
+       * Not "goes on the next change", which was the first attempt and cleared
+       * it instantly: a paste raises the message and then delivers its own
+       * change, so the message was put up and taken down inside one event and
+       * nobody ever saw it. Length is what tells the two apart. The paste leaves
+       * the box at exactly the limit; deleting a character is the first thing
+       * that leaves it under, and from then on what the box holds is what the
+       * writer left in it. */
+      if (typeof next !== 'string' || field.maxLength === undefined || next.length < field.maxLength) {
+        setDropped(0)
+      }
+
+      onChange(field, next)
+    },
+    [field, onChange],
+  )
   const inputId = `field-${field.name}`
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
-  const describedBy = [field.hintKey ? hintId : '', error ? errorId : ''].filter(Boolean).join(' ')
+  const leftId = `${inputId}-left`
+  /* The room left is described by the field rather than merely printed under it.
+     Printed under it, it is read by whoever can see it and by nobody else: a
+     screen reader announces the label, the rule and the error on focus, and the
+     one number that says how much of the box is already spent was not among
+     them. It is last of the three, because the count is the detail and the rule
+     is what the field is for. */
+  const describedBy = [
+    field.hintKey ? hintId : '',
+    error ? errorId : '',
+    field.type === 'textarea' && field.maxLength !== undefined ? leftId : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   const shared = {
     id: inputId,
@@ -184,17 +232,64 @@ const Field = memo(function Field({
                so a paste that is too long is cut rather than accepted and then
                marked wrong. */
             maxLength={field.maxLength}
+            /* What the browser is about to throw away, counted before it does.
+               The room is what the limit leaves, plus whatever the paste is
+               replacing: pasting over the whole box is not an overflow. */
+            onPaste={(event) => {
+              const box = event.currentTarget
+              const replacing = box.selectionEnd - box.selectionStart
+              /* Read as a number rather than asked about. Every textarea the
+                 portal has carries a limit, and one that does not cannot be
+                 written: `definitions.test.ts` refuses a definition that leaves
+                 it out, and a box a member can paste a novel into is not a thing
+                 anybody wants by accident. Asking here would be a branch on a
+                 case that cannot happen, which is worse than the rule it would
+                 be guarding. */
+              const room = Number(field.maxLength) - String(value).length + replacing
+              const brought = event.clipboardData.getData('text').length
+
+              setDropped(Math.max(0, brought - room))
+            }}
             onChange={(e) => change(e.target.value)}
           />
           {field.maxLength !== undefined && (
-            /* How much room is left, counted down. Polite rather than assertive:
-               a count that interrupted after every keystroke would make the
-               field unusable with a screen reader. */
-            <p className="field__left" aria-live="polite">
-              {String(value).length >= field.maxLength
-                ? t('registration.bioFull', { count: field.maxLength })
-                : t('registration.bioLeft', { count: field.maxLength - String(value).length })}
-            </p>
+            /* How much room is left, counted down.
+             *
+             * Not a live region. It was one, politely, and polite only means the
+             * reader waits its turn: the text changes on every keystroke, so the
+             * queue filled with three hundred and fifty-nine announcements of a
+             * number nobody was waiting to hear, and each one had to be got
+             * through before anything else could be said. What a writer needs is
+             * the count when they arrive at the field and a word when the box
+             * will take no more, and those are two different things.
+             *
+             * The count on arrival is `aria-describedby` above. The word at the
+             * wall is the region below, which is empty until the box is full and
+             * therefore says something at most once. */
+            <>
+              <p className="field__left" id={leftId}>
+                {String(value).length >= field.maxLength
+                  ? t('registration.bioFull', { count: field.maxLength })
+                  : t('registration.bioLeft', { count: field.maxLength - String(value).length })}
+              </p>
+
+              {/* What the last paste lost. Said in full, in its own words, and
+                  not left to be worked out from a counter that has gone to
+                  zero. */}
+              {dropped > 0 && (
+                <p className="field__dropped">{t('form.pasteCut', { count: dropped })}</p>
+              )}
+
+              {/* The two things worth interrupting a writer for, and nothing
+                  else. Empty the rest of the time, so it says something at most
+                  once rather than once per keystroke. */}
+              <p className="visually-hidden" role="status">
+                {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
+                {dropped === 0 && String(value).length >= field.maxLength
+                  ? t('registration.bioFull', { count: field.maxLength })
+                  : ''}
+              </p>
+            </>
           )}
         </>
       )}

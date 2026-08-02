@@ -2,7 +2,9 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { first, must } from '../test/at'
+import { translate, type Dictionary } from '../i18n/translate'
+import sr from '../i18n/sr.json'
+import { first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
@@ -261,7 +263,56 @@ describe('the box a member writes about themselves in', () => {
     expect(box).toHaveAttribute('maxlength', '360')
   })
 
+  it('tells whoever cannot see the count that it is there', () => {
+    /* The count was printed under the box and described by nothing, so a screen
+       reader read the label and the rule on arrival and never the one number
+       that says how much of the box is already spent. */
+    renderForm()
+
+    const box = screen.getByLabelText(/Svojim rečima/)
+    const described = box.getAttribute('aria-describedby') ?? ''
+    const counter = must(document.getElementById(last(described.split(' '))), 'brojač')
+
+    expect(counter).toHaveTextContent('Još 360 znakova')
+  })
+
+  it('counts in Serbian, which has three forms and not one', () => {
+    /* "Još 1 znakova" is not a sentence anybody writes. The engine has had
+       plural forms since it was written and this key was a single string. */
+    expect(translate(sr as Dictionary, 'sr', 'registration.bioLeft', { count: 1 })).toBe(
+      'Još 1 znak',
+    )
+    expect(translate(sr as Dictionary, 'sr', 'registration.bioLeft', { count: 3 })).toBe(
+      'Još 3 znaka',
+    )
+    expect(translate(sr as Dictionary, 'sr', 'registration.bioLeft', { count: 7 })).toBe(
+      'Još 7 znakova',
+    )
+  })
+
   it('says so when there is no room left, rather than counting nought', async () => {
+    const user = setupUser()
+    renderForm()
+
+    const box = screen.getByLabelText(/Svojim rečima/)
+    await user.click(box)
+    /* Exactly the limit, so the box is full and nothing was lost filling it. */
+    await user.paste('x'.repeat(360))
+
+    expect(box).toHaveValue('x'.repeat(360))
+    /* Twice on the screen and that is deliberate: the counter under the box for
+       whoever can see it, and a region that is empty the rest of the time for
+       whoever is being read to. It used to be one region that changed on every
+       keystroke, which queues three hundred and fifty-nine announcements in
+       front of anything else the reader might have to say. */
+    expect(screen.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(2)
+  })
+
+  it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
+    /* The limit is refused at the door, and the browser refuses in silence: 400
+       characters into a box that holds 360 keeps 360 and drops 40 without a
+       word. The counter then reads "the box is full", which is read as "I
+       filled it". */
     const user = setupUser()
     renderForm()
 
@@ -269,7 +320,27 @@ describe('the box a member writes about themselves in', () => {
     await user.click(box)
     await user.paste('x'.repeat(400))
 
-    expect(box).toHaveValue('x'.repeat(360))
-    expect(screen.getByText('Dosta je, granica je 360 znakova.')).toBeVisible()
+    expect(
+      screen.getAllByText(
+        'Nalepljeni tekst je bio 40 znakova duži nego što staje. Tih 40 znakova nije primljeno.',
+      ).length,
+    ).toBeGreaterThan(0)
+
+    /* And it goes the moment the writer does anything themselves, because from
+       then on the box holds what they left in it. */
+    await user.type(box, '{Backspace}')
+    expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
+  })
+
+  it('says nothing when the paste fits', async () => {
+    const user = setupUser()
+    renderForm()
+
+    const box = screen.getByLabelText(/Svojim rečima/)
+    await user.click(box)
+    await user.paste('x'.repeat(40))
+
+    expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
+    expect(screen.getByText('Još 320 znakova')).toBeVisible()
   })
 })

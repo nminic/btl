@@ -70,6 +70,17 @@
   color: var(--down);
 }
 
+/* What a paste left behind. In the colour of a refusal, because that is what it
+   is: text the writer brought and the box would not take. Full width and at the
+   left, unlike the counter above it, because it is a sentence to read and not a
+   number to glance at. */
+.field__dropped {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--down);
+}
+
 .form__submit {
   font: inherit;
   font-weight: 600;

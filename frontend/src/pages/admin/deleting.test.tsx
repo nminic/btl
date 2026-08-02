@@ -245,6 +245,66 @@ describe('one decision for a whole queue', () => {
     }
   })
 
+  it('hands every activated membership its own number, not one number to all of them', async () => {
+    /* The fault a loop would have walked straight into. A number is worked out
+       against everything already spoken for, and what is spoken for is read off
+       the session as this render sees it; the session does not change while a
+       loop runs. Twenty activations in a loop are twenty members answering to
+       000032, which is the exact fault the numbering was moved into one module
+       to stop (memberNumbers.ts, PDL P8). */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+      const before = within(waiting).getAllByRole('row').slice(1).length
+      expect(before).toBeGreaterThan(1)
+
+      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
+
+      const settled = within(screen.getByRole('table', { name: 'Rešeno' }))
+      const numbers = settled
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => must(row.querySelector('.table__member-number')?.textContent, 'broj'))
+
+      expect(numbers).toHaveLength(before)
+      expect(new Set(numbers).size).toBe(before)
+      /* And every one of them is a membership on the ground of a fee, which is
+         what the words on the button say it writes down. */
+      expect(settled.getAllByText('Uplata')).toHaveLength(before)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('activates nobody when the question about the money is answered no', async () => {
+    /* The one queue where saying yes by accident hands out member numbers, so
+       the way out of the question is the half worth pinning. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+      const before = within(waiting).getAllByRole('row').slice(1).length
+
+      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
+
+      expect(
+        within(await screen.findByRole('table', { name: 'Uplate i aktivacija članova' }))
+          .getAllByRole('row')
+          .slice(1),
+      ).toHaveLength(before)
+      expect(screen.queryByRole('table', { name: 'Rešeno' })).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
   it('settles nothing when the question is answered no', async () => {
     const user = setupUser()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
