@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { shownValue, textFrom, valuesFor } from '../../forms/records'
-import type { FieldOption, FormValues } from '../../forms/types'
+import type { FieldError, FieldOption, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { fieldValues, idFor, takenIdentity, type EntityDef, type Editing } from './entityForms'
@@ -23,6 +23,7 @@ export function EntityEditor({
   editing,
   options = {},
   taken = [],
+  also,
   openAt,
   onDone,
 }: {
@@ -40,6 +41,15 @@ export function EntityEditor({
    * The other six generate an identity that cannot collide.
    */
   taken?: string[]
+  /**
+   * A rule of the screen's own, checked beside the one every editor checks.
+   *
+   * The teams use it: one name is one team (PDL P13), and the address a team
+   * answers at is read off its name, so two teams of one name are two teams at
+   * one address. The queue that approves proposals refuses that; without this
+   * the same name could be typed in here and the guard walked around.
+   */
+  also?: (values: FormValues) => Record<string, FieldError>
   /** The field the cursor starts in, handed through to the form. Only a copied
    *  event uses it (src/pages/event/EventActions.tsx). */
   openAt?: string
@@ -157,7 +167,7 @@ export function EntityEditor({
         )}
         initial={editing.mode === 'new' ? undefined : valuesFor(form, editing.record)}
         options={options}
-        check={(values) => takenIdentity(entity, values, others)}
+        check={(values) => ({ ...takenIdentity(entity, values, others), ...also?.(values) })}
         derived={entity.derived}
         openAt={openAt}
         onSubmit={handleSubmit}

@@ -7,6 +7,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import predlogTima from '../../forms/definitions/predlog-tima.form.json'
 import type { FieldError, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
+import { addressesIn, addressOf } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -127,11 +128,13 @@ export function ProposeTeam() {
               <p className="member__note">{t('teams.proposeNote2')}</p>
               <FormRenderer
                 form={predlogTima as FormDef}
+                /* By the address the name makes, which is what has to be
+                   unique and is what the queue compares (teamProposal.ts).
+                   Comparing names let "Dunavski Trkaci" through to sit in the
+                   queue for ever: the moderator could not approve it and the
+                   member was never told why. */
                 check={(values): Record<string, FieldError> =>
-                  teams.some(
-                    (team) =>
-                      team.name.trim().toLowerCase() === String(values.name).trim().toLowerCase(),
-                  )
+                  addressesIn(teams).includes(addressOf(String(values.name)))
                     ? { name: { key: 'teams.proposeTaken' } }
                     : {}
                 }

@@ -117,13 +117,27 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
   )
 }
 
-/** The reason approving would do nothing, where there is one. Its own component
- *  so the reason is worked out once and read once, rather than twice by a
- *  condition and the thing it guards. */
-function Refused({ why }: { why: string | null }) {
+/**
+ * The reason approving would do nothing, where there is one.
+ *
+ * Its own component so the reason is worked out once and read once, rather than
+ * twice by a condition and the thing it guards.
+ *
+ * Announced rather than merely drawn, and named by the button it explains. A
+ * moderator correcting a name watches the reason appear and disappear as they
+ * type; one reading the screen through a reader got neither that nor an answer
+ * when they pressed. `role="status"` says it as it changes, and the button
+ * points at it, so the reason is read out on the way to pressing rather than
+ * after nothing happens (WCAG 2.2 SC 3.3.1 and 4.1.3).
+ */
+function Refused({ why, id }: { why: string | null; id: string }) {
   const { t } = useI18n()
 
-  return why === null ? null : <p className="pending__blocked">{t(why)}</p>
+  return (
+    <p className="pending__blocked" id={id} role="status">
+      {why === null ? '' : t(why)}
+    </p>
+  )
 }
 
 /**
@@ -254,23 +268,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   }
 
   /**
-   * What approving one item does, beyond writing down the decision.
-   *
-   * On the queue of new teams it does two more things (PDL P13, 03.08.2026):
-   * the team is made, with the member who proposed it as its organiser, and that
-   * member is told. Until the approval a proposal is a row in a queue; after it,
-   * it is a record like any other, and the member has the rights over it that
-   * P21 calls being a team's organiser.
-   *
-   * The message goes to the inbox and not to an alert on a screen nobody is
-   * looking at: the decision may come days later, and a decision that reaches
-   * nobody is the fault this closes.
-   *
-   * Here rather than at the button, because the sweep approves the same way and
-   * a queue where "approve all" did less than pressing approve forty times would
-   * be a trap.
-   */
-  /**
    * Approving, one item or forty, with everything the next one has to know.
    *
    * Written as a walk rather than as a call per item, and that is the whole
@@ -356,6 +353,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       <Resource state={state}>
         {([items, listed]) => {
           const teams = recordsOf(TEAMS, listed, overlay)
+          /* The addresses once for the screen rather than once per card, and the
+             reason for one card off them. */
+          const addresses = addressesIn(teams)
+          const refusedFor = (one: PendingItem) =>
+            queue.id === 'teams' ? refusal(teamFrom(one, edits), addresses, one) : null
           const waiting = waitingIn(items, decisions, queue.id)
           /* Each settled item with the decision that settled it, so the row
              below shows what was decided instead of going back for it
@@ -502,6 +504,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <button
                             type="button"
                             className="button button--primary"
+                            /* Not switched off: a control that leaves the row
+                               takes the keyboard with it, and this one is meant
+                               to be reachable so its reason can be read. It says
+                               it cannot act and points at why. */
+                            aria-disabled={refusedFor(one) !== null}
+                            aria-describedby={
+                              refusedFor(one) === null ? undefined : `${one.id}-blocked`
+                            }
                             onClick={() => approveAll([one], teams)}
                           >
                             {queue.outcome === 'editAndPublish'
@@ -549,13 +559,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               rather than left to a press that changes nothing.
                               The moderator has the fields above to put it right,
                               or the way back to hand it to whoever sent it. */}
-                          <Refused
-                            why={
-                              queue.id === 'teams'
-                                ? refusal(teamFrom(one, edits), addressesIn(teams), one)
-                                : null
-                            }
-                          />
+                          {queue.id === 'teams' && (
+                            <Refused why={refusedFor(one)} id={`${one.id}-blocked`} />
+                          )}
 
                           {/* And where it cannot go back, the button is gone and
                               the reason is on screen in its place. A control

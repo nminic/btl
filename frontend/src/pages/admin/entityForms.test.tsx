@@ -617,3 +617,44 @@ describe('the identity a new record is handed', () => {
     expect(idFor(TEAMS, {}, ['tim-ver-tim-1'], [])).toBe('teams-nov-1')
   })
 })
+
+describe('two teams under one name', () => {
+  /* One name, one team (PDL P13), and the address a team answers at is read off
+     its name, so two teams of one name are two teams at one address. The queue
+     that approves proposals refuses it; this is the other door. */
+  it('cannot be entered in the administration either', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    await screen.findByRole('table', { name: t('admin.teams') })
+    await user.click(screen.getByRole('button', { name: 'Novi tim' }))
+
+    /* Spelt differently on purpose: the address is what collides, and the
+       address drops the case and the diacritics. */
+    await user.type(screen.getByLabelText(/^Naziv tima/), 'DUNAVSKI TRKACI')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Novi Sad')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000001')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+  })
+
+  it('does not refuse a team that is being saved under the name it already has', async () => {
+    /* Compared against every team but the one being edited, or opening a team
+       and pressing save would refuse it against itself. */
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    await screen.findByRole('table', { name: t('admin.teams') })
+    await user.click(screen.getByRole('button', { name: /^Otvori: Dunavski trkači$/ }))
+
+    const city = await screen.findByLabelText(/^Mesto/)
+    await user.clear(city)
+    await user.type(city, 'Petrovaradin')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+})

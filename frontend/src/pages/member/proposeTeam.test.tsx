@@ -460,6 +460,28 @@ describe('what a moderator may do before accepting a proposal', () => {
     expect(within(row).getByText('Strahinja Vukićević')).toBeVisible()
   })
 
+  it('writes to the member who proposed it and to nobody else', async () => {
+    /* An empty recipient means the whole league as far as the inbox is
+       concerned (session/context.ts). Read from a different member's account
+       than the one that proposed it, because approving as the proposer cannot
+       tell a letter from an announcement. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      /* Not 000007, who sent both proposals in the file. */
+      '000001',
+    )
+
+    await screen.findByRole('list', { name: /Čeka/ })
+    await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/poruke')
+    const inbox = within(await screen.findByRole('list'))
+
+    expect(inbox.queryByText(/Timočka trkačka družina.*prihvaćen|prihvaćen.*Timočka/)).toBeNull()
+  })
+
   it('gives two teams approved in one sweep two identities', async () => {
     /* The fault a call per item walks into. What identity is free is read out of
        the session, and the session does not change while a loop runs, so forty
@@ -486,15 +508,32 @@ describe('what a moderator may do before accepting a proposal', () => {
       const listed = () => within(screen.getByRole('table', { name: 'Timovi' }))
       await screen.findByRole('table', { name: 'Timovi' })
 
-      /* Told apart by acting on one of them: two rows under one identity draw
-         from one record, so renaming either renames both. */
-      await user.click(listed().getByRole('button', { name: 'Obriši: Timočka trkačka družina' }))
-      await user.click(
-        listed().getByRole('button', { name: 'Potvrdi brisanje: Timočka trkačka družina' }),
-      )
+      /* Told apart by changing one and reading the other. The overlay of edits
+         is keyed by identity, so under one identity a change to either reaches
+         both: that is the fault, and it is the only thing that sees it. Deleting
+         one does not, because two rows under one key leave a stale row behind
+         and the screen looks right for the wrong reason. */
+      await user.click(listed().getByRole('button', { name: /^Otvori: Timočka/ }))
 
-      expect(listed().queryByText('Timočka trkačka družina')).toBeNull()
-      expect(listed().getByText('Dunavski trkači Novi Sad')).toBeVisible()
+      const city = await screen.findByLabelText(/^Mesto/)
+      await user.clear(city)
+      await user.type(city, 'Knjaževac')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      await screen.findByRole('table', { name: 'Timovi' })
+
+      const rows = listed()
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.textContent ?? '')
+
+      expect(rows.filter((row) => /Knjaževac/.test(row))).toHaveLength(1)
+      expect(rows.filter((row) => /Dunavski trkači Novi Sad/.test(row))).toHaveLength(1)
+      /* And the one that was not touched still says the town it was made
+         with. */
+      expect(
+        rows.find((row) => /Dunavski trkači Novi Sad/.test(row)),
+      ).toMatch(/Novi Sad/)
     } finally {
       confirm.mockRestore()
     }

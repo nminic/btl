@@ -22,6 +22,16 @@ export function proposed(item: PendingItem): Proposed {
  *  point here is that none of the three may be nothing. */
 export type Proposed = { name: string; city: string; country: string }
 
+/** The address a team of that name answers at, which is the thing that has to
+ *  be unique: `slugify` is not one to one, so two names can make one address. */
+export function addressOf(name: string): string {
+  return slugify(name)
+}
+
+export function addressesIn(teams: Team[]): string[] {
+  return teams.map((team) => addressOf(team.name))
+}
+
 /**
  * Why this proposal cannot be approved, or nothing.
  *
@@ -34,16 +44,6 @@ export type Proposed = { name: string; city: string; country: string }
  * "Dunavski Trkaci" are two names and one address, so comparing names would let
  * the second through to collide with the first.
  */
-/** The address a team of that name answers at, which is the thing that has to
- *  be unique: `slugify` is not one to one, so two names can make one address. */
-export function addressOf(name: string): string {
-  return slugify(name)
-}
-
-export function addressesIn(teams: Team[]): string[] {
-  return teams.map((team) => addressOf(team.name))
-}
-
 export function refusal(made: Proposed, addresses: string[], item: PendingItem): string | null {
   if ([made.name, made.city, made.country].some((value) => value.trim() === '')) {
     return 'verification.teamIncomplete'
@@ -56,7 +56,9 @@ export function refusal(made: Proposed, addresses: string[], item: PendingItem):
   /* Nobody to tell and nobody to put on the team. An empty member number means
      the whole league as far as the inbox is concerned (session/context.ts), so
      approving would announce somebody's team to everybody and leave the team
-     without an organiser. The way back is guarded the same way (queues.ts). */
+     without an organiser. The way back is not guarded here, only on the queue
+     that writes an instruction to a member (queues.ts), so this is the one
+     control on this queue that has to ask. */
   if (item.memberNumber === '') {
     return 'verification.teamNoMember'
   }

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import type { Competitor } from '../../data/types'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
-import type { FieldOption } from '../../forms/types'
+import type { FieldError, FieldOption } from '../../forms/types'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { addressesIn, addressOf } from './teamProposal'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { recordsOf, TEAMS, type Editing } from './entityForms'
@@ -47,6 +48,21 @@ export function AdminTeams() {
                 entity={TEAMS}
                 editing={editing}
                 options={{ organizerMemberNumber: organizerOptions(competitors) }}
+                /* One name, one team (PDL P13). The queue of new teams refuses a
+                   name that is taken; without this the same name could be typed
+                   in here, and since the address is read off the name that is
+                   two teams at one address. Compared against every team but the
+                   one being edited, or saving a team without touching its name
+                   would refuse itself. */
+                also={(values): Record<string, FieldError> =>
+                  addressesIn(
+                    rows.filter(
+                      (one) => one.id !== (editing.mode === 'one' ? editing.record.id : ''),
+                    ),
+                  ).includes(addressOf(String(values.name)))
+                    ? { name: { key: 'teams.proposeTaken' } }
+                    : {}
+                }
                 onDone={() => setEditing(null)}
               />
             )
