@@ -1237,7 +1237,7 @@
       "other": "Rešeno je {count} stavki."
     },
     "teamAccepted": "Tim „{name}\" je prihvaćen",
-    "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen i tim od sada postoji u ligi. Ti si njegov organizator, pa mu možeš menjati podatke i voditi ga kroz sezonu."
+    "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator."
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

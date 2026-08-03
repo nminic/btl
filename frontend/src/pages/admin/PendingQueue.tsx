@@ -4,13 +4,17 @@ import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
+import { combinePair, useTeams } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
+import countries from '../../data/countries.json'
+import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
-import type { Decision } from '../../session/context'
+import type { Decision, Edits } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { usePending, waitingIn, settledWith } from './pending'
-import type { PendingItem } from '../../data/types'
-import { TEAMS } from './entityForms'
+import type { PendingItem, Team } from '../../data/types'
+import { idFor, recordsOf, TEAMS } from './entityForms'
+import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, type Queue, type QueueOutcome } from './queues'
 import { SendBack } from './SendBack'
@@ -112,9 +116,105 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
   )
 }
 
+/**
+ * What a proposal says the team should be called, and where it is from.
+ *
+ * One place, because three things read it: the fields a moderator corrects, the
+ * check that the name is free, and the record the approval makes.
+ */
+function proposed(item: PendingItem): Proposed {
+  return { name: item.subject, city: item.city, country: item.country }
+}
+
+/** What a team is made of, as three named things rather than a bag of strings:
+ *  read out of a record, each of them is "string or nothing", and the whole
+ *  point here is that none of the three may be nothing. */
+type Proposed = { name: string; city: string; country: string }
+
+/** The team a proposal would make, with whatever the moderator has corrected. */
+function teamFrom(item: PendingItem, edits: Edits): Proposed {
+  const said = proposed(item)
+
+  return {
+    name: String(edits[item.id]?.name ?? said.name),
+    city: String(edits[item.id]?.city ?? said.city),
+    country: String(edits[item.id]?.country ?? said.country),
+  }
+}
+
+/** Whether a team already answers to that name, however it is written. A name
+ *  and the address read off it are the same thing twice (PDL P13). */
+function taken(name: string, teams: Team[]): boolean {
+  const wanted = name.trim().toLowerCase()
+
+  return teams.some((team) => team.name.trim().toLowerCase() === wanted)
+}
+
+/** Whether anything a team cannot be made without is still missing. */
+function incomplete(made: Proposed): boolean {
+  return [made.name, made.city, made.country].some((value) => value.trim() === '')
+}
+
+/**
+ * The three things a team is made of, changeable before it is made.
+ *
+ * The owner asked for it in the same breath as the approval itself: whoever
+ * decides "may or may not change the team's data, and if they accept it" the
+ * member is told (PDL P13, 03.08.2026). A name, a town and a country arrive as
+ * the member typed them and the team carries them from then on, so the moment to
+ * put a lower-case name right is before the record exists rather than after.
+ *
+ * Written into the same overlay of edits the biography uses, keyed by the item,
+ * so approving reads whatever is on screen rather than what arrived.
+ */
+function TeamFields({ item }: { item: PendingItem }) {
+  const { t } = useI18n()
+  const { edits, edit } = useSession()
+
+  const value = (field: 'name' | 'city' | 'country') =>
+    String(edits[item.id]?.[field] ?? proposed(item)[field])
+
+  return (
+    <div className="pending__fields">
+      <label className="rankings__field">
+        <span>{t('admin.field.teamName')}</span>
+        <input
+          type="text"
+          value={value('name')}
+          maxLength={limitOf(tim as FormDef, 'name')}
+          onChange={(event) => edit(item.id, 'name', event.target.value)}
+        />
+      </label>
+
+      <label className="rankings__field">
+        <span>{t('admin.field.city')}</span>
+        <input
+          type="text"
+          value={value('city')}
+          maxLength={limitOf(tim as FormDef, 'city')}
+          onChange={(event) => edit(item.id, 'city', event.target.value)}
+        />
+      </label>
+
+      <label className="rankings__field">
+        <span>{t('admin.field.country')}</span>
+        <select value={value('country')} onChange={(event) => edit(item.id, 'country', event.target.value)}>
+          <option value="">{t('form.choose')}</option>
+          {[...countries.region, ...countries.rest].map((one) => (
+            <option key={one.code} value={one.code}>
+              {one.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  )
+}
+
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { create, decisions, edits, notify, settle } = useSession()
+  const { create, creations, decisions, edits, notify, settle } = useSession()
+  const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
   const today = useToday()
@@ -136,7 +236,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const [closed, setClosed] = useState<string | null>(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
-  const state = usePending()
+  /* The teams as well, for one rule: a name already in the league cannot be
+     taken by a proposal (PDL P13). Read through what this visit has entered, so
+     two proposals of the same name in one sitting cannot both go through. */
+  const state = combinePair(usePending(), useTeams())
 
   /* Both dates of a reported change, so the difference is the thing on screen
      and not something the reader works out. Empty on the other five queues. */
@@ -184,7 +287,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * a queue where "approve all" did less than pressing approve forty times would
    * be a trap.
    */
-  const approve = (one: PendingItem) => {
+  const approve = (one: PendingItem, teams: Team[]): boolean => {
+    const made = queue.id === 'teams' ? teamFrom(one, edits) : null
+
+    /* Refused rather than made. PDL P13: a name already in the league cannot be
+       taken again, and the moderator has the fields above to put it right or the
+       way back to hand the proposal to whoever sent it. Approving it anyway
+       would put two teams under one name and, since the address is read off the
+       name, under one address. */
+    if (made !== null && (taken(made.name, teams) || incomplete(made))) {
+      return false
+    }
+
     settle(one.id, {
       status: 'approved',
       /* A published biography is written down as it went out, so the table of
@@ -196,24 +310,28 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       memberNumber: '',
     })
 
-    if (queue.id !== 'teams') {
-      return
+    if (made === null) {
+      return true
     }
 
-    create(TEAMS.id, `tim-${one.id}`, {
-      name: one.subject,
-      city: one.city,
-      country: one.country,
-      organizerMemberNumber: one.memberNumber,
-    })
+    /* The identity from the one place that hands them out, so the count of what
+       has been created stays one count: an identity of another shape put in
+       beside them moved the counter for everything entered by hand. */
+    create(
+      TEAMS.id,
+      idFor(TEAMS, {}, (creations[TEAMS.id] ?? []).map((row) => row.id), []),
+      { ...made, organizerMemberNumber: one.memberNumber },
+    )
 
     notify({
       from: t('app.name'),
       to: one.memberNumber,
-      subject: t('verification.teamAccepted', { name: one.subject }),
-      body: t('verification.teamAcceptedBody', { name: one.subject }),
+      subject: t('verification.teamAccepted', { name: made.name }),
+      body: t('verification.teamAcceptedBody', { name: made.name }),
       date: today,
     })
+
+    return true
   }
 
   const settledColumn = SETTLED_COLUMN[queue.outcome]
@@ -234,7 +352,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       <h1 className="visually-hidden">{t(queue.labelKey)}</h1>
 
       <Resource state={state}>
-        {(items) => {
+        {([items, listed]) => {
+          const teams = recordsOf(TEAMS, listed, overlay)
           const waiting = waitingIn(items, decisions, queue.id)
           /* Each settled item with the decision that settled it, so the row
              below shows what was decided instead of going back for it
@@ -261,11 +380,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                         return
                       }
 
-                      for (const item of waiting) {
-                        approve(item)
-                      }
+                      /* What it settled, not what it was asked to settle. A
+                         proposal whose name is already in the league is left
+                         standing, so the count has to be the ones that went
+                         through or the line under the button would say a number
+                         the queue disagrees with. */
+                      const done = waiting.filter((item) => approve(item, teams)).length
 
-                      setSwept(waiting.length)
+                      setSwept(done)
                     }}
                   >
                     {t('verification.approveAll')}
@@ -286,7 +408,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   {waiting.map((one) => (
                     <li key={one.id} className="submissions__item">
                       <div className="submissions__head">
-                        <h3 className="pending__subject">{one.subject}</h3>
+                        {/* What it will be called if it is taken, not what it
+                            arrived as. A moderator who has just corrected a name
+                            in the field below should not read the old one at the
+                            top of the same card. */}
+                        <h3 className="pending__subject">
+                          {queue.id === 'teams' ? teamFrom(one, edits).name : one.subject}
+                        </h3>
                         <span className="submissions__meta">
                           {formatShortDate(one.date, locale)}
                         </span>
@@ -303,6 +431,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               memberNumber: one.memberNumber,
                             })}
                       </p>
+
+                      {/* The three things the team will be made of, before it
+                          is made (owner, 03.08.2026). Only here: the other five
+                          queues decide about something that already exists. */}
+                      {queue.id === 'teams' && <TeamFields item={one} />}
 
                       <dl className="pending__facts">
                         {datesOf(one).map((fact) => (
@@ -369,7 +502,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <button
                             type="button"
                             className="button button--primary"
-                            onClick={() => approve(one)}
+                            onClick={() => approve(one, teams)}
                           >
                             {queue.outcome === 'editAndPublish'
                               ? t('verification.publish')

@@ -322,3 +322,185 @@ describe('a proposal a moderator accepts', () => {
     expect(listed.queryByText('Trkači Morave')).toBeNull()
   })
 })
+
+describe('what a moderator may do before accepting a proposal', () => {
+  /* The owner asked for it in the same breath as the approval: whoever decides
+     may or may not change the team's data, and if they accept, the member is
+     told (PDL P13, 03.08.2026). The name, the town and the country arrive as the
+     member typed them and the team carries them from then on. */
+  const open = async () => {
+    const rendered = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000007')
+    await screen.findByRole('list', { name: /Čeka/ })
+
+    return rendered
+  }
+
+  const card = (name: RegExp) =>
+    must(
+      within(screen.getByRole('list', { name: /Čeka/ }))
+        .getAllByRole('listitem')
+        .find((item) => name.test(item.textContent ?? '')),
+      'kartica predloga',
+    )
+
+  it('offers the three things the team will be made of', async () => {
+    await open()
+
+    const mine = within(card(/Timočka/))
+
+    expect(mine.getByLabelText('Naziv tima')).toHaveValue('Timočka trkačka družina')
+    expect(mine.getByLabelText('Mesto')).toHaveValue('Zaječar')
+    expect(mine.getByLabelText('Država')).toHaveValue('RS')
+  })
+
+  it('makes the team out of what was corrected, not out of what arrived', async () => {
+    const user = setupUser()
+    const { router } = await open()
+
+    const name = within(card(/Timočka/)).getByLabelText('Naziv tima')
+    await user.clear(name)
+    await user.type(name, 'Timočka družina')
+
+    await user.click(within(card(/Timočka družina/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(listed.getByText('Timočka družina')).toBeVisible()
+    expect(listed.queryByText('Timočka trkačka družina')).toBeNull()
+  })
+
+  it('refuses a name a team in the league already answers to', async () => {
+    /* PDL P13. The address is read off the name, so two teams under one name are
+       two teams under one address. The moderator has the field to put it right,
+       or the way back to whoever sent it. */
+    const user = setupUser()
+    const { router } = await open()
+
+    await user.click(within(card(/dunavski trkači/)).getByRole('button', { name: 'Odobri' }))
+
+    /* Still waiting: nothing was settled and nothing was made. */
+    expect(card(/dunavski trkači/)).toBeVisible()
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(listed.queryByText('dunavski trkači')).toBeNull()
+  })
+
+  it('takes it once the name is put right', async () => {
+    const user = setupUser()
+    const { router } = await open()
+
+    const name = within(card(/dunavski trkači/)).getByLabelText('Naziv tima')
+    await user.clear(name)
+    await user.type(name, 'Dunavski trkači Novi Sad')
+
+    await user.click(within(card(/Dunavski trkači Novi Sad/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(listed.getByText('Dunavski trkači Novi Sad')).toBeVisible()
+  })
+
+  it('refuses one that is missing something a team cannot be made without', async () => {
+    const user = setupUser()
+    const { router } = await open()
+
+    const city = within(card(/Timočka/)).getByLabelText('Mesto')
+    await user.clear(city)
+
+    await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
+
+    expect(card(/Timočka/)).toBeVisible()
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(listed.queryByText('Timočka trkačka družina')).toBeNull()
+  })
+
+  it('takes a country the moderator chooses instead of the one that arrived', async () => {
+    /* The third of the three fields. A member can pick the wrong one out of two
+       hundred and fifty, and the team carries it from then on. */
+    const user = setupUser()
+    const { router } = await open()
+
+    await user.selectOptions(within(card(/Timočka/)).getByLabelText('Država'), 'BA')
+    await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
+
+    /* Read on the team's own form, because the list of teams has no column for
+       a country: the record is what has to carry it. */
+    await router.navigate('/sr/administracija/timovi')
+    await screen.findByRole('table', { name: 'Timovi' })
+    await user.click(screen.getByRole('button', { name: /^Otvori: Timočka/ }))
+
+    expect(await screen.findByLabelText(/^Država/)).toHaveValue('BA')
+  })
+
+  it('makes the member who proposed it the organiser of the team', async () => {
+    /* "Admin prava za svoj tim" out of the owner's decision, which P21 already
+       calls being a team's organiser: not a new role but something a competitor
+       carries. */
+    const user = setupUser()
+    const { router } = await open()
+
+    await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      listed.getAllByRole('row').find((one) => /Timočka/.test(one.textContent ?? '')),
+      'red novog tima',
+    )
+
+    /* The member who sent that proposal in, by the name the portal knows them
+       by, and not "Nema organizatora". */
+    expect(within(row).getByText('Strahinja Vukićević')).toBeVisible()
+  })
+
+  it('gives two teams approved one after the other two identities', async () => {
+    /* The count of what has been made is read at each approval, so the second
+       has to see the first. It used to be filed under an identity of its own
+       shape, which moved the counter for everything entered by hand and let two
+       records end up under one key. */
+    const user = setupUser()
+    const { router } = await open()
+
+    await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
+
+    const name = within(card(/dunavski trkači/)).getByLabelText('Naziv tima')
+    await user.clear(name)
+    await user.type(name, 'Dunavski trkači Novi Sad')
+    await user.click(within(card(/Dunavski trkači Novi Sad/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    /* Both there, and each openable on its own: two rows under one identity
+       would draw one and lose the other. */
+    expect(listed.getByText('Timočka trkačka družina')).toBeVisible()
+    expect(listed.getByText('Dunavski trkači Novi Sad')).toBeVisible()
+    expect(listed.getAllByRole('button', { name: /^Otvori: (Timočka|Dunavski trkači Novi)/ }))
+      .toHaveLength(2)
+  })
+
+  it('counts only what the sweep really settled', async () => {
+    /* One of the two waiting proposals carries a name the league already has, so
+       "approve all" leaves it standing. The line under the button has to say two
+       when it settled one, or it says a number the queue disagrees with. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      await open()
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByText(/^Rešen.* 1 stavk/)).toBeVisible()
+      expect(card(/dunavski trkači/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+})

@@ -16,6 +16,7 @@ import {
   PAGES,
   RACES,
   TEAMS,
+  idFor,
   type EntityDef,
 } from './entityForms'
 
@@ -586,5 +587,33 @@ describe('the words the eight forms need', () => {
       ).options ?? []
 
     expect(options.map((one) => one.value)).toEqual([...BADGE_KINDS])
+  })
+})
+
+describe('the identity a new record is handed', () => {
+  /* Counted up from the highest already used, never from the length of the list.
+   * The length goes back down: make two, delete the first, make a third, and the
+   * third is handed the identity the second holds. The list then draws two rows
+   * under one key and a change to either reaches both, because the overlay of
+   * changes is keyed by exactly that identity. */
+  it('follows the ones already made', () => {
+    expect(idFor(TEAMS, {}, [], [])).toBe('teams-nov-1')
+    expect(idFor(TEAMS, {}, ['teams-nov-1'], [])).toBe('teams-nov-2')
+    expect(idFor(TEAMS, {}, ['teams-nov-1', 'teams-nov-2'], [])).toBe('teams-nov-3')
+  })
+
+  it('does not go back when one of them is deleted', () => {
+    /* Two made, the first deleted, so the list holds one. Counted by length that
+       is "teams-nov-2" again, which is the identity the survivor answers to. */
+    expect(idFor(TEAMS, {}, ['teams-nov-2'], [])).toBe('teams-nov-3')
+  })
+
+  it('steps over anything not of that shape', () => {
+    /* Approving a proposal used to file the team under an identity of its own
+       making, which moved this counter for everything entered by hand. It comes
+       through here now, and anything else in the list is ignored rather than
+       counted. */
+    expect(idFor(TEAMS, {}, ['tim-ver-tim-1', 'teams-nov-4'], [])).toBe('teams-nov-5')
+    expect(idFor(TEAMS, {}, ['tim-ver-tim-1'], [])).toBe('teams-nov-1')
   })
 })

@@ -23,11 +23,13 @@ import './Member.css'
  * and P13 went on reading "the superadmin approves", which is why the screen
  * said neither for a while; the owner brought P13 into line on 03.08.2026.
  *
- * What this screen deliberately does not promise is an answer, and does not
- * promise the member a sight of what they sent either. A decision on a proposal
- * reaches nobody: the inbox is written to on one queue only, the pictures, and a
- * member has no list of what they have put forward. Both of those are written
- * down (PENDING R9) rather than papered over with a sentence.
+ * What this screen does not promise is a sight of the proposal while it waits.
+ * There is no list of what a member has put forward, so it says the team is not
+ * visible anywhere rather than that only they can see it.
+ *
+ * The decision itself does reach them: approving writes to the inbox
+ * (PendingQueue, PDL P13). A refusal still reaches nobody, which is what is left
+ * of R9.
  *
  * The words say "moderator" and stop there, as the other two do. Naming the
  * superadmin beside him is accurate and useless to a member: it is the internal

@@ -75,7 +75,16 @@ export function EntityEditor({
     }
 
     if (editing.mode === 'new') {
-      create(entity.id, idFor(entity, values, (creations[entity.id] ?? []).length, taken), text)
+      create(
+        entity.id,
+        idFor(
+          entity,
+          values,
+          (creations[entity.id] ?? []).map((one) => one.id),
+          taken,
+        ),
+        text,
+      )
     } else {
       editRecord(String(editing.record[entity.idField]), text)
     }

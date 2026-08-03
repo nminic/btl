@@ -133,3 +133,19 @@
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+/* The three things a team is made of, on the card that decides about it. In a
+   row where there is room and one under another on a phone, like every other set
+   of fields on the portal. */
+.pending__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  margin-block: var(--space-8);
+}
+
+.pending__fields .rankings__field {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  margin: 0;
+}

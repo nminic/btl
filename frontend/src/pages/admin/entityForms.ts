@@ -329,14 +329,42 @@ export function namesItself(entity: EntityDef): boolean {
 export function idFor(
   entity: EntityDef,
   values: FormValues,
-  made: number,
+  made: string[],
   taken: string[],
 ): string {
   if (entity.handsOutIdentity !== undefined) {
     return entity.handsOutIdentity(taken)
   }
 
-  return namesItself(entity) ? String(values[entity.idField]) : `${entity.id}-nov-${made + 1}`
+  if (namesItself(entity)) {
+    return String(values[entity.idField])
+  }
+
+  /* One past the highest already used, and not the length of the list.
+   *
+   * The length goes back down. Make two records, delete the first, make a
+   * third, and the third is handed the identity the second holds: the list
+   * draws two rows under one key, and a change to either reaches both, because
+   * the overlay of changes is keyed by exactly that identity. That is the same
+   * fault this file warns about two functions down, arriving by a different
+   * door. Counting up from the highest never goes back. */
+  const highest = made.reduce((most, one) => {
+    /* Taken apart rather than indexed. Read as `found[1]` the digits are "string
+       or nothing", `Number(undefined)` is not a number, and `Math.max` of it is
+       not a number either: every record then came out `-nov-NaN`, which is one
+       identity for all of them. That is the very fault this counter exists to
+       stop, and it went in silently, because nothing about a name is checked at
+       the point it is made. */
+    /* Two backslashes, because this is a template literal: written with one,
+       JavaScript reads it as an escape and hands the expression `d+`, which
+       matches nothing, so the count stayed at nought and every record was
+       named `-nov-1`. */
+    const [, digits] = new RegExp(`^${entity.id}-nov-(\\d+)$`).exec(one) ?? []
+
+    return digits === undefined ? most : Math.max(most, Number(digits))
+  }, 0)
+
+  return `${entity.id}-nov-${highest + 1}`
 }
 
 /**
