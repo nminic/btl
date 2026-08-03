@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -49,10 +50,6 @@ describe('a proposal a member sends', () => {
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
     expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
-    /* And nothing is promised that nothing keeps: a decision on a proposal
-       reaches no inbox and the member has no list of what they put forward
-       (PENDING R9). */
-    expect(screen.queryByText(/u tvoje poruke/)).toBeNull()
   })
 
   it('refuses to send without the three things it asks for', async () => {
@@ -63,6 +60,63 @@ describe('a proposal a member sends', () => {
 
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
     expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(3)
+  })
+})
+
+describe('who the queue of new teams says decides', () => {
+  it('names both, because both may (PDL P13, P21)', () => {
+    /* This is the text the queue's own page carries into its description, and it
+       said "Svaki nov tim odobrava superadministrator" for as long as P13 did.
+       Changing P13 and leaving it was how the decision and the screen went on
+       disagreeing one file further along, and nothing was measuring it. */
+    const said = sr.verification.fromTeams
+
+    expect(said).toMatch(/[Ss]uperadmin/)
+    expect(said).toMatch(/moderator/)
+  })
+})
+
+describe('what the screen promises a member', () => {
+  it('promises no answer, because none arrives', async () => {
+    /* It used to say the answer comes to your messages. Nothing writes it there:
+       the inbox is written to on one queue only, the pictures, so a decision on
+       a proposal reaches nobody (PENDING R9).
+
+       Checked by counting the inbox rather than by matching the old sentence,
+       which any other wording of the same promise would have slipped past. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/poruke', 'competitor', '000007')
+
+    const before = within(await screen.findByRole('list')).getAllByRole('listitem').length
+
+    await router.navigate('/sr/novi-tim')
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    await router.navigate('/sr/poruke')
+
+    expect(within(await screen.findByRole('list')).getAllByRole('listitem')).toHaveLength(before)
+  })
+
+  it('promises no sight of it either, because there is no screen that shows one', async () => {
+    /* A proposal lives in the session and is read in the administration alone,
+       so "only you can see it" would have been the same kind of promise. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000007')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    await router.navigate('/sr/timovi')
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    expect(screen.queryByText('Trkači Morave')).toBeNull()
   })
 })
 
