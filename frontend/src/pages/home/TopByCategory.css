@@ -71,13 +71,22 @@
    phone rule below has been asking for a smaller face since it was written and
    never got one, which nothing catches, because a face of the wrong size is
    still a face. */
+/* On top of its own bar, wherever that bar ended up. In the flow it took height
+   away from the bar it stands on, which is what made the bars disagree with the
+   numbers in them. */
+.top-cat__column .portrait {
+  position: absolute;
+  inset-block-end: calc(var(--bar) + var(--face-gap));
+  inset-inline: 0;
+  margin-inline: auto;
+}
+
 .top-cat .top-cat__column .portrait {
   /* Written through a variable because the name below has to know it: the name
      is centred on the face, and to place it the stylesheet needs the face's own
      size and the gap under it. */
   inline-size: var(--face);
   block-size: var(--face);
-  margin-block-end: var(--face-gap);
   /* The ring the hover draws, kept off until then rather than drawn in the page
      colour, so it neither shifts the face nor shows as a smudge. */
   outline: 2px solid transparent;
@@ -154,14 +163,36 @@
   }
 }
 
-.top-cat__bar {
+/* The ground the bars are measured against.
+ *
+ * The whole column less the face and the gap under it, and this is what makes
+ * the bars proportional. They used to be laid out in the same column as the
+ * face, so the tallest bar asked for the whole column and then gave room back
+ * to the face standing on it while the shorter ones gave nothing back: five and
+ * four came out the same height, which the owner reported (03.08.2026). The
+ * height a bar asks for is a share of a fixed thing now, so twice the races is
+ * twice the bar and one race in five is a fifth.
+ *
+ * The face rides on top of its bar rather than standing in the flow above it,
+ * so the tallest column puts its face over the band the pause control sits in.
+ * The owner accepted that (03.08.2026): the alternative is taking the face's
+ * height off every bar, which is the thing that stopped them being bars. */
+.top-cat__track {
   position: relative;
+  inline-size: 100%;
+  block-size: calc(100% - var(--face) - var(--face-gap));
+}
+
+.top-cat__bar {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
   display: block;
   pointer-events: none;
-  inline-size: 100%;
-  /* Set on the link, because the name needs it too (TopByCategory.tsx). */
+  /* Set on the link, because the face and the name need it too
+     (TopByCategory.tsx). A share of the track above, and nothing else: a floor
+     here is what made one race and two races the same height. */
   block-size: var(--bar);
-  min-block-size: 2.4rem;
   border-radius: 2px 2px 0 0;
   background: #1f7ad6;
   text-decoration: none;

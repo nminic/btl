@@ -268,3 +268,41 @@ describe('the name over a column of the turning chart', () => {
     expect(css).toMatch(/--face:\s*2\.2rem/)
   })
 })
+
+/* The bars of the turning chart, which have to agree with the numbers in them.
+ *
+ * They were laid out in the same column as the face that stands on them, so the
+ * tallest bar asked for the whole column and then gave room back to the face
+ * while the shorter ones gave nothing back: five races and four came out the
+ * same height. A floor under every bar did the rest, making one race and two
+ * races the same again at the other end (owner, 03.08.2026).
+ */
+describe('the height of a bar on the turning chart', () => {
+  const css = () => read('src/pages/home/TopByCategory.css')
+
+  it('is a share of a ground that holds still', () => {
+    /* The column less the face and the gap under it. Fixed, so a share of it is
+       a share of the same thing for every column. */
+    expect(bodyOf(css(), '.top-cat__track')).toMatch(
+      /block-size:\s*calc\(100% - var\(--face\) - var\(--face-gap\)\)/,
+    )
+  })
+
+  it('is that share and nothing else, with no floor under it', () => {
+    /* The rule that starts a line, not the hover rule above it, whose selector
+       ends in the same name and would be found first. */
+    const body = bodyOf(css(), `\n.top-cat__bar`)
+
+    expect(body).toMatch(/block-size:\s*var\(--bar\)/)
+    expect(body).not.toMatch(/min-block-size/)
+  })
+
+  it('carries its face rather than standing under it', () => {
+    /* In the flow the face took height away from the bar it stands on, which is
+       what made the bars disagree with their own numbers. */
+    const body = bodyOf(css(), '.top-cat__column .portrait')
+
+    expect(body).toMatch(/position:\s*absolute/)
+    expect(body).toMatch(/inset-block-end:\s*calc\(var\(--bar\) \+ var\(--face-gap\)\)/)
+  })
+})
