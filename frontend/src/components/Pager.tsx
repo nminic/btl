@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router'
+import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { PER_PAGE } from './pageOf'
 import './Pager.css'
@@ -13,16 +14,37 @@ import './Pager.css'
  * Drawn only when there is more than one page. A control that can do nothing is
  * a control that has to be read before it can be dismissed.
  */
-export function Pager({ page, rows, label }: { page: number; rows: number; label: string }) {
-  const { t } = useI18n()
+export function Pager({
+  page: asked,
+  rows,
+  label,
+}: {
+  page: number
+  rows: number
+  label: string
+}) {
+  const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
   const pages = Math.ceil(rows / PER_PAGE)
+  /* Held inside its own bounds, whatever it was handed. A caller that forgets to
+     read the address through `pageFrom` would otherwise draw "Prikazano 451 do
+     137 od 137" and two steps that both look usable. */
+  const page = Math.min(Math.max(1, asked), Math.max(1, pages))
 
   if (pages <= 1) {
     return null
   }
 
   const go = (to: number) => {
+    /* Nothing at either end. The steps stay focusable rather than being
+       switched off, so pressing the last one somebody can press does not throw
+       the keyboard back to the top of the document; `aria-disabled` says the
+       same thing to a screen reader that `disabled` would, and leaves the
+       button where the reader's finger is. */
+    if (to < 1 || to > pages) {
+      return
+    }
+
     const next = new URLSearchParams(params)
 
     /* The first page is the one with no number on it, so the address of a table
@@ -42,14 +64,18 @@ export function Pager({ page, rows, label }: { page: number; rows: number; label
   return (
     <nav className="pager" aria-label={label}>
       <p className="pager__count">
-        {t('pager.showing', { first, last, rows })}
+        {t('pager.showing', {
+          first: formatNumber(first, locale),
+          last: formatNumber(last, locale),
+          rows: formatNumber(rows, locale),
+        })}
       </p>
 
       <p className="pager__steps">
         <button
           type="button"
           className="button button--secondary"
-          disabled={page === 1}
+          aria-disabled={page === 1}
           onClick={() => go(page - 1)}
         >
           {t('pager.previous')}
@@ -62,7 +88,7 @@ export function Pager({ page, rows, label }: { page: number; rows: number; label
         <button
           type="button"
           className="button button--secondary"
-          disabled={page === pages}
+          aria-disabled={page === pages}
           onClick={() => go(page + 1)}
         >
           {t('pager.next')}

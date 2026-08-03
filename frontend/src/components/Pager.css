@@ -33,8 +33,13 @@
 }
 
 /* A step that leads nowhere says so by looking spent, not by disappearing: the
-   row would change shape under somebody paging through with the keyboard. */
-.pager .button[disabled] {
+   row would change shape under somebody paging through with the keyboard.
+
+   `aria-disabled` and not `disabled`, so it keeps its place in the order of
+   focus. Switched off, the button that took a reader to the last page vanished
+   from under their finger and the next Tab started the document again from the
+   skip link. */
+.pager .button[aria-disabled='true'] {
   opacity: 0.45;
   cursor: default;
 }

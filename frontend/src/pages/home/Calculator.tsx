@@ -8,10 +8,14 @@ function seconds(hours: string, minutes: string, rest: string): number {
 }
 
 /* The calculator is the same one the old portal had, and it is mostly a toy.
- * It is also the only explanation of the scoring there is, since the formula
- * itself is not published. It answers and nothing else: it does not compare the
- * result to anything, it has no reverse direction, and it does not offer a race
- * from the calendar as a starting point.
+ * It is also the only explanation of the scoring there is: the formula is public
+ * and the rulebook does not set it out, so this is where somebody sees how it
+ * behaves on their own result (PDL P11). It answers and nothing else: it does not
+ * compare the result to anything, it has no reverse direction, and it does not
+ * offer a race from the calendar as a starting point.
+ *
+ * It is also why "the formula is not published" was never a sentence the portal
+ * could say: it has been computing it in the browser since the day it arrived.
  */
 export function Calculator() {
   const { locale, t } = useI18n()

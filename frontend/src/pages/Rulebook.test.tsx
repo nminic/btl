@@ -23,10 +23,9 @@ describe('the rulebook', () => {
     expect(screen.getByRole('heading', { level: 3, name: /Član 28. Bodovanje/ })).toBeVisible()
   })
 
-  /* The formula is not published, and the rulebook is a public page, so it is
-     not in the rulebook either (owner, 31.07.2026). What is left is what the
-     scoring does, in words: longer and harder is worth more, faster is worth
-     more, and a metre of climb is worth more than a metre of descent. */
+  /* What is left in the rulebook is what the scoring does, in words: longer and
+     harder is worth more, faster is worth more, and a metre of climb is worth
+     more than a metre of descent. */
   it('says what the scoring does without saying how, and without calling it a secret', async () => {
     /* The formula stays public and the rulebook neither hides it nor sets it
        out (owner, 03.08.2026, PDL P11). It cannot be hidden: the calculator on

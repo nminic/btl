@@ -95,15 +95,15 @@ describe('the way from one page to the next', () => {
   it('leads nowhere from either end, and says so by the control rather than by its absence', () => {
     show(137)
 
-    expect(screen.getByRole('button', { name: 'Prethodna' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Sledeća' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Prethodna' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute('aria-disabled', 'false')
   })
 
   it('has no step forward on the last page', () => {
     show(137, '/sr/liga/proba?strana=3')
 
-    expect(screen.getByRole('button', { name: 'Sledeća' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Prethodna' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Prethodna' })).toHaveAttribute('aria-disabled', 'false')
   })
 
   it('is a landmark with a name, so it can be found and left', () => {
@@ -147,5 +147,57 @@ describe('pressing a step', () => {
 
     expect(address()).toContain('sezona=2027')
     expect(address()).toContain('strana=2')
+  })
+})
+
+describe('a step at the end of the road', () => {
+  it('stays where the keyboard left it rather than switching itself off', async () => {
+    /* Switched off, the button that took a reader to the last page vanished
+       from under their finger, the focus fell to the document, and the next Tab
+       started again from the skip link. */
+    const user = setupUser()
+    show(137, '/sr/liga/proba?strana=2')
+
+    const next = screen.getByRole('button', { name: 'Sledeća' })
+    await user.click(next)
+
+    expect(next).toHaveAttribute('aria-disabled', 'true')
+    expect(next).toHaveFocus()
+  })
+
+  it('does nothing when it is pressed anyway', async () => {
+    const user = setupUser()
+    show(137, '/sr/liga/proba?strana=3')
+
+    await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+
+    expect(address()).toBe('?strana=3')
+    expect(screen.getByText('Strana 3 od 3')).toBeVisible()
+  })
+})
+
+describe('a page handed in from outside its bounds', () => {
+  it('is held inside them, so nothing draws a slice from nowhere', () => {
+    /* The screen reads the address through `pageFrom`, but a second caller who
+       forgot to would otherwise get "Prikazano 451 do 137 od 137" and two steps
+       that both look usable. */
+    renderWithI18n(
+      <MemoryRouter initialEntries={['/sr/liga/proba']}>
+        <Pager page={9} rows={137} label="Strane" />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Strana 3 od 3')).toBeVisible()
+    expect(screen.getByText('Prikazano 101 do 137 od 137')).toBeVisible()
+  })
+})
+
+describe('the numbers in it', () => {
+  it('are written the way the rest of the portal writes numbers', () => {
+    /* Thousands are grouped everywhere else on the portal, through one place
+       (ADL A7). A standing of two thousand is a real number for this league. */
+    show(2000)
+
+    expect(screen.getByText('Prikazano 1 do 50 od 2.000')).toBeVisible()
   })
 })

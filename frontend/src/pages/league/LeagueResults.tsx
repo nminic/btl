@@ -72,61 +72,61 @@ function Grid({
 
   return (
     <>
-    <div className="table-scroll">
-      <table className="table league__grid">
-        <caption className="visually-hidden">{t('leagues.standing')}</caption>
-        <thead>
-          <tr>
-            {/* The heading of the first column is sticky too, or the names
-                stand still while the word above them sails away. */}
-            <th scope="col" className="league__who">
-              {t('rankings.columns.member')}
-            </th>
-            <th scope="col" className="league__total">
-              {t('rankings.columns.points')}
-            </th>
-            {table.columns.map((column) => (
-              <th scope="col" key={column.raceId} className="league__race">
-                {/* The race and the date first, the name of the event after
-                    them. A turned heading has to be cut somewhere, and the cut
-                    has to fall on the part that repeats: three races of one
-                    event on one day gave three columns all reading "BTL trening
-                    trek" with the length and the date beyond the edge, which is
-                    the one thing that told them apart. The whole of it is in the
-                    title for anyone who wants it. */}
-                <span
-                  className="league__race-name"
-                  title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
-                >
-                  {column.ambiguous
-                    ? `${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`
-                    : `${column.race}, ${formatShortDate(column.date, locale)}, ${column.event}`}
-                </span>
+      <div className="table-scroll">
+        <table className="table league__grid">
+          <caption className="visually-hidden">{t('leagues.standing')}</caption>
+          <thead>
+            <tr>
+              {/* The heading of the first column is sticky too, or the names
+                  stand still while the word above them sails away. */}
+              <th scope="col" className="league__who">
+                {t('rankings.columns.member')}
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((row) => (
-            <tr key={row.competitor.memberNumber}>
-              <th scope="row" className="league__who">
-                <CompetitorName competitor={row.competitor} />
+              <th scope="col" className="league__total">
+                {t('rankings.columns.points')}
               </th>
-              <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
-              {table.columns.map((column) => {
-                const points = row.points.get(column.raceId)
-
-                return (
-                  <td key={column.raceId} className="table__points">
-                    {points === undefined ? '' : formatPoints(points, locale)}
-                  </td>
-                )
-              })}
+              {table.columns.map((column) => (
+                <th scope="col" key={column.raceId} className="league__race">
+                  {/* The race and the date first, the name of the event after
+                      them. A turned heading has to be cut somewhere, and the cut
+                      has to fall on the part that repeats: three races of one
+                      event on one day gave three columns all reading "BTL trening
+                      trek" with the length and the date beyond the edge, which is
+                      the one thing that told them apart. The whole of it is in the
+                      title for anyone who wants it. */}
+                  <span
+                    className="league__race-name"
+                    title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
+                  >
+                    {column.ambiguous
+                      ? `${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`
+                      : `${column.race}, ${formatShortDate(column.date, locale)}, ${column.event}`}
+                  </span>
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {shown.map((row) => (
+              <tr key={row.competitor.memberNumber}>
+                <th scope="row" className="league__who">
+                  <CompetitorName competitor={row.competitor} />
+                </th>
+                <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
+                {table.columns.map((column) => {
+                  const points = row.points.get(column.raceId)
+
+                  return (
+                    <td key={column.raceId} className="table__points">
+                      {points === undefined ? '' : formatPoints(points, locale)}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
     <Pager page={page} rows={table.rows.length} label={t('pager.leagueStanding')} />
     </>

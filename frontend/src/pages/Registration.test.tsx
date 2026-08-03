@@ -38,9 +38,9 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
      together once a member reaches twelve points, and a parcel needs an
      address. */
-  /* Required since 01.08.2026: the association needs a way to reach a member
-     about a payment, a prize or a result nobody can read. Never shown on the
-     portal. */
+  /* Optional again since 03.08.2026 (PDL P8), and filled here because most
+     members will fill it: the form has to go through with it as well as
+     without. Never shown on the portal. */
   await user.type(screen.getByLabelText(/Broj telefona/), '+381601234567')
   await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
@@ -238,6 +238,40 @@ describe('the biography, at the moment of joining', () => {
     renderForm()
 
     expect(screen.getByText(/Moderator ih pregleda pre nego što se pojave/)).toBeVisible()
+  })
+})
+
+describe('the telephone', () => {
+  it('is not asked for, and the form goes through without it', async () => {
+    /* Optional again (owner, 03.08.2026, PDL P8), and that is what lets it
+       stand on consent: consent has to be freely given, and it is not free if
+       membership is impossible without it. The privacy policy says "optional,
+       on your consent", so a form that refused to submit without it would make
+       that sentence untrue.
+
+       Written as a walk through the form rather than as a look at the JSON,
+       because the JSON is what would be changed back. */
+    const user = setupUser()
+    renderForm()
+
+    expect(screen.getByLabelText(/Broj telefona/)).not.toBeRequired()
+
+    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
+    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+    await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
+    await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
+    await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
+    await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
+    await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
+    await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
+    await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
+    await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
+    await user.click(screen.getByLabelText(/zdravstveno sposoban/))
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 })
 

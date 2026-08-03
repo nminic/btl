@@ -377,11 +377,21 @@ describe('what the written pages say the fee buys', () => {
     )
   })
 
-  it('never offers the league to somebody who has not paid', () => {
-    /* The one thing that would make the model untrue on the page. */
-    for (const slug of ['uslovi-koriscenja', 'pravilnik', 'o-ligi'] as const) {
-      expect(whole(slug)).not.toMatch(/bez članarine|besplatn/i)
-    }
+  it('says in the rulebook too that membership is what a member is', () => {
+    /* Said positively, over the sentence that carries the model, rather than by
+       forbidding two words. Forbidding words proved nothing: neither of them was
+       ever in these documents, so the assertion passed without measuring
+       anything, and it would not have caught the description P32 names as the
+       wrong one, a subscription to a website. */
+    expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
+      /registrovao na portalu, izmirio članarinu i kome je liga aktivirala članstvo/,
+    )
+  })
+
+  it('says what stops when the fee runs out, which is what makes it a ticket', () => {
+    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+      /se rezultati ne unose, ne rangiraju i ne ulaze u tabele, a profil se ne prikazuje/,
+    )
   })
 
   it('says nowhere that the formula is a secret', () => {
