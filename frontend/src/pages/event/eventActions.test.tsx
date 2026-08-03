@@ -184,6 +184,57 @@ describe('copying an event', () => {
     expect(screen.getByLabelText(/Naziv događaja/)).toHaveValue(name)
   })
 
+  it('keeps the structure: every race copied, and every copy on the copied event', async () => {
+    /* What copying is for (owner, 03.08.2026): the races come across and hang
+       off the copy, so next season's weekend is last season's weekend with the
+       date moved rather than five races typed again.
+
+       Read on the screen of races, which is where a race says which event it
+       belongs to. That screen built its list of events from the file, so a race
+       made a moment ago for an event made a moment ago had nothing to point at:
+       the column said "Bez događaja", the search by event could not find it, and
+       opening it offered a list of events with its own missing, so saving
+       detached the race from the event it had been made for. */
+    const user = setupUser()
+    const { router } = await openEvent('superadmin')
+
+    const mine = within(await screen.findByRole('table', { name: 'Trke' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => must(first(within(row).getAllByRole('cell')).textContent, 'naziv trke'))
+
+    expect(mine.length).toBeGreaterThan(1)
+
+    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+
+    const date = await screen.findByLabelText(/Datum/)
+    await user.clear(date)
+    await user.type(date, '14032027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    await router.navigate('/sr/administracija/trke')
+    await user.type(await screen.findByPlaceholderText(/Traži po nazivu/), 'Maraton maratona')
+
+    /* The copy is found by the name of its event, which is only possible if the
+       screen can see the event at all. */
+    const rows = within(await screen.findByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell').map((cell) => cell.textContent))
+
+    /* One row per copied race, each naming the copied event and not "Bez
+       događaja". */
+    for (const name of mine) {
+      const copied = rows.filter(
+        (cells) => at(cells, 1) === name && /2027|Maraton maratona/.test(String(at(cells, 0))),
+      )
+
+      expect(copied.length).toBeGreaterThan(0)
+      expect(String(at(first(copied), 0))).not.toMatch(/Bez događaja/)
+    }
+  })
+
   it('gives a second copy an identity of its own', async () => {
     /* The suffix counted the races and not the copies, and the number of races
        does not change when a copy is made, so pressing the button twice wrote

@@ -203,7 +203,25 @@ export const TEAMS: EntityDef = {
   path: 'administracija/timovi',
   form: tim as FormDef,
   idField: 'id',
-  blank: { slug: '' },
+  blank: {},
+  /**
+   * The address the team answers at, from its name.
+   *
+   * The same reasoning as the event's, and the same fault it had: `slug` was
+   * blank on anything entered by hand, so a team entered in the administration
+   * or approved out of the queue sat in the list and answered at `/tim/`, which
+   * is no address. A team's name has no day to go with it, because a team is not
+   * run once a year.
+   */
+  derived: (values) => [
+    {
+      name: 'slug',
+      labelKey: 'admin.field.teamSlug',
+      hintKey: 'admin.hint.teamSlug',
+      value: slugify(String(values.name)),
+      shownKey: slugify(String(values.name)),
+    },
+  ],
 }
 
 /** Which events count towards a league is not on the form: there is no field

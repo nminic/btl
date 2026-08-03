@@ -228,3 +228,97 @@ describe('the queue of new teams', () => {
     expect(Number(named())).toBe(before + 1)
   })
 })
+
+describe('a proposal a moderator accepts', () => {
+  /* What approving does beyond writing down the decision (owner, 03.08.2026,
+     PDL P13): the team is made, the member who proposed it is its organiser,
+     and that member is told in the inbox. */
+  const propose = async (user: ReturnType<typeof setupUser>, name: string) => {
+    await user.type(await screen.findByLabelText(/Naziv tima/), name)
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+  }
+
+  it('writes to the member who asked for it, in the inbox', async () => {
+    /* Not a message on a screen nobody is looking at: the decision may come
+       days later. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+
+    await propose(user, 'Trkači Morave')
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const mine = must(
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((item) => /Trkači Morave/.test(item.textContent ?? '')),
+      'predlog u redu čekanja',
+    )
+
+    await user.click(within(mine).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/poruke')
+    const inbox = within(await screen.findByRole('list'))
+
+    expect(inbox.getByText(/Tim „Trkači Morave" je prihvaćen/)).toBeVisible()
+  })
+
+  it('makes the team, with the member who proposed it as its organiser', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+
+    await propose(user, 'Trkači Morave')
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const mine = must(
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((item) => /Trkači Morave/.test(item.textContent ?? '')),
+      'predlog u redu čekanja',
+    )
+
+    await user.click(within(mine).getByRole('button', { name: 'Odobri' }))
+
+    /* A record like any other from that moment: in the administration's list of
+       teams, with the town it was proposed with. */
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      listed.getAllByRole('row').find((one) => /Trkači Morave/.test(one.textContent ?? '')),
+      'red novog tima',
+    )
+
+    expect(within(row).getByText('Čačak')).toBeVisible()
+  })
+
+  it('leaves nothing behind when the proposal is turned down', async () => {
+    /* The other half. A refusal makes no team and writes to nobody: the reason
+       is written down, and this queue hands nothing back to a member. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+
+    await propose(user, 'Trkači Morave')
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const mine = must(
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((item) => /Trkači Morave/.test(item.textContent ?? '')),
+      'predlog u redu čekanja',
+    )
+
+    await user.click(within(mine).getByRole('button', { name: 'Vrati na doradu' }))
+    await user.type(screen.getByLabelText(/Razlog/), 'Već postoji tim tog imena u Čačku.')
+    await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(listed.queryByText('Trkači Morave')).toBeNull()
+  })
+})

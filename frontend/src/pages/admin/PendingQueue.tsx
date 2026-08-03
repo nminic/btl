@@ -10,6 +10,7 @@ import type { Decision } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { usePending, waitingIn, settledWith } from './pending'
 import type { PendingItem } from '../../data/types'
+import { TEAMS } from './entityForms'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, type Queue, type QueueOutcome } from './queues'
 import { SendBack } from './SendBack'
@@ -113,7 +114,7 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { decisions, edits, notify, settle } = useSession()
+  const { create, decisions, edits, notify, settle } = useSession()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
   const today = useToday()
@@ -166,6 +167,55 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     return `status.${status}`
   }
 
+  /**
+   * What approving one item does, beyond writing down the decision.
+   *
+   * On the queue of new teams it does two more things (PDL P13, 03.08.2026):
+   * the team is made, with the member who proposed it as its organiser, and that
+   * member is told. Until the approval a proposal is a row in a queue; after it,
+   * it is a record like any other, and the member has the rights over it that
+   * P21 calls being a team's organiser.
+   *
+   * The message goes to the inbox and not to an alert on a screen nobody is
+   * looking at: the decision may come days later, and a decision that reaches
+   * nobody is the fault this closes.
+   *
+   * Here rather than at the button, because the sweep approves the same way and
+   * a queue where "approve all" did less than pressing approve forty times would
+   * be a trap.
+   */
+  const approve = (one: PendingItem) => {
+    settle(one.id, {
+      status: 'approved',
+      /* A published biography is written down as it went out, so the table of
+         settled items can show what the member's profile now says rather than
+         what they sent in. Nothing else writes anything on an approval, which
+         explains itself. */
+      note: queue.outcome === 'editAndPublish' ? textOf(one) : '',
+      basis: '',
+      memberNumber: '',
+    })
+
+    if (queue.id !== 'teams') {
+      return
+    }
+
+    create(TEAMS.id, `tim-${one.id}`, {
+      name: one.subject,
+      city: one.city,
+      country: one.country,
+      organizerMemberNumber: one.memberNumber,
+    })
+
+    notify({
+      from: t('app.name'),
+      to: one.memberNumber,
+      subject: t('verification.teamAccepted', { name: one.subject }),
+      body: t('verification.teamAcceptedBody', { name: one.subject }),
+      date: today,
+    })
+  }
+
   const settledColumn = SETTLED_COLUMN[queue.outcome]
   /** What the text on the card is called: the biography, the comment, the reason
    *  given, or the file name of a picture. */
@@ -212,12 +262,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                       }
 
                       for (const item of waiting) {
-                        settle(item.id, {
-                          status: 'approved',
-                          note: queue.outcome === 'editAndPublish' ? textOf(item) : '',
-                          basis: '',
-                          memberNumber: '',
-                        })
+                        approve(item)
                       }
 
                       setSwept(waiting.length)
@@ -324,19 +369,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <button
                             type="button"
                             className="button button--primary"
-                            onClick={() =>
-                              settle(one.id, {
-                                status: 'approved',
-                                /* A published biography is written down as it went
-                                   out, so the table of settled items can show what
-                                   the member's profile now says rather than what
-                                   they sent in. Nothing else writes anything on an
-                                   approval, which explains itself. */
-                                note: queue.outcome === 'editAndPublish' ? textOf(one) : '',
-                                basis: '',
-                                memberNumber: '',
-                              })
-                            }
+                            onClick={() => approve(one)}
                           >
                             {queue.outcome === 'editAndPublish'
                               ? t('verification.publish')

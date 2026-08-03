@@ -109,8 +109,12 @@ export function ProposeTeam() {
               currentDate: '',
               proposedDate: '',
               email: '',
-              city: '',
-              country: '',
+              /* In their own fields as well as in the words above, because
+                 approving the proposal makes the team out of them (PDL P13):
+                 the words are for the moderator to read, these are what the
+                 record is built from. */
+              city: String(values.city),
+              country: String(values.country),
             })
 
             setSent(name)
