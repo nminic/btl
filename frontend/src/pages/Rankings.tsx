@@ -15,6 +15,7 @@ import type { Competitor, Gender, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { podiumClass } from '../components/podium'
 import './Rankings.css'
 
 type Filters = {
@@ -160,10 +161,9 @@ function Standing({
               {rows.map((row) => (
                 <tr
                   key={row.competitor.memberNumber}
-                  /* No gold at the top (owner, 01.08.2026). The place is in the
-                     first column of every row, so the colour said again what the
-                     number already said, and it said it in a way that made the
-                     first rows read as a different kind of thing. */
+                  /* Gold on the podium, as everywhere else
+                     (src/components/podium.ts). */
+                  className={podiumClass(row.position)}
                 >
                   <td className="table__position">{row.position}</td>
                   <td>

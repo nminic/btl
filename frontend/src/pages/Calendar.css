@@ -31,7 +31,6 @@
   block-size: 2rem;
   display: grid;
   place-items: center;
-  font-size: 1.4rem;
   line-height: 1;
   padding: 0;
   color: var(--text);
@@ -44,6 +43,14 @@
 
 .calendar__step:hover {
   background: var(--surface-hover);
+}
+
+/* The arrow itself. Its box is square and the path inside it is drawn about the
+   middle, so centring the box centres the ink, which is the whole reason it is a
+   drawing and not a character (Calendar.tsx). */
+.calendar__chevron {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
 }
 
 .calendar__empty {
@@ -70,6 +77,14 @@
   font-weight: 700;
   color: var(--text-muted);
   padding-bottom: var(--space-4);
+  /* Over the middle of the column it names (owner, 03.08.2026), not against its
+     left edge.
+
+     The letter-spacing above puts a gap after the last letter as well as between
+     them, so the word is drawn about half a pixel left of true centre at this
+     size. Left alone: half a pixel is not worth a length that belongs to no
+     scale, and the scale is checked (src/styles/scale.test.ts). */
+  text-align: center;
 }
 
 .day {
@@ -181,7 +196,11 @@
 .calendar__today {
   font: 600 0.85rem/1.2 inherit;
   padding: var(--space-8) var(--space-16);
-  margin-inline-end: var(--space-8);
+  /* No margin of its own. It had one, so the step beside it stood sixteen
+     pixels away while the month stood eight from the step at the other end, and
+     the row was lopsided in a way nothing in it explained. One gap for the whole
+     row now, so Danas is to the first arrow what the second arrow is to the
+     month (owner, 03.08.2026). */
   cursor: pointer;
   color: var(--text);
   background: var(--surface);
@@ -219,10 +238,13 @@
   margin-top: var(--space-16);
   font-size: 0.8rem;
   color: var(--text-muted);
-}
-
-.legend__title {
-  font-weight: 700;
+  /* The whole row in italics, the word that opens it no heavier than the rest
+     (owner, 03.08.2026). It is an aside about the thing above it, and the slope
+     says so on its own; bold on the first word made it read as a heading over
+     the five colours rather than a label in front of them. The colon that ends
+     the word is in the dictionary, where the punctuation of a sentence belongs
+     and where a translator will look for it. */
+  font-style: italic;
 }
 
 .legend__items {

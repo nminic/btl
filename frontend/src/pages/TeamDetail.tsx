@@ -18,6 +18,7 @@ import {
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { podiumClass } from '../components/podium'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
 
@@ -30,9 +31,6 @@ import { CompetitorName } from '../components/CompetitorName'
  * default with no "all of them" on offer: a team is a thing of one season, its
  * members change from year to year, and a standing summed over every season
  * would be a list of who has been around longest. */
-
-/** Gold on the podium, as in every other table. */
-const PODIUM = 3
 
 export function TeamDetail() {
   const { locale, t } = useI18n()
@@ -158,7 +156,7 @@ export function TeamDetail() {
                       {rows.map((row) => (
                         <tr
                           key={row.competitor.memberNumber}
-                          className={row.position <= PODIUM ? 'podium' : undefined}
+                          className={podiumClass(row.position)}
                         >
                           <td className="table__position">{row.position}</td>
                           <td>

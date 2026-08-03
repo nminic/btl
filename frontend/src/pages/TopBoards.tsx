@@ -18,6 +18,7 @@ import type { Competitor, RaceCategory, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { podiumClass } from '../components/podium'
 import './Rankings.css'
 import './TopBoards.css'
 
@@ -118,7 +119,8 @@ function Board({
             </thead>
             <tbody>
               {places.map((place) => (
-                <tr key={place.key}>
+                /* Gold on the podium, as everywhere else (src/components/podium.ts). */
+                <tr key={place.key} className={podiumClass(place.position)}>
                   <td className="table__position">{place.position}</td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}

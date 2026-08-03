@@ -62,17 +62,18 @@ describe('Rankings', () => {
     expect(screen.getAllByRole('row').length).toBeGreaterThan(2)
   })
 
-  it('orders by points, and marks no row gold at the top', async () => {
+  it('orders by points, and marks the podium gold', async () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     const points = rows.map(lastNumberIn)
 
     expect([...points].sort((a, b) => b - a)).toEqual(points)
-    /* The three gold rows are gone (owner, 01.08.2026). The place is already in
-       the first column of every row, so the colour repeated what the number
-       said, and made the first three read as a different kind of thing. */
-    expect(rows.filter((row) => row.className === 'podium')).toEqual([])
+    /* Three, and the three at the top (owner, 03.08.2026). They came off on
+       01.08.2026 on a misreading of his note: what he asked to be rid of was
+       the yellow-edged line of prose above the table, not the places in it. */
+    expect(rows.slice(0, 3).map((row) => row.className)).toEqual(['podium', 'podium', 'podium'])
+    expect(rows.slice(3).filter((row) => row.className === 'podium')).toEqual([])
   })
 
   it('keeps men and women apart', async () => {
@@ -186,7 +187,17 @@ describe('TopBoards', () => {
 
       expect(rows.length).toBeGreaterThan(0)
       expect(rows.length).toBeLessThanOrEqual(10)
-      expect(rows.filter((row) => row.className === 'podium')).toEqual([])
+
+      /* Gold on the podium here too, and on exactly the rows whose place is one
+         of the first three. Counted rather than located, this said "three" and
+         was wrong in two ways: a place nothing separates is shared, so a board
+         can read 1, 2, 3, 3 and carry four (PDL P12), and a count would pass
+         just as well if the gold were on the last three rows instead. */
+      const gilded = rows.filter((row) => row.className === 'podium')
+      const top = rows.filter((row) => Number(first(within(row).getAllByRole('cell')).textContent) <= 3)
+
+      expect(gilded).toEqual(top)
+      expect(gilded.length).toBeGreaterThan(0)
     }
   })
 

@@ -186,8 +186,16 @@
    dots take what they need at the end instead, and the name gives way. */
 .extract__row {
   display: grid;
-  grid-template-columns: 3.2rem 1fr auto;
-  gap: 0 var(--space-6);
+  /* The date column is as wide as a date and no wider (owner, 03.08.2026).
+     At 3.2rem it reserved room the date never used: measured on the page,
+     "16.01." draws 35px in a column of 51, so seven eighths of the space between
+     a date and its race was empty column rather than gap. It is 2.25rem now,
+     which is those 35px and a hair, so what stands between the two is the gap
+     and nothing else. Fixed rather than `auto`, so every row keeps the same
+     column and the names go on starting at the same place. The dots at the end
+     have not moved. */
+  grid-template-columns: 2.25rem 1fr auto;
+  gap: 0 var(--space-4);
   align-items: center;
   padding: var(--space-8) 0;
   border-bottom: 1px solid var(--border);
