@@ -41,15 +41,32 @@ describe('slugify', () => {
       ['Џиновски успон', 'Džinovski uspon'],
       ['Ѓорче Петров', 'Gjorče Petrov'],
       ['Ќоседа', 'Kjoseda'],
+      ['Ёлка', 'Jolka'],
     ]) {
-      expect(slugify(at(pair, 0))).toBe(slugify(at(pair, 1)))
+      const address = slugify(at(pair, 0))
+
+      /* Said as well as compared: the two sides of an equality that both came
+         out empty would be equal and would be no address at all. */
+      expect(address).not.toBe('')
+      expect(address).toBe(slugify(at(pair, 1)))
     }
   })
 
+  it('carries the alphabets the league does not run in as well', () => {
+    /* Not for the sake of completeness but for the sentence a member is shown
+       when a name makes no address: it says "a letter of Cyrillic", so every
+       Cyrillic alphabet in use has to be one. Left out, Ігор and Гор were one
+       address and the second was refused as the first. */
+    expect(slugify('Ігор')).toBe('igor')
+    expect(slugify('Ігор')).not.toBe(slugify('Гор'))
+    expect(slugify('Їжак і ґуля')).toBe('jizak-i-gulja')
+    expect(slugify('Шумскі ўзгоркі')).toBe('sumski-uzgorki')
+  })
+
   it('drops a Cyrillic letter no alphabet in use writes', () => {
-    /* The table holds every living Cyrillic alphabet, so that the sentence a
-       member reads when a name makes no address is true of all of them. Old
-       letters are not in it: guessing at what ѣ sounded like buys nothing. */
+    /* Old letters are not in the table: guessing at what ѣ sounded like buys
+       nothing, and a name of nothing but those is refused rather than filed
+       under no address (teamProposal.ts). */
     expect(slugify('Језеро ѣ')).toBe('jezero')
     expect(slugify('ѣ')).toBe('')
   })

@@ -39,10 +39,12 @@ const CYRILLIC: Record<string, string> = {
   ѓ: 'gj', ќ: 'kj', ѕ: 'dz', ѐ: 'e', ѝ: 'i',
   /* Bulgarian. */
   й: 'j', щ: 'st', ъ: 'a', ь: 'j', ю: 'ju', я: 'ja',
-  /* And the three letters no alphabet of the league writes but a keyboard can
-     still produce, so that "a letter of Cyrillic" in the sentence a member
-     reads is true of every Cyrillic alphabet in use rather than of three. */
-  ё: 'e', ы: 'y', э: 'e',
+  /* And the letters of the Cyrillic alphabets the league does not run in, so
+     that "a letter of Cyrillic" in the sentence a member reads is true of every
+     one of them in use rather than of three. Without these, `Ігор` and `Гор`
+     were one address and the second was refused as the first, which is the
+     fault this table was written for, one alphabet along. */
+  ё: 'jo', ы: 'y', э: 'e', і: 'i', ї: 'ji', є: 'je', ґ: 'g', ў: 'u',
 }
 
 /**
