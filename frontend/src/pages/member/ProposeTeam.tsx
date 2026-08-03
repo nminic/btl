@@ -19,6 +19,23 @@ import './Member.css'
  * P22): what was missing was anybody able to fill it. A member proposes, a
  * moderator decides, and nothing exists in the league until they do.
  *
+ * A moderator and not only the superadmin. P21 has said so since 30.07.2026,
+ * and P13 went on reading "the superadmin approves", which is why the screen
+ * said neither for a while; the owner brought P13 into line on 03.08.2026.
+ *
+ * What this screen deliberately does not promise is an answer, and does not
+ * promise the member a sight of what they sent either. A decision on a proposal
+ * reaches nobody: the inbox is written to on one queue only, the pictures, and a
+ * member has no list of what they have put forward. Both of those are written
+ * down (PENDING R9) rather than papered over with a sentence.
+ *
+ * The words say "moderator" and stop there, as the other two do. Naming the
+ * superadmin beside him is accurate and useless to a member: it is the internal
+ * vocabulary of the rights matrix, and P21 already settles the shorthand, since
+ * granular rights describe what a moderator may do rather than what the
+ * superadmin may. The screens facing the administration say it in full
+ * (`verification.fromTeams`), because there it names who may press the button.
+ *
  * A proposal and nothing more. It is deliberately not the administration's team
  * form: that one asks who organises the team, out of a list of every member,
  * which is a question for whoever approves it and not for whoever asks. What is

@@ -70,7 +70,6 @@
       "type": "tel",
       "labelKey": "registration.phone",
       "hintKey": "registration.phoneHint",
-      "required": true,
       "maxLength": 24
     },
     {

@@ -1,5 +1,8 @@
 import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import { CompetitorName } from '../../components/CompetitorName'
+import { Pager } from '../../components/Pager'
+import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { fieldFor } from '../../data/derive'
@@ -44,6 +47,7 @@ function Grid({
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
+  const [params] = useSearchParams()
   /* Who the grid is drawn from (PDL P11). A member whose fee has run out is not
      in the standing of the season now, and a competition's grid is that standing
      over a subset of its events. It does not show today, because the one such
@@ -58,62 +62,74 @@ function Grid({
     return <p className="profile__empty">{t('leagues.noResults')}</p>
   }
 
-  return (
-    <div className="table-scroll">
-      <table className="table league__grid">
-        <caption className="visually-hidden">{t('leagues.standing')}</caption>
-        <thead>
-          <tr>
-            {/* The heading of the first column is sticky too, or the names
-                stand still while the word above them sails away. */}
-            <th scope="col" className="league__who">
-              {t('rankings.columns.member')}
-            </th>
-            <th scope="col" className="league__total">
-              {t('rankings.columns.points')}
-            </th>
-            {table.columns.map((column) => (
-              <th scope="col" key={column.raceId} className="league__race">
-                {/* The race and the date first, the name of the event after
-                    them. A turned heading has to be cut somewhere, and the cut
-                    has to fall on the part that repeats: three races of one
-                    event on one day gave three columns all reading "BTL trening
-                    trek" with the length and the date beyond the edge, which is
-                    the one thing that told them apart. The whole of it is in the
-                    title for anyone who wants it. */}
-                <span
-                  className="league__race-name"
-                  title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
-                >
-                  {column.ambiguous
-                    ? `${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`
-                    : `${column.race}, ${formatShortDate(column.date, locale)}, ${column.event}`}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {table.rows.map((row) => (
-            <tr key={row.competitor.memberNumber}>
-              <th scope="row" className="league__who">
-                <CompetitorName competitor={row.competitor} />
-              </th>
-              <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
-              {table.columns.map((column) => {
-                const points = row.points.get(column.raceId)
+  /* Fifty placed to a page (owner, 03.08.2026, PDL P24). A competition has as
+     many rows as the league has members and there is no number of members the
+     portal would refuse, so this is the side that had to be bounded. The width
+     is not bounded and cannot be by paging: forty six races are forty six
+     columns whatever this does, so they go on scrolling inside their own box. */
+  const page = pageFrom(params.get('strana'), table.rows.length)
+  const shown = table.rows.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-                return (
-                  <td key={column.raceId} className="table__points">
-                    {points === undefined ? '' : formatPoints(points, locale)}
-                  </td>
-                )
-              })}
+  return (
+    <>
+      <div className="table-scroll">
+        <table className="table league__grid">
+          <caption className="visually-hidden">{t('leagues.standing')}</caption>
+          <thead>
+            <tr>
+              {/* The heading of the first column is sticky too, or the names
+                  stand still while the word above them sails away. */}
+              <th scope="col" className="league__who">
+                {t('rankings.columns.member')}
+              </th>
+              <th scope="col" className="league__total">
+                {t('rankings.columns.points')}
+              </th>
+              {table.columns.map((column) => (
+                <th scope="col" key={column.raceId} className="league__race">
+                  {/* The race and the date first, the name of the event after
+                      them. A turned heading has to be cut somewhere, and the cut
+                      has to fall on the part that repeats: three races of one
+                      event on one day gave three columns all reading "BTL trening
+                      trek" with the length and the date beyond the edge, which is
+                      the one thing that told them apart. The whole of it is in the
+                      title for anyone who wants it. */}
+                  <span
+                    className="league__race-name"
+                    title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
+                  >
+                    {column.ambiguous
+                      ? `${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`
+                      : `${column.race}, ${formatShortDate(column.date, locale)}, ${column.event}`}
+                  </span>
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {shown.map((row) => (
+              <tr key={row.competitor.memberNumber}>
+                <th scope="row" className="league__who">
+                  <CompetitorName competitor={row.competitor} />
+                </th>
+                <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
+                {table.columns.map((column) => {
+                  const points = row.points.get(column.raceId)
+
+                  return (
+                    <td key={column.raceId} className="table__points">
+                      {points === undefined ? '' : formatPoints(points, locale)}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Pager page={page} rows={table.rows.length} label={t('pager.leagueStanding')} />
+    </>
   )
 }
 

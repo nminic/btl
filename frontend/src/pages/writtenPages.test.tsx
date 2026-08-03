@@ -343,3 +343,85 @@ describe('how a written page is set', () => {
     }
   })
 })
+
+/** The whole of one written page, as one piece of text. */
+function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti'): string {
+  /* Headings as well as bodies, and the name of the page. A section called
+     "Zašto je formula tajna" would have gone past a guard that read only the
+     text under it. */
+  return [
+    written[slug].title,
+    ...written[slug].sections.flatMap((section) => [section.heading, section.body]),
+  ].join(`\n`)
+}
+
+/** The one section of a page that says something, by what it says. */
+function sectionOf(
+  slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti',
+  says: RegExp,
+): string {
+  const found = written[slug].sections.find((section) => says.test(section.body))
+
+  if (found === undefined) {
+    throw new Error(`no section of ${slug} says ${String(says)}`)
+  }
+
+  return found.body
+}
+
+describe('what the written pages say the fee buys', () => {
+  /* The fee stays the ticket into the league (owner, 03.08.2026, PDL P32). The
+     documents already behaved that way and described it two ways, once as
+     membership of an association and once as a subscription to a website. The
+     terms say it plainly now, and these hold the three documents to it.
+   *
+     Read off the disc, because this is about what is written rather than about
+     what a screen does with it. */
+  it('says membership is what gives the right to compete', () => {
+    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+      /ne plaća za pristup sajtu nego za članstvo u ligi/,
+    )
+  })
+
+  it('says in the rulebook too that membership is what a member is', () => {
+    /* Said positively, over the sentence that carries the model, rather than by
+       forbidding two words. Forbidding words proved nothing: neither of them was
+       ever in these documents, so the assertion passed without measuring
+       anything, and it would not have caught the description P32 names as the
+       wrong one, a subscription to a website. */
+    expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
+      /registrovao na portalu, izmirio članarinu i kome je liga aktivirala članstvo/,
+    )
+  })
+
+  it('says what stops when the fee runs out, which is what makes it a ticket', () => {
+    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+      /se rezultati ne unose, ne rangiraju i ne ulaze u tabele, a profil se ne prikazuje/,
+    )
+  })
+
+  it('says nowhere that the formula is a secret', () => {
+    /* It never was one: the calculator on the front page has computed it in the
+       browser since the day it arrived (owner, 03.08.2026, PDL P11). */
+    /* Every page that names the formula at all, not two of them: the terms name
+       it as well ("po sopstvenoj formuli"), and P11 says nowhere.
+
+       Matched against the formula rather than against the words on their own.
+       "Ne objavljuje" is an ordinary Serbian phrase, and forbidding it outright
+       would fail on a sentence about an internal note that has nothing to do
+       with scoring. */
+    for (const slug of ['pravilnik', 'o-ligi', 'uslovi-koriscenja'] as const) {
+      expect(whole(slug)).not.toMatch(/formul\w*[^.]{0,60}(ne objavljuje|tajn)/i)
+      expect(whole(slug)).not.toMatch(/(ne objavljuje|tajn)\w*[^.]{0,60}formul/i)
+    }
+  })
+
+  it('carries the telephone as optional, on consent', () => {
+    /* Back to optional on 03.08.2026, which is what lets it stand on consent:
+       consent has to be free, and it is not free if membership is impossible
+       without it. */
+    expect(sectionOf('politika-privatnosti', /Broj telefona/)).toMatch(
+      /Broj telefona \(neobavezno\).*Vaš pristanak/,
+    )
+  })
+})
