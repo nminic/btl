@@ -1,5 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
+import sr from '../../i18n/sr.json'
 import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -120,6 +121,11 @@ describe('a competition with more placed than fit on one page', () => {
       renderAt(RUN)
       await grid()
 
+      /* Named from the dictionary, so renaming the key is caught here rather
+         than by nobody: `translate` hands back the key itself when there is no
+         such entry, and the landmark would quietly be called
+         "pager.leagueStanding". */
+      expect(screen.getByRole('navigation', { name: sr.pager.leagueStanding })).toBeVisible()
       expect(screen.getByText(`Prikazano 1 do 50 od ${MANY}`)).toBeVisible()
       /* Read off `aria-disabled`, which is what this pager says: `toBeEnabled`
          looks at the `disabled` attribute alone, and the pager never sets one,
@@ -220,6 +226,6 @@ describe('a competition everybody in it fits on one page', () => {
 
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.length).toBeLessThanOrEqual(PER_PAGE)
-    expect(screen.queryByRole('navigation', { name: 'Strane poretka takmičenja' })).toBeNull()
+    expect(screen.queryByRole('navigation', { name: sr.pager.leagueStanding })).toBeNull()
   })
 })

@@ -40,6 +40,19 @@
    from under their finger and the next Tab started the document again from the
    skip link. */
 .pager .button[aria-disabled='true'] {
-  opacity: 0.45;
+  /* The colours, not the element. `opacity` dims everything drawn on top of it,
+     the focus ring included, and this is the one control on the row that is
+     deliberately still focusable: at 0.45 the ring measured 2,2:1 against 3:1
+     (WCAG 1.4.11) and the word on it 2,9:1 against 4,5:1, on the very step a
+     reader lands on first. Muted text and a plain border say spent and leave the
+     ring at full strength. */
+  color: var(--text-muted);
+  border-color: var(--border);
   cursor: default;
+}
+
+/* And it does not light up under the pointer, which would say it leads
+   somewhere. */
+.pager .button[aria-disabled='true']:hover {
+  background: transparent;
 }

@@ -69,8 +69,8 @@ export function Pager({
           press was lost, and lands two pages on (WCAG 2.2 SC 4.1.3; ADL A7 asks
           for the same where a filter changes how many rows a standing has).
 
-          On the page from the first draw and holding words already, so it is a
-          region a screen reader was watching before it had anything to say. */}
+          It arrives with the table, holding words already, and the announcement
+          that matters comes later over a node that has been standing since. */}
       <p className="pager__count" role="status">
         {t('pager.showing', {
           first: formatNumber(first, locale),

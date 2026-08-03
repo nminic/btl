@@ -403,8 +403,16 @@ describe('what the written pages say the fee buys', () => {
   it('says nowhere that the formula is a secret', () => {
     /* It never was one: the calculator on the front page has computed it in the
        browser since the day it arrived (owner, 03.08.2026, PDL P11). */
-    for (const slug of ['pravilnik', 'o-ligi'] as const) {
-      expect(whole(slug)).not.toMatch(/ne objavljuje|tajn/i)
+    /* Every page that names the formula at all, not two of them: the terms name
+       it as well ("po sopstvenoj formuli"), and P11 says nowhere.
+
+       Matched against the formula rather than against the words on their own.
+       "Ne objavljuje" is an ordinary Serbian phrase, and forbidding it outright
+       would fail on a sentence about an internal note that has nothing to do
+       with scoring. */
+    for (const slug of ['pravilnik', 'o-ligi', 'uslovi-koriscenja'] as const) {
+      expect(whole(slug)).not.toMatch(/formul\w*[^.]{0,60}(ne objavljuje|tajn)/i)
+      expect(whole(slug)).not.toMatch(/(ne objavljuje|tajn)\w*[^.]{0,60}formul/i)
     }
   })
 
