@@ -138,3 +138,33 @@ export function shownValue(
 
   return optionsFor(field, supplied).find((one) => one.value === value)?.labelKey ?? value
 }
+
+/**
+ * The limit a field carries in the definition it is defined in.
+ *
+ * For the two boxes that are edited outside a form. A biography is written on
+ * the registration form, where it is capped, and then rewritten by a moderator
+ * on the verification screen, which is a bare textarea; the rules of a
+ * competition are entered on the administration form, capped, and then rewritten
+ * in place on the competition's own page. Both rewrites took as much as anybody
+ * cared to paste, so a value could come back longer than the form that made it
+ * would ever have accepted, and the next person to open that form was told their
+ * own text was too long.
+ *
+ * Read from the definition rather than written out beside each box, so the limit
+ * is one number in one file and the two ends cannot drift.
+ *
+ * Throws where the field is not there, because a name that does not match a
+ * field is a mistake in the code and not a box without a limit: returning
+ * undefined would take the cap off quietly, which is the thing this exists to
+ * stop.
+ */
+export function limitOf(form: FormDef, name: string): number {
+  const field = form.fields.find((one) => one.name === name)
+
+  if (field?.maxLength === undefined) {
+    throw new Error(`Form ${form.id} has no field ${name} with a length limit`)
+  }
+
+  return field.maxLength
+}

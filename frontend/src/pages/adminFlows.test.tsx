@@ -669,6 +669,84 @@ describe('the queue of results', () => {
     )
   })
 
+  it('has the one decision for the whole queue, like every other queue', async () => {
+    /* The button was written once, on the screen six queues share, and reported
+       as being on every queue. The results and the payments each draw their own
+       table and neither had it, so a moderator told the queues all work the same
+       way found two that did not. It asks first here too, because approving is
+       what puts a result into the standings and there is nothing to undo. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user, session } = openWith(['pending', 'pending', 'approved', 'pending'])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(confirm).toHaveBeenCalledTimes(1)
+      expect(String(first(confirm.mock.calls)?.[0])).toContain('3')
+      /* The three waiting ones and not the one already decided. */
+      expect(session.decide).toHaveBeenCalledTimes(3)
+      expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
+      expect(session.decide).toHaveBeenCalledWith('sub-1', 'approved', '')
+      expect(session.decide).toHaveBeenCalledWith('sub-3', 'approved', '')
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('says what it did, with the number it really settled, and takes the focus', async () => {
+    /* The line and its number, on the third of the three screens. Written as a
+       nought it would have said "Rešeno je 0 stavki." after approving thirty
+       results, and nothing here would have noticed. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending', 'approved', 'pending'])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      const said = screen.getByText(/^Rešen.* 3 stavk/)
+
+      expect(said).toBeVisible()
+      expect(said).toHaveFocus()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('leaves no reason box open over results the sweep has just approved', async () => {
+    /* The box stands below the table. Left open, confirming it would refuse
+       what the sweep approved a moment ago and say nothing about it. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'])
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+      expect(screen.getByLabelText('Razlog vraćanja')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('settles nothing when the question is answered no', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    try {
+      const { user, session } = openWith(['pending', 'pending'])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(session.decide).not.toHaveBeenCalled()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
   it('shuts the reason box when the same result is approved from its row', async () => {
     const { user } = openWith(['pending'])
 

@@ -4,7 +4,7 @@ import { livePage } from '../../data/pages'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
-import { first, must } from '../../test/at'
+import { at, first, must } from '../../test/at'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { Entities } from './Entities'
@@ -240,6 +240,122 @@ describe('one decision for a whole queue', () => {
       const words = must(first_text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')
 
       expect(settled.getAllByText(new RegExp(words[0])).length).toBeGreaterThan(0)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('hands every activated membership its own number, not one number to all of them', async () => {
+    /* The fault a loop would have walked straight into. A number is worked out
+       against everything already spoken for, and what is spoken for is read off
+       the session as this render sees it; the session does not change while a
+       loop runs. Twenty activations in a loop are twenty members answering to
+       000032, which is the exact fault the numbering was moved into one module
+       to stop (memberNumbers.ts, PDL P8). */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+      const before = within(waiting).getAllByRole('row').slice(1).length
+      expect(before).toBeGreaterThan(1)
+
+      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
+
+      const settled = within(screen.getByRole('table', { name: 'Rešeno' }))
+      /* The second cell is the column headed "Članski broj". Read by its place
+         in the row rather than by a class name, which is a fact about the
+         stylesheet and not about the table. */
+      const numbers = settled
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => at(within(row).getAllByRole('cell'), 1).textContent)
+
+      expect(numbers).toHaveLength(before)
+      expect(new Set(numbers).size).toBe(before)
+      /* And every one of them is a membership on the ground of a fee, which is
+         what the words on the button say it writes down. */
+      expect(settled.getAllByText('Uplata')).toHaveLength(before)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('says what it did and takes the focus, rather than leaving it nowhere', async () => {
+    /* The button is drawn only while something is waiting, so the sweep takes it
+       off the screen in the same render that empties the queue. Without an
+       answer the focus falls to the document: the next Tab starts the page from
+       the skip link, and for anybody being read to nothing happened at all,
+       because the only sign was a table appearing further down. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const before = within(waiting).getAllByRole('listitem').length
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      /* One, two and five are three different sentences in Serbian, so what is
+         matched is the shape rather than one of the three. */
+      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+
+      expect(said).toBeVisible()
+      expect(said).toHaveFocus()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('says what it did on the money queue too, with the number it really settled', async () => {
+    /* The same line on all three screens, and the number on it comes off the
+       queue rather than out of the air: written as a nought it would have said
+       "Rešeno je 0 stavki." after activating everybody, and nothing here would
+       have noticed. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+      const before = within(waiting).getAllByRole('row').slice(1).length
+
+      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
+
+      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+
+      expect(said).toBeVisible()
+      expect(said).toHaveFocus()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('activates nobody when the question about the money is answered no', async () => {
+    /* The one queue where saying yes by accident hands out member numbers, so
+       the way out of the question is the half worth pinning. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+      const before = within(waiting).getAllByRole('row').slice(1).length
+
+      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
+
+      expect(
+        within(await screen.findByRole('table', { name: 'Uplate i aktivacija članova' }))
+          .getAllByRole('row')
+          .slice(1),
+      ).toHaveLength(before)
+      expect(screen.queryByRole('table', { name: 'Rešeno' })).toBeNull()
     } finally {
       confirm.mockRestore()
     }

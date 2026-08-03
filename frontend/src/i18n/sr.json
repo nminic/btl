@@ -372,7 +372,12 @@
     "errorSummary": "Prijava nije poslata. Popravi ova polja:",
     "region": "Region",
     "restOfWorld": "Ostatak sveta",
-    "openCalendar": "Otvori kalendar"
+    "openCalendar": "Otvori kalendar",
+    "pasteCut": {
+      "one": "Nalepljeni tekst je bio {count} znak duži nego što staje, pa taj višak nije primljen.",
+      "few": "Nalepljeni tekst je bio {count} znaka duži nego što staje, pa taj višak nije primljen.",
+      "other": "Nalepljeni tekst je bio {count} znakova duži nego što staje, pa taj višak nije primljen."
+    }
   },
   "registration": {
     "title": "Registracija",
@@ -393,8 +398,16 @@
     "city": "Mesto",
     "country": "Država",
     "countryHint": "Od države zavisi koji načini plaćanja ti se nude.",
-    "bioLeft": "Još {count} znakova",
-    "bioFull": "Dosta je, granica je {count} znakova.",
+    "bioLeft": {
+      "one": "Još {count} znak",
+      "few": "Još {count} znaka",
+      "other": "Još {count} znakova"
+    },
+    "bioFull": {
+      "one": "Dosta je, granica je {count} znak.",
+      "few": "Dosta je, granica je {count} znaka.",
+      "other": "Dosta je, granica je {count} znakova."
+    },
     "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda pre nego što se pojave na tvom profilu.",
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
@@ -1138,7 +1151,11 @@
     "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",
     "approveAll": "Odobri sve",
-    "approveAllAsk": "Odobriti svih {count}? Ovo se ne može opozvati.",
+    "approveAllAsk": {
+      "one": "Odobriti {count} stavku? Ovo se ne može opozvati.",
+      "few": "Odobriti {count} stavke? Ovo se ne može opozvati.",
+      "other": "Odobriti {count} stavki? Ovo se ne može opozvati."
+    },
     "subject": "Predmet",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
@@ -1176,7 +1193,18 @@
     "published": "Objavljeno",
     "publishedText": "Objavljen tekst",
     "photoReturned": "Profilna slika je vraćena",
-    "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se vrati. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi."
+    "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se vrati. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
+    "activateAllPayment": "Aktiviraj sve po osnovu uplate",
+    "activateAllAsk": {
+      "one": "Aktivirati {count} članstvo po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
+      "few": "Aktivirati {count} članstva po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
+      "other": "Aktivirati {count} članstava po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati."
+    },
+    "approveAllDone": {
+      "one": "Rešena je {count} stavka.",
+      "few": "Rešene su {count} stavke.",
+      "other": "Rešeno je {count} stavki."
+    }
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

@@ -4,11 +4,12 @@ import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { handOutMemberNumber } from './memberNumbers'
+import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
 import { usePending, waitingIn, settledWith } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
+import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
@@ -116,6 +117,8 @@ export function Payments() {
   const session = useSession()
   const { decisions, settle } = session
   const [open, setOpen] = useState<Refusing | null>(null)
+  /** How many the last sweep activated, and null until there has been one. */
+  const [swept, setSwept] = useState<number | null>(null)
   /* The member list is read for one reason only: a number can only be handed out
      against every number that is already gone. */
   const state = combinePair(usePending(), useCompetitors())
@@ -165,13 +168,70 @@ export function Payments() {
             setOpen((current) => (current?.key === id ? null : current))
           }
 
+          /**
+           * The same activation for every registration waiting, on the ground of
+           * a paid fee.
+           *
+           * It asks for every number in one go rather than calling `activate` in
+           * a loop. A number is worked out against everything already spoken for,
+           * and what is spoken for is read off the session as this render sees
+           * it; the session does not change while a loop runs, so a loop would
+           * hand the same number to all of them. The counting belongs to the one
+           * module that is allowed to do it (memberNumbers.ts, PDL P8), which is
+           * where it now is.
+           */
+          const activateAll = (ids: string[]) => {
+            for (const { id, memberNumber } of handOutMemberNumbersFor(
+              competitors,
+              session,
+              ids,
+            )) {
+              settle(id, { status: 'approved', note: '', basis: 'payment', memberNumber })
+            }
+
+            /* Every one of them has been decided, so nothing the box could be
+               open on is still waiting. Confirming it after the sweep would
+               overwrite an activation with a refusal (see `activate`). */
+            setOpen(null)
+          }
+
           return (
             <>
               <Statement />
 
-              <h2 className="profile__section">
-                {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
-              </h2>
+              <div className="pending__bar">
+                <h2 className="profile__section">
+                  {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
+                </h2>
+
+                {/* One decision for the whole queue, as everywhere else (owner,
+                    01.08.2026), and on this queue that decision has a ground.
+                    Only the fee: honorary membership is entered person by person
+                    during the fortnight before registration opens, against a
+                    list the owner is reading, so there is nothing to sweep.
+
+                    The words say which ground it is, because the two buttons in
+                    the row do and a third that said only "all" would be the one
+                    control on the screen that hides what it writes down. */}
+                {waiting.length > 0 && (
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      if (!window.confirm(t('verification.activateAllAsk', { count: waiting.length }))) {
+                        return
+                      }
+
+                      activateAll(waiting.map((one) => one.id))
+                      setSwept(waiting.length)
+                    }}
+                  >
+                    {t('verification.activateAllPayment')}
+                  </button>
+                )}
+
+                <Swept count={swept} />
+              </div>
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>

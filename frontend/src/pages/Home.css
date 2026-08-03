@@ -466,10 +466,20 @@
   align-items: flex-end;
   flex-wrap: wrap;
   gap: var(--space-6);
-  /* Fixed and not a minimum. A minimum lets the box grow when the figure
-     arrives, and a box that grows moves the words in it however they are
-     aligned. Tall enough for the largest the figure gets. */
-  block-size: 2.6rem;
+  /* A minimum, and tall enough that it is what governs in both states: the
+     figure at its largest is a little over two rem and the words are shorter
+     than that, so the line is 2.6rem whether there is an answer yet or not, and
+     nothing in the card moves as somebody types. That is the same stillness the
+     fixed height was written for, kept by the same number.
+   *
+     Fixed was the first attempt, and it is fixed only for as long as everything
+     stays on one line. This is a wrapping flex row: a narrower card, a longer
+     word for the label in another language, or a reader who has asked the
+     browser for larger text, and the figure goes to a second line. With a fixed
+     height that second line is not cut off, which would at least be visible, but
+     spills out over whatever the card holds next, because nothing here clips.
+     A minimum lets the box take the line it actually needs. */
+  min-block-size: 2.6rem;
 }
 
 .calc__label {
