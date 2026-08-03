@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Badge } from './badgeRule'
+import { useSession } from '../session/useSession'
 import { loadResource, type ResourceName } from './client'
 import type {
   BtlEvent,
@@ -133,12 +134,48 @@ export function combinePair<A, B>(
   return { status: 'ready', data: [first.data, second.data] }
 }
 
+/**
+ * A list read from the disc with what this visit deleted taken out of it.
+ *
+ * The prototype has no database, so a deletion is remembered in the session and
+ * every screen has to read past it. The administration's own lists always did,
+ * through `recordsOf`; the public screens read the file straight and did not,
+ * which nobody noticed while deleting was something only the administration
+ * could do to a record only the administration showed.
+ *
+ * Deleting an event is not that. The owner asked for a button on the event's own
+ * page that removes the event and its races (03.08.2026), and the first thing
+ * anybody does after pressing it is look at the calendar. An event that is still
+ * there reads as a portal that did not do what it said.
+ *
+ * Only the two the deletion touches are read this way today. Teams, leagues and
+ * the rest still read the file straight on their public screens, which is the
+ * same hole and is older than this; closing it properly means the whole of
+ * `recordsOf` moving down here, together with what an entity is, and that is a
+ * change of its own rather than a line in this one.
+ */
+function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T): ResourceState<T[]> {
+  const { deletions } = useSession()
+  const gone = deletions[entity]
+
+  return useMemo(() => {
+    if (state.status !== 'ready' || gone === undefined || gone.length === 0) {
+      return state
+    }
+
+    return {
+      status: 'ready',
+      data: state.data.filter((one) => !gone.includes(String(one[idField]))),
+    }
+  }, [state, gone, idField])
+}
+
 export const useBadges = () => useResource<Badge[]>('badges')
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
-export const useEvents = () => useResource<BtlEvent[]>('events')
+export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
 export const usePages = () => useResource<Record<string, StaticPage>>('pages')
-export const useRaces = () => useResource<Race[]>('races')
+export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
 export const useResults = () => useResource<Result[]>('results')
 export const useTeams = () => useResource<Team[]>('teams')

@@ -1,0 +1,33 @@
+/* What can be done with an event, at the top right of it (owner, 03.08.2026).
+
+   Wrapping, because three buttons and a long event name do not share a line on a
+   phone, and there the buttons go under the name rather than squeezing it. */
+.event__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+@media (min-width: 620px) {
+  /* Beside the name from the width where there is room for both. The head is a
+     column of its own everywhere else, so this is the one place it becomes a
+     row, and the modifier is on the head rather than on the buttons because it
+     is the head that changes shape. */
+  .profile__head--acting {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--space-16);
+    align-items: start;
+  }
+
+  /* Down the right of everything the head holds: the way back, the name, the
+     date and the organiser. Written as a span rather than left to flow, because
+     the head holds four things above the buttons and a grid would otherwise put
+     the buttons beside the first of them and leave three rows of empty column. */
+  .profile__head--acting > .event__actions {
+    grid-row: 1 / span 4;
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+}

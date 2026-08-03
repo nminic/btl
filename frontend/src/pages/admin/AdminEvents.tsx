@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { useEvents } from '../../data/useResource'
@@ -17,9 +18,20 @@ export function AdminEvents() {
   const { locale, t } = useI18n()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
-  const [editing, setEditing] = useState<Editing | null>(null)
+  /** What was opened by pressing something on this screen. */
+  const [chosen, setChosen] = useState<Editing | null>(null)
   const state = useEvents()
   const today = useToday()
+  /**
+   * The record this screen was sent to open, and the field to open it at.
+   *
+   * Copying an event happens on the event's own page and ends here, on the form
+   * for the copy with the cursor in the date (owner, 03.08.2026). The address
+   * carries it because a screen cannot be told anything else: the editor is
+   * state inside this component, and a link is what the other page has.
+   */
+  const [params, setParams] = useSearchParams()
+  const asked = params.get('zapis')
 
   return (
     <div className="member">
@@ -31,10 +43,39 @@ export function AdminEvents() {
       <Resource state={state}>
         {(events) => {
           const all = recordsOf(EVENTS, events, overlay)
+          /* Worked out rather than copied into state.
+           *
+             It was an effect that put the record from the address into state,
+             and `recordsOf` builds its records fresh on every render, so the
+             record was a new object every time, the effect saw a changed value
+             every time, and it set state every time: the screen never settled,
+             and pressing anything that led away from it left the address changed
+             and the old screen still drawn.
+           *
+             Read here, there is nothing to keep in step. What the address names
+             is the form for that record; what somebody pressed wins over it,
+             because they pressed it later. */
+          const wanted = asked === null ? undefined : all.find((one) => String(one.id) === asked)
+          const editing: Editing | null =
+            chosen ?? (wanted === undefined ? null : { mode: 'one', record: wanted })
 
           if (editing !== null) {
             return (
-              <EntityEditor entity={EVENTS} editing={editing} onDone={() => setEditing(null)} />
+              <EntityEditor
+                entity={EVENTS}
+                editing={editing}
+                /* The date, and only where the address asked for a record. A
+                   form that grabs the cursor is a form that has taken the page
+                   away from whoever opened it, and the copy is the one case
+                   where the cursor already knows where it is wanted. */
+                openAt={chosen === null && asked !== null ? 'date' : undefined}
+                onDone={() => {
+                  setChosen(null)
+                  /* And the address forgets it, so leaving the form and coming
+                     back to this screen does not open it again. */
+                  setParams({}, { replace: true })
+                }}
+              />
             )
           }
 
@@ -47,7 +88,7 @@ export function AdminEvents() {
 
           return (
             <>
-              <EntityBar entity={EVENTS} onNew={() => setEditing({ mode: 'new' })}>
+              <EntityBar entity={EVENTS} onNew={() => setChosen({ mode: 'new' })}>
                 <div className="rankings__filters">
                   <label className="rankings__field rankings__field--wide">
                     <span>{t('competitors.search')}</span>
@@ -107,7 +148,7 @@ export function AdminEvents() {
                             entity={EVENTS}
                             record={one}
                             name={one.name}
-                            onOpen={() => setEditing({ mode: 'one', record: one })}
+                            onOpen={() => setChosen({ mode: 'one', record: one })}
                           />
                         </td>
                       </tr>

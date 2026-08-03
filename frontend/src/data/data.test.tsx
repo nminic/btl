@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { SessionProvider } from '../session/SessionProvider'
 import { first } from '../test/at'
 import { loadResource, type ResourceName } from './client'
 import type { Competitor } from './types'
@@ -101,7 +102,13 @@ describe('useResource', () => {
   })
 
   it('exposes one hook per resource', async () => {
-    render(<Wrappers />)
+    /* Inside a session, because two of the six read past what this visit has
+       deleted and a deletion is remembered there (useResource.ts). */
+    render(
+      <SessionProvider>
+        <Wrappers />
+      </SessionProvider>,
+    )
 
     await waitFor(() => expect(screen.getByText('spremno: 6')).toBeInTheDocument())
   })

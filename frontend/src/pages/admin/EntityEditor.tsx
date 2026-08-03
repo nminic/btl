@@ -23,6 +23,7 @@ export function EntityEditor({
   editing,
   options = {},
   taken = [],
+  openAt,
   onDone,
 }: {
   entity: EntityDef
@@ -39,6 +40,9 @@ export function EntityEditor({
    * The other six generate an identity that cannot collide.
    */
   taken?: string[]
+  /** The field the cursor starts in, handed through to the form. Only a copied
+   *  event uses it (src/pages/event/EventActions.tsx). */
+  openAt?: string
   onDone: () => void
 }) {
   const { t } = useI18n()
@@ -57,7 +61,18 @@ export function EntityEditor({
   }, [saved])
 
   function handleSubmit(values: FormValues) {
-    const text = textFrom(form, values)
+    /* What the form asked for, and what is read off it.
+     *
+     * The derived values were written when a record was created and never again,
+     * so editing what they are read from left them saying the old thing: change
+     * a race from 42 km to 10 and it went on calling itself a marathon, change
+     * the date of an event and it went on answering at last year's address. They
+     * are worked out here, on every save, which is the only moment either can
+     * have changed. */
+    const text = {
+      ...textFrom(form, values),
+      ...Object.fromEntries((entity.derived?.(values) ?? []).map((one) => [one.name, one.value])),
+    }
 
     if (editing.mode === 'new') {
       create(entity.id, idFor(entity, values, (creations[entity.id] ?? []).length, taken), text)
@@ -135,6 +150,7 @@ export function EntityEditor({
         options={options}
         check={(values) => takenIdentity(entity, values, others)}
         derived={entity.derived}
+        openAt={openAt}
         onSubmit={handleSubmit}
       />
     </div>

@@ -1,0 +1,51 @@
+{
+  "id": "prijava-sa-trke",
+  "titleKey": "report.title",
+  "submitKey": "report.submit",
+  "fields": [
+    {
+      "name": "raceId",
+      "type": "select",
+      "labelKey": "report.race",
+      "hintKey": "report.raceHint",
+      "required": true
+    },
+    {
+      "name": "hours",
+      "type": "number",
+      "labelKey": "newResult.hours",
+      "required": true,
+      "min": 0,
+      "max": 99
+    },
+    {
+      "name": "minutes",
+      "type": "number",
+      "labelKey": "newResult.minutes",
+      "required": true,
+      "min": 0,
+      "max": 59
+    },
+    {
+      "name": "seconds",
+      "type": "number",
+      "labelKey": "newResult.seconds",
+      "required": true,
+      "min": 0,
+      "max": 59
+    },
+    {
+      "name": "comment",
+      "type": "textarea",
+      "labelKey": "report.comment",
+      "hintKey": "report.commentHint",
+      "maxLength": 600
+    },
+    {
+      "name": "photo",
+      "type": "photo",
+      "labelKey": "report.photo",
+      "hintKey": "report.photoHint"
+    }
+  ]
+}

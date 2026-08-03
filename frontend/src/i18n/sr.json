@@ -197,6 +197,10 @@
     "proposeTeam": {
       "title": "Predlog tima",
       "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
+    },
+    "reportResult": {
+      "title": "Prijava rezultata",
+      "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
     }
   },
   "shell": {
@@ -574,7 +578,15 @@
     "category": "Kategorija",
     "results": "Rezultati članova",
     "noResults": "Sa ovog događaja nema unetih rezultata.",
-    "notFound": "Ovog događaja nema."
+    "notFound": "Ovog događaja nema.",
+    "copy": "Kopiranje",
+    "delete": "Brisanje",
+    "report": "Prijavi rezultat",
+    "deleteAsk": {
+      "one": "Obrisati događaj „{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
+      "few": "Obrisati događaj „{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
+      "other": "Obrisati događaj „{name}\" i {count} njegovih trka? Ovo se ne može opozvati."
+    }
   },
   "category": {
     "short": "Kraća trka",
@@ -1000,7 +1012,8 @@
       "pageTitle": "Naslov strane",
       "sectionHeading": "Naslov prve sekcije",
       "sectionBody": "Tekst prve sekcije",
-      "email": "Adresa elektronske pošte"
+      "email": "Adresa elektronske pošte",
+      "eventSlug": "Adresa događaja"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -1031,7 +1044,8 @@
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
-      "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega."
+      "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
+      "eventSlug": "Portal je pravi sam, od naziva i datuma. Ne unosi se i ne menja."
     },
     "value": {
       "genderM": "Muški",
@@ -1236,5 +1250,18 @@
     "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
     "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.",
     "noBadges": "Još nijedna značka."
+  },
+  "report": {
+    "title": "Prijava rezultata",
+    "submit": "Pošalji rezultat",
+    "race": "Trka",
+    "raceHint": "Trke sa ovog događaja. Dužina, uspon i spust se uzimaju sa izabrane trke.",
+    "comment": "Komentar",
+    "commentHint": "Neobavezno. Ovde ide veza ka zvaničnim rezultatima, startni broj, ili bilo šta što moderatoru pomaže da proveri.",
+    "photo": "Slika kao dokaz",
+    "photoHint": "Neobavezno. Slika sata, potvrde ili zvanične liste.",
+    "note": "Prijavljuješ rezultat sa događaja „{event}\". Ostalo portal već zna sa same trke.",
+    "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
+    "backToEvent": "Nazad na događaj"
   }
 }

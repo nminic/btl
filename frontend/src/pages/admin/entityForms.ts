@@ -9,6 +9,8 @@ import trka from '../../forms/definitions/admin-trka.form.json'
 import znacka from '../../forms/definitions/admin-znacka.form.json'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
+import { isoDate } from '../../forms/dateField'
+import { slugify } from '../rulebookToc'
 import { applyChanges, recordValue } from '../../forms/records'
 import type { DerivedField, FieldDef, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Deletions, Edits } from '../../session/context'
@@ -119,7 +121,47 @@ export const EVENTS: EntityDef = {
   path: 'administracija/dogadjaji',
   form: dogadjaj as FormDef,
   idField: 'id',
-  blank: { slug: '', raceIds: [] },
+  blank: { raceIds: [] },
+  /**
+   * The address the event answers at, from its name and its day.
+   *
+   * Not on the form and never will be, for the same reason the category of a
+   * race is not: it is read off what the form does ask for, so there is nothing
+   * to decide and nothing to get wrong. The generated events are named this way
+   * (`btl-produkt/istorijski-podaci/napravi-mock.py`) and so anything entered
+   * here matches what is already there.
+   *
+   * It used to be blank, which meant every event entered by hand answered at
+   * `/kalendar/`, an address that is no event: the record was in the
+   * administration's list and nowhere a visitor could reach. Nothing said so,
+   * because nobody looks for an event they have just typed in. Copying an event
+   * is what made it impossible to miss (owner, 03.08.2026).
+   *
+   * Shown on the form, because an administrator who is about to send somebody a
+   * link should be able to read it before they save.
+   */
+  derived: (values) => [
+    {
+      name: 'slug',
+      labelKey: 'admin.field.eventSlug',
+      hintKey: 'admin.hint.eventSlug',
+      value: eventSlug(String(values.name), String(values.date)),
+      shownKey: eventSlug(String(values.name), String(values.date)),
+    },
+  ],
+}
+
+/**
+ * The address an event answers at: its name, then the day it is run.
+ *
+ * The day is part of it because the same race is run every year and the name on
+ * its own would collide with itself: there are three events called Resolution
+ * Run in the data and they are three different mornings.
+ */
+export function eventSlug(name: string, date: string): string {
+  const day = isoDate(date)
+
+  return [slugify(name), day].filter((part) => part !== '').join('-')
 }
 
 /**
