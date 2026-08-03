@@ -7,6 +7,8 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import predlogTima from '../../forms/definitions/predlog-tima.form.json'
 import type { FieldError, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
+import { recordsOf, TEAMS } from '../admin/entityForms'
+import { useOverlay } from '../admin/overlay'
 import { addressesIn, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
@@ -49,6 +51,7 @@ export function ProposeTeam() {
   const { locale, t } = useI18n()
   const { memberNumber, propose } = useSession()
   const today = useToday()
+  const overlay = useOverlay()
   /* The teams as well, for one rule: a name already in the league cannot be
      proposed again (PDL). Checked on the form rather than left to a moderator,
      because a member who is told at the door can change the name; a member told
@@ -135,7 +138,11 @@ export function ProposeTeam() {
                    member was never told why. The same function also refuses a
                    name that makes no address at all. */
                 check={(values): Record<string, FieldError> =>
-                  nameError(String(values.name), addressesIn(teams))
+                  /* Through the overlay, like the two screens that decide.
+                     Read straight from the file this form did not know about a
+                     team approved a minute ago in this same visit, so it took a
+                     proposal the queue was then bound to refuse. */
+                  nameError(String(values.name), addressesIn(recordsOf(TEAMS, teams, overlay)))
                 }
                 onSubmit={onSubmit}
               />

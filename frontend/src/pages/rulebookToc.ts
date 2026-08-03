@@ -14,6 +14,16 @@ export type TocEntry = { heading: string; id: string }
  * trkači" are one team, which is exactly what one address for the two of them
  * says. Macedonian and Bulgarian letters are here for the same reason.
  *
+ * Every letter is spelt the way the address already spells its Latin twin,
+ * rather than the way a transliteration table would spell it. That is the whole
+ * rule and it is easy to get wrong: ђ written out as "dj" made `Ђердап` answer
+ * at `djerdap` while `Đerdap` answered at `derdap`, which is two teams under one
+ * name, exactly what the address is compared for. The Latin side turns đ into d,
+ * so this side must too, and it cannot be fixed on the Latin side without moving
+ * every anchor in the rulebook. Macedonian ѓ and ќ go the other way for the same
+ * reason: written in Latin they are "gj" and "kj", and those survive as they
+ * are.
+ *
  * A table, unlike the five Latin letters below it, which are written out one
  * replacement each: there are forty of these, and the pattern that reaches the
  * table hands it one letter at a time out of the Cyrillic block, so a letter
@@ -21,14 +31,18 @@ export type TocEntry = { heading: string; id: string }
  * address is better off without.
  */
 const CYRILLIC: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', ђ: 'dj', е: 'e', ж: 'z', з: 'z',
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', ђ: 'd', е: 'e', ж: 'z', з: 'z',
   и: 'i', ј: 'j', к: 'k', л: 'l', љ: 'lj', м: 'm', н: 'n', њ: 'nj', о: 'o',
   п: 'p', р: 'r', с: 's', т: 't', ћ: 'c', у: 'u', ф: 'f', х: 'h', ц: 'c',
   ч: 'c', џ: 'dz', ш: 's',
   /* Macedonian. */
-  ѓ: 'g', ќ: 'k', ѕ: 'dz', ѐ: 'e', ѝ: 'i',
+  ѓ: 'gj', ќ: 'kj', ѕ: 'dz', ѐ: 'e', ѝ: 'i',
   /* Bulgarian. */
   й: 'j', щ: 'st', ъ: 'a', ь: 'j', ю: 'ju', я: 'ja',
+  /* And the three letters no alphabet of the league writes but a keyboard can
+     still produce, so that "a letter of Cyrillic" in the sentence a member
+     reads is true of every Cyrillic alphabet in use rather than of three. */
+  ё: 'e', ы: 'y', э: 'e',
 }
 
 /**

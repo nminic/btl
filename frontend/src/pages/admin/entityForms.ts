@@ -212,9 +212,14 @@ export const TEAMS: EntityDef = {
    *
    * The same reasoning as the event's, and the same fault it had: `slug` was
    * blank on anything entered by hand, so a team entered in the administration
-   * or approved out of the queue sat in the list and answered at `/tim/`, which
-   * is no address. A team's name has no day to go with it, because a team is not
-   * run once a year.
+   * or approved out of the queue sat in the list carrying no address at all. A
+   * team's name has no day to go with it, because a team is not run once a year.
+   *
+   * What this fixes is the record, not yet the sight of it. No public screen
+   * reads the overlay this prototype keeps its changes in, so a team approved
+   * today is not on `/tim/…` whatever its address says (PENDING, R7). The
+   * address is right in the record from the moment it is made, which is what
+   * the database will be handed.
    */
   derived: (values) => [
     {

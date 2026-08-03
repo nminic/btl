@@ -1,3 +1,4 @@
+import { at } from '../test/at'
 import { slugify, withIds } from './rulebookToc'
 
 /* The four cases below were written against a wrapper that turned a list of
@@ -24,18 +25,33 @@ describe('slugify', () => {
        in Cyrillic made no address at all, and the two things whose addresses are
        read off a name, a team and an event, ended up with none (ADL A4d). */
     expect(slugify('Дунавски тркачи')).toBe('dunavski-trkaci')
-    expect(slugify('Ђаци и чекање, журба, ћутање')).toBe('djaci-i-cekanje-zurba-cutanje')
     /* Macedonian and Bulgarian, since the league runs in both. */
     expect(slugify('Скопски полумаратон')).toBe('skopski-polumaraton')
     expect(slugify('Щастливи бегачи')).toBe('stastlivi-begaci')
   })
 
-  it('drops a Cyrillic letter no alphabet of the league writes', () => {
-    /* The table holds Serbian, Macedonian and Bulgarian. Anything else in that
-       block, an old letter or one of a language the league does not run in, is
-       a letter the address is better off without than guessing at. */
+  it('spells it the way the address already spells the Latin twin of it', () => {
+    /* Which is the rule, and the one thing a transliteration table gets wrong.
+       Spelt "correctly", ђ becomes dj and Ђердап answers at `djerdap` while
+       Đerdap answers at `derdap`: two teams under one name, which is the very
+       thing an address is compared for (PDL P13). */
+    for (const pair of [
+      ['Ђердап', 'Đerdap'],
+      ['Ђаци и чекање, журба, ћутање', 'Đaci i čekanje, žurba, ćutanje'],
+      ['Џиновски успон', 'Džinovski uspon'],
+      ['Ѓорче Петров', 'Gjorče Petrov'],
+      ['Ќоседа', 'Kjoseda'],
+    ]) {
+      expect(slugify(at(pair, 0))).toBe(slugify(at(pair, 1)))
+    }
+  })
+
+  it('drops a Cyrillic letter no alphabet in use writes', () => {
+    /* The table holds every living Cyrillic alphabet, so that the sentence a
+       member reads when a name makes no address is true of all of them. Old
+       letters are not in it: guessing at what ѣ sounded like buys nothing. */
     expect(slugify('Језеро ѣ')).toBe('jezero')
-    expect(slugify('Ы')).toBe('')
+    expect(slugify('ѣ')).toBe('')
   })
 
   it('gives nothing back where a name holds nothing an address can carry', () => {

@@ -638,6 +638,43 @@ describe('what a moderator may do before accepting a proposal', () => {
     expect(within(card(/Timočka/)).getByText(/moraju biti popunjeni/)).toBeVisible()
   })
 
+  it('says it out loud, and the button that cannot act points at the reason', async () => {
+    /* Drawn is not said. The reason appears and disappears while a moderator
+       types, which somebody reading the screen through a reader gets nothing of
+       unless the line announces itself, and pressing a button that quietly does
+       nothing tells them even less. So the line is a live region, and the button
+       says it cannot act and names what explains it (WCAG 2.2 SC 3.3.1, 4.1.3).
+
+       Not `disabled`: a control that leaves the row takes the keyboard with it,
+       and this one is meant to be reachable so that its reason can be read. */
+    const user = setupUser()
+    await open()
+
+    const blocked = within(card(/dunavski trkači/))
+    const reason = blocked.getByRole('status')
+    const approve = blocked.getByRole('button', { name: 'Odobri' })
+
+    expect(reason).toHaveTextContent(/već postoji u ligi/)
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
+    expect(approve.getAttribute('aria-describedby')).toBe(reason.id)
+
+    /* And on a proposal with nothing wrong with it: the same line is standing
+       there empty, because a live region that arrives with its words is one
+       nobody is told about, and the button neither refuses nor points at it. */
+    const fine = within(card(/Timočka/))
+
+    expect(fine.getByRole('status')).toBeEmptyDOMElement()
+    expect(fine.getByRole('button', { name: 'Odobri' })).toHaveAttribute('aria-disabled', 'false')
+    expect(fine.getByRole('button', { name: 'Odobri' })).not.toHaveAttribute('aria-describedby')
+
+    /* Said as it changes, over a line that was already standing: emptying the
+       name fills it. Found by the town, since the name it was found by is what
+       has just been cleared. */
+    await user.clear(fine.getByLabelText('Naziv tima'))
+
+    expect(within(card(/Zaječar/)).getByRole('status')).toHaveTextContent(/moraju biti popunjeni/)
+  })
+
   it('shows the name it was decided under in the table of settled items', async () => {
     const user = setupUser()
     await open()
@@ -692,6 +729,27 @@ describe('what a moderator may do before accepting a proposal', () => {
 
     expect(rows.filter((row) => /Knjaževac/.test(row))).toHaveLength(1)
     expect(rows.find((row) => /Dunavski trkači Novi Sad/.test(row))).not.toMatch(/Knjaževac/)
+  })
+
+  it('is a name the form a member proposes on knows about from that moment', async () => {
+    /* Three gates ask the same question and one of them was reading the file
+       rather than the visit: a team approved a minute ago was invisible to the
+       form, which took the proposal and handed the queue something it was then
+       bound to refuse. */
+    const user = setupUser()
+    const { router } = await open()
+
+    await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/novi-tim')
+    await screen.findByRole('button', { name: 'Pošalji predlog' })
+    await user.type(screen.getByLabelText(/Naziv tima/), 'Timočka trkačka družina')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Zaječar')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 
   it('counts only what the sweep really settled', async () => {
