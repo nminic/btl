@@ -694,6 +694,26 @@ describe('the queue of results', () => {
     }
   })
 
+  it('says what it did, with the number it really settled, and takes the focus', async () => {
+    /* The line and its number, on the third of the three screens. Written as a
+       nought it would have said "Rešeno je 0 stavki." after approving thirty
+       results, and nothing here would have noticed. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending', 'approved', 'pending'])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      const said = screen.getByText(/^Rešen.* 3 stavk/)
+
+      expect(said).toBeVisible()
+      expect(said).toHaveFocus()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
   it('leaves no reason box open over results the sweep has just approved', async () => {
     /* The box stands below the table. Left open, confirming it would refuse
        what the sweep approved a moment ago and say nothing about it. */

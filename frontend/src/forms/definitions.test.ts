@@ -34,7 +34,16 @@ describe('every form definition in the portal', () => {
        column underneath it is not that wide. It is also the one field on the
        form that says nothing about how much room is left, because there is
        nothing to count down from: the renderer draws no counter without a limit
-       and refuses nothing at the door. */
+       and refuses nothing at the door.
+
+       This reaches the definitions and nothing else. Two boxes are edited
+       outside a form: a biography rewritten by a moderator (PendingQueue) and
+       the rules of a competition rewritten in place (LeagueDetail). Both took
+       whatever was pasted, so a value could come back longer than the form that
+       made it accepts and the next person to open that form was told their own
+       text was too long. Both now read their limit off the definition through
+       `limitOf`, which is what makes this rule cover them: take the limit out of
+       the JSON and those two throw. */
     const missing = FORMS.flatMap(({ name, form }) =>
       form.fields
         .filter((field) => field.type === 'textarea' && field.maxLength === undefined)

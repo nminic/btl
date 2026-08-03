@@ -1,6 +1,6 @@
 import { must } from '../test/at'
 import { useState } from 'react'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
@@ -230,6 +230,59 @@ describe('a long box with no limit on it', () => {
 
     expect(box).toHaveValue('x'.repeat(5000))
     expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
+describe('a value longer than the limit that was later put on its field', () => {
+  /* Which happens: a record is written where nothing capped it and then opened
+     on a form that caps it. The paste arithmetic has to hold there too, and it
+     is the one place where a paste can change the box while taking nothing in. */
+  const capped: FormDef = {
+    id: 'kratko',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [{ name: 'beleska', type: 'textarea', labelKey: 'proba.beleska', maxLength: 10 }],
+  }
+
+  it('keeps the message about what a paste lost, though the paste took nothing in', async () => {
+    const user = setupUser()
+    renderWithI18n(
+      <FormRenderer form={capped} onSubmit={vi.fn()} initial={{ beleska: 'x'.repeat(20) }} />,
+    )
+
+    const box = screen.getByLabelText<HTMLTextAreaElement>(/proba.beleska/)
+    await user.click(box)
+
+    /* Five characters selected in a box already twice its limit: there is no
+       room, so nothing is taken in, but the selection goes all the same and a
+       change follows. That change is the paste's own and must not be read as
+       the writer moving on, or the message about what they just lost is put up
+       and taken down inside one event. */
+    box.setSelectionRange(0, 5)
+    fireEvent.paste(box, { clipboardData: { getData: () => 'yyy' } })
+    fireEvent.change(box, { target: { value: 'x'.repeat(15) } })
+
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst/)
+  })
+
+  it('lets the next thing the writer does clear it', async () => {
+    const user = setupUser()
+    renderWithI18n(
+      <FormRenderer form={capped} onSubmit={vi.fn()} initial={{ beleska: 'x'.repeat(20) }} />,
+    )
+
+    const box = screen.getByLabelText<HTMLTextAreaElement>(/proba.beleska/)
+    await user.click(box)
+    box.setSelectionRange(0, 5)
+    fireEvent.paste(box, { clipboardData: { getData: () => 'yyy' } })
+    fireEvent.change(box, { target: { value: 'x'.repeat(15) } })
+    fireEvent.change(box, { target: { value: 'x'.repeat(14) } })
+
+    /* Not empty: the box is still over its limit, so the region falls back to
+       saying that, which is the other thing it is for. What has gone is the
+       message about the paste. */
+    expect(screen.getByRole('status')).not.toHaveTextContent(/Nalepljeni tekst/)
+    expect(screen.getByRole('status')).toHaveTextContent(/granica je 10/)
   })
 })
 

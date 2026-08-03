@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import liga from '../forms/definitions/admin-liga.form.json'
+import { limitOf } from '../forms/records'
+import type { FormDef } from '../forms/types'
 import { PageMeta } from '../app/PageMeta'
 import { PartsNav } from '../components/PartsNav'
 import { Resource } from '../components/Resource'
@@ -49,6 +52,12 @@ function EditableText({
           autoFocus
           aria-label={heading}
           defaultValue={value}
+          /* The same cap the administration form puts on it. Rewriting in place
+             took as much as anybody cared to paste, so the text could come back
+             longer than the form that made it accepts, and the next person to
+             open that form was told their own words were too long. The number
+             lives in the definition (src/forms/records.ts). */
+          maxLength={limitOf(liga as FormDef, 'rules')}
           onBlur={(event) => {
             onSave(event.target.value)
             setEditing(false)

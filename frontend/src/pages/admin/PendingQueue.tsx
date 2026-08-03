@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import registracija from '../../forms/definitions/registracija.form.json'
+import { limitOf } from '../../forms/records'
+import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { formatShortDate } from '../../i18n/format'
@@ -84,6 +87,11 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
         autoFocus
         aria-label={label}
         defaultValue={current}
+        /* The same cap the member wrote it under. Without it a moderator could
+           leave a biography longer than the form that produced it would ever
+           accept, and the number lives in the definition rather than here so
+           the two ends cannot drift (src/forms/records.ts). */
+        maxLength={limitOf(registracija as FormDef, 'bio')}
         onBlur={(event) => {
           edit(id, 'body', event.target.value)
           setEditing(false)

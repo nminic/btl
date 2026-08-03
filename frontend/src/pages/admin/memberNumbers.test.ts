@@ -1,6 +1,12 @@
 import type { Competitor } from '../../data/types'
 import type { Decision } from '../../session/context'
-import { handOutMemberNumber, takenMemberNumbers, type NumberSources } from './memberNumbers'
+import { first } from '../../test/at'
+import {
+  handOutMemberNumber,
+  handOutMemberNumbersFor,
+  takenMemberNumbers,
+  type NumberSources,
+} from './memberNumbers'
 
 /* The three sources, named once here as well, because the fault this module was
  * written for was one caller knowing about two of them and the other about three.
@@ -88,5 +94,37 @@ describe('a member number that has been handed out', () => {
     const sources = { ...NOTHING, deletions: { members: ['000001'] } }
 
     expect(handOutMemberNumber([member('000001')], sources)).toBe('000002')
+  })
+})
+
+describe('numbers handed out several at a time', () => {
+  /* The whole reason the function exists: what is spoken for is read off the
+     session as the caller's render sees it, and the session does not change
+     while a loop runs, so a loop around the singular hands out one number as
+     many times as it runs. */
+  it('gives each one a number of its own, counting up from the highest gone', () => {
+    const given = handOutMemberNumbersFor(
+      [member('000004'), member('000009')],
+      NOTHING,
+      ['a', 'b', 'c'],
+    )
+
+    expect(given).toEqual([
+      { id: 'a', memberNumber: '000010' },
+      { id: 'b', memberNumber: '000011' },
+      { id: 'c', memberNumber: '000012' },
+    ])
+  })
+
+  it('asks for none and gets none, without touching anything', () => {
+    expect(handOutMemberNumbersFor([member('000004')], NOTHING, [])).toEqual([])
+  })
+
+  it('agrees with the singular on the first one it hands out', () => {
+    const listed = [member('000004'), member('000009')]
+
+    expect(first(handOutMemberNumbersFor(listed, NOTHING, ['a'])).memberNumber).toBe(
+      handOutMemberNumber(listed, NOTHING),
+    )
   })
 })

@@ -1151,7 +1151,11 @@
     "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",
     "approveAll": "Odobri sve",
-    "approveAllAsk": "Odobriti svih {count}? Ovo se ne može opozvati.",
+    "approveAllAsk": {
+      "one": "Odobriti {count} stavku? Ovo se ne može opozvati.",
+      "few": "Odobriti {count} stavke? Ovo se ne može opozvati.",
+      "other": "Odobriti {count} stavki? Ovo se ne može opozvati."
+    },
     "subject": "Predmet",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",

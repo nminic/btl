@@ -85,6 +85,10 @@ const Field = memo(function Field({
    * there is nothing to work it out from: what was dropped never reached React.
    */
   const [dropped, setDropped] = useState(0)
+  /** Whether the box will take no more. One sentence hangs off it in three
+   *  places, and reading it three times from three copies of the same
+   *  comparison is how the three drift apart. */
+  const atTheLimit = field.maxLength !== undefined && String(value).length >= field.maxLength
   /**
    * Whether the change about to arrive is the paste's own.
    *
@@ -261,7 +265,13 @@ const Field = memo(function Field({
                  for something the box never had. */
               const brought = event.clipboardData.getData('text').replace(/\r\n/g, '\n').length
 
-              fromPaste.current = brought > 0 && room > 0
+              /* Raised only where the paste will actually deliver a change,
+                 so a flag left standing does not eat the writer's next
+                 keystroke instead. A paste into a box with no room is refused
+                 whole and nothing follows it; a paste over a selection always
+                 changes the box, because the selection goes even when nothing
+                 takes its place. */
+              fromPaste.current = brought > 0 && (room > 0 || replacing > 0)
               setDropped(Math.max(0, brought - room))
             }}
             onChange={(e) => change(e.target.value)}
@@ -278,34 +288,48 @@ const Field = memo(function Field({
              * will take no more, and those are two different things.
              *
              * The count on arrival is `aria-describedby` above. The word at the
-             * wall is the region below, which is empty until the box is full and
-             * therefore says something at most once. */
+             * wall is the region at the bottom of this block. */
             <>
-              <p className="field__left" id={leftId}>
-                {String(value).length >= field.maxLength
+              <p className="field__left" id={leftId} aria-hidden="true">
+                {atTheLimit
                   ? t('registration.bioFull', { count: field.maxLength })
                   : t('registration.bioLeft', { count: field.maxLength - String(value).length })}
               </p>
 
               {/* What the last paste lost. Said in full, in its own words, and
-                  not left to be worked out from a counter that has gone to zero.
-               *
-                  The one thing here worth interrupting a writer for, and it is
-                  announced by being the sentence itself rather than by a second
-                  copy hidden beside it: two copies are read twice by anybody
-                  going through the page rather than tabbing. It exists only while
-                  there is something to say, so it says it once.
-               *
-                  The counter above has no region of its own on purpose. That a
-                  box is full is on the screen, is in `aria-describedby` on the
-                  way in, and is felt at the keyboard the moment nothing more
-                  appears. Losing text that was already written is not any of
-                  those, which is why this one speaks. */}
+                  not left to be worked out from a counter that has gone to
+                  zero. */}
               {dropped > 0 && (
-                <p className="field__dropped" role="status">
+                <p className="field__dropped" aria-hidden="true">
                   {t('form.pasteCut', { count: dropped })}
                 </p>
               )}
+
+              {/* The two moments worth saying out loud, and nothing in between.
+               *
+                  One region, always on the page, and only its text changes. A
+                  region that is added to the page together with its text is one
+                  a screen reader often misses, because there was nothing there
+                  to be watching; the portal says so where it does the same thing
+                  for a bank statement (src/pages/admin/Payments.tsx).
+               *
+                  It is empty except at those two moments, which is what makes it
+                  usable. It used to hold the count and change on every keystroke,
+                  and polite only means the reader waits its turn: three hundred
+                  and fifty-nine announcements of a number nobody was waiting for,
+                  each one to be got through before anything else could be said.
+               *
+                  Everything it says is said once. The two visible lines above
+                  carry the same words and are hidden from the reader, which
+                  costs nothing: the count is read on the way into the field
+                  through `aria-describedby`, and a description is read whether
+                  or not the element carrying it is hidden. */}
+              <p className="visually-hidden" role="status">
+                {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
+                {dropped === 0 && atTheLimit
+                  ? t('registration.bioFull', { count: field.maxLength })
+                  : ''}
+              </p>
             </>
           )}
         </>

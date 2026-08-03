@@ -313,7 +313,15 @@ describe('the titles as a set, rather than one at a time', () => {
        screens that are named after a record carry `recordDescription`, and those
        are the ones a long name is interpolated into, so they are the ones nearest
        the limit rather than the ones furthest from it. */
-    const tooLong = descriptions().filter(([, text]) => text.length > 160)
+    /* Measured with something in the gaps. A description with `{name}` in it is
+       shortest exactly where nothing has been put in it yet, and the screens
+       that are named after a record are the ones a long name is interpolated
+       into. Forty characters is longer than any name in the data and shorter
+       than a name nobody would enter. */
+    const long = 'x'.repeat(40)
+    const tooLong = descriptions()
+      .map(([where, text]): [string, string] => [where, text.replace(/\{\w+\}/g, long)])
+      .filter(([, text]) => text.length > 160)
 
     expect(tooLong).toEqual([])
   })

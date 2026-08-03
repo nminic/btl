@@ -300,13 +300,22 @@ describe('the box a member writes about themselves in', () => {
     await user.paste('x'.repeat(360))
 
     expect(box).toHaveValue('x'.repeat(360))
-    /* Once on the screen, and no live region of its own. It used to be one that
-       changed on every keystroke, which queues three hundred and fifty-nine
-       announcements of a number in front of anything else the reader might have
-       to say; that a box is full is on screen, is in `aria-describedby` on the
-       way in, and is felt at the keyboard the moment nothing more appears. */
-    expect(screen.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(1)
-    expect(screen.queryByRole('status')).toBeNull()
+    /* Twice in the markup and once to a reader: the line under the box, hidden
+       from the reader because the same words reach it through
+       `aria-describedby`, and the region that says it. The region is on the page
+       from the start and empty until now, because one that is added together
+       with its text is one a screen reader often misses. */
+    expect(screen.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(2)
+    expect(screen.getByRole('status')).toHaveTextContent('Dosta je, granica je 360 znakova.')
+  })
+
+  it('keeps the region quiet while there is still room', () => {
+    /* It used to hold the count and change on every keystroke, which is three
+       hundred and fifty-nine announcements of a number nobody was waiting to
+       hear, each one to be got through before anything else could be said. */
+    renderForm()
+
+    expect(screen.getByRole('status')).toHaveTextContent('')
   })
 
   it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
@@ -323,10 +332,9 @@ describe('the box a member writes about themselves in', () => {
 
     const said = 'Nalepljeni tekst je bio 40 znakova duži nego što staje, pa taj višak nije primljen.'
 
-    /* Once in the document, and it is the sentence itself that is announced
-       rather than a second hidden copy: two copies are read twice by anybody
-       going through the page rather than tabbing through it. */
-    expect(screen.getAllByText(said)).toHaveLength(1)
+    /* On the screen once and to a reader once: the visible sentence is hidden
+       from the reader, and the region that was there all along says it. */
+    expect(screen.getAllByText(said)).toHaveLength(2)
     expect(screen.getByRole('status')).toHaveTextContent(said)
 
     /* And it goes the moment the writer does anything themselves. Not when the
@@ -350,21 +358,16 @@ describe('the box a member writes about themselves in', () => {
     const user = setupUser()
     renderForm()
 
-    const box = must(
-      screen.getByLabelText(/Svojim rečima/).closest('textarea'),
-      'polje za biografiju',
-    )
+    const box = screen.getByLabelText<HTMLTextAreaElement>(/Svojim rečima/)
     await user.click(box)
     await user.paste('x'.repeat(360))
 
     box.setSelectionRange(0, 360)
     fireEvent.paste(box, { clipboardData: { getData: () => 'y'.repeat(380) } })
 
-    expect(
-      screen.getByText(
-        'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
-      ),
-    ).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
+    )
   })
 
   it('does not charge a Windows clipboard for its line endings', async () => {

@@ -311,6 +311,31 @@ describe('one decision for a whole queue', () => {
     }
   })
 
+  it('says what it did on the money queue too, with the number it really settled', async () => {
+    /* The same line on all three screens, and the number on it comes off the
+       queue rather than out of the air: written as a nought it would have said
+       "Rešeno je 0 stavki." after activating everybody, and nothing here would
+       have noticed. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+      const before = within(waiting).getAllByRole('row').slice(1).length
+
+      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
+
+      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+
+      expect(said).toBeVisible()
+      expect(said).toHaveFocus()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
   it('activates nobody when the question about the money is answered no', async () => {
     /* The one queue where saying yes by accident hands out member numbers, so
        the way out of the question is the half worth pinning. */
