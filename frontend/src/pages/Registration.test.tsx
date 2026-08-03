@@ -254,7 +254,11 @@ describe('the telephone', () => {
     const user = setupUser()
     renderForm()
 
-    expect(screen.getByLabelText(/Broj telefona/)).not.toBeRequired()
+    /* Read off the words beside the field. `not.toBeRequired()` was true of
+       every field on the portal, because the renderer marks a required field
+       with neither `required` nor `aria-required`: what it does is write
+       "(neobavezno)" beside the ones that are not. */
+    expect(screen.getByLabelText('Broj telefona (neobavezno)')).toBeVisible()
 
     await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
     await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')

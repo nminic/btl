@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import type { Competitor, Result } from '../../data/types'
+import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -28,6 +28,17 @@ const MANY = 137
  */
 async function withCompetitors(count: number) {
   const real = globalThis.fetch
+  /* The races this competition is made of, read once, so the results put in its
+     place belong to it. */
+  const races = (await (await real('/mock/races.json')).json()) as Race[]
+  const events = (await (await real('/mock/events.json')).json()) as BtlEvent[]
+  const leagues = (await (await real('/mock/leagues.json')).json()) as League[]
+  const league = must(
+    leagues.find((one) => one.slug === 'brdska-2019'),
+    'takmičenje brdska-2019',
+  )
+  const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
+  const mine = new Set(races.filter((race) => held.has(race.eventId)).map((race) => race.id))
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const name = String(input)
@@ -52,11 +63,18 @@ async function withCompetitors(count: number) {
 
     if (name.endsWith('/results.json')) {
       const all = (await (await real(input)).json()) as Result[]
-      /* One result of that competition, copied to every competitor, so every one
-         of them is placed and the grid has a row for each. */
+      /* One result of a race that belongs to this competition, copied to every
+         competitor, so every one of them is placed and the grid has a row for
+         each.
+       *
+         Chosen through the competition's own races rather than by the year. By
+         the year it happened to work, and would stop working the day the data is
+         generated again and the first result of 2019 lands on an event outside
+         this competition: the grid would then be empty and all five tests would
+         fail on a timeout, saying nothing about why. */
       const model = must(
-        all.find((result) => result.date.startsWith('2019')),
-        'rezultat iz 2019',
+        all.find((result) => mine.has(result.raceId)),
+        'rezultat sa trke ovog takmičenja',
       )
 
       return new Response(
@@ -103,7 +121,13 @@ describe('a competition with more placed than fit on one page', () => {
       await grid()
 
       expect(screen.getByText(`Prikazano 1 do 50 od ${MANY}`)).toBeVisible()
-      expect(screen.getByRole('button', { name: 'Sledeća' })).toBeEnabled()
+      /* Read off `aria-disabled`, which is what this pager says: `toBeEnabled`
+         looks at the `disabled` attribute alone, and the pager never sets one,
+         so it passed over a step that was shut on every page. */
+      expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute(
+        'aria-disabled',
+        'false',
+      )
     } finally {
       undo()
     }

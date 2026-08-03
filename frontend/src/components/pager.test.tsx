@@ -179,7 +179,7 @@ describe('a step at the end of the road', () => {
 describe('a page handed in from outside its bounds', () => {
   it('is held inside them, so nothing draws a slice from nowhere', () => {
     /* The screen reads the address through `pageFrom`, but a second caller who
-       forgot to would otherwise get "Prikazano 451 do 137 od 137" and two steps
+       forgot to would otherwise get "Prikazano 401 do 137 od 137" and two steps
        that both look usable. */
     renderWithI18n(
       <MemoryRouter initialEntries={['/sr/liga/proba']}>
@@ -199,5 +199,33 @@ describe('the numbers in it', () => {
     show(2000)
 
     expect(screen.getByText('Prikazano 1 do 50 od 2.000')).toBeVisible()
+  })
+})
+
+describe('a page that has just changed', () => {
+  it('is said out loud, because nothing else about the turn is', async () => {
+    /* The focus deliberately stays on the step that was pressed, so without this
+       a reader hears nothing at all: they press again thinking the first press
+       was lost and land two pages on (WCAG 2.2 SC 4.1.3). */
+    const user = setupUser()
+    show(137)
+
+    const said = screen.getByRole('status')
+
+    expect(said).toHaveTextContent('Prikazano 1 do 50 od 137')
+
+    await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+
+    expect(said).toHaveTextContent('Prikazano 51 do 100 od 137')
+  })
+
+  it('writes the page the same way it writes the count', () => {
+    /* Both through the one place the portal formats numbers (ADL A7). One of
+       the two was left out at first, so a wide competition would have read
+       "Strana 1 od 1000" beside "Prikazano 1 do 50 od 50.000". */
+    show(50_000)
+
+    expect(screen.getByText('Strana 1 od 1.000')).toBeVisible()
+    expect(screen.getByText('Prikazano 1 do 50 od 50.000')).toBeVisible()
   })
 })

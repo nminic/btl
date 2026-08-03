@@ -346,7 +346,13 @@ describe('how a written page is set', () => {
 
 /** The whole of one written page, as one piece of text. */
 function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti'): string {
-  return written[slug].sections.map((section) => section.body).join(`\n`)
+  /* Headings as well as bodies, and the name of the page. A section called
+     "Zašto je formula tajna" would have gone past a guard that read only the
+     text under it. */
+  return [
+    written[slug].title,
+    ...written[slug].sections.flatMap((section) => [section.heading, section.body]),
+  ].join(`\n`)
 }
 
 /** The one section of a page that says something, by what it says. */

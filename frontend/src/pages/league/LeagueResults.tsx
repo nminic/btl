@@ -128,7 +128,7 @@ function Grid({
         </table>
       </div>
 
-    <Pager page={page} rows={table.rows.length} label={t('pager.leagueStanding')} />
+      <Pager page={page} rows={table.rows.length} label={t('pager.leagueStanding')} />
     </>
   )
 }

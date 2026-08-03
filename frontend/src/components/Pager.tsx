@@ -27,7 +27,7 @@ export function Pager({
   const [params, setParams] = useSearchParams()
   const pages = Math.ceil(rows / PER_PAGE)
   /* Held inside its own bounds, whatever it was handed. A caller that forgets to
-     read the address through `pageFrom` would otherwise draw "Prikazano 451 do
+     read the address through `pageFrom` would otherwise draw "Prikazano 401 do
      137 od 137" and two steps that both look usable. */
   const page = Math.min(Math.max(1, asked), Math.max(1, pages))
 
@@ -63,7 +63,15 @@ export function Pager({
 
   return (
     <nav className="pager" aria-label={label}>
-      <p className="pager__count">
+      {/* Said out loud when it changes, which is the only signal a page turn
+          gives: the focus deliberately stays on the step that was pressed, so
+          without this a reader hears nothing, presses again thinking the first
+          press was lost, and lands two pages on (WCAG 2.2 SC 4.1.3; ADL A7 asks
+          for the same where a filter changes how many rows a standing has).
+
+          On the page from the first draw and holding words already, so it is a
+          region a screen reader was watching before it had anything to say. */}
+      <p className="pager__count" role="status">
         {t('pager.showing', {
           first: formatNumber(first, locale),
           last: formatNumber(last, locale),
@@ -83,7 +91,12 @@ export function Pager({
 
         {/* The page a reader is on, said in words rather than left to the two
             steps to imply. */}
-        <span className="pager__where">{t('pager.page', { page, pages })}</span>
+        <span className="pager__where">
+          {t('pager.page', {
+            page: formatNumber(page, locale),
+            pages: formatNumber(pages, locale),
+          })}
+        </span>
 
         <button
           type="button"
