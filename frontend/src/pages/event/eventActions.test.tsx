@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import { first, must } from '../../test/at'
+import { at, first, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 
@@ -122,6 +122,16 @@ describe('deleting an event', () => {
 
       expect(races).toBeGreaterThan(0)
 
+      /* Somebody who ran it, taken off the event's own list of results, so the
+         profile looked at afterwards is one that had a link to this event. */
+      const who = within(await screen.findByRole('table', { name: /Rezultati/ })).getAllByRole(
+        'link',
+      )
+      const ran = must(
+        must(first(who).getAttribute('href'), 'veza ka takmičaru').split('/').pop(),
+        'broj takmičara',
+      )
+
       await user.click(screen.getByRole('button', { name: 'Brisanje' }))
 
       expect(router.state.location.pathname).toBe('/sr/kalendar')
@@ -132,15 +142,20 @@ describe('deleting an event', () => {
       expect(await screen.findByRole('heading', { name: 'Ovog događaja nema.' })).toBeVisible()
 
       /* And so is everything that hung off it. A result carries the address of
-         its event, so without this the event left the calendar and its results
-         went on counting in the standing, each of them linking to a page that
-         now says the event does not exist. */
-      await router.navigate('/sr/tabela?sezona=2015')
-      await screen.findByRole('table')
+         its event, so without this the event left the calendar while its results
+         went on counting, each of them linking to a page that now says the event
+         does not exist.
+       *
+         Checked on a profile, which is a screen that names the event. The
+         standing does not name events at all, so looking there proved nothing:
+         the whole deletion of results could be taken out and it stayed green. */
+      await router.navigate(`/sr/takmicar/${ran}?sezona=2015`)
 
-      expect(
-        screen.queryAllByRole('link', { name: /Maraton maratona/ }),
-      ).toHaveLength(0)
+      const listed = within(await screen.findByRole('table', { name: 'Rezultati' }))
+
+      expect(listed.queryAllByRole('link', { name: 'Maraton maratona' })).toHaveLength(0)
+      /* And the row is gone rather than merely unlinked. */
+      expect(listed.queryByText('Maraton maratona')).toBeNull()
     } finally {
       confirm.mockRestore()
     }
@@ -207,7 +222,7 @@ describe('copying an event', () => {
        the file and not what this visit has added to it; that is older and wider
        than this button and is written down as its own job. */
     const user = setupUser()
-    const { router } = await openEvent('superadmin')
+    await openEvent('superadmin')
 
     const races = within(await screen.findByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
@@ -228,13 +243,23 @@ describe('copying an event', () => {
 
     expect(saved).toHaveTextContent('maraton-maratona-2027-03-14')
 
-    /* And the races came across: the administration's list of races holds as
-       many for the copy as the event it was copied from had. */
-    await router.navigate('/sr/administracija/trke')
-    await user.type(await screen.findByPlaceholderText(/traži|Traži|pretra/i), 'Maraton maratona')
+    /* And the races came across, counted on the copy itself. Counting rows that
+       matched "Maraton maratona" on the list of races proved nothing: eight
+       events answer to that name and twenty-six races with them, so four is
+       fewer than twenty-six whether or not anything was copied at all. */
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Maraton maratona')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const listed = within(await screen.findByRole('table'))
+    const copy = must(
+      listed.getAllByRole('row').find((row) => /2027\./.test(row.textContent ?? '')),
+      'red kopije u spisku događaja',
+    )
 
-    expect(rows.length).toBeGreaterThan(races)
+    /* The fourth column is the count of races, read as a whole cell. Matched as
+       a substring it passed against the date beside it, which holds a four of
+       its own, so the copy could arrive with no races and nothing would say
+       so. */
+    expect(at(within(copy).getAllByRole('cell'), 3).textContent).toBe(String(races))
   })
 })

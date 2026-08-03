@@ -4,7 +4,6 @@ import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import {
   combinePair,
-  dataOr,
   useCompetitors,
   useEvents,
   useRaces,
@@ -252,11 +251,17 @@ export function EventDetail() {
                   {event.organizer}
                 </p>
 
-                <EventActions
-                  event={event}
-                  races={dataOr(races, [])}
-                  results={dataOr(results, [])}
-                />
+                {/* Only once both have arrived, and this is not impatience.
+                    The buttons act on the races and the results: deleting takes
+                    them with it and copying carries them across. Drawn against
+                    what had not loaded yet, the question said "and 0 of its
+                    races", the deletion took the event and left every race and
+                    every result behind it, and the copy came across empty. The
+                    head is a column while they are absent and becomes a row when
+                    they arrive (EventActions.css). */}
+                {races.status === 'ready' && results.status === 'ready' && (
+                  <EventActions event={event} races={races.data} results={results.data} />
+                )}
               </header>
 
               <h2 className="profile__section">{t('event.races')}</h2>

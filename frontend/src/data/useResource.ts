@@ -178,5 +178,9 @@ export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
 export const usePages = () => useResource<Record<string, StaticPage>>('pages')
 export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
-export const useResults = () => useLive(useResource<Result[]>('results'), 'results', 'id')
+/** What a deletion of results is filed under. Named here, where the results
+ *  are read, rather than spelled out at the screen that deletes them. */
+export const RESULTS = 'results'
+
+export const useResults = () => useLive(useResource<Result[]>('results'), RESULTS, 'id')
 export const useTeams = () => useResource<Team[]>('teams')

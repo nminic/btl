@@ -41,14 +41,14 @@ describe('a proposal a member sends', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
   }
 
-  it('says it is waiting on a moderator rather than that the team exists', async () => {
+  it('says it is waiting on a decision rather than that the team exists', async () => {
     const user = setupUser()
     renderAt('/sr/novi-tim', 'competitor', '000007')
 
     await fill(user, 'Trkači Morave')
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
-    expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+    expect(screen.getByText(/„Trkači Morave" čeka odluku administracije/)).toBeVisible()
   })
 
   it('refuses to send without the three things it asks for', async () => {

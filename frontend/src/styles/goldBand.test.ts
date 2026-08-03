@@ -306,3 +306,29 @@ describe('the height of a bar on the turning chart', () => {
     expect(body).toMatch(/inset-block-end:\s*calc\(var\(--bar\) \+ var\(--face-gap\)\)/)
   })
 })
+
+/* The head of an event, which becomes a row only when there is something to put
+ * in its second column.
+ *
+ * Without the condition it was a two-column grid whatever was in it, and the
+ * buttons are drawn for an administrator and for a member and for nobody else:
+ * every visitor who was not signed in got a head laid out in two columns with
+ * nothing in the second, so its four lines paired off into a grid two by two and
+ * the name of the event stood beside the way back to the calendar. A screen test
+ * cannot see it, because jsdom lays nothing out.
+ */
+describe('the head of an event', () => {
+  const css = () => read('src/pages/event/EventActions.css')
+
+  it('becomes a row only where the buttons are', () => {
+    expect(css()).toMatch(/\.profile__head--acting:has\(> \.event__actions\) \{/)
+    /* And never on the class alone, which is on the head whatever is inside it. */
+    expect(css()).not.toMatch(/\n {2}\.profile__head--acting \{/)
+  })
+
+  it('runs the buttons down whatever the head holds, rather than a counted number of rows', () => {
+    expect(bodyOf(css(), '.profile__head--acting:has(> .event__actions) > .event__actions')).toMatch(
+      /grid-row:\s*1 \/ -1/,
+    )
+  })
+})

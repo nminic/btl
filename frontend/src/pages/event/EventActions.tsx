@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router'
+import { useToday } from '../../clock/useClock'
 import type { BtlEvent, Race, Result } from '../../data/types'
 import { fieldDate } from '../../forms/dateField'
+import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
@@ -33,6 +35,7 @@ export function EventActions({
   const may = useMay()
   const { memberNumber, creations, create, remove } = useSession()
   const navigate = useNavigate()
+  const today = useToday()
 
   const mayEdit = may(`entity:${EVENTS.id}`)
   const mine = races.filter((race) => race.eventId === event.id)
@@ -77,7 +80,17 @@ export function EventActions({
     })
 
     for (const race of mine) {
-      create(RACES.id, `${race.id}-kopija-${made.length + 1}`, {
+      /* Counted against the copies of this race, not against the copies of the
+         event. Deleting a copied event from the list of events takes it out of
+         the events it was created in and leaves its races where they are, so a
+         count of event copies goes back down while the races do not: copy,
+         delete the copy, copy again, and every race lands on an id that is
+         already taken. */
+      const before = (creations[RACES.id] ?? []).filter((one) =>
+        one.id.startsWith(`${race.id}-kopija`),
+      ).length
+
+      create(RACES.id, `${race.id}-kopija-${before + 1}`, {
         eventId: id,
         name: race.name,
         distanceKm: String(race.distanceKm),
@@ -112,7 +125,7 @@ export function EventActions({
        in the standing, in the Top 10 boards and in the team totals, each of them
        still linking to a page that now says the event does not exist. */
     for (const result of results.filter((one) => one.eventSlug === event.slug)) {
-      remove('results', result.id)
+      remove(RESULTS, result.id)
     }
 
     remove(EVENTS.id, event.id)
@@ -140,7 +153,11 @@ export function EventActions({
           on a form that starts by asking which event it was (owner,
           03.08.2026). Offered to whoever is signed in, including an
           administrator, because an administrator runs too. */}
-      {memberNumber !== null && (
+      {/* Nothing to report on a race that has not been run. PDL P9 is plain
+          about it: a date in the future is refused, and the date here is the
+          event's own, so the only way to keep that rule is not to offer the
+          form at all. */}
+      {memberNumber !== null && event.date <= today && (
         /* A link and not a button, like everything else on the portal that
            leads somewhere: a button has no middle click, no "open in a new
            tab", no address in the status bar, and is announced as a button by

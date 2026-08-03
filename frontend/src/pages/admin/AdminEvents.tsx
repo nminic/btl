@@ -7,7 +7,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { EVENTS, recordsOf, type Editing } from './entityForms'
+import { EVENTS, RACES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -43,6 +43,10 @@ export function AdminEvents() {
       <Resource state={state}>
         {([events, races]) => {
           const all = recordsOf(EVENTS, events, overlay)
+          /* Through the overlay, like the events beside them. Read straight from
+             the file the count below said an event copied here had no races,
+             while its races were on the next screen along. */
+          const allRaces = recordsOf(RACES, races, overlay)
           /* Worked out rather than copied into state.
            *
              It was an effect that put the record from the address into state,
@@ -142,7 +146,7 @@ export function AdminEvents() {
                             generator and by nothing else, so an event entered or
                             copied here said it had none while its races were in
                             the next screen along. */}
-                        <td>{races.filter((race) => race.eventId === one.id).length}</td>
+                        <td>{allRaces.filter((race) => race.eventId === one.id).length}</td>
                         <td>
                           <span className={`tag tag--${one.status}`}>
                             {t(`calendar.status.${one.status}`)}

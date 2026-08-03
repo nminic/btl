@@ -377,4 +377,9 @@
   margin-block-start: var(--space-4);
   color: var(--text-muted);
   font-size: 0.85rem;
+  /* An address is one word as far as the browser is concerned, and the hint
+     invites one. Without this a pasted link stretched the column to its own
+     length, pushed the two decisions off the right of the box, and gave the
+     table a sideways scroll on a phone, which PDL P24 does not allow. */
+  overflow-wrap: anywhere;
 }

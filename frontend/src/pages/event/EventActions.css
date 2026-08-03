@@ -28,11 +28,10 @@
   }
 
   /* Down the right of everything the head holds: the way back, the name, the
-     date and the organiser. Written as a span rather than left to flow, because
-     the head holds four things above the buttons and a grid would otherwise put
-     the buttons beside the first of them and leave three rows of empty column. */
+     date and the organiser. To the last row rather than across a counted number
+     of them, so a fifth line added to the head does not land in this column. */
   .profile__head--acting:has(> .event__actions) > .event__actions {
-    grid-row: 1 / span 4;
+    grid-row: 1 / -1;
     grid-column: 2;
     justify-content: flex-end;
   }
