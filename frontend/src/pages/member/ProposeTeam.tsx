@@ -19,6 +19,11 @@ import './Member.css'
  * P22): what was missing was anybody able to fill it. A member proposes, a
  * moderator decides, and nothing exists in the league until they do.
  *
+ * A moderator and not only the superadmin. PDL P13 said the superadmin alone
+ * while the rights matrix had carried a row for this queue all along, so the two
+ * disagreed and the screen was left saying neither; the owner settled it on
+ * 03.08.2026 in favour of what the matrix already did.
+ *
  * A proposal and nothing more. It is deliberately not the administration's team
  * form: that one asks who organises the team, out of a list of every member,
  * which is a question for whoever approves it and not for whoever asks. What is

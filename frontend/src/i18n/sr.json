@@ -196,7 +196,7 @@
     },
     "proposeTeam": {
       "title": "Predlog tima",
-      "description": "Predloži tim Balkanskoj trkačkoj ligi. Svaki predlog se odobrava pre nego što tim uđe u ligu."
+      "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
     },
     "reportResult": {
       "title": "Prijava rezultata",
@@ -715,10 +715,10 @@
     "proposeSubmit": "Pošalji predlog",
     "proposeNote": "Zašto ovaj tim",
     "proposeNoteHint": "Neobavezno. Ko ga čini, gde trenira, sve što moderatoru pomaže da odluči.",
-    "proposeNote2": "Tim postoji tek kad ga administracija odobri. Do tada ga niko osim tebe i moderatora ne vidi.",
+    "proposeNote2": "Tim postoji tek kad ga moderator odobri. Do tada ga niko osim tebe i moderatora ne vidi.",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
-    "proposeDone": "Tim „{name}\" čeka odluku administracije. Odgovor stiže u tvoje poruke.",
+    "proposeDone": "Tim „{name}\" čeka odluku moderatora. Odgovor stiže u tvoje poruke.",
     "proposeBack": "Nazad na timove",
     "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Izaberi drugi naziv."
   },
