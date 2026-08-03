@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { useEvents } from '../../data/useResource'
+import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { EditableCell } from './EditableCell'
@@ -20,7 +20,7 @@ export function AdminEvents() {
   const [search, setSearch] = useState('')
   /** What was opened by pressing something on this screen. */
   const [chosen, setChosen] = useState<Editing | null>(null)
-  const state = useEvents()
+  const state = combinePair(useEvents(), useRaces())
   const today = useToday()
   /**
    * The record this screen was sent to open, and the field to open it at.
@@ -41,7 +41,7 @@ export function AdminEvents() {
       <h1 className="visually-hidden">{t('admin.events')}</h1>
 
       <Resource state={state}>
-        {(events) => {
+        {([events, races]) => {
           const all = recordsOf(EVENTS, events, overlay)
           /* Worked out rather than copied into state.
            *
@@ -137,7 +137,12 @@ export function AdminEvents() {
                             label={t('event.place')}
                           />
                         </td>
-                        <td>{one.raceIds.length}</td>
+                        {/* Counted from the races themselves rather than from
+                            a list the event carries. The list is filled by the
+                            generator and by nothing else, so an event entered or
+                            copied here said it had none while its races were in
+                            the next screen along. */}
+                        <td>{races.filter((race) => race.eventId === one.id).length}</td>
                         <td>
                           <span className={`tag tag--${one.status}`}>
                             {t(`calendar.status.${one.status}`)}

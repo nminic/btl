@@ -47,6 +47,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       photo: '',
       category: 'short' as const,
       link: 'https://primer.rs/r',
+      comment: '',
       status,
       note: '',
     })),

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { useCompetitors } from '../../data/useResource'
+import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
 import predlogTima from '../../forms/definitions/predlog-tima.form.json'
-import type { FormDef, FormValues } from '../../forms/types'
+import type { FieldError, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
@@ -29,7 +29,11 @@ export function ProposeTeam() {
   const { locale, t } = useI18n()
   const { memberNumber, propose } = useSession()
   const today = useToday()
-  const state = useCompetitors()
+  /* The teams as well, for one rule: a name already in the league cannot be
+     proposed again (PDL). Checked on the form rather than left to a moderator,
+     because a member who is told at the door can change the name; a member told
+     a fortnight later by a refusal has to start again. */
+  const state = combinePair(useCompetitors(), useTeams())
   /** The name of the team once it has been sent, so the screen can say which. */
   const [sent, setSent] = useState<string | null>(null)
 
@@ -59,7 +63,7 @@ export function ProposeTeam() {
   return (
     <div className="member">
       <Resource state={state}>
-        {(competitors) => {
+        {([competitors, teams]) => {
           /* Who is proposing, by the name the rest of the portal knows them by.
              The queue shows a name beside every waiting item, and a member
              number on its own tells a moderator nothing about who to ask. */
@@ -98,7 +102,18 @@ export function ProposeTeam() {
           return (
             <>
               <p className="member__note">{t('teams.proposeNote2')}</p>
-              <FormRenderer form={predlogTima as FormDef} onSubmit={onSubmit} />
+              <FormRenderer
+                form={predlogTima as FormDef}
+                check={(values): Record<string, FieldError> =>
+                  teams.some(
+                    (team) =>
+                      team.name.trim().toLowerCase() === String(values.name).trim().toLowerCase(),
+                  )
+                    ? { name: { key: 'teams.proposeTaken' } }
+                    : {}
+                }
+                onSubmit={onSubmit}
+              />
             </>
           )
         }}

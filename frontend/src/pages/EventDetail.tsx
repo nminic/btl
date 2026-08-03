@@ -199,6 +199,8 @@ export function EventDetail() {
      the screen must not hold up the name and the date, and the only one that
      needs the races is the copy. */
   const races = useRaces()
+  /* For the deletion, which takes what hangs off the event with it. */
+  const results = useResults()
 
   return (
     <Resource state={events}>
@@ -250,7 +252,11 @@ export function EventDetail() {
                   {event.organizer}
                 </p>
 
-                <EventActions event={event} races={dataOr(races, [])} />
+                <EventActions
+                  event={event}
+                  races={dataOr(races, [])}
+                  results={dataOr(results, [])}
+                />
               </header>
 
               <h2 className="profile__section">{t('event.races')}</h2>

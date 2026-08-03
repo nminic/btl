@@ -26,9 +26,15 @@ describe('who is offered what on an event', () => {
   it('offers a visitor nothing at all', async () => {
     await openEvent('visitor')
 
-    for (const name of ['Kopiranje', 'Brisanje', 'Prijavi rezultat']) {
+    for (const name of ['Kopiranje', 'Brisanje']) {
       expect(screen.queryByRole('button', { name })).toBeNull()
     }
+
+    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
+    /* And the head stays the column it is on every other screen: laid out in two
+       columns with nothing in the second, its four lines paired off into a grid
+       two by two (EventActions.css). */
+    expect(document.querySelector('.event__actions')).toBeNull()
   })
 
   it('offers the superadmin the copy and the deletion', async () => {
@@ -51,7 +57,7 @@ describe('who is offered what on an event', () => {
   it('offers a signed-in member the way to report a result', async () => {
     await openEvent('competitor', '000007')
 
-    expect(screen.getByRole('button', { name: 'Prijavi rezultat' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
   })
 
@@ -61,7 +67,8 @@ describe('who is offered what on an event', () => {
 
     expect(screen.getByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Prijavi rezultat' })).toBeVisible()
+    /* A link, because it leads to another screen (EventActions.tsx). */
+    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
   })
 })
 
@@ -70,7 +77,7 @@ describe('reporting a result from the event', () => {
     const user = setupUser()
     const { router } = await openEvent('competitor', '000007')
 
-    await user.click(screen.getByRole('button', { name: 'Prijavi rezultat' }))
+    await user.click(screen.getByRole('link', { name: 'Prijavi rezultat' }))
 
     expect(router.state.location.pathname).toBe(`${EVENT}/prijava`)
     expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
@@ -123,6 +130,17 @@ describe('deleting an event', () => {
          answers as an address the portal does not have. */
       await router.navigate(EVENT)
       expect(await screen.findByRole('heading', { name: 'Ovog događaja nema.' })).toBeVisible()
+
+      /* And so is everything that hung off it. A result carries the address of
+         its event, so without this the event left the calendar and its results
+         went on counting in the standing, each of them linking to a page that
+         now says the event does not exist. */
+      await router.navigate('/sr/tabela?sezona=2015')
+      await screen.findByRole('table')
+
+      expect(
+        screen.queryAllByRole('link', { name: /Maraton maratona/ }),
+      ).toHaveLength(0)
     } finally {
       confirm.mockRestore()
     }
@@ -149,6 +167,30 @@ describe('copying an event', () => {
     expect(date).toHaveFocus()
     /* Everything else came across, so the only thing to do is the date. */
     expect(screen.getByLabelText(/Naziv događaja/)).toHaveValue(name)
+  })
+
+  it('gives a second copy an identity of its own', async () => {
+    /* The suffix counted the races and not the copies, and the number of races
+       does not change when a copy is made, so pressing the button twice wrote
+       two records under one id. Two records under one id is the fault the
+       numbering exists to prevent: the list draws them under one key, a lookup
+       finds only the first, and an edit to either changes both. */
+    const user = setupUser()
+    const { router } = await openEvent('superadmin')
+
+    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+    await screen.findByLabelText(/Datum/)
+
+    const first = router.state.location.search
+
+    await router.navigate(EVENT)
+    /* The event's own heading, not merely any first-level one: the screen left
+       behind has one of its own and it is there while this one is loading. */
+    await screen.findByRole('button', { name: 'Kopiranje' })
+    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+    await screen.findByLabelText(/Datum/)
+
+    expect(router.state.location.search).not.toBe(first)
   })
 
   it('takes the races with it, and gives the copy an address of its own', async () => {

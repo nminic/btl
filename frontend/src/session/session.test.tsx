@@ -26,6 +26,7 @@ function Probe() {
             points: 1,
             category: 'short',
             link: 'https://primer.rs',
+    comment: '',
           })
         }
       >

@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router'
-import type { BtlEvent, Race } from '../../data/types'
+import { Link, useNavigate } from 'react-router'
+import type { BtlEvent, Race, Result } from '../../data/types'
 import { fieldDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -20,10 +20,18 @@ import './EventActions.css'
  * superadmin always, a moderator if they have been given the events, and a
  * member if they are signed in. Nobody sees a control they cannot use.
  */
-export function EventActions({ event, races }: { event: BtlEvent; races: Race[] }) {
+export function EventActions({
+  event,
+  races,
+  results,
+}: {
+  event: BtlEvent
+  races: Race[]
+  results: Result[]
+}) {
   const { locale, t } = useI18n()
   const may = useMay()
-  const { memberNumber, create, remove } = useSession()
+  const { memberNumber, creations, create, remove } = useSession()
   const navigate = useNavigate()
 
   const mayEdit = may(`entity:${EVENTS.id}`)
@@ -42,7 +50,14 @@ export function EventActions({ event, races }: { event: BtlEvent; races: Race[] 
    * form mentions them.
    */
   function copy() {
-    const id = `${event.id}-kopija-${mine.length}`
+    /* Counted against the copies of this event and not against its races, which
+       is what it was: the number of races does not change when a copy is made,
+       so pressing the button twice made two records under one id. Two records
+       under one id is the fault the whole numbering module exists to prevent
+       (entityForms.ts): the list draws them under one key, a lookup finds only
+       the first, and an edit to either changes both. */
+    const made = (creations[EVENTS.id] ?? []).filter((one) => one.id.startsWith(`${event.id}-kopija`))
+    const id = `${event.id}-kopija-${made.length + 1}`
 
     create(EVENTS.id, id, {
       name: event.name,
@@ -62,7 +77,7 @@ export function EventActions({ event, races }: { event: BtlEvent; races: Race[] 
     })
 
     for (const race of mine) {
-      create(RACES.id, `${race.id}-kopija`, {
+      create(RACES.id, `${race.id}-kopija-${made.length + 1}`, {
         eventId: id,
         name: race.name,
         distanceKm: String(race.distanceKm),
@@ -92,6 +107,14 @@ export function EventActions({ event, races }: { event: BtlEvent; races: Race[] 
       remove(RACES.id, race.id)
     }
 
+    /* And what hangs off it. A result carries the address of its event, so
+       without this the event left the calendar and its results went on counting
+       in the standing, in the Top 10 boards and in the team totals, each of them
+       still linking to a page that now says the event does not exist. */
+    for (const result of results.filter((one) => one.eventSlug === event.slug)) {
+      remove('results', result.id)
+    }
+
     remove(EVENTS.id, event.id)
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }
@@ -118,13 +141,13 @@ export function EventActions({ event, races }: { event: BtlEvent; races: Race[] 
           03.08.2026). Offered to whoever is signed in, including an
           administrator, because an administrator runs too. */}
       {memberNumber !== null && (
-        <button
-          type="button"
-          className="button button--primary"
-          onClick={() => void navigate(`/${locale}/kalendar/${event.slug}/prijava`)}
-        >
+        /* A link and not a button, like everything else on the portal that
+           leads somewhere: a button has no middle click, no "open in a new
+           tab", no address in the status bar, and is announced as a button by
+           a screen reader when it is a way to another screen. */
+        <Link className="button button--primary" to={`/${locale}/kalendar/${event.slug}/prijava`}>
           {t('event.report')}
-        </button>
+        </Link>
       )}
     </div>
   )

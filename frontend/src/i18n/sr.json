@@ -719,7 +719,8 @@
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Odgovor stiže u tvoje poruke.",
-    "proposeBack": "Nazad na timove"
+    "proposeBack": "Nazad na timove",
+    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Izaberi drugi naziv."
   },
   "leagues": {
     "title": "Dodatna takmičenja",

@@ -29,7 +29,25 @@ export type Submission = {
    *  photographs of watches (ADL A12). */
   photo: string
   category: RaceCategory
+  /**
+   * The official results, as an address and nothing else.
+   *
+   * The queue draws it as a link, so it has to be one: the form that asks for it
+   * requires the shape (`unos-rezultata.form.json`). Empty where the entry came
+   * from the event's own page, which asks for words rather than an address.
+   */
   link: string
+  /**
+   * What the member wrote in their own words: a start number, a screenshot they
+   * are sending on, a sentence about a watch that stopped.
+   *
+   * Its own field and not the link, which is where it went at first. The queue
+   * draws the link as `<a href>`, so "Startni broj 412" became an address on the
+   * moderator's screen: relative, opening the administration at a path made of
+   * the member's sentence. Anything a member types is text until something has
+   * checked it, and nothing had.
+   */
+  comment: string
   status: SubmissionStatus
   /** Why it was sent back, so the competitor is not left guessing. */
   note: string

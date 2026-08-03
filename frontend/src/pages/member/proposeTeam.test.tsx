@@ -62,6 +62,26 @@ describe('a proposal a member sends', () => {
   })
 })
 
+describe('a name a team in the league already answers to', () => {
+  it('is refused at the door rather than a fortnight later', async () => {
+    /* PDL: the name must not be taken by a team already approved. A member told
+       at the door can change it; a member told a fortnight later by a refusal
+       has to start again. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000007')
+
+    /* By the name as it stands on the standing of the teams, in another case, so
+       the check is about the name and not about the typing. */
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'dunavski TRKAČI')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
+  })
+})
+
 describe('a proposal from somebody the member list does not hold', () => {
   it('goes through, with no name beside it rather than the word undefined', async () => {
     /* The member list is read to put a name on the proposal, and it can come

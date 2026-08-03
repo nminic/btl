@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { useRef, type ReactNode } from 'react'
+import { render, screen, within } from '@testing-library/react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../../clock/ClockProvider'
 import { I18nProvider } from '../../i18n/I18nProvider'
@@ -67,15 +67,24 @@ describe('an address that names no event', () => {
   })
 })
 
-/** Puts the session into a state before the screen under it is looked at. */
+/**
+ * Puts the session into a state before the screen under it is looked at.
+ *
+ * In an effect and not in the body. Calling it while rendering sets state on the
+ * provider above during a child's render, which React reports as an error and
+ * which happens to work; the screen under it waits for its data anyway, so an
+ * effect is early enough.
+ */
 function Given({ act, children }: { act: (session: SessionValue) => void; children: ReactNode }) {
   const session = useSession()
   const done = useRef(false)
 
-  if (!done.current) {
-    done.current = true
-    act(session)
-  }
+  useEffect(() => {
+    if (!done.current) {
+      done.current = true
+      act(session)
+    }
+  }, [act, session])
 
   return <>{children}</>
 }
@@ -138,6 +147,7 @@ describe('a result reported this way', () => {
     await user.type(await screen.findByLabelText(/Sati/), '3')
     await user.type(screen.getByLabelText(/Minuta/), '41')
     await user.type(screen.getByLabelText(/Sekundi/), '12')
+    await user.type(screen.getByLabelText(/Komentar/), 'Startni broj 412')
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
     await screen.findByRole('heading', { level: 1 })
 
@@ -147,6 +157,12 @@ describe('a result reported this way', () => {
 
     expect(table).toBeVisible()
     expect(screen.getAllByRole('button', { name: 'Odobri' }).length).toBeGreaterThan(0)
+
+    /* What the member wrote, as words. The name of the event is not a link
+       here, because this form asks for words and there is no address: an
+       unchecked sentence in an `href` is an address made of that sentence. */
+    expect(within(table).getByText('Startni broj 412')).toBeVisible()
+    expect(within(table).queryByRole('link', { name: /Maraton maratona/ })).toBeNull()
   })
 
   it('scores a time of nothing at nothing, rather than falling over', async () => {

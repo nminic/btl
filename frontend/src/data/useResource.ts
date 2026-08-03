@@ -148,9 +148,10 @@ export function combinePair<A, B>(
  * anybody does after pressing it is look at the calendar. An event that is still
  * there reads as a portal that did not do what it said.
  *
- * Only the two the deletion touches are read this way today. Teams, leagues and
- * the rest still read the file straight on their public screens, which is the
- * same hole and is older than this; closing it properly means the whole of
+ * Three of them are read this way today: the events, their races, and the
+ * results, because deleting an event takes all three. Teams, leagues and the
+ * rest still read the file straight on their public screens, which is the same
+ * hole and is older than this; closing it properly means the whole of
  * `recordsOf` moving down here, together with what an entity is, and that is a
  * change of its own rather than a line in this one.
  */
@@ -177,5 +178,5 @@ export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
 export const usePages = () => useResource<Record<string, StaticPage>>('pages')
 export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
-export const useResults = () => useResource<Result[]>('results')
+export const useResults = () => useLive(useResource<Result[]>('results'), 'results', 'id')
 export const useTeams = () => useResource<Team[]>('teams')

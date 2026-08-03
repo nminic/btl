@@ -132,10 +132,12 @@ export function ReportResult() {
               seconds: total,
               points: earned,
               category: race.category,
-              /* What the member wrote, which is what a moderator reads before
-                 deciding: a link to the official results, a start number, or a
-                 sentence about what happened. */
-              link: String(values.comment),
+              /* No address: this form asks for words. What the member wrote
+                 goes in the field for words, because the queue draws the link
+                 as a link and a sentence in an `href` is an address made of
+                 somebody's sentence. */
+              link: '',
+              comment: String(values.comment),
             })
 
             setDone(earned)

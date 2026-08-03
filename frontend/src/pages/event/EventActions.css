@@ -10,11 +10,17 @@
 }
 
 @media (min-width: 620px) {
-  /* Beside the name from the width where there is room for both. The head is a
-     column of its own everywhere else, so this is the one place it becomes a
-     row, and the modifier is on the head rather than on the buttons because it
-     is the head that changes shape. */
-  .profile__head--acting {
+  /* Beside the name from the width where there is room for both, and only when
+     there is something to put beside it.
+   *
+     `:has` and not the class on its own. The class is on the head whatever is
+     inside it, but the buttons are drawn for an administrator and for a member
+     and for nobody else: a visitor got a head laid out in two columns with
+     nothing in the second, so the four lines of it paired off into a grid two by
+     two and the name of the event stood beside the way back to the calendar.
+     Where `:has` is not understood the head stays the column it is everywhere
+     else, which is the right thing to fall back to. */
+  .profile__head--acting:has(> .event__actions) {
     display: grid;
     grid-template-columns: 1fr auto;
     column-gap: var(--space-16);
@@ -25,7 +31,7 @@
      date and the organiser. Written as a span rather than left to flow, because
      the head holds four things above the buttons and a grid would otherwise put
      the buttons beside the first of them and leave three rows of empty column. */
-  .profile__head--acting > .event__actions {
+  .profile__head--acting:has(> .event__actions) > .event__actions {
     grid-row: 1 / span 4;
     grid-column: 2;
     justify-content: flex-end;

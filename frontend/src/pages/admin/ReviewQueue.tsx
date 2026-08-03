@@ -121,9 +121,20 @@ export function ReviewQueue() {
                   <td>{formatShortDate(one.date, locale)}</td>
                   <td>{one.memberNumber}</td>
                   <td>
-                    <a href={one.link} rel="noreferrer noopener" target="_blank">
-                      {one.eventName}
-                    </a>
+                    {/* A link only where there is an address to link to. Where
+                        the entry came from the event's own page there is none:
+                        that form asks for words, and words in an `href` are an
+                        address made of somebody's sentence. */}
+                    {one.link === '' ? (
+                      one.eventName
+                    ) : (
+                      <a href={one.link} rel="noreferrer noopener" target="_blank">
+                        {one.eventName}
+                      </a>
+                    )}
+                    {one.comment !== '' && (
+                      <span className="review__said">{one.comment}</span>
+                    )}
                   </td>
                   <td className="table__hide-phone">{formatNumber(one.distanceKm, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(one.ascentM, locale)}</td>
