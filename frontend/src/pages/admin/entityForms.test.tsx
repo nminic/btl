@@ -619,9 +619,10 @@ describe('the identity a new record is handed', () => {
 })
 
 describe('two teams under one name', () => {
-  /* One name, one team (PDL P13), and the address a team answers at is read off
-     its name, so two teams of one name are two teams at one address. The queue
-     that approves proposals refuses it; this is the other door. */
+  /* A name already taken is refused (PDL P13), and refused by the address it
+     makes: the address is read off the name, so two names that make one address
+     are two teams at one address. The queue that approves proposals refuses it;
+     this is the other door. */
   it('cannot be entered in the administration either', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/timovi', 'superadmin')
@@ -637,8 +638,31 @@ describe('two teams under one name', () => {
     await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000001')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    /* By the sentence that says why these two are one name, and not only by
+       "already exists": the words have to match what is compared, or a member
+       reads that a team of that name exists, goes to the list, and finds a name
+       that is not the one they typed. */
+    expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+  })
+
+  it('cannot be made by renaming one in the list either', async () => {
+    /* The third door, and the one that was open. A cell writes one field of one
+       record: it cannot refuse a name the league already answers to, and it
+       cannot put the address right after it, so a team renamed in the row kept
+       the address of the name it used to have. Both of those live on the form,
+       so the name is read in the list and changed there. The town beside it
+       carries neither, and stays a cell. */
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    await screen.findByRole('table', { name: t('admin.teams') })
+
+    expect(
+      screen.getByRole('button', { name: `Mesto: Novi Sad. ${t('admin.change')}` }),
+    ).toBeVisible()
+    /* "Tim", which is what the column of names is called. */
+    expect(screen.queryByRole('button', { name: new RegExp(`^${t('teams.name')}:`) })).toBeNull()
+    expect(screen.getByRole('cell', { name: 'Dunavski trkači' })).toBeVisible()
   })
 
   it('does not refuse a team that is being saved under the name it already has', async () => {

@@ -48,16 +48,27 @@ export function AdminTeams() {
                 entity={TEAMS}
                 editing={editing}
                 options={{ organizerMemberNumber: organizerOptions(competitors) }}
-                /* One name, one team (PDL P13). The queue of new teams refuses a
-                   name that is taken; without this the same name could be typed
-                   in here, and since the address is read off the name that is
-                   two teams at one address. Compared against every team but the
-                   one being edited, or saving a team without touching its name
-                   would refuse itself. */
+                /* A name already taken is refused (PDL P13), and refused by the
+                   address it makes rather than by the letters: the address is
+                   read off the name (entityForms.ts) and `slugify` is not one
+                   to one, so two names can be two teams at one address, which
+                   is a rule about the same thing and stricter than the words
+                   (ADL A7). The queue of new teams already refuses it; without
+                   this the same name could be typed in here.
+
+                   Compared against every team but the one being edited, or
+                   saving a team without touching its name would refuse
+                   itself. */
                 also={(values): Record<string, FieldError> =>
                   addressesIn(
                     rows.filter(
-                      (one) => one.id !== (editing.mode === 'one' ? editing.record.id : ''),
+                      (one) =>
+                        one.id !==
+                        (editing.mode === 'one'
+                          ? String(editing.record[TEAMS.idField])
+                          : /* Nothing to leave out: a team being made is not in
+                               the list yet, and no team has a blank id. */
+                            ''),
                     ),
                   ).includes(addressOf(String(values.name)))
                     ? { name: { key: 'teams.proposeTaken' } }
@@ -93,14 +104,14 @@ export function AdminTeams() {
 
                       return (
                         <tr key={team.id}>
-                          <td>
-                            <EditableCell
-                              id={team.id}
-                              field="name"
-                              value={team.name}
-                              label={t('teams.name')}
-                            />
-                          </td>
+                          {/* Read here and changed on the form, unlike the town
+                              beside it. The address a team answers at is made
+                              out of its name (entityForms.ts), and a cell
+                              writes one field of one record: it has no way to
+                              put the address right afterwards, and no way to
+                              refuse a name already taken. Both of those live on
+                              the form, so that is where a name is changed. */}
+                          <td>{team.name}</td>
                           <td>
                             <EditableCell
                               id={team.id}

@@ -120,8 +120,10 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
 /**
  * The reason approving would do nothing, where there is one.
  *
- * Its own component so the reason is worked out once and read once, rather than
- * twice by a condition and the thing it guards.
+ * Its own component because it is a line with a rule of its own: it stands in
+ * the document whether or not there is a reason, since a live region that
+ * arrives with its words is one nobody is told about (Verification.css keeps it
+ * out of the row while it is empty).
  *
  * Announced rather than merely drawn, and named by the button it explains. A
  * moderator correcting a name watches the reason appear and disappear as they
@@ -374,7 +376,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                 {/* One decision for the whole queue (owner, 01.08.2026). It asks
                     first, because there is nothing to undo: approving is what
                     puts a thing on the portal, and a queue of forty approved by
-                    a misplaced click is forty things to find again by hand. */}
+                    a misplaced click is forty things to find again by hand.
+
+                    It asks how many are waiting and promises no number, because
+                    a proposal the sweep cannot take is left standing: promising
+                    two and settling one is the same lie in the question that
+                    the line under the button was written to avoid. */}
                 {waiting.length > 0 && (
                   <button
                     type="button"
@@ -407,7 +414,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                    list with no name is one of two lists on the screen and
                    neither says which. */
                 <ul className="submissions" aria-labelledby={waitingId}>
-                  {waiting.map((one) => (
+                  {waiting.map((one) => {
+                    /* Worked out once for the card, rather than by the button,
+                       by what the button points at, and by the line itself. */
+                    const why = refusedFor(one)
+
+                    return (
                     <li key={one.id} className="submissions__item">
                       <div className="submissions__head">
                         {/* What it will be called if it is taken, not what it
@@ -508,10 +520,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                takes the keyboard with it, and this one is meant
                                to be reachable so its reason can be read. It says
                                it cannot act and points at why. */
-                            aria-disabled={refusedFor(one) !== null}
-                            aria-describedby={
-                              refusedFor(one) === null ? undefined : `${one.id}-blocked`
-                            }
+                            aria-disabled={why !== null}
+                            aria-describedby={why === null ? undefined : `${one.id}-blocked`}
                             onClick={() => approveAll([one], teams)}
                           >
                             {queue.outcome === 'editAndPublish'
@@ -560,7 +570,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               The moderator has the fields above to put it right,
                               or the way back to hand it to whoever sent it. */}
                           {queue.id === 'teams' && (
-                            <Refused why={refusedFor(one)} id={`${one.id}-blocked`} />
+                            <Refused why={why} id={`${one.id}-blocked`} />
                           )}
 
                           {/* And where it cannot go back, the button is gone and
@@ -574,7 +584,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                         </div>
                       )}
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               )}
 

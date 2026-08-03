@@ -125,14 +125,13 @@ export function AdminEvents() {
                     {rows.map((one) => (
                       <tr key={one.id}>
                         <td>{formatShortDate(one.date, locale)}</td>
-                        <td>
-                          <EditableCell
-                            id={one.id}
-                            field="name"
-                            value={one.name}
-                            label={t('profile.columns.event')}
-                          />
-                        </td>
+                        {/* Read here and changed on the form, unlike the town
+                            beside it: the address an event answers at is made
+                            out of its name and its day (entityForms.ts), and a
+                            cell writes one field and cannot put the address
+                            right after it. Renamed in a cell, an event kept the
+                            address of the name it used to have. */}
+                        <td>{one.name}</td>
                         <td>
                           <EditableCell
                             id={one.id}

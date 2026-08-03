@@ -720,7 +720,7 @@
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
     "proposeBack": "Nazad na timove",
-    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Izaberi drugi naziv."
+    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika. Izaberi drugi naziv."
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -1183,9 +1183,9 @@
     "empty": "Nema nijedne stavke na čekanju.",
     "approveAll": "Odobri sve",
     "approveAllAsk": {
-      "one": "Odobriti {count} stavku? Ovo se ne može opozvati.",
-      "few": "Odobriti {count} stavke? Ovo se ne može opozvati.",
-      "other": "Odobriti {count} stavki? Ovo se ne može opozvati."
+      "one": "U redu čeka {count} stavka. Odobriti sve što se može odobriti? Ovo se ne može opozvati.",
+      "few": "U redu čekaju {count} stavke. Odobriti sve što se može odobriti? Ovo se ne može opozvati.",
+      "other": "U redu čeka {count} stavki. Odobriti sve što se može odobriti? Ovo se ne može opozvati."
     },
     "subject": "Predmet",
     "sentBy": "Poslao {who}, član {memberNumber}",

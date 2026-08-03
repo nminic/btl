@@ -43,6 +43,16 @@
   font-size: 0.85rem;
 }
 
+/* Standing in the document with nothing in it, which is what a live region has
+   to do: one that arrives with its words is one a reader is never told about.
+   Taken out of the flow while it is empty rather than hidden, because an empty
+   item of a flex row still takes the gap after the last button, and `display:
+   none` would take it out of the accessibility tree and put back the fault this
+   was written for. No `inset`, so it stays where it stood. */
+.pending__blocked:empty {
+  position: absolute;
+}
+
 /* The country under the town, so the cell stays narrow on a telephone. The way
    a member pays follows the country (PDL P8), so it belongs beside the fee. */
 .pending__country {

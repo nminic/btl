@@ -128,14 +128,18 @@ describe('a name a team in the league already answers to', () => {
     const user = setupUser()
     renderAt('/sr/novi-tim', 'competitor', '000007')
 
-    /* By the name as it stands on the standing of the teams, in another case, so
-       the check is about the name and not about the typing. */
-    await user.type(await screen.findByLabelText(/Naziv tima/), 'dunavski TRKAČI')
+    /* In another case and without the diacritics, which is what the league
+       already holds as "Dunavski trkači": the check is on the address the name
+       makes, so neither of those two is a different team. */
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'dunavski TRKACI')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    /* Including the sentence that says why this counts as the same name. Told
+       only that a team of that name exists, a member goes looking for it on the
+       list of teams and does not find the name they typed. */
+    expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 })
@@ -529,11 +533,9 @@ describe('what a moderator may do before accepting a proposal', () => {
 
       expect(rows.filter((row) => /Knjaževac/.test(row))).toHaveLength(1)
       expect(rows.filter((row) => /Dunavski trkači Novi Sad/.test(row))).toHaveLength(1)
-      /* And the one that was not touched still says the town it was made
-         with. */
-      expect(
-        rows.find((row) => /Dunavski trkači Novi Sad/.test(row)),
-      ).toMatch(/Novi Sad/)
+      /* And the one that was not touched did not take the change with it. Said
+         of that row by name, so the count above cannot be what makes it pass. */
+      expect(rows.find((row) => /Dunavski trkači Novi Sad/.test(row))).not.toMatch(/Knjaževac/)
     } finally {
       confirm.mockRestore()
     }
@@ -633,14 +635,29 @@ describe('what a moderator may do before accepting a proposal', () => {
     await user.click(within(card(/Dunavski trkači Novi Sad/)).getByRole('button', { name: 'Odobri' }))
 
     await router.navigate('/sr/administracija/timovi')
-    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const listed = () => within(screen.getByRole('table', { name: 'Timovi' }))
+    await screen.findByRole('table', { name: 'Timovi' })
 
-    /* Both there, and each openable on its own: two rows under one identity
-       would draw one and lose the other. */
-    expect(listed.getByText('Timočka trkačka družina')).toBeVisible()
-    expect(listed.getByText('Dunavski trkači Novi Sad')).toBeVisible()
-    expect(listed.getAllByRole('button', { name: /^Otvori: (Timočka|Dunavski trkači Novi)/ }))
-      .toHaveLength(2)
+    /* Told apart the only way that sees it: by changing one and reading the
+       other. Two rows under one identity are both drawn, so counting them
+       proves nothing; but the overlay of edits is keyed by identity, so under
+       one identity a change to either reaches both. */
+    await user.click(listed().getByRole('button', { name: /^Otvori: Timočka/ }))
+
+    const city = await screen.findByLabelText(/^Mesto/)
+    await user.clear(city)
+    await user.type(city, 'Knjaževac')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    const rows = listed()
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.textContent ?? '')
+
+    expect(rows.filter((row) => /Knjaževac/.test(row))).toHaveLength(1)
+    expect(rows.find((row) => /Dunavski trkači Novi Sad/.test(row))).not.toMatch(/Knjaževac/)
   })
 
   it('counts only what the sweep really settled', async () => {
