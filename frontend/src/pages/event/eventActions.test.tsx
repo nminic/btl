@@ -189,22 +189,35 @@ describe('copying an event', () => {
        off the copy, so next season's weekend is last season's weekend with the
        date moved rather than five races typed again.
 
-       Read on the screen of races, which is where a race says which event it
-       belongs to. That screen built its list of events from the file, so a race
-       made a moment ago for an event made a moment ago had nothing to point at:
-       the column said "Bez događaja", the search by event could not find it, and
-       opening it offered a list of events with its own missing, so saving
-       detached the race from the event it had been made for. */
+       Counted on the screen of races, before and after, and that counting is
+       the whole proof. That screen searches by the name of a race and the name
+       of its event, so a copied race whose event cannot be found matches neither:
+       its own name is a distance and its event's name is empty. Read the way it
+       was written first, by looking for rows that name the event, it passed with
+       the fix taken out, because the originals name the event too. */
     const user = setupUser()
     const { router } = await openEvent('superadmin')
 
-    const mine = within(await screen.findByRole('table', { name: 'Trke' }))
+    const races = within(await screen.findByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
-      .slice(1)
-      .map((row) => must(first(within(row).getAllByRole('cell')).textContent, 'naziv trke'))
+      .slice(1).length
 
-    expect(mine.length).toBeGreaterThan(1)
+    expect(races).toBeGreaterThan(1)
 
+    const found = async () => {
+      const box = await screen.findByPlaceholderText(/Traži po nazivu/)
+
+      await user.clear(box)
+      await user.type(box, 'Maraton maratona')
+
+      return within(await screen.findByRole('table')).getAllByRole('row').slice(1).length
+    }
+
+    await router.navigate('/sr/administracija/trke')
+    const before = await found()
+
+    await router.navigate(EVENT)
+    await screen.findByRole('button', { name: 'Kopiranje' })
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
     const date = await screen.findByLabelText(/Datum/)
@@ -214,25 +227,11 @@ describe('copying an event', () => {
     await screen.findByRole('status', { name: 'Sačuvano' })
 
     await router.navigate('/sr/administracija/trke')
-    await user.type(await screen.findByPlaceholderText(/Traži po nazivu/), 'Maraton maratona')
 
-    /* The copy is found by the name of its event, which is only possible if the
-       screen can see the event at all. */
-    const rows = within(await screen.findByRole('table'))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => within(row).getAllByRole('cell').map((cell) => cell.textContent))
-
-    /* One row per copied race, each naming the copied event and not "Bez
-       događaja". */
-    for (const name of mine) {
-      const copied = rows.filter(
-        (cells) => at(cells, 1) === name && /2027|Maraton maratona/.test(String(at(cells, 0))),
-      )
-
-      expect(copied.length).toBeGreaterThan(0)
-      expect(String(at(first(copied), 0))).not.toMatch(/Bez događaja/)
-    }
+    /* Every race of the event, and every one of them naming its event. With the
+       screen reading events off the file the copies answer to no event at all,
+       and this number does not move. */
+    expect(await found()).toBe(before + races)
   })
 
   it('gives a second copy an identity of its own', async () => {

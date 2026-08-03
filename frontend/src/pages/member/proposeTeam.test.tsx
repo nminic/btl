@@ -460,6 +460,124 @@ describe('what a moderator may do before accepting a proposal', () => {
     expect(within(row).getByText('Strahinja Vukićević')).toBeVisible()
   })
 
+  it('gives two teams approved in one sweep two identities', async () => {
+    /* The fault a call per item walks into. What identity is free is read out of
+       the session, and the session does not change while a loop runs, so forty
+       approvals in one click were forty teams under one identity: the list draws
+       them under one key, an edit to either reaches both, and deleting one
+       deletes both. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { router } = await open()
+
+      /* Renamed so both go through, since the second carries a name the league
+         already has. */
+      const name = within(card(/dunavski trkači/)).getByLabelText('Naziv tima')
+      await user.clear(name)
+      await user.type(name, 'Dunavski trkači Novi Sad')
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByText(/^Rešen.* 2 stavk/)).toBeVisible()
+
+      await router.navigate('/sr/administracija/timovi')
+      const listed = () => within(screen.getByRole('table', { name: 'Timovi' }))
+      await screen.findByRole('table', { name: 'Timovi' })
+
+      /* Told apart by acting on one of them: two rows under one identity draw
+         from one record, so renaming either renames both. */
+      await user.click(listed().getByRole('button', { name: 'Obriši: Timočka trkačka družina' }))
+      await user.click(
+        listed().getByRole('button', { name: 'Potvrdi brisanje: Timočka trkačka družina' }),
+      )
+
+      expect(listed().queryByText('Timočka trkačka družina')).toBeNull()
+      expect(listed().getByText('Dunavski trkači Novi Sad')).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('lets no two proposals of one name through in the same sweep', async () => {
+    /* What a team may be called is read out of the same session, so the second
+       item of a sweep could not see the team the first had just made. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { router } = await open()
+
+      const name = within(card(/dunavski trkači/)).getByLabelText('Naziv tima')
+      await user.clear(name)
+      await user.type(name, 'Timočka trkačka družina')
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      /* One of the two, and the other left standing with the reason on it. */
+      expect(screen.getByText(/^Rešen.* 1 stavk/)).toBeVisible()
+
+      await router.navigate('/sr/administracija/timovi')
+      const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+      expect(listed.getAllByText('Timočka trkačka družina')).toHaveLength(1)
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('refuses a name that is spelt differently and answers at the same address', async () => {
+    /* The address is read off the name and `slugify` is not one to one:
+       "Dunavski trkači" and "Dunavski Trkaci" are two names and one address, so
+       comparing names would let the second through to collide with the first. */
+    const user = setupUser()
+    const { router } = await open()
+
+    const name = within(card(/dunavski trkači/)).getByLabelText('Naziv tima')
+    await user.clear(name)
+    await user.type(name, 'Dunavski Trkaci')
+
+    expect(within(card(/Dunavski Trkaci/)).getByText(/istu adresu/)).toBeVisible()
+
+    await user.click(within(card(/Dunavski Trkaci/)).getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/timovi')
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(listed.queryByText('Dunavski Trkaci')).toBeNull()
+  })
+
+  it('says why it will not take one, rather than doing nothing when pressed', async () => {
+    /* A control that quietly does nothing teaches a moderator that the screen is
+       broken, which is the reasoning already written beside the way back on this
+       same card (WCAG 2.2 SC 3.3.1). */
+    const user = setupUser()
+    await open()
+
+    expect(within(card(/dunavski trkači/)).getByText(/već postoji u ligi/)).toBeVisible()
+
+    const city = within(card(/Timočka/)).getByLabelText('Mesto')
+    await user.clear(city)
+
+    expect(within(card(/Timočka/)).getByText(/moraju biti popunjeni/)).toBeVisible()
+  })
+
+  it('shows the name it was decided under in the table of settled items', async () => {
+    const user = setupUser()
+    await open()
+
+    const name = within(card(/Timočka/)).getByLabelText('Naziv tima')
+    await user.clear(name)
+    await user.type(name, 'Timočka družina')
+    await user.click(within(card(/Timočka družina/)).getByRole('button', { name: 'Odobri' }))
+
+    const decided = within(await screen.findByRole('table', { name: 'Rešeno' }))
+
+    expect(decided.getByText('Timočka družina')).toBeVisible()
+    expect(decided.queryByText('Timočka trkačka družina')).toBeNull()
+  })
+
   it('gives two teams approved one after the other two identities', async () => {
     /* The count of what has been made is read at each approval, so the second
        has to see the first. It used to be filed under an identity of its own

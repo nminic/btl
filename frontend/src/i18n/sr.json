@@ -1237,7 +1237,10 @@
       "other": "Rešeno je {count} stavki."
     },
     "teamAccepted": "Tim „{name}\" je prihvaćen",
-    "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator."
+    "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator.",
+    "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili vrati predlog na doradu.",
+    "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",
+    "teamNoMember": "Ovaj predlog nema člana koji ga je poslao, pa nema ko da bude organizator tima ni ko da dobije odgovor."
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

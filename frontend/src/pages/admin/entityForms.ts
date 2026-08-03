@@ -203,7 +203,10 @@ export const TEAMS: EntityDef = {
   path: 'administracija/timovi',
   form: tim as FormDef,
   idField: 'id',
-  blank: {},
+  /* What the form does not ask for but every team carries. A screen reads
+     `team.bio` and splits it into paragraphs, so a team made without one is a
+     team whose page cannot be drawn. */
+  blank: { bio: '' },
   /**
    * The address the team answers at, from its name.
    *

@@ -9,11 +9,12 @@ import { formatShortDate } from '../../i18n/format'
 import countries from '../../data/countries.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
-import type { Decision, Edits } from '../../session/context'
+import type { Decision } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { usePending, waitingIn, settledWith } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { idFor, recordsOf, TEAMS } from './entityForms'
+import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, type Queue, type QueueOutcome } from './queues'
@@ -116,43 +117,13 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
   )
 }
 
-/**
- * What a proposal says the team should be called, and where it is from.
- *
- * One place, because three things read it: the fields a moderator corrects, the
- * check that the name is free, and the record the approval makes.
- */
-function proposed(item: PendingItem): Proposed {
-  return { name: item.subject, city: item.city, country: item.country }
-}
+/** The reason approving would do nothing, where there is one. Its own component
+ *  so the reason is worked out once and read once, rather than twice by a
+ *  condition and the thing it guards. */
+function Refused({ why }: { why: string | null }) {
+  const { t } = useI18n()
 
-/** What a team is made of, as three named things rather than a bag of strings:
- *  read out of a record, each of them is "string or nothing", and the whole
- *  point here is that none of the three may be nothing. */
-type Proposed = { name: string; city: string; country: string }
-
-/** The team a proposal would make, with whatever the moderator has corrected. */
-function teamFrom(item: PendingItem, edits: Edits): Proposed {
-  const said = proposed(item)
-
-  return {
-    name: String(edits[item.id]?.name ?? said.name),
-    city: String(edits[item.id]?.city ?? said.city),
-    country: String(edits[item.id]?.country ?? said.country),
-  }
-}
-
-/** Whether a team already answers to that name, however it is written. A name
- *  and the address read off it are the same thing twice (PDL P13). */
-function taken(name: string, teams: Team[]): boolean {
-  const wanted = name.trim().toLowerCase()
-
-  return teams.some((team) => team.name.trim().toLowerCase() === wanted)
-}
-
-/** Whether anything a team cannot be made without is still missing. */
-function incomplete(made: Proposed): boolean {
-  return [made.name, made.city, made.country].some((value) => value.trim() === '')
+  return why === null ? null : <p className="pending__blocked">{t(why)}</p>
 }
 
 /**
@@ -200,11 +171,23 @@ function TeamFields({ item }: { item: PendingItem }) {
         <span>{t('admin.field.country')}</span>
         <select value={value('country')} onChange={(event) => edit(item.id, 'country', event.target.value)}>
           <option value="">{t('form.choose')}</option>
-          {[...countries.region, ...countries.rest].map((one) => (
-            <option key={one.code} value={one.code}>
-              {one.name}
-            </option>
-          ))}
+          {/* The region first and named, like every other choice of country on
+              the portal (FormRenderer): nine members in ten pick one of these,
+              and a flat list of two hundred and fifty is a list nobody reads. */}
+          <optgroup label={t('form.region')}>
+            {countries.region.map((one) => (
+              <option key={one.code} value={one.code}>
+                {one.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={t('form.restOfWorld')}>
+            {countries.rest.map((one) => (
+              <option key={one.code} value={one.code}>
+                {one.name}
+              </option>
+            ))}
+          </optgroup>
         </select>
       </label>
     </div>
@@ -287,51 +270,70 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * a queue where "approve all" did less than pressing approve forty times would
    * be a trap.
    */
-  const approve = (one: PendingItem, teams: Team[]): boolean => {
-    const made = queue.id === 'teams' ? teamFrom(one, edits) : null
+  /**
+   * Approving, one item or forty, with everything the next one has to know.
+   *
+   * Written as a walk rather than as a call per item, and that is the whole
+   * point of it. What a team may be called and what identity it gets are both
+   * read out of the session, and the session does not change while a loop runs:
+   * called forty times in one click, every team was handed the same identity,
+   * and two proposals renamed to the same thing both went through. Both are
+   * faults this portal has met before, on the member numbers, and the answer is
+   * the same one (memberNumbers.ts): carry what has been given out along with
+   * the walk.
+   *
+   * What it returns is what was actually settled, which is not always what it
+   * was asked to settle: a proposal whose name is taken is left standing, so the
+   * line under the button has to say the smaller number or it says one the queue
+   * disagrees with.
+   */
+  const approveAll = (items: PendingItem[], teams: Team[]): number => {
+    /* Everything already spoken for, growing as the walk hands more out. */
+    const identities = (creations[TEAMS.id] ?? []).map((row) => row.id)
+    const addresses = addressesIn(teams)
+    let done = 0
 
-    /* Refused rather than made. PDL P13: a name already in the league cannot be
-       taken again, and the moderator has the fields above to put it right or the
-       way back to hand the proposal to whoever sent it. Approving it anyway
-       would put two teams under one name and, since the address is read off the
-       name, under one address. */
-    if (made !== null && (taken(made.name, teams) || incomplete(made))) {
-      return false
+    for (const one of items) {
+      const made = queue.id === 'teams' ? teamFrom(one, edits) : null
+
+      if (made !== null && refusal(made, addresses, one) !== null) {
+        continue
+      }
+
+      settle(one.id, {
+        status: 'approved',
+        /* A published biography is written down as it went out, so the table of
+           settled items can show what the member's profile now says rather than
+           what they sent in. Nothing else writes anything on an approval, which
+           explains itself. */
+        note: queue.outcome === 'editAndPublish' ? textOf(one) : '',
+        basis: '',
+        memberNumber: '',
+      })
+
+      done += 1
+
+      if (made === null) {
+        continue
+      }
+
+      const id = idFor(TEAMS, {}, identities, [])
+
+      identities.push(id)
+      addresses.push(addressOf(made.name))
+
+      create(TEAMS.id, id, { ...made, organizerMemberNumber: one.memberNumber })
+
+      notify({
+        from: t('app.name'),
+        to: one.memberNumber,
+        subject: t('verification.teamAccepted', { name: made.name }),
+        body: t('verification.teamAcceptedBody', { name: made.name }),
+        date: today,
+      })
     }
 
-    settle(one.id, {
-      status: 'approved',
-      /* A published biography is written down as it went out, so the table of
-         settled items can show what the member's profile now says rather than
-         what they sent in. Nothing else writes anything on an approval, which
-         explains itself. */
-      note: queue.outcome === 'editAndPublish' ? textOf(one) : '',
-      basis: '',
-      memberNumber: '',
-    })
-
-    if (made === null) {
-      return true
-    }
-
-    /* The identity from the one place that hands them out, so the count of what
-       has been created stays one count: an identity of another shape put in
-       beside them moved the counter for everything entered by hand. */
-    create(
-      TEAMS.id,
-      idFor(TEAMS, {}, (creations[TEAMS.id] ?? []).map((row) => row.id), []),
-      { ...made, organizerMemberNumber: one.memberNumber },
-    )
-
-    notify({
-      from: t('app.name'),
-      to: one.memberNumber,
-      subject: t('verification.teamAccepted', { name: made.name }),
-      body: t('verification.teamAcceptedBody', { name: made.name }),
-      date: today,
-    })
-
-    return true
+    return done
   }
 
   const settledColumn = SETTLED_COLUMN[queue.outcome]
@@ -385,9 +387,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                          standing, so the count has to be the ones that went
                          through or the line under the button would say a number
                          the queue disagrees with. */
-                      const done = waiting.filter((item) => approve(item, teams)).length
-
-                      setSwept(done)
+                      setSwept(approveAll(waiting, teams))
                     }}
                   >
                     {t('verification.approveAll')}
@@ -502,7 +502,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <button
                             type="button"
                             className="button button--primary"
-                            onClick={() => approve(one, teams)}
+                            onClick={() => approveAll([one], teams)}
                           >
                             {queue.outcome === 'editAndPublish'
                               ? t('verification.publish')
@@ -545,6 +545,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             </button>
                           )}
 
+                          {/* Why approving would do nothing, said on the card
+                              rather than left to a press that changes nothing.
+                              The moderator has the fields above to put it right,
+                              or the way back to hand it to whoever sent it. */}
+                          <Refused
+                            why={
+                              queue.id === 'teams'
+                                ? refusal(teamFrom(one, edits), addressesIn(teams), one)
+                                : null
+                            }
+                          />
+
                           {/* And where it cannot go back, the button is gone and
                               the reason is on screen in its place. A control
                               that quietly does nothing teaches a moderator that
@@ -578,7 +590,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                       <tbody>
                         {settled.map(({ item, decision }) => (
                           <tr key={item.id}>
-                            <td>{item.subject}</td>
+                            {/* What it was called when it was decided. A name
+                                corrected on the card is the name the team now
+                                carries, so the row that records the decision
+                                must not go on showing the one that arrived. */}
+                            <td>
+                              {queue.id === 'teams' ? teamFrom(item, edits).name : item.subject}
+                            </td>
                             <td>
                               <span className={`tag tag--${decision.status}`}>
                                 {t(stateKey(decision.status))}
