@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import type { PendingItem } from '../data/types'
 import {
   SessionContext,
   type Creations,
@@ -53,6 +54,7 @@ export function SessionProvider({
   const [rights, setRights] = useState<Rights>({})
   const [decisions, setDecisions] = useState<Decisions>({})
   const [deletions, setDeletions] = useState<Deletions>({})
+  const [proposals, setProposals] = useState<PendingItem[]>([])
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -65,6 +67,13 @@ export function SessionProvider({
       { ...submission, id: `sub-${current.length + 1}`, status: 'pending', note: '' },
       ...current,
     ])
+  }, [])
+
+  /* An id of its own shape, so nothing can collide with the ids in the file the
+     rest of the queue is read from, and so a decision written against it is
+     plainly a decision about something this visit put there. */
+  const propose = useCallback((item: Omit<PendingItem, 'id'>) => {
+    setProposals((current) => [{ ...item, id: `prop-${current.length + 1}` }, ...current])
   }, [])
 
   const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
@@ -164,6 +173,8 @@ export function SessionProvider({
       settle,
       deletions,
       remove,
+      proposals,
+      propose,
     }),
     [
       memberNumber,
@@ -186,6 +197,8 @@ export function SessionProvider({
       settle,
       deletions,
       remove,
+      proposals,
+      propose,
     ],
   )
 

@@ -120,6 +120,9 @@ export const CONTACT_ADDRESS = 'info@balkanskatrkackaliga.net'
 const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'registracija', labelKey: 'nav.register', seoKey: 'register' },
   { path: 'prijava', labelKey: 'nav.login', seoKey: 'signIn' },
+  /* Reached from the standing of the teams, by whoever is signed in. Not in the
+     navigation: proposing a team is something a member does once, if ever. */
+  { path: 'novi-tim', labelKey: 'teams.propose', seoKey: 'proposeTeam' },
   { path: 'administracija', labelKey: 'nav.admin', seoKey: 'admin' },
   { path: 'administracija/clanovi', labelKey: 'admin.members', seoKey: 'adminMembers' },
   { path: 'administracija/dogadjaji', labelKey: 'admin.events', seoKey: 'adminEvents' },

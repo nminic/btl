@@ -16,6 +16,7 @@ import { Pricing } from '../pages/Pricing'
 import { Rankings } from '../pages/Rankings'
 import { Rulebook } from '../pages/Rulebook'
 import { TopBoards } from '../pages/TopBoards'
+import { ProposeTeam } from '../pages/member/ProposeTeam'
 import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
@@ -61,6 +62,7 @@ const SCREENS: Record<string, ReactElement> = {
   'top-liste': <TopBoards />,
   takmicari: <Competitors />,
   timovi: <Teams />,
+  'novi-tim': <ProposeTeam />,
   lige: <Leagues />,
   clanarina: <Pricing />,
   registracija: <Registration />,

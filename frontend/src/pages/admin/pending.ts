@@ -1,5 +1,8 @@
-import { useResource } from '../../data/useResource'
+import { useMemo } from 'react'
+import type { PendingItem } from '../../data/types'
+import { useResource, type ResourceState } from '../../data/useResource'
 import type { Decision, Decisions } from '../../session/context'
+import { useSession } from '../../session/useSession'
 
 /* What is waiting in the seven queues that are read from a file.
  *
@@ -22,53 +25,27 @@ import type { Decision, Decisions } from '../../session/context'
  * does not apply. The alternative is seven shapes and a screen that asks which
  * one it is holding, to show the same three lines either way.
  */
-export const PENDING_QUEUE_IDS = [
-  'payments',
-  'leagues',
-  'teams',
-  'bios',
-  'photos',
-  'comments',
-  'schedule',
-] as const
+/**
+ * Everything waiting for a decision: what is on the disc, and what this visit
+ * has added to it.
+ *
+ * A competitor may propose a team, and a proposal is not a different kind of
+ * thing from the teams already in the queue. Merged here rather than at each of
+ * the eight screens, so the counters in the navigation, the queue itself and the
+ * door that decides whether a section is empty all count the same items. One of
+ * the three forgetting to merge is a moderator who is told there is nothing
+ * waiting on a screen that is about to show them something.
+ */
+export function usePending(): ResourceState<PendingItem[]> {
+  const state = useResource<PendingItem[]>('verification')
+  const { proposals } = useSession()
 
-export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
-
-export type PendingItem = {
-  id: string
-  queue: PendingQueueId
-  /** The day it arrived in the queue. */
-  date: string
-  /**
-   * Who sent it in, or empty. A change of date may be reported by somebody with
-   * no account at all (PDL P10), and on the payments queue it is empty for a
-   * different reason: a registration whose fee is not recorded has no member
-   * number yet, which is the whole of the 30.07.2026 decision made visible in
-   * the data.
-   */
-  memberNumber: string
-  who: string
-  /** What the decision is about: the name of the league, the team, the member
-   *  or the event. */
-  subject: string
-  /** The text to read before deciding: the biography, the comment, the reason
-   *  given, or the file name of a picture. */
-  body: string
-  /** A reported change of date carries both dates, so the difference is the
-   *  thing on screen. Empty on every other queue. */
-  currentDate: string
-  proposedDate: string
-  /** The payments queue only. Until the fee is recorded there is no number to go
-   *  by, so a waiting registration is known by its name and its address (PDL
-   *  P8). Empty on the other six. */
-  email: string
-  /** The payments queue only. How a member pays follows the country they live in
-   *  (PDL P8), so it belongs beside the fee. Empty on the other six. */
-  city: string
-  country: string
+  return useMemo(
+    () =>
+      state.status === 'ready' ? { status: 'ready', data: [...state.data, ...proposals] } : state,
+    [state, proposals],
+  )
 }
-
-export const usePending = () => useResource<PendingItem[]>('verification')
 
 /** Everything in one queue that nobody has decided on yet. The queues screen,
  *  the counters and the navigation all count through this, so they cannot

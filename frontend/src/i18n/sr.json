@@ -193,6 +193,10 @@
     "competitorAwards": {
       "title": "Priznanja takmičara",
       "description": "Pehari, plakete i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
+    },
+    "proposeTeam": {
+      "title": "Predlog tima",
+      "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
     }
   },
   "shell": {
@@ -693,7 +697,17 @@
     "noMembers": "Ovaj tim još nema članova.",
     "noMembersThatSeason": "Ovaj tim te sezone nije imao članova.",
     "notFound": "Ovog tima nema.",
-    "name": "Tim"
+    "name": "Tim",
+    "propose": "Predloži tim",
+    "proposeTitle": "Predlog tima",
+    "proposeSubmit": "Pošalji predlog",
+    "proposeNote": "Zašto ovaj tim",
+    "proposeNoteHint": "Neobavezno. Ko ga čini, gde trenira, sve što moderatoru pomaže da odluči.",
+    "proposeNote2": "Tim postoji tek kad ga moderator odobri. Do tada ga niko osim tebe i moderatora ne vidi.",
+    "proposeBody": "{city}, {country}. {note}",
+    "proposeDoneTitle": "Predlog je poslat",
+    "proposeDone": "Tim „{name}\" čeka odluku moderatora. Odgovor stiže u tvoje poruke.",
+    "proposeBack": "Nazad na timove"
   },
   "leagues": {
     "title": "Dodatna takmičenja",

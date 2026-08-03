@@ -1,5 +1,6 @@
 import type { Decisions } from '../../session/context'
-import { waitingIn, type PendingItem, type PendingQueueId } from './pending'
+import { waitingIn } from './pending'
+import { PENDING_QUEUE_IDS, type PendingItem, type PendingQueueId } from '../../data/types'
 
 /* "Red za proveru" was one queue for results. It is now one story, because a
  * moderator approves a great deal more than results, and every one of these
@@ -140,9 +141,18 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
   },
 }
 
-/** The same eight as a list, in the order they are shown in, which is the order
- *  they stand in above. */
-export const QUEUES: Queue[] = Object.values(QUEUE)
+/**
+ * The same eight as a list, in the order they are shown in.
+ *
+ * Built from the list of queues that are read from a file, with the results in
+ * front of them, rather than from the order the record above happens to be
+ * written in. The record's order is not a decision anybody took: it is whatever
+ * the keys were typed in, and `Object.values` follows it silently. This way the
+ * order lives in one place (src/data/types.ts), beside the shape of the items
+ * themselves, and the results come first because they are the queue with the
+ * most in it and the one a moderator opens daily.
+ */
+export const QUEUES: Queue[] = [QUEUE.results, ...PENDING_QUEUE_IDS.map((id) => QUEUE[id])]
 
 /**
  * Whether this item can be handed back at all.
