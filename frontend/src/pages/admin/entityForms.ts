@@ -203,7 +203,33 @@ export const TEAMS: EntityDef = {
   path: 'administracija/timovi',
   form: tim as FormDef,
   idField: 'id',
-  blank: { slug: '' },
+  /* What the form does not ask for but every team carries. A screen reads
+     `team.bio` and splits it into paragraphs, so a team made without one is a
+     team whose page cannot be drawn. */
+  blank: { bio: '' },
+  /**
+   * The address the team answers at, from its name.
+   *
+   * The same reasoning as the event's, and the same fault it had: `slug` was
+   * blank on anything entered by hand, so a team entered in the administration
+   * or approved out of the queue sat in the list carrying no address at all. A
+   * team's name has no day to go with it, because a team is not run once a year.
+   *
+   * What this fixes is the record, not yet the sight of it. No public screen
+   * reads the overlay this prototype keeps its changes in, so a team approved
+   * today is not on `/tim/…` whatever its address says (PENDING, R7). The
+   * address is right in the record from the moment it is made, which is what
+   * the database will be handed.
+   */
+  derived: (values) => [
+    {
+      name: 'slug',
+      labelKey: 'admin.field.teamSlug',
+      hintKey: 'admin.hint.teamSlug',
+      value: slugify(String(values.name)),
+      shownKey: slugify(String(values.name)),
+    },
+  ],
 }
 
 /** Which events count towards a league is not on the form: there is no field
@@ -311,14 +337,42 @@ export function namesItself(entity: EntityDef): boolean {
 export function idFor(
   entity: EntityDef,
   values: FormValues,
-  made: number,
+  made: string[],
   taken: string[],
 ): string {
   if (entity.handsOutIdentity !== undefined) {
     return entity.handsOutIdentity(taken)
   }
 
-  return namesItself(entity) ? String(values[entity.idField]) : `${entity.id}-nov-${made + 1}`
+  if (namesItself(entity)) {
+    return String(values[entity.idField])
+  }
+
+  /* One past the highest already used, and not the length of the list.
+   *
+   * The length goes back down. Make two records, delete the first, make a
+   * third, and the third is handed the identity the second holds: the list
+   * draws two rows under one key, and a change to either reaches both, because
+   * the overlay of changes is keyed by exactly that identity. That is the same
+   * fault this file warns about two functions down, arriving by a different
+   * door. Counting up from the highest never goes back. */
+  const highest = made.reduce((most, one) => {
+    /* Taken apart rather than indexed. Read as `found[1]` the digits are "string
+       or nothing", `Number(undefined)` is not a number, and `Math.max` of it is
+       not a number either: every record then came out `-nov-NaN`, which is one
+       identity for all of them. That is the very fault this counter exists to
+       stop, and it went in silently, because nothing about a name is checked at
+       the point it is made. */
+    /* Two backslashes, because this is a template literal: written with one,
+       JavaScript reads it as an escape and hands the expression `d+`, which
+       matches nothing, so the count stayed at nought and every record was
+       named `-nov-1`. */
+    const [, digits] = new RegExp(`^${entity.id}-nov-(\\d+)$`).exec(one) ?? []
+
+    return digits === undefined ? most : Math.max(most, Number(digits))
+  }, 0)
+
+  return `${entity.id}-nov-${highest + 1}`
 }
 
 /**

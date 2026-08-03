@@ -7,6 +7,9 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import predlogTima from '../../forms/definitions/predlog-tima.form.json'
 import type { FieldError, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
+import { recordsOf, TEAMS } from '../admin/entityForms'
+import { useOverlay } from '../admin/overlay'
+import { addressesIn, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -23,11 +26,13 @@ import './Member.css'
  * and P13 went on reading "the superadmin approves", which is why the screen
  * said neither for a while; the owner brought P13 into line on 03.08.2026.
  *
- * What this screen deliberately does not promise is an answer, and does not
- * promise the member a sight of what they sent either. A decision on a proposal
- * reaches nobody: the inbox is written to on one queue only, the pictures, and a
- * member has no list of what they have put forward. Both of those are written
- * down (PENDING R9) rather than papered over with a sentence.
+ * What this screen does not promise is a sight of the proposal while it waits.
+ * There is no list of what a member has put forward, so it says the team is not
+ * visible anywhere rather than that only they can see it.
+ *
+ * The decision itself does reach them: approving writes to the inbox
+ * (PendingQueue, PDL P13). A refusal still reaches nobody, which is what is left
+ * of R9.
  *
  * The words say "moderator" and stop there, as the other two do. Naming the
  * superadmin beside him is accurate and useless to a member: it is the internal
@@ -46,6 +51,7 @@ export function ProposeTeam() {
   const { locale, t } = useI18n()
   const { memberNumber, propose } = useSession()
   const today = useToday()
+  const overlay = useOverlay()
   /* The teams as well, for one rule: a name already in the league cannot be
      proposed again (PDL). Checked on the form rather than left to a moderator,
      because a member who is told at the door can change the name; a member told
@@ -109,8 +115,12 @@ export function ProposeTeam() {
               currentDate: '',
               proposedDate: '',
               email: '',
-              city: '',
-              country: '',
+              /* In their own fields as well as in the words above, because
+                 approving the proposal makes the team out of them (PDL P13):
+                 the words are for the moderator to read, these are what the
+                 record is built from. */
+              city: String(values.city),
+              country: String(values.country),
             })
 
             setSent(name)
@@ -121,13 +131,18 @@ export function ProposeTeam() {
               <p className="member__note">{t('teams.proposeNote2')}</p>
               <FormRenderer
                 form={predlogTima as FormDef}
+                /* By the address the name makes, which is what has to be
+                   unique and is what the queue compares (teamProposal.ts).
+                   Comparing names let "Dunavski Trkaci" through to sit in the
+                   queue for ever: the moderator could not approve it and the
+                   member was never told why. The same function also refuses a
+                   name that makes no address at all. */
                 check={(values): Record<string, FieldError> =>
-                  teams.some(
-                    (team) =>
-                      team.name.trim().toLowerCase() === String(values.name).trim().toLowerCase(),
-                  )
-                    ? { name: { key: 'teams.proposeTaken' } }
-                    : {}
+                  /* Through the overlay, like the two screens that decide.
+                     Read straight from the file this form did not know about a
+                     team approved a minute ago in this same visit, so it took a
+                     proposal the queue was then bound to refuse. */
+                  nameError(String(values.name), addressesIn(recordsOf(TEAMS, teams, overlay)))
                 }
                 onSubmit={onSubmit}
               />

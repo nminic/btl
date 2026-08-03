@@ -7,7 +7,7 @@ import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { RACES, recordsOf, type Editing } from './entityForms'
+import { EVENTS, RACES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -48,19 +48,29 @@ export function AdminRaces() {
       <Resource state={state}>
         {([races, events]) => {
           const all = recordsOf(RACES, races, overlay)
+          /* The events read the same way the races are, through what this visit
+             has entered and deleted.
+           *
+             Read straight from the file, a race belonging to an event copied a
+             moment ago had nothing to point at: the column said "Bez događaja",
+             the search by event name could not find it, and opening it gave a
+             list of events with its own missing, so saving detached the race
+             from the event it had been made for. Copying an event makes its
+             races here, so that is not an edge (owner, 03.08.2026). */
+          const allEvents = recordsOf(EVENTS, events, overlay)
 
           if (editing !== null) {
             return (
               <EntityEditor
                 entity={RACES}
                 editing={editing}
-                options={{ eventId: eventOptions(events, locale) }}
+                options={{ eventId: eventOptions(allEvents, locale) }}
                 onDone={() => setEditing(null)}
               />
             )
           }
 
-          const eventNames = new Map(events.map((one) => [one.id, one.name]))
+          const eventNames = new Map(allEvents.map((one) => [one.id, one.name]))
           const needle = search.trim().toLowerCase()
           const found = all.filter((one) =>
             `${one.name} ${eventNames.get(one.eventId) ?? ''}`.toLowerCase().includes(needle),

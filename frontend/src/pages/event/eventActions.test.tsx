@@ -184,6 +184,56 @@ describe('copying an event', () => {
     expect(screen.getByLabelText(/Naziv događaja/)).toHaveValue(name)
   })
 
+  it('keeps the structure: every race copied, and every copy on the copied event', async () => {
+    /* What copying is for (owner, 03.08.2026): the races come across and hang
+       off the copy, so next season's weekend is last season's weekend with the
+       date moved rather than five races typed again.
+
+       Counted on the screen of races, before and after, and that counting is
+       the whole proof. That screen searches by the name of a race and the name
+       of its event, so a copied race whose event cannot be found matches neither:
+       its own name is a distance and its event's name is empty. Read the way it
+       was written first, by looking for rows that name the event, it passed with
+       the fix taken out, because the originals name the event too. */
+    const user = setupUser()
+    const { router } = await openEvent('superadmin')
+
+    const races = within(await screen.findByRole('table', { name: 'Trke' }))
+      .getAllByRole('row')
+      .slice(1).length
+
+    expect(races).toBeGreaterThan(1)
+
+    const found = async () => {
+      const box = await screen.findByPlaceholderText(/Traži po nazivu/)
+
+      await user.clear(box)
+      await user.type(box, 'Maraton maratona')
+
+      return within(await screen.findByRole('table')).getAllByRole('row').slice(1).length
+    }
+
+    await router.navigate('/sr/administracija/trke')
+    const before = await found()
+
+    await router.navigate(EVENT)
+    await screen.findByRole('button', { name: 'Kopiranje' })
+    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+
+    const date = await screen.findByLabelText(/Datum/)
+    await user.clear(date)
+    await user.type(date, '14032027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    await router.navigate('/sr/administracija/trke')
+
+    /* Every race of the event, and every one of them naming its event. With the
+       screen reading events off the file the copies answer to no event at all,
+       and this number does not move. */
+    expect(await found()).toBe(before + races)
+  })
+
   it('gives a second copy an identity of its own', async () => {
     /* The suffix counted the races and not the copies, and the number of races
        does not change when a copy is made, so pressing the button twice wrote

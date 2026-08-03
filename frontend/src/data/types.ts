@@ -217,8 +217,14 @@ export type PendingItem = {
    *  by, so a waiting registration is known by its name and its address (PDL
    *  P8). Empty on the other six. */
   email: string
-  /** The payments queue only. How a member pays follows the country they live in
-   *  (PDL P8), so it belongs beside the fee. Empty on the other six. */
+  /**
+   * The town and the country, on the two queues that have one.
+   *
+   * On the payments, because how a member pays follows the country they live in
+   * (PDL P8), so it belongs beside the fee. On the new teams, because approving
+   * a proposal is what makes the team and these are two of the four things it is
+   * made from (PDL P13). Empty on the other five.
+   */
   city: string
   country: string
 }

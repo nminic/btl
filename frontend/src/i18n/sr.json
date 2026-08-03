@@ -720,7 +720,8 @@
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
     "proposeBack": "Nazad na timove",
-    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Izaberi drugi naziv."
+    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
+    "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -1014,7 +1015,8 @@
       "sectionHeading": "Naslov prve sekcije",
       "sectionBody": "Tekst prve sekcije",
       "email": "Adresa elektronske pošte",
-      "eventSlug": "Adresa događaja"
+      "eventSlug": "Adresa događaja",
+      "teamSlug": "Adresa tima"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -1046,7 +1048,8 @@
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
-      "eventSlug": "Portal je pravi sam, od naziva i datuma. Ne unosi se i ne menja."
+      "eventSlug": "Portal je pravi sam, od naziva i datuma. Ne unosi se i ne menja.",
+      "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja."
     },
     "value": {
       "genderM": "Muški",
@@ -1185,6 +1188,11 @@
       "few": "Odobriti {count} stavke? Ovo se ne može opozvati.",
       "other": "Odobriti {count} stavki? Ovo se ne može opozvati."
     },
+    "approveAllAskTeams": {
+      "one": "U redu čeka {count} stavka. Odobriti sve što se može odobriti? Ovo se ne može opozvati.",
+      "few": "U redu čekaju {count} stavke. Odobriti sve što se može odobriti? Ovo se ne može opozvati.",
+      "other": "U redu čeka {count} stavki. Odobriti sve što se može odobriti? Ovo se ne može opozvati."
+    },
     "subject": "Predmet",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
@@ -1233,7 +1241,13 @@
       "one": "Rešena je {count} stavka.",
       "few": "Rešene su {count} stavke.",
       "other": "Rešeno je {count} stavki."
-    }
+    },
+    "teamAccepted": "Tim „{name}\" je prihvaćen",
+    "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator.",
+    "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili vrati predlog na doradu.",
+    "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili vrati predlog na doradu.",
+    "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",
+    "teamNoMember": "Ovaj predlog nema člana koji ga je poslao, pa nema ko da bude organizator tima ni ko da dobije odgovor."
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",

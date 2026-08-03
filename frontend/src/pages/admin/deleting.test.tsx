@@ -198,7 +198,7 @@ describe('one decision for a whole queue', () => {
     })
 
     try {
-      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
       const before = within(waiting).getAllByRole('listitem').length
@@ -293,7 +293,7 @@ describe('one decision for a whole queue', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
-      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
       const before = within(waiting).getAllByRole('listitem').length
@@ -366,7 +366,7 @@ describe('one decision for a whole queue', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
 
     try {
-      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin')
+      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
       const before = within(waiting).getAllByRole('listitem').length

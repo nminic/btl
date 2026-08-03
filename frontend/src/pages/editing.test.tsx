@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import { at, first, must } from '../test/at'
+import { at, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -43,19 +43,52 @@ describe('changing data in administration', () => {
     expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before)
   })
 
-  it('changes the name and the place of an event', async () => {
+  it('changes the place of an event', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Događaji' })
     const row = at(within(table).getAllByRole('row'), 1)
 
-    await user.click(first(within(row).getAllByRole('button')))
+    /* Named rather than taken as the first control of the row: the name beside
+       it is no longer one, and a test that counts controls would have gone on
+       passing while typing the new name of an event into its town. */
+    await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
     const box = within(row).getByRole('textbox')
     await user.clear(box)
-    await user.type(box, 'Novi naziv trke{Enter}')
+    await user.type(box, 'Sremski Karlovci{Enter}')
 
-    expect(first(within(row).getAllByRole('button'))).toHaveTextContent('Novi naziv trke')
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(
+      'Sremski Karlovci',
+    )
+  })
+
+  it('changes the name of an event on its form and nowhere else', async () => {
+    /* Not in a cell, which is the whole of it. A cell writes one field of one
+       record, and the address an event answers at is made out of its name and
+       its day (entityForms.ts): renamed in the row, an event went on answering
+       at the address of the name it used to have, and nothing said so. That the
+       form writes the address again on every save is proved where it can be
+       seen, on the category of a race (entityForms.test.tsx). */
+    const user = setupUser()
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Događaji' })
+    const row = at(within(table).getAllByRole('row'), 1)
+
+    expect(within(row).queryByRole('button', { name: /^Događaj:/ })).toBeNull()
+
+    await user.click(within(row).getByRole('button', { name: /^Otvori:/ }))
+
+    const name = await screen.findByLabelText(/^Naziv događaja/)
+    await user.clear(name)
+    await user.type(name, 'Novi naziv trke')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const listed = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    expect(listed.getByText('Novi naziv trke')).toBeVisible()
   })
 })
 

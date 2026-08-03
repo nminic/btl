@@ -1,6 +1,53 @@
 export type TocEntry = { heading: string; id: string }
 
 /**
+ * The Cyrillic alphabet spelt out in Latin, letter by letter.
+ *
+ * Because the addresses of two things are read off names people type: a team's
+ * (ADL A4d) and an event's. Nothing here is Latin, so without this a name
+ * written in Cyrillic came out as no address at all: the first such team
+ * answered at `/tim/`, which is no team, and the second was refused as a name
+ * already taken though it shared nothing with the first except being empty.
+ *
+ * And because the same name in the two scripts is one name. The league is
+ * Balkan and both are written across it, so "Дунавски тркачи" and "Dunavski
+ * trkači" are one team, which is exactly what one address for the two of them
+ * says. Macedonian and Bulgarian letters are here for the same reason.
+ *
+ * Every letter is spelt the way the address already spells its Latin twin,
+ * rather than the way a transliteration table would spell it. That is the whole
+ * rule and it is easy to get wrong: ђ written out as "dj" made `Ђердап` answer
+ * at `djerdap` while `Đerdap` answered at `derdap`, which is two teams under one
+ * name, exactly what the address is compared for. The Latin side turns đ into d,
+ * so this side must too, and it cannot be fixed on the Latin side without moving
+ * every anchor in the rulebook. Macedonian ѓ and ќ go the other way for the same
+ * reason: written in Latin they are "gj" and "kj", and those survive as they
+ * are.
+ *
+ * A table, unlike the five Latin letters below it, which are written out one
+ * replacement each: there are forty of these, and the pattern that reaches the
+ * table hands it one letter at a time out of the Cyrillic block, so a letter
+ * that is not in it is a letter the table has nothing to say about and the
+ * address is better off without.
+ */
+const CYRILLIC: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', ђ: 'd', е: 'e', ж: 'z', з: 'z',
+  и: 'i', ј: 'j', к: 'k', л: 'l', љ: 'lj', м: 'm', н: 'n', њ: 'nj', о: 'o',
+  п: 'p', р: 'r', с: 's', т: 't', ћ: 'c', у: 'u', ф: 'f', х: 'h', ц: 'c',
+  ч: 'c', џ: 'dz', ш: 's',
+  /* Macedonian. */
+  ѓ: 'gj', ќ: 'kj', ѕ: 'dz', ѐ: 'e', ѝ: 'i',
+  /* Bulgarian. */
+  й: 'j', щ: 'st', ъ: 'a', ь: 'j', ю: 'ju', я: 'ja',
+  /* And the letters of the Cyrillic alphabets the league does not run in, so
+     that "a letter of Cyrillic" in the sentence a member reads is true of every
+     one of them in use rather than of three. Without these, `Ігор` and `Гор`
+     were one address and the second was refused as the first, which is the
+     fault this table was written for, one alphabet along. */
+  ё: 'jo', ы: 'y', э: 'e', і: 'i', ї: 'ji', є: 'je', ґ: 'g', ў: 'u',
+}
+
+/**
  * Turns a heading into an id that is stable and safe inside an address.
  *
  * Our five letters are written out the way an address can carry them. Spelling
@@ -11,6 +58,9 @@ export type TocEntry = { heading: string; id: string }
  * plain letter up in a table of them: a table says nothing about which keys are
  * in it, so every lookup has to answer for a letter that is not there, and the
  * pattern doing the matching has already ruled that letter out.
+ *
+ * Cyrillic goes through the table above it, where forty letters make that
+ * argument the other way round.
  */
 export function slugify(heading: string): string {
   return heading
@@ -19,6 +69,10 @@ export function slugify(heading: string): string {
     .replace(/š/g, 's')
     .replace(/ž/g, 'z')
     .replace(/đ/g, 'd')
+    /* Nothing for a letter the table does not carry: it is Cyrillic, since the
+       pattern matched it, and an address it cannot spell is an address without
+       it. */
+    .replace(/[Ѐ-ӿ]/g, (letter) => CYRILLIC[letter] ?? '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }

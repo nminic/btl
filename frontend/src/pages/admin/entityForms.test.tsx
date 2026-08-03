@@ -16,6 +16,7 @@ import {
   PAGES,
   RACES,
   TEAMS,
+  idFor,
   type EntityDef,
 } from './entityForms'
 
@@ -468,6 +469,59 @@ describe('the category of a race', () => {
     expect(row.getByText(t('category.marathon'))).toBeVisible()
   })
 
+  it('is written again when the record is changed, and not only when it is made', async () => {
+    /* The half of it that had no proof, and the half every screen leans on: a
+       name and an address, a distance and a category, are two facts on one
+       record, and only the form keeps them in step. Read off the list rather
+       than off the table of what was saved, because that table works the value
+       out again from the fields and would say the right thing over a record
+       that still says the old one.
+
+       Whether it can be changed anywhere else is the other question this branch
+       answers: not in a cell in the row, for exactly this reason. */
+    const user = setupUser()
+    const title = t('admin.form.new.races')
+    renderAt('/sr/administracija/trke', 'superadmin')
+
+    /* Entered rather than picked out of the file, so the race this is about has
+       a name no other race shares. */
+    await user.click(await screen.findByRole('button', { name: title }))
+    const form = open(title)
+    const events = form.getByLabelText(labelled(t('admin.field.event'))) as HTMLSelectElement
+    await user.selectOptions(events, at(events.options, 1).value)
+    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera izmene')
+    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
+    await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
+    await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    const rowOf = async () =>
+      within(
+        must(
+          within(await screen.findByRole('table', { name: 'Trke' }))
+            .getByText('Provera izmene')
+            .closest('tr'),
+          'red trke Provera izmene',
+        ),
+      )
+
+    expect((await rowOf()).getByText(t('category.marathon'))).toBeVisible()
+
+    await user.click((await rowOf()).getByRole('button', { name: /^Otvori:/ }))
+
+    const distance = await screen.findByLabelText(labelled(t('admin.field.distanceKm')))
+    await user.clear(distance)
+    await user.type(distance, '10')
+    await user.click(screen.getByRole('button', { name: t('form.submit') }))
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    const changed = await rowOf()
+
+    expect(changed.getByText(t('category.short'))).toBeVisible()
+    expect(changed.queryByText(t('category.marathon'))).toBeNull()
+  })
+
   it('is a hundred metres short of a marathon and says so', async () => {
     const user = setupUser()
     const title = t('admin.form.new.races')
@@ -586,5 +640,98 @@ describe('the words the eight forms need', () => {
       ).options ?? []
 
     expect(options.map((one) => one.value)).toEqual([...BADGE_KINDS])
+  })
+})
+
+describe('the identity a new record is handed', () => {
+  /* Counted up from the highest already used, never from the length of the list.
+   * The length goes back down: make two, delete the first, make a third, and the
+   * third is handed the identity the second holds. The list then draws two rows
+   * under one key and a change to either reaches both, because the overlay of
+   * changes is keyed by exactly that identity. */
+  it('follows the ones already made', () => {
+    expect(idFor(TEAMS, {}, [], [])).toBe('teams-nov-1')
+    expect(idFor(TEAMS, {}, ['teams-nov-1'], [])).toBe('teams-nov-2')
+    expect(idFor(TEAMS, {}, ['teams-nov-1', 'teams-nov-2'], [])).toBe('teams-nov-3')
+  })
+
+  it('does not go back when one of them is deleted', () => {
+    /* Two made, the first deleted, so the list holds one. Counted by length that
+       is "teams-nov-2" again, which is the identity the survivor answers to. */
+    expect(idFor(TEAMS, {}, ['teams-nov-2'], [])).toBe('teams-nov-3')
+  })
+
+  it('steps over anything not of that shape', () => {
+    /* Approving a proposal used to file the team under an identity of its own
+       making, which moved this counter for everything entered by hand. It comes
+       through here now, and anything else in the list is ignored rather than
+       counted. */
+    expect(idFor(TEAMS, {}, ['tim-ver-tim-1', 'teams-nov-4'], [])).toBe('teams-nov-5')
+    expect(idFor(TEAMS, {}, ['tim-ver-tim-1'], [])).toBe('teams-nov-1')
+  })
+})
+
+describe('two teams under one name', () => {
+  /* A name already taken is refused (PDL P13), and refused by the address it
+     makes: the address is read off the name, so two names that make one address
+     are two teams at one address. The queue that approves proposals refuses it;
+     this is the other door. */
+  it('cannot be entered in the administration either', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    await screen.findByRole('table', { name: t('admin.teams') })
+    await user.click(screen.getByRole('button', { name: 'Novi tim' }))
+
+    /* Spelt differently on purpose: the address is what collides, and the
+       address drops the case and the diacritics. */
+    await user.type(screen.getByLabelText(/^Naziv tima/), 'DUNAVSKI TRKACI')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Novi Sad')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000001')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* By the sentence that says why these two are one name, and not only by
+       "already exists": the words have to match what is compared, or a member
+       reads that a team of that name exists, goes to the list, and finds a name
+       that is not the one they typed. */
+    expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+  })
+
+  it('cannot be made by renaming one in the list either', async () => {
+    /* The third door, and the one that was open. A cell writes one field of one
+       record: it cannot refuse a name the league already answers to, and it
+       cannot put the address right after it, so a team renamed in the row kept
+       the address of the name it used to have. Both of those live on the form,
+       so the name is read in the list and changed there. The town beside it
+       carries neither, and stays a cell. */
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    await screen.findByRole('table', { name: t('admin.teams') })
+
+    expect(
+      screen.getByRole('button', { name: `Mesto: Novi Sad. ${t('admin.change')}` }),
+    ).toBeVisible()
+    /* "Tim", which is what the column of names is called. */
+    expect(screen.queryByRole('button', { name: new RegExp(`^${t('teams.name')}:`) })).toBeNull()
+    expect(screen.getByRole('cell', { name: 'Dunavski trkači' })).toBeVisible()
+  })
+
+  it('does not refuse a team that is being saved under the name it already has', async () => {
+    /* Compared against every team but the one being edited, or opening a team
+       and pressing save would refuse it against itself. */
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    await screen.findByRole('table', { name: t('admin.teams') })
+    await user.click(screen.getByRole('button', { name: /^Otvori: Dunavski trkači$/ }))
+
+    const city = await screen.findByLabelText(/^Mesto/)
+    await user.clear(city)
+    await user.type(city, 'Petrovaradin')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
 })
