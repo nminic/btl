@@ -534,7 +534,7 @@
   "calendar": {
     "title": "Kalendar",
     "today": "Danas",
-    "legend": "Legenda",
+    "legend": "Legenda:",
     "dayTitle": "Trke, {date}",
     "dayEmpty": "Tog dana nema nijednog događaja.",
     "previousMonth": "Prethodni mesec",

@@ -93,6 +93,38 @@ function Day({
   )
 }
 
+/**
+ * The arrow on a step, drawn rather than typed.
+ *
+ * It was the characters &#8249; and &#8250;, and they sit low in their own line
+ * box: measured on the page, their ink was four pixels below the middle of the
+ * button while the word "Danas" beside them was half a pixel above it, which is
+ * exactly the row not lining up that the owner reported (03.08.2026). Nothing
+ * about the box was wrong; the glyph is drawn where the font says, and no amount
+ * of centring the box moves the ink inside it.
+ *
+ * A path is centred because it is drawn centred, in the same shape and the same
+ * stroke as the caret in the header (src/app/LanguageMenu.tsx). It carries no
+ * name: the button around it has one, and a symbol is a drawing rather than a
+ * label.
+ */
+function Chevron({ back = false }: { back?: boolean }) {
+  return (
+    <svg
+      className="calendar__chevron"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={back ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
+    </svg>
+  )
+}
+
 export function Calendar() {
   const { locale, t } = useI18n()
   const [params, setParams] = useSearchParams()
@@ -139,7 +171,7 @@ export function Calendar() {
                   aria-label={t('calendar.previousMonth')}
                   onClick={() => setParams({ mesec: shiftMonth(month, -1) })}
                 >
-                  <span aria-hidden="true">&#8249;</span>
+                  <Chevron back />
                 </button>
                 <button
                   type="button"
@@ -147,7 +179,7 @@ export function Calendar() {
                   aria-label={t('calendar.nextMonth')}
                   onClick={() => setParams({ mesec: shiftMonth(month, 1) })}
                 >
-                  <span aria-hidden="true">&#8250;</span>
+                  <Chevron />
                 </button>
                 <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
               </div>

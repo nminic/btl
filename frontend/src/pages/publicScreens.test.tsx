@@ -187,10 +187,17 @@ describe('TopBoards', () => {
 
       expect(rows.length).toBeGreaterThan(0)
       expect(rows.length).toBeLessThanOrEqual(10)
-      /* Gold on the podium here too, and on no more of the ten. */
-      expect(rows.filter((row) => row.className === 'podium')).toHaveLength(
-        Math.min(3, rows.length),
-      )
+
+      /* Gold on the podium here too, and on exactly the rows whose place is one
+         of the first three. Counted rather than located, this said "three" and
+         was wrong in two ways: a place nothing separates is shared, so a board
+         can read 1, 2, 3, 3 and carry four (PDL P12), and a count would pass
+         just as well if the gold were on the last three rows instead. */
+      const gilded = rows.filter((row) => row.className === 'podium')
+      const top = rows.filter((row) => Number(first(within(row).getAllByRole('cell')).textContent) <= 3)
+
+      expect(gilded).toEqual(top)
+      expect(gilded.length).toBeGreaterThan(0)
     }
   })
 

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import sr from '../i18n/sr.json'
 
 /* The gold band that names a board, and the one thing about it no screen test
  * can see.
@@ -162,6 +163,7 @@ describe('the sentence above a table of places', () => {
  */
 describe('the search beside the heading', () => {
   const RULE = '.rankings__head-tool .rankings__field'
+  const hint = sr.competitors.searchPlaceholder
 
   it('lays the label and its box along one line', () => {
     const body = bodyOf(read('src/pages/Rankings.css'), RULE)
@@ -172,8 +174,13 @@ describe('the search beside the heading', () => {
 
   it('gives the box room for the whole of the hint it shows', () => {
     /* Measured in `ch`, the width of a nought in the box's own font, so the
-       number follows the text rather than a guess about it. The hint is
-       twenty-nine characters. */
+       number follows the text rather than a guess about it. Against the hint as
+       it is written rather than against the number it happens to be today, so
+       rewording it to something longer fails here rather than on the page.
+
+       `ch` is the nought and not the average letter, so this is the safe side of
+       the comparison by some way: twenty-nine characters of that hint measure
+       172px and twenty-nine noughts measure 225px. */
     const body = bodyOf(
       read('src/pages/Rankings.css'),
       ".rankings__head-tool .rankings__field input[type='search']",
@@ -181,8 +188,83 @@ describe('the search beside the heading', () => {
     const width = /inline-size:\s*(\d+)ch/.exec(body)
 
     expect(width, 'the box has no width in ch').not.toBeNull()
-    expect(Number(width?.[1])).toBeGreaterThanOrEqual(29)
-    /* And never wider than what it is given, so 360px keeps its scrollbar off. */
-    expect(body).toMatch(/max-inline-size:\s*100%/)
+    expect(Number(width?.[1])).toBeGreaterThanOrEqual(hint.length)
+
+    /* And the width is a width and not a floor. A flex item will not shrink
+       below its content, so without this the row goes off the left edge, where
+       there is no scrollbar to bring it back: at 360px with the text at 200% the
+       label started 320px off screen. On the label as well as the box, because
+       either one refusing to shrink is enough. */
+    expect(body).toMatch(/min-inline-size:\s*0/)
+    expect(bodyOf(read('src/pages/Rankings.css'), RULE)).toMatch(/min-inline-size:\s*0/)
+  })
+})
+
+/* Three things about the calendar's own row of controls and the chart on the
+ * front page, all of them shapes rather than colours, and all here for the same
+ * reason: jsdom applies no stylesheet, so nothing a screen test can see says
+ * whether two things line up.
+ */
+describe('the row above the month grid', () => {
+  const css = () => read('src/pages/Calendar.css')
+
+  it('leaves one gap for the whole row, so both ends of it match', () => {
+    /* "Danas" carried a margin of its own, so the step beside it stood sixteen
+       pixels away while the month stood eight from the step at the other end
+       (owner, 03.08.2026). */
+    expect(bodyOf(css(), '.calendar__today')).not.toMatch(/margin-inline-end/)
+    expect(bodyOf(css(), '.calendar__bar')).toMatch(/gap:\s*var\(--space-8\)/)
+  })
+
+  it('names the days over the middle of their columns', () => {
+    expect(bodyOf(css(), '.calendar__weekday')).toMatch(/text-align:\s*center/)
+  })
+})
+
+describe('the legend under the month grid', () => {
+  it('is an aside in italics, with nothing in it heavier than the rest', () => {
+    /* Bold on the first word made it read as a heading over the five colours
+       rather than a label in front of them (owner, 03.08.2026). */
+    const css = read('src/pages/Calendar.css')
+
+    expect(bodyOf(css, '.legend')).toMatch(/font-style:\s*italic/)
+    expect(css).not.toMatch(/\.legend__title\s*\{/)
+  })
+
+  it('ends the word with a colon, in the dictionary where the punctuation lives', () => {
+    expect(sr.calendar.legend).toBe('Legenda:')
+  })
+})
+
+describe('the name over a column of the turning chart', () => {
+  it('is placed from the bar it stands on rather than from the top of the page', () => {
+    /* The face rides on top of the bar, so where the face is depends on how tall
+       the bar came out. The name sat at a fixed distance from the top of the
+       column, which is right for the tallest column and for no other: measured
+       on the page, eight of ten names were between a hundred and a hundred and
+       fifty pixels above the face they name (owner, 03.08.2026).
+
+       `100%` is the bar's own drawn height, which is the only number that is
+       true: the tallest bar asks for the whole column and then gives room back
+       to the face standing on it, so the height in the style and the height on
+       the screen are fifty pixels apart. */
+    const body = bodyOf(read('src/pages/home/TopByCategory.css'), '.top-cat__who')
+
+    expect(body).toMatch(/inset-block-end:\s*calc\(100% \+ var\(--face-gap\) \+ var\(--face\) \/ 2\)/)
+    expect(body).toMatch(/transform:\s*translateY\(50%\)/)
+    /* And nothing else nudging it off that middle. */
+    expect(body).not.toMatch(/margin-block-end/)
+  })
+
+  it('sizes the face through the same variable the name is placed by', () => {
+    /* Otherwise the phone's smaller face moves and the name does not. That rule
+       had in fact never applied: `.home .portrait` sets a size at the same
+       weight and lands later in the one bundled sheet, so the face stayed wide
+       and nothing said so. */
+    const css = read('src/pages/home/TopByCategory.css')
+
+    expect(bodyOf(css, '.top-cat .top-cat__column .portrait')).toMatch(/inline-size:\s*var\(--face\)/)
+    expect(bodyOf(css, '.top-cat__link')).toMatch(/--face:\s*2\.9rem/)
+    expect(css).toMatch(/--face:\s*2\.2rem/)
   })
 })

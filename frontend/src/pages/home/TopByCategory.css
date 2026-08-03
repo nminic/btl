@@ -52,6 +52,10 @@
    rather than two for one destination. */
 .top-cat__link {
   position: relative;
+  /* The face, and the room under it. Both are read twice: once to draw the face
+     and once to put the name across the middle of it. */
+  --face: 2.9rem;
+  --face-gap: var(--space-6);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -61,8 +65,19 @@
   text-decoration: none;
 }
 
-.top-cat__column .portrait {
-  margin-block-end: var(--space-6);
+/* Three names deep, and it has to be. Every sheet is bundled into one, and
+   `.home .portrait` sets a size of its own at the same weight as a two-name
+   selector; whichever lands later wins, and the later one is not this file. The
+   phone rule below has been asking for a smaller face since it was written and
+   never got one, which nothing catches, because a face of the wrong size is
+   still a face. */
+.top-cat .top-cat__column .portrait {
+  /* Written through a variable because the name below has to know it: the name
+     is centred on the face, and to place it the stylesheet needs the face's own
+     size and the gap under it. */
+  inline-size: var(--face);
+  block-size: var(--face);
+  margin-block-end: var(--face-gap);
   /* The ring the hover draws, kept off until then rather than drawn in the page
      colour, so it neither shifts the face nor shows as a smudge. */
   outline: 2px solid transparent;
@@ -90,14 +105,30 @@
    do not each reserve a line nobody is reading. */
 .top-cat__who {
   position: absolute;
-  /* Above the bar and below the face, not above the column: the top of the
-     column is the band the pause disc reserves, and the disc carries a
-     z-index of its own, so a name put up there is painted over on the last
-     column at every width. */
-  inset-block-end: calc(100% - 2.8rem);
+  /* Across the middle of the face it names (owner, 03.08.2026).
+   *
+   * It sat at a fixed distance from the top of the column, which is right for
+   * the tallest column and for no other: the face rides on top of the bar, so on
+   * a shorter bar the face is lower and the name stayed where it was. Measured
+   * on the page, eight of the ten names were between a hundred and a hundred and
+   * fifty pixels above the face they belong to.
+   *
+   * The sum reads bottom upwards from inside the bar: the whole of the bar,
+   * then the gap under the face, then half the face. That puts the bottom edge
+   * of the name on the middle of the face, and the shift moves the name down by
+   * half of itself, so its middle lands there instead.
+   *
+   * `100%` and not the height the bar was asked for. The tallest bar asks for
+   * the whole column and then gives room back to the face standing on it, so
+   * the asked-for height and the drawn height are fifty pixels apart, and it was
+   * the tallest column that came out wrong when the sum used the asked-for one.
+   *
+   * `z-index` stays: on the tallest column this is still up where the pause disc
+   * is, and the disc carries one of its own. */
+  inset-block-end: calc(100% + var(--face-gap) + var(--face) / 2);
+  transform: translateY(50%);
   inset-inline: -0.5rem;
   z-index: 2;
-  margin-block-end: var(--space-4);
   padding: var(--space-4) var(--space-6);
   border-radius: var(--radius-6);
   background: var(--blue-900);
@@ -128,6 +159,8 @@
   display: block;
   pointer-events: none;
   inline-size: 100%;
+  /* Set on the link, because the name needs it too (TopByCategory.tsx). */
+  block-size: var(--bar);
   min-block-size: 2.4rem;
   border-radius: 2px 2px 0 0;
   background: #1f7ad6;
@@ -178,9 +211,13 @@
     display: none;
   }
 
+  /* A smaller face on a phone, through the variable, so the name that is
+     centred on it moves with it rather than staying where the wide face was. */
+  .top-cat__link {
+    --face: 2.2rem;
+  }
+
   .top-cat__column .portrait {
-    inline-size: 2.2rem;
-    block-size: 2.2rem;
     font-size: 0.7rem;
   }
 }

@@ -164,7 +164,7 @@ describe('Calendar', () => {
     const dots = container.querySelectorAll('.chip .length-dot')
     expect(dots.length).toBeGreaterThan(0)
     expect([...dots].every((dot) => dot.getAttribute('aria-hidden') === 'true')).toBe(true)
-    expect(within(screen.getByRole('list', { name: 'Legenda' })).getAllByRole('listitem'))
+    expect(within(screen.getByRole('list', { name: 'Legenda:' })).getAllByRole('listitem'))
       .toHaveLength(5)
   })
 

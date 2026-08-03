@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { topByCategory } from '../../data/derive'
 import type { Competitor, RaceCategory, Result } from '../../data/types'
+import type { CSSProperties } from 'react'
 import { useI18n } from '../../i18n/useI18n'
 import { FIRST, NEXT } from './rotation'
 import { Portrait } from './Portrait'
@@ -60,17 +61,33 @@ function Bar({
   const inside = (
     <>
       <Portrait competitor={column.competitor} />
-      <span className="top-cat__bar" style={{ blockSize: `${(column.races / highest) * 100}%` }}>
+      <span className="top-cat__bar">
         <span className="top-cat__count">{column.races}</span>
+        {/* Seen on hover and on focus, read out always.
+         *
+         * Inside the bar, which is what it is measured from. The face rides on
+         * top of the bar, so where the face is depends on how tall the bar came
+         * out; the name used to be placed at a fixed distance from the top of
+         * the column, which is right for the tallest column and for no other,
+         * and on the shorter ones it hung as much as a hundred and fifty pixels
+         * above the face it names (owner, 03.08.2026).
+         *
+         * The asked-for height cannot answer that either, because the bar does
+         * not always get it: the tallest bar asks for the whole column and then
+         * gives room back to the face above it, so the number in the style and
+         * the number on the screen are fifty pixels apart. Only the bar knows
+         * how tall the bar ended up, and inside it `100%` is that. */}
+        <span className="top-cat__who">{name}</span>
       </span>
-      {/* Seen on hover and on focus, read out always. */}
-      <span className="top-cat__who">{name}</span>
     </>
   )
 
+  /** How tall this bar asks to be. */
+  const height = { '--bar': `${(column.races / highest) * 100}%` } as CSSProperties
+
   if (!column.competitor.active) {
     return (
-      <span className="top-cat__link" title={name}>
+      <span className="top-cat__link" style={height} title={name}>
         {inside}
       </span>
     )
@@ -79,6 +96,7 @@ function Bar({
   return (
     <Link
       className="top-cat__link"
+      style={height}
       title={name}
       /* The season is written out even though the chart is of the running one:
          a profile opens on all of them by default (owner, 31.07.2026), so

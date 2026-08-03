@@ -21,4 +21,17 @@ describe('the top of a table', () => {
        P12). Three rows, three golds, and the fourth row is fourth. */
     expect([1, 1, 3, 4].map(podiumClass)).toEqual(['podium', 'podium', 'podium', undefined])
   })
+
+  it('marks four rows when the third place is shared, which the data does contain', () => {
+    /* 1, 2, 3, 3 is a real board: the shorter races in 2023 end that way. So the
+       podium is not always three rows, and anything counting on three is
+       counting on the ties falling out one particular way. */
+    expect([1, 2, 3, 3, 5].map(podiumClass)).toEqual([
+      'podium',
+      'podium',
+      'podium',
+      'podium',
+      undefined,
+    ])
+  })
 })

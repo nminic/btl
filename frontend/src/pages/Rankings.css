@@ -59,6 +59,9 @@
   flex-direction: row;
   align-items: center;
   gap: var(--space-8);
+  /* See the box below: without this the label will not shrink either, and the
+     row goes off the left edge before the box has given anything up. */
+  min-inline-size: 0;
 }
 
 /* Wide enough to show the whole of what it suggests typing. "Ime, prezime ili
@@ -68,11 +71,20 @@
 
    In `ch`, so it follows the text rather than a guess about it: the unit is the
    width of a nought in the box's own font, and the box's own font is the one the
-   hint is drawn in. Never wider than what it is given, so at 360px it takes the
-   room there is and the hint shortens rather than the page growing a scrollbar. */
+   hint is drawn in.
+
+   `min-inline-size: 0` on both, and it is the whole of what keeps this usable.
+   A flex item will not shrink below its content, so a width of 32ch is a floor
+   as well as a width: the row stops fitting, and because the row is pushed to
+   the right the overflow goes out of the left edge, where there is no scrollbar
+   to bring it back. Measured at 360px with the text at 200%, which is what WCAG
+   2.2 SC 1.4.4 asks for, the label started 320px off the left of the screen and
+   the box 169px off it, both out of reach for good. With the floor removed the
+   label starts at 32px and the box keeps 145px, and 360px at normal size is
+   untouched: the full 32ch, and the hint whole. */
 .rankings__head-tool .rankings__field input[type='search'] {
   inline-size: 32ch;
-  max-inline-size: 100%;
+  min-inline-size: 0;
 }
 
 /* The sentence above the table, in plain muted prose.
