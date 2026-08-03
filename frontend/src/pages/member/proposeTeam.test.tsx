@@ -49,6 +49,10 @@ describe('a proposal a member sends', () => {
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
     expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+    /* And nothing is promised that nothing keeps: a decision on a proposal
+       reaches no inbox and the member has no list of what they put forward
+       (PENDING R9). */
+    expect(screen.queryByText(/u tvoje poruke/)).toBeNull()
   })
 
   it('refuses to send without the three things it asks for', async () => {

@@ -19,10 +19,15 @@ import './Member.css'
  * P22): what was missing was anybody able to fill it. A member proposes, a
  * moderator decides, and nothing exists in the league until they do.
  *
- * A moderator and not only the superadmin. PDL P13 said the superadmin alone
- * while the rights matrix had carried a row for this queue all along, so the two
- * disagreed and the screen was left saying neither; the owner settled it on
- * 03.08.2026 in favour of what the matrix already did.
+ * A moderator and not only the superadmin. P21 has said so since 30.07.2026,
+ * and P13 went on reading "the superadmin approves", which is why the screen
+ * said neither for a while; the owner brought P13 into line on 03.08.2026.
+ *
+ * What this screen deliberately does not promise is an answer. A decision on a
+ * proposal reaches nobody: the inbox is written to on one queue only, the
+ * pictures, and a member has no list of what they have put forward. That is
+ * written down (PENDING R9) rather than papered over with a sentence saying the
+ * answer will arrive.
  *
  * A proposal and nothing more. It is deliberately not the administration's team
  * form: that one asks who organises the team, out of a list of every member,
