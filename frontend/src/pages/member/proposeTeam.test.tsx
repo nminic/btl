@@ -142,6 +142,40 @@ describe('a name a team in the league already answers to', () => {
     expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
+
+  it('is refused when it is the same name written in the other script', async () => {
+    /* The league is Balkan and written in both, so this is the team the league
+       already has and not a second one. Before the address knew any Cyrillic
+       this went through, and the team it made answered at `/tim/`. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000007')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Дунавски тркачи')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Novi Sad')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    expect(screen.getByText(/ćirilica i latinica su isto pismo/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
+  })
+})
+
+describe('a name that makes no address at all', () => {
+  it('is refused, because a team without an address is a team with no page', async () => {
+    /* Not the same fault as a taken name, and it cannot be told as one: the
+       first such team would answer at `/tim/`, and the next proposal would be
+       refused as a name already taken though the two share nothing. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000007')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), '???')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    expect(screen.getByText(/ne može napraviti adresa strane tima/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
+  })
 })
 
 describe('a proposal from somebody the member list does not hold', () => {

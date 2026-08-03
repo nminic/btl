@@ -7,7 +7,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import predlogTima from '../../forms/definitions/predlog-tima.form.json'
 import type { FieldError, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
-import { addressesIn, addressOf } from '../admin/teamProposal'
+import { addressesIn, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -132,11 +132,10 @@ export function ProposeTeam() {
                    unique and is what the queue compares (teamProposal.ts).
                    Comparing names let "Dunavski Trkaci" through to sit in the
                    queue for ever: the moderator could not approve it and the
-                   member was never told why. */
+                   member was never told why. The same function also refuses a
+                   name that makes no address at all. */
                 check={(values): Record<string, FieldError> =>
-                  addressesIn(teams).includes(addressOf(String(values.name)))
-                    ? { name: { key: 'teams.proposeTaken' } }
-                    : {}
+                  nameError(String(values.name), addressesIn(teams))
                 }
                 onSubmit={onSubmit}
               />

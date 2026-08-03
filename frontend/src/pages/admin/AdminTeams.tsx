@@ -5,7 +5,7 @@ import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import type { FieldError, FieldOption } from '../../forms/types'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { addressesIn, addressOf } from './teamProposal'
+import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { recordsOf, TEAMS, type Editing } from './entityForms'
@@ -60,19 +60,20 @@ export function AdminTeams() {
                    saving a team without touching its name would refuse
                    itself. */
                 also={(values): Record<string, FieldError> =>
-                  addressesIn(
-                    rows.filter(
-                      (one) =>
-                        one.id !==
-                        (editing.mode === 'one'
-                          ? String(editing.record[TEAMS.idField])
-                          : /* Nothing to leave out: a team being made is not in
-                               the list yet, and no team has a blank id. */
-                            ''),
+                  nameError(
+                    String(values.name),
+                    addressesIn(
+                      rows.filter(
+                        (one) =>
+                          one.id !==
+                          (editing.mode === 'one'
+                            ? String(editing.record[TEAMS.idField])
+                            : /* Nothing to leave out: a team being made is not
+                                 in the list yet, and no team has a blank id. */
+                              ''),
+                      ),
                     ),
-                  ).includes(addressOf(String(values.name)))
-                    ? { name: { key: 'teams.proposeTaken' } }
-                    : {}
+                  )
                 }
                 onDone={() => setEditing(null)}
               />

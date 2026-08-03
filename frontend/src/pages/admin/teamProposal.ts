@@ -1,4 +1,5 @@
 import type { PendingItem, Team } from '../../data/types'
+import type { FieldError } from '../../forms/types'
 import type { Edits } from '../../session/context'
 import { slugify } from '../rulebookToc'
 
@@ -33,6 +34,43 @@ export function addressesIn(teams: Team[]): string[] {
 }
 
 /**
+ * What is wrong with a name, as far as the address it has to make is concerned.
+ *
+ * Two faults and one place to work them out, because three screens ask: the
+ * form a member proposes on, the form an administrator enters on, and the queue
+ * that approves. Each says it in its own words, so this hands back which fault
+ * rather than the sentence.
+ *
+ * A name that makes no address at all is the second of them, and it is not a
+ * curiosity: a name written in a script the address cannot carry, or made of
+ * punctuation, comes out empty. Empty, the first such team answers at `/tim/`,
+ * which is no team, and every one after it is refused as a name already taken
+ * though the two share nothing (ADL A4d). Cyrillic is not one of those any
+ * more, which leaves the case rare and still worth saying out loud.
+ */
+export function nameFault(name: string, addresses: string[]): 'noAddress' | 'taken' | null {
+  const address = addressOf(name)
+
+  if (address === '') {
+    return 'noAddress'
+  }
+
+  return addresses.includes(address) ? 'taken' : null
+}
+
+/** The same for a form, in the shape a form wants: the fault against the field
+ *  it belongs to, or nothing at all. */
+export function nameError(name: string, addresses: string[]): Record<string, FieldError> {
+  const fault = nameFault(name, addresses)
+
+  if (fault === null) {
+    return {}
+  }
+
+  return { name: { key: fault === 'taken' ? 'teams.proposeTaken' : 'teams.proposeNoAddress' } }
+}
+
+/**
  * Why this proposal cannot be approved, or nothing.
  *
  * Said rather than merely done. A control that quietly does nothing teaches a
@@ -42,15 +80,18 @@ export function addressesIn(teams: Team[]): string[] {
  * Compared by address and not by name: the address is read off the name and is
  * what has to be unique, and `slugify` is not one-to-one. "Dunavski trkači" and
  * "Dunavski Trkaci" are two names and one address, so comparing names would let
- * the second through to collide with the first.
+ * the second through to collide with the first. A name that makes no address at
+ * all is refused here as well, and by the same function the two forms use.
  */
 export function refusal(made: Proposed, addresses: string[], item: PendingItem): string | null {
   if ([made.name, made.city, made.country].some((value) => value.trim() === '')) {
     return 'verification.teamIncomplete'
   }
 
-  if (addresses.includes(addressOf(made.name))) {
-    return 'verification.teamTaken'
+  const fault = nameFault(made.name, addresses)
+
+  if (fault !== null) {
+    return fault === 'taken' ? 'verification.teamTaken' : 'verification.teamNoAddress'
   }
 
   /* Nobody to tell and nobody to put on the team. An empty member number means

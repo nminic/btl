@@ -1,5 +1,5 @@
 import type { PendingItem } from '../../data/types'
-import { addressOf, refusal, teamFrom, type Proposed } from './teamProposal'
+import { addressOf, nameError, nameFault, refusal, teamFrom, type Proposed } from './teamProposal'
 
 /* Turning a proposal into a team, as decisions rather than as a screen. One of
  * them has a case the screen cannot reach, which is why they are out here.
@@ -33,6 +33,44 @@ describe('the address a team of a given name answers at', () => {
   it('is different for two teams that really are different', () => {
     expect(addressOf('Dunavski trkači')).not.toBe(addressOf('Dunavski trkači Novi Sad'))
   })
+
+  it('is the same for one name written in the two scripts of the league', () => {
+    /* The league is Balkan and both are written across it, so this is one team
+       and not two, and one address says exactly that. Written the other way it
+       was no address at all: the team answered at `/tim/`. */
+    expect(addressOf('Дунавски тркачи')).toBe(addressOf('Dunavski trkači'))
+    expect(addressOf('Вардарски круг')).toBe('vardarski-krug')
+  })
+
+  it('is nothing at all where the name holds nothing an address can carry', () => {
+    expect(addressOf('!!!')).toBe('')
+    expect(addressOf('Δρομείς')).toBe('')
+  })
+})
+
+describe('what is wrong with a name', () => {
+  it('is nothing, where it makes an address nobody holds', () => {
+    expect(nameFault('Trkači Morave', [])).toBeNull()
+    expect(nameError('Trkači Morave', [])).toEqual({})
+  })
+
+  it('is that it makes no address, where it makes none', () => {
+    /* Left alone, the first such team answers at `/tim/` and every one after it
+       is refused as taken though the two share nothing but the emptiness. */
+    expect(nameFault('???', [])).toBe('noAddress')
+    expect(nameError('???', [])).toEqual({ name: { key: 'teams.proposeNoAddress' } })
+  })
+
+  it('is that the address is taken, where it is', () => {
+    expect(nameFault('Trkači Morave', ['trkaci-morave'])).toBe('taken')
+    expect(nameError('Trkači Morave', ['trkaci-morave'])).toEqual({
+      name: { key: 'teams.proposeTaken' },
+    })
+  })
+
+  it('is the emptiness before the collision, since an empty address is nobody else', () => {
+    expect(nameFault('???', [''])).toBe('noAddress')
+  })
 })
 
 describe('what a team would be made of', () => {
@@ -60,6 +98,10 @@ describe('why a proposal cannot be taken', () => {
 
   it('is the address, where a team already answers at it', () => {
     expect(refusal(whole, [addressOf('trkaci morave')], item())).toBe('verification.teamTaken')
+  })
+
+  it('is the address again, where the name makes none', () => {
+    expect(refusal({ ...whole, name: '???' }, [], item())).toBe('verification.teamNoAddress')
   })
 
   it('is the missing member, where nobody sent it', () => {

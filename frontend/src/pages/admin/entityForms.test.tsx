@@ -469,6 +469,59 @@ describe('the category of a race', () => {
     expect(row.getByText(t('category.marathon'))).toBeVisible()
   })
 
+  it('is written again when the record is changed, and not only when it is made', async () => {
+    /* The half of it that had no proof, and the half every screen leans on: a
+       name and an address, a distance and a category, are two facts on one
+       record, and only the form keeps them in step. Read off the list rather
+       than off the table of what was saved, because that table works the value
+       out again from the fields and would say the right thing over a record
+       that still says the old one.
+
+       Whether it can be changed anywhere else is the other question this branch
+       answers: not in a cell in the row, for exactly this reason. */
+    const user = setupUser()
+    const title = t('admin.form.new.races')
+    renderAt('/sr/administracija/trke', 'superadmin')
+
+    /* Entered rather than picked out of the file, so the race this is about has
+       a name no other race shares. */
+    await user.click(await screen.findByRole('button', { name: title }))
+    const form = open(title)
+    const events = form.getByLabelText(labelled(t('admin.field.event'))) as HTMLSelectElement
+    await user.selectOptions(events, at(events.options, 1).value)
+    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera izmene')
+    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
+    await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
+    await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
+    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    const rowOf = async () =>
+      within(
+        must(
+          within(await screen.findByRole('table', { name: 'Trke' }))
+            .getByText('Provera izmene')
+            .closest('tr'),
+          'red trke Provera izmene',
+        ),
+      )
+
+    expect((await rowOf()).getByText(t('category.marathon'))).toBeVisible()
+
+    await user.click((await rowOf()).getByRole('button', { name: /^Otvori:/ }))
+
+    const distance = await screen.findByLabelText(labelled(t('admin.field.distanceKm')))
+    await user.clear(distance)
+    await user.type(distance, '10')
+    await user.click(screen.getByRole('button', { name: t('form.submit') }))
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    const changed = await rowOf()
+
+    expect(changed.getByText(t('category.short'))).toBeVisible()
+    expect(changed.queryByText(t('category.marathon'))).toBeNull()
+  })
+
   it('is a hundred metres short of a marathon and says so', async () => {
     const user = setupUser()
     const title = t('admin.form.new.races')

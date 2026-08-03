@@ -720,7 +720,8 @@
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
     "proposeBack": "Nazad na timove",
-    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika. Izaberi drugi naziv."
+    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
+    "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo latinice ili ćirilice, ili cifru."
   },
   "leagues": {
     "title": "Dodatna takmičenja",
@@ -1183,6 +1184,11 @@
     "empty": "Nema nijedne stavke na čekanju.",
     "approveAll": "Odobri sve",
     "approveAllAsk": {
+      "one": "Odobriti {count} stavku? Ovo se ne može opozvati.",
+      "few": "Odobriti {count} stavke? Ovo se ne može opozvati.",
+      "other": "Odobriti {count} stavki? Ovo se ne može opozvati."
+    },
+    "approveAllAskTeams": {
       "one": "U redu čeka {count} stavka. Odobriti sve što se može odobriti? Ovo se ne može opozvati.",
       "few": "U redu čekaju {count} stavke. Odobriti sve što se može odobriti? Ovo se ne može opozvati.",
       "other": "U redu čeka {count} stavki. Odobriti sve što se može odobriti? Ovo se ne može opozvati."
@@ -1239,6 +1245,7 @@
     "teamAccepted": "Tim „{name}\" je prihvaćen",
     "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator.",
     "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili vrati predlog na doradu.",
+    "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo latinice ili ćirilice, ili cifru, ili vrati predlog na doradu.",
     "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",
     "teamNoMember": "Ovaj predlog nema člana koji ga je poslao, pa nema ko da bude organizator tima ni ko da dobije odgovor."
   },

@@ -1,6 +1,37 @@
 export type TocEntry = { heading: string; id: string }
 
 /**
+ * The Cyrillic alphabet spelt out in Latin, letter by letter.
+ *
+ * Because the addresses of two things are read off names people type: a team's
+ * (ADL A4d) and an event's. Nothing here is Latin, so without this a name
+ * written in Cyrillic came out as no address at all: the first such team
+ * answered at `/tim/`, which is no team, and the second was refused as a name
+ * already taken though it shared nothing with the first except being empty.
+ *
+ * And because the same name in the two scripts is one name. The league is
+ * Balkan and both are written across it, so "Дунавски тркачи" and "Dunavski
+ * trkači" are one team, which is exactly what one address for the two of them
+ * says. Macedonian and Bulgarian letters are here for the same reason.
+ *
+ * A table, unlike the five Latin letters below it, which are written out one
+ * replacement each: there are forty of these, and the pattern that reaches the
+ * table hands it one letter at a time out of the Cyrillic block, so a letter
+ * that is not in it is a letter the table has nothing to say about and the
+ * address is better off without.
+ */
+const CYRILLIC: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', ђ: 'dj', е: 'e', ж: 'z', з: 'z',
+  и: 'i', ј: 'j', к: 'k', л: 'l', љ: 'lj', м: 'm', н: 'n', њ: 'nj', о: 'o',
+  п: 'p', р: 'r', с: 's', т: 't', ћ: 'c', у: 'u', ф: 'f', х: 'h', ц: 'c',
+  ч: 'c', џ: 'dz', ш: 's',
+  /* Macedonian. */
+  ѓ: 'g', ќ: 'k', ѕ: 'dz', ѐ: 'e', ѝ: 'i',
+  /* Bulgarian. */
+  й: 'j', щ: 'st', ъ: 'a', ь: 'j', ю: 'ju', я: 'ja',
+}
+
+/**
  * Turns a heading into an id that is stable and safe inside an address.
  *
  * Our five letters are written out the way an address can carry them. Spelling
@@ -11,6 +42,9 @@ export type TocEntry = { heading: string; id: string }
  * plain letter up in a table of them: a table says nothing about which keys are
  * in it, so every lookup has to answer for a letter that is not there, and the
  * pattern doing the matching has already ruled that letter out.
+ *
+ * Cyrillic goes through the table above it, where forty letters make that
+ * argument the other way round.
  */
 export function slugify(heading: string): string {
   return heading
@@ -19,6 +53,10 @@ export function slugify(heading: string): string {
     .replace(/š/g, 's')
     .replace(/ž/g, 'z')
     .replace(/đ/g, 'd')
+    /* Nothing for a letter the table does not carry: it is Cyrillic, since the
+       pattern matched it, and an address it cannot spell is an address without
+       it. */
+    .replace(/[Ѐ-ӿ]/g, (letter) => CYRILLIC[letter] ?? '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }

@@ -63,11 +63,13 @@ describe('changing data in administration', () => {
     )
   })
 
-  it('changes the name of an event on its form, where the address goes with it', async () => {
+  it('changes the name of an event on its form and nowhere else', async () => {
     /* Not in a cell, which is the whole of it. A cell writes one field of one
        record, and the address an event answers at is made out of its name and
        its day (entityForms.ts): renamed in the row, an event went on answering
-       at the address of the name it used to have, and nothing said so. */
+       at the address of the name it used to have, and nothing said so. That the
+       form writes the address again on every save is proved where it can be
+       seen, on the category of a race (entityForms.test.tsx). */
     const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
@@ -82,10 +84,11 @@ describe('changing data in administration', () => {
     await user.clear(name)
     await user.type(name, 'Novi naziv trke')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    const saved = within(await screen.findByRole('status', { name: 'Sačuvano' }))
+    const listed = within(await screen.findByRole('table', { name: 'Događaji' }))
 
-    expect(saved.getByText(/^novi-naziv-trke-\d{4}-\d{2}-\d{2}$/)).toBeVisible()
+    expect(listed.getByText('Novi naziv trke')).toBeVisible()
   })
 })
 

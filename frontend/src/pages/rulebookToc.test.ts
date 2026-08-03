@@ -18,6 +18,32 @@ describe('slugify', () => {
     expect(slugify('12. Rang liste i plasman')).toBe('12-rang-liste-i-plasman')
     expect(slugify('  Nagrade (i beneficije)!  ')).toBe('nagrade-i-beneficije')
   })
+
+  it('spells Cyrillic out, so one name in the two scripts is one address', () => {
+    /* The league is Balkan and both are written across it. Without this a name
+       in Cyrillic made no address at all, and the two things whose addresses are
+       read off a name, a team and an event, ended up with none (ADL A4d). */
+    expect(slugify('Дунавски тркачи')).toBe('dunavski-trkaci')
+    expect(slugify('Ђаци и чекање, журба, ћутање')).toBe('djaci-i-cekanje-zurba-cutanje')
+    /* Macedonian and Bulgarian, since the league runs in both. */
+    expect(slugify('Скопски полумаратон')).toBe('skopski-polumaraton')
+    expect(slugify('Щастливи бегачи')).toBe('stastlivi-begaci')
+  })
+
+  it('drops a Cyrillic letter no alphabet of the league writes', () => {
+    /* The table holds Serbian, Macedonian and Bulgarian. Anything else in that
+       block, an old letter or one of a language the league does not run in, is
+       a letter the address is better off without than guessing at. */
+    expect(slugify('Језеро ѣ')).toBe('jezero')
+    expect(slugify('Ы')).toBe('')
+  })
+
+  it('gives nothing back where a name holds nothing an address can carry', () => {
+    /* Which is what the two callers who read an address off a name have to
+       refuse, rather than take and file under no address at all. */
+    expect(slugify('???')).toBe('')
+    expect(slugify('Δρομείς Αθηνών')).toBe('')
+  })
 })
 
 describe('withIds', () => {

@@ -378,16 +378,24 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     puts a thing on the portal, and a queue of forty approved by
                     a misplaced click is forty things to find again by hand.
 
-                    It asks how many are waiting and promises no number, because
-                    a proposal the sweep cannot take is left standing: promising
-                    two and settling one is the same lie in the question that
-                    the line under the button was written to avoid. */}
+                    On the queue of teams it asks how many are waiting and
+                    promises no number, because a proposal the sweep cannot take
+                    is left standing: promising two and settling one is the same
+                    lie in the question that the line under the button was
+                    written to avoid. On the other five nothing is ever left
+                    standing, so there the question says the number, and a
+                    hedge on all six would be a hedge that means nothing. */}
                 {waiting.length > 0 && (
                   <button
                     type="button"
                     className="button button--secondary"
                     onClick={() => {
-                      if (!window.confirm(t('verification.approveAllAsk', { count: waiting.length }))) {
+                      const ask =
+                        queue.id === 'teams'
+                          ? 'verification.approveAllAskTeams'
+                          : 'verification.approveAllAsk'
+
+                      if (!window.confirm(t(ask, { count: waiting.length }))) {
                         return
                       }
 
@@ -420,170 +428,170 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     const why = refusedFor(one)
 
                     return (
-                    <li key={one.id} className="submissions__item">
-                      <div className="submissions__head">
-                        {/* What it will be called if it is taken, not what it
-                            arrived as. A moderator who has just corrected a name
-                            in the field below should not read the old one at the
-                            top of the same card. */}
-                        <h3 className="pending__subject">
-                          {queue.id === 'teams' ? teamFrom(one, edits).name : one.subject}
-                        </h3>
-                        <span className="submissions__meta">
-                          {formatShortDate(one.date, locale)}
-                        </span>
-                      </div>
-
-                      <p className="submissions__meta">
-                        {/* A change of date may be reported by somebody with no
-                            account at all (PDL P10), so the sender is a name and
-                            a number, or nobody. */}
-                        {one.who === ''
-                          ? t('verification.sentByAnonymous')
-                          : t('verification.sentBy', {
-                              who: one.who,
-                              memberNumber: one.memberNumber,
-                            })}
-                      </p>
-
-                      {/* The three things the team will be made of, before it
-                          is made (owner, 03.08.2026). Only here: the other five
-                          queues decide about something that already exists. */}
-                      {queue.id === 'teams' && <TeamFields item={one} />}
-
-                      <dl className="pending__facts">
-                        {datesOf(one).map((fact) => (
-                          <div key={fact.key}>
-                            <dt>{t(fact.key)}</dt>
-                            <dd>{formatShortDate(fact.value, locale)}</dd>
-                          </div>
-                        ))}
-                        <div className="pending__text">
-                          <dt>{bodyLabel}</dt>
-                          {queue.outcome === 'editAndPublish' ? (
-                            <dd className="pending__edit">
-                              <EditableBody id={one.id} label={bodyLabel} value={one.body} />
-                            </dd>
-                          ) : (
-                            <dd className="pending__body">{one.body}</dd>
-                          )}
+                      <li key={one.id} className="submissions__item">
+                        <div className="submissions__head">
+                          {/* What it will be called if it is taken, not what it
+                              arrived as. A moderator who has just corrected a name
+                              in the field below should not read the old one at the
+                              top of the same card. */}
+                          <h3 className="pending__subject">
+                            {queue.id === 'teams' ? teamFrom(one, edits).name : one.subject}
+                          </h3>
+                          <span className="submissions__meta">
+                            {formatShortDate(one.date, locale)}
+                          </span>
                         </div>
-                      </dl>
 
-                      {open === one.id ? (
-                        <SendBack
-                          /* Same box, same words, on every queue that hands work
-                             back. What the pictures ask for is a reason precise
-                             enough to work from, because that reason is what the
-                             member reads and changes the picture by. */
-                          placeholderKey={
-                            queue.outcome === 'instruct'
-                              ? 'review.instructionPlaceholder'
-                              : 'review.reasonPlaceholder'
-                          }
-                          onConfirm={(reason) => {
-                            settle(one.id, {
-                              status: 'rejected',
-                              note: reason,
-                              basis: '',
-                              memberNumber: '',
-                            })
+                        <p className="submissions__meta">
+                          {/* A change of date may be reported by somebody with no
+                              account at all (PDL P10), so the sender is a name and
+                              a number, or nobody. */}
+                          {one.who === ''
+                            ? t('verification.sentByAnonymous')
+                            : t('verification.sentBy', {
+                                who: one.who,
+                                memberNumber: one.memberNumber,
+                              })}
+                        </p>
 
-                            /* A reason the member never reads is a reason to
-                               nobody, and this is the one queue where the member
-                               is expected to act on it. The portal already has an
-                               inbox, so it goes there in the words the moderator
-                               wrote (PDL P22, P28a). */
-                            if (queue.outcome === 'instruct') {
-                              notify({
-                                from: t('app.name'),
-                                to: one.memberNumber,
-                                subject: t('verification.photoReturned'),
-                                body: reason,
-                                date: today,
-                              })
+                        {/* The three things the team will be made of, before it
+                            is made (owner, 03.08.2026). Only here: the other five
+                            queues decide about something that already exists. */}
+                        {queue.id === 'teams' && <TeamFields item={one} />}
+
+                        <dl className="pending__facts">
+                          {datesOf(one).map((fact) => (
+                            <div key={fact.key}>
+                              <dt>{t(fact.key)}</dt>
+                              <dd>{formatShortDate(fact.value, locale)}</dd>
+                            </div>
+                          ))}
+                          <div className="pending__text">
+                            <dt>{bodyLabel}</dt>
+                            {queue.outcome === 'editAndPublish' ? (
+                              <dd className="pending__edit">
+                                <EditableBody id={one.id} label={bodyLabel} value={one.body} />
+                              </dd>
+                            ) : (
+                              <dd className="pending__body">{one.body}</dd>
+                            )}
+                          </div>
+                        </dl>
+
+                        {open === one.id ? (
+                          <SendBack
+                            /* Same box, same words, on every queue that hands work
+                               back. What the pictures ask for is a reason precise
+                               enough to work from, because that reason is what the
+                               member reads and changes the picture by. */
+                            placeholderKey={
+                              queue.outcome === 'instruct'
+                                ? 'review.instructionPlaceholder'
+                                : 'review.reasonPlaceholder'
                             }
+                            onConfirm={(reason) => {
+                              settle(one.id, {
+                                status: 'rejected',
+                                note: reason,
+                                basis: '',
+                                memberNumber: '',
+                              })
 
-                            setOpen(null)
-                          }}
-                          onCancel={() => {
-                            setOpen(null)
-                            setClosed(one.id)
-                          }}
-                        />
-                      ) : (
-                        <div className="member__links">
-                          <button
-                            type="button"
-                            className="button button--primary"
-                            /* Not switched off: a control that leaves the row
-                               takes the keyboard with it, and this one is meant
-                               to be reachable so its reason can be read. It says
-                               it cannot act and points at why. */
-                            aria-disabled={why !== null}
-                            aria-describedby={why === null ? undefined : `${one.id}-blocked`}
-                            onClick={() => approveAll([one], teams)}
-                          >
-                            {queue.outcome === 'editAndPublish'
-                              ? t('verification.publish')
-                              : t('review.approve')}
-                          </button>
-
-                          {/* One click and the comment is gone, the same as
-                              accepting it. There is no box to open, so there is
-                              no focus to hand back either. */}
-                          {queue.outcome === 'delete' && (
-                            <button
-                              type="button"
-                              className="button button--secondary"
-                              onClick={() =>
-                                settle(one.id, {
-                                  status: 'rejected',
-                                  note: '',
-                                  basis: '',
-                                  memberNumber: '',
+                              /* A reason the member never reads is a reason to
+                                 nobody, and this is the one queue where the member
+                                 is expected to act on it. The portal already has an
+                                 inbox, so it goes there in the words the moderator
+                                 wrote (PDL P22, P28a). */
+                              if (queue.outcome === 'instruct') {
+                                notify({
+                                  from: t('app.name'),
+                                  to: one.memberNumber,
+                                  subject: t('verification.photoReturned'),
+                                  body: reason,
+                                  date: today,
                                 })
                               }
-                            >
-                              {t('verification.delete')}
-                            </button>
-                          )}
 
-                          {/* The focus comes back to this button with it, on the
-                              render that brings it back and on no other: nothing
-                              is autofocused when the page first draws. A
-                              biography has no button here at all, because it
-                              never goes back. */}
-                          {handsBack(queue) && canSendBack(queue, one) && (
+                              setOpen(null)
+                            }}
+                            onCancel={() => {
+                              setOpen(null)
+                              setClosed(one.id)
+                            }}
+                          />
+                        ) : (
+                          <div className="member__links">
                             <button
                               type="button"
-                              className="button button--secondary"
-                              autoFocus={one.id === closed}
-                              onClick={() => setOpen(one.id)}
+                              className="button button--primary"
+                              /* Not switched off: a control that leaves the row
+                                 takes the keyboard with it, and this one is meant
+                                 to be reachable so its reason can be read. It says
+                                 it cannot act and points at why. */
+                              aria-disabled={why !== null}
+                              aria-describedby={why === null ? undefined : `${one.id}-blocked`}
+                              onClick={() => approveAll([one], teams)}
                             >
-                              {t('review.sendBack')}
+                              {queue.outcome === 'editAndPublish'
+                                ? t('verification.publish')
+                                : t('review.approve')}
                             </button>
-                          )}
 
-                          {/* Why approving would do nothing, said on the card
-                              rather than left to a press that changes nothing.
-                              The moderator has the fields above to put it right,
-                              or the way back to hand it to whoever sent it. */}
-                          {queue.id === 'teams' && (
-                            <Refused why={why} id={`${one.id}-blocked`} />
-                          )}
+                            {/* One click and the comment is gone, the same as
+                                accepting it. There is no box to open, so there is
+                                no focus to hand back either. */}
+                            {queue.outcome === 'delete' && (
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                onClick={() =>
+                                  settle(one.id, {
+                                    status: 'rejected',
+                                    note: '',
+                                    basis: '',
+                                    memberNumber: '',
+                                  })
+                                }
+                              >
+                                {t('verification.delete')}
+                              </button>
+                            )}
 
-                          {/* And where it cannot go back, the button is gone and
-                              the reason is on screen in its place. A control
-                              that quietly does nothing teaches a moderator that
-                              the screen is broken; this one says which fact is
-                              missing and that it is not his to fix. */}
-                          {handsBack(queue) && !canSendBack(queue, one) && (
-                            <p className="pending__blocked">{t('verification.noRecipient')}</p>
-                          )}
-                        </div>
-                      )}
-                    </li>
+                            {/* The focus comes back to this button with it, on the
+                                render that brings it back and on no other: nothing
+                                is autofocused when the page first draws. A
+                                biography has no button here at all, because it
+                                never goes back. */}
+                            {handsBack(queue) && canSendBack(queue, one) && (
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                autoFocus={one.id === closed}
+                                onClick={() => setOpen(one.id)}
+                              >
+                                {t('review.sendBack')}
+                              </button>
+                            )}
+
+                            {/* Why approving would do nothing, said on the card
+                                rather than left to a press that changes nothing.
+                                The moderator has the fields above to put it right,
+                                or the way back to hand it to whoever sent it. */}
+                            {queue.id === 'teams' && (
+                              <Refused why={why} id={`${one.id}-blocked`} />
+                            )}
+
+                            {/* And where it cannot go back, the button is gone and
+                                the reason is on screen in its place. A control
+                                that quietly does nothing teaches a moderator that
+                                the screen is broken; this one says which fact is
+                                missing and that it is not his to fix. */}
+                            {handsBack(queue) && !canSendBack(queue, one) && (
+                              <p className="pending__blocked">{t('verification.noRecipient')}</p>
+                            )}
+                          </div>
+                        )}
+                      </li>
                     )
                   })}
                 </ul>
