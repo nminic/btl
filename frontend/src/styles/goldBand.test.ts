@@ -128,3 +128,61 @@ describe('the name that has to be cut', () => {
     expect(margin).toBeGreaterThan(width + offset)
   })
 })
+
+/* Where gold is not allowed, which is the other half of the same rule.
+ *
+ * Gold is reserved for the podium, for medals and for badges (tokens.css). The
+ * sentence that stands above the standing and above the Top 10 boards had a gold
+ * edge down its left side, which made a line of plain explanation read as
+ * something to act on. The owner asked for it to go (01.08.2026, D1) and it was
+ * read as being about the rows in the table instead, so the podium came off two
+ * boards and the yellow line stayed on both for two days.
+ *
+ * Read off the sheet, because jsdom paints nothing and a screen test cannot see
+ * a border that is not there.
+ */
+describe('the sentence above a table of places', () => {
+  const PROSE = [
+    { file: 'src/pages/Rankings.css', rule: '.rankings__note' },
+    { file: 'src/pages/TopBoards.css', rule: '.boards__intro' },
+  ]
+
+  it.each(PROSE)('carries no gold in $rule', ({ file, rule }) => {
+    expect(bodyOf(read(file), rule)).not.toMatch(/gold/)
+  })
+})
+
+/* The search on the competitors' page, which is a rule about a shape rather than
+ * a colour, and lands here for the same reason: jsdom applies no stylesheet, so
+ * a screen test cannot see that a label and its box are side by side.
+ *
+ * Stacked, the label took the line of the heading and the box hung below it, so
+ * the page opened with a band of empty space beside its own title (owner,
+ * 03.08.2026).
+ */
+describe('the search beside the heading', () => {
+  const RULE = '.rankings__head-tool .rankings__field'
+
+  it('lays the label and its box along one line', () => {
+    const body = bodyOf(read('src/pages/Rankings.css'), RULE)
+
+    expect(body).toMatch(/flex-direction:\s*row/)
+    expect(body).not.toMatch(/flex-direction:\s*column/)
+  })
+
+  it('gives the box room for the whole of the hint it shows', () => {
+    /* Measured in `ch`, the width of a nought in the box's own font, so the
+       number follows the text rather than a guess about it. The hint is
+       twenty-nine characters. */
+    const body = bodyOf(
+      read('src/pages/Rankings.css'),
+      ".rankings__head-tool .rankings__field input[type='search']",
+    )
+    const width = /inline-size:\s*(\d+)ch/.exec(body)
+
+    expect(width, 'the box has no width in ch').not.toBeNull()
+    expect(Number(width?.[1])).toBeGreaterThanOrEqual(29)
+    /* And never wider than what it is given, so 360px keeps its scrollbar off. */
+    expect(body).toMatch(/max-inline-size:\s*100%/)
+  })
+})

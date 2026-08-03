@@ -46,16 +46,46 @@
   margin-block-end: var(--space-12);
 }
 
+/* The label and its box side by side, on the line of the heading (owner,
+   03.08.2026). Stacked, the label took the heading's line and the box hung
+   below it, so the page opened with a band of empty space beside its own title
+   and the search looked like something that had fallen off the layout.
+
+   Only in the head tool. Down among the filters the fields stand in a row of
+   their own and stack the way they always have, because there the label above
+   the control is what lines the row up. */
 .rankings__head-tool .rankings__field {
   margin: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-8);
 }
 
+/* Wide enough to show the whole of what it suggests typing. "Ime, prezime ili
+   članski broj" is twenty-nine characters and the box was showing about half of
+   them, which reads as a box that takes a word rather than one that takes any of
+   three things.
+
+   In `ch`, so it follows the text rather than a guess about it: the unit is the
+   width of a nought in the box's own font, and the box's own font is the one the
+   hint is drawn in. Never wider than what it is given, so at 360px it takes the
+   room there is and the hint shortens rather than the page growing a scrollbar. */
+.rankings__head-tool .rankings__field input[type='search'] {
+  inline-size: 32ch;
+  max-inline-size: 100%;
+}
+
+/* The sentence above the table, in plain muted prose.
+ *
+ * No gold edge (owner, 01.08.2026, D1). It was a yellow-marked line across the
+ * top of the page for a sentence that explains rather than warns, and gold on
+ * this portal is reserved for the podium, for medals and for badges
+ * (src/styles/tokens.css). A line marked that way reads as something to act on,
+ * and there is nothing here to act on. */
 .rankings__note {
   margin: 0 0 var(--space-16);
   color: var(--text-muted);
   font-size: 0.85rem;
-  border-left: 3px solid var(--gold-500);
-  padding-left: var(--space-12);
 }
 
 .rankings__filters {

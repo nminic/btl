@@ -6,12 +6,17 @@
   letter-spacing: -0.02em;
 }
 
+/* The sentence above the table, in plain muted prose.
+ *
+ * No gold edge (owner, 01.08.2026, D1). It was a yellow-marked line across the
+ * top of the page for a sentence that explains rather than warns, and gold on
+ * this portal is reserved for the podium, for medals and for badges
+ * (src/styles/tokens.css). A line marked that way reads as something to act on,
+ * and there is nothing here to act on. */
 .boards__intro {
   margin: 0 0 var(--space-16);
   color: var(--text-muted);
   font-size: 0.85rem;
-  border-left: 3px solid var(--gold-500);
-  padding-left: var(--space-12);
 }
 
 /* Level with the heading, at the far right (owner, 01.08.2026). It is drawn
