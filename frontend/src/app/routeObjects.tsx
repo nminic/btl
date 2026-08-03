@@ -8,6 +8,7 @@ import { CompetitorAwards } from '../pages/CompetitorAwards'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
 import { CalendarDay } from '../pages/CalendarDay'
 import { EventDetail } from '../pages/EventDetail'
+import { ReportResult } from '../pages/event/ReportResult'
 import { LeagueDetail } from '../pages/LeagueDetail'
 import { TeamDetail } from '../pages/TeamDetail'
 import { Home } from '../pages/Home'
@@ -16,6 +17,7 @@ import { Pricing } from '../pages/Pricing'
 import { Rankings } from '../pages/Rankings'
 import { Rulebook } from '../pages/Rulebook'
 import { TopBoards } from '../pages/TopBoards'
+import { ProposeTeam } from '../pages/member/ProposeTeam'
 import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
@@ -61,6 +63,7 @@ const SCREENS: Record<string, ReactElement> = {
   'top-liste': <TopBoards />,
   takmicari: <Competitors />,
   timovi: <Teams />,
+  'novi-tim': <ProposeTeam />,
   lige: <Leagues />,
   clanarina: <Pricing />,
   registracija: <Registration />,
@@ -154,6 +157,10 @@ function guarded(path: string, screen: ReactElement): ReactElement {
 const DETAILS: RouteObject[] = [
   { path: 'kalendar/dan/:date', element: <CalendarDay /> },
   { path: 'kalendar/:slug', element: <EventDetail /> },
+  /* Reported from the event it was run at, so the form does not begin by asking
+     which event it was (owner, 03.08.2026). Under the event's own address,
+     because that is what it is about and where the way back leads. */
+  { path: 'kalendar/:slug/prijava', element: <ReportResult /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
   { path: 'tim/:slug', element: <TeamDetail /> },

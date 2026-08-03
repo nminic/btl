@@ -10,7 +10,7 @@ import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from '../data/badgeRule'
 import { ENTITIES } from './admin/entityList'
-import { type PendingItem, type PendingQueueId } from './admin/pending'
+import type { PendingItem, PendingQueueId } from '../data/types'
 import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
 import { RIGHTS } from './admin/rights'
 import { ReviewQueue } from './admin/ReviewQueue'
@@ -47,6 +47,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       photo: '',
       category: 'short' as const,
       link: 'https://primer.rs/r',
+      comment: '',
       status,
       note: '',
     })),
@@ -73,6 +74,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     settle: vi.fn(),
     deletions: {},
     remove: vi.fn(),
+    proposals: [],
+    propose: vi.fn(),
   }
 }
 

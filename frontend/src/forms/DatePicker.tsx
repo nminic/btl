@@ -37,6 +37,7 @@ export function DatePicker({
   invalid,
   describedBy,
   onChange,
+  openAt = false,
 }: {
   id: string
   name: string
@@ -44,6 +45,9 @@ export function DatePicker({
   invalid: boolean
   describedBy: string | undefined
   onChange: (value: string) => void
+  /** Whether the cursor starts in the box. The one caller that asks is a copied
+   *  event, whose date is the one thing certainly wrong (FormRenderer). */
+  openAt?: boolean
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -97,6 +101,7 @@ export function DatePicker({
         placeholder="dd/mm/gggg"
         aria-invalid={invalid}
         aria-describedby={describedBy}
+        autoFocus={openAt}
         value={value}
         onChange={(event) => onChange(maskDate(event.target.value))}
       />

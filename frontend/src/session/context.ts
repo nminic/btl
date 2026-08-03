@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { MembershipBasis, RaceCategory } from '../data/types'
+import type { MembershipBasis, RaceCategory, PendingItem } from '../data/types'
 
 /* What the prototype remembers between screens.
  *
@@ -29,7 +29,25 @@ export type Submission = {
    *  photographs of watches (ADL A12). */
   photo: string
   category: RaceCategory
+  /**
+   * The official results, as an address and nothing else.
+   *
+   * The queue draws it as a link, so it has to be one: the form that asks for it
+   * requires the shape (`unos-rezultata.form.json`). Empty where the entry came
+   * from the event's own page, which asks for words rather than an address.
+   */
   link: string
+  /**
+   * What the member wrote in their own words: a start number, a screenshot they
+   * are sending on, a sentence about a watch that stopped.
+   *
+   * Its own field and not the link, which is where it went at first. The queue
+   * draws the link as `<a href>`, so "Startni broj 412" became an address on the
+   * moderator's screen: relative, opening the administration at a path made of
+   * the member's sentence. Anything a member types is text until something has
+   * checked it, and nothing had.
+   */
+  comment: string
   status: SubmissionStatus
   /** Why it was sent back, so the competitor is not left guessing. */
   note: string
@@ -196,6 +214,18 @@ export type SessionValue = {
   /** Removes one record of one entity. Asked for twice on screen before it gets
    *  here (EntityEditor.tsx), because nothing brings it back. */
   remove: (entity: string, id: string) => void
+
+  /**
+   * What a member has put forward during this visit and nobody has decided on.
+   *
+   * A team, today. It is the same kind of thing as the teams that are read off
+   * the disc, and it joins them rather than living in a list of its own
+   * (src/pages/admin/pending.ts): a moderator opening the queue must not be able
+   * to tell which of two waiting teams came from a file and which from a member,
+   * because there is no such difference once the database exists.
+   */
+  proposals: PendingItem[]
+  propose: (item: Omit<PendingItem, 'id'>) => void
 }
 
 export const NOTIFICATION_KEYS: NotificationKey[] = [

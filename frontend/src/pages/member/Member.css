@@ -367,3 +367,19 @@
   font-size: 0.85rem;
   font-variant-numeric: normal;
 }
+
+/* What the member wrote in their own words, under the name of the event in the
+   queue. Text and never a link: it is a start number as often as an address, and
+   an unchecked sentence in an `href` is an address made of somebody's sentence
+   (ReviewQueue.tsx). */
+.review__said {
+  display: block;
+  margin-block-start: var(--space-4);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  /* An address is one word as far as the browser is concerned, and the hint
+     invites one. Without this a pasted link stretched the column to its own
+     length, pushed the two decisions off the right of the box, and gave the
+     table a sideways scroll on a phone, which PDL P24 does not allow. */
+  overflow-wrap: anywhere;
+}

@@ -60,9 +60,13 @@ function Bar({
   const name = `${column.competitor.firstName} ${column.competitor.lastName}`
   const inside = (
     <>
-      <Portrait competitor={column.competitor} />
-      <span className="top-cat__bar">
-        <span className="top-cat__count">{column.races}</span>
+      {/* The face, the bar and the name all stand in the track, because all
+          three are placed from the bar's own height: the face rides on top of
+          it and the name is across the middle of the face. */}
+      <span className="top-cat__track">
+        <Portrait competitor={column.competitor} />
+        <span className="top-cat__bar">
+          <span className="top-cat__count">{column.races}</span>
         {/* Seen on hover and on focus, read out always.
          *
          * Inside the bar, which is what it is measured from. The face rides on
@@ -77,7 +81,8 @@ function Bar({
          * gives room back to the face above it, so the number in the style and
          * the number on the screen are fifty pixels apart. Only the bar knows
          * how tall the bar ended up, and inside it `100%` is that. */}
-        <span className="top-cat__who">{name}</span>
+          <span className="top-cat__who">{name}</span>
+        </span>
       </span>
     </>
   )

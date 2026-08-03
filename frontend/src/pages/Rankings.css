@@ -43,6 +43,13 @@
 .rankings__head-tool {
   display: flex;
   justify-content: flex-end;
+  /* Two things stand here on the teams since a member may propose one, and with
+     nothing between them the button and the season picker touched. Wrapping,
+     because on a narrow screen the two of them together are wider than the room
+     left beside a heading. */
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
   margin-block-end: var(--space-12);
 }
 

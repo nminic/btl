@@ -2,9 +2,16 @@ import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { combinePair, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
+import {
+  combinePair,
+  useCompetitors,
+  useEvents,
+  useRaces,
+  useResults,
+} from '../data/useResource'
 import { formatDate, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { EventActions } from './event/EventActions'
 import './Profile.css'
 
 /* The races load separately from the event on purpose: the heading, the date
@@ -19,6 +26,10 @@ function RaceTable({ eventId }: { eventId: string }) {
       {(all) => (
         <div className="table-scroll">
           <table className="table">
+            {/* Named, like every other table on the portal. Two tables stand on
+                this screen once anybody has run the event, and a screen reader
+                offered two unnamed ones cannot say which is which. */}
+            <caption className="visually-hidden">{t('event.races')}</caption>
             <thead>
               <tr>
                 <th scope="col">{t('event.raceName')}</th>
@@ -183,6 +194,12 @@ export function EventDetail() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   const events = useEvents()
+  /* Read for what it is worth rather than waited for: the buttons at the top of
+     the screen must not hold up the name and the date, and the only one that
+     needs the races is the copy. */
+  const races = useRaces()
+  /* For the deletion, which takes what hangs off the event with it. */
+  const results = useResults()
 
   return (
     <Resource state={events}>
@@ -210,7 +227,11 @@ export function EventDetail() {
             />
 
             <div className="profile">
-              <header className="profile__head">
+              {/* What can be done with the event, at the top right of it. The
+                  head becomes a row for it and is a column everywhere else,
+                  which is why the modifier is on the head rather than on the
+                  buttons. */}
+              <header className="profile__head profile__head--acting">
                 <p className="profile__meta">
                   <Link to={`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`}>
                     {t('event.backToCalendar')}
@@ -229,6 +250,18 @@ export function EventDetail() {
                   {': '}
                   {event.organizer}
                 </p>
+
+                {/* Only once both have arrived, and this is not impatience.
+                    The buttons act on the races and the results: deleting takes
+                    them with it and copying carries them across. Drawn against
+                    what had not loaded yet, the question said "and 0 of its
+                    races", the deletion took the event and left every race and
+                    every result behind it, and the copy came across empty. The
+                    head is a column while they are absent and becomes a row when
+                    they arrive (EventActions.css). */}
+                {races.status === 'ready' && results.status === 'ready' && (
+                  <EventActions event={event} races={races.data} results={results.data} />
+                )}
               </header>
 
               <h2 className="profile__section">{t('event.races')}</h2>

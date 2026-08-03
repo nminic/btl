@@ -49,6 +49,7 @@ export function NewResult() {
       points: earned,
       category: categoryOf(distanceKm),
       link: String(values.link),
+      comment: '',
     })
 
     /* Stays on a confirmation rather than jumping to the list (PDL P9: "Član

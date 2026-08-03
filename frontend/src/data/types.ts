@@ -167,3 +167,58 @@ export type StaticPage = {
    */
   includes?: string[]
 }
+
+/* What is waiting for a decision, in the seven queues that are read from a file.
+ *
+ * Here rather than beside the screens that draw it, because it describes a file
+ * under `public/mock` and `src/data` is the only place that says what the
+ * portal's data looks like. It also has to be reachable from the session: a
+ * competitor proposes a team during a visit, and that proposal joins the same
+ * queue as everything read off the disc, so both ends need the shape and neither
+ * may import the other.
+ */
+export const PENDING_QUEUE_IDS = [
+  'payments',
+  'leagues',
+  'teams',
+  'bios',
+  'photos',
+  'comments',
+  'schedule',
+] as const
+
+export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
+
+export type PendingItem = {
+  id: string
+  queue: PendingQueueId
+  /** The day it arrived in the queue. */
+  date: string
+  /**
+   * Who sent it in, or empty. A change of date may be reported by somebody with
+   * no account at all (PDL P10), and on the payments queue it is empty for a
+   * different reason: a registration whose fee is not recorded has no member
+   * number yet, which is the whole of the 30.07.2026 decision made visible in
+   * the data.
+   */
+  memberNumber: string
+  who: string
+  /** What the decision is about: the name of the league, the team, the member
+   *  or the event. */
+  subject: string
+  /** The text to read before deciding: the biography, the comment, the reason
+   *  given, or the file name of a picture. */
+  body: string
+  /** A reported change of date carries both dates, so the difference is the
+   *  thing on screen. Empty on every other queue. */
+  currentDate: string
+  proposedDate: string
+  /** The payments queue only. Until the fee is recorded there is no number to go
+   *  by, so a waiting registration is known by its name and its address (PDL
+   *  P8). Empty on the other six. */
+  email: string
+  /** The payments queue only. How a member pays follows the country they live in
+   *  (PDL P8), so it belongs beside the fee. Empty on the other six. */
+  city: string
+  country: string
+}

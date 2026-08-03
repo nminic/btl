@@ -296,6 +296,8 @@ function renderInbox(inbox: Message[]) {
     settle: vi.fn(),
     deletions: {},
     remove: vi.fn(),
+    proposals: [],
+    propose: vi.fn(),
   }
 
   return render(

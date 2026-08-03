@@ -40,6 +40,16 @@ type Props = {
   /** Values the form shows but does not ask for, because they are read off the
    *  ones it does ask for. They follow the fields as words. */
   derived?: (values: FormValues) => DerivedField[]
+  /**
+   * The field the cursor starts in, by name.
+   *
+   * For the one case where the form is opened at something rather than by
+   * somebody: copying an event fills every field from the one it was copied
+   * from, and the date is the one thing that is certainly wrong (owner,
+   * 03.08.2026). Left out everywhere else, because a form that grabs the cursor
+   * is a form that has taken the page away from whoever opened it.
+   */
+  openAt?: string
 }
 
 /* One field, drawn again only when something about that field changed.
@@ -61,12 +71,15 @@ const Field = memo(function Field({
   error,
   choices,
   onChange,
+  open = false,
 }: {
   field: FieldDef
   value: string | boolean
   error: FieldError | undefined
   choices: readonly FieldOption[]
   onChange: (field: FieldDef, value: string | boolean) => void
+  /** Whether the cursor starts here. One field on one form ever does. */
+  open?: boolean
 }) {
   const { t } = useI18n()
   /**
@@ -138,6 +151,7 @@ const Field = memo(function Field({
     'aria-invalid': error !== undefined,
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     className: 'field__control',
+    autoFocus: open,
   }
 
   if (field.type === 'checkbox') {
@@ -342,6 +356,7 @@ const Field = memo(function Field({
           value={String(value)}
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
+          openAt={open}
           onChange={change}
         />
       )}
@@ -376,6 +391,7 @@ export function FormRenderer({
   options = {},
   check,
   derived,
+  openAt,
 }: Props) {
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
@@ -467,6 +483,7 @@ export function FormRenderer({
           error={errors[field.name]}
           choices={optionsFor(field, options)}
           onChange={handleChange}
+          open={field.name === openAt}
         />
       ))}
 

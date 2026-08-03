@@ -7,6 +7,7 @@ import { rankTeams, seasonOf, seasonsWithResults } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { useSession } from '../session/useSession'
 import './Rankings.css'
 
 /**
@@ -27,6 +28,7 @@ import './Rankings.css'
 export function Teams() {
   const { locale, t } = useI18n()
   const today = useToday()
+  const { memberNumber } = useSession()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
@@ -50,6 +52,17 @@ export function Teams() {
           return (
             <>
               <div className="rankings__head-tool">
+                {/* A team is put forward by whoever wants to run in it, and
+                    decided on by a moderator in the queue that has been waiting
+                    for one since it was written (owner, 03.08.2026; PDL P22).
+                    Beside the season rather than under the table: it is
+                    something to do with this screen, and the foot of a standing
+                    of forty is not where anybody looks for it. */}
+                {memberNumber !== null && (
+                  <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
+                    {t('teams.propose')}
+                  </Link>
+                )}
                 <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 

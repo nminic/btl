@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { useEvents } from '../../data/useResource'
+import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { EVENTS, recordsOf, type Editing } from './entityForms'
+import { EVENTS, RACES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -17,9 +18,20 @@ export function AdminEvents() {
   const { locale, t } = useI18n()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
-  const [editing, setEditing] = useState<Editing | null>(null)
-  const state = useEvents()
+  /** What was opened by pressing something on this screen. */
+  const [chosen, setChosen] = useState<Editing | null>(null)
+  const state = combinePair(useEvents(), useRaces())
   const today = useToday()
+  /**
+   * The record this screen was sent to open, and the field to open it at.
+   *
+   * Copying an event happens on the event's own page and ends here, on the form
+   * for the copy with the cursor in the date (owner, 03.08.2026). The address
+   * carries it because a screen cannot be told anything else: the editor is
+   * state inside this component, and a link is what the other page has.
+   */
+  const [params, setParams] = useSearchParams()
+  const asked = params.get('zapis')
 
   return (
     <div className="member">
@@ -29,12 +41,45 @@ export function AdminEvents() {
       <h1 className="visually-hidden">{t('admin.events')}</h1>
 
       <Resource state={state}>
-        {(events) => {
+        {([events, races]) => {
           const all = recordsOf(EVENTS, events, overlay)
+          /* Through the overlay, like the events beside them. Read straight from
+             the file the count below said an event copied here had no races,
+             while its races were on the next screen along. */
+          const allRaces = recordsOf(RACES, races, overlay)
+          /* Worked out rather than copied into state.
+           *
+             It was an effect that put the record from the address into state,
+             and `recordsOf` builds its records fresh on every render, so the
+             record was a new object every time, the effect saw a changed value
+             every time, and it set state every time: the screen never settled,
+             and pressing anything that led away from it left the address changed
+             and the old screen still drawn.
+           *
+             Read here, there is nothing to keep in step. What the address names
+             is the form for that record; what somebody pressed wins over it,
+             because they pressed it later. */
+          const wanted = asked === null ? undefined : all.find((one) => String(one.id) === asked)
+          const editing: Editing | null =
+            chosen ?? (wanted === undefined ? null : { mode: 'one', record: wanted })
 
           if (editing !== null) {
             return (
-              <EntityEditor entity={EVENTS} editing={editing} onDone={() => setEditing(null)} />
+              <EntityEditor
+                entity={EVENTS}
+                editing={editing}
+                /* The date, and only where the address asked for a record. A
+                   form that grabs the cursor is a form that has taken the page
+                   away from whoever opened it, and the copy is the one case
+                   where the cursor already knows where it is wanted. */
+                openAt={chosen === null && asked !== null ? 'date' : undefined}
+                onDone={() => {
+                  setChosen(null)
+                  /* And the address forgets it, so leaving the form and coming
+                     back to this screen does not open it again. */
+                  setParams({}, { replace: true })
+                }}
+              />
             )
           }
 
@@ -47,7 +92,7 @@ export function AdminEvents() {
 
           return (
             <>
-              <EntityBar entity={EVENTS} onNew={() => setEditing({ mode: 'new' })}>
+              <EntityBar entity={EVENTS} onNew={() => setChosen({ mode: 'new' })}>
                 <div className="rankings__filters">
                   <label className="rankings__field rankings__field--wide">
                     <span>{t('competitors.search')}</span>
@@ -96,7 +141,12 @@ export function AdminEvents() {
                             label={t('event.place')}
                           />
                         </td>
-                        <td>{one.raceIds.length}</td>
+                        {/* Counted from the races themselves rather than from
+                            a list the event carries. The list is filled by the
+                            generator and by nothing else, so an event entered or
+                            copied here said it had none while its races were in
+                            the next screen along. */}
+                        <td>{allRaces.filter((race) => race.eventId === one.id).length}</td>
                         <td>
                           <span className={`tag tag--${one.status}`}>
                             {t(`calendar.status.${one.status}`)}
@@ -107,7 +157,7 @@ export function AdminEvents() {
                             entity={EVENTS}
                             record={one}
                             name={one.name}
-                            onOpen={() => setEditing({ mode: 'one', record: one })}
+                            onOpen={() => setChosen({ mode: 'one', record: one })}
                           />
                         </td>
                       </tr>

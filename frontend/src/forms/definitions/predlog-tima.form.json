@@ -1,0 +1,35 @@
+{
+  "id": "predlog-tima",
+  "titleKey": "teams.proposeTitle",
+  "submitKey": "teams.proposeSubmit",
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.field.teamName",
+      "hintKey": "admin.hint.teamName",
+      "required": true,
+      "maxLength": 60
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "labelKey": "admin.field.city",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "country",
+      "type": "country",
+      "labelKey": "admin.field.country",
+      "required": true
+    },
+    {
+      "name": "note",
+      "type": "textarea",
+      "labelKey": "teams.proposeNote",
+      "hintKey": "teams.proposeNoteHint",
+      "maxLength": 600
+    }
+  ]
+}
