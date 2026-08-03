@@ -343,3 +343,61 @@ describe('how a written page is set', () => {
     }
   })
 })
+
+/** The whole of one written page, as one piece of text. */
+function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti'): string {
+  return written[slug].sections.map((section) => section.body).join(`\n`)
+}
+
+/** The one section of a page that says something, by what it says. */
+function sectionOf(
+  slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti',
+  says: RegExp,
+): string {
+  const found = written[slug].sections.find((section) => says.test(section.body))
+
+  if (found === undefined) {
+    throw new Error(`no section of ${slug} says ${String(says)}`)
+  }
+
+  return found.body
+}
+
+describe('what the written pages say the fee buys', () => {
+  /* The fee stays the ticket into the league (owner, 03.08.2026, PDL P32). The
+     documents already behaved that way and described it two ways, once as
+     membership of an association and once as a subscription to a website. The
+     terms say it plainly now, and these hold the three documents to it.
+   *
+     Read off the disc, because this is about what is written rather than about
+     what a screen does with it. */
+  it('says membership is what gives the right to compete', () => {
+    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+      /ne plaća za pristup sajtu nego za članstvo u ligi/,
+    )
+  })
+
+  it('never offers the league to somebody who has not paid', () => {
+    /* The one thing that would make the model untrue on the page. */
+    for (const slug of ['uslovi-koriscenja', 'pravilnik', 'o-ligi'] as const) {
+      expect(whole(slug)).not.toMatch(/bez članarine|besplatn/i)
+    }
+  })
+
+  it('says nowhere that the formula is a secret', () => {
+    /* It never was one: the calculator on the front page has computed it in the
+       browser since the day it arrived (owner, 03.08.2026, PDL P11). */
+    for (const slug of ['pravilnik', 'o-ligi'] as const) {
+      expect(whole(slug)).not.toMatch(/ne objavljuje|tajn/i)
+    }
+  })
+
+  it('carries the telephone as optional, on consent', () => {
+    /* Back to optional on 03.08.2026, which is what lets it stand on consent:
+       consent has to be free, and it is not free if membership is impossible
+       without it. */
+    expect(sectionOf('politika-privatnosti', /Broj telefona/)).toMatch(
+      /Broj telefona \(neobavezno\).*Vaš pristanak/,
+    )
+  })
+})

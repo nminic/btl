@@ -1,0 +1,40 @@
+/* The way from one page of a long table to the next (owner, 03.08.2026).
+
+   Under the table it pages, because that is where a reader arrives having got to
+   the bottom of it. Wrapping, so the count and the two steps stack rather than
+   squeeze on a phone. */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-16);
+  margin-block-start: var(--space-12);
+}
+
+.pager__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pager__steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+}
+
+.pager__where {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A step that leads nowhere says so by looking spent, not by disappearing: the
+   row would change shape under somebody paging through with the keyboard. */
+.pager .button[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}

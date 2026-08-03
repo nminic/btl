@@ -1264,5 +1264,12 @@
     "note": "Prijavljuješ rezultat sa događaja „{event}\". Ostalo portal već zna sa same trke.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
     "backToEvent": "Nazad na događaj"
+  },
+  "pager": {
+    "showing": "Prikazano {first} do {last} od {rows}",
+    "page": "Strana {page} od {pages}",
+    "previous": "Prethodna",
+    "next": "Sledeća",
+    "leagueStanding": "Strane poretka takmičenja"
   }
 }

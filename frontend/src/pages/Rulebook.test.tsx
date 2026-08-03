@@ -27,24 +27,37 @@ describe('the rulebook', () => {
      not in the rulebook either (owner, 31.07.2026). What is left is what the
      scoring does, in words: longer and harder is worth more, faster is worth
      more, and a metre of climb is worth more than a metre of descent. */
-  it('says what the scoring does without saying how', async () => {
+  it('says what the scoring does without saying how, and without calling it a secret', async () => {
+    /* The formula stays public and the rulebook neither hides it nor sets it
+       out (owner, 03.08.2026, PDL P11). It cannot be hidden: the calculator on
+       the front page has computed it in the browser since the day it arrived,
+       so "the formula is not published" was a sentence the portal itself
+       contradicted. What the rulebook owes a member is what is scored and that
+       longer and harder races are worth more. */
     await openRulebook()
-
-    expect(screen.getByText(/Formula se ne objavljuje/)).toBeVisible()
 
     const printed = document.body.textContent ?? ''
 
+    expect(printed).not.toMatch(/ne objavljuje|tajn/i)
+    expect(printed).toMatch(/nosi više bodova/)
+
+    /* Not set out either. Not because it is a secret but because a rulebook is
+       read by somebody asking what counts, and three exponents answer a question
+       nobody asked. */
     expect(printed).not.toContain('3.257')
     expect(printed).not.toContain('2.137')
     expect(printed).not.toContain('1.25')
   })
 
-  /* Not written out is not the same as not published. The example under the
-     article used to give the effective length of a race and four pairs of time
-     and points for one course, and that is the formula in another shape: the
-     effective length against the raw length fixes the weights of climb and
-     descent exactly, and any two pairs give both exponents. One pair leaves the
-     system underdetermined, which is what an example is for. */
+  /* The example under the article used to give the effective length of a race
+     and four pairs of time and points for one course, and that is the formula in
+     another shape: the effective length against the raw length fixes the weights
+     of climb and descent exactly, and any two pairs give both exponents. One
+     pair leaves the system underdetermined, which is what an example is for.
+
+     Kept after the formula stopped being called a secret, for a different
+     reason: a rulebook that hands over enough to reconstruct the arithmetic is
+     presenting it, and the owner asked that it not be presented. */
   it('gives an example that cannot be solved backwards', async () => {
     await openRulebook()
 
