@@ -1,12 +1,12 @@
 import { useMemo, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
+import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
+import { ColumnChart, type ChartColumn } from '../components/ColumnChart'
 import { Resource } from '../components/Resource'
 import {
   bestSingleRaces,
   defaultSeason,
-  rankTeams,
-  seasonOf,
   seasonsWithResults,
   topByCategory,
   topByKilometers,
@@ -14,40 +14,44 @@ import {
   topByTimeOnCourse,
   fieldFor,
 } from '../data/derive'
-import type { Competitor, RaceCategory, Result, Team } from '../data/types'
-import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
+import type { Competitor, RaceCategory, Result } from '../data/types'
+import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import './Rankings.css'
 import './TopBoards.css'
 
-/* The Top 10 boards: the lists the rulebook counts out in Article 56, which
- * stand beside the season table rather than inside it. There are eleven of
- * them, they appear in the order the rulebook names them, every one of them
- * keeps ten places and no more, and they all read the same season, which is
- * chosen once at the top of the page (PDL P12 and P28a).
+/* The Top liste: the lists the rulebook counts out in Article 55, which stand
+ * beside the season table rather than inside it. Every one of them keeps ten
+ * places and no more, and they all read the same season, which is chosen once at
+ * the top of the page (PDL P12 and P28a).
+ *
+ * The layout is the owner's, 04.08.2026, and it is two thirds against one:
+ *
+ *   left, one under another    the five lengths as charts, then the best
+ *                              progress as a chart, then the best single races
+ *                              across the whole of that width
+ *   right, each two rows tall  the most kilometres, the longest on course, the
+ *                              best pairs
+ *
+ * The board of the best teams went off this page entirely: the teams have a page
+ * of their own, and that is where a standing of teams belongs. It is still one
+ * of the lists in Article 55 and still worked out; it is not drawn here.
+ *
+ * The order in the markup is the order on a phone, where the grid becomes one
+ * column: it walks the desktop rows across and then down, so the two readings
+ * are the same reading.
  *
  * The ordering rules, tie-breakers included, live in src/data/derive.ts. This
  * file only lays them out.
  */
 const PLACES = 10
 
-/**
- * The five lengths in the order Article 56 counts them out, longest first (PDL
- * P28a). This one screen is that article on a page, so the article decides the
- * order on it; everywhere else on the portal the five are shown shortest first
- * and stay that way (CATEGORIES in src/data/derive.ts).
- */
-const BY_RULEBOOK: RaceCategory[] = ['ultra', 'marathon', 'long', 'half', 'short']
-
 type Place = {
-  /** Where the name leads. A profile on most boards, a team page on the team
-   *  board, because the row is about the team and not about one member.
-   *
-   *  Missing where there is nothing to lead to: a member whose fee has run out
-   *  has no visible profile (PDL P11), so their name stands in the board with no
-   *  link on it, the same as in the tables. */
+  /** Where the name leads. Missing where there is nothing to lead to: a member
+   *  whose fee has run out has no visible profile (PDL P11), so their name
+   *  stands in the board with no link on it, the same as in the tables. */
   to?: string
   /** Unique within one board, which a member number is not on the race board:
    *  the same runner can hold two of the ten best races. */
@@ -67,12 +71,6 @@ type BoardData = {
   title: string
   valueLabel: string
   detailLabel?: string
-  /** Whether the middle column holds a number. The event name on the board of
-   *  best races is words and reads from the left, quietly; the size of a team is
-   *  a number and has to read like every other number on the page. */
-  detailIsNumber?: boolean
-  /** What the column of names is called, when "Član" is not what is in it. */
-  nameLabel?: string
   places: Place[]
   /** What stands in place of the table when the board has no places, which is
    *  not always the same sentence: a season without results and a list whose
@@ -80,22 +78,24 @@ type BoardData = {
   empty: ReactNode
 }
 
-function Board({
-  id,
-  title,
-  valueLabel,
-  detailLabel,
-  detailIsNumber,
-  nameLabel,
-  places,
-  empty,
-}: BoardData) {
+type ChartData = {
+  id: string
+  title: string
+  columns: ChartColumn[]
+  empty: string
+}
+
+/** One board on the page, drawn either way. The tag is what the grid places by
+ *  and what this file renders by, so a board cannot be laid out as one thing and
+ *  drawn as another. */
+type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
+
+function Board({ id, title, valueLabel, detailLabel, places, empty }: BoardData) {
   const { t } = useI18n()
   const headingId = `board-${id}`
-  const detailClass = detailIsNumber === true ? 'boards__count' : 'boards__detail'
 
   return (
-    <section className="boards__board" aria-labelledby={headingId}>
+    <section className={`boards__board boards__board--${id}`} aria-labelledby={headingId}>
       <h2 className="boards__title" id={headingId}>
         {title}
       </h2>
@@ -108,9 +108,9 @@ function Board({
             <thead>
               <tr>
                 <th scope="col">{t('topBoards.columns.position')}</th>
-                <th scope="col">{nameLabel ?? t('topBoards.columns.member')}</th>
+                <th scope="col">{t('topBoards.columns.member')}</th>
                 {detailLabel !== undefined && (
-                  <th scope="col" className={detailClass}>
+                  <th scope="col" className="boards__detail">
                     {detailLabel}
                   </th>
                 )}
@@ -125,7 +125,7 @@ function Board({
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
                   </td>
-                  {place.detail !== undefined && <td className={detailClass}>{place.detail}</td>}
+                  {place.detail !== undefined && <td className="boards__detail">{place.detail}</td>}
                   <td className="table__points">{place.value}</td>
                 </tr>
               ))}
@@ -137,20 +137,42 @@ function Board({
   )
 }
 
+/* A board drawn as bars (owner, 04.08.2026: "uradi grafikone kao sa naslovne
+   strane"). The gold band under the bars is the heading of the board, so a
+   reader moving by heading walks all ten of them whichever way they are drawn. */
+function Chart({ id, title, columns, empty }: ChartData) {
+  return (
+    <div className={`boards__board boards__board--${id}`}>
+      <ColumnChart
+        columns={columns}
+        caption={title}
+        captionId={`board-${id}`}
+        empty={empty}
+        label={title}
+      />
+    </div>
+  )
+}
+
 function nameOf(competitor: Competitor): string {
   return `${competitor.firstName} ${competitor.lastName}`
+}
+
+/** Points as they are written into a bar: rounded, with no decimals (owner,
+ *  04.08.2026). A bar is read at a glance, and two decimals on it are two
+ *  characters nobody reads. */
+function rounded(points: number, locale: string): string {
+  return formatNumber(Math.round(points), locale)
 }
 
 function Boards({
   competitors,
   results,
-  teams,
   seasonParam,
   onSeason,
 }: {
   competitors: Competitor[]
   results: Result[]
-  teams: Team[]
   seasonParam: string | null
   onSeason: (season: string) => void
 }) {
@@ -160,147 +182,154 @@ function Boards({
   const seasons = useMemo(() => seasonsWithResults(results), [results])
   const fallback = useMemo(() => defaultSeason(results, today), [results, today])
   const season = seasonParam === null ? fallback : Number(seasonParam)
-  /* Who the boards of this season are drawn from (PDL P11). Article 56 is the
-     standing of a season in eleven shapes, so the rule that holds for the table
+  /* Who the boards of this season are drawn from (PDL P11). Article 55 is the
+     standing of a season in several shapes, so the rule that holds for the table
      holds here. */
   const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
 
   /* One pass over the results per board, and the season only changes when
    * somebody changes it, so the boards are not rebuilt on every render. */
-  const boards = useMemo<BoardData[]>(() => {
+  const boards = useMemo<Widget[]>(() => {
     const profile = (who: Competitor) =>
       who.active ? `/${locale}/takmicar/${who.memberNumber}` : undefined
     const noResults = t('topBoards.empty')
 
-    /* Boards seven to eleven of Article 56, in the order the article names them:
-     * ultras, marathons, long races, half marathons, short races. This page is
-     * the article, so the article decides. */
-    const lengths = BY_RULEBOOK.map((category) => ({
+    /* One of the five lists by length, as a chart of its own. On the front page
+       these five turn one into another; here each stands still and keeps its own
+       widget, which is what the owner asked for: "bez rotiranja (jer će svaki
+       imati svoj prikaz)". */
+    const byLength = (category: RaceCategory): Widget => ({
+      kind: 'chart',
       id: category,
       title: t(`topBoards.byLength.${category}`),
-      valueLabel: t('topBoards.columns.races'),
       empty: noResults,
-      places: topByCategory(field, results, season, category, PLACES).map((column) => ({
-        to: profile(column.competitor),
+      columns: topByCategory(field, results, season, category, PLACES).map((column) => ({
         key: column.competitor.memberNumber,
-        position: column.position,
-        name: nameOf(column.competitor),
-        value: formatNumber(column.races, locale),
+        competitor: column.competitor,
+        value: column.races,
+        label: formatNumber(column.races, locale),
+        to: profile(column.competitor),
       })),
-    }))
+    })
 
-    /* The team board reads the chosen season like every other board, so the
-     * results are narrowed before they are summed. The teams page beside it
-     * sums the whole history, which is why rankTeams takes the results it is
-     * given rather than a season. */
-    const inSeason = results.filter((result) => seasonOf(result) === season)
+    /* The best progress, as a chart of two levels (owner, 04.08.2026): the
+       season before at the foot of the bar, this season's gain on top of it, so
+       the whole column is this season and the split says where it came from.
 
+       The measure was settled on 30.07.2026 (PDL P12): the points gained on the
+       previous season, and not a change of position or anything measured against
+       last month. Whoever did not race the season before is not on the board,
+       which is why it can be empty in a season that is otherwise full, and why
+       it stays empty until the league has two seasons behind it. The owner knows
+       and asked that it be kept until then, to be looked at. */
+    const progress: Widget = {
+      kind: 'chart',
+      id: 'progress',
+      title: t('topBoards.progress'),
+      empty: t('topBoards.progressEmpty'),
+      columns: topByProgress(field, results, season, PLACES).map((row) => ({
+        key: row.competitor.memberNumber,
+        competitor: row.competitor,
+        value: row.points,
+        label: rounded(row.gain, locale),
+        reading: t('topBoards.columns.gain'),
+        base: {
+          value: row.previousPoints,
+          label: rounded(row.previousPoints, locale),
+          reading: t('topBoards.columns.previousSeason'),
+        },
+        to: profile(row.competitor),
+      })),
+    }
+
+    const kilometers: Widget = {
+      kind: 'table',
+      id: 'kilometers',
+      title: t('topBoards.kilometers'),
+      valueLabel: t('topBoards.columns.distance'),
+      empty: noResults,
+      places: topByKilometers(field, results, season, PLACES).map((row) => ({
+        to: profile(row.competitor),
+        key: row.competitor.memberNumber,
+        position: row.position,
+        name: nameOf(row.competitor),
+        value: formatNumber(row.kilometers, locale, 2),
+      })),
+    }
+
+    const onCourse: Widget = {
+      kind: 'table',
+      id: 'on-course',
+      title: t('topBoards.onCourse'),
+      valueLabel: t('topBoards.columns.time'),
+      empty: noResults,
+      places: topByTimeOnCourse(field, results, season, PLACES).map((row) => ({
+        to: profile(row.competitor),
+        key: row.competitor.memberNumber,
+        position: row.position,
+        name: nameOf(row.competitor),
+        value: formatCourseTime(row.seconds),
+      })),
+    }
+
+    /* The pairs. A pair is two members who confirmed each other (PDL P13) and it
+       is ranked on the races they ran together (P12); neither the pairing nor
+       the joint race exists in the data the prototype reads, and inventing one
+       would be worse than an empty board. Verification says the same thing about
+       the queues that have no table yet.
+
+       The owner asked for both names one under the other, whoever scored more on
+       top, their points together to the right and the races they share below
+       that (04.08.2026). None of that can be drawn from nothing, so the shape
+       arrives with the pairs themselves. */
+    const pairs: Widget = {
+      kind: 'table',
+      id: 'pairs',
+      title: t('topBoards.pairs'),
+      valueLabel: t('topBoards.columns.points'),
+      places: [],
+      empty: t('topBoards.pairsSoon'),
+    }
+
+    const bestRaces: Widget = {
+      kind: 'table',
+      id: 'best-races',
+      title: t('topBoards.bestRaces'),
+      valueLabel: t('topBoards.columns.points'),
+      detailLabel: t('topBoards.columns.event'),
+      empty: noResults,
+      places: bestSingleRaces(field, results, season, PLACES).map((row) => ({
+        to: profile(row.competitor),
+        key: row.result.id,
+        position: row.position,
+        name: nameOf(row.competitor),
+        detail: row.result.eventName,
+        value: formatPoints(row.result.points, locale),
+      })),
+    }
+
+    /* Across each desktop row and then down: two lengths with the kilometres
+       beside them, two more with the time on course, the short races and the
+       progress with the pairs beside the two of them, and the best single races
+       under all of it. */
     return [
-      {
-        id: 'kilometers',
-        title: t('topBoards.kilometers'),
-        valueLabel: t('topBoards.columns.distance'),
-        empty: noResults,
-        places: topByKilometers(field, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor),
-          key: row.competitor.memberNumber,
-          position: row.position,
-          name: nameOf(row.competitor),
-          value: formatNumber(row.kilometers, locale, 2),
-        })),
-      },
-      {
-        id: 'on-course',
-        title: t('topBoards.onCourse'),
-        valueLabel: t('topBoards.columns.time'),
-        empty: noResults,
-        places: topByTimeOnCourse(field, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor),
-          key: row.competitor.memberNumber,
-          position: row.position,
-          name: nameOf(row.competitor),
-          value: formatCourseTime(row.seconds),
-        })),
-      },
-      {
-        id: 'best-races',
-        title: t('topBoards.bestRaces'),
-        valueLabel: t('topBoards.columns.points'),
-        detailLabel: t('topBoards.columns.event'),
-        empty: noResults,
-        places: bestSingleRaces(field, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor),
-          key: row.result.id,
-          position: row.position,
-          name: nameOf(row.competitor),
-          detail: row.result.eventName,
-          value: formatPoints(row.result.points, locale),
-        })),
-      },
-      /* Fourth in the rulebook: the best progress. The measure was settled on
-         30.07.2026 (PDL P12): the points gained on the previous season, and not
-         a change of position or anything measured against last month. Whoever
-         did not race the season before is not on the board, which is why the
-         board can be empty for a season that is otherwise full. The season
-         before it stands beside the gain, so the number can be read rather than
-         taken on trust. */
-      {
-        id: 'progress',
-        title: t('topBoards.progress'),
-        valueLabel: t('topBoards.columns.gain'),
-        detailLabel: t('topBoards.columns.previousSeason'),
-        detailIsNumber: true,
-        empty: t('topBoards.progressEmpty'),
-        places: topByProgress(field, results, season, PLACES).map((row) => ({
-          to: profile(row.competitor),
-          key: row.competitor.memberNumber,
-          position: row.position,
-          name: nameOf(row.competitor),
-          detail: formatPoints(row.previousPoints, locale),
-          value: formatPoints(row.gain, locale),
-        })),
-      },
-      {
-        id: 'teams',
-        title: t('topBoards.teams'),
-        nameLabel: t('topBoards.columns.team'),
-        valueLabel: t('topBoards.columns.points'),
-        detailLabel: t('topBoards.columns.members'),
-        detailIsNumber: true,
-        empty: noResults,
-        places: rankTeams(teams, competitors, inSeason, season)
-          .filter((row) => row.totals.races > 0)
-          .slice(0, PLACES)
-          .map((row) => ({
-            to: `/${locale}/tim/${row.team.slug}`,
-            key: row.team.id,
-            position: row.position,
-            name: row.team.name,
-            detail: formatNumber(row.members, locale),
-            value: formatPoints(row.totals.points, locale),
-          })),
-      },
-      /* Sixth in the rulebook: the pairs. A pair is two members who confirmed
-         each other (PDL P13) and it is ranked on the races they ran together
-         (P12); neither the pairing nor the joint race exists in the data the
-         prototype reads, and inventing one would be worse than an empty
-         board. Verification says the same thing about the queues that have no
-         table yet. */
-      {
-        id: 'pairs',
-        title: t('topBoards.pairs'),
-        valueLabel: t('topBoards.columns.points'),
-        places: [] as Place[],
-        empty: t('topBoards.pairsSoon'),
-      },
-      ...lengths,
+      byLength('ultra'),
+      byLength('marathon'),
+      kilometers,
+      byLength('long'),
+      byLength('half'),
+      onCourse,
+      byLength('short'),
+      progress,
+      pairs,
+      bestRaces,
     ]
-  }, [competitors, field, results, teams, season, locale, t])
+  }, [field, results, season, locale, t])
 
   return (
     <>
       <div className="boards__filters rankings__head-tool">
-        <label className="boards__field">
+        <label className="rankings__field">
           <span>{t('topBoards.season')}</span>
           <select value={season} onChange={(event) => onSeason(event.target.value)}>
             {seasons.map((year) => (
@@ -313,9 +342,13 @@ function Boards({
       </div>
 
       <div className="boards__grid">
-        {boards.map((board) => (
-          <Board key={board.id} {...board} />
-        ))}
+        {boards.map((board) =>
+          board.kind === 'chart' ? (
+            <Chart key={board.id} {...board} />
+          ) : (
+            <Board key={board.id} {...board} />
+          ),
+        )}
       </div>
     </>
   )
@@ -323,8 +356,10 @@ function Boards({
 
 export function TopBoards() {
   const { t } = useI18n()
-  const [params, setParams] = useSearchParams()
-  const state = combineResources(useCompetitors(), useResults(), useTeams())
+  const [params, setParams] = useFilterParams()
+  /* Only what the boards show. The teams went off this page with the layout of
+     04.08.2026, and the file of teams went with them. */
+  const state = combinePair(useCompetitors(), useResults())
 
   function changeSeason(season: string) {
     const merged = new URLSearchParams(params)
@@ -336,14 +371,12 @@ export function TopBoards() {
   return (
     <div className="boards rankings--tooled">
       <h1>{t('topBoards.title')}</h1>
-      <p className="boards__intro">{t('topBoards.intro')}</p>
 
       <Resource state={state}>
-        {([competitors, results, teams]) => (
+        {([competitors, results]) => (
           <Boards
             competitors={competitors}
             results={results}
-            teams={teams}
             seasonParam={params.get('sezona')}
             onSeason={changeSeason}
           />

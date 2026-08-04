@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import {
@@ -17,6 +17,7 @@ import { useI18n } from '../i18n/useI18n'
 import { EventChip } from './calendar/DayChips'
 import { LengthLegend } from './calendar/LengthLegend'
 import './Calendar.css'
+import { useFilterParams } from '../app/useFilterParams'
 
 /* How many events a day shows before the rest go to the day's own page (owner,
  * 31.07.2026). Five: a day with six is rare enough that sending it to a page of
@@ -36,12 +37,16 @@ const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
  * giving every empty Tuesday room for four.
  *
  * Today is ringed in gold and is the only day that is, so the ring means one
- * thing.
+ * thing. Saturday and Sunday carry the number in gold instead, which is the
+ * owner's own proposal (04.08.2026): a weekend is what a runner looks for first,
+ * and the two marks stay apart because one is a ring and the other is ink. A
+ * weekend that is also today wears both.
  */
 function Day({
   day,
   month,
   today,
+  weekend,
   events,
   races,
   first,
@@ -49,6 +54,8 @@ function Day({
   day: number
   month: string
   today: string
+  /** Saturday or Sunday. */
+  weekend: boolean
   events: BtlEvent[]
   races: Race[]
   /** Which column the first of the month sits in, on the days it is the first. */
@@ -64,6 +71,7 @@ function Day({
       className={[
         'day',
         date === today ? 'day--today' : '',
+        weekend ? 'day--weekend' : '',
         first === undefined ? '' : 'day--first',
       ]
         .filter(Boolean)
@@ -74,9 +82,14 @@ function Day({
           panel under the whole grid, which on a telephone is under everything,
           so it looked like nothing had happened. What leads somewhere is the
           event, and the day itself only when it holds more than fits. */}
+      {/* Both marks are spoken as well as drawn: a colour cannot be the only
+          way to know which day it is (WCAG 2.2 SC 1.4.1), and below tablet width
+          the days stack with no column headings over them, so the ink is the
+          only thing left saying that a day is a weekend at all. */}
       <span className="day__number">
         {day}
         {date === today && <span className="visually-hidden">, {t('calendar.today')}</span>}
+        {weekend && <span className="visually-hidden">, {t('calendar.weekend')}</span>}
       </span>
 
       {shown.map((event) => (
@@ -127,7 +140,7 @@ function Chevron({ back = false }: { back?: boolean }) {
 
 export function Calendar() {
   const { locale, t } = useI18n()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   const state = combinePair(useEvents(), useRaces())
   const today = useToday()
 
@@ -184,7 +197,12 @@ export function Calendar() {
                 <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
               </div>
 
-              {byDay.size === 0 && <p className="calendar__empty">{t('calendar.empty')}</p>}
+              {/* Nothing is said about a month with no events in it (owner,
+                  04.08.2026: "Ne treba da šetam mesec gore dole zbog tog
+                  disclaimera"). The empty grid says it, and the sentence moved
+                  the grid down a line every time somebody stepped past a quiet
+                  month. The widget on the front page keeps its own, because
+                  there the alternative is a card with nothing in it at all. */}
 
               <div className="calendar__grid">
                 {WEEKDAYS.map((weekday) => (
@@ -201,6 +219,10 @@ export function Calendar() {
                     today={today}
                     events={byDay.get(`${month}-${String(day).padStart(2, '0')}`) ?? []}
                     races={races}
+                    /* Which day of the week it is, worked out from the column the
+                       month starts in: the week runs from Monday, so the last two
+                       of the seven are the weekend. */
+                    weekend={(offset + day - 1) % 7 >= 5}
                     /* The first of the month carries which column it belongs in
                        and the rest follow it. Nothing is drawn for the days of
                        the month before or the month after: they were squares of

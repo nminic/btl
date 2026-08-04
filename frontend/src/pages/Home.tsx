@@ -7,7 +7,6 @@ import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
 import { TopByCategory } from './home/TopByCategory'
 import { Counters } from './home/Counters'
-import { EnrolmentSlot } from './home/EnrolmentSlot'
 import { NEWS, seasonLabelKey, SPONSORS } from './home/content'
 import { News } from './home/News'
 import { President } from './home/President'
@@ -23,22 +22,24 @@ import './Home.css'
  * the five lengths under them, and the address of the president at the foot.
  *
  * Right, top to bottom: the counters of the running season, what is next in the
- * calendar, the calculator, and the membership slot.
+ * calendar, and the calculator.
  *
- * One grid holds all seven, rather than two columns holding four and three
- * (owner, 31.07.2026). The rows are what the owner asked for: the boards end
- * where the counters end, and the chart ends where the calendar does. Two
- * columns side by side cannot do that, because neither knows how tall the other
- * came out; one grid does it by itself, and the chart's bars get the height they
- * were missing.
+ * One grid holds all six, rather than two columns holding three each (owner,
+ * 31.07.2026). The rows are what the owner asked for: the boards end where the
+ * counters end, and the chart ends where the calendar does. Two columns side by
+ * side cannot do that, because neither knows how tall the other came out; one
+ * grid does it by itself, and the chart's bars get the height they were missing.
  *
  * The order in the markup is the order on a phone, where the grid becomes one
  * column and the placement below does nothing: the two boards, the figures of
- * the season, the turning chart, what is next, the address, the calculator, the
- * membership slot (owner, 31.07.2026). It is not the order of either column,
- * because on one screen the two columns interleave: somebody scrolling wants the
- * standing, then the numbers behind it, then the calendar, and the prose after
- * all of them.
+ * the season, the turning chart, what is next, the address, the calculator
+ * (owner, 31.07.2026). It is not the order of either column, because on one
+ * screen the two columns interleave: somebody scrolling wants the standing, then
+ * the numbers behind it, then the calendar, and the prose after all of them.
+ *
+ * The membership slot stood at the foot of the right column until 04.08.2026,
+ * when the owner had it removed: "nećemo ga koristiti do daljnjeg". The page of
+ * prices it led to went with it.
  *
  * Two blocks went out with this: "Kako radi BTL u 3 koraka", which explained on
  * the front page what the written pages explain properly, and "Zajednica u
@@ -100,10 +101,6 @@ export function Home() {
 
                 <div className="home__calc">
                   <Calculator />
-                </div>
-
-                <div className="home__slot">
-                  <EnrolmentSlot today={today} />
                 </div>
               </div>
 

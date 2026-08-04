@@ -1,11 +1,12 @@
 import { Markdown } from '../../components/Markdown'
 import { Resource } from '../../components/Resource'
-import { pageOf } from '../../data/pages'
+import { pageOf, PRESIDENT_PAGE } from '../../data/pages'
 import { usePages } from '../../data/useResource'
 
 /** The address is a written page the administrator maintains, not a text in the
- *  code, so the same record answers here and on "O ligi" (PDL P28a). */
-export const ADDRESS_SLUG = 'rec-predsednika'
+ *  code (PDL P28a). Which record it is belongs to the data layer, because the
+ *  list of pages has to know it is drawn here and has no address of its own. */
+export const ADDRESS_SLUG = PRESIDENT_PAGE
 
 /* The address of the president of the association, back on the front page beside
  * the scoreboard and twice its width (PDL P28a, 30.07.2026).

@@ -6,22 +6,9 @@
   letter-spacing: -0.02em;
 }
 
-/* The sentence above the table, in plain muted prose.
- *
- * No gold edge (owner, 01.08.2026, D1). It was a yellow-marked line across the
- * top of the page for a sentence that explains rather than warns, and gold on
- * this portal is reserved for the podium, for medals and for badges
- * (src/styles/tokens.css). A line marked that way reads as something to act on,
- * and there is nothing here to act on. */
-.boards__intro {
-  margin: 0 0 var(--space-16);
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
 /* Level with the heading, at the far right (owner, 01.08.2026). It is drawn
-   inside the Resource, which comes after the heading and its sentence, so it is
-   placed rather than ordered: first row, second column. */
+   inside the Resource, which comes after the heading, so it is placed rather
+   than ordered: first row, second column. */
 .boards__filters {
   margin-bottom: var(--space-16);
 }
@@ -32,39 +19,10 @@
     grid-column: 2;
     margin-bottom: 0;
   }
-
-  /* The sentence under the heading keeps the left column to itself. */
-  .rankings--tooled > .boards__intro {
-    grid-column: 1;
-  }
 }
 
-.boards__field {
-  display: inline-flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-}
-
-.boards__field select {
-  font: inherit;
-  font-size: 0.9rem;
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 400;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-8);
-  padding: var(--space-8);
-}
-
-/* One column on a phone, and as many as fit after that. The boards are short
-   and narrow, so they read badly stretched across a desktop. */
+/* One column on a phone, in the order the widgets stand in the markup, which is
+   the desktop laid out across and then down. */
 .boards__grid {
   display: grid;
   gap: var(--space-16);
@@ -76,6 +34,12 @@
 }
 
 .boards__board {
+  min-inline-size: 0;
+}
+
+/* The boards that are tables wear the card; the ones that are charts carry their
+   own (src/components/ColumnChart.css), so a card around them would be two. */
+.boards__board:has(> .boards__title) {
   border: 1px solid var(--border);
   border-radius: var(--radius-10);
   background: var(--surface);
@@ -109,26 +73,72 @@
   font-size: 0.85rem;
 }
 
-/* The size of a team is a number and reads like every other number on the page.
-   The shared table pushes its first three columns to the left, which is right
-   for names and wrong for this one, so it goes back. */
-.boards .table .boards__count {
-  text-align: right;
-}
-
-@media (min-width: 700px) {
+/* Two thirds against one, and the rows the owner asked for (04.08.2026).
+ *
+ * Left, one under another: the five lengths, the best progress, and the best
+ * single races across the whole of that width. Right, each as tall as two of
+ * those rows: the most kilometres level with the ultras and the marathons, the
+ * longest on course level with the longer races and the half marathons, and the
+ * pairs level with the short races and the progress.
+ *
+ * Nine hundred, and it is the charts that set it: ten faces and ten bars in two
+ * thirds of a page are readable from about six hundred pixels of column, which
+ * is what nine hundred gives after the page's own margins. Below it the widgets
+ * stand one under another at the full width, which is what a chart of ten
+ * columns wants anyway.
+ */
+@media (min-width: 900px) {
   .boards__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   }
-}
 
-/* Eleven hundred, not the thousand the rest of the portal switches at. Its
-   content sets it: three boards side by side inside a page of 1100 leaves each
-   table 311px, and starting them at 1000 leaves 278px, which is narrower than
-   the two columns that band had before and narrow enough for the widest board's
-   headings to start their own scrollbar. */
-@media (min-width: 1100px) {
-  .boards__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .boards__board--ultra {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .boards__board--marathon {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .boards__board--long {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .boards__board--half {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .boards__board--short {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  .boards__board--progress {
+    grid-column: 1;
+    grid-row: 6;
+  }
+
+  .boards__board--best-races {
+    grid-column: 1;
+    grid-row: 7;
+  }
+
+  .boards__board--kilometers {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .boards__board--on-course {
+    grid-column: 2;
+    grid-row: 3 / span 2;
+  }
+
+  .boards__board--pairs {
+    grid-column: 2;
+    grid-row: 5 / span 2;
   }
 }

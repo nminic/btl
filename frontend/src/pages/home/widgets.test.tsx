@@ -334,12 +334,12 @@ describe('TopByCategory', () => {
        is checked here is that each of the three states is written for the
        keyboard as well: a state only a mouse can reach does not exist for
        somebody who types. */
-    const css = readFileSync(join(process.cwd(), 'src/pages/home/TopByCategory.css'), 'utf-8')
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
 
-    for (const part of ['.portrait', '.top-cat__bar', '.top-cat__who']) {
-      expect(css, `nothing lights ${part} on hover`).toContain(`.top-cat__link:hover ${part}`)
+    for (const part of ['.portrait', '.colchart__bar', '.colchart__who']) {
+      expect(css, `nothing lights ${part} on hover`).toContain(`.colchart__link:hover ${part}`)
       expect(css, `${part} lights for the mouse only`).toContain(
-        `.top-cat__link:focus-visible ${part}`,
+        `.colchart__link:focus-visible ${part}`,
       )
     }
   })

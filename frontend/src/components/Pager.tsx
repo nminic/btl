@@ -1,8 +1,8 @@
-import { useSearchParams } from 'react-router'
 import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { PER_PAGE } from './pageOf'
 import './Pager.css'
+import { useFilterParams } from '../app/useFilterParams'
 
 /**
  * The way from one page of a long table to the next.
@@ -24,7 +24,7 @@ export function Pager({
   label: string
 }) {
   const { locale, t } = useI18n()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   const pages = Math.ceil(rows / PER_PAGE)
   /* Held inside its own bounds, whatever it was handed. A caller that forgets to
      read the address through `pageFrom` would otherwise draw "Prikazano 401 do

@@ -6,7 +6,7 @@ import sr from '../i18n/sr.json'
  * can see.
  *
  * Two widgets on the front page put their title on a block of gold: the top ten
- * and the turning chart. The block is painted straight on the gold scale rather
+ * and the column chart. The block is painted straight on the gold scale rather
  * than through a token that flips, so it is the same gold in both themes. Its
  * ink therefore has to be one value too.
  *
@@ -25,7 +25,7 @@ import sr from '../i18n/sr.json'
 
 const BANDS = [
   { file: 'src/pages/Home.css', rule: '.top10__block .card__title' },
-  { file: 'src/pages/home/TopByCategory.css', rule: '.top-cat__caption' },
+  { file: 'src/components/ColumnChart.css', rule: '.colchart__caption' },
 ]
 
 const FLOOR = 4.5
@@ -130,26 +130,71 @@ describe('the name that has to be cut', () => {
   })
 })
 
-/* Where gold is not allowed, which is the other half of the same rule.
+/* The sentence that stood above the standing and above the Top liste.
  *
- * Gold is reserved for the podium, for medals and for badges (tokens.css). The
- * sentence that stands above the standing and above the Top 10 boards had a gold
- * edge down its left side, which made a line of plain explanation read as
- * something to act on. The owner asked for it to go (01.08.2026, D1) and it was
- * read as being about the rows in the table instead, so the podium came off two
- * boards and the yellow line stayed on both for two days.
- *
- * Read off the sheet, because jsdom paints nothing and a screen test cannot see
- * a border that is not there.
+ * It had a gold edge down its left side, which made a line of plain explanation
+ * read as something to act on; gold is reserved for the podium, for medals and
+ * for badges (tokens.css). The owner had the edge taken off on 01.08.2026 and
+ * the sentence itself on 04.08.2026, so what is held now is that neither the
+ * rule nor the words came back.
  */
 describe('the sentence above a table of places', () => {
-  const PROSE = [
-    { file: 'src/pages/Rankings.css', rule: '.rankings__note' },
-    { file: 'src/pages/TopBoards.css', rule: '.boards__intro' },
-  ]
+  it('is gone from both screens, and out of the dictionary with them', () => {
+    expect(read('src/pages/Rankings.css')).not.toContain('rankings__note')
+    expect(read('src/pages/TopBoards.css')).not.toContain('boards__intro')
+    expect(sr.rankings).not.toHaveProperty('historyNote')
+    expect(sr.topBoards).not.toHaveProperty('intro')
+  })
+})
 
-  it.each(PROSE)('carries no gold in $rule', ({ file, rule }) => {
-    expect(bodyOf(read(file), rule)).not.toMatch(/gold/)
+/* Two more places where gold says something, and one where a figure has to sit
+ * on the line of the words beside it. All three are invisible to a screen test,
+ * because jsdom applies no stylesheet and works out no colour.
+ */
+describe('the marks on a day of the calendar', () => {
+  const css = () => read('src/pages/Calendar.css')
+
+  it('puts the gold on the number of a weekend and the ring on today', () => {
+    /* Owner, 04.08.2026, in his own words: "obojiš boju dana u zlatno kao što je
+       na Danas, a da današnji dan bude samo zaokružen zlatnim (osim ako je
+       vikend, tad da ima i zlatni broj)". Two marks that said one thing between
+       them now say two, so a reader can tell a Saturday from today. */
+    expect(bodyOf(css(), '.day--weekend .day__number')).toMatch(/color:\s*var\(--gold-text\)/)
+    expect(bodyOf(css(), '.day--today')).toMatch(/border-color:\s*var\(--gold-text\)/)
+    // And today's number is not gold on its own account any more.
+    expect(css()).not.toContain('.day--today .day__number')
+  })
+
+  it('draws the gold that flips with the theme, not the one that does not', () => {
+    /* `--gold-text` is a token with a value per theme; gold-500 is a step of the
+       scale and measures 2,98:1 against a white card, which is under the 4,5:1
+       a number owes as text (WCAG 2.2 SC 1.4.3). */
+    expect(bodyOf(css(), '.day--weekend .day__number')).not.toMatch(/gold-[0-9]/)
+  })
+})
+
+describe('the answer of the calculator', () => {
+  it('sits on the line of the words that name it', () => {
+    /* Owner, 04.08.2026: the figure "stood above" them. Both are laid along the
+       bottom of the row, and what a bottom is depends on the size of the text:
+       under a baseline sits half the leading and the depth of the descenders,
+       and both are a share of the font. The figure's font is more than twice the
+       label's, so its baseline was four and a half pixels above the label's
+       while the two boxes ended level.
+
+       `line-height: 1` takes the leading out of the figure's box, which is the
+       whole of that difference, and neither of the two beside it is nudged up by
+       a padding of its own any more. */
+    const css = read('src/pages/Home.css')
+
+    expect(bodyOf(css, '.calc__result strong')).toMatch(/line-height:\s*1;/)
+    expect(bodyOf(css, '.calc__label')).not.toMatch(/padding/)
+    expect(bodyOf(css, '.calc__waiting')).not.toMatch(/padding/)
+    /* And the row is still laid along the bottom rather than on a shared
+       baseline: the answer swaps between a large figure and a short italic line,
+       and on a shared baseline the label would move every time it did (owner,
+       01.08.2026). */
+    expect(bodyOf(css, '.calc__result')).toMatch(/align-items:\s*flex-end/)
   })
 })
 
@@ -236,7 +281,7 @@ describe('the legend under the month grid', () => {
   })
 })
 
-describe('the name over a column of the turning chart', () => {
+describe('the name over a column of the column chart', () => {
   it('is placed from the bar it stands on rather than from the top of the page', () => {
     /* The face rides on top of the bar, so where the face is depends on how tall
        the bar came out. The name sat at a fixed distance from the top of the
@@ -248,7 +293,7 @@ describe('the name over a column of the turning chart', () => {
        true: the tallest bar asks for the whole column and then gives room back
        to the face standing on it, so the height in the style and the height on
        the screen are fifty pixels apart. */
-    const body = bodyOf(read('src/pages/home/TopByCategory.css'), '.top-cat__who')
+    const body = bodyOf(read('src/components/ColumnChart.css'), '.colchart__who')
 
     expect(body).toMatch(/inset-block-end:\s*calc\(100% \+ var\(--face-gap\) \+ var\(--face\) \/ 2\)/)
     expect(body).toMatch(/transform:\s*translateY\(50%\)/)
@@ -261,15 +306,15 @@ describe('the name over a column of the turning chart', () => {
        had in fact never applied: `.home .portrait` sets a size at the same
        weight and lands later in the one bundled sheet, so the face stayed wide
        and nothing said so. */
-    const css = read('src/pages/home/TopByCategory.css')
+    const css = read('src/components/ColumnChart.css')
 
-    expect(bodyOf(css, '.top-cat .top-cat__column .portrait')).toMatch(/inline-size:\s*var\(--face\)/)
-    expect(bodyOf(css, '.top-cat__link')).toMatch(/--face:\s*2\.9rem/)
+    expect(bodyOf(css, '.colchart .colchart__column .portrait')).toMatch(/inline-size:\s*var\(--face\)/)
+    expect(bodyOf(css, '.colchart__link')).toMatch(/--face:\s*2\.9rem/)
     expect(css).toMatch(/--face:\s*2\.2rem/)
   })
 })
 
-/* The bars of the turning chart, which have to agree with the numbers in them.
+/* The bars of the column chart, which have to agree with the numbers in them.
  *
  * They were laid out in the same column as the face that stands on them, so the
  * tallest bar asked for the whole column and then gave room back to the face
@@ -277,13 +322,13 @@ describe('the name over a column of the turning chart', () => {
  * same height. A floor under every bar did the rest, making one race and two
  * races the same again at the other end (owner, 03.08.2026).
  */
-describe('the height of a bar on the turning chart', () => {
-  const css = () => read('src/pages/home/TopByCategory.css')
+describe('the height of a bar on the column chart', () => {
+  const css = () => read('src/components/ColumnChart.css')
 
   it('is a share of a ground that holds still', () => {
     /* The column less the face and the gap under it. Fixed, so a share of it is
        a share of the same thing for every column. */
-    expect(bodyOf(css(), '.top-cat__track')).toMatch(
+    expect(bodyOf(css(), '.colchart__track')).toMatch(
       /block-size:\s*calc\(100% - var\(--face\) - var\(--face-gap\)\)/,
     )
   })
@@ -291,7 +336,7 @@ describe('the height of a bar on the turning chart', () => {
   it('is that share and nothing else, with no floor under it', () => {
     /* The rule that starts a line, not the hover rule above it, whose selector
        ends in the same name and would be found first. */
-    const body = bodyOf(css(), `\n.top-cat__bar`)
+    const body = bodyOf(css(), `\n.colchart__bar`)
 
     expect(body).toMatch(/block-size:\s*var\(--bar\)/)
     expect(body).not.toMatch(/min-block-size/)
@@ -300,7 +345,7 @@ describe('the height of a bar on the turning chart', () => {
   it('carries its face rather than standing under it', () => {
     /* In the flow the face took height away from the bar it stands on, which is
        what made the bars disagree with their own numbers. */
-    const body = bodyOf(css(), '.top-cat__column .portrait')
+    const body = bodyOf(css(), '.colchart__column .portrait')
 
     expect(body).toMatch(/position:\s*absolute/)
     expect(body).toMatch(/inset-block-end:\s*calc\(var\(--bar\) \+ var\(--face-gap\)\)/)

@@ -221,7 +221,7 @@ describe('the role switch', () => {
        so becoming her takes her off it and onto the front page. In through the
        menu again, the way the owner walks it. */
     await expectFrontPage()
-    await user.click(screen.getByRole('button', { name: t('nav.admin') }))
+    await user.click(screen.getByRole('link', { name: new RegExp(`^${t('nav.admin')}`) }))
     await user.click(screen.getByRole('link', { name: t('nav.entities') }))
 
     /* And the price list has left the section beside her. Before the matrix was

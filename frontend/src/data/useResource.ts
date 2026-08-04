@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Badge } from './badgeRule'
 import { useSession } from '../session/useSession'
-import { loadResource, type ResourceName } from './client'
+import { arrivedResource, loadResource, type ResourceName } from './client'
 import type {
   BtlEvent,
   Competitor,
@@ -18,22 +18,41 @@ export type ResourceState<T> =
   | { status: 'ready'; data: T }
   | { status: 'error'; error: Error }
 
+/**
+ * A resource, ready from the first render once this visit has already read it.
+ *
+ * The wait is real only the first time. Everything after it was a wait for
+ * nothing: the value was in hand, and the screen still drew a loading box for a
+ * render because the only way to reach the value was through a promise. What
+ * that cost was not a flash but the scroll: the router puts a reader back where
+ * they were as soon as the screen commits, and a screen that is one loading box
+ * tall at that moment has nowhere to be put back to (owner, 04.08.2026).
+ */
 export function useResource<T>(name: ResourceName): ResourceState<T> {
-  const [state, setState] = useState<ResourceState<T>>({ status: 'loading' })
+  const [fetched, setFetched] = useState<ResourceState<T>>({ status: 'loading' })
+  /* The same object every render once it is there, so what this hook hands back
+     keeps its identity and the screens that memoise on it are not rebuilt. */
+  const known = arrivedResource<T>(name)
 
   useEffect(() => {
+    /* Nothing to ask for, and nothing to set: the value was already there when
+       this rendered, and setting the same state again would only cost a render. */
+    if (arrivedResource<T>(name) !== undefined) {
+      return
+    }
+
     let active = true
-    setState({ status: 'loading' })
+    setFetched({ status: 'loading' })
 
     loadResource<T>(name).then(
       (data) => {
         if (active) {
-          setState({ status: 'ready', data })
+          setFetched({ status: 'ready', data })
         }
       },
       (error: Error) => {
         if (active) {
-          setState({ status: 'error', error })
+          setFetched({ status: 'error', error })
         }
       },
     )
@@ -43,7 +62,10 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
     }
   }, [name])
 
-  return state
+  return useMemo(
+    () => (known === undefined ? fetched : { status: 'ready', data: known }),
+    [known, fetched],
+  )
 }
 
 /**

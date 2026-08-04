@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { BadgeGallery } from '../components/BadgeGallery'
 import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
 import { livePage, sectionsOf } from '../data/pages'
@@ -145,6 +146,11 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
             >
               <h2>{section.heading}</h2>
               <Markdown text={section.body} />
+              {/* The one section that carries a drawing rather than only words
+                  (owner, 04.08.2026). The record names it and this draws it; the
+                  renderer of Markdown has no pictures in it and is not to grow
+                  any (src/data/types.ts). */}
+              {section.gallery === 'badges' && <BadgeGallery />}
             </section>
           ))}
         </div>

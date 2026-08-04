@@ -145,7 +145,7 @@ describe('the last few branches these screens have', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
     // The entry carries the number waiting in its name (PDL P28a).
     await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
     await user.click(await screen.findByRole('link', { name: /Rezultati/ }))

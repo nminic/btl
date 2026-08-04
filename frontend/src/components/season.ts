@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router'
+import { useFilterParams } from '../app/useFilterParams'
 
 export const ALL_SEASONS = 'sve'
 
@@ -23,7 +23,7 @@ export const ALL_SEASONS = 'sve'
  * the option carries, so `02010` is not quietly taken for 2010.
  */
 export function useSeason(fallback: string = ALL_SEASONS): string {
-  const [params] = useSearchParams()
+  const [params] = useFilterParams()
   const asked = params.get('sezona')
 
   return asked !== null && /^\d{4}$/.test(asked) ? asked : fallback

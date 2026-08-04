@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { BOARD_PLACES, boardOfTen } from '../../data/derive'
 import type { Competitor, Gender, Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
-import { Portrait } from './Portrait'
+import { Portrait } from '../../components/Portrait'
 
 /**
  * One face on the board, carrying the number of its place, as a way to that

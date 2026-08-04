@@ -53,10 +53,6 @@
   block-size: 1.15rem;
 }
 
-.calendar__empty {
-  color: var(--text-muted);
-}
-
 /* On a phone the month grid is unreadable, so the days stack. The grid appears
    from tablet width up. */
 .calendar__grid {
@@ -100,6 +96,18 @@
   color: var(--text-muted);
 }
 
+/* Saturday and Sunday, in the gold that today's number used to wear (owner,
+   04.08.2026, and it is his own proposal: "obojiš boju dana u zlatno kao što je
+   na Danas, a da današnji dan bude samo zaokružen zlatnim"). The two marks then
+   say two different things instead of one saying both: a ring is today, gold ink
+   is a weekend, and a weekend that is also today wears both.
+
+   Drawn on the gold that flips with the theme, like the ring below: it is text
+   and owes 4,5:1, which gold-500 does not clear on a white card. */
+.day--weekend .day__number {
+  color: var(--gold-text);
+}
+
 /* Today, and the only day that is ringed, so the ring says one thing (owner,
    31.07.2026). Two pixels of gold rather than a fill, because a fill would have
    to be light enough for the chips to stay readable on it and would then be too
@@ -115,9 +123,6 @@
   box-shadow: inset 0 0 0 1px var(--gold-text);
 }
 
-.day--today .day__number {
-  color: var(--gold-text);
-}
 
 .chip {
   display: flex;

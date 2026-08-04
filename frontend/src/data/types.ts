@@ -149,7 +149,24 @@ export type Moderator = {
   rights: string[]
 }
 
-export type PageSection = { heading: string; body: string }
+export type PageSection = {
+  heading: string
+  body: string
+  /**
+   * A drawing the section carries under its text, named rather than written.
+   *
+   * The renderer of written pages is a deliberately small subset of Markdown and
+   * has no pictures in it (ADL A7), which is right: an administrator writes these
+   * records, and a page that can point at any image is a page that can point at
+   * anything. One name for one drawing the portal already has is a different
+   * thing, and it is what the rulebook needed when the owner made the badges a
+   * section of it rather than a screen of their own (04.08.2026).
+   *
+   * The list is closed and it is this: `badges`, the wall of every badge the
+   * league awards.
+   */
+  gallery?: 'badges'
+}
 
 /** A page of written text: the rulebook, the terms, the page about the league.
  *  Kept as data rather than in the translation dictionary because these run to

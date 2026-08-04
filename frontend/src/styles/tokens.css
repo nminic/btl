@@ -73,6 +73,20 @@
    * ever left to the colour alone: the ring names the length on hover, and in the
    * table the dot stands beside the distance that already says which length it
    * is. */
+  /* The lower level of a two-level bar on a chart (owner, 04.08.2026: the
+     season before, under this season's gain).
+
+     The loud level is the old portal's blue and is one value in both themes,
+     written where the bar is drawn. This one cannot be: "quieter" is measured
+     against the card behind it, and the card is white on one theme and near
+     black on the other, so one value is quiet on one of them and the loudest
+     thing on the screen on the other. Both clear 3:1 against their own card
+     (3,07:1 each), because how far up this level reaches is what says how much
+     of the column was already there last season.
+
+     What it draws is not the only thing that says so: each level carries its own
+     number, so a reader who cannot tell two blues apart still has two figures. */
+  --bar-quiet: #5b93ec;
   --length-short: #1a63c4;
   --length-half: #127a48;
   --length-long: #8a6a08;
@@ -203,6 +217,9 @@
     --border: #26364f;
     --control-border: #5a6c8f;
     --accent: #5b93ec;
+    /* See the light theme above. Darker rather than lighter here, because on a
+       near black card the way to be quiet is to come nearer to it. */
+    --bar-quiet: #2168b8;
     --length-short: #5b9cf0;
     --length-half: #3fc27f;
     --length-long: #e3c04a;
@@ -232,6 +249,9 @@
   --border: #26364f;
   --control-border: #5a6c8f;
   --accent: #5b93ec;
+  /* See the light theme above. Darker rather than lighter here, because on a
+     near black card the way to be quiet is to come nearer to it. */
+  --bar-quiet: #2168b8;
   --length-short: #5b9cf0;
   --length-half: #3fc27f;
   --length-long: #e3c04a;

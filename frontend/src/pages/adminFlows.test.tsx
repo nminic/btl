@@ -137,8 +137,12 @@ describe('the panel', () => {
     expect(screen.getByText('Čeka proveru')).toBeVisible()
     /* Badges are edited from the section of records like the other eight, so
        the panel no longer offers a road of its own to them (owner, 01.08.2026).
-       What it offers is the two sections. */
+       What it offers is the two sections and the price list, which is in neither
+       of them and lost its place in the header when the navigation lost its
+       groups (owner, 04.08.2026). */
     expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Cenovnik' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Značke' })).not.toBeInTheDocument()
   })
 
@@ -855,16 +859,16 @@ describe('verification', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
 
     /* The navigation carries the sum of everything waiting (PDL P28a), and it
        says so in the name of the link rather than only in the badge, so a screen
-       reader hears the number too. The sum is every queue at once, so the one
-       result is checked on its own row. */
-    const verification = await screen.findByRole('link', {
-      name: /Verifikacija, \d+ na čekanju/,
-    })
-    await user.click(verification)
+       reader hears the number too. It is the one word of administration that is
+       left in the header since 04.08.2026, so the sum stands on that. The sum is
+       every queue at once, so the one result is checked on its own row. */
+    expect(screen.getByRole('link', { name: /^Administracija, \d+ na čekanju$/ })).toBeVisible()
+
+    await user.click(await screen.findByRole('link', { name: 'Verifikacija' }))
 
     const results = await screen.findByRole('link', { name: /Rezultati/ })
     expect(within(results).getByText('1')).toBeVisible()
@@ -1003,8 +1007,10 @@ describe('verification', () => {
     try {
       renderAt('/sr/prijava', 'moderator', '000007')
 
-      await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+      await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
 
+      /* No number in the name of the way in, and none beside it. */
+      expect(screen.getByRole('link', { name: 'Administracija' })).toBeVisible()
       expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
     } finally {
       vi.stubGlobal('fetch', served)
@@ -1203,7 +1209,7 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
 
     // The same visit, walked the way an administrator walks it: no reload.
-    await user.click(screen.getByRole('button', { name: 'Administracija' }))
+    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
     await user.click(screen.getByRole('link', { name: 'Podaci' }))
     await user.click(await screen.findByRole('link', { name: 'Članovi' }))
 
@@ -1922,7 +1928,7 @@ describe('the section of entities', () => {
 
     // Through the header rather than through the panel, which is the road that
     // used to leave it standing open.
-    await user.click(screen.getByRole('button', { name: 'Administracija' }))
+    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
     /* By a pattern, because the count of what is waiting is part of the name of
        that link: "Verifikacija, 17 na čekanju". */
     await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))

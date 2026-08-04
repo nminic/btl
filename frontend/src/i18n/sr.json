@@ -8,7 +8,7 @@
   "seo": {
     "home": {
       "title": "Balkanska trkačka liga - svaka trka se broji!",
-      "description": "Svaka trka se broji. Kalendar trka, tabela sezone, Top 10 liste i profili takmičara Balkanske trkačke lige."
+      "description": "Svaka trka se broji. Kalendar trka, tabela sezone, Top liste i profili takmičara Balkanske trkačke lige."
     },
     "notFound": {
       "title": "Ove strane nema",
@@ -27,16 +27,16 @@
       "description": "Timovi koji se takmiče u ligi, sa mestom, brojem članova i bodovima koje su osvojili zajedno."
     },
     "table": {
-      "title": "BTL tabela",
+      "title": "BTL tabele",
       "description": "Zvanična tabela sezone po BTL bodovima, sa izborom sezone, pola i kategorije."
     },
     "topBoards": {
-      "title": "BTL top 10 liste",
-      "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, trkački parovi i trke po dužini."
+      "title": "BTL top liste",
+      "description": "Deset lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, trkački parovi i trke po dužini."
     },
     "leagues": {
-      "title": "BTL dodatna takmičenja",
-      "description": "Takmičenja koja se voze uz glavnu ligu: koji događaji ulaze u njih i kako se grupišu takmičari."
+      "title": "BTL lige",
+      "description": "Lige koje se voze uz glavnu ligu: koji događaji ulaze u njih i kako se grupišu takmičari."
     },
     "calendar": {
       "title": "BTL kalendar",
@@ -75,18 +75,6 @@
     "terms": {
       "title": "Uslovi korišćenja",
       "description": "Pravila korišćenja portala: nalog, članarina, obaveze članova i odgovornost udruženja."
-    },
-    "aboutLeague": {
-      "title": "O Balkanskoj trkačkoj ligi",
-      "description": "Zašto Balkanska trkačka liga postoji, kako radi i ko je čini."
-    },
-    "badges": {
-      "title": "BTL značke i kako ih osvojiti",
-      "description": "Značke koje se osvajaju u ligi i uslov koji za svaku od njih treba ispuniti."
-    },
-    "pricing": {
-      "title": "Članarina u BTL",
-      "description": "Koliko košta članstvo u ligi, šta donosi i do kada važi koja cena."
     },
     "register": {
       "title": "Učlanjenje u BTL",
@@ -232,14 +220,11 @@
   "nav": {
     "home": "Naslovna",
     "calendar": "Kalendar",
-    "topBoards": "Top 10 liste",
+    "topBoards": "Top liste",
     "competitors": "Takmičari",
     "teams": "Timovi",
-    "leagues": "Dodatna takmičenja",
-    "badges": "Značke",
-    "pricing": "Članarina",
+    "leagues": "Lige",
     "rules": "Pravilnik",
-    "about": "O ligi",
     "contact": "Kontakt",
     "privacy": "Politika privatnosti",
     "terms": "Uslovi korišćenja",
@@ -250,13 +235,10 @@
     "membership": "Moja članarina",
     "messages": "Poruke",
     "admin": "Administracija",
-    "aboutLeague": "Priča o ligi",
-    "competitions": "Takmičenja",
     "entities": "Podaci",
     "verification": "Verifikacija",
     "settings": "Podešavanja",
-    "stats": "Rangiranje",
-    "table": "Tabela"
+    "table": "BTL tabele"
   },
   "theme": {
     "label": "Tema",
@@ -480,7 +462,7 @@
     }
   },
   "rankings": {
-    "title": "Tabela",
+    "title": "BTL tabele",
     "men": "Muškarci",
     "women": "Žene",
     "season": "Sezona",
@@ -503,12 +485,10 @@
       "one": "{count} takmičar",
       "few": "{count} takmičara",
       "other": "{count} takmičara"
-    },
-    "historyNote": "Sezona 2027. još nije počela. Prikazani su probni podaci iz ranijih godina, da bi se tabela mogla proceniti."
+    }
   },
   "topBoards": {
-    "title": "Top 10 liste",
-    "intro": "Jedanaest lista iz Člana 55 Pravilnika. Svaka drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
+    "title": "Top liste",
     "season": "Sezona",
     "byLength": {
       "short": "Najviše kraćih trka",
@@ -564,7 +544,8 @@
       "confirmed": "Potvrđeno",
       "checking": "U proveri",
       "cancelled": "Otkazano"
-    }
+    },
+    "weekend": "vikend"
   },
   "event": {
     "backToCalendar": "Nazad na kalendar",
@@ -725,7 +706,7 @@
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
   },
   "leagues": {
-    "title": "Dodatna takmičenja",
+    "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
     "byCategory": "Grupisanje po kategorijama",
@@ -749,29 +730,13 @@
     "name": "Liga"
   },
   "pricing": {
-    "title": "Članarina",
-    "lead": "Članarina se plaća za sezonu, a sezona {season}. traje od 1. januara do 31. decembra {season}.",
-    "period": "Period uplate",
-    "today": "važi danas",
-    "priceEur": "Cena",
-    "priceRsd": "Iz Srbije",
-    "notSold": "Ne naplaćuje se",
     "rows": {
       "early": "1. do 5. oktobra",
       "regular": "6. oktobra do 30. novembra",
       "late": "1. do 31. decembra",
       "season": "1. januara do 30. septembra",
       "junior": "Uzrast do 14 godina"
-    },
-    "noRanking": "bez prava na rangiranje",
-    "rsdNote": "Dinarska cena je fiksirana za celu sezonu i ne menja se sa kursom. Ako plaćaš iz Srbije, plaćaš dinarski iznos.",
-    "previewNote": "Od 15. do 30. septembra portal je otvoren samo za razgledanje: registracija tada nije moguća. Učlanjenje kreće 1. oktobra.",
-    "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
-    "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra.",
-    "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje.",
-    "feeNote": "Taksa za obradu plaćanja nije članarina nego trošak obrade uplate kod platnog posrednika, i ne donosi nikakvo dodatno pravo. Plaća se uz uplatu u evrima, dakle iz inostranstva; uplata u dinarima je nema.",
-    "feeRow": "Taksa za obradu plaćanja (uplate u EUR)",
-    "feeNone": "nema"
+    }
   },
   "error": {
     "title": "Nešto je puklo",
@@ -1068,20 +1033,7 @@
   },
   "badges": {
     "title": "Značke",
-    "intro": "Sve značke koje liga dodeljuje i uslov koji za svaku od njih treba ispuniti. Značka se dodeljuje sama, čim uslov bude ispunjen, i ostaje zauvek. Značke su priznanje i ne nose bodove.",
-    "kindFilter": "Vrsta značke",
-    "allKinds": "Sve vrste",
-    "periodFilter": "Period važenja",
-    "allPeriods": "Svaki period",
-    "forever": "Trajne",
-    "limited": "Vezane za period",
-    "clear": "Obriši filtere",
-    "count": {
-      "one": "{count} značka",
-      "few": "{count} značke",
-      "other": "{count} znački"
-    },
-    "empty": "Nijedna značka ne odgovara izabranim filterima.",
+    "empty": "Liga još nije uvela nijednu značku.",
     "kindLabel": "Vrsta",
     "valueLabel": "Vrednost",
     "from": "Od datuma",

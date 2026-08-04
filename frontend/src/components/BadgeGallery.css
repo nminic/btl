@@ -1,11 +1,14 @@
 /* The wall of badges. The mark and the name are all that stands on a card; the
    kind is a hint that appears on hover, on keyboard focus and on a tap.
 
-   Scoped to this screen like .badge below it. Everything in a bundled stylesheet
-   shares one namespace, and .badges is exactly the sort of name a profile
-   showing somebody's badges would reach for next. */
+   A shared building block, so the name is bare and this is its one definition
+   (ADL A7). It was scoped to the screen of badges until 04.08.2026, when that
+   screen became a section of the rulebook. `.badge` stays inside it: everything
+   in a bundled stylesheet shares one namespace, and a bare `.badge` is exactly
+   the sort of name a profile showing somebody's badges would reach for next,
+   which is how this page was broken once already. */
 
-.rankings .badges {
+.badges {
   list-style: none;
   margin: var(--space-16) 0 0;
   padding: 0;
@@ -29,7 +32,7 @@
 
 /* Scoped to the grid it lives in: a bare .badge is too common a name to hold
    globally, and holding it globally is what broke this page once. */
-.rankings .badges .badge {
+.badges .badge {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -113,21 +116,11 @@
   margin-bottom: 0;
 }
 
-/* The button that empties every filter at once. It is not a filter, so it does
-   not wear the shape of one. */
-.badges__clear {
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: var(--space-8) var(--space-14);
-  cursor: pointer;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-8);
-  transition: border-color var(--fast);
-}
-
-.badges__clear:hover {
-  border-color: var(--accent);
+/* What stands in place of the wall when the league has defined no badge at all.
+   Possible: the badges are records an administrator maintains, and the section
+   of the rulebook is drawn whether or not any exist. */
+.badges__empty {
+  margin: var(--space-16) 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }

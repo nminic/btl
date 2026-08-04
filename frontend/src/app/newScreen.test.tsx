@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { first } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -74,17 +74,19 @@ describe('the scroll, on the way between screens', () => {
     expect(window.scrollTo).toHaveBeenCalled()
   })
 
-  it('asks for the position it was at when only a filter changes', async () => {
-    /* The router saves the scroll under the key it is given and puts it back. On
-       the path alone, a filter finds its own screen's position waiting and
-       restores it, which changes nothing; with the default key it finds nothing
-       and asks for the top, so the table jumped on every keystroke typed into
-       the search and the row of six lengths threw the reader up the page on
-       every click.
-     *
-     * jsdom scrolls nothing, but it will hold a position if one is put there,
-     * and that is enough: what is compared is not whether the call happened but
-     * what it asked for. */
+  it('asks for nothing at all when only a filter changes', async () => {
+    /* A filter writes itself into the address, and to the router that is a
+       navigation like any other: it would put the reader at the top of the page.
+       So the screens say what is actually true when they write one, through
+       `useFilterParams`: this is not an arrival (preventScrollReset).
+
+       It was answered before by keying the saved positions on the path, so a
+       filter found its own position waiting and putting it back changed nothing.
+       That cost the other half: a screen reopened from the navigation also found
+       a position waiting. Asking for nothing is the narrower answer.
+
+       jsdom scrolls nothing, but what is compared here is not whether the page
+       moved: it is what the shell asked the browser for. */
     const user = setupUser()
     renderAt('/sr/takmicar/000002?sezona=sve')
 
@@ -97,7 +99,38 @@ describe('the scroll, on the way between screens', () => {
     await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
     await new Promise((wait) => setTimeout(wait, 50))
 
-    expect(window.scrollTo).toHaveBeenCalledWith(0, 800)
+    expect(window.scrollTo).not.toHaveBeenCalled()
+  })
+
+  it('puts the reader back where they were when they go back', async () => {
+    /* The owner's ask, 04.08.2026: leaving a list for a profile and coming back
+       has to land where it left, not at the top of the list.
+
+       Two things make it work and this fails if either goes. The router saves
+       the position of the entry it is leaving and restores it on the way back,
+       which is what `ScrollRestoration` does with its own key. And the screen
+       has to be its full height at the moment it is restored: everything on the
+       portal is drawn from a file, and a screen that starts as one loading box
+       has nowhere to be put back to, so what the browser is asked for is
+       silently clamped to nought. The second visit is whole from the first
+       render because the data layer hands over what it already holds
+       (src/data/useResource.ts). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/takmicari')
+
+    await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
+
+    Object.defineProperty(window, 'scrollY', { value: 640, writable: true, configurable: true })
+    Object.defineProperty(window, 'pageYOffset', { value: 640, writable: true, configurable: true })
+
+    await user.click(first(await screen.findAllByRole('link', { name: /000/ })))
+    await screen.findByRole('heading', { level: 1, name: /\w/ })
+
+    vi.mocked(window.scrollTo).mockClear()
+    await router.navigate(-1)
+
+    await waitFor(() => expect(window.scrollTo).toHaveBeenCalledWith(0, 640))
+    expect(screen.getByRole('heading', { level: 1, name: 'Takmičari' })).toBeVisible()
   })
 })
 

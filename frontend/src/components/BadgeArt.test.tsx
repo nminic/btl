@@ -91,7 +91,7 @@ describe('the sizes the mark is drawn at', () => {
 
   /** The smallest disc anything on the portal asks for, in pixels. */
   function smallestSize(): number {
-    const clamp = /--badge-art-size:\s*clamp\(\s*([\d.]+)rem/.exec(read('pages/Badges.css'))
+    const clamp = /--badge-art-size:\s*clamp\(\s*([\d.]+)rem/.exec(read('components/BadgeGallery.css'))
 
     /* Whoever draws a badge says how large. Nobody saying so is the fault this
        guards: the component's own fallback is then the only size there is. */

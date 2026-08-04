@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
@@ -10,6 +9,7 @@ import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
+import { useFilterParams } from '../../app/useFilterParams'
 
 /* The calendar from the other side. Between 15 and 30 September this is the
  * screen the owner spends the period of looking around on, filling the season
@@ -30,7 +30,7 @@ export function AdminEvents() {
    * carries it because a screen cannot be told anything else: the editor is
    * state inside this component, and a link is what the other page has.
    */
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   const asked = params.get('zapis')
 
   return (

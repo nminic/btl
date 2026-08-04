@@ -134,50 +134,6 @@
       }
     ]
   },
-  "o-ligi": {
-    "title": "O ligi",
-    "includes": [
-      "rec-predsednika"
-    ],
-    "sections": [
-      {
-        "heading": "Šta je Balkanska trkačka liga",
-        "body": "Takmičenje rekreativnih trkača koje donosi dodatnu draž trčanju i omogućava takmičarima da se međusobno rangiraju i porede po bodovima iz svakog rezultata.\n\nTrčiš gde hoćeš, kada hoćeš i koju god trku hoćeš. Tuđe trke ne organizujemo i ne merimo vreme na njima; uzimamo zvanične rezultate sa trka na kojima si bio i pretvaramo ih u bodove koji se sabiraju kroz sezonu."
-      },
-      {
-        "heading": "Kako se boduje",
-        "body": "Bod nosi svaka trka. Duža i teža staza nosi više, brže vreme nosi više. Uspon se u obračunu vrednuje više od spusta, jer je i teži.\n\nKalkulator na naslovnoj strani računa bodove za bilo koju kombinaciju dužine, uspona, spusta i vremena, pa se ponašanje bodovanja može isprobati na svom rezultatu."
-      },
-      {
-        "heading": "Kategorije",
-        "body": "Takmiči se u muškoj ili ženskoj konkurenciji, u jednoj od četiri starosne kategorije: do 24, 25 do 39, 40 do 54, i 55 i više. Kategorija se određuje po godinama koje puniš u toj kalendarskoj godini i ne menja se tokom sezone.\n\nKo je nov u ligi može prvu sezonu da se takmiči u kategoriji Prva sezona. Iz nje se izlazi kad se skupi 12 bodova, i taj izlazak je nepovratan."
-      },
-      {
-        "heading": "Sezona",
-        "body": "Sezona traje celu kalendarsku godinu, od 1. januara do 31. decembra.\n\nUčlanjenje i obnova članarine kreću 1. oktobra i traju do kraja godine. U istom roku se dogovaraju i promene tima. Ko se učlani tokom sezone dobija profil i prati svoje rezultate, ali ne konkuriše za mesta u rang listama."
-      },
-      {
-        "heading": "Kako je počelo",
-        "body": "Liga je nastala 2014. iz jednostavne potrebe: rekreativci u regionu trčali su iste trke, a nisu imali gde da uporede šta su uradili tokom godine.\n\n`[TREBA POPUNITI: priča osnivača, kako je došlo do ideje]`"
-      },
-      {
-        "heading": "Prve sezone, 2014 do 2016",
-        "body": "Rezultati su se javljali mejlom, a tabela se vodila ručno. Broj trka po sezoni rastao je iz godine u godinu.\n\n`[TREBA POPUNITI: najvažnije trke i imena iz tih sezona]`"
-      },
-      {
-        "heading": "Godine uspona, 2017 do 2019",
-        "body": "Najjače sezone stare lige. Kalendar je pokrivao celu godinu, a takmičari su putovali na trke po celom regionu.\n\n`[TREBA POPUNITI: rekordi, brojke, priče]`"
-      },
-      {
-        "heading": "Prekid, 2020 do 2026",
-        "body": "Sezona 2020. prekinuta je zabranama okupljanja. Posle nje liga više nije vraćena u redovan ritam, iako su pojedinačni rezultati nastavili da se beleže.\n\n`[TREBA POPUNITI: šta se tačno dešavalo i zašto je stalo]`"
-      },
-      {
-        "heading": "Šta sada",
-        "body": "Sezona 2027. je novi početak, sa portalom koji vodi evidenciju umesto tabele u tabelarnom programu. Pravila su ostala ista u srcu: svaka trka se broji."
-      }
-    ]
-  },
   "pravilnik": {
     "title": "Pravilnik takmičenja BTL 2027",
     "sections": [
@@ -227,7 +183,7 @@
       },
       {
         "heading": "12. Rang liste i plasman",
-        "body": "### Član 52. Koje liste postoje\n\nPostoje muška i ženska lista. Zbirne liste oba pola nema.\n\nZa svaku konkurenciju vode se:\n\n- Generalni plasman sezone,\n- Tabela po uzrasnoj kategoriji, uključujući kategoriju Prva sezona,\n- Top 10 liste iz Člana 55,\n- Poredak timova i poredak trkačkih parova.\n\n### Član 53. Kako se računa generalni plasman\n\nGeneralni plasman računa se iz svih trka u sezoni, a ne iz najboljeg izabranog broja rezultata. Svaka bodovana trka ulazi u zbir.\n\nGlavna tabela ima sledeće kolone:\n\n| # | Član | Kat. | Trke | d (km) | + (m) | − (m) | Vreme | Bodovi |\n|---|---|---|---|---|---|---|---|---|\n| 1 | Ime i prezime (000095) | M 40-54 | 23 | 814.68 | 15408 | 15589 | 106:59:45 | 458.20 |\n\n### Član 54. Osvežavanje\n\nTabele se osvežavaju odmah posle svakog verifikovanog rezultata. Periodičnog obračuna nema.\n\n### Član 55. Top 10 liste\n\nVode se sledeće Top 10 liste, svaka na deset mesta:\n\n- Najviše kilometara,\n- Najduže na stazi,\n- Najbolja trka, dakle pojedinačni rezultat sa najviše bodova,\n- Najbolji napredak,\n- Najbolji tim,\n- Najbolji trkački par,\n- Najviše ultramaratona, maratona, dužih trka, polumaratona i kraćih trka.\n\nNajbolji napredak meri prirast bodova u odnosu na prethodnu sezonu: razliku između zbira bodova ove i zbira bodova prethodne sezone. Na listi je samo onaj ko je trčao i prethodne sezone, jer prva sezona nema na šta da naraste, i samo onaj čiji je prirast pozitivan, jer nazadovanje nije napredak. Lista zato sme da bude kraća od deset mesta.\n\n### Član 56. Izjednačenje\n\nNačelo je jedno: nagrađuje se veći obim, nikad efikasnost. Manji broj trka se ne nagrađuje ni u jednom poretku. Efikasnost nikad ne obara obim, ali sme da razreši potpuno izjednačenje.\n\nRedosled merila, dok se izjednačenje ne razreši:\n\n| Lista | Merila, redom |\n|---|---|\n| Generalni plasman | bodovi, pa kilometri, pa više trka, pa više vertikale, pa deljeno mesto |\n| Najviše kilometara | kilometri, pa više trka, pa vertikala, pa bodovi, pa ranije dostignuto, pa deljeno mesto |\n| Najduže na stazi | vreme, pa kilometri, pa više trka, pa vertikala, pa deljeno mesto |\n| Najbolja trka | bodovi, pa veća dužina trke, pa kilometri u sezoni, pa trke u sezoni, pa deljeno mesto |\n| Najbolji tim | bodovi, pa više članova tima, pa kilometri svih članova, pa trke svih članova, pa deljeno mesto |\n| Najbolji trkački par | bodovi sa zajedničkih trka, pa više zajedničkih trka, pa zajednički kilometri, pa zajednička vertikala, pa deljeno mesto |\n| Po broju trka po tipu | broj trka, pa bodovi iz baš tih trka, pa kilometri iz tih trka, pa vertikala iz tih trka, pa ranije dostignuto, pa deljeno mesto |\n\nKod najbolje trke raniji datum se namerno ne koristi kao merilo, jer je u najčešćem slučaju izjednačenja reč o istoj trci istog dana.\n\n### Član 57. Deljeno mesto\n\nKada ni posle svih merila nema razlike:\n\n1. Deljeno mesto se prikazuje kao deljeno. Oba reda nose isti broj, a sledeći se preskače: 1, 1, 3.\n2. Redosled unutar deljenog mesta ide po članskom broju rastuće. To nije merilo i ne znači ništa; postoji samo da tabela ne bi skakala pri svakom preračunu.\n3. Nagrada se duplira, ne deli. Deljeno prvo mesto znači dva pehara.\n\n### Član 58. Arhiva\n\nZvanični rezultat svake sezone čuva se trajno, na strani sa arhivom sezona. Pregled kroz celu istoriju lige stoji u kući slavnih."
+        "body": "### Član 52. Koje liste postoje\n\nPostoje muška i ženska lista. Zbirne liste oba pola nema.\n\nZa svaku konkurenciju vode se:\n\n- Generalni plasman sezone,\n- Tabela po uzrasnoj kategoriji, uključujući kategoriju Prva sezona,\n- Top liste iz Člana 55,\n- Poredak timova i poredak trkačkih parova.\n\n### Član 53. Kako se računa generalni plasman\n\nGeneralni plasman računa se iz svih trka u sezoni, a ne iz najboljeg izabranog broja rezultata. Svaka bodovana trka ulazi u zbir.\n\nGlavna tabela ima sledeće kolone:\n\n| # | Član | Kat. | Trke | d (km) | + (m) | − (m) | Vreme | Bodovi |\n|---|---|---|---|---|---|---|---|---|\n| 1 | Ime i prezime (000095) | M 40-54 | 23 | 814.68 | 15408 | 15589 | 106:59:45 | 458.20 |\n\n### Član 54. Osvežavanje\n\nTabele se osvežavaju odmah posle svakog verifikovanog rezultata. Periodičnog obračuna nema.\n\n### Član 55. Top liste\n\nVode se sledeće Top liste, svaka na deset mesta:\n\n- Najviše kilometara,\n- Najduže na stazi,\n- Najbolja trka, dakle pojedinačni rezultat sa najviše bodova,\n- Najbolji napredak,\n- Najbolji tim,\n- Najbolji trkački par,\n- Najviše ultramaratona, maratona, dužih trka, polumaratona i kraćih trka.\n\nNajbolji napredak meri prirast bodova u odnosu na prethodnu sezonu: razliku između zbira bodova ove i zbira bodova prethodne sezone. Na listi je samo onaj ko je trčao i prethodne sezone, jer prva sezona nema na šta da naraste, i samo onaj čiji je prirast pozitivan, jer nazadovanje nije napredak. Lista zato sme da bude kraća od deset mesta.\n\n### Član 56. Izjednačenje\n\nNačelo je jedno: nagrađuje se veći obim, nikad efikasnost. Manji broj trka se ne nagrađuje ni u jednom poretku. Efikasnost nikad ne obara obim, ali sme da razreši potpuno izjednačenje.\n\nRedosled merila, dok se izjednačenje ne razreši:\n\n| Lista | Merila, redom |\n|---|---|\n| Generalni plasman | bodovi, pa kilometri, pa više trka, pa više vertikale, pa deljeno mesto |\n| Najviše kilometara | kilometri, pa više trka, pa vertikala, pa bodovi, pa ranije dostignuto, pa deljeno mesto |\n| Najduže na stazi | vreme, pa kilometri, pa više trka, pa vertikala, pa deljeno mesto |\n| Najbolja trka | bodovi, pa veća dužina trke, pa kilometri u sezoni, pa trke u sezoni, pa deljeno mesto |\n| Najbolji tim | bodovi, pa više članova tima, pa kilometri svih članova, pa trke svih članova, pa deljeno mesto |\n| Najbolji trkački par | bodovi sa zajedničkih trka, pa više zajedničkih trka, pa zajednički kilometri, pa zajednička vertikala, pa deljeno mesto |\n| Po broju trka po tipu | broj trka, pa bodovi iz baš tih trka, pa kilometri iz tih trka, pa vertikala iz tih trka, pa ranije dostignuto, pa deljeno mesto |\n\nKod najbolje trke raniji datum se namerno ne koristi kao merilo, jer je u najčešćem slučaju izjednačenja reč o istoj trci istog dana.\n\n### Član 57. Deljeno mesto\n\nKada ni posle svih merila nema razlike:\n\n1. Deljeno mesto se prikazuje kao deljeno. Oba reda nose isti broj, a sledeći se preskače: 1, 1, 3.\n2. Redosled unutar deljenog mesta ide po članskom broju rastuće. To nije merilo i ne znači ništa; postoji samo da tabela ne bi skakala pri svakom preračunu.\n3. Nagrada se duplira, ne deli. Deljeno prvo mesto znači dva pehara.\n\n### Član 58. Arhiva\n\nZvanični rezultat svake sezone čuva se trajno, na strani sa arhivom sezona. Pregled kroz celu istoriju lige stoji u kući slavnih."
       },
       {
         "heading": "13. Timovi, trkački parovi i klubovi",
@@ -254,7 +210,12 @@
         "body": "### Član 81. Šta je javno\n\nLiga je javno takmičenje, pa su javni:\n\n- Ime i prezime, članski broj i kategorija,\n- Mesto i zemlja,\n- Profilna fotografija,\n- Svi verifikovani rezultati sa dužinom, usponom, spustom, vremenom i datumom,\n- Bodovi, plasman, statistika, značke i priznanja,\n- Tim, trkački par i klub.\n\n### Član 82. Šta nikada nije javno\n\nDatum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega proizlazi. Isto važi za adresu elektronske pošte, telefon, adresu, sve u vezi sa članarinom i privatne poruke.\n\nIzuzetak postoji samo ako sami izaberete da objavite svoj rođendan radi liste rođendana, sa godinom ili bez nje.\n\n### Član 83. Fotografije\n\nSaglasnost za objavu fotografija sa okupljanja i takmičenja lige dajete unapred, prihvatanjem ovog pravilnika. Objavljuju se fotografije koje napravi osoblje lige i fotografije koje sami pošaljete i odobrite.\n\nGalerije fotografija sa trka i označavanja ljudi na fotografijama na portalu nema.\n\n### Član 84. Ostalo\n\nSve ostalo o vašim podacima uređuje politika privatnosti portala, koja je uz ovaj pravilnik i uslove korišćenja treći obavezan dokument."
       },
       {
-        "heading": "19. Izmene pravilnika i završne odredbe",
+        "heading": "19. Značke",
+        "body": "Značka je zapis o onome što ste istrčali, u slici. Ne nosi bodove i ne pomera plasman; dodeljuje se sama, čim uslov bude ispunjen, i ostaje zauvek (Član 72).\n\nUslov je uvek isti po obliku: neka veličina mora da dostigne zadatu vrednost u zadatom periodu. Veličina je zbir kroz period (broj trka jedne dužine, kilometri, uspon, spust, vreme na stazi, bodovi, broj zemalja, broj sezona) ili najbolji pojedinačan rezultat u njemu (bodovi, kilometri ili uspon na jednoj trci). Period sme da bude cela istorija lige, jedna sezona, ili bilo koji raspon datuma, pa postoje i značke koje se osvajaju samo dok traju.\n\nOvo su sve značke koje liga danas dodeljuje. Uz svaku stoji uslov: otvara se prelaskom mišem, tasterom, ili dodirom na telefonu.",
+        "gallery": "badges"
+      },
+      {
+        "heading": "20. Izmene pravilnika i završne odredbe",
         "body": "### Član 85. Nova verzija svake sezone\n\nPravilnik se piše iznova za svaku sezonu i objavljuje se pre početka te sezone. Verzija koja je važila u jednoj sezoni ostaje objavljena, jer je zvanični rezultat te sezone donet po njoj.\n\nU toku sezone se ne menja.\n\n### Član 86. Tumačenje\n\nPravilnik tumači i primenjuje udruženje. Slučaj koji pravilnikom nije pokriven rešava se u duhu njegovih načela, a rešenje se upisuje u narednu verziju pravilnika, da se isto pitanje ne bi rešavalo dvaput različito.\n\n### Član 87. Kontakt\n\nPitanja o primeni pravilnika šaljite na [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).\n\n---\n\nSportsko udruženje BTL, [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net)\nSvaka trka se broji."
       }
     ]

@@ -45,6 +45,17 @@ async function request<T>(name: ResourceName): Promise<T> {
  * A failure is not cached: it is dropped so the next attempt can succeed. */
 const inFlight = new Map<ResourceName, Promise<unknown>>()
 
+/* What has already arrived, kept beside the promise that fetched it.
+ *
+ * A promise cannot be read while a component renders, so a screen opened for the
+ * second time still had to start empty and fill a moment later. That is not only
+ * a flash: the reader who goes back to a table they had scrolled halfway down
+ * lands on a page that is one loading box tall at the moment the router puts the
+ * scroll back, so the browser has nowhere to scroll to and the position is lost
+ * (owner, 04.08.2026). The value is what makes the second visit whole from the
+ * first paint. */
+const arrived = new Map<ResourceName, unknown>()
+
 export function loadResource<T>(name: ResourceName): Promise<T> {
   const cached = inFlight.get(name)
 
@@ -52,17 +63,36 @@ export function loadResource<T>(name: ResourceName): Promise<T> {
     return cached as Promise<T>
   }
 
-  const promise = request<T>(name).catch((error: unknown) => {
-    inFlight.delete(name)
-    throw error
-  })
+  const promise = request<T>(name)
+    .then((data) => {
+      arrived.set(name, data)
+
+      return data
+    })
+    .catch((error: unknown) => {
+      inFlight.delete(name)
+      throw error
+    })
 
   inFlight.set(name, promise)
 
   return promise as Promise<T>
 }
 
+/**
+ * What this visit already holds for a resource, or nothing where it holds none.
+ *
+ * Read while rendering, which is the whole point of it: absence here means the
+ * screen has to wait, and that is a fact about the visit rather than a failure.
+ */
+export function arrivedResource<T>(name: ResourceName): T | undefined {
+  const known = arrived.get(name)
+
+  return known === undefined ? undefined : (known as T)
+}
+
 /** Tests start from an empty cache; nothing in the application calls this. */
 export function clearResourceCache(): void {
   inFlight.clear()
+  arrived.clear()
 }

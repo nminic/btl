@@ -21,8 +21,11 @@ describe('Home', () => {
 
     /* The order in the markup is the order on a phone (owner, 31.07.2026): the
        two boards, the figures of the season, the turning chart, what is next,
-       the address, the calculator, the membership slot. On a wide screen the
-       grid puts them in two columns without moving them in the markup. */
+       the address, the calculator. On a wide screen the grid puts them in two
+       columns without moving them in the markup.
+
+       The widget of membership stood at the end of it until 04.08.2026, when the
+       owner had it removed: "nećemo ga koristiti do daljnjeg". */
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
@@ -30,7 +33,6 @@ describe('Home', () => {
       'Priprema, pozor, SAD!',
       'Reč predsednika',
       'BTL kalkulator',
-      expect.stringContaining('Članarina za BTL'),
     ])
   })
 
@@ -98,13 +100,19 @@ describe('Home', () => {
   })
 
   /* The countdown to the season left the page together with the block above the
-     counters (owner, 30.07.2026). What remains is the one date a visitor can act
-     on: when membership opens. */
-  it('says when membership opens rather than counting down to the season', async () => {
+     counters (owner, 30.07.2026), and the widget that said when membership opens
+     left it on 04.08.2026: "nećemo ga koristiti do daljnjeg". So the front page
+     quotes no price and no date of its own any more, and that is the thing worth
+     holding: neither the countdown nor the slot came back by accident. */
+  it('counts down to nothing, and quotes no price', async () => {
     renderAt('/sr')
 
-    expect(await screen.findByText(/Otvara se za/)).toBeVisible()
+    await screen.findByRole('heading', { level: 2, name: 'BTL kalkulator' })
+
     expect(screen.queryByText(/do početka sezone/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Otvara se za/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Cena raste/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Članarina za BTL/ })).not.toBeInTheDocument()
   })
 
   it('groups a recurring event into one row instead of five', async () => {
@@ -120,17 +128,6 @@ describe('Home', () => {
 
     // No event name appears twice: repeats collapse into a single row.
     expect(new Set(titles).size).toBe(titles.length)
-  })
-
-  it('says what membership costs and when that changes', async () => {
-    renderAt('/sr')
-
-    const slot = must(
-      (await screen.findByRole('heading', { name: /Članarina za BTL/ })).closest('section'),
-      'the widget around that heading',
-    )
-
-    expect(within(slot).getByText(/Otvara se za|Cena raste/)).toBeVisible()
   })
 
   it('shows both top tens and links to the whole standing', async () => {

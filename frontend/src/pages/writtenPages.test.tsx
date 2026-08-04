@@ -30,7 +30,6 @@ function band(key: string): PriceRow {
 
 describe('the written pages', () => {
   it.each([
-    ['/sr/o-ligi', 'O ligi'],
     ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027'],
     // Contact left the written pages: it is a mail address in the footer now,
     // and the history of the league took its place (PDL P28a).
@@ -183,84 +182,11 @@ describe('the privacy policy', () => {
   })
 })
 
-describe('the page that says what membership costs', () => {
-  it('marks the row a reader is being asked to pay today', async () => {
-    /* PDL P28a put this page second under "O ligi" because it is the one that
-       leads to joining. It had five rows and five notes and left the reader to
-       work out which row was theirs. */
-    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
-
-    const table = await screen.findByRole('table')
-    /* Found by what it says rather than by what it is called: the badge is the
-       thing the reader sees, and a class name is not. */
-    const marked = within(table)
-      .getAllByRole('row')
-      .filter((row) => row.textContent?.includes('važi danas'))
-
-    expect(marked).toHaveLength(1)
-    expect(marked[0]).toHaveTextContent('1. do 5. oktobra')
-  })
-
-  it('leads to joining once joining is open, and says when otherwise', async () => {
-    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
-
-    const page = within(await screen.findByRole('main'))
-
-    // The header carries one too, so this asks the page itself.
-    expect(page.getByRole('link', { name: 'Učlani se' })).toHaveAttribute(
-      'href',
-      '/sr/registracija',
-    )
-  })
-
-  it('says when it opens while it is still shut', async () => {
-    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-09-20')
-
-    const page = within(await screen.findByRole('main'))
-
-    expect(page.queryByRole('link', { name: 'Učlani se' })).not.toBeInTheDocument()
-    /* One sentence, not two glued together: the two of them wrote the date's
-       full stop and the dictionary's one after another and announced the
-       opening twice. */
-    expect(page.getByText(/^Učlanjenje se otvara .*, za \d+ dana\.$/)).toBeVisible()
-  })
-
-  it('gives the fee a row of its own and says it is not membership', async () => {
-    /* The owner asked for the three euro and for that sentence in the same
-       breath: „mi je stalo da se naznači da to nije članarina nego obrada"
-       (03.08.2026, PDL P8), and on 04.08 that it be something anybody can look
-       up in the price list rather than something only whoever pays it is told.
-       Folded into a price it would read as a dearer membership for anybody
-       outside Serbia, which is not what it is. */
-    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
-
-    const page = within(await screen.findByRole('main'))
-    const row = page.getByRole('row', { name: /Taksa za obradu plaćanja/ })
-
-    /* A row heading, not a period: read down the first column the fee is not one
-       of the four bands, and under "Period uplate" a screen reader would say it
-       is. */
-    expect(within(row).getByRole('rowheader')).toHaveTextContent(/Taksa za obradu plaćanja/)
-    expect(within(row).getByText(`${PROCESSING_FEE_EUR} EUR`)).toBeVisible()
-    /* And nothing on the dinar side of that row. */
-    expect(within(row).getByText('nema')).toBeVisible()
-
-    const note = page.getByText(/Taksa za obradu plaćanja nije članarina/)
-
-    expect(note).toHaveTextContent('uplata u dinarima je nema')
-
-    /* And the table still quotes membership alone. A row that had the fee added
-       into it would say 38 where the price list says 35. */
-    const rows = within(await screen.findByRole('table'))
-      .getAllByRole('row')
-      .map((row) => row.textContent ?? '')
-
-    for (const price of PRICES) {
-      expect(rows.some((row) => row.includes(`${price.eur} EUR`))).toBe(true)
-      expect(rows.some((row) => row.includes(`${price.eur + PROCESSING_FEE_EUR} EUR`))).toBe(false)
-    }
-  })
-})
+/* The page that said what membership costs was deleted on 04.08.2026, together
+ * with the story of the league: "O ligi i Članarina se brišu" (owner). What a
+ * member is charged is on the screen of their own membership and in the terms,
+ * and both are held to `pricing.ts` above and below this line.
+ */
 
 const NEWLINE = String.fromCharCode(10)
 
@@ -300,8 +226,12 @@ describe('the rulebook', () => {
       [17, /Šta članstvo donosi/],
       [41, /Ko prijavljuje i šta/],
       [42, /^Rok$/],
-      [55, /Top 10 liste/],
+      [55, /Top liste/],
       [69, /Posebna priznanja/],
+      /* The section that draws the wall of badges points at the article that
+         awards them (owner, 04.08.2026): the section describes, the article
+         rules, and the reader has to be able to get from one to the other. */
+      [72, /Značke/],
       [79, /Postupak/],
     ]
 
@@ -419,8 +349,10 @@ describe('how a written page is set', () => {
   const pages = Object.entries(written as Record<string, { sections: { heading: string; body: string }[] }>)
 
   it('reads every written page there is', () => {
-    /* Without this the two below pass on an empty list. */
-    expect(pages.length).toBeGreaterThan(4)
+    /* Without this the two below pass on an empty list. Four since 04.08.2026,
+       when "O ligi" was deleted: the rulebook, the terms, the privacy policy and
+       the address of the president. */
+    expect(pages.length).toBe(4)
     expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
   })
 
@@ -532,7 +464,7 @@ describe('how a written page is set', () => {
 })
 
 /** The whole of one written page, as one piece of text. */
-function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti'): string {
+function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti'): string {
   /* Headings as well as bodies, and the name of the page. A section called
      "Zašto je formula tajna" would have gone past a guard that read only the
      text under it. */
@@ -544,7 +476,7 @@ function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-pr
 
 /** The one section of a page that says something, by what it says. */
 function sectionOf(
-  slug: 'uslovi-koriscenja' | 'pravilnik' | 'o-ligi' | 'politika-privatnosti',
+  slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
   says: RegExp,
 ): string {
   const found = written[slug].sections.find((section) => says.test(section.body))
@@ -638,7 +570,7 @@ describe('what the written pages say the fee buys', () => {
        "Ne objavljuje" is an ordinary Serbian phrase, and forbidding it outright
        would fail on a sentence about an internal note that has nothing to do
        with scoring. */
-    for (const slug of ['pravilnik', 'o-ligi', 'uslovi-koriscenja'] as const) {
+    for (const slug of ['pravilnik', 'uslovi-koriscenja'] as const) {
       expect(whole(slug)).not.toMatch(/formul\w*[^.]{0,60}(ne objavljuje|tajn)/i)
       expect(whole(slug)).not.toMatch(/(ne objavljuje|tajn)\w*[^.]{0,60}formul/i)
     }

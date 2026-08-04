@@ -308,7 +308,7 @@ describe('a result from entry to decision', () => {
    * navigation now goes: the administration group, then verification, then the
    * queue of results. */
   async function openTheQueue(user: ReturnType<typeof setupUser>) {
-    await user.click(await screen.findByRole('button', { name: 'Administracija' }))
+    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
     // The entry carries the number waiting in its name (PDL P28a), so the name
     // is matched on the words rather than in full.
     await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))

@@ -42,6 +42,45 @@ async function distancesOf(memberNumber: string): Promise<string[]> {
     .map((one) => one.distanceKm.toFixed(2).replace('.', ','))
 }
 
+/** How the time on the course is written: hours, then minutes and seconds in
+ *  two digits each. Written once because two tests read it. */
+const TIME_ON_COURSE = /^\d+ h \d{2}' \d{2}''$/
+
+/**
+ * The number written in a bar of a chart.
+ *
+ * A column reads as the initials on the face above the bar, then the number in
+ * the bar, then the name it belongs to, so the initials are dropped before the
+ * number is read. Left in, the number would arrive as a NaN and every assertion
+ * about the order of the bars would be an assertion about a list of them.
+ */
+function countIn(column: HTMLElement): number {
+  const written = must(column.textContent, 'stubac').replace(/^\D+/, '')
+  const figure = Number(written.replace(/\D[\s\S]*$/, ''))
+
+  if (Number.isNaN(figure)) {
+    throw new Error(`stubac glasi "${column.textContent}", u njemu nema broja`)
+  }
+
+  return figure
+}
+
+/**
+ * The number written in the level of a bar that reads as `name`.
+ *
+ * The bars of the progress chart carry two of them, and each says what it is,
+ * because two figures in one bar with nothing to tell them apart are not a fact
+ * anybody can use. Read through those words rather than by position: that is how
+ * somebody who cannot see the chart reads them, and it is the whole reason they
+ * are there.
+ */
+function levelIn(column: HTMLElement, name: string): number {
+  const reading = within(column).getByText(name)
+  const written = must(reading.parentElement?.textContent, 'nivo stupca').replace(name, '')
+
+  return Number(written.trim().replace(/\./g, ''))
+}
+
 /* One file for the screens a visitor sees. They share a shape: read the data
  * layer, sort it, put it in a table. */
 
@@ -136,45 +175,63 @@ describe('Rankings', () => {
 
 describe('TopBoards', () => {
   /** The board with the given heading, looked up the way a screen reader does:
-   *  through the region the heading names. */
+   *  through the region the heading names. Both kinds answer to it, the ones
+   *  drawn as a table and the ones drawn as a chart. */
   function board(name: string) {
     return within(screen.getByRole('region', { name }))
   }
 
-  /* The eleven lists of Article 56, in the order the rulebook counts them out
-     (PDL P28a), the five lengths included: longest first, as the article names
-     them. This page is that article on a screen, so the article decides the
-     order on it; the other screens keep the portal's own order, shortest first.
-     Both empty boards are in here, because a list the rulebook names and the
-     page leaves out is the fault this guards against. */
-  const ELEVEN = [
-    'Najviše kilometara',
-    'Najduže na stazi',
-    'Najbolje pojedinačne trke',
-    'Najbolji napredak',
-    'Najbolji tim',
-    'Najbolji trkački parovi',
+  /* The layout the owner asked for on 04.08.2026, read top to bottom the way a
+     phone reads it: across each row of the wide screen and then down. Two
+     lengths with the kilometres beside them, two more with the time on course,
+     the short races and the progress with the pairs beside them, and the best
+     single races under all of it.
+
+     Ten, not eleven. The best team went off this page: the teams have a page of
+     their own, and a standing of teams belongs there. */
+  const BOARDS = [
     'Najviše ultramaratona',
     'Najviše maratona',
+    'Najviše kilometara',
     'Najviše dužih trka',
     'Najviše polumaratona',
+    'Najduže na stazi',
     'Najviše kraćih trka',
+    'Najbolji napredak',
+    'Najbolji trkački parovi',
+    'Najbolje pojedinačne trke',
   ]
 
-  it('carries all eleven lists of the rulebook, in the order it names them', async () => {
+  it('carries the ten boards in the order the owner laid them out', async () => {
     renderAt('/sr/top-liste?sezona=2019')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Top liste' })).toBeVisible()
 
     const shown = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent)
 
-    expect(shown).toEqual(ELEVEN)
+    expect(shown).toEqual(BOARDS)
   })
 
-  it('carries a board for every length, and each one stops at ten places', async () => {
+  it('leaves the best team to the page the teams have of their own', async () => {
+    /* Owner, 04.08.2026: "Top timove ne prezentovati uopšte, jer timovi imaju
+       svoju zasebnu stranu." It is still one of the lists of Article 55 and
+       still worked out; it is not drawn here. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
+    await screen.findByRole('heading', { level: 1, name: 'Top liste' })
+
+    expect(screen.queryByRole('region', { name: 'Najbolji tim' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Članova' })).not.toBeInTheDocument()
+  })
+
+  it('draws the five lengths as charts, ten columns at the most', async () => {
+    /* Owner, 04.08.2026: "poslednjih 5 vidžeta uradi grafikone kao sa naslovne
+       strane... bez rotiranja (jer će svaki imati svoj prikaz)". So each of the
+       five stands still and keeps its own widget, and none of them is a table
+       any more. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
     for (const name of [
       'Najviše kraćih trka',
@@ -183,25 +240,52 @@ describe('TopBoards', () => {
       'Najviše maratona',
       'Najviše ultramaratona',
     ]) {
-      const rows = board(name).getAllByRole('row').slice(1)
+      const columns = board(name).getAllByRole('listitem')
 
-      expect(rows.length).toBeGreaterThan(0)
-      expect(rows.length).toBeLessThanOrEqual(10)
-
-      /* Gold on the podium here too, and on exactly the rows whose place is one
-         of the first three. Counted rather than located, this said "three" and
-         was wrong in two ways: a place nothing separates is shared, so a board
-         can read 1, 2, 3, 3 and carry four (PDL P12), and a count would pass
-         just as well if the gold were on the last three rows instead. */
-      const gilded = rows.filter((row) => row.className === 'podium')
-      const top = rows.filter((row) => Number(first(within(row).getAllByRole('cell')).textContent) <= 3)
-
-      expect(gilded).toEqual(top)
-      expect(gilded.length).toBeGreaterThan(0)
+      expect(columns.length).toBeGreaterThan(0)
+      expect(columns.length).toBeLessThanOrEqual(10)
+      expect(board(name).queryByRole('table')).not.toBeInTheDocument()
+      // Nothing turns here, so there is no control to stop it either.
+      expect(board(name).queryByRole('button')).not.toBeInTheDocument()
     }
   })
 
-  it('ranks the best single races with the event beside the points', async () => {
+  it('puts the tallest column first and the number inside every bar', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1, name: 'Top liste' })
+
+    const counts = board('Najviše kraćih trka').getAllByRole('listitem').map(countIn)
+
+    expect(counts.length).toBeGreaterThan(1)
+    expect([...counts].sort((left, right) => right - left)).toEqual(counts)
+  })
+
+  it('leads from a column of a chart to the profile behind it', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1, name: 'Top liste' })
+
+    const columns = board('Najviše polumaratona').getAllByRole('listitem')
+
+    expect(within(first(columns)).getByRole('link')).toHaveAttribute(
+      'href',
+      expect.stringContaining('/sr/takmicar/'),
+    )
+  })
+
+  it('says so on a chart that the season leaves empty', async () => {
+    // 2012 has two results in it, and neither of them is a marathon.
+    renderAt('/sr/top-liste?sezona=2012')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Najviše maratona' })).toBeVisible()
+    expect(
+      board('Najviše maratona').getByText('U ovoj sezoni nema nijednog rezultata.'),
+    ).toBeVisible()
+    expect(board('Najviše maratona').queryAllByRole('listitem')).toHaveLength(0)
+  })
+
+  it('ranks the single races by the points of one result, in a table with the event', async () => {
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
@@ -220,7 +304,7 @@ describe('TopBoards', () => {
     const rows = (await screen.findAllByRole('row')).length
 
     expect(rows).toBeGreaterThan(0)
-    expect(board('Najduže na stazi').getAllByText(/^\d+ h \d{2}' \d{2}''$/).length).toBe(10)
+    expect(board('Najduže na stazi').getAllByText(TIME_ON_COURSE).length).toBe(10)
   })
 
   it('stands the pairs board empty rather than inventing one', async () => {
@@ -233,28 +317,57 @@ describe('TopBoards', () => {
     expect(pairs.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('ranks the progress by the points gained on the season before', async () => {
+  it('draws the progress as one bar of two levels, the season before under the gain', async () => {
+    /* Owner, 04.08.2026: "svaki stubac ima dva nivoa: manje istaknut niži iz
+       prethodne godine, u koji je upisan skor iz prethodne sezone, i više
+       istaknut gornji za tekuću godinu, u koji je upisan prirast. Upisuju se
+       zaokruženi bodovi bez decimala."
+
+       Both numbers are read, in that order, and each says what it is: two
+       figures in one bar with nothing to tell them apart are not a fact anybody
+       can use. Neither carries decimals, which is what "zaokruženi bodovi bez
+       decimala" means and what a comma in either of them would break. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolji napredak' })
-    const progress = board('Najbolji napredak')
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
 
-    // The measure is the gain, so the gain is the column, with the season it is
-    // measured against beside it (PDL P12, 30.07.2026).
-    expect(progress.getByRole('columnheader', { name: 'Prirast' })).toBeInTheDocument()
-    expect(progress.getByRole('columnheader', { name: 'Prethodna sezona' })).toBeInTheDocument()
+    const columns = board('Najbolji napredak').getAllByRole('listitem')
 
-    const gains = progress.getAllByRole('row').slice(1).map(lastNumberIn)
+    expect(columns.length).toBeGreaterThan(1)
+    expect(columns.length).toBeLessThanOrEqual(10)
+    expect(board('Najbolji napredak').queryByRole('table')).not.toBeInTheDocument()
+
+    for (const column of columns) {
+      const previous = levelIn(column, 'Prethodna sezona')
+      const gain = levelIn(column, 'Prirast')
+
+      expect(Number.isInteger(previous), `${previous} nije ceo broj`).toBe(true)
+      expect(Number.isInteger(gain), `${gain} nije ceo broj`).toBe(true)
+      expect(gain).toBeGreaterThan(0)
+      /* The lower level is the one drawn first, which is the season before: the
+         whole column is this season and the split says where it came from. */
+      expect(countIn(column)).toBe(previous)
+    }
+  })
+
+  it('ranks the progress by the gain, tallest first', async () => {
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
+
+    const gains = board('Najbolji napredak')
+      .getAllByRole('listitem')
+      .map((column) => levelIn(column, 'Prirast'))
 
     expect(gains.length).toBeGreaterThan(1)
-    expect(gains.length).toBeLessThanOrEqual(10)
+    expect(gains.some((gain) => Number.isNaN(gain))).toBe(false)
     expect([...gains].sort((left, right) => right - left)).toEqual(gains)
   })
 
   it('leaves out whoever did not race the season before', async () => {
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolji napredak' })
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
 
     /* Miloje Stanojlović scored the second most points of 2019 and ran nothing
        in 2018. Counting the season he was not there as a zero would make his
@@ -277,51 +390,7 @@ describe('TopBoards', () => {
        is just as empty, and a sentence naming only the first tells that season
        that nobody ran (PDL P12, 30.07.2026). */
     expect(progress.getByText(/trčao i prethodne sezone i popravio njen zbir/)).toBeVisible()
-    expect(progress.queryByRole('table')).not.toBeInTheDocument()
-  })
-
-  it('ranks the teams by points and leads to the team, not to a profile', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
-
-    await screen.findByRole('table', { name: 'Najbolji tim' })
-    const teams = board('Najbolji tim')
-
-    expect(teams.getByRole('columnheader', { name: 'Tim' })).toBeInTheDocument()
-    expect(teams.getByRole('columnheader', { name: 'Članova' })).toBeInTheDocument()
-
-    const rows = teams.getAllByRole('row').slice(1)
-    expect(rows.length).toBeGreaterThan(1)
-    expect(rows.length).toBeLessThanOrEqual(10)
-
-    const points = rows.map(lastNumberIn)
-    expect([...points].sort((left, right) => right - left)).toEqual(points)
-
-    // The row is about the team, so the name leads to the team page.
-    expect(within(first(rows)).getByRole('link')).toHaveAttribute(
-      'href',
-      expect.stringContaining('/sr/tim/'),
-    )
-  })
-
-  it('narrows the team board to the chosen season like every other board', async () => {
-    const user = setupUser()
-    renderAt('/sr/top-liste?sezona=2019')
-
-    await screen.findByRole('table', { name: 'Najbolji tim' })
-    const before = board('Najbolji tim')
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => row.textContent)
-
-    await user.selectOptions(screen.getByLabelText('Sezona'), '2017')
-
-    /* 2017 has two teams with anybody in them, against three in 2019. The year
-       was 2012 until the roster was scoped to the season being shown: nobody was
-       in a team that early, so the board emptied and the test read a table that
-       was no longer there. */
-    const after = board('Najbolji tim').getAllByRole('row').slice(1)
-    expect(after).toHaveLength(2)
-    expect(after.map((row) => row.textContent)).not.toEqual(before)
+    expect(progress.queryAllByRole('listitem')).toHaveLength(0)
   })
 
   it('leads from every name to the profile behind it', async () => {
@@ -359,18 +428,9 @@ describe('TopBoards', () => {
         .slice(1)
         .map((row) => row.textContent),
     ).not.toEqual(before)
-    // The one filter reaches the boards further down the page too.
+    // The one filter reaches the charts and the boards further down the page.
     expect(board('Najduže na stazi').getAllByRole('row').length).toBeGreaterThan(1)
-  })
-
-  it('says so on a board that the season leaves empty', async () => {
-    // 2012 has two results in it, and neither of them is a marathon.
-    renderAt('/sr/top-liste?sezona=2012')
-
-    expect(
-      await screen.findByRole('heading', { level: 2, name: 'Najviše maratona' }),
-    ).toBeVisible()
-    expect(board('Najviše maratona').getByText('U ovoj sezoni nema nijednog rezultata.')).toBeVisible()
+    expect(board('Najviše kraćih trka').getAllByRole('listitem').length).toBeGreaterThan(0)
   })
 })
 
@@ -740,35 +800,10 @@ describe('EventDetail', () => {
   })
 })
 
-describe('Pricing', () => {
-  it('shows the price list, in both currencies, with the period that carries no ranking', async () => {
-    renderAt('/sr/clanarina')
-
-    expect(await screen.findByRole('heading', { level: 1, name: 'Članarina' })).toBeVisible()
-    expect(screen.getByText('1. do 5. oktobra')).toBeInTheDocument()
-    // The fourth period ends on 30 September, because on 1 October the next
-    // season goes on sale (owner, 30.07.2026).
-    expect(screen.getByText('1. januara do 30. septembra')).toBeInTheDocument()
-    expect(screen.getByText(/35 EUR/)).toBeInTheDocument()
-    expect(screen.getAllByText(/40 EUR/)).toHaveLength(2)
-    expect(screen.getByText('6.000 RSD')).toBeInTheDocument()
-    expect(screen.getByText('(bez prava na rangiranje)')).toBeInTheDocument()
-    /* The period of looking around, 15 to 30 September 2026, is not a price and
-       has no row; it is explained underneath the table. The fourth row does end
-       in September, which is a different September: from 1 October the next
-       season goes on sale (owner, 30.07.2026). */
-    expect(
-      within(screen.getByRole('table')).queryByText(/15\. do 30\. septembra/),
-    ).not.toBeInTheDocument()
-    expect(screen.getByText(/Od 15\. do 30\. septembra/)).toBeVisible()
-  })
-
-  it('states that the fee is not refunded', async () => {
-    renderAt('/sr/clanarina')
-
-    expect(await screen.findByText(/Članarina se ne vraća/)).toBeVisible()
-  })
-})
+/* The page that said what membership costs was deleted on 04.08.2026, with the
+ * story of the league: "O ligi i Članarina se brišu" (owner). What is charged is
+ * on the screen of a member's own membership and in the terms of use, and both
+ * are held to `pricing.ts` in their own files. */
 
 describe('Teams', () => {
   /** The first table on the screen is the standing; the drawers open inside it. */
@@ -861,7 +896,7 @@ describe('Leagues', () => {
   it('lists what runs alongside the league, and never the league itself', async () => {
     renderAt('/sr/lige')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Dodatna takmičenja' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
     // Two of them group by gender alone now, so the list is asked for both.
     expect(screen.getAllByText('Grupisanje samo po polu').length).toBeGreaterThan(0)
     // The league the portal exists for is implied, not listed.

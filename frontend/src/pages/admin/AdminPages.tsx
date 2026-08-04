@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
+import { withoutOwnAddress } from '../../data/pages'
 import type { StaticPage } from '../../data/types'
 import { usePages } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
@@ -42,14 +43,11 @@ function pageRows(pages: Record<string, StaticPage>): PageRow[] {
   })
 }
 
-/* The pages that other pages take in, which are the ones with no address of
- * their own: the address of the president is written once and drawn inside the
- * front page and inside "O ligi" (PDL P28a). Its row is here, because this is
- * where it is maintained, but a link to /rec-predsednika would lead to "Ove
- * strane nema". */
-function takenIn(pages: Record<string, StaticPage>): Set<string> {
-  return new Set(Object.values(pages).flatMap((page) => page.includes ?? []))
-}
+/* The pages with no address of their own: the address of the president is
+ * written once and drawn inside the front page (PDL P28a). Its row is here,
+ * because this is where it is maintained, but a link to /rec-predsednika would
+ * lead nowhere. Asked of the data layer, which is where both ways of being
+ * drawn inside something else are named (src/data/pages.ts). */
 
 export function AdminPages() {
   const { locale, t } = useI18n()
@@ -67,7 +65,7 @@ export function AdminPages() {
       <Resource state={state}>
         {(pages) => {
           const rows = recordsOf(PAGES, pageRows(pages), overlay)
-          const inside = takenIn(pages)
+          const inside = withoutOwnAddress(pages)
 
           if (editing !== null) {
             return (
