@@ -174,7 +174,7 @@ describe('a column hidden on a telephone', () => {
 })
 
 /**
- * The nine declarations that answer a request in as many words.
+ * The declarations that answer a request in as many words.
  *
  * Six notes came in on 04.08.2026 about how these screens are laid out, and the
  * answer to most of them is one line of a stylesheet. jsdom lays nothing out, so
@@ -270,6 +270,22 @@ describe('what the owner asked for on 04.08.2026', () => {
       expect(bodyOf(read(file), rule)).toMatch(holds)
     })
   }
+
+  it('keeps the reserve on a telephone in the padding of the cells', () => {
+    /* Both selectors and inside the query, for the two reasons the two guards
+       above this one were written for. It was deleted once as inert, on the
+       reading that the table fits at 360px without it, which it does: what it
+       actually holds is the room behind that, 275,4px asked of a 295px card
+       rather than 291,4px, and sixty-two pixels of height that would otherwise
+       go into wrapping. */
+    const css = read('src/pages/TopBoards.css')
+    const at = css.indexOf('@media (max-width: 699.98px)')
+
+    expect(at, 'there is no telephone query').toBeGreaterThan(-1)
+    expect(css.slice(at, css.indexOf('\n}', at))).toMatch(
+      /\.boards \.table th,\s*\.boards \.table td \{\s*padding-inline: var\(--space-6\)/,
+    )
+  })
 
   it('starts the table itself off that line, not only the sentence standing in for it', () => {
     /* Both selectors of one rule, and the rule is found by the last of them, so

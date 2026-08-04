@@ -46,9 +46,10 @@ function lastNumberIn(row: HTMLElement): number {
  *
  * Kept under the points rather than in the order of the board, because the order
  * is the thing the test beside this one is for. All of them under the same
- * points, not the last one read: 2019 alone has seventy-nine figures that two
- * results share, and a map that keeps one of each would fail on a correct board
- * the day two of them meet in the same ten.
+ * points, not the last one read: in 2019 alone eighty-six figures are shared by
+ * two results or more, seventy-nine of them by results that differ in the very
+ * columns this reads back, and a map keeping one of each would fail on a correct
+ * board the day two of them meet in the same ten.
  */
 async function racesOf(season: number, locale = 'sr'): Promise<Map<string, string[][]>> {
   const results = await loadResource<Result[]>('results')
@@ -487,14 +488,19 @@ describe('TopBoards', () => {
       const cells = within(row).getAllByRole('cell')
 
       expect(cells).toHaveLength(8)
-      expect(record.get(must(last(cells).textContent, 'the points of the row'))).toContainEqual(
+      const points = must(last(cells).textContent, 'the points of the row')
+
+      /* Through `must`, so a row whose points match no result in the season says
+         so: left to itself the lookup arrives as undefined and the failure reads
+         "undefined is not iterable", which names neither the row nor the season. */
+      expect(must(record.get(points), `the races worth ${points} points`)).toContainEqual(
         cells.map((cell) => cell.textContent).slice(2, 7),
       )
     }
   })
 
   it('keeps four columns on a telephone, the way the standing does', async () => {
-    /* Eight columns in 360 pixels is 211 pixels of sideways scroll inside the
+    /* Eight columns in 360 pixels is 210 pixels of sideways scroll inside the
        card, which is the thing PDL P12 forbids in as many words: what a phone
        keeps is the place, the name, one column of its own and the measure. The
        columns are marked rather than dropped, so the head and the body cannot
