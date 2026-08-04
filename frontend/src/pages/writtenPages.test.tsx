@@ -576,7 +576,7 @@ describe('what the written pages say the fee buys', () => {
       /Dok vam članstvo ne bude aktivirano niste vidljivi/,
     )
     expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
-      /Počasnog člana aktiviramo bez ta dva koraka/,
+      /Počasnog člana aktiviramo bez koraka 4, odlukom lige; članski broj i sva prava dobija/,
     )
   })
 
