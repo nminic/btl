@@ -148,8 +148,8 @@ describe('membership', () => {
 
       expect(costs).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
       expect(costs).toHaveTextContent('nije članarina')
-      expect(costs).toHaveTextContent('Uplata u dinarima je nema')
-      expect(costs).toHaveTextContent('Kursna razlika i naknada tvoje banke')
+      expect(costs).toHaveTextContent('Uplata u dinarima nema ni taksu ni kursnu razliku')
+      expect(costs).toHaveTextContent('kursna razlika i naknada tvoje banke ostaju na tebi')
       cleanup()
     }
   })

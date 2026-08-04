@@ -69,7 +69,10 @@ export function Pricing() {
                 so it stands apart from the four: it buys nothing, and a member
                 paying in dinars does not pay it. */}
             <tr className="pricing__fee">
-              <td>{t('pricing.feeRow')}</td>
+              {/* A row heading, not a period: read down the first column this
+                  row is not one of the four bands, and a screen reader
+                  announcing it under "Period uplate" would say it is. */}
+              <th scope="row">{t('pricing.feeRow')}</th>
               <td>{PROCESSING_FEE_EUR} EUR</td>
               <td>{t('pricing.feeNone')}</td>
             </tr>

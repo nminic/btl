@@ -350,7 +350,7 @@
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
     "calcResult": "BTL poeni:",
-    "processingFee": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
+    "processingFee": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
   },
   "data": {
     "loading": "Učitavanje",
@@ -889,7 +889,7 @@
     "purposeLabel": "Svrha uplate",
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
     "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
-    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Uplata u dinarima je nema. Kursna razlika i naknada tvoje banke, ako ih ima, ostaju na tebi."
+    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1064,7 +1064,7 @@
     "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
     "period": "Period u godini",
     "everyPayment": "Svaka uplata",
-    "processingFee": "Uplata iz inostranstva na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik."
+    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik."
   },
   "badges": {
     "title": "Značke",
