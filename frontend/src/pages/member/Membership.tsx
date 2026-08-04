@@ -101,10 +101,14 @@ export function Membership() {
               <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>
               {/* The processing fee, beside the price rather than inside it
                   (PDL P8, 03.08.2026). A member paying from abroad pays it on
-                  top and buys nothing extra with it. */}
-              <p className="member__note">
-                {t('membership.processingFee', { fee: PROCESSING_FEE_EUR })}
-              </p>
+                  top and buys nothing extra with it, and a member in Serbia
+                  never pays it at all, so it is not said to them: this screen
+                  already knows which of the two it is talking to. */}
+              {me.country !== 'RS' && (
+                <p className="member__note">
+                  {t('membership.processingFee', { fee: PROCESSING_FEE_EUR })}
+                </p>
+              )}
             </section>
 
             <section className="member__panel" aria-labelledby="membership-renewal">

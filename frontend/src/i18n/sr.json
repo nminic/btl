@@ -350,7 +350,7 @@
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
     "calcResult": "BTL poeni:",
-    "processingFee": "Iz inostranstva i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
+    "processingFee": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
   },
   "data": {
     "loading": "Učitavanje",
@@ -421,7 +421,7 @@
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
-    "healthStatementHint": "Za sve na trci odgovoran je njen organizator, ne liga.",
+    "healthStatementHint": "Za sve na trci odgovoran je onaj ko je organizuje.",
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",

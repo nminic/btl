@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
-import { PROCESSING_FEE_EUR } from '../data/pricing'
+import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
@@ -249,7 +249,13 @@ describe('the price list', () => {
 
     expect(note).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
     expect(note).toHaveTextContent('nije članarina')
-    expect(within(table).queryByText(String(PROCESSING_FEE_EUR))).toBeNull()
+    /* And no row of the list has the fee inside it: a cell of exactly "3" is a
+       cell no price list would ever have, so looking for one proved nothing.
+       What could go wrong is a price with the fee added, and that is what is
+       looked for. */
+    for (const price of PRICES) {
+      expect(within(table).queryByText(String(price.eur + PROCESSING_FEE_EUR))).toBeNull()
+    }
   })
 
   it('stands beside the sections rather than inside the entities', async () => {

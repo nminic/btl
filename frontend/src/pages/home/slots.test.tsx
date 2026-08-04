@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { PROCESSING_FEE_EUR } from '../../data/pricing'
+import { PRICES, PROCESSING_FEE_EUR } from '../../data/pricing'
 import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { first } from '../../test/at'
 import { CalendarExtract } from './CalendarExtract'
 import { EnrolmentSlot } from './EnrolmentSlot'
 import { seasonLabelKey } from './content'
@@ -43,9 +44,13 @@ describe('EnrolmentSlot', () => {
 
     expect(fee).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
     expect(fee).toHaveTextContent('nije članarina')
-    /* And the price itself is still membership alone: 35, never 38. */
-    expect(screen.getByText('35 EUR')).toBeVisible()
-    expect(screen.queryByText('38 EUR')).toBeNull()
+    /* And the price itself is still membership alone: the early price, never
+       the early price with the fee folded into it. Worked out rather than typed,
+       so it still means something if either number changes. */
+    const early = first(PRICES)
+
+    expect(screen.getByText(`${early.eur} EUR`)).toBeVisible()
+    expect(screen.queryByText(`${early.eur + PROCESSING_FEE_EUR} EUR`)).toBeNull()
   })
 
   it('names the season on sale, which turns over on the first of October', () => {

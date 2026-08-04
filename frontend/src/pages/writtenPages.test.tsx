@@ -169,7 +169,7 @@ describe('the fee schedule in the terms', () => {
     expect(reminders).toHaveTextContent(
       `poslednji dan po ${regular.eur} EUR, od sutra je ${late.eur} EUR`,
     )
-    expect(reminders).toHaveTextContent('poslednji dan sa pravom na rangiranje')
+    expect(reminders).toHaveTextContent('poslednjeg dana sa pravom na rangiranje')
   })
 })
 
@@ -289,6 +289,7 @@ describe('the rulebook', () => {
       [14, /Cena i rokovi/],
       [17, /Šta članstvo donosi/],
       [18, /Trke koje ulaze u bodovanje/],
+      [41, /Ko prijavljuje i šta/],
       [42, /^Rok$/],
       [55, /Top 10 liste/],
       [70, /Posebna priznanja/],
@@ -525,7 +526,14 @@ describe('what the written pages say the fee buys', () => {
        anything, and it would not have caught the description P32 names as the
        wrong one, a subscription to a website. */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /registrovao na portalu, izmirio članarinu i kome je liga aktivirala članstvo/,
+      /registrovao na portalu i kome je liga aktivirala članstvo/,
+    )
+    /* And activation is what carries it, since one member in the league has
+       never paid anything: an honorary one. Written as three conditions with
+       the fee among them, the definition gave rights in one article and took
+       them back in another (owner, 03.08.2026). */
+    expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
+      /aktivira po evidentiranoj uplati članarine ili po odluci lige o počasnom članstvu/,
     )
   })
 
