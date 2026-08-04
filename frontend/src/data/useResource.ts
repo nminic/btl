@@ -37,8 +37,8 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
    * subscribed to.
    *
    * Which means this is written for a name that does not change, and every
-   * caller passes a literal one (the ten wrappers at the foot of this file, and
-   * `usePending`). Handed a name that changes, the first render under the new one
+   * caller passes a literal one: the nine wrappers at the foot of this file, and
+   * `usePending`, which is the tenth resource. Handed a name that changes, the first render under the new one
    * would draw the old resource's data as though it were ready, and only the
    * effect would put it right. Making that correct is not a line in the effect,
    * which runs after that render: it is the state being adjusted during the
