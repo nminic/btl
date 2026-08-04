@@ -266,8 +266,13 @@
   margin: auto;
   inline-size: fit-content;
   min-inline-size: 1.7rem;
-  /* Never wider than the bar it stands in, or two neighbours touch: at 360px ten
-     bars are 58px each, and a five figure count would ask for 64. */
+  /* The box never wider than the bar it stands in, or two neighbours touch. The
+     tightest case is the board of best progress, the one chart whose numbers run
+     long and the one whose bars are widest: five of them at 360px, 58px each.
+     What this buys is the twelve pixels of room on the sides of the box, which
+     go first; past that the digits stand out of the box rather than the box out
+     of the bar, which is the lesser of the two and is well out of reach of any
+     difference in points the league has recorded. */
   max-inline-size: 100%;
   padding-inline: var(--space-6);
   block-size: 1.7rem;
@@ -287,7 +292,6 @@
    would be a third thing for a reader to learn. */
 .colchart__count--quiet {
   min-inline-size: 1.45rem;
-  border-radius: var(--radius-round);
   block-size: 1.45rem;
   font-size: 0.72rem;
 }

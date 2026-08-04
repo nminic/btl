@@ -72,16 +72,15 @@
   font-size: 0.85rem;
 }
 
-/* The name wraps, and it is the only thing that does. The shared table keeps
-   every cell on one line, which is right for a figure and wrong for a name: with
-   four columns left on a telephone, one name of thirty characters was still
-   pushing the table eighteen pixels past its own card.
+/* The name breaks mid-word, and it is the only thing that does. With four
+   columns left on a telephone, one name of thirty characters was still pushing
+   the table eighteen pixels past its own card, and a name of one long word does
+   not break any other way.
 
-   Mid-word, because a name of one long word does not break any other way. On the
-   cell alone: the same class is on the heading over it, and a heading that breaks
-   mid-word reads "Doga" over "đaj". */
+   On the cell alone. The heading over it carries the same class, and the shared
+   table keeps a heading on one line (`.table th`); a rule written for both won
+   that fight on specificity and the column read "Doga" over "đaj". */
 .boards .table td.boards__detail {
-  white-space: normal;
   overflow-wrap: anywhere;
 }
 

@@ -147,6 +147,32 @@ describe('the sentence above a table of places', () => {
   })
 })
 
+/* The column a telephone does not have room for.
+ *
+ * Every table on the portal drops columns below 700px, and what a phone keeps is
+ * the place, the name, one column of its own and the measure (PDL P12). All of
+ * that rests on one declaration, and nothing was holding it: turned into
+ * `opacity: 1` the whole suite stayed green while every such table showed every
+ * column on a telephone again, sideways scroll and all.
+ */
+describe('a column hidden on a telephone', () => {
+  it('is taken out of the page, and only on a telephone', () => {
+    const css = read('src/styles/table.css')
+    const at = css.indexOf('@media (max-width: 699.98px)')
+
+    expect(at, 'there is no telephone query').toBeGreaterThan(-1)
+
+    /* The whole of that query and nothing after it, so the rule has to be inside
+       it. Proximity is not containment: a rule sitting under a query rather than
+       in it hides those columns at every width, desktop included, and reads the
+       same from a few characters away. */
+    const query = css.slice(at, css.indexOf('\n}', at))
+
+    expect(query).toContain('.table__hide-phone')
+    expect(bodyOf(query, '.table__hide-phone')).toMatch(/display:\s*none/)
+  })
+})
+
 /* Two more places where gold says something, and one where a figure has to sit
  * on the line of the words beside it. All three are invisible to a screen test,
  * because jsdom applies no stylesheet and works out no colour.
