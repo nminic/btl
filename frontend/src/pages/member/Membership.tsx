@@ -99,18 +99,6 @@ export function Membership() {
                   : t('membership.notYetSold')}
               </p>
               <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>
-              {/* The processing fee, beside the price rather than inside it
-                  (PDL P8, 03.08.2026). A member paying from abroad pays it on
-                  top and buys nothing extra with it, and a member in Serbia
-                  never pays it at all, so it is not said to them: this screen
-                  already knows which of the two it is talking to. Nor does an
-                  honorary member abroad, who pays nothing whatever and was
-                  being told what a payment they will never make would cost. */}
-              {me.country !== 'RS' && me.membershipBasis !== 'honorary' && (
-                <p className="member__note">
-                  {t('membership.processingFee', { fee: PROCESSING_FEE_EUR })}
-                </p>
-              )}
             </section>
 
             <section className="member__panel" aria-labelledby="membership-renewal">
@@ -253,7 +241,16 @@ export function Membership() {
                     </div>
                   )}
 
-                  <p className="member__note">{t('membership.feesOnPayer')}</p>
+                  {/* What the payment carries besides the fee, and it differs
+                      by where the money comes from (PDL P8, 03.08.2026). A
+                      dinar payment has neither: no intermediary to pay and no
+                      currency to convert. Said to everybody, both sentences
+                      described somebody else's payment. */}
+                  <p className="member__note">
+                    {me.country === 'RS'
+                      ? t('membership.costsDinar')
+                      : t('membership.costsAbroad', { fee: PROCESSING_FEE_EUR })}
+                  </p>
                 </>
               ) : (
                 <p className="member__note">{t('membership.renewalShut')}</p>

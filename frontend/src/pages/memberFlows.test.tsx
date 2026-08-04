@@ -136,37 +136,32 @@ describe('membership', () => {
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
-  it('tells a member paying from abroad that the fee on top is not membership', async () => {
-    /* Said on the screen where the member is about to pay, and not only on the
-       price list (PDL P8, 03.08.2026). It is the last place the number can
-       still surprise anybody.
-
-       000010 is the one member in the data who is both abroad and paying:
-       every other foreign member is honorary and pays nothing at all. */
-    renderFor('000010')
+  it('tells a member paying from abroad what the payment carries besides the fee', async () => {
+    /* Said where the payment is made and not only on the price list (PDL P8,
+       03.08.2026): the processing fee, and the two costs that stay with the
+       payer because the association neither sees nor sets them. */
+    renderFor('000009')
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
-    const fee = screen.getByText(/taksa za obradu plaćanja/)
+    const costs = screen.getByText(/taksa za obradu plaćanja/)
 
-    expect(fee).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
-    expect(fee).toHaveTextContent('nije deo članarine')
+    expect(costs).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+    expect(costs).toHaveTextContent('nije članarina')
+    expect(costs).toHaveTextContent('Kursna razlika i naknada tvoje banke')
   })
 
-  it('says nothing of that fee to anybody who will not be paying it', async () => {
-    /* Two of them, and each rules out one half of the condition. The dinar side
-       has no intermediary and so no fee (PDL P8): 000031 pays, from Serbia. And
-       an honorary member pays nothing at all, wherever they live: 000009 is
-       abroad and honorary, and was being quoted the cost of a payment they will
-       never make. */
+  it('tells a member paying in dinars that there is nothing on top', async () => {
+    /* The dinar side has no intermediary and no conversion, so it has neither
+       the fee nor the two costs beside it. Both sentences used to be shown to
+       everybody, and to a member in Belgrade they described somebody else's
+       payment. */
     renderFor('000031')
+
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
+    expect(screen.getByText(/nema nikakve dodatne troškove/)).toBeVisible()
     expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
-
-    renderFor('000009')
-    await screen.findAllByRole('heading', { name: 'Moja članarina' })
-
-    expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
+    expect(screen.queryByText(/Kursna razlika/)).toBeNull()
   })
 
   it('has a price in any October of any year, because the list repeats', async () => {

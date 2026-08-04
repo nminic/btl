@@ -578,7 +578,7 @@ describe('what the written pages say the fee buys', () => {
     const terms = sectionOf('uslovi-koriscenja', /taksa za obradu plaćanja/)
 
     expect(terms).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
-    expect(sectionOf('uslovi-koriscenja', /Na račun udruženja|prema udruženju/)).toMatch(
+    expect(sectionOf('uslovi-koriscenja', /prema udruženju/)).toMatch(
       new RegExp(`taksu za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`),
     )
   })

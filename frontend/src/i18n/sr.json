@@ -859,7 +859,6 @@
     "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
     "paypal": "PayPal",
     "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
-    "feesOnPayer": "Kursna razlika i naknada tvoje banke padaju na tebe. Provizija platnog posrednika je pokrivena taksom za obradu plaćanja.",
     "referral": "Program preporuke",
     "referralNote": "Svako ko se učlani preko tvog linka donosi ti {eur} EUR na balans, u trenutku kad mu se članarina aktivira.",
     "balance": "na balansu",
@@ -888,7 +887,8 @@
     "reference": "Poziv na broj",
     "purposeLabel": "Svrha uplate",
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
-    "processingFee": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije deo članarine."
+    "costsDinar": "Uplata u dinarima nema nikakve dodatne troškove: plaćaš tačno iznos iz cenovnika.",
+    "costsAbroad": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Kursna razlika i naknada tvoje banke padaju na tebe."
   },
   "review": {
     "title": "Red za proveru rezultata",
