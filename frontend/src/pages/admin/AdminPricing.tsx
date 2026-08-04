@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { JUNIOR, PRICES, type PriceRow } from '../../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR, type PriceRow } from '../../data/pricing'
 import { useI18n } from '../../i18n/useI18n'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
@@ -90,6 +90,13 @@ export function AdminPricing() {
           </tbody>
         </table>
       </div>
+
+      {/* What arrives on the statement is the fee plus the fee for processing
+          it, where the money comes from abroad (PDL P8, 03.08.2026). Whoever
+          records a payment has to be able to tell three euro of processing from
+          three euro of overpayment, and the table above quotes membership
+          alone. */}
+      <p className="member__note">{t('admin.processingFee', { fee: PROCESSING_FEE_EUR })}</p>
     </div>
   )
 }

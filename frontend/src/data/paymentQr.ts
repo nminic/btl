@@ -18,7 +18,15 @@
  * slip, in the QR code and in the sentence telling somebody what to type into
  * their bank, and three copies of an account number is two too many.
  *
- * The account and the address are the association's own (owner, 31.07.2026). */
+ * The account and the address are the association's own (owner, 31.07.2026).
+ *
+ * The address is the one place on the portal that still states a registered
+ * seat. Nothing else does: the terms and the privacy policy carry a placeholder
+ * until the extract from the register says which of two addresses is current
+ * (PENDING, 04.08.2026). Here it stays, because a payment slip without an
+ * address of the payee is not a payment slip, and a member has to be able to
+ * pay from 1 October. It is the first thing to correct when the extract
+ * arrives, and it is written down as such. */
 export const RECIPIENT_NAME = 'Sportsko udruženje BTL'
 export const RECIPIENT_ADDRESS = 'Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd'
 export const RECIPIENT_ACCOUNT = '105000000000328471'

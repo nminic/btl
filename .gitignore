@@ -7,3 +7,8 @@
 # the repository, so .claude/worktrees/ never covered frontend/.claude/worktrees/,
 # which is the directory the rule was written for.
 **/.claude/worktrees/
+
+# How a machine happens to start the dev server, which is a fact about one
+# machine and not about the portal: the tooling writes it when a preview is
+# opened, and a checked in copy would fight anybody whose ports differ.
+**/.claude/launch.json

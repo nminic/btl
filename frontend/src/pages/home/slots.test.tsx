@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { PRICES, PROCESSING_FEE_EUR } from '../../data/pricing'
 import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { first } from '../../test/at'
 import { CalendarExtract } from './CalendarExtract'
 import { EnrolmentSlot } from './EnrolmentSlot'
 import { seasonLabelKey } from './content'
@@ -29,6 +31,26 @@ describe('EnrolmentSlot', () => {
     expect(screen.getByText('4.200 RSD')).toBeVisible()
     // Five days of the low price left, then forty.
     expect(screen.getByText(/Cena raste na 40 EUR za 5 dana/)).toBeVisible()
+  })
+
+  it('says the fee on a payment from abroad beside the price, not three screens later', () => {
+    /* The owner asked for the three euro everywhere a price is quoted, and for
+       it to read as processing rather than as a dearer membership (PDL P8,
+       03.08.2026). Quoted alone here, the front page promises a number the
+       payment does not ask for. */
+    renderWidget(<EnrolmentSlot today="2026-10-01" />)
+
+    const fee = screen.getByText(/taksa za obradu plaćanja/)
+
+    expect(fee).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+    expect(fee).toHaveTextContent('nije članarina')
+    /* And the price itself is still membership alone: the early price, never
+       the early price with the fee folded into it. Worked out rather than typed,
+       so it still means something if either number changes. */
+    const early = first(PRICES)
+
+    expect(screen.getByText(`${early.eur} EUR`)).toBeVisible()
+    expect(screen.queryByText(`${early.eur + PROCESSING_FEE_EUR} EUR`)).toBeNull()
   })
 
   it('names the season on sale, which turns over on the first of October', () => {

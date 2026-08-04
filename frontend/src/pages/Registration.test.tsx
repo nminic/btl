@@ -142,7 +142,7 @@ describe('Registration once it is open', () => {
       </ClockProvider>,
     )
 
-    const field = screen.getByLabelText(/Fotografija kao dokaz/) as HTMLInputElement
+    const field = screen.getByLabelText(/Slika kao dopuna/) as HTMLInputElement
     const file = new File(['sadržaj'], 'sat.jpg', { type: 'image/jpeg' })
 
     await user.upload(field, file)

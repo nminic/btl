@@ -3,6 +3,7 @@ import { useToday } from '../clock/useClock'
 import {
   JUNIOR,
   PRICES,
+  PROCESSING_FEE_EUR,
   REGISTRATION_OPENS,
   daysBetween,
   priceOn,
@@ -62,6 +63,19 @@ export function Pricing() {
                 <td>{`${row.rsd.toLocaleString('sr-Latn')} RSD`}</td>
               </tr>
             ))}
+            {/* The fee has a row of its own, because the owner asked that it be
+                something anybody can look up rather than something only the
+                member who pays it is told (04.08.2026). It is not a price band,
+                so it stands apart from the four: it buys nothing, and a member
+                paying in dinars does not pay it. */}
+            <tr className="pricing__fee">
+              {/* A row heading, not a period: read down the first column this
+                  row is not one of the four bands, and a screen reader
+                  announcing it under "Period uplate" would say it is. */}
+              <th scope="row">{t('pricing.feeRow')}</th>
+              <td>{PROCESSING_FEE_EUR} EUR</td>
+              <td>{t('pricing.feeNone')}</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -89,6 +103,10 @@ export function Pricing() {
       <div className="pricing__notes">
         <p>{t('pricing.cycle')}</p>
         <p>{t('pricing.rsdNote')}</p>
+        {/* Beside the table rather than inside a price (PDL P8, 03.08.2026):
+            what the intermediary takes is not membership, and a member who pays
+            it has bought exactly what a member paying in dinars bought. */}
+        <p>{t('pricing.feeNote')}</p>
         {/* One September, in 2026, and not a rule of the list. Printed
             for ever it told a reader every autumn that registration was
             shut, which from 2027 it is not. */}

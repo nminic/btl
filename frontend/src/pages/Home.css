@@ -277,6 +277,14 @@
   color: var(--text-muted);
 }
 
+/* The processing fee, under the price: a condition of one way of paying rather
+   than news about the price, so it sits a step below the note beside it. */
+.slot__fee {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 /* Top ten, in the shape the old portal had (owner, 31.07.2026): round faces
    carrying the number of their place, and nothing else. The heading and the
    leader share the first line, the other nine are a three by three block. */

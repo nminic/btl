@@ -32,7 +32,7 @@
     },
     "topBoards": {
       "title": "BTL top 10 liste",
-      "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, parovi i trke po dužini."
+      "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, trkački parovi i trke po dužini."
     },
     "leagues": {
       "title": "BTL dodatna takmičenja",
@@ -349,7 +349,8 @@
     "noRanking": "Profil i rezultati, bez rangiranja.",
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
-    "calcResult": "BTL poeni:"
+    "calcResult": "BTL poeni:",
+    "processingFee": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
   },
   "data": {
     "loading": "Učitavanje",
@@ -420,7 +421,7 @@
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
-    "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga.",
+    "healthStatementHint": "Za sve na trci odgovoran je onaj ko je organizuje.",
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",
@@ -507,7 +508,7 @@
   },
   "topBoards": {
     "title": "Top 10 liste",
-    "intro": "Jedanaest lista iz Člana 56 Pravilnika. Svaka drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
+    "intro": "Jedanaest lista iz Člana 55 Pravilnika. Svaka drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
     "season": "Sezona",
     "byLength": {
       "short": "Najviše kraćih trka",
@@ -516,8 +517,8 @@
       "marathon": "Najviše maratona",
       "ultra": "Najviše ultramaratona"
     },
-    "pairs": "Najbolji parovi",
-    "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
+    "pairs": "Najbolji trkački parovi",
+    "pairsSoon": "Trkački parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
     "progress": "Najbolji napredak",
     "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
     "teams": "Najbolji tim",
@@ -767,7 +768,10 @@
     "previewNote": "Od 15. do 30. septembra portal je otvoren samo za razgledanje: registracija tada nije moguća. Učlanjenje kreće 1. oktobra.",
     "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
     "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra.",
-    "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje."
+    "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje.",
+    "feeNote": "Taksa za obradu plaćanja nije članarina nego trošak obrade uplate kod platnog posrednika, i ne donosi nikakvo dodatno pravo. Plaća se uz uplatu u evrima, dakle iz inostranstva; uplata u dinarima je nema.",
+    "feeRow": "Taksa za obradu plaćanja (uplate u EUR)",
+    "feeNone": "nema"
   },
   "error": {
     "title": "Nešto je puklo",
@@ -817,13 +821,15 @@
     "seconds": "Sekundi",
     "link": "Link ka zvaničnim rezultatima",
     "linkHint": "Obavezno. Bez njega rezultat ne može da se proveri.",
-    "photo": "Fotografija kao dokaz",
+    "photo": "Slika kao dopuna",
     "doneTitle": "Rezultat je poslat",
     "donePoints": "Ova trka ti donosi {points} BTL poena.",
     "doneWaiting": "Moderator je proverava. Kad je potvrdi, ulazi u rang liste i u tvoj profil.",
     "toMine": "Moji rezultati",
     "another": "Unesi još jedan",
-    "photoHint": "Neobavezno, na primer slika sata ili tablice sa vremenom. Briše se sa servera čim rezultat bude proveren."
+    "photoHint": "Neobavezno: snimak sa sata, diploma ili nešto treće. Nije zamena za link. Briše se sa servera čim rezultat bude proveren.",
+    "comment": "Komentar",
+    "commentHint": "Neobavezno. Sve što uz rezultat treba reći: startni broj, ime pod kojim ste u zvaničnim rezultatima, izmenjena staza."
   },
   "status": {
     "pending": "Čeka proveru",
@@ -845,9 +851,8 @@
     "status": "Stanje",
     "active": "Član od {season}. sezone.",
     "honorary": "Počasno članstvo. Za sezonu 2027. ne plaćaš članarinu.",
-    "priceNow": "Danas članarina košta {eur} EUR, odnosno {rsd} RSD.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
-    "junior": "Do 14 godina članarina je {eur} EUR, bez obzira na datum.",
+    "junior": "Do 14 godina članarina je {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum.",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
@@ -855,7 +860,6 @@
     "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
     "paypal": "PayPal",
     "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
-    "feesOnPayer": "Svi troškovi i provizije padaju na uplatioca. Na račun udruženja mora leći pun iznos članarine.",
     "referral": "Program preporuke",
     "referralNote": "Svako ko se učlani preko tvog linka donosi ti {eur} EUR na balans, u trenutku kad mu se članarina aktivira.",
     "balance": "na balansu",
@@ -883,7 +887,9 @@
     "account": "Račun",
     "reference": "Poziv na broj",
     "purposeLabel": "Svrha uplate",
-    "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je."
+    "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
+    "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
+    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1057,7 +1063,8 @@
     },
     "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
     "period": "Period u godini",
-    "everyPayment": "Svaka uplata"
+    "everyPayment": "Svaka uplata",
+    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik."
   },
   "badges": {
     "title": "Značke",
@@ -1273,8 +1280,8 @@
     "raceHint": "Trke sa ovog događaja. Dužina, uspon i spust se uzimaju sa izabrane trke.",
     "comment": "Komentar",
     "commentHint": "Neobavezno. Ovde ide veza ka zvaničnim rezultatima, startni broj, ili bilo šta što moderatoru pomaže da proveri.",
-    "photo": "Slika kao dokaz",
-    "photoHint": "Neobavezno. Slika sata, potvrde ili zvanične liste.",
+    "photo": "Slika kao dopuna",
+    "photoHint": "Neobavezno: snimak sa sata, diploma ili nešto treće. Briše se sa servera čim rezultat bude proveren.",
     "note": "Prijavljuješ rezultat sa događaja „{event}\". Ostalo portal već zna sa same trke.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
     "backToEvent": "Nazad na događaj"

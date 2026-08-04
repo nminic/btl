@@ -4,6 +4,7 @@ import {
   nextPrice,
   nextPriceStart,
   priceOn,
+  PROCESSING_FEE_EUR,
   REGISTRATION_OPENS,
   registrationOpen,
   seasonOnOffer,
@@ -12,7 +13,7 @@ import { useI18n } from '../../i18n/useI18n'
 
 /* The seasonal slot: what membership costs today and how long that lasts.
  * The price thresholds are the real lever and they were being used only in
- * three reminder emails; here they work every day of the year.
+ * four reminder emails; here they work every day of the year.
  *
  * The season named is the one on offer, which turns over on 1 October (owner,
  * 30.07.2026). It was a constant, so in the middle of 2027 the slot went on
@@ -50,6 +51,11 @@ export function EnrolmentSlot({ today }: { today: string }) {
         <strong>{price.eur} EUR</strong>
         <span className="slot__rsd">{price.rsd.toLocaleString('sr-Latn')} RSD</span>
       </p>
+      {/* The processing fee said where the price is said, in the fewest words
+          that are still true (PDL P8, 03.08.2026): quoting the euro price alone
+          on the front page and the fee three screens later is how somebody
+          arrives at the payment expecting one number and finds another. */}
+      <p className="slot__fee">{t('home.processingFee', { fee: PROCESSING_FEE_EUR })}</p>
       {/* Only where the next price is higher, which is the only thing worth
           hurrying anybody for. Through the nine months the season is running the
           next price is the early one and is lower, so the slot was announcing a

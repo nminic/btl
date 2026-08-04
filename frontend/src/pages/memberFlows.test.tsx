@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
+import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
@@ -135,6 +136,24 @@ describe('membership', () => {
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
+  it('says what a payment carries besides the fee, to everybody', async () => {
+    /* The owner asked for the fee to be something anybody can look up, not
+       something only whoever pays it is told (04.08.2026). What differs is who
+       pays it, and one sentence says both halves: the euro payment carries it,
+       the dinar payment does not. */
+    for (const member of ['000009', '000031']) {
+      renderFor(member)
+
+      const costs = await screen.findByText(/taksa za obradu plaćanja/)
+
+      expect(costs).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+      expect(costs).toHaveTextContent('nije članarina')
+      expect(costs).toHaveTextContent('Uplata u dinarima nema ni taksu ni kursnu razliku')
+      expect(costs).toHaveTextContent('kursna razlika i naknada tvoje banke ostaju na tebi')
+      cleanup()
+    }
+  })
+
   it('has a price in any October of any year, because the list repeats', async () => {
     /* It used to run out at the end of 2027, and this screen carried a line
        saying membership was not on sale yet for the day it did. The four
@@ -142,7 +161,7 @@ describe('membership', () => {
     renderMembershipOn('2031-10-01')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
-    expect(screen.getAllByText(/35 EUR/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/35 EUR, a iz Srbije 4\.200 RSD/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Članarina se još ne prodaje/)).not.toBeInTheDocument()
   })
 
@@ -153,6 +172,23 @@ describe('membership', () => {
     expect(
       screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
+    /* And nothing about what a payment costs, because on that day nothing is on
+       sale: the panel says so a line above. What a payment carries belongs
+       beside a price, and there is no price yet. */
+    expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
+  })
+
+  it('says what a payment carries outside the renewal window too, while there is a price', async () => {
+    /* For the nine months a season is running the price is quoted and the
+       renewal window is shut. Written inside the renewal, the sentence was
+       missing exactly then, and a member abroad read a number three euro short
+       of what they would pay. */
+    renderMembershipOn('2027-06-01', '000010')
+
+    await screen.findByRole('heading', { name: 'Moja članarina' })
+
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
   it('carries the referral link and the balance', async () => {
@@ -426,12 +462,22 @@ describe('the transfer window and renewal', () => {
 })
 
 describe('screens that depend on the date', () => {
-  it('shows the price in force once membership is on sale', () => {
-    renderMembershipOn('2026-10-02')
+  it('shows the price in force once membership is on sale, in both currencies', async () => {
+    /* Side by side and with no choice between them (PDL P8, owner 31.07.2026).
+       The dinar amount is written the way every amount on the portal is
+       written, with the thousands separated: it was the one number on the
+       screen printed as a bare 4200. */
+    renderMembershipOn('2026-10-02', '000031')
 
-    return screen.findByText(/Danas članarina košta 35 EUR/).then((found) => {
-      expect(found).toBeVisible()
-    })
+    expect(await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.')).toBeVisible()
+    /* And the junior price the same way. It was quoted in euro alone, one line
+       under a price in both, which is the rule applied on one row and not on the
+       one beside it (PDL P8: the price follows from the year of birth). */
+    expect(
+      screen.getByText(
+        `Do 14 godina članarina je ${JUNIOR.eur} EUR, a iz Srbije ${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD, bez obzira na datum.`,
+      ),
+    ).toBeVisible()
   })
 
   it('moves the whole portal to another day from the switch in the header', async () => {

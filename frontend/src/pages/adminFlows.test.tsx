@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
+import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
@@ -234,6 +235,27 @@ describe('the price list', () => {
     expect(screen.queryByRole('button', { name: /^Nov/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
+  })
+
+  it('says what a payment from abroad carries on top of the price', async () => {
+    /* Whoever records a payment sees three euro more on the statement than the
+       table quotes, and has to be able to tell processing from overpayment
+       (PDL P8, 03.08.2026). The fee is not a row of the price list, because it
+       is not membership. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Cenovnik' })
+    const note = screen.getByText(/taksu za obradu plaćanja/)
+
+    expect(note).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+    expect(note).toHaveTextContent('nije članarina')
+    /* And no row of the list has the fee inside it: a cell of exactly "3" is a
+       cell no price list would ever have, so looking for one proved nothing.
+       What could go wrong is a price with the fee added, and that is what is
+       looked for. */
+    for (const price of PRICES) {
+      expect(within(table).queryByText(String(price.eur + PROCESSING_FEE_EUR))).toBeNull()
+    }
   })
 
   it('stands beside the sections rather than inside the entities', async () => {

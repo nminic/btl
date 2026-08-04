@@ -16,11 +16,13 @@ import {
 } from '../../data/paymentQr'
 import {
   JUNIOR,
+  PROCESSING_FEE_EUR,
   priceOn,
   registrationOpen,
   seasonBeingRenewed,
 } from '../../data/pricing'
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
+import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
@@ -92,12 +94,39 @@ export function Membership() {
                   ? t('membership.honorary')
                   : t('membership.active', { season: me.firstSeason })}
               </p>
+              {/* Both amounts, side by side, and no choice between them (PDL
+                  P8, owner 31.07.2026): the price follows from where a member
+                  lives, the portal works it out, and what the older rule
+                  forbade was reading one as a conversion of the other. The ban
+                  on showing them together was replaced by a ban on picking. */}
               <p className="member__note">
                 {registrationOpen(today)
-                  ? t('membership.priceNow', { eur: price.eur, rsd: price.rsd })
+                  ? t('membership.priceNow', {
+                      eur: price.eur,
+                      rsd: formatNumber(price.rsd, locale),
+                    })
                   : t('membership.notYetSold')}
               </p>
-              <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>
+              {/* What a payment carries besides the fee, said to everybody and
+                  not only to whoever pays it (owner, 04.08.2026): the fee is
+                  something a member should be able to look up, the same way
+                  both prices are shown to everybody and only the choice between
+                  them is not offered. What differs is who pays it, and the
+                  sentence says that.
+
+                  Beside the price rather than inside the renewal window: for
+                  the nine months a season is running the price is quoted and
+                  the window is shut, and the sentence was missing exactly
+                  then. */}
+              {registrationOpen(today) && (
+                <p className="member__note">{t('membership.costs', { fee: PROCESSING_FEE_EUR })}</p>
+              )}
+              <p className="member__note">
+                {t('membership.junior', {
+                  eur: JUNIOR.eur,
+                  rsd: formatNumber(JUNIOR.rsd, locale),
+                })}
+              </p>
             </section>
 
             <section className="member__panel" aria-labelledby="membership-renewal">
@@ -240,7 +269,6 @@ export function Membership() {
                     </div>
                   )}
 
-                  <p className="member__note">{t('membership.feesOnPayer')}</p>
                 </>
               ) : (
                 <p className="member__note">{t('membership.renewalShut')}</p>

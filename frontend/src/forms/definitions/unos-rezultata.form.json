@@ -68,18 +68,25 @@
       "max": 59
     },
     {
-      "name": "photo",
-      "type": "photo",
-      "labelKey": "newResult.photo",
-      "hintKey": "newResult.photoHint"
-    },
-    {
       "name": "link",
       "type": "text",
       "labelKey": "newResult.link",
       "hintKey": "newResult.linkHint",
       "required": true,
       "pattern": "^https?://.+"
+    },
+    {
+      "name": "comment",
+      "type": "textarea",
+      "labelKey": "newResult.comment",
+      "hintKey": "newResult.commentHint",
+      "maxLength": 600
+    },
+    {
+      "name": "photo",
+      "type": "photo",
+      "labelKey": "newResult.photo",
+      "hintKey": "newResult.photoHint"
     }
   ]
 }

@@ -153,7 +153,7 @@ describe('TopBoards', () => {
     'Najbolje pojedinačne trke',
     'Najbolji napredak',
     'Najbolji tim',
-    'Najbolji parovi',
+    'Najbolji trkački parovi',
     'Najviše ultramaratona',
     'Najviše maratona',
     'Najviše dužih trka',
@@ -226,8 +226,8 @@ describe('TopBoards', () => {
   it('stands the pairs board empty rather than inventing one', async () => {
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('heading', { level: 2, name: 'Najbolji parovi' })
-    const pairs = board('Najbolji parovi')
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
+    const pairs = board('Najbolji trkački parovi')
 
     expect(pairs.getByText(/stiže zajedno sa bazom/)).toBeVisible()
     expect(pairs.queryByRole('table')).not.toBeInTheDocument()
