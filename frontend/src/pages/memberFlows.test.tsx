@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
-import { PROCESSING_FEE_EUR } from '../data/pricing'
+import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
@@ -484,6 +484,14 @@ describe('screens that depend on the date', () => {
     renderMembershipOn('2026-10-02', '000031')
 
     expect(await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.')).toBeVisible()
+    /* And the junior price the same way. It was quoted in euro alone, one line
+       under a price in both, which is the rule applied on one row and not on the
+       one beside it (PDL P8: the price follows from the year of birth). */
+    expect(
+      screen.getByText(
+        `Do 14 godina članarina je ${JUNIOR.eur} EUR, a iz Srbije ${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD, bez obzira na datum.`,
+      ),
+    ).toBeVisible()
   })
 
   it('moves the whole portal to another day from the switch in the header', async () => {
