@@ -384,6 +384,9 @@ describe('the rulebook', () => {
       /Pehari u jednoj kategoriji se ne uručuju ako u toj kategoriji te sezone ima manje od tri člana/,
     )
     expect(rulebook).not.toMatch(/[Pp]laket/)
+    /* And the figure is not given for the best team on top of the trophy: that
+       is one team taking two awards by one measure. */
+    expect(rulebook).toMatch(/osim najboljeg tima, koji dobija pehar/)
   })
 
   it('says nothing about the competitions the league runs alongside it', () => {
