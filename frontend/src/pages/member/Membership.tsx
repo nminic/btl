@@ -22,6 +22,7 @@ import {
   seasonBeingRenewed,
 } from '../../data/pricing'
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
+import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
@@ -93,9 +94,18 @@ export function Membership() {
                   ? t('membership.honorary')
                   : t('membership.active', { season: me.firstSeason })}
               </p>
+              {/* One price, the one this member would pay. Both side by side
+                  read as a conversion between them, which they are not: the
+                  dinar price is fixed for the season and does not follow the
+                  rate (PDL P8, ADL A12). The screen knows the country; it was
+                  using it for the ways of paying and printing both amounts
+                  anyway. */}
               <p className="member__note">
                 {registrationOpen(today)
-                  ? t('membership.priceNow', { eur: price.eur, rsd: price.rsd })
+                  ? t(me.country === 'RS' ? 'membership.priceNowRsd' : 'membership.priceNowEur', {
+                      eur: price.eur,
+                      rsd: formatNumber(price.rsd, locale),
+                    })
                   : t('membership.notYetSold')}
               </p>
               <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>

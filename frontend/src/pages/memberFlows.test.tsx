@@ -136,7 +136,7 @@ describe('membership', () => {
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
-  it('tells a member paying from abroad what the payment carries besides the fee', async () => {
+  it('tells a member abroad what the payment carries besides the fee', async () => {
     /* Said where the payment is made and not only on the price list (PDL P8,
        03.08.2026): the processing fee, and the two costs that stay with the
        payer because the association neither sees nor sets them. */
@@ -159,7 +159,7 @@ describe('membership', () => {
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
-    expect(screen.getByText(/nema nikakve dodatne troškove/)).toBeVisible()
+    expect(screen.getByText(/nema ni taksu za obradu ni kursnu razliku/)).toBeVisible()
     expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
     expect(screen.queryByText(/Kursna razlika/)).toBeNull()
   })
@@ -171,7 +171,8 @@ describe('membership', () => {
     renderMembershipOn('2031-10-01')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
-    expect(screen.getAllByText(/35 EUR/).length).toBeGreaterThan(0)
+    // A member in Serbia is quoted in dinars, and only in dinars.
+    expect(screen.getAllByText(/4\.200 RSD/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Članarina se još ne prodaje/)).not.toBeInTheDocument()
   })
 
@@ -455,12 +456,19 @@ describe('the transfer window and renewal', () => {
 })
 
 describe('screens that depend on the date', () => {
-  it('shows the price in force once membership is on sale', () => {
-    renderMembershipOn('2026-10-02')
+  it('shows the price in force once membership is on sale, in one currency', async () => {
+    /* The one the member would actually pay. Two amounts side by side read as a
+       conversion between them, and they are not one: the dinar price is fixed
+       for the season and does not move with the rate (PDL P8, ADL A12). */
+    const serbia = renderMembershipOn('2026-10-02', '000031')
 
-    return screen.findByText(/Danas članarina košta 35 EUR/).then((found) => {
-      expect(found).toBeVisible()
-    })
+    expect(await within(serbia.container).findByText('Danas članarina košta 4.200 RSD.')).toBeVisible()
+    expect(within(serbia.container).queryByText(/35 EUR/)).toBeNull()
+
+    const abroad = renderMembershipOn('2026-10-02', '000010')
+
+    expect(await within(abroad.container).findByText('Danas članarina košta 35 EUR.')).toBeVisible()
+    expect(within(abroad.container).queryByText(/4\.200 RSD/)).toBeNull()
   })
 
   it('moves the whole portal to another day from the switch in the header', async () => {

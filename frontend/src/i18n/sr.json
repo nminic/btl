@@ -849,7 +849,6 @@
     "status": "Stanje",
     "active": "Član od {season}. sezone.",
     "honorary": "Počasno članstvo. Za sezonu 2027. ne plaćaš članarinu.",
-    "priceNow": "Danas članarina košta {eur} EUR, odnosno {rsd} RSD.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
     "junior": "Do 14 godina članarina je {eur} EUR, bez obzira na datum.",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
@@ -887,8 +886,10 @@
     "reference": "Poziv na broj",
     "purposeLabel": "Svrha uplate",
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
-    "costsDinar": "Uplata u dinarima nema nikakve dodatne troškove: plaćaš tačno iznos iz cenovnika.",
-    "costsAbroad": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Kursna razlika i naknada tvoje banke padaju na tebe."
+    "costsDinar": "Uplata u dinarima nema ni taksu za obradu ni kursnu razliku. Naknada tvoje banke, ako je ima, ostaje na tebi.",
+    "costsAbroad": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Kursna razlika i naknada tvoje banke padaju na tebe.",
+    "priceNowRsd": "Danas članarina košta {rsd} RSD.",
+    "priceNowEur": "Danas članarina košta {eur} EUR."
   },
   "review": {
     "title": "Red za proveru rezultata",
