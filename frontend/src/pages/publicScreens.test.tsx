@@ -273,9 +273,11 @@ describe('TopBoards', () => {
        and numbered its rows would pass; here it would say ten where the rule says
        nine.
 
-       The day is handed to the screen and used here as well, because the field a
-       season is drawn from depends on it (PDL P11): worked out against a
-       different day, this would be comparing the screen with something else. */
+       The day is handed to the screen and used here as well, so both sides work
+       the field out for the same one (PDL P11). On this season it changes
+       nothing, because the field is only narrowed for the season that is running;
+       it is written this way so that a season where it does bite is not a test
+       comparing a screen with something worked out for another day. */
     const [competitors, results] = await Promise.all([
       loadResource<Competitor[]>('competitors'),
       loadResource<Result[]>('results'),

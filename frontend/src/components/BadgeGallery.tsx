@@ -32,8 +32,13 @@ export function BadgeGallery() {
   const [pinned, setPinned] = useState('')
   const state = useBadges()
 
+  /* `inline`, because this is a part of a page rather than a page: the section
+     around it is already drawn, and a sheet over the whole screen while the
+     badges arrive would take the rulebook away from somebody reading it. It also
+     keeps the promise the front page makes about the address of the president,
+     that a failure on one side costs one widget and not the page. */
   return (
-    <Resource state={state}>
+    <Resource state={state} inline label={t('badges.title')}>
       {(badges) =>
         badges.length === 0 ? (
           <p className="badges__empty">{t('badges.empty')}</p>

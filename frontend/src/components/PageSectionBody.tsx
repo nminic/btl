@@ -12,6 +12,10 @@ import { Markdown } from './Markdown'
  * another page would have drawn its words and quietly dropped its wall of
  * badges, with nothing on the screen saying why.
  *
+ * The other half of that rule is where the sections come from: all three read
+ * `sectionsOf` rather than `page.sections`, so a record that takes another one
+ * in is drawn the same way wherever it is drawn.
+ *
  * The list of drawings is closed and lives on the type (src/data/types.ts).
  */
 export function PageSectionBody({ section }: { section: PageSection }) {

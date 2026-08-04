@@ -1,6 +1,6 @@
 import { PageSectionBody } from '../../components/PageSectionBody'
 import { Resource } from '../../components/Resource'
-import { pageOf, PRESIDENT_PAGE } from '../../data/pages'
+import { pageOf, PRESIDENT_PAGE, sectionsOf } from '../../data/pages'
 import { usePages } from '../../data/useResource'
 
 /** The address is a written page the administrator maintains, not a text in the
@@ -38,7 +38,11 @@ export function President() {
 
         return (
           <div className="card">
-            {page.sections.map((section) => (
+            {/* What the record shows, which is its own sections and the ones it
+                takes in, read the same way the rulebook and the written pages
+                read it (src/data/pages.ts). Three screens over one record must
+                not disagree about what the record says. */}
+            {sectionsOf(pages, page).map((section) => (
               <article className="address" key={section.heading}>
                 <h2 className="card__title">{section.heading}</h2>
                 <PageSectionBody section={section} />

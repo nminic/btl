@@ -42,11 +42,22 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
   const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
 
   useEffect(() => {
-    /* Asked for even when the value is already in hand, which costs one render
-       nobody sees: `loadResource` answers from the promise it is already
-       holding. What it buys is that the effect always ends in a state, so there
-       is no way for this to be left waiting. */
+    /* Read again here, and asked for again below, both on purpose.
+     *
+     * Again here, because the resource this hook is about can change: the state
+     * was worked out for the old name and would be handed out as this name's
+     * answer until the promise came back, which is one screen showing another
+     * screen's data and calling it ready.
+     *
+     * Again below, even when the value is in hand, because that is what closes
+     * the window: a value landing between the render and this effect is seen by
+     * neither, and a version of this that returned early here left the screen
+     * waiting for ever with nothing scheduled to take it off. `loadResource`
+     * answers from the promise it is already holding, so the cost is a render
+     * nobody sees. */
     let active = true
+
+    setState(atHand<T>(name))
 
     loadResource<T>(name).then(
       (data) => {
