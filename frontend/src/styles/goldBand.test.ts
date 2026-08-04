@@ -147,6 +147,177 @@ describe('the sentence above a table of places', () => {
   })
 })
 
+/* The column a telephone does not have room for.
+ *
+ * Every table on the portal drops columns below 700px, and what a phone keeps is
+ * the place, the name, one column of its own and the measure (PDL P12). All of
+ * that rests on one declaration, and nothing was holding it: turned into
+ * `opacity: 1` the whole suite stayed green while every such table showed every
+ * column on a telephone again, sideways scroll and all.
+ */
+/**
+ * Everything inside the one query that means a telephone, and nothing after it.
+ *
+ * Proximity is not containment: a rule sitting under a query rather than in it
+ * applies at every width, and reads the same from a few characters away.
+ *
+ * The brace is part of what is looked for, because the query's own text is a
+ * prefix of a narrower one. `@media (max-width: 699.98px) and (min-width: 500px)`
+ * is a query no telephone ever matches, and a search for the shorter string
+ * finds it and reports the rule safely inside it.
+ */
+function onTelephone(css: string): string {
+  const at = css.indexOf('@media (max-width: 699.98px) {')
+
+  expect(at, 'there is no telephone query').toBeGreaterThan(-1)
+  return css.slice(at, css.indexOf('\n}', at))
+}
+
+describe('a column hidden on a telephone', () => {
+  it('is taken out of the page, and only on a telephone', () => {
+    const query = onTelephone(read('src/styles/table.css'))
+
+    expect(query).toContain('.table__hide-phone')
+    expect(bodyOf(query, '.table__hide-phone')).toMatch(/display:\s*none/)
+  })
+
+  /* And the room those four leave behind is not spent on the padding of the
+   * ones that stay.
+   *
+   * It came out once on the reading that it is inert, because the table does fit
+   * at 360px without it. It does. What it holds is the room behind the fit:
+   * measured on the worst season, the board of best races asks for 275,4px of
+   * the 294px its card gives it, and 291,4px without this, which is two and a
+   * half pixels of margin at the width the portal promises to work at. It was
+   * not free to look at either, because what does not fit wraps instead: the
+   * same board stood sixty-two pixels taller.
+   */
+  it('leaves the reserve behind that in the padding of the cells that stay', () => {
+    expect(onTelephone(read('src/pages/TopBoards.css'))).toMatch(
+      /\.boards \.table th,\s*\.boards \.table td \{\s*padding-inline: var\(--space-6\)/,
+    )
+  })
+})
+
+/**
+ * The declarations that answer a request in as many words.
+ *
+ * Six notes came in on 04.08.2026 about how these screens are laid out, and the
+ * answer to most of them is one line of a stylesheet. jsdom lays nothing out, so
+ * every one of them could be deleted with the whole suite staying green: the
+ * calculator would go back to the height of the prose beside it, the board of
+ * best races back to two thirds of the page, and the band of empty pixels back
+ * over the bars of all six charts.
+ *
+ * A declaration read as text is a weaker thing than a measurement, and it is
+ * what this project has (ADL A7): a rule that is present can still be beaten by
+ * another. It holds the one failure that actually happened here, which is a line
+ * disappearing in a later tidy-up, and it names the request it answers so
+ * whoever takes it out knows whose it was.
+ */
+describe('what the owner asked for on 04.08.2026', () => {
+  for (const { of: file, rule, holds, why } of [
+    {
+      of: 'src/pages/Home.css',
+      rule: '.home__calc',
+      holds: /align-self:\s*start/,
+      why: 'the calculator ends where it ends, not where the president\'s word does',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards__board--best-races',
+      holds: /grid-column:\s*1 \/ -1/,
+      why: 'the whole of a result takes the whole width of the page',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards__grid',
+      holds: /margin-block-start:\s*var\(--space-16\)/,
+      why: 'the boards start off the line of the heading, as the cards do',
+    },
+    {
+      of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled > .rankings__empty',
+      holds: /margin-block-start:\s*var\(--space-16\)/,
+      why: 'and so does a table with a control beside its heading',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards .table .boards__figure',
+      holds: /text-align:\s*right/,
+      why: 'a figure reads from the right, whichever column it is in',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards .table td.boards__detail',
+      holds: /overflow-wrap:\s*anywhere/,
+      why: 'one long name breaks rather than pushing the card sideways',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__columns',
+      /* The whole shorthand, because it is the shorthand that carries the step
+         under the bars and the absence of a band over them: written back as four
+         values, or with a `padding-block-start` after it, the band returns and a
+         rule that merely mentions padding would still be here. */
+      holds: /padding:\s*var\(--space-10\) var\(--space-10\) var\(--space-12\);/,
+      why: 'a step under the bars, and nothing kept over them',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart--control .colchart__columns',
+      holds: /padding-block-start:\s*3\.1rem/,
+      why: 'except on the one chart that has a control to put there',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__count',
+      holds: /max-inline-size:\s*100%/,
+      why: 'and a number that runs long stays inside its own bar',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__count',
+      /* The other half of the same thought. The box is placed with `inset: 0`
+         and `margin: auto`, so a width left to itself is the whole of the bar:
+         without these two every count in every chart on the portal is a pill the
+         width of its column rather than a disc. */
+      holds: /inline-size:\s*fit-content;\s*min-inline-size:\s*1\.7rem/,
+      why: 'a count is as wide as the number in it, and no wider',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__count',
+      holds: /padding-inline:\s*var\(--space-6\)/,
+      why: 'with the room on its sides that the cap above spends first',
+    },
+  ]) {
+    it(`${why} (${rule})`, () => {
+      expect(bodyOf(read(file), rule)).toMatch(holds)
+    })
+  }
+
+  it('starts the table itself off that line, not only the sentence standing in for it', () => {
+    /* Both selectors of one rule, and the rule is found by the last of them, so
+       the first was carried by nothing: taken out, the standing on the teams
+       goes from 28px under its heading to 12px, which is the state the note was
+       about, while the half that was held draws only in a season that has no
+       teams in it. */
+    expect(read('src/pages/Rankings.css')).toMatch(
+      /\.rankings--tooled > \.table-scroll,\s*\.rankings--tooled > \.rankings__empty \{/,
+    )
+  })
+
+  it('keeps the count round while it is round, and a pill once it is not', () => {
+    /* At 50% a box stretched by a long number is an ellipse, which is neither a
+       disc nor a pill. Both circles are drawn the same way, so both are read. */
+    const css = read('src/components/ColumnChart.css')
+
+    expect(bodyOf(css, '.colchart__count')).toMatch(/border-radius:\s*var\(--radius-round\)/)
+    expect(bodyOf(css, '.colchart__count--quiet')).not.toMatch(/border-radius/)
+  })
+})
+
 /* Two more places where gold says something, and one where a figure has to sit
  * on the line of the words beside it. All three are invisible to a screen test,
  * because jsdom applies no stylesheet and works out no colour.

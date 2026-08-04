@@ -23,8 +23,14 @@
 
 /* One column on a phone, in the order the widgets stand in the markup: two
    lengths, then the board that stands beside them on a wide screen, and so on
-   (TopBoards.tsx). */
+   (TopBoards.tsx).
+
+   The same distance under the row of the heading that the cards of the
+   competitors keep (owner, 04.08.2026: there the content is "savršeno odvojeno"
+   from that line). Every screen with a control beside its heading now starts its
+   content at the same place. */
 .boards__grid {
+  margin-block-start: var(--space-16);
   display: grid;
   gap: var(--space-16);
   /* minmax(0, …) rather than a bare 1fr: the smallest a track may be is
@@ -58,20 +64,51 @@
   font-size: 0.85rem;
 }
 
-/* The shared table reads its first three columns as words and puts them to the
-   left. On a board the last column is always the measure, so it goes back to
-   the right where a column of numbers belongs. */
-.boards .table th:last-child,
-.boards .table td:last-child {
-  text-align: right;
-}
-
-/* The event name is the one column here that is words rather than a number,
-   and the only one that can run long. */
+/* The event name is the one column here that is words rather than a number, so
+   it reads from the left, the heading and the cells under it together. */
 .boards .table .boards__detail {
   text-align: left;
+}
+
+/* Quieter than the figures beside it, and breaking mid-word: with four columns
+   left on a telephone, one name of thirty characters was still pushing the table
+   eighteen pixels past its own card, and a name of one long word does not break
+   any other way.
+
+   On the cell and not on the heading over it, which carries the same class. A
+   heading is set by the shared table, at 0.7rem and in capitals, and 0.85rem
+   reached it too: measured at 360px, "DOGAĐAJ" came out at 13,6px against the
+   11,2px of the seven headings beside it, the one heading on the page drawn to
+   its own size. The break belongs here for a second reason: the shared table
+   keeps a heading on one line (`.table th`), so a heading breaks only if a rule
+   takes that away as well, and a rule that did read "Doga" over "đaj". */
+.boards .table td.boards__detail {
   color: var(--text-muted);
   font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+/* Not what makes the table fit, which is the break inside a long name above,
+   but the reserve behind it, on the width where every pixel is counted. Two
+   pixels a side over the four columns this width keeps is sixteen, and that is
+   the whole of the distance between comfortable and not: measured at 360px on
+   the worst season the table asks for 275,4px of the 294px its card gives it,
+   and 291,4px without this. It costs nothing to look at either, because what
+   does not fit wraps instead: the same board is sixty-two pixels taller without
+   it. */
+@media (max-width: 699.98px) {
+  .boards .table th,
+  .boards .table td {
+    padding-inline: var(--space-6);
+  }
+}
+
+/* Every column that is not the event is a figure. The shared table pushes its
+   first three columns to the left, which is right for a name and wrong for a
+   number, so the figures say so for themselves. Tabular figures come from the
+   root and are not repeated here. */
+.boards .table .boards__figure {
+  text-align: right;
 }
 
 /* A board with nothing to show is as tall as the sentence that says so. The
@@ -132,8 +169,13 @@
     grid-row: 6;
   }
 
+  /* The whole width, under both columns (owner, 04.08.2026). It carries the
+     whole of a result now, six columns after the name, and on the narrower
+     desktops that is a table scrolling inside its own card: in two thirds of a
+     900px page it runs fifteen pixels over, and it takes a page of 940 before it
+     fits. */
   .boards__board--best-races {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 7;
   }
 

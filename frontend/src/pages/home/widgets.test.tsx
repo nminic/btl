@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { first } from '../../test/at'
+import { first, must } from '../../test/at'
 import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
@@ -327,6 +327,35 @@ describe('TopByCategory', () => {
         '/sr/takmicar/000001?sezona=2027&duzina=long',
       ),
     )
+  })
+
+  it('keeps the room its pause control needs, which a board has no use for', () => {
+    /* The disc sits in the top right corner and reaches 45,6px down, so the
+       columns start below it or the tenth face is under it. The boards carry the
+       same chart with no control, and there that band was fifty empty pixels
+       above the bars (owner, 04.08.2026), so the room is asked for by the chart
+       that has something to put in it.
+
+       jsdom lays nothing out and applies no stylesheet, so what is checked is
+       that the chart says which of the two it is, and that the stylesheet keeps
+       the room for exactly that one. */
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} />)
+
+    const chart = must(
+      screen.getByRole('button', { name: /smenjivanje/ }).closest('section'),
+      'grafikon oko dugmeta',
+    )
+
+    expect(chart).toHaveClass('colchart--control')
+
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    const room = css.slice(css.indexOf('.colchart--control .colchart__columns {'))
+
+    expect(room.slice(0, room.indexOf('}'))).toMatch(/padding-block-start:\s*3\.1rem/)
+    /* And the plain chart asks for none of it. Anchored to the start of a line,
+       or the rule for the chart that has a control matches it: its selector ends
+       in the same two words. */
+    expect(css).not.toMatch(/^\.colchart__columns \{[^}]*padding-block-start/m)
   })
 
   it('makes the face and the bar one link, which lights as a whole', () => {

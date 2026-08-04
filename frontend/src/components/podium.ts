@@ -18,3 +18,24 @@ export const PODIUM = 3
 export function podiumClass(position: number): string | undefined {
   return position <= PODIUM ? 'podium' : undefined
 }
+
+/**
+ * The same gold, for the first place alone.
+ *
+ * The Top liste mark the leader and nobody else (owner, 04.08.2026): "Nagrade se
+ * i dodeljuju samo najboljima." The teams have done it that way since they were
+ * written, for the same reason.
+ *
+ * A second function rather than a size the one above takes. `map` hands a
+ * function the index as its second argument, so a podium that took a size would
+ * become a podium the size of the row number the moment anybody wrote
+ * `places.map(podiumClass)`. Nothing does today; the tests do, which is how the
+ * trap was found.
+ *
+ * The teams do not call this and cannot: they ask one thing more than the place,
+ * that the leader has scored at all, so a season nobody has raced yet does not
+ * gild whichever row the sort happened to leave on top (Teams.tsx).
+ */
+export function leaderClass(position: number): string | undefined {
+  return position === 1 ? 'podium' : undefined
+}

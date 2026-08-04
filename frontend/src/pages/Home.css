@@ -74,7 +74,17 @@
   .home__address { grid-area: address; }
   .home__figures { grid-area: figures; }
   .home__next { grid-area: next; }
-  .home__calc { grid-area: calc; }
+
+  /* As tall as it is, and no taller (owner, 04.08.2026). It shares its row with
+     the address of the president, which is prose and runs long, and every widget
+     on this page fills the row it was given: the calculator was six fields and a
+     line of answer stretched over a column of text, with the fields at the top
+     and nothing under them. Every other pairing on the page is two widgets that
+     want the same height; this one is not. */
+  .home__calc {
+    grid-area: calc;
+    align-self: start;
+  }
 
   .home__row--news {
     grid-template-columns: 2fr 1fr;

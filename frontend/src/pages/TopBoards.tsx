@@ -16,16 +16,17 @@ import {
 } from '../data/derive'
 import type { Competitor, RaceCategory, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
-import { formatCourseTime, formatNumber, formatPoints } from '../i18n/format'
+import { formatCourseTime, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
-import { podiumClass } from '../components/podium'
+import { leaderClass } from '../components/podium'
 import './Rankings.css'
 import './TopBoards.css'
 
 /* The Top liste: the lists the rulebook counts out in Article 55, which stand
- * beside the season table rather than inside it. Every one of them keeps ten
- * places and no more, and they all read the same season, which is chosen once at
- * the top of the page (PDL P12 and P28a).
+ * beside the season table rather than inside it. They keep ten places and no
+ * more, except the best progress, which keeps five (owner, 04.08.2026), and they
+ * all read the same season, which is chosen once at the top of the page (PDL P12
+ * and P28a).
  *
  * The layout is the owner's, 04.08.2026, and it is two thirds against one:
  *
@@ -54,6 +55,14 @@ import './TopBoards.css'
  */
 const PLACES = 10
 
+/** Five, not ten (owner, 04.08.2026). Ten bars of a gain is a wall; the board is
+ *  about who moved, and five says that. */
+const PROGRESS_PLACES = 5
+
+/** One cell after the name, and how it is set: words read from the left,
+ *  numbers from the right, and a column a telephone does not have room for. */
+type Cell = { text: string; words?: boolean; hidePhone?: boolean }
+
 type Place = {
   /** Where the name leads. Missing where there is nothing to lead to: a member
    *  whose fee has run out has no visible profile (PDL P11), so their name
@@ -67,16 +76,17 @@ type Place = {
    *  where the ladder of each board is. */
   position: number
   name: string
-  /** The middle column, on the boards that have one. */
-  detail?: string
-  value: string
+  /** Everything after the name, in the order the headings name it. Most boards
+   *  have one; the board of best single races has six, because the owner asked
+   *  for the whole of a result there (04.08.2026). */
+  cells: Cell[]
 }
 
 type BoardData = {
   id: string
   title: string
-  valueLabel: string
-  detailLabel?: string
+  /** What the columns after the name are called, one for one with the cells. */
+  columns: Cell[]
   places: Place[]
   /** What stands in place of the table when the board has no places, which is
    *  not always the same sentence: a season without results and a list whose
@@ -96,7 +106,39 @@ type ChartData = {
  *  drawn as another. */
 type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
 
-function Board({ id, title, valueLabel, detailLabel, places, empty }: BoardData) {
+/**
+ * How a cell is set.
+ *
+ * Words to the left and quiet, figures to the right: the shared table pushes its
+ * first three columns to the left, which is right for a name and wrong for a
+ * number, so both say which they are.
+ *
+ * The last cell of a row is the measure the board ranks by, and it wears
+ * `table__points`, which is what the portal draws a figure in bold with, and in
+ * gold on the row that leads (src/styles/table.css). Read off the position
+ * rather than from a flag on the cell, because it is not a property of the cell:
+ * it is what being last on a board means.
+ *
+ * A row only, which is why the headings ask for none of it. A heading is already
+ * bold from the shared table and stands in no row that can lead, so the mark
+ * draws nothing there; put on it, it would be a class that says the portal
+ * treats this heading differently and it does not.
+ *
+ * A column the telephone has no room for goes, and what a telephone keeps is the
+ * four the standing keeps: the place, the name, one column of its own, and the
+ * measure (PDL P12).
+ */
+function cellClass(cell: Cell, last: boolean): string {
+  return [
+    cell.words === true ? 'boards__detail' : 'boards__figure',
+    last ? 'table__points' : '',
+    cell.hidePhone === true ? 'table__hide-phone' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+function Board({ id, title, columns, places, empty }: BoardData) {
   const { t } = useI18n()
   const headingId = `board-${id}`
 
@@ -115,24 +157,32 @@ function Board({ id, title, valueLabel, detailLabel, places, empty }: BoardData)
               <tr>
                 <th scope="col">{t('topBoards.columns.position')}</th>
                 <th scope="col">{t('topBoards.columns.member')}</th>
-                {detailLabel !== undefined && (
-                  <th scope="col" className="boards__detail">
-                    {detailLabel}
+                {columns.map((column) => (
+                  <th key={column.text} scope="col" className={cellClass(column, false)}>
+                    {column.text}
                   </th>
-                )}
-                <th scope="col">{valueLabel}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {places.map((place) => (
-                /* Gold on the podium, as everywhere else (src/components/podium.ts). */
-                <tr key={place.key} className={podiumClass(place.position)}>
+                /* Gold for the leader alone here, not for three (owner,
+                   04.08.2026): "Nagrade se i dodeljuju samo najboljima." */
+                <tr key={place.key} className={leaderClass(place.position)}>
                   <td className="table__position">{place.position}</td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
                   </td>
-                  {place.detail !== undefined && <td className="boards__detail">{place.detail}</td>}
-                  <td className="table__points">{place.value}</td>
+                  {/* By position, because that is what a cell is here: a row is
+                      a fixed tuple in the order the headings name, and it never
+                      reorders. Keyed by what it says instead, two cells of one
+                      row can carry the same figure, which the ascent and the
+                      descent of a race regularly do. */}
+                  {place.cells.map((cell, index) => (
+                    <td key={index} className={cellClass(cell, index === place.cells.length - 1)}>
+                      {cell.text}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -162,13 +212,6 @@ function Chart({ id, title, columns, empty }: ChartData) {
 
 function nameOf(competitor: Competitor): string {
   return `${competitor.firstName} ${competitor.lastName}`
-}
-
-/** Points as they are written into a bar: rounded, with no decimals (owner,
- *  04.08.2026). A bar is read at a glance, and two decimals on it are two
- *  characters nobody reads. */
-function rounded(points: number, locale: string): string {
-  return formatNumber(Math.round(points), locale)
 }
 
 function Boards({
@@ -241,16 +284,20 @@ function Boards({
       id: 'progress',
       title: t('topBoards.progress'),
       empty: t('topBoards.progressEmpty'),
-      columns: topByProgress(field, results, season, PLACES).map((row) => ({
+      columns: topByProgress(field, results, season, PROGRESS_PLACES).map((row) => ({
         key: row.competitor.memberNumber,
         competitor: row.competitor,
         value: row.points,
-        label: rounded(row.gain, locale),
+        /* In points as the portal writes them everywhere else, to two decimals
+           (owner, 04.08.2026). They were written rounded to whole points for a
+           day, and a whole point is not what a BTL point is: two people a
+           quarter of a point apart both read the same number. */
+        label: formatPoints(row.gain, locale),
         reading: t('topBoards.columns.gain'),
         place: t('topBoards.place', { position: row.position }),
         base: {
           value: row.previousPoints,
-          label: rounded(row.previousPoints, locale),
+          label: formatPoints(row.previousPoints, locale),
           reading: t('topBoards.columns.previousSeason'),
         },
         to: profile(row.competitor),
@@ -261,14 +308,14 @@ function Boards({
       kind: 'table',
       id: 'kilometers',
       title: t('topBoards.kilometers'),
-      valueLabel: t('topBoards.columns.distance'),
+      columns: [{ text: t('topBoards.columns.distance') }],
       empty: noResults,
       places: topByKilometers(field, results, season, PLACES).map((row) => ({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
         name: nameOf(row.competitor),
-        value: formatNumber(row.kilometers, locale, 2),
+        cells: [{ text: formatNumber(row.kilometers, locale, 2) }],
       })),
     }
 
@@ -276,14 +323,14 @@ function Boards({
       kind: 'table',
       id: 'on-course',
       title: t('topBoards.onCourse'),
-      valueLabel: t('topBoards.columns.time'),
+      columns: [{ text: t('topBoards.columns.time') }],
       empty: noResults,
       places: topByTimeOnCourse(field, results, season, PLACES).map((row) => ({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
         name: nameOf(row.competitor),
-        value: formatCourseTime(row.seconds),
+        cells: [{ text: formatCourseTime(row.seconds) }],
       })),
     }
 
@@ -301,25 +348,45 @@ function Boards({
       kind: 'table',
       id: 'pairs',
       title: t('topBoards.pairs'),
-      valueLabel: t('topBoards.columns.points'),
+      columns: [{ text: t('topBoards.columns.points') }],
       places: [],
       empty: t('topBoards.pairsSoon'),
     }
 
+    /* The whole of a result, across the whole width of the page (owner,
+       04.08.2026). It carried the event and the points, which said what the board
+       ranks by and nothing about the race that earned it; a reader looking at the
+       ten best runs of a season wants to see what they were. */
     const bestRaces: Widget = {
       kind: 'table',
       id: 'best-races',
       title: t('topBoards.bestRaces'),
-      valueLabel: t('topBoards.columns.points'),
-      detailLabel: t('topBoards.columns.event'),
+      /* Four of the eight go on a telephone, which is the rule the standing
+         keeps and the reason it keeps it: everything else forces a sideways
+         scroll nobody reads (PDL P12). What is left is the place, the name, the
+         event and the points. */
+      columns: [
+        { text: t('topBoards.columns.event'), words: true },
+        { text: t('rankings.columns.distance'), hidePhone: true },
+        { text: t('rankings.columns.ascent'), hidePhone: true },
+        { text: t('rankings.columns.descent'), hidePhone: true },
+        { text: t('rankings.columns.time'), hidePhone: true },
+        { text: t('rankings.columns.points') },
+      ],
       empty: noResults,
       places: bestSingleRaces(field, results, season, PLACES).map((row) => ({
         to: profile(row.competitor),
         key: row.result.id,
         position: row.position,
         name: nameOf(row.competitor),
-        detail: row.result.eventName,
-        value: formatPoints(row.result.points, locale),
+        cells: [
+          { text: row.result.eventName, words: true },
+          { text: formatNumber(row.result.distanceKm, locale, 2), hidePhone: true },
+          { text: formatNumber(row.result.ascentM, locale), hidePhone: true },
+          { text: formatNumber(row.result.descentM, locale), hidePhone: true },
+          { text: formatDuration(row.result.seconds), hidePhone: true },
+          { text: formatPoints(row.result.points, locale) },
+        ],
       })),
     }
 

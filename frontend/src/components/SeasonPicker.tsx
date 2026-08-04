@@ -18,6 +18,7 @@ export function SeasonPicker({
   seasons,
   season,
   fallback,
+  named = false,
 }: {
   seasons: number[]
   /**
@@ -36,6 +37,18 @@ export function SeasonPicker({
    * them, which is what they want: a team is a thing of one season.
    */
   fallback?: string
+  /**
+   * Draws the control with its name beside it, in the shape a screen with a
+   * heading uses (owner, 04.08.2026: the one on the teams "je ružnija nego u Top
+   * listama").
+   *
+   * Two shapes, because there are two places. Beside a heading it stands in a row
+   * of controls and says what it is, like the season on the Top liste and the
+   * search on the competitors. Beside a name, on a profile, the name is what the
+   * screen is about and a labelled field beside it would read as a second
+   * heading, so there it is a pill and says its name only to a screen reader.
+   */
+  named?: boolean
 }) {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
@@ -56,17 +69,30 @@ export function SeasonPicker({
     setParams(merged)
   }
 
+  const years = (
+    <select value={season} onChange={(event) => choose(event.target.value)}>
+      {all && <option value={ALL_SEASONS}>{t('profile.allTime')}</option>}
+      {seasons.map((year) => (
+        <option key={year} value={year}>
+          {year}
+        </option>
+      ))}
+    </select>
+  )
+
+  if (named) {
+    return (
+      <label className="rankings__field">
+        <span>{t('rankings.season')}</span>
+        {years}
+      </label>
+    )
+  }
+
   return (
     <label className="profile__season">
       <span className="visually-hidden">{t('rankings.season')}</span>
-      <select value={season} onChange={(event) => choose(event.target.value)}>
-        {all && <option value={ALL_SEASONS}>{t('profile.allTime')}</option>}
-        {seasons.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
+      {years}
     </label>
   )
 }

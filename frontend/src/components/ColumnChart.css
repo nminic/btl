@@ -3,10 +3,10 @@
  * counted.
  *
  * Written for the front page's turning chart and shared with the Top liste from
- * 04.08.2026, where six of the ten boards are drawn this way. The clearance at the
- * top of the columns is still the one the pause control needs, because a chart
- * that does not turn has nothing in that corner and loses nothing by leaving it
- * empty.
+ * 04.08.2026, where six of the ten boards are drawn this way. The clearance at
+ * the top of the columns belongs to the pause control and is kept only where
+ * there is one: on a board it was fifty empty pixels while the short bars
+ * crowded the band underneath (owner, 04.08.2026).
  */
 .colchart {
   position: relative;
@@ -22,14 +22,14 @@
 .colchart__columns {
   list-style: none;
   margin: 0;
-  /* The top of this box is the pause disc's, not the bars'. When every column
-     is the same height, which is the ordinary state of the first weeks of a
-     season and the permanent state of the ultra board, the tenth face reached
-     the top right corner and the disc sat on it. */
-  /* Measured, not chosen: the disc reaches 45,6px down from the outer edge, so
-     this is the clearance that keeps it off the tenth face. Off the scale on
-     purpose, the same as the sizes of the faces themselves. */
-  padding: 3.1rem var(--space-10) 0;
+  /* A step under the bars, so the number on a short one has somewhere to go: it
+     is centred in its bar, and a bar shorter than the circle in it spills that
+     circle onto the gold band below. Twelve pixels, which is what the worst
+     ladder in the record asks for: one race against twenty-eight is a bar of six
+     pixels under a disc of twenty-seven, so ten of that disc hangs below the
+     bar. This lifts every bar by the same amount, so it costs nothing in
+     proportion: twice the races is still twice the bar. */
+  padding: var(--space-10) var(--space-10) var(--space-12);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -39,6 +39,18 @@
      row came out (owner, 31.07.2026). */
   flex: 1;
   min-block-size: 15rem;
+}
+
+/* The top of this box is the pause disc's, not the bars', on the one chart that
+   has a disc. When every column is the same height, which is the ordinary state
+   of the first weeks of a season and the permanent state of the ultra board, the
+   tenth face reached the top right corner and the disc sat on it.
+
+   Measured, not chosen: the disc reaches 45,6px down from the outer edge, so
+   this is the clearance that keeps it off the tenth face. Off the scale on
+   purpose, the same as the sizes of the faces themselves. */
+.colchart--control .colchart__columns {
+  padding-block-start: 3.1rem;
 }
 
 /* Centred, not stretched (owner, 31.07.2026). Stretching handed the face the
@@ -243,15 +255,35 @@
 /* Dead in the middle of its bar, both ways (owner, 31.07.2026). It used to sit
    a fixed distance up from the foot, so on a tall bar it was down at the
    bottom and on a short one it was nearly out of it. */
+/* A disc while what is in it is short, and a pill when it is not.
+ *
+ * It was a circle of a fixed width, made when a bar carried a count of races.
+ * The board of best progress carries points to two decimals since 04.08.2026
+ * (owner), and "334,56" is forty-one pixels of text in a disc of twenty-seven:
+ * every number on that board but one hung out of its own disc, half on it and
+ * half on the bare bar. The height is what makes it a disc, so a short number is round exactly as
+ * before and a long one grows sideways only. */
 .colchart__count {
   position: absolute;
   inset: 0;
   margin: auto;
-  inline-size: 1.7rem;
+  inline-size: fit-content;
+  min-inline-size: 1.7rem;
+  /* The box never wider than the bar it stands in, or two neighbours touch. The
+     tightest case is the board of best progress, the one chart whose numbers run
+     long and the one whose bars are widest: five of them at 360px, 58px each.
+     What this buys is the twelve pixels of room on the sides of the box, which
+     go first; past that the digits stand out of the box rather than the box out
+     of the bar, which is the lesser of the two and is well out of reach of any
+     difference in points the league has recorded. */
+  max-inline-size: 100%;
+  padding-inline: var(--space-6);
   block-size: 1.7rem;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  /* Round while it is round, and a pill once it is not. At 50% a stretched box
+     is an ellipse, which is neither. */
+  border-radius: var(--radius-round);
   background: var(--blue-800);
   color: var(--white);
   font-size: 0.82rem;
@@ -262,7 +294,7 @@
    under it is already the quieter of the two, and a second colour of circle
    would be a third thing for a reader to learn. */
 .colchart__count--quiet {
-  inline-size: 1.45rem;
+  min-inline-size: 1.45rem;
   block-size: 1.45rem;
   font-size: 0.72rem;
 }
