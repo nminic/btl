@@ -73,6 +73,18 @@ const BY_START = [...PRICES].sort((left, right) => left.from.localeCompare(right
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 
 /**
+ * What a payment from abroad costs to process, in euro, on top of the fee.
+ *
+ * Not membership and never added into it (PDL P8, 03.08.2026). It covers what
+ * the payment intermediary takes, so it buys nothing in the rulebook and is
+ * quoted as its own line rather than folded into a higher price: a member who
+ * pays 40 and 3 has paid the same membership as a member who paid 4.800 dinars.
+ *
+ * The dinar side has none, because there is no intermediary there to pay.
+ */
+export const PROCESSING_FEE_EUR = 3
+
+/**
  * What membership costs on a given day, and there is always an answer.
  *
  * The four periods tile the year with no gap and no overlap, and a test holds

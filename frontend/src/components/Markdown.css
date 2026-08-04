@@ -65,13 +65,22 @@
   color: var(--accent-hover);
 }
 
+/* An example inside a sentence: a membership number, a distance, the shape of a
+   time. It used to be set in a box, smaller than the words around it, which is
+   the convention for code and reads as a defect in a rulebook: the one thing a
+   reader is being shown was the one thing harder to read (owner, 03.08.2026).
+
+   Italic instead, at the size of the sentence it stands in. It still marks the
+   example off, it survives being read aloud, and it does not fight the bold
+   that already means something here. The element stays `code`, because what it
+   holds is still a literal value; only its manners change. */
 .markdown code {
-  font-size: 0.88em;
-  padding: 0.05em 0.3em;
-  border-radius: var(--radius-4);
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  color: var(--text);
+  /* The family as well as the style, and that is the half that matters: while
+     the family stays monospace a browser quietly measures `1em` against its own
+     smaller default for monospace, so the example came out at 13px inside a
+     16px sentence even with nothing here setting a size. */
+  font-family: inherit;
+  font-style: italic;
   overflow-wrap: anywhere;
 }
 

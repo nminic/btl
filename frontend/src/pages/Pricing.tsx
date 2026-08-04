@@ -3,6 +3,7 @@ import { useToday } from '../clock/useClock'
 import {
   JUNIOR,
   PRICES,
+  PROCESSING_FEE_EUR,
   REGISTRATION_OPENS,
   daysBetween,
   priceOn,
@@ -89,6 +90,10 @@ export function Pricing() {
       <div className="pricing__notes">
         <p>{t('pricing.cycle')}</p>
         <p>{t('pricing.rsdNote')}</p>
+        {/* Said beside the price and not inside it (PDL P8, 03.08.2026): what
+            the intermediary takes is not membership, and a member who pays it
+            has bought exactly what a member paying in dinars bought. */}
+        <p>{t('pricing.feeNote', { fee: PROCESSING_FEE_EUR })}</p>
         {/* One September, in 2026, and not a rule of the list. Printed
             for ever it told a reader every autumn that registration was
             shut, which from 2027 it is not. */}

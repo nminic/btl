@@ -507,7 +507,7 @@
   },
   "topBoards": {
     "title": "Top 10 liste",
-    "intro": "Jedanaest lista iz Člana 56 Pravilnika. Svaka drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
+    "intro": "Jedanaest lista iz Člana 55 Pravilnika. Svaka drži deset mesta i računa se za izabranu sezonu. Sezona se bira jednom, gore, i važi za sve liste na strani.",
     "season": "Sezona",
     "byLength": {
       "short": "Najviše kraćih trka",
@@ -516,8 +516,8 @@
       "marathon": "Najviše maratona",
       "ultra": "Najviše ultramaratona"
     },
-    "pairs": "Najbolji parovi",
-    "pairsSoon": "Parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
+    "pairs": "Najbolji trkački parovi",
+    "pairsSoon": "Trkački parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
     "progress": "Najbolji napredak",
     "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
     "teams": "Najbolji tim",
@@ -767,7 +767,8 @@
     "previewNote": "Od 15. do 30. septembra portal je otvoren samo za razgledanje: registracija tada nije moguća. Učlanjenje kreće 1. oktobra.",
     "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
     "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra.",
-    "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje."
+    "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje.",
+    "feeNote": "Uz uplatu iz inostranstva naplaćuje se taksa za obradu plaćanja od {fee} EUR. To nije članarina nego trošak obrade uplate kod platnog posrednika, i ne donosi nikakvo dodatno pravo. Uplata u dinarima tu taksu nema."
   },
   "error": {
     "title": "Nešto je puklo",
@@ -817,13 +818,15 @@
     "seconds": "Sekundi",
     "link": "Link ka zvaničnim rezultatima",
     "linkHint": "Obavezno. Bez njega rezultat ne može da se proveri.",
-    "photo": "Fotografija kao dokaz",
+    "photo": "Slika kao dopuna",
     "doneTitle": "Rezultat je poslat",
     "donePoints": "Ova trka ti donosi {points} BTL poena.",
     "doneWaiting": "Moderator je proverava. Kad je potvrdi, ulazi u rang liste i u tvoj profil.",
     "toMine": "Moji rezultati",
     "another": "Unesi još jedan",
-    "photoHint": "Neobavezno, na primer slika sata ili tablice sa vremenom. Briše se sa servera čim rezultat bude proveren."
+    "photoHint": "Neobavezno: snimak sa sata, diploma ili nešto treće. Nije zamena za link. Briše se sa servera čim rezultat bude proveren.",
+    "comment": "Komentar",
+    "commentHint": "Neobavezno. Sve što uz rezultat treba reći: startni broj, ime pod kojim ste u zvaničnim rezultatima, izmenjena staza."
   },
   "status": {
     "pending": "Čeka proveru",
@@ -883,7 +886,8 @@
     "account": "Račun",
     "reference": "Poziv na broj",
     "purposeLabel": "Svrha uplate",
-    "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je."
+    "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
+    "processingFee": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije deo članarine."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1273,8 +1277,8 @@
     "raceHint": "Trke sa ovog događaja. Dužina, uspon i spust se uzimaju sa izabrane trke.",
     "comment": "Komentar",
     "commentHint": "Neobavezno. Ovde ide veza ka zvaničnim rezultatima, startni broj, ili bilo šta što moderatoru pomaže da proveri.",
-    "photo": "Slika kao dokaz",
-    "photoHint": "Neobavezno. Slika sata, potvrde ili zvanične liste.",
+    "photo": "Slika kao dopuna",
+    "photoHint": "Neobavezno: snimak sa sata, diploma ili nešto treće. Briše se sa servera čim rezultat bude proveren.",
     "note": "Prijavljuješ rezultat sa događaja „{event}\". Ostalo portal već zna sa same trke.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
     "backToEvent": "Nazad na događaj"

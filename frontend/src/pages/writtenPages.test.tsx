@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { JUNIOR, PRICES, type PriceRow } from '../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR, type PriceRow } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
@@ -224,9 +224,108 @@ describe('the page that says what membership costs', () => {
        opening twice. */
     expect(page.getByText(/^Učlanjenje se otvara .*, za \d+ dana\.$/)).toBeVisible()
   })
+
+  it('says the fee on a payment from abroad is not membership', async () => {
+    /* The owner asked for the three euro and for that sentence in the same
+       breath: „mi je stalo da se naznači da to nije članarina nego obrada"
+       (03.08.2026, PDL P8). Folded into the price it would read as a dearer
+       membership for anybody outside Serbia, which is not what it is, and the
+       dinar prices were to stay exactly as they are. */
+    renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
+
+    const page = within(await screen.findByRole('main'))
+    const note = page.getByText(/taksa za obradu plaćanja/)
+
+    expect(note).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+    expect(note).toHaveTextContent('nije članarina')
+
+    /* And the table still quotes membership alone. A row that had the fee added
+       into it would say 38 where the price list says 35. */
+    const rows = within(await screen.findByRole('table'))
+      .getAllByRole('row')
+      .map((row) => row.textContent ?? '')
+
+    for (const price of PRICES) {
+      expect(rows.some((row) => row.includes(`${price.eur} EUR`))).toBe(true)
+      expect(rows.some((row) => row.includes(`${price.eur + PROCESSING_FEE_EUR} EUR`))).toBe(false)
+    }
+  })
 })
 
 const NEWLINE = String.fromCharCode(10)
+
+describe('the rulebook', () => {
+  /** The whole of it as one piece of text, which is how a rule that has to be in
+   *  it is looked for: an article moved from one section to another is still in
+   *  the rulebook. */
+  const rulebook = (written as Record<string, { sections: { body: string }[] }>)['pravilnik']
+    ?.sections.map((section) => section.body)
+    .join(NEWLINE)
+
+  it('numbers its articles from one, with nothing missing in between', () => {
+    /* An article was taken out of the middle of it (the terrain profile, owner
+       03.08.2026), so everything after it moved up by one. A rulebook that
+       skips a number is a rulebook whose cross-references cannot be trusted,
+       and it carries eight of them. */
+    const numbers = [...(rulebook ?? '').matchAll(/### Član (\d+)\./g)].map((found) =>
+      Number(found[1]),
+    )
+
+    expect(numbers.length).toBeGreaterThan(80)
+    expect(numbers).toEqual(numbers.map((_, index) => index + 1))
+  })
+
+  it('points every cross-reference at an article that exists', () => {
+    const highest = [...(rulebook ?? '').matchAll(/### Član (\d+)\./g)].length
+    const referenced = [...(rulebook ?? '').matchAll(/Član[a-z]* (\d+)/g)].map((found) =>
+      Number(found[1]),
+    )
+
+    expect(referenced.length).toBeGreaterThan(highest)
+    expect(referenced.filter((number) => number > highest)).toEqual([])
+  })
+
+  it('does not carry the terrain profile any more', () => {
+    /* Owner, 03.08.2026: „ne pratiti uopšte profil staze nigde na portalu".
+       It was a table of four bands read off the climb per kilometre. */
+    expect(rulebook).not.toMatch(/[Pp]rofil staze/)
+    expect(rulebook).not.toMatch(/Talasasto|Brdovito|Planinsko/)
+  })
+
+  it('says when a race counts, in three conditions and one discretion', () => {
+    /* The open question PDL P17 called the most damaging hole in the old
+       league, closed by the owner on 03.08.2026. Read together: all three, and
+       the league may still take a race that misses one of them. */
+    expect(rulebook).toMatch(/najkasnije mesec dana pre dana održavanja/)
+    expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle trke/)
+    expect(rulebook).toMatch(/Broj učesnika nije manji od 50/)
+    expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
+  })
+
+  it('knows an honorary member, and says the fee from abroad is not membership', () => {
+    expect(rulebook).toMatch(/počasno članstvo, bez plaćanja članarine/)
+    expect(rulebook).toMatch(/Merilo članstva u sezoni je aktivacija članstva na portalu, ne uplata/)
+    expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
+    expect(rulebook).toMatch(/nije deo članarine/)
+  })
+
+  it('keeps a first season member in one category and only one', () => {
+    /* Owner, 03.08.2026: no crossing into the age band mid-year and no running
+       in both at once. It closed the one question the article had left open. */
+    expect(rulebook).toMatch(/ne konkuriše u generalnom plasmanu i ne konkuriše u uzrasnoj kategoriji/)
+    expect(rulebook).toMatch(/Nastupa u dve kategorije istovremeno nema/)
+    expect(rulebook).toMatch(/promena stupa na snagu od naredne sezone/)
+  })
+
+  it('asks for the same result the forms ask for', () => {
+    /* The picture and the comment, both optional, on the article that lists what
+       a competitor sends in (owner, 03.08.2026). The forms are held to the same
+       thing in src/forms/definitions.test.ts. */
+    expect(rulebook).toMatch(/Sliku, neobavezno/)
+    expect(rulebook).toMatch(/Komentar, neobavezno/)
+    expect(rulebook).toMatch(/Slika je neobavezna dopuna, nikad zamena za link/)
+  })
+})
 
 describe('how a written page is set', () => {
   const pages = Object.entries(written as Record<string, { sections: { heading: string; body: string }[] }>)

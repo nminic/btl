@@ -73,6 +73,36 @@ describe('every form definition in the portal', () => {
     expect(clashes).toEqual([])
   })
 
+  it('asks a competitor for a result the same way on both roads to one', () => {
+    /* Two forms reach the same queue: the one on a member's own profile and the
+       one on the page of an event. The owner asked for a picture and a comment,
+       both optional, and asked in the same breath that the way of reporting be
+       the same wherever it is done (03.08.2026, PDL P9). One of the two had no
+       comment at all, so what a member could say about a result depended on
+       which door they came through. */
+    const roads = ['unos-rezultata.form.json', 'prijava-sa-trke.form.json'].map((name) => {
+      const found = FORMS.find((one) => one.name === name)
+
+      if (found === undefined) {
+        throw new Error(`nema forme ${name}`)
+      }
+
+      return found
+    })
+
+    for (const { name, form } of roads) {
+      for (const wanted of ['comment', 'photo']) {
+        const field = form.fields.find((one) => one.name === wanted)
+
+        expect(field, `${name} nema polje ${wanted}`).toBeDefined()
+        /* Optional on both, and optional means the flag is absent or false
+           rather than merely falsy: `required: true` would make a member who has
+           nothing to add unable to send anything at all. */
+        expect(field?.required ?? false, `${name}: ${wanted} je obavezno`).toBe(false)
+      }
+    }
+  })
+
   it('never asks for less than it will accept', () => {
     /* A field that wants at least fifty characters and takes at most forty can
        be filled in no way at all.
