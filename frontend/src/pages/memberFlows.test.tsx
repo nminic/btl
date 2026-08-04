@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
@@ -136,36 +136,22 @@ describe('membership', () => {
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
-  it('tells a member abroad what the payment carries besides the fee', async () => {
-    /* Said where the payment is made and not only on the price list (PDL P8,
-       03.08.2026): the processing fee, and the two costs that stay with the
-       payer because the association neither sees nor sets them. */
-    renderFor('000009')
+  it('says what a payment carries besides the fee, to everybody', async () => {
+    /* The owner asked for the fee to be something anybody can look up, not
+       something only whoever pays it is told (04.08.2026). What differs is who
+       pays it, and one sentence says both halves: the euro payment carries it,
+       the dinar payment does not. */
+    for (const member of ['000009', '000031']) {
+      renderFor(member)
 
-    await screen.findByRole('heading', { name: 'Moja članarina' })
-    const costs = screen.getByText(/taksa za obradu plaćanja/)
+      const costs = await screen.findByText(/taksa za obradu plaćanja/)
 
-    expect(costs).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
-    expect(costs).toHaveTextContent('nije članarina')
-    expect(costs).toHaveTextContent('Kursna razlika i naknada tvoje banke')
-  })
-
-  it('tells a member paying in dinars that there is nothing on top', async () => {
-    /* The dinar side has no intermediary and no conversion, so it has neither
-       the fee nor the two costs beside it. Both sentences used to be shown to
-       everybody, and to a member in Belgrade they described somebody else's
-       payment. */
-    renderFor('000031')
-
-    await screen.findByRole('heading', { name: 'Moja članarina' })
-
-    const costs = screen.getByText(/nema ni taksu za obradu ni kursnu razliku/)
-
-    /* Both halves. The second one is what regressed three passes running: a
-       dinar payment has no fee of ours and no conversion, and the payer's own
-       bank is still their own bank (PDL P8). */
-    expect(costs).toHaveTextContent('Naknada tvoje banke, ako je ima, ostaje na tebi')
-    expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
+      expect(costs).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+      expect(costs).toHaveTextContent('nije članarina')
+      expect(costs).toHaveTextContent('Uplata u dinarima je nema')
+      expect(costs).toHaveTextContent('Kursna razlika i naknada tvoje banke')
+      cleanup()
+    }
   })
 
   it('has a price in any October of any year, because the list repeats', async () => {
@@ -187,9 +173,9 @@ describe('membership', () => {
       screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
     /* And nothing about what a payment costs, because on that day nothing is on
-       sale: the panel says so a line above. What the fee carries belongs beside
-       a price, and there is no price yet. */
-    expect(screen.queryByText(/nema ni taksu za obradu/)).toBeNull()
+       sale: the panel says so a line above. What a payment carries belongs
+       beside a price, and there is no price yet. */
+    expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
   })
 
   it('says what a payment carries outside the renewal window too, while there is a price', async () => {

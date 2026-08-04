@@ -769,7 +769,9 @@
     "noRefund": "Članarina se ne vraća. Odjava za tekuću sezonu je moguća u svakom trenutku, ali bez povraćaja novca.",
     "reminders": "Podsetnike šaljemo četiri puta: 30. septembra, 5. oktobra, 30. novembra i 30. decembra.",
     "cycle": "Cenovnik se ponavlja svake godine. Od 1. oktobra se prodaje naredna sezona, a do 30. septembra tekuća, bez prava na rangiranje.",
-    "feeNote": "Uz uplatu iz inostranstva naplaćuje se taksa za obradu plaćanja od {fee} EUR. To nije članarina nego trošak obrade uplate kod platnog posrednika, i ne donosi nikakvo dodatno pravo. Uplata u dinarima tu taksu nema."
+    "feeNote": "Taksa za obradu plaćanja nije članarina nego trošak obrade uplate kod platnog posrednika, i ne donosi nikakvo dodatno pravo. Plaća se uz uplatu u evrima, dakle iz inostranstva; uplata u dinarima je nema.",
+    "feeRow": "Taksa za obradu plaćanja (uplate u EUR)",
+    "feeNone": "nema"
   },
   "error": {
     "title": "Nešto je puklo",
@@ -886,9 +888,8 @@
     "reference": "Poziv na broj",
     "purposeLabel": "Svrha uplate",
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
-    "costsDinar": "Uplata u dinarima nema ni taksu za obradu ni kursnu razliku. Naknada tvoje banke, ako je ima, ostaje na tebi.",
-    "costsAbroad": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Kursna razlika i naknada tvoje banke padaju na tebe.",
-    "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD."
+    "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
+    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Uplata u dinarima je nema. Kursna razlika i naknada tvoje banke, ako ih ima, ostaju na tebi."
   },
   "review": {
     "title": "Red za proveru rezultata",

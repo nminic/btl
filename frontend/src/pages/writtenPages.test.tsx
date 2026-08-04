@@ -225,19 +225,25 @@ describe('the page that says what membership costs', () => {
     expect(page.getByText(/^Učlanjenje se otvara .*, za \d+ dana\.$/)).toBeVisible()
   })
 
-  it('says the fee on a payment from abroad is not membership', async () => {
+  it('gives the fee a row of its own and says it is not membership', async () => {
     /* The owner asked for the three euro and for that sentence in the same
        breath: „mi je stalo da se naznači da to nije članarina nego obrada"
-       (03.08.2026, PDL P8). Folded into the price it would read as a dearer
-       membership for anybody outside Serbia, which is not what it is, and the
-       dinar prices were to stay exactly as they are. */
+       (03.08.2026, PDL P8), and on 04.08 that it be something anybody can look
+       up in the price list rather than something only whoever pays it is told.
+       Folded into a price it would read as a dearer membership for anybody
+       outside Serbia, which is not what it is. */
     renderAt('/sr/clanarina', 'visitor', null, undefined, '2026-10-03')
 
     const page = within(await screen.findByRole('main'))
-    const note = page.getByText(/taksa za obradu plaćanja/)
+    const row = page.getByRole('row', { name: /Taksa za obradu plaćanja/ })
 
-    expect(note).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
-    expect(note).toHaveTextContent('nije članarina')
+    expect(within(row).getByText(`${PROCESSING_FEE_EUR} EUR`)).toBeVisible()
+    /* And nothing on the dinar side of that row. */
+    expect(within(row).getByText('nema')).toBeVisible()
+
+    const note = page.getByText(/Taksa za obradu plaćanja nije članarina/)
+
+    expect(note).toHaveTextContent('uplata u dinarima je nema')
 
     /* And the table still quotes membership alone. A row that had the fee added
        into it would say 38 where the price list says 35. */

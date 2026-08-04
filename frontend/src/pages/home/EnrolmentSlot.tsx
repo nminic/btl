@@ -13,7 +13,7 @@ import { useI18n } from '../../i18n/useI18n'
 
 /* The seasonal slot: what membership costs today and how long that lasts.
  * The price thresholds are the real lever and they were being used only in
- * three reminder emails; here they work every day of the year.
+ * four reminder emails; here they work every day of the year.
  *
  * The season named is the one on offer, which turns over on 1 October (owner,
  * 30.07.2026). It was a constant, so in the middle of 2027 the slot went on

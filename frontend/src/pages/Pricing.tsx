@@ -63,6 +63,16 @@ export function Pricing() {
                 <td>{`${row.rsd.toLocaleString('sr-Latn')} RSD`}</td>
               </tr>
             ))}
+            {/* The fee has a row of its own, because the owner asked that it be
+                something anybody can look up rather than something only the
+                member who pays it is told (04.08.2026). It is not a price band,
+                so it stands apart from the four: it buys nothing, and a member
+                paying in dinars does not pay it. */}
+            <tr className="pricing__fee">
+              <td>{t('pricing.feeRow')}</td>
+              <td>{PROCESSING_FEE_EUR} EUR</td>
+              <td>{t('pricing.feeNone')}</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -90,10 +100,10 @@ export function Pricing() {
       <div className="pricing__notes">
         <p>{t('pricing.cycle')}</p>
         <p>{t('pricing.rsdNote')}</p>
-        {/* Said beside the price and not inside it (PDL P8, 03.08.2026): what
-            the intermediary takes is not membership, and a member who pays it
-            has bought exactly what a member paying in dinars bought. */}
-        <p>{t('pricing.feeNote', { fee: PROCESSING_FEE_EUR })}</p>
+        {/* Beside the table rather than inside a price (PDL P8, 03.08.2026):
+            what the intermediary takes is not membership, and a member who pays
+            it has bought exactly what a member paying in dinars bought. */}
+        <p>{t('pricing.feeNote')}</p>
         {/* One September, in 2026, and not a rule of the list. Printed
             for ever it told a reader every autumn that registration was
             shut, which from 2027 it is not. */}

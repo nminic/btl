@@ -68,3 +68,11 @@
 .pricing__join {
   margin: var(--space-20) 0 0;
 }
+
+/* The processing fee is not a price band: it buys nothing and it is not one of
+   the four periods that tile the year. It stands under them, separated by the
+   same line the table uses between sections. */
+.pricing__fee td {
+  border-top: 2px solid var(--border);
+  color: var(--text-muted);
+}

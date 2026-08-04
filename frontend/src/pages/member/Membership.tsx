@@ -107,17 +107,19 @@ export function Membership() {
                     })
                   : t('membership.notYetSold')}
               </p>
-              {/* What the payment carries besides the fee, beside the price
-                  rather than only inside the renewal: for the nine months a
-                  season is running the price is quoted and the renewal window
-                  is shut, and a member abroad was reading a number three euro
-                  short of what they would pay. */}
+              {/* What a payment carries besides the fee, said to everybody and
+                  not only to whoever pays it (owner, 04.08.2026): the fee is
+                  something a member should be able to look up, the same way
+                  both prices are shown to everybody and only the choice between
+                  them is not offered. What differs is who pays it, and the
+                  sentence says that.
+
+                  Beside the price rather than inside the renewal window: for
+                  the nine months a season is running the price is quoted and
+                  the window is shut, and the sentence was missing exactly
+                  then. */}
               {registrationOpen(today) && (
-                <p className="member__note">
-                  {me.country === 'RS'
-                    ? t('membership.costsDinar')
-                    : t('membership.costsAbroad', { fee: PROCESSING_FEE_EUR })}
-                </p>
+                <p className="member__note">{t('membership.costs', { fee: PROCESSING_FEE_EUR })}</p>
               )}
               <p className="member__note">
                 {t('membership.junior', {
