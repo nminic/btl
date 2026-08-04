@@ -64,14 +64,6 @@
   font-size: 0.85rem;
 }
 
-/* The shared table reads its first three columns as words and puts them to the
-   left. On a board the last column is always the measure, so it goes back to
-   the right where a column of numbers belongs. */
-.boards .table th:last-child,
-.boards .table td:last-child {
-  text-align: right;
-}
-
 /* The event name is the one column here that is words rather than a number,
    and the only one that can run long. */
 .boards .table .boards__detail {
@@ -80,12 +72,12 @@
   font-size: 0.85rem;
 }
 
-/* Every other column is a figure. The shared table pushes its first three
-   columns to the left, which is right for a name and wrong for a number, so the
-   figures say so for themselves. */
+/* Every column that is not the event is a figure. The shared table pushes its
+   first three columns to the left, which is right for a name and wrong for a
+   number, so the figures say so for themselves. Tabular figures come from the
+   root and are not repeated here. */
 .boards .table .boards__figure {
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 /* A board with nothing to show is as tall as the sentence that says so. The

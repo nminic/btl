@@ -3,10 +3,10 @@
  * counted.
  *
  * Written for the front page's turning chart and shared with the Top liste from
- * 04.08.2026, where six of the ten boards are drawn this way. The clearance at the
- * top of the columns is still the one the pause control needs, because a chart
- * that does not turn has nothing in that corner and loses nothing by leaving it
- * empty.
+ * 04.08.2026, where six of the ten boards are drawn this way. The clearance at
+ * the top of the columns belongs to the pause control and is kept only where
+ * there is one: on a board it was fifty empty pixels while the short bars
+ * crowded the band underneath (owner, 04.08.2026).
  */
 .colchart {
   position: relative;
@@ -38,10 +38,6 @@
   min-block-size: 15rem;
 }
 
-/* Centred, not stretched (owner, 31.07.2026). Stretching handed the face the
-   width of the column and squeezed the height it was given, so the first circle,
-   in the widest column, came out an ellipse and none of them stood over the
-   middle of their own bar. */
 /* The top of this box is the pause disc's, not the bars', on the one chart that
    has a disc. When every column is the same height, which is the ordinary state
    of the first weeks of a season and the permanent state of the ultra board, the
@@ -54,6 +50,10 @@
   padding-block-start: 3.1rem;
 }
 
+/* Centred, not stretched (owner, 31.07.2026). Stretching handed the face the
+   width of the column and squeezed the height it was given, so the first circle,
+   in the widest column, came out an ellipse and none of them stood over the
+   middle of their own bar. */
 .colchart__column {
   display: flex;
   flex-direction: column;
@@ -252,11 +252,21 @@
 /* Dead in the middle of its bar, both ways (owner, 31.07.2026). It used to sit
    a fixed distance up from the foot, so on a tall bar it was down at the
    bottom and on a short one it was nearly out of it. */
+/* A disc while what is in it is short, and a pill when it is not.
+ *
+ * It was a circle of a fixed width, made when a bar carried a count of races.
+ * The board of best progress carries points to two decimals since 04.08.2026
+ * (owner), and "334,56" is forty-one pixels of text in a disc of twenty-seven:
+ * nine of ten numbers hung out of their own disc, half on it and half on the bare
+ * bar. The height is what makes it a disc, so a short number is round exactly as
+ * before and a long one grows sideways only. */
 .colchart__count {
   position: absolute;
   inset: 0;
   margin: auto;
-  inline-size: 1.7rem;
+  inline-size: fit-content;
+  min-inline-size: 1.7rem;
+  padding-inline: var(--space-6);
   block-size: 1.7rem;
   display: grid;
   place-items: center;
@@ -271,7 +281,7 @@
    under it is already the quieter of the two, and a second colour of circle
    would be a third thing for a reader to learn. */
 .colchart__count--quiet {
-  inline-size: 1.45rem;
+  min-inline-size: 1.45rem;
   block-size: 1.45rem;
   font-size: 0.72rem;
 }

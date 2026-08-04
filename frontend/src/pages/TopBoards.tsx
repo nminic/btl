@@ -23,9 +23,10 @@ import './Rankings.css'
 import './TopBoards.css'
 
 /* The Top liste: the lists the rulebook counts out in Article 55, which stand
- * beside the season table rather than inside it. Every one of them keeps ten
- * places and no more, and they all read the same season, which is chosen once at
- * the top of the page (PDL P12 and P28a).
+ * beside the season table rather than inside it. They keep ten places and no
+ * more, except the best progress, which keeps five (owner, 04.08.2026), and they
+ * all read the same season, which is chosen once at the top of the page (PDL P12
+ * and P28a).
  *
  * The layout is the owner's, 04.08.2026, and it is two thirds against one:
  *
@@ -59,8 +60,8 @@ const PLACES = 10
 const PROGRESS_PLACES = 5
 
 /** One cell after the name, and how it is set: words read from the left,
- *  numbers from the right. */
-type Cell = { text: string; words?: boolean }
+ *  numbers from the right, and a column a telephone does not have room for. */
+type Cell = { text: string; words?: boolean; hidePhone?: boolean }
 
 type Place = {
   /** Where the name leads. Missing where there is nothing to lead to: a member
@@ -105,11 +106,31 @@ type ChartData = {
  *  drawn as another. */
 type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
 
-/** How a cell is set: words to the left and quiet, numbers to the right. The
- *  shared table pushes its first three columns to the left, which is right for a
- *  name and wrong for a figure, so both say which they are. */
-function cellClass(cell: Cell): string {
-  return cell.words === true ? 'boards__detail' : 'boards__figure'
+/**
+ * How a cell is set.
+ *
+ * Words to the left and quiet, figures to the right: the shared table pushes its
+ * first three columns to the left, which is right for a name and wrong for a
+ * number, so both say which they are.
+ *
+ * The last one is the measure the board ranks by, and it is written the way every
+ * measure on the portal is, in bold and in gold on the row that leads (see
+ * `table__points` in src/styles/table.css). Read off the position rather than
+ * from a flag on the cell, because it is not a property of the cell: it is what
+ * being last on a board means.
+ *
+ * A column the telephone has no room for goes, and what a telephone keeps is the
+ * four the standing keeps: the place, the name, one column of its own, and the
+ * measure (PDL P12).
+ */
+function cellClass(cell: Cell, last: boolean): string {
+  return [
+    cell.words === true ? 'boards__detail' : 'boards__figure',
+    last ? 'table__points' : '',
+    cell.hidePhone === true ? 'table__hide-phone' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 }
 
 function Board({ id, title, columns, places, empty }: BoardData) {
@@ -131,8 +152,12 @@ function Board({ id, title, columns, places, empty }: BoardData) {
               <tr>
                 <th scope="col">{t('topBoards.columns.position')}</th>
                 <th scope="col">{t('topBoards.columns.member')}</th>
-                {columns.map((column) => (
-                  <th key={column.text} scope="col" className={cellClass(column)}>
+                {columns.map((column, index) => (
+                  <th
+                    key={column.text}
+                    scope="col"
+                    className={cellClass(column, index === columns.length - 1)}
+                  >
                     {column.text}
                   </th>
                 ))}
@@ -153,7 +178,7 @@ function Board({ id, title, columns, places, empty }: BoardData) {
                       row can carry the same figure, which the ascent and the
                       descent of a race regularly do. */}
                   {place.cells.map((cell, index) => (
-                    <td key={index} className={cellClass(cell)}>
+                    <td key={index} className={cellClass(cell, index === place.cells.length - 1)}>
                       {cell.text}
                     </td>
                   ))}
@@ -335,12 +360,16 @@ function Boards({
       kind: 'table',
       id: 'best-races',
       title: t('topBoards.bestRaces'),
+      /* Four of the eight go on a telephone, which is the rule the standing
+         keeps and the reason it keeps it: everything else forces a sideways
+         scroll nobody reads (PDL P12). What is left is the place, the name, the
+         event and the points. */
       columns: [
         { text: t('topBoards.columns.event'), words: true },
-        { text: t('rankings.columns.distance') },
-        { text: t('rankings.columns.ascent') },
-        { text: t('rankings.columns.descent') },
-        { text: t('rankings.columns.time') },
+        { text: t('rankings.columns.distance'), hidePhone: true },
+        { text: t('rankings.columns.ascent'), hidePhone: true },
+        { text: t('rankings.columns.descent'), hidePhone: true },
+        { text: t('rankings.columns.time'), hidePhone: true },
         { text: t('rankings.columns.points') },
       ],
       empty: noResults,
@@ -351,10 +380,10 @@ function Boards({
         name: nameOf(row.competitor),
         cells: [
           { text: row.result.eventName, words: true },
-          { text: formatNumber(row.result.distanceKm, locale, 2) },
-          { text: formatNumber(row.result.ascentM, locale) },
-          { text: formatNumber(row.result.descentM, locale) },
-          { text: formatDuration(row.result.seconds) },
+          { text: formatNumber(row.result.distanceKm, locale, 2), hidePhone: true },
+          { text: formatNumber(row.result.ascentM, locale), hidePhone: true },
+          { text: formatNumber(row.result.descentM, locale), hidePhone: true },
+          { text: formatDuration(row.result.seconds), hidePhone: true },
           { text: formatPoints(row.result.points, locale) },
         ],
       })),

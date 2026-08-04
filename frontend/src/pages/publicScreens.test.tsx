@@ -439,6 +439,53 @@ describe('TopBoards', () => {
     ).toEqual([])
   })
 
+  it('keeps four columns on a telephone, the way the standing does', async () => {
+    /* Eight columns in 360 pixels is 259 pixels of sideways scroll inside the
+       card, which is the thing PDL P12 forbids in as many words: what a phone
+       keeps is the place, the name, one column of its own and the measure. The
+       columns are marked rather than dropped, so the head and the body cannot
+       disagree about which went. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
+    const races = board('Najbolje pojedinačne trke')
+
+    const kept = races
+      .getAllByRole('columnheader')
+      .filter((one) => !one.className.includes('table__hide-phone'))
+      .map((one) => one.textContent)
+
+    expect(kept).toEqual(['#', 'Član', 'Događaj', 'Bodovi'])
+
+    /* And a row drops exactly the same four, so nothing is left with a heading
+       and no cell under it on a phone. */
+    const leader = at(races.getAllByRole('row'), 1)
+    const cells = within(leader)
+      .getAllByRole('cell')
+      .filter((one) => !one.className.includes('table__hide-phone'))
+
+    expect(cells).toHaveLength(kept.length)
+  })
+
+  it('writes the measure of a board the way every measure on the portal is', async () => {
+    /* Bold, and gold on the row that leads. It is the last column of every board
+       and it lost both when the boards learned to carry more than one column;
+       the Top liste were then the one place on the portal where the number a
+       table ranks by looked like any other number. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najviše kilometara' })
+
+    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
+      const rows = board(name).getAllByRole('row').slice(1)
+      const cells = within(at(rows, 0)).getAllByRole('cell')
+
+      expect(last(cells).className).toContain('table__points')
+      /* And nothing before it claims to be the measure. */
+      expect(cells.slice(0, -1).filter((one) => one.className.includes('table__points'))).toEqual([])
+    }
+  })
+
   it('marks the leader of a board and nobody else', async () => {
     /* Owner, 04.08.2026: "Nagrade se i dodeljuju samo najboljima." The standing
        still gilds three, because three is its podium; a Top lista gilds one. */
@@ -963,6 +1010,17 @@ describe('CompetitorProfile', () => {
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByText('Počasno članstvo')).not.toBeInTheDocument()
   })
+  it('leaves the one on a profile as it was, said and not drawn', async () => {
+    /* The pill stays on a profile, where the name of the competitor is the
+       heading and a labelled field beside it would read as a second one. */
+    renderAt('/sr/takmicar/000007')
+
+    const control = await screen.findByLabelText('Sezona')
+
+    expect(within(must(control.closest('label'), 'labela')).getByText('Sezona')).toHaveClass(
+      'visually-hidden',
+    )
+  })
 })
 
 describe('EventDetail', () => {
@@ -997,19 +1055,6 @@ describe('Teams', () => {
       'visually-hidden',
     )
   })
-
-  it('leaves the one on a profile as it was, said and not drawn', async () => {
-    /* The pill stays on a profile, where the name of the competitor is the
-       heading and a labelled field beside it would read as a second one. */
-    renderAt('/sr/takmicar/000007')
-
-    const control = await screen.findByLabelText('Sezona')
-
-    expect(within(must(control.closest('label'), 'labela')).getByText('Sezona')).toHaveClass(
-      'visually-hidden',
-    )
-  })
-
 
   /** The first table on the screen is the standing; the drawers open inside it. */
   const standing = async () => within(await screen.findByRole('table'))
