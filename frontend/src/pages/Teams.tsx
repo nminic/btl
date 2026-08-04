@@ -63,7 +63,7 @@ export function Teams() {
                     {t('teams.propose')}
                   </Link>
                 )}
-                <SeasonPicker seasons={seasons} season={season} fallback={running} />
+                <SeasonPicker seasons={seasons} season={season} fallback={running} named />
               </div>
 
               {rows.length === 0 ? (

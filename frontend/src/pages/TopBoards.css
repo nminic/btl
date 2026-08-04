@@ -23,8 +23,14 @@
 
 /* One column on a phone, in the order the widgets stand in the markup: two
    lengths, then the board that stands beside them on a wide screen, and so on
-   (TopBoards.tsx). */
+   (TopBoards.tsx).
+
+   The same distance under the row of the heading that the cards of the
+   competitors keep (owner, 04.08.2026: there the content is "savršeno odvojeno"
+   from that line). Every screen with a control beside its heading now starts its
+   content at the same place. */
 .boards__grid {
+  margin-block-start: var(--space-16);
   display: grid;
   gap: var(--space-16);
   /* minmax(0, …) rather than a bare 1fr: the smallest a track may be is
@@ -72,6 +78,14 @@
   text-align: left;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* Every other column is a figure. The shared table pushes its first three
+   columns to the left, which is right for a name and wrong for a number, so the
+   figures say so for themselves. */
+.boards .table .boards__figure {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* A board with nothing to show is as tall as the sentence that says so. The
@@ -132,8 +146,11 @@
     grid-row: 6;
   }
 
+  /* The whole width, under both columns (owner, 04.08.2026). It carries the
+     whole of a result now, six columns after the name, and six columns in two
+     thirds of a page is a table that scrolls inside itself on a desktop. */
   .boards__board--best-races {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 7;
   }
 

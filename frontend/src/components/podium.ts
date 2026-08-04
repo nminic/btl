@@ -18,3 +18,19 @@ export const PODIUM = 3
 export function podiumClass(position: number): string | undefined {
   return position <= PODIUM ? 'podium' : undefined
 }
+
+/**
+ * The same gold, for the first place alone.
+ *
+ * The Top liste mark the leader and nobody else (owner, 04.08.2026): "Nagrade se
+ * i dodeljuju samo najboljima." The teams have done it that way since they were
+ * written, for the same reason.
+ *
+ * A second function rather than a number this one takes: `places.map(podiumClass)`
+ * is how a table walks its rows, and `map` hands a function the index as its
+ * second argument, so a podium that took a size would quietly become a podium the
+ * size of the row number.
+ */
+export function leaderClass(position: number): string | undefined {
+  return position === 1 ? 'podium' : undefined
+}

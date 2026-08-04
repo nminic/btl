@@ -71,8 +71,8 @@ const ALLOWED = new Map([
     'in em on purpose: the padding around code inside a sentence grows with the code, not with the page',
   ],
   [
-    'components/ColumnChart.css | padding | 3.1rem var(--space-10) 0',
-    'the measured clearance that keeps the pause control off the tenth face',
+    'components/ColumnChart.css | padding-block-start | 3.1rem',
+    'the measured clearance that keeps the pause control off the tenth face, and kept only on the one chart that has a control',
   ],
   [
     'pages/admin/SectionNav.css | padding | 0.05rem var(--space-6)',

@@ -22,14 +22,11 @@
 .colchart__columns {
   list-style: none;
   margin: 0;
-  /* The top of this box is the pause disc's, not the bars'. When every column
-     is the same height, which is the ordinary state of the first weeks of a
-     season and the permanent state of the ultra board, the tenth face reached
-     the top right corner and the disc sat on it. */
-  /* Measured, not chosen: the disc reaches 45,6px down from the outer edge, so
-     this is the clearance that keeps it off the tenth face. Off the scale on
-     purpose, the same as the sizes of the faces themselves. */
-  padding: 3.1rem var(--space-10) 0;
+  /* A step under the bars, so the number on a short one has somewhere to go: it
+     is centred in its bar, and a bar shorter than the circle in it spills that
+     circle onto the gold band below. This lifts every bar by the same amount,
+     so it costs nothing in proportion: twice the races is still twice the bar. */
+  padding: var(--space-10) var(--space-10) var(--space-8);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -45,6 +42,18 @@
    width of the column and squeezed the height it was given, so the first circle,
    in the widest column, came out an ellipse and none of them stood over the
    middle of their own bar. */
+/* The top of this box is the pause disc's, not the bars', on the one chart that
+   has a disc. When every column is the same height, which is the ordinary state
+   of the first weeks of a season and the permanent state of the ultra board, the
+   tenth face reached the top right corner and the disc sat on it.
+
+   Measured, not chosen: the disc reaches 45,6px down from the outer edge, so
+   this is the clearance that keeps it off the tenth face. Off the scale on
+   purpose, the same as the sizes of the faces themselves. */
+.colchart--control .colchart__columns {
+  padding-block-start: 3.1rem;
+}
+
 .colchart__column {
   display: flex;
   flex-direction: column;

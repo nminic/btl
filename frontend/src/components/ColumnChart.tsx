@@ -207,7 +207,11 @@ export function ColumnChart({
 
   return (
     <section
-      className="colchart"
+      /* The band at the top is room for the control, so it is only kept where
+         there is one (owner, 04.08.2026: on the boards "gornji deo widgeta je
+         neiskorišćen"). Without it the bars have the whole of the widget, which
+         is what makes a column of one race tall enough to hold its own number. */
+      className={control === undefined ? 'colchart' : 'colchart colchart--control'}
       aria-label={captionId === undefined ? label : undefined}
       aria-labelledby={captionId}
     >

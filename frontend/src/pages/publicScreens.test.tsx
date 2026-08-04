@@ -81,9 +81,16 @@ function countIn(column: HTMLElement): number {
  * are there.
  */
 function levelIn(column: HTMLElement, name: string): number {
-  const written = must(levelOf(column, name).textContent, 'nivo stupca').replace(name, '')
+  return Number(
+    writtenIn(column, name)
+      .replace(/\./g, '')
+      .replace(',', '.'),
+  )
+}
 
-  return Number(written.trim().replace(/\./g, ''))
+/** The figure in that level, exactly as it is written on the screen. */
+function writtenIn(column: HTMLElement, name: string): string {
+  return must(levelOf(column, name).textContent, 'nivo stupca').replace(name, '').trim()
 }
 
 /** The element that draws one level of a bar, reached from the words that say
@@ -393,17 +400,60 @@ describe('TopBoards', () => {
     expect(board('Najviše maratona').queryAllByRole('listitem')).toHaveLength(0)
   })
 
-  it('ranks the single races by the points of one result, in a table with the event', async () => {
+  it('ranks the single races by the points of one result, and shows the whole of it', async () => {
+    /* Owner, 04.08.2026: the board carried the event and the points, which says
+       what it ranks by and nothing about the race that earned it. A reader
+       looking at the ten best runs of a season wants to see what they were, so
+       the whole result is here, which is also why this board takes the whole
+       width of the page. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
     const races = board('Najbolje pojedinačne trke')
 
-    expect(races.getByRole('columnheader', { name: 'Događaj' })).toBeInTheDocument()
+    expect(races.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
+      '#',
+      'Član',
+      'Događaj',
+      'd (km)',
+      '+ (m)',
+      '− (m)',
+      'Vreme',
+      'Bodovi',
+    ])
 
     const points = races.getAllByRole('row').slice(1).map(lastNumberIn)
 
     expect([...points].sort((left, right) => right - left)).toEqual(points)
+
+    /* And every cell of the first row is filled, so a column added to the head
+       without a cell under it fails here rather than drawing a gap. */
+    const leader = at(races.getAllByRole('row'), 1)
+
+    expect(within(leader).getAllByRole('cell')).toHaveLength(8)
+    expect(
+      within(leader)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent)
+        .filter((text) => text === null || text.trim() === ''),
+    ).toEqual([])
+  })
+
+  it('marks the leader of a board and nobody else', async () => {
+    /* Owner, 04.08.2026: "Nagrade se i dodeljuju samo najboljima." The standing
+       still gilds three, because three is its podium; a Top lista gilds one. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najviše kilometara' })
+
+    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
+      const rows = board(name).getAllByRole('row').slice(1)
+      const gilded = rows.filter((row) => row.className === 'podium')
+
+      expect(rows.length).toBeGreaterThan(3)
+      expect(gilded).toHaveLength(1)
+      expect(gilded[0]).toBe(rows[0])
+    }
   })
 
   it('shows the time on the course in the shape the owner asked for', async () => {
@@ -441,16 +491,23 @@ describe('TopBoards', () => {
 
     const columns = board('Najbolji napredak').getAllByRole('listitem')
 
+    /* Five, not ten (owner, 04.08.2026). */
     expect(columns.length).toBeGreaterThan(1)
-    expect(columns.length).toBeLessThanOrEqual(10)
+    expect(columns.length).toBeLessThanOrEqual(5)
     expect(board('Najbolji napredak').queryByRole('table')).not.toBeInTheDocument()
 
     for (const column of columns) {
       const previous = levelIn(column, 'Prethodna sezona')
       const gain = levelIn(column, 'Prirast')
 
-      expect(Number.isInteger(previous), `${previous} nije ceo broj`).toBe(true)
-      expect(Number.isInteger(gain), `${gain} nije ceo broj`).toBe(true)
+      /* In BTL points, to two decimals, as the portal writes them everywhere
+         else (owner, 04.08.2026). They were written as whole points for a day,
+         and a whole point is not what a BTL point is: two people a quarter of a
+         point apart both read the same number. */
+      for (const name of ['Prethodna sezona', 'Prirast']) {
+        expect(writtenIn(column, name)).toMatch(/^[\d.]+,\d{2}$/)
+      }
+
       expect(gain).toBeGreaterThan(0)
       /* The drawing agrees with the two numbers written in it. Read off the
          height each level asks for, because that is the only place the
@@ -922,6 +979,38 @@ describe('EventDetail', () => {
  * are held to `pricing.ts` in their own files. */
 
 describe('Teams', () => {
+  it('names its season control and draws it in the shape the other screens use', async () => {
+    /* Owner, 04.08.2026: the one here "je ružnija nego u Top listama". It is the
+       same control as the season on the Top liste now, with its name beside it
+       rather than said only to a screen reader. The pill stays on a profile,
+       where the name of the competitor is the heading and a labelled field
+       beside it would read as a second one. */
+    renderAt('/sr/timovi')
+
+    const control = await screen.findByLabelText('Sezona')
+
+    expect(control.tagName).toBe('SELECT')
+    /* Drawn, not merely said. jsdom applies no stylesheet, so what is asked is
+       which of the two the markup carries; the class is the mechanism, and
+       `toBeVisible` cannot see it. */
+    expect(within(must(control.closest('label'), 'labela')).getByText('Sezona')).not.toHaveClass(
+      'visually-hidden',
+    )
+  })
+
+  it('leaves the one on a profile as it was, said and not drawn', async () => {
+    /* The pill stays on a profile, where the name of the competitor is the
+       heading and a labelled field beside it would read as a second one. */
+    renderAt('/sr/takmicar/000007')
+
+    const control = await screen.findByLabelText('Sezona')
+
+    expect(within(must(control.closest('label'), 'labela')).getByText('Sezona')).toHaveClass(
+      'visually-hidden',
+    )
+  })
+
+
   /** The first table on the screen is the standing; the drawers open inside it. */
   const standing = async () => within(await screen.findByRole('table'))
 

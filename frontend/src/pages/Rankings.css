@@ -45,6 +45,15 @@
   }
 }
 
+/* What comes under the row of the heading starts where the cards of the
+   competitors start (owner, 04.08.2026): there the content is cleanly off that
+   line, and the tables were sitting closer to it than the cards were. The cards
+   carry the same distance in their own sheet, so all three screens agree. */
+.rankings--tooled > .table-scroll,
+.rankings--tooled > .rankings__empty {
+  margin-block-start: var(--space-16);
+}
+
 .rankings__head-tool {
   display: flex;
   justify-content: flex-end;
