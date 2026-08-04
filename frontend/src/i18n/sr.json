@@ -692,8 +692,7 @@
       "label": "Delovi profila",
       "overview": "Pregled",
       "awards": "Priznanja i nagrade"
-    },
-    "trophies": "Pehari"
+    }
   },
   "teams": {
     "title": "Timovi",
@@ -1262,7 +1261,7 @@
     "openSections": "Sekcije pravilnika"
   },
   "awards": {
-    "trophies": "Pehari i plakete",
+    "trophies": "Pehari",
     "badges": "Značke",
     "note": "Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno.",
     "board": "Lista",
@@ -1270,8 +1269,8 @@
     "overall": "Generalni plasman",
     "category": "Kategorija {category}",
     "position": "{position}. mesto",
-    "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
-    "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.",
+    "empty": "Ovaj takmičar još nema nijedan pehar.",
+    "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar.",
     "noBadges": "Još nijedna značka."
   },
   "report": {
