@@ -500,7 +500,7 @@ describe('TopBoards', () => {
   })
 
   it('keeps four columns on a telephone, the way the standing does', async () => {
-    /* Eight columns in 360 pixels is 210 pixels of sideways scroll inside the
+    /* Eight columns in 360 pixels is 211 pixels of sideways scroll inside the
        card, which is the thing PDL P12 forbids in as many words: what a phone
        keeps is the place, the name, one column of its own and the measure. The
        columns are marked rather than dropped, so the head and the body cannot

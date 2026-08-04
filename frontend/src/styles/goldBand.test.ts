@@ -155,21 +155,47 @@ describe('the sentence above a table of places', () => {
  * `opacity: 1` the whole suite stayed green while every such table showed every
  * column on a telephone again, sideways scroll and all.
  */
+/**
+ * Everything inside the one query that means a telephone, and nothing after it.
+ *
+ * Proximity is not containment: a rule sitting under a query rather than in it
+ * applies at every width, and reads the same from a few characters away.
+ *
+ * The brace is part of what is looked for, because the query's own text is a
+ * prefix of a narrower one. `@media (max-width: 699.98px) and (min-width: 500px)`
+ * is a query no telephone ever matches, and a search for the shorter string
+ * finds it and reports the rule safely inside it.
+ */
+function onTelephone(css: string): string {
+  const at = css.indexOf('@media (max-width: 699.98px) {')
+
+  expect(at, 'there is no telephone query').toBeGreaterThan(-1)
+  return css.slice(at, css.indexOf('\n}', at))
+}
+
 describe('a column hidden on a telephone', () => {
   it('is taken out of the page, and only on a telephone', () => {
-    const css = read('src/styles/table.css')
-    const at = css.indexOf('@media (max-width: 699.98px)')
-
-    expect(at, 'there is no telephone query').toBeGreaterThan(-1)
-
-    /* The whole of that query and nothing after it, so the rule has to be inside
-       it. Proximity is not containment: a rule sitting under a query rather than
-       in it hides those columns at every width, desktop included, and reads the
-       same from a few characters away. */
-    const query = css.slice(at, css.indexOf('\n}', at))
+    const query = onTelephone(read('src/styles/table.css'))
 
     expect(query).toContain('.table__hide-phone')
     expect(bodyOf(query, '.table__hide-phone')).toMatch(/display:\s*none/)
+  })
+
+  /* And the room those four leave behind is not spent on the padding of the
+   * ones that stay.
+   *
+   * It came out once on the reading that it is inert, because the table does fit
+   * at 360px without it. It does. What it holds is the room behind the fit:
+   * measured on the worst season, the board of best races asks for 275,4px of
+   * the 294px its card gives it, and 291,4px without this, which is two and a
+   * half pixels of margin at the width the portal promises to work at. It was
+   * not free to look at either, because what does not fit wraps instead: the
+   * same board stood sixty-two pixels taller.
+   */
+  it('leaves the reserve behind that in the padding of the cells that stay', () => {
+    expect(onTelephone(read('src/pages/TopBoards.css'))).toMatch(
+      /\.boards \.table th,\s*\.boards \.table td \{\s*padding-inline: var\(--space-6\)/,
+    )
   })
 })
 
@@ -270,22 +296,6 @@ describe('what the owner asked for on 04.08.2026', () => {
       expect(bodyOf(read(file), rule)).toMatch(holds)
     })
   }
-
-  it('keeps the reserve on a telephone in the padding of the cells', () => {
-    /* Both selectors and inside the query, for the two reasons the two guards
-       above this one were written for. It was deleted once as inert, on the
-       reading that the table fits at 360px without it, which it does: what it
-       actually holds is the room behind that, 275,4px asked of a 295px card
-       rather than 291,4px, and sixty-two pixels of height that would otherwise
-       go into wrapping. */
-    const css = read('src/pages/TopBoards.css')
-    const at = css.indexOf('@media (max-width: 699.98px)')
-
-    expect(at, 'there is no telephone query').toBeGreaterThan(-1)
-    expect(css.slice(at, css.indexOf('\n}', at))).toMatch(
-      /\.boards \.table th,\s*\.boards \.table td \{\s*padding-inline: var\(--space-6\)/,
-    )
-  })
 
   it('starts the table itself off that line, not only the sentence standing in for it', () => {
     /* Both selectors of one rule, and the rule is found by the last of them, so

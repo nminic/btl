@@ -90,12 +90,12 @@
 
 /* Not what makes the table fit, which is the break inside a long name above,
    but the reserve behind it, on the width where every pixel is counted. Two
-   pixels a side over eight columns is sixteen of the three hundred and sixty a
-   telephone has, and the whole of the distance between comfortable and not:
-   measured at 360px on the worst season the table asks for 275,4px of the 295px
-   its card gives it, and 291,4px without this. It costs nothing to look at
-   either, because what does not fit wraps instead: the same board is sixty-two
-   pixels taller without it. */
+   pixels a side over the four columns this width keeps is sixteen, and that is
+   the whole of the distance between comfortable and not: measured at 360px on
+   the worst season the table asks for 275,4px of the 294px its card gives it,
+   and 291,4px without this. It costs nothing to look at either, because what
+   does not fit wraps instead: the same board is sixty-two pixels taller without
+   it. */
 @media (max-width: 699.98px) {
   .boards .table th,
   .boards .table td {
