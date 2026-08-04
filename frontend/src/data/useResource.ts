@@ -33,31 +33,26 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
    *
    * Once is all that is wanted: what the first render of a screen holds is what
    * decides whether the router has a page to put a scroll position back into.
-   * Reading it on every render would be reading a value that nothing here is
-   * subscribed to, and a version of this that did that also skipped its own
-   * effect when the value was already in hand: a value landing between the
-   * render and the effect was then seen by neither, and the screen waited for
-   * ever with nothing scheduled to take it off. State read once and set from the
-   * effect has no such gap, because the effect always asks. */
+   * Reading it on every render would be reading a value nothing here is
+   * subscribed to.
+   *
+   * Which means this is written for a name that does not change, and every
+   * caller passes a literal one (the ten wrappers at the foot of this file, and
+   * `usePending`). Handed a name that changes, the first render under the new one
+   * would draw the old resource's data as though it were ready, and only the
+   * effect would put it right. Making that correct is not a line in the effect,
+   * which runs after that render: it is the state being adjusted during the
+   * render itself. Worth writing on the day a caller needs it, and not before. */
   const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
 
   useEffect(() => {
-    /* Read again here, and asked for again below, both on purpose.
-     *
-     * Again here, because the resource this hook is about can change: the state
-     * was worked out for the old name and would be handed out as this name's
-     * answer until the promise came back, which is one screen showing another
-     * screen's data and calling it ready.
-     *
-     * Again below, even when the value is in hand, because that is what closes
-     * the window: a value landing between the render and this effect is seen by
-     * neither, and a version of this that returned early here left the screen
-     * waiting for ever with nothing scheduled to take it off. `loadResource`
-     * answers from the promise it is already holding, so the cost is a render
-     * nobody sees. */
+    /* Asked for even when the value is already in hand, and that is what closes
+       the window: a value landing between the render and this effect is seen by
+       neither, and a version of this that returned early here left the screen
+       waiting for ever with nothing scheduled to take it off (there is a test for
+       that, in useResource.test.tsx). `loadResource` answers from the promise it
+       is already holding, so what it costs is a render nobody sees. */
     let active = true
-
-    setState(atHand<T>(name))
 
     loadResource<T>(name).then(
       (data) => {
