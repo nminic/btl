@@ -112,12 +112,19 @@ export function Membership() {
                   season is running the price is quoted and the renewal window
                   is shut, and a member abroad was reading a number three euro
                   short of what they would pay. */}
+              {registrationOpen(today) && (
+                <p className="member__note">
+                  {me.country === 'RS'
+                    ? t('membership.costsDinar')
+                    : t('membership.costsAbroad', { fee: PROCESSING_FEE_EUR })}
+                </p>
+              )}
               <p className="member__note">
-                {me.country === 'RS'
-                  ? t('membership.costsDinar')
-                  : t('membership.costsAbroad', { fee: PROCESSING_FEE_EUR })}
+                {t('membership.junior', {
+                  eur: JUNIOR.eur,
+                  rsd: formatNumber(JUNIOR.rsd, locale),
+                })}
               </p>
-              <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>
             </section>
 
             <section className="member__panel" aria-labelledby="membership-renewal">

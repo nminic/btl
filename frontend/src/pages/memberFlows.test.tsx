@@ -175,7 +175,7 @@ describe('membership', () => {
     renderMembershipOn('2031-10-01')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
-    expect(screen.getAllByText(/35 EUR, odnosno 4\.200 RSD/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/35 EUR, a iz Srbije 4\.200 RSD/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Članarina se još ne prodaje/)).not.toBeInTheDocument()
   })
 
@@ -186,6 +186,23 @@ describe('membership', () => {
     expect(
       screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
+    /* And nothing about what a payment costs, because on that day nothing is on
+       sale: the panel says so a line above. What the fee carries belongs beside
+       a price, and there is no price yet. */
+    expect(screen.queryByText(/nema ni taksu za obradu/)).toBeNull()
+  })
+
+  it('says what a payment carries outside the renewal window too, while there is a price', async () => {
+    /* For the nine months a season is running the price is quoted and the
+       renewal window is shut. Written inside the renewal, the sentence was
+       missing exactly then, and a member abroad read a number three euro short
+       of what they would pay. */
+    renderMembershipOn('2027-06-01', '000010')
+
+    await screen.findByRole('heading', { name: 'Moja članarina' })
+
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
   it('carries the referral link and the balance', async () => {
@@ -466,7 +483,7 @@ describe('screens that depend on the date', () => {
        screen printed as a bare 4200. */
     renderMembershipOn('2026-10-02', '000031')
 
-    expect(await screen.findByText('Danas članarina košta 35 EUR, odnosno 4.200 RSD.')).toBeVisible()
+    expect(await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.')).toBeVisible()
   })
 
   it('moves the whole portal to another day from the switch in the header', async () => {

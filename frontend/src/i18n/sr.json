@@ -850,7 +850,7 @@
     "active": "Član od {season}. sezone.",
     "honorary": "Počasno članstvo. Za sezonu 2027. ne plaćaš članarinu.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
-    "junior": "Do 14 godina članarina je {eur} EUR, bez obzira na datum.",
+    "junior": "Do 14 godina članarina je {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum.",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
@@ -888,7 +888,7 @@
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
     "costsDinar": "Uplata u dinarima nema ni taksu za obradu ni kursnu razliku. Naknada tvoje banke, ako je ima, ostaje na tebi.",
     "costsAbroad": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Kursna razlika i naknada tvoje banke padaju na tebe.",
-    "priceNow": "Danas članarina košta {eur} EUR, odnosno {rsd} RSD."
+    "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD."
   },
   "review": {
     "title": "Red za proveru rezultata",
