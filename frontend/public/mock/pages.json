@@ -4,7 +4,7 @@
     "sections": [
       {
         "heading": "1. Ko smo i kako da nas kontaktirate",
-        "body": "Vašim podacima rukuje Sportsko udruženje BTL, udruženje registrovano u Agenciji za privredne registre Republike Srbije, koje vodi Balkansku trkačku ligu i portal [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net).\n\n| | |\n|---|---|\n| Naziv | Sportsko udruženje BTL |\n| Sedište | Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd |\n| Matični broj | 28815158 |\n| PIB | 109089912 |\n| Adresa za sva pitanja o privatnosti | [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net) |\n| Lice za zaštitu podataka | Nikola Minić |\n\nNa svako pitanje o vašim podacima odgovaramo sa te adrese. Ne morate ništa da obrazlažete i ne naplaćujemo odgovor."
+        "body": "Vašim podacima rukuje Sportsko udruženje BTL, udruženje registrovano u Agenciji za privredne registre Republike Srbije, koje vodi Balkansku trkačku ligu i portal [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net).\n\n| | |\n|---|---|\n| Naziv | Sportsko udruženje BTL |\n| Sedište | `[TREBA POPUNITI: puna adresa sedišta, po izvodu iz APR-a]` |\n| Matični broj | 28815158 |\n| PIB | 109089912 |\n| Adresa za sva pitanja o privatnosti | [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net) |\n| Lice za zaštitu podataka | Nikola Minić |\n\nNa svako pitanje o vašim podacima odgovaramo sa te adrese. Ne morate ništa da obrazlažete i ne naplaćujemo odgovor."
       },
       {
         "heading": "2. Koji propisi se primenjuju",
@@ -65,7 +65,7 @@
     "sections": [
       {
         "heading": "1. Ko smo i šta ove reči znače",
-        "body": "Portal [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net) vodi Sportsko udruženje BTL, udruženje registrovano u Agenciji za privredne registre Republike Srbije, sa sedištem na adresi Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd, matični broj 28815158, PIB 109089912. Pišite nam na [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).\n\nU ovom tekstu „BTL\", „liga\" i „mi\" znače Sportsko udruženje BTL, a „portal\" znači [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net).\n\nKo smo, koje podatke o vama čuvamo i zašto, stoji u politici privatnosti; ovde stoji ugovor."
+        "body": "Portal [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net) vodi Sportsko udruženje BTL, udruženje registrovano u Agenciji za privredne registre Republike Srbije, matični broj 28815158, PIB 109089912, sa sedištem `[TREBA POPUNITI: puna adresa sedišta, po izvodu iz APR-a]`. Pišite nam na [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).\n\nU ovom tekstu „BTL\", „liga\" i „mi\" znače Sportsko udruženje BTL, a „portal\" znači [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net).\n\nKo smo, koje podatke o vama čuvamo i zašto, stoji u politici privatnosti; ovde stoji ugovor."
       },
       {
         "heading": "2. Šta ovi uslovi uređuju",

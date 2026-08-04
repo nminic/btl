@@ -237,6 +237,10 @@ describe('the page that says what membership costs', () => {
     const page = within(await screen.findByRole('main'))
     const row = page.getByRole('row', { name: /Taksa za obradu plaćanja/ })
 
+    /* A row heading, not a period: read down the first column the fee is not one
+       of the four bands, and under "Period uplate" a screen reader would say it
+       is. */
+    expect(within(row).getByRole('rowheader')).toHaveTextContent(/Taksa za obradu plaćanja/)
     expect(within(row).getByText(`${PROCESSING_FEE_EUR} EUR`)).toBeVisible()
     /* And nothing on the dinar side of that row. */
     expect(within(row).getByText('nema')).toBeVisible()
