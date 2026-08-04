@@ -188,6 +188,12 @@ describe('the answer of the calculator', () => {
     const css = read('src/pages/Home.css')
 
     expect(bodyOf(css, '.calc__result strong')).toMatch(/line-height:\s*1;/)
+    /* And two pixels of the smallest step there is, which is the rest of it:
+       measured on the page, the leading alone left the figure 1,8px low. */
+    expect(bodyOf(css, '.calc__result strong')).toMatch(
+      /padding-block-end:\s*var\(--space-2\)/,
+    )
+    // Nothing lifts the two beside it any more; they carry the row's own bottom.
     expect(bodyOf(css, '.calc__label')).not.toMatch(/padding/)
     expect(bodyOf(css, '.calc__waiting')).not.toMatch(/padding/)
     /* And the row is still laid along the bottom rather than on a shared

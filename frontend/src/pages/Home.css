@@ -496,6 +496,11 @@
 .calc__result strong {
   font-size: clamp(21px, 3.2vw, 27px);
   line-height: 1;
+  /* The last two pixels of it, measured on the page at 1440: the figure's
+     baseline stood 4,5px above the label's before, and 1,8px below it once the
+     leading came out of its box. Two pixels is the smallest step the scale has
+     and it lands the two within a fifth of a pixel of each other. */
+  padding-block-end: var(--space-2);
   color: var(--gold-text);
   letter-spacing: -0.02em;
 }
