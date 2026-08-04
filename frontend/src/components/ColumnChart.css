@@ -266,11 +266,16 @@
   margin: auto;
   inline-size: fit-content;
   min-inline-size: 1.7rem;
+  /* Never wider than the bar it stands in, or two neighbours touch: at 360px ten
+     bars are 58px each, and a five figure count would ask for 64. */
+  max-inline-size: 100%;
   padding-inline: var(--space-6);
   block-size: 1.7rem;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  /* Round while it is round, and a pill once it is not. At 50% a stretched box
+     is an ellipse, which is neither. */
+  border-radius: var(--radius-round);
   background: var(--blue-800);
   color: var(--white);
   font-size: 0.82rem;
@@ -282,6 +287,7 @@
    would be a third thing for a reader to learn. */
 .colchart__count--quiet {
   min-inline-size: 1.45rem;
+  border-radius: var(--radius-round);
   block-size: 1.45rem;
   font-size: 0.72rem;
 }

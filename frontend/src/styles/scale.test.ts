@@ -92,6 +92,25 @@ const ALLOWED = new Map([
   ],
 ])
 
+describe('the column a telephone does not have room for', () => {
+  it('is taken out of the page, not merely made faint', () => {
+    /* Every table on the portal drops columns below 700px, and what a phone
+       keeps is the place, the name, one column of its own and the measure (PDL
+       P12). All of that rests on one declaration, and nothing was holding it:
+       turned into `opacity: 1` the whole suite stays green while every such
+       table shows every column on a telephone again, sideways scroll and all.
+
+       jsdom computes no media query, so the rule is read as text, the way the
+       badge art and the gold band are (ADL A7). */
+    const css = readFileSync(join(SRC, 'styles', 'table.css'), 'utf-8')
+    const rule = css.slice(css.indexOf('.table__hide-phone'))
+
+    expect(rule.slice(0, rule.indexOf('}'))).toMatch(/display:\s*none/)
+    /* And inside a query that ends where the wide layout begins. */
+    expect(css).toMatch(/@media \(max-width: 699\.98px\)[\s\S]{0,200}\.table__hide-phone/)
+  })
+})
+
 describe('space and corners are chosen from the scale, not typed', () => {
   const sheets = stylesheets().filter((one) => one.path !== 'styles/tokens.css')
 

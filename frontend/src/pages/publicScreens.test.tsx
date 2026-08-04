@@ -450,21 +450,27 @@ describe('TopBoards', () => {
     await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
     const races = board('Najbolje pojedinačne trke')
 
-    const kept = races
-      .getAllByRole('columnheader')
-      .filter((one) => !one.className.includes('table__hide-phone'))
-      .map((one) => one.textContent)
+    const onPhone = (row: HTMLElement, role: 'columnheader' | 'cell') =>
+      within(row)
+        .getAllByRole(role)
+        .map((one, index) => ({ index, hidden: one.className.includes('table__hide-phone') }))
+        .filter((one) => !one.hidden)
+        .map((one) => one.index)
 
-    expect(kept).toEqual(['#', 'Član', 'Događaj', 'Bodovi'])
+    const rows = races.getAllByRole('row')
+    const kept = onPhone(at(rows, 0), 'columnheader')
 
-    /* And a row drops exactly the same four, so nothing is left with a heading
-       and no cell under it on a phone. */
-    const leader = at(races.getAllByRole('row'), 1)
-    const cells = within(leader)
-      .getAllByRole('cell')
-      .filter((one) => !one.className.includes('table__hide-phone'))
+    expect(
+      within(at(rows, 0))
+        .getAllByRole('columnheader')
+        .filter((_, index) => kept.includes(index))
+        .map((one) => one.textContent),
+    ).toEqual(['#', 'Član', 'Događaj', 'Bodovi'])
 
-    expect(cells).toHaveLength(kept.length)
+    /* The same columns, not merely the same number of them. Counted, the
+       distance could hide while the event stayed and the heading "Događaj" would
+       sit over a figure: four columns either way, and nothing would say so. */
+    expect(onPhone(at(rows, 1), 'cell')).toEqual(kept)
   })
 
   it('writes the measure of a board the way every measure on the portal is', async () => {
@@ -1010,6 +1016,7 @@ describe('CompetitorProfile', () => {
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByText('Počasno članstvo')).not.toBeInTheDocument()
   })
+
   it('leaves the one on a profile as it was, said and not drawn', async () => {
     /* The pill stays on a profile, where the name of the competitor is the
        heading and a labelled field beside it would read as a second one. */
