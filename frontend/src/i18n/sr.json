@@ -160,7 +160,7 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari, plakete i značke osvojene u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i značke osvojene u Balkanskoj trkačkoj ligi."
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -192,7 +192,7 @@
     },
     "competitorAwards": {
       "title": "Priznanja takmičara",
-      "description": "Pehari, plakete i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
+      "description": "Pehari i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
     },
     "proposeTeam": {
       "title": "Predlog tima",
@@ -692,7 +692,8 @@
       "label": "Delovi profila",
       "overview": "Pregled",
       "awards": "Priznanja i nagrade"
-    }
+    },
+    "trophies": "Pehari"
   },
   "teams": {
     "title": "Timovi",
