@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
+import { PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
@@ -133,6 +134,19 @@ describe('membership', () => {
       screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
+  })
+
+  it('tells a member paying from abroad that the fee on top is not membership', async () => {
+    /* Said on the screen where the member is about to pay, and not only on the
+       price list (PDL P8, 03.08.2026). It is the last place the number can
+       still surprise anybody. */
+    renderFor('000009')
+
+    await screen.findByRole('heading', { name: 'Moja članarina' })
+    const fee = screen.getByText(/taksa za obradu plaćanja/)
+
+    expect(fee).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+    expect(fee).toHaveTextContent('nije deo članarine')
   })
 
   it('has a price in any October of any year, because the list repeats', async () => {

@@ -194,7 +194,18 @@ function inline(text: string, locale: string): ReactNode[] {
     }
 
     if (CODE.test(part)) {
-      return <code key={index}>{part.slice(1, -1)}</code>
+      const value = part.slice(1, -1)
+
+      /* Two things are written the same way and are not the same thing. An
+         example inside a sentence is set in italic at the size of the sentence
+         (Markdown.css, owner 03.08.2026); a blank the owner has still to fill in
+         is a note to ourselves that happens to be on a public page, and it has
+         to keep looking like one rather than turning into quiet prose. */
+      return (
+        <code key={index} className={value.startsWith('[TREBA POPUNITI') ? 'markdown__todo' : undefined}>
+          {value}
+        </code>
+      )
     }
 
     const link = linkOf(part)

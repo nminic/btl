@@ -37,6 +37,16 @@ describe('Markdown', () => {
     expect(screen.getByText('42.2').tagName).toBe('CODE')
   })
 
+  it('tells an example apart from a blank still to be filled in', () => {
+    /* Both are written the same way in the source, and since the examples gave
+       up their box (owner, 03.08.2026) the difference has to be made here: a
+       note to ourselves standing on a public page must not read as prose. */
+    render(<Markdown text={'Broj je `000001`, a adresa `[TREBA POPUNITI: adresa prostorija]`.'} />)
+
+    expect(screen.getByText('000001')).not.toHaveClass('markdown__todo')
+    expect(screen.getByText(/^\[TREBA POPUNITI/)).toHaveClass('markdown__todo')
+  })
+
   it('leaves an unclosed marker as the text it is', () => {
     render(<Markdown text={'**Važno: ovo nije kraj\n\nCena je `35 EUR bez zatvaranja'} />)
 

@@ -4,6 +4,7 @@ import {
   nextPrice,
   nextPriceStart,
   priceOn,
+  PROCESSING_FEE_EUR,
   REGISTRATION_OPENS,
   registrationOpen,
   seasonOnOffer,
@@ -50,6 +51,11 @@ export function EnrolmentSlot({ today }: { today: string }) {
         <strong>{price.eur} EUR</strong>
         <span className="slot__rsd">{price.rsd.toLocaleString('sr-Latn')} RSD</span>
       </p>
+      {/* The processing fee said where the price is said, in the fewest words
+          that are still true (PDL P8, 03.08.2026): quoting the euro price alone
+          on the front page and the fee three screens later is how somebody
+          arrives at the payment expecting one number and finds another. */}
+      <p className="slot__fee">{t('home.processingFee', { fee: PROCESSING_FEE_EUR })}</p>
       {/* Only where the next price is higher, which is the only thing worth
           hurrying anybody for. Through the nine months the season is running the
           next price is the early one and is lower, so the slot was announcing a

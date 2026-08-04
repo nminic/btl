@@ -275,14 +275,50 @@ describe('the rulebook', () => {
     expect(numbers).toEqual(numbers.map((_, index) => index + 1))
   })
 
-  it('points every cross-reference at an article that exists', () => {
-    const highest = [...(rulebook ?? '').matchAll(/### Član (\d+)\./g)].length
-    const referenced = [...(rulebook ?? '').matchAll(/Član[a-z]* (\d+)/g)].map((found) =>
-      Number(found[1]),
-    )
+  it('points every cross-reference at the article it means, not merely at one that exists', () => {
+    /* Checking that a number is in range proves nothing here: taking an article
+       out of the middle moves everything after it down by one, so a stale
+       reference lands on a real article and says the wrong thing. What is
+       checked is what each reference is about, against the heading of the
+       article it lands on.
 
-    expect(referenced.length).toBeGreaterThan(highest)
-    expect(referenced.filter((number) => number > highest)).toEqual([])
+       The headings are the pin. A reference that has to move and does not
+       arrives at an article about something else, and the pair stops matching. */
+    const expected: [number, RegExp][] = [
+      [11, /Pravo rangiranja/],
+      [14, /Cena i rokovi/],
+      [17, /Šta članstvo donosi/],
+      [18, /Trke koje ulaze u bodovanje/],
+      [42, /^Rok$/],
+      [55, /Top 10 liste/],
+      [70, /Posebna priznanja/],
+      [80, /Postupak/],
+    ]
+
+    const titles = new Map(
+      [...(rulebook ?? '').matchAll(/### Član (\d+)\. ([^\n]+)/g)].map((found) => [
+        Number(found[1]),
+        String(found[2]).trim(),
+      ]),
+    )
+    /* The headings themselves are not references to anything, so they are taken
+       out before the references are read; left in, every article counted as a
+       reference to itself and the count below could never fail. */
+    const referenced = [
+      ...(rulebook ?? '').replace(/### Član \d+\.[^\n]*/g, '').matchAll(/Član[a-z]* (\d+)/g),
+    ].map((found) => Number(found[1]))
+
+    /* Every article referred to, each once, since two paragraphs point at the
+       right to be ranked. A reference to an article nobody expected fails here
+       before it reaches the headings below. */
+    expect([...new Set(referenced)].sort((left, right) => left - right)).toEqual(
+      expected.map(([number]) => number).sort((left, right) => left - right),
+    )
+    expect(referenced.length).toBeGreaterThanOrEqual(expected.length)
+
+    for (const [number, heading] of expected) {
+      expect(titles.get(number), `Član ${number} ne postoji`).toMatch(heading)
+    }
   })
 
   it('does not carry the terrain profile any more', () => {

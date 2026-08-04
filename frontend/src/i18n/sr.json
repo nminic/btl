@@ -32,7 +32,7 @@
     },
     "topBoards": {
       "title": "BTL top 10 liste",
-      "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, parovi i trke po dužini."
+      "description": "Jedanaest lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, timovi, trkački parovi i trke po dužini."
     },
     "leagues": {
       "title": "BTL dodatna takmičenja",
@@ -349,7 +349,8 @@
     "noRanking": "Profil i rezultati, bez rangiranja.",
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
-    "calcResult": "BTL poeni:"
+    "calcResult": "BTL poeni:",
+    "processingFee": "Iz inostranstva i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
   },
   "data": {
     "loading": "Učitavanje",
@@ -420,7 +421,7 @@
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
-    "healthStatementHint": "Za sve na trci odgovoran je organizator trke, ne liga.",
+    "healthStatementHint": "Za sve na trci odgovoran je njen organizator, ne liga.",
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",
@@ -1061,7 +1062,8 @@
     },
     "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
     "period": "Period u godini",
-    "everyPayment": "Svaka uplata"
+    "everyPayment": "Svaka uplata",
+    "processingFee": "Uplata iz inostranstva na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik."
   },
   "badges": {
     "title": "Značke",

@@ -84,6 +84,18 @@
   overflow-wrap: anywhere;
 }
 
+/* A blank still to be filled in, which is written the same way in the source and
+   is not an example at all. It keeps the box the examples gave up, because it is
+   a note to ourselves standing on a public page and has to read as one. */
+.markdown code.markdown__todo {
+  font-style: normal;
+  padding: 0.05em 0.3em;
+  border-radius: var(--radius-4);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
 .markdown hr {
   width: 100%;
   margin: var(--space-8) 0;
