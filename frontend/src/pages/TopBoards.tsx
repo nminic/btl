@@ -36,12 +36,18 @@ import './TopBoards.css'
  *                              best pairs
  *
  * The board of the best teams went off this page entirely: the teams have a page
- * of their own, and that is where a standing of teams belongs. It is still one
- * of the lists in Article 55 and still worked out; it is not drawn here.
+ * of their own, and that is where a standing of teams belongs. It stays one of
+ * the lists Article 55 counts out, and the standing on that page is worked out
+ * per season by the same `rankTeams`; what is gone is this page's own view of
+ * it, not the ranking.
  *
- * The order in the markup is the order on a phone, where the grid becomes one
- * column: it walks the desktop rows across and then down, so the two readings
- * are the same reading.
+ * The order in the markup is two lengths, then the board that stands beside
+ * them, and so on: it is what a phone reads top to bottom, and on a wide screen
+ * every board still follows the rows it was placed against. It is deliberately
+ * not the wide screen read strictly across each row, because a board on the
+ * right spans two rows on the left and so belongs to neither of them; putting it
+ * after the two it stands beside is the one order that reads the same both
+ * ways.
  *
  * The ordering rules, tie-breakers included, live in src/data/derive.ts. This
  * file only lays them out.
@@ -208,6 +214,7 @@ function Boards({
         competitor: column.competitor,
         value: column.races,
         label: formatNumber(column.races, locale),
+        place: t('topBoards.place', { position: column.position }),
         to: profile(column.competitor),
       })),
     })
@@ -221,7 +228,14 @@ function Boards({
        last month. Whoever did not race the season before is not on the board,
        which is why it can be empty in a season that is otherwise full, and why
        it stays empty until the league has two seasons behind it. The owner knows
-       and asked that it be kept until then, to be looked at. */
+       and asked that it be kept until then, to be looked at.
+
+       One thing follows from the shape the owner asked for and is worth saying
+       out loud: the bars are ordered by the gain and drawn by the whole season,
+       so they do not step down in height the way every other chart here does.
+       Somebody who gained little on a large total stands below somebody who
+       gained much on a small one, and their bar is the taller of the two. That is
+       what "the season before at the foot, the gain on top of it" means. */
     const progress: Widget = {
       kind: 'chart',
       id: 'progress',
@@ -233,6 +247,7 @@ function Boards({
         value: row.points,
         label: rounded(row.gain, locale),
         reading: t('topBoards.columns.gain'),
+        place: t('topBoards.place', { position: row.position }),
         base: {
           value: row.previousPoints,
           label: rounded(row.previousPoints, locale),
@@ -308,10 +323,9 @@ function Boards({
       })),
     }
 
-    /* Across each desktop row and then down: two lengths with the kilometres
-       beside them, two more with the time on course, the short races and the
-       progress with the pairs beside the two of them, and the best single races
-       under all of it. */
+    /* Two lengths and the board that stands beside them, then the next two, and
+       so on, with the best single races under all of it. See the head of this
+       file for why this and not strictly across each row. */
     return [
       byLength('ultra'),
       byLength('marathon'),

@@ -21,8 +21,9 @@
   }
 }
 
-/* One column on a phone, in the order the widgets stand in the markup, which is
-   the desktop laid out across and then down. */
+/* One column on a phone, in the order the widgets stand in the markup: two
+   lengths, then the board that stands beside them on a wide screen, and so on
+   (TopBoards.tsx). */
 .boards__grid {
   display: grid;
   gap: var(--space-16);
@@ -71,6 +72,15 @@
   text-align: left;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* A board with nothing to show is as tall as the sentence that says so. The
+   three on the right are each placed across two rows and stretch to fill them,
+   which is what the owner asked for and is right for a table of ten; the pairs
+   have no rows at all until the pairs themselves exist, and an empty card the
+   height of two charts is a hole in the page. */
+.boards__board:has(> .boards__empty) {
+  align-self: start;
 }
 
 /* Two thirds against one, and the rows the owner asked for (04.08.2026).

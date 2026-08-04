@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { first } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -102,19 +102,12 @@ describe('the scroll, on the way between screens', () => {
     expect(window.scrollTo).not.toHaveBeenCalled()
   })
 
-  it('puts the reader back where they were when they go back', async () => {
+  it('asks the router for the position it left, on the way back', async () => {
     /* The owner's ask, 04.08.2026: leaving a list for a profile and coming back
-       has to land where it left, not at the top of the list.
-
-       Two things make it work and this fails if either goes. The router saves
-       the position of the entry it is leaving and restores it on the way back,
-       which is what `ScrollRestoration` does with its own key. And the screen
-       has to be its full height at the moment it is restored: everything on the
-       portal is drawn from a file, and a screen that starts as one loading box
-       has nowhere to be put back to, so what the browser is asked for is
-       silently clamped to nought. The second visit is whole from the first
-       render because the data layer hands over what it already holds
-       (src/data/useResource.ts). */
+       has to land where it left, not at the top of the list. This is the half of
+       it the router does: it saves the position of the entry it is leaving and
+       asks for it again on the way back. The other half, the one that actually
+       broke, is the test under this one. */
     const user = setupUser()
     const { router } = renderAt('/sr/takmicari')
 
@@ -131,6 +124,36 @@ describe('the scroll, on the way between screens', () => {
 
     await waitFor(() => expect(window.scrollTo).toHaveBeenCalledWith(0, 640))
     expect(screen.getByRole('heading', { level: 1, name: 'Takmičari' })).toBeVisible()
+  })
+
+  it('opens a screen it has read before with its content already there', async () => {
+    /* And this is what made the asking work. Everything on the portal is drawn
+       from a file, and the data layer used to start every screen empty and fill
+       it a moment later. The router puts the position back the instant the screen
+       commits, so what it was putting it back into was one loading box: a
+       document with nowhere to scroll to, and the browser quietly clamps the
+       request to nought.
+
+       jsdom lays nothing out, so no test here can watch that clamping. What it
+       can watch is the thing that causes it, which is the whole of the fix: on a
+       second visit the screen has to be its full height in the very first render,
+       with no loading state in between.
+
+       Read with `getBy` and no `await`, which is the assertion: `findBy` would
+       wait, and waiting is exactly what must not be needed. */
+    const user = setupUser()
+
+    renderAt('/sr/takmicari')
+    await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
+    await user.click(first(await screen.findAllByRole('link', { name: /000/ })))
+    await screen.findByRole('heading', { level: 1, name: /\w/ })
+
+    cleanup()
+
+    renderAt('/sr/takmicari')
+
+    expect(screen.queryByRole('status', { name: /Učitavanje/ })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('list')).getAllByRole('listitem').length).toBeGreaterThan(20)
   })
 })
 

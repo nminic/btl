@@ -43,6 +43,16 @@ export type ChartColumn = {
    * the two levels add up.
    */
   base?: { value: number; label: string; reading?: string }
+  /**
+   * Which place this is, in words, read out before the number and never drawn.
+   *
+   * A list of ten in an `ol` numbers itself 1 to 10, and that is wrong wherever
+   * two columns are level: a place nothing separates is shared, so a board reads
+   * 1, 1, 3 (Član 57 of the rulebook, PDL P12). The tables have a column for it;
+   * a chart has nowhere to put it, so it is said rather than drawn. Left out on
+   * the front page, where the chart is a widget and not a standing.
+   */
+  place?: string
   /** Where the column leads. Missing where there is nothing to lead to: a member
    *  whose fee has run out has no visible profile (PDL P11), so their column
    *  stands in the chart with no link on it, the same as in the tables. */
@@ -76,6 +86,11 @@ function Bar({ column, highest }: { column: ChartColumn; highest: number }) {
 
   const inside = (
     <>
+      {/* Said first, before the number, because that is the order a standing is
+          read in. Never drawn: the bars are already in order and a chart with a
+          rank written on every column is a table with pictures. */}
+      {column.place !== undefined && <span className="visually-hidden">{column.place}</span>}
+
       {/* The face, the bar and the name all stand in the track, because all
           three are placed from the bar's own height: the face rides on top of
           it and the name is across the middle of the face. */}
@@ -198,6 +213,20 @@ export function ColumnChart({
     >
       {control}
 
+      {/* First in the markup and last on the screen. The band is drawn under the
+          bars, which is where the old portal had it, but a heading that comes
+          after its own content is a heading nobody can jump to: a reader landing
+          on "Najviše maratona" would find the next board's columns under it. The
+          stylesheet puts it back at the foot (`order`), which is what that
+          property is for. */}
+      {captionId === undefined ? (
+        <p className="colchart__caption">{caption}</p>
+      ) : (
+        <h2 className="colchart__caption" id={captionId}>
+          {caption}
+        </h2>
+      )}
+
       {columns.length === 0 ? (
         <p className="card__empty">{empty}</p>
       ) : (
@@ -208,14 +237,6 @@ export function ColumnChart({
             </li>
           ))}
         </ol>
-      )}
-
-      {captionId === undefined ? (
-        <p className="colchart__caption">{caption}</p>
-      ) : (
-        <h2 className="colchart__caption" id={captionId}>
-          {caption}
-        </h2>
       )}
     </section>
   )

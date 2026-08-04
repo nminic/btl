@@ -1,10 +1,11 @@
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
+import { fieldFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-import type { Result } from '../data/types'
+import type { Competitor, Result } from '../data/types'
 
 /**
  * The figure in the last cell of a row, read the way the portal writes it: a
@@ -55,7 +56,10 @@ const TIME_ON_COURSE = /^\d+ h \d{2}' \d{2}''$/
  * about the order of the bars would be an assertion about a list of them.
  */
 function countIn(column: HTMLElement): number {
-  const written = must(column.textContent, 'stubac').replace(/^\D+/, '')
+  const written = must(column.textContent, 'stubac')
+    /* The place is said first and is not the number in the bar. */
+    .replace(/^\d+\. mesto/, '')
+    .replace(/^\D+/, '')
   const figure = Number(written.replace(/\D[\s\S]*$/, ''))
 
   if (Number.isNaN(figure)) {
@@ -75,10 +79,34 @@ function countIn(column: HTMLElement): number {
  * are there.
  */
 function levelIn(column: HTMLElement, name: string): number {
-  const reading = within(column).getByText(name)
-  const written = must(reading.parentElement?.textContent, 'nivo stupca').replace(name, '')
+  const written = must(levelOf(column, name).textContent, 'nivo stupca').replace(name, '')
 
   return Number(written.trim().replace(/\./g, ''))
+}
+
+/** The element that draws one level of a bar, reached from the words that say
+ *  what it is rather than from a class name. */
+function levelOf(column: HTMLElement, name: string): HTMLElement {
+  const reading = within(column).getByText(name)
+  const level = reading.parentElement?.parentElement
+
+  if (!(level instanceof HTMLElement)) {
+    throw new Error(`nivo koji glasi "${name}" nema element oko sebe`)
+  }
+
+  return level
+}
+
+/**
+ * How tall that level asks to be, as a share of the bar, in per cent.
+ *
+ * The heights of the two levels travel to the stylesheet as a custom property
+ * and nowhere else, so nothing a screen test can see says whether the drawing
+ * agrees with the numbers written in it. jsdom lays nothing out, but the value
+ * asked for is on the element and it is the whole of the arithmetic.
+ */
+function shareOf(column: HTMLElement, name: string): number {
+  return Number(levelOf(column, name).style.getPropertyValue('--level').replace('%', ''))
 }
 
 /* One file for the screens a visitor sees. They share a shape: read the data
@@ -224,6 +252,45 @@ describe('TopBoards', () => {
     expect(screen.queryByRole('columnheader', { name: 'Članova' })).not.toBeInTheDocument()
   })
 
+  it('says which place every column stands in, since an ol cannot', async () => {
+    /* A list of ten numbers itself 1 to 10, and that is wrong wherever the whole
+       ladder ties: a place nothing separates is shared, so a board reads 1, 1, 3
+       (Član 57, PDL P12). The tables carry it in a column and the charts had
+       nowhere to put it, so it is said rather than drawn.
+
+       Held against what the rule itself worked out, not against the row number.
+       Row numbers are what this is here to stop, and on this board they happen to
+       agree: ten people, four of them level on races run, and every one of them
+       separated by a later rung of the ladder. An assertion about row numbers
+       would therefore pass on a chart that had thrown the places away. */
+    const [competitors, results] = await Promise.all([
+      loadResource<Competitor[]>('competitors'),
+      loadResource<Result[]>('results'),
+    ])
+    const ranked = topByCategory(
+      fieldFor(competitors, 2019, '2019-12-31'),
+      results,
+      2019,
+      'short',
+      10,
+    )
+
+    renderAt('/sr/top-liste?sezona=2019')
+    await screen.findByRole('heading', { level: 1, name: 'Top liste' })
+
+    const columns = board('Najviše kraćih trka').getAllByRole('listitem')
+
+    expect(columns).toHaveLength(ranked.length)
+    expect(ranked.length).toBeGreaterThan(1)
+
+    columns.forEach((column, index) => {
+      const row = at(ranked, index)
+
+      expect(must(column.textContent, 'stubac')).toContain(`${row.position}. mesto`)
+      expect(column).toHaveTextContent(`${row.competitor.firstName} ${row.competitor.lastName}`)
+    })
+  })
+
   it('draws the five lengths as charts, ten columns at the most', async () => {
     /* Owner, 04.08.2026: "poslednjih 5 vidžeta uradi grafikone kao sa naslovne
        strane... bez rotiranja (jer će svaki imati svoj prikaz)". So each of the
@@ -344,9 +411,17 @@ describe('TopBoards', () => {
       expect(Number.isInteger(previous), `${previous} nije ceo broj`).toBe(true)
       expect(Number.isInteger(gain), `${gain} nije ceo broj`).toBe(true)
       expect(gain).toBeGreaterThan(0)
-      /* The lower level is the one drawn first, which is the season before: the
-         whole column is this season and the split says where it came from. */
-      expect(countIn(column)).toBe(previous)
+      /* The drawing agrees with the two numbers written in it. Read off the
+         height each level asks for, because that is the only place the
+         arithmetic goes: the levels are laid out entirely from it. The whole
+         column is this season, so the two of them are the bar between them and
+         the lower one is the share the season before was of it. */
+      const under = shareOf(column, 'Prethodna sezona')
+      const over = shareOf(column, 'Prirast')
+
+      expect(under + over).toBeCloseTo(100, 6)
+      expect(under).toBeCloseTo((previous / (previous + gain)) * 100, 0)
+      expect(over).toBeGreaterThan(0)
     }
   })
 

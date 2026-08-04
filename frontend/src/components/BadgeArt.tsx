@@ -41,7 +41,7 @@ import './BadgeArt.css'
  * this file or in the stylesheet should have to move. The slot is where it is
  * because the number owns the middle, and the number is the part that has to
  * stay legible at the smallest size the mark is drawn at, which is 72px on a
- * 360px telephone (Badges.css).
+ * 360px telephone (BadgeGallery.css).
  */
 export type BadgeArtProps = {
   kind: BadgeKind

@@ -10,6 +10,11 @@ import { join } from 'node:path'
  * still throws the reader up the page, and that is not visible from anywhere
  * except the screen it is on. The same shape as the one that holds the clock to
  * one reader (src/clock/oneClock.test.ts).
+ *
+ * What it covers is exactly the one hook, by name. A screen that wrote a filter
+ * through `useNavigate` or through a `Link` carrying a query would walk past
+ * this; nothing does today, and the day one does, this is the file that has to
+ * learn about it.
  */
 
 const SRC = join(process.cwd(), 'src')

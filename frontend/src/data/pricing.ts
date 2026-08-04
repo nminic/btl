@@ -7,7 +7,6 @@
  * price is fixed for the season and does not follow the exchange rate.
  */
 
-import { seasonOnSale } from './season'
 
 export type PriceRow = {
   key: string
@@ -102,20 +101,7 @@ export function priceOn(today: string): PriceRow {
   return BY_START.reduce((inForce, row) => (row.from <= day ? row : inForce))
 }
 
-/** What it will cost next, which after the last period of the year is the first
- *  period of the next one. */
-export function nextPrice(today: string): PriceRow {
-  return BY_START.find((row) => row.from > today.slice(5)) ?? IN_SEASON
-}
 
-/** And the day that happens, as a real date: next year where the year has run
- *  out of periods. */
-export function nextPriceStart(today: string): string {
-  const next = nextPrice(today)
-  const wraps = next.from <= today.slice(5)
-
-  return `${Number(today.slice(0, 4)) + (wraps ? 1 : 0)}-${next.from}`
-}
 
 export function daysBetween(from: string, to: string): number {
   const start = Date.parse(`${from}T00:00:00Z`)
@@ -128,18 +114,6 @@ export function registrationOpen(today: string): boolean {
   return today >= REGISTRATION_OPENS
 }
 
-/**
- * The season somebody joining today would be joining.
- *
- * The calendar answer, except that it can never be a season before the first
- * one. 2026 is the year the portal is built in and there is no 2026 season
- * (PDL P2), so through the whole of that summer the answer is 2027: the first
- * season anybody can join, and the one the price list is quoting for. From then
- * on the two are the same and this simply hands the calendar's answer on.
- */
-export function seasonOnOffer(today: string): number {
-  return Math.max(SEASON, seasonOnSale(today))
-}
 
 /**
  * The season a renewal now is a renewal for.

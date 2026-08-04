@@ -249,42 +249,8 @@
   font-weight: 400;
 }
 
-/* Seasonal slot */
-
-.home .card--slot {
-  border-color: var(--gold-400);
-}
-
-.slot__price {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.slot__price strong {
-  font-size: clamp(26px, 4vw, 34px);
-  letter-spacing: -0.02em;
-  color: var(--gold-text);
-}
-
-.slot__rsd {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.slot__note {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* The processing fee, under the price: a condition of one way of paying rather
-   than news about the price, so it sits a step below the note beside it. */
-.slot__fee {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
+/* The seasonal slot that stood at the foot of the right column was removed on
+   04.08.2026 (owner), and its styles with it. */
 
 /* Top ten, in the shape the old portal had (owner, 31.07.2026): round faces
    carrying the number of their place, and nothing else. The heading and the

@@ -182,9 +182,9 @@ describe('the answer of the calculator', () => {
        label's, so its baseline was four and a half pixels above the label's
        while the two boxes ended level.
 
-       `line-height: 1` takes the leading out of the figure's box, which is the
-       whole of that difference, and neither of the two beside it is nudged up by
-       a padding of its own any more. */
+       `line-height: 1` takes the leading out of the figure's box, which is most
+       of that difference, and two pixels under the figure are the rest; neither
+       of the two beside it is nudged up by a padding of its own any more. */
     const css = read('src/pages/Home.css')
 
     expect(bodyOf(css, '.calc__result strong')).toMatch(/line-height:\s*1;/)

@@ -72,18 +72,18 @@ describe('Calendar', () => {
        and the two marks can be told apart. */
     renderAt('/sr/kalendar?mesec=2027-05', 'visitor', null, undefined, '2027-05-03')
 
-    const weekend = await screen.findAllByText(', vikend')
+    const weekend = await screen.findAllByText(', Vikend')
     const numbers = weekend.map((one) => one.parentElement?.textContent)
 
     // Ten of them in a month of thirty-one days that begins on a Saturday.
     expect(weekend).toHaveLength(10)
-    expect(numbers.slice(0, 2)).toEqual(['1, vikend', '2, vikend'])
+    expect(numbers.slice(0, 2)).toEqual(['1, Vikend', '2, Vikend'])
 
     /* Today is the 3rd, a Monday: it says so, and it says nothing about a
        weekend. The ring is drawn from a class, and what colour that is belongs
        to the sweep of the stylesheets. */
     expect(screen.getByText(', Danas').parentElement?.textContent).toBe('3, Danas')
-    expect(numbers).not.toContain('3, vikend')
+    expect(numbers).not.toContain('3, Vikend')
   })
 
   it('draws only the days of the month, never a square of nothing', async () => {

@@ -72,12 +72,11 @@
   text-decoration: none;
 }
 
-/* Three names deep, and it has to be. Every sheet is bundled into one, and
-   `.home .portrait` sets a size of its own at the same weight as a two-name
-   selector; whichever lands later wins, and the later one is not this file. The
-   phone rule below has been asking for a smaller face since it was written and
-   never got one, which nothing catches, because a face of the wrong size is
-   still a face. */
+/* Three names deep, and it stays that way. The face is a shared building block
+   with one bare definition of its own (src/components/Portrait.css), and this
+   chart wants a size that is not that one; written with fewer names it would be
+   a coin toss between two rules of equal weight, settled by which sheet the
+   bundle happened to put last. */
 /* On top of its own bar, wherever that bar ended up. In the flow it took height
    away from the bar it stands on, which is what made the bars disagree with the
    numbers in them. */
@@ -197,7 +196,7 @@
   display: block;
   pointer-events: none;
   /* Set on the link, because the face and the name need it too
-     (TopByCategory.tsx). A share of the track above, and nothing else: a floor
+     (ColumnChart.tsx). A share of the track above, and nothing else: a floor
      here is what made one race and two races the same height. */
   block-size: var(--bar);
   border-radius: 2px 2px 0 0;
@@ -218,7 +217,13 @@
 .colchart__level {
   position: absolute;
   inset-inline: 0;
-  block-size: var(--level);
+  /* Never shorter than the circle that stands in the middle of it. The share is
+     exact and stays exact in the style, which is what the arithmetic is read off
+     in the tests; what a floor buys is that a level of a few pixels does not put
+     its own number over the other level's. A bar that is itself shorter than two
+     circles cannot hold two of them apart at all, and that is a bar of almost no
+     points in a season somebody else ran ten times as far. */
+  block-size: max(var(--level), 1.7rem);
 }
 
 .colchart__level--base {
@@ -261,8 +266,13 @@
 }
 
 /* The block of gold the top ten boards wear, at the same size, so the widgets
-   read as one family (owner, 31.07.2026). */
+   read as one family (owner, 31.07.2026).
+
+   Last on the screen and first in the markup, which is why it carries an order
+   of its own: a heading has to come before what it names, and this one is drawn
+   under it (ColumnChart.tsx). */
 .colchart__caption {
+  order: 1;
   margin: 0;
   padding: var(--space-8) var(--space-12);
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
@@ -281,8 +291,27 @@
 
 /* On a phone ten columns are unreadable, so the last four drop away. */
 @media (max-width: 559.98px) {
+  /* Out of sight, never out of the page. Ten columns in the 328px a telephone
+     leaves is a wall of stripes nobody can read, so the eye gets six; but a list
+     of ten places is what the list is (PDL P12), and `display: none` took the
+     other four out of the accessibility tree with them. On the front page that
+     was one widget among many; since 04.08.2026 the same chart is six of the ten
+     boards on the Top liste, and those four places had nowhere else to be read.
+
+     Moved out of view rather than removed, which is the rule this portal already
+     wrote down for the row of six lengths on a profile (ADL A7, 31.07.2026). An
+     absolutely positioned child is out of the grid's flow as well, so the six
+     that are left still share the whole width. */
   .colchart__column:nth-child(n + 7) {
-    display: none;
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* A smaller face on a phone, through the variable, so the name that is

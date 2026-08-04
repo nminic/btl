@@ -5,9 +5,12 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { CalendarExtract } from './CalendarExtract'
 import { seasonLabelKey } from './content'
 
-/* The widget of membership stood here too, until the owner had it taken off the
- * front page on 04.08.2026: "nećemo ga koristiti do daljnjeg". What it showed a
- * member is on the screen of their own membership, which has its own tests. */
+/* The extract of the calendar, which is the widget "Priprema, pozor, SAD!".
+ *
+ * The widget of membership stood in this file too, until the owner had it taken
+ * off the front page on 04.08.2026: "nećemo ga koristiti do daljnjeg". What it
+ * showed a member is on the screen of their own membership, which has its own
+ * tests. */
 
 function renderWidget(ui: React.ReactNode) {
   return render(

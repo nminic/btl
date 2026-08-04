@@ -32,11 +32,11 @@
     },
     "topBoards": {
       "title": "BTL top liste",
-      "description": "Deset lista iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, trkački parovi i trke po dužini."
+      "description": "Liste iz Pravilnika, svaka na deset mesta: kilometri, vreme na stazi, najbolja trka, trkački parovi i trke po dužini."
     },
     "leagues": {
       "title": "BTL lige",
-      "description": "Lige koje se voze uz glavnu ligu: koji događaji ulaze u njih i kako se grupišu takmičari."
+      "description": "Lige koje teku uporedo sa glavnom: koji događaji ulaze u njih i kako se grupišu takmičari."
     },
     "calendar": {
       "title": "BTL kalendar",
@@ -270,8 +270,6 @@
     "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
   },
   "home": {
-    "toRegistration": "Učlani se",
-    "toPricing": "Vidi članarinu",
     "season": "Sezona {season}.",
     "seasonSample": "Sezona {season}, probni podaci",
     "kilometers": "Kilometara",
@@ -286,17 +284,6 @@
       "other": "i još {count} termina"
     },
     "seeCalendar": "Ceo kalendar",
-    "enrolment": "Članarina za BTL {season}.",
-    "opensIn": {
-      "one": "Otvara se za {count} dan.",
-      "few": "Otvara se za {count} dana.",
-      "other": "Otvara se za {count} dana."
-    },
-    "priceRises": {
-      "one": "Cena raste na {price} EUR za {count} dan.",
-      "few": "Cena raste na {price} EUR za {count} dana.",
-      "other": "Cena raste na {price} EUR za {count} dana."
-    },
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
     "place": "{place}.",
@@ -328,11 +315,9 @@
     "pointsUnit": " BTL poena",
     "ascentUnit": " m+",
     "descentUnit": " m-",
-    "noRanking": "Profil i rezultati, bez rangiranja.",
     "members": "Članova lige",
     "results": "Prijavljenih rezultata",
-    "calcResult": "BTL poeni:",
-    "processingFee": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina."
+    "calcResult": "BTL poeni:"
   },
   "data": {
     "loading": "Učitavanje",
@@ -501,16 +486,12 @@
     "pairsSoon": "Trkački parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
     "progress": "Najbolji napredak",
     "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
-    "teams": "Najbolji tim",
     "bestRaces": "Najbolje pojedinačne trke",
     "kilometers": "Najviše kilometara",
     "onCourse": "Najduže na stazi",
     "columns": {
       "position": "#",
       "member": "Član",
-      "team": "Tim",
-      "members": "Članova",
-      "races": "Trke",
       "event": "Događaj",
       "points": "Bodovi",
       "gain": "Prirast",
@@ -518,7 +499,8 @@
       "distance": "d (km)",
       "time": "Vreme na stazi"
     },
-    "empty": "U ovoj sezoni nema nijednog rezultata."
+    "empty": "U ovoj sezoni nema nijednog rezultata.",
+    "place": "{position}. mesto"
   },
   "calendar": {
     "title": "Kalendar",
@@ -545,7 +527,7 @@
       "checking": "U proveri",
       "cancelled": "Otkazano"
     },
-    "weekend": "vikend"
+    "weekend": "Vikend"
   },
   "event": {
     "backToCalendar": "Nazad na kalendar",

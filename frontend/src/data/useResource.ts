@@ -35,12 +35,20 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
   const known = arrivedResource<T>(name)
 
   useEffect(() => {
-    /* Nothing to ask for, and nothing to set: the value was already there when
-       this rendered, and setting the same state again would only cost a render. */
-    if (arrivedResource<T>(name) !== undefined) {
-      return
-    }
-
+    /* Asked for even when the value is already in hand, and that is not waste.
+     *
+     * The first version of this returned early when `arrivedResource` answered,
+     * to save a render. It also left a case with no way out: a value that lands
+     * between this render and this effect is invisible to the render, which drew
+     * a loading state, and the effect then sees it and returns without setting
+     * anything, so nothing is ever scheduled and the screen waits for ever. The
+     * window is real, because effects run through the scheduler while the answer
+     * to a fetch lands in a microtask, and every navigation here is inside a
+     * transition.
+     *
+     * `loadResource` answers from the promise it already has, so what this costs
+     * is one render nobody sees; what it buys is that there is no state this can
+     * be left in. */
     let active = true
     setFetched({ status: 'loading' })
 
