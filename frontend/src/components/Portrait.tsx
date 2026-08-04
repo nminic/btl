@@ -1,5 +1,6 @@
-import type { Competitor } from '../../data/types'
-import { hueFor } from '../competitorFace'
+import type { Competitor } from '../data/types'
+import { hueFor } from '../pages/competitorFace'
+import './Portrait.css'
 
 /**
  * A competitor's face, in a circle.

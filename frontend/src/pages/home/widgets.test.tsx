@@ -243,10 +243,15 @@ describe('Counters', () => {
   /* The front page counts members on top of the season, and nothing else does:
      on a team and on a profile the number of people is one or is the heading
      (owner, 31.07.2026). */
-  it('counts the members of the league when it is given them', async () => {
-    renderWidget(<Counters totals={totals} title="Sezona 2027." members={41} />)
+  it('counts the members of the league when it is given them', () => {
+    /* With the unrolling off, like every other counter test in this file. It ran
+       on the real clock with a three second rope and failed on two runs out of
+       four: a test that waits for time to pass makes the gate a coin toss, and
+       the number it is about is the number at the end, never a frame on the way
+       there (ADL A2). */
+    renderWidget(<Counters totals={totals} title="Sezona 2027." members={41} countMs={0} />)
 
-    expect(await screen.findByText(/41 član/, {}, { timeout: 3000 })).toBeVisible()
+    expect(screen.getByText(/41 član/)).toBeVisible()
   })
 
   it('counts no members where nobody hands them in', () => {
@@ -334,12 +339,12 @@ describe('TopByCategory', () => {
        is checked here is that each of the three states is written for the
        keyboard as well: a state only a mouse can reach does not exist for
        somebody who types. */
-    const css = readFileSync(join(process.cwd(), 'src/pages/home/TopByCategory.css'), 'utf-8')
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
 
-    for (const part of ['.portrait', '.top-cat__bar', '.top-cat__who']) {
-      expect(css, `nothing lights ${part} on hover`).toContain(`.top-cat__link:hover ${part}`)
+    for (const part of ['.portrait', '.colchart__bar', '.colchart__who']) {
+      expect(css, `nothing lights ${part} on hover`).toContain(`.colchart__link:hover ${part}`)
       expect(css, `${part} lights for the mouse only`).toContain(
-        `.top-cat__link:focus-visible ${part}`,
+        `.colchart__link:focus-visible ${part}`,
       )
     }
   })

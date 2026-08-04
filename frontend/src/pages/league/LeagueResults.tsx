@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router'
 import { CompetitorName } from '../../components/CompetitorName'
 import { Pager } from '../../components/Pager'
 import { PER_PAGE, pageFrom } from '../../components/pageOf'
@@ -12,6 +11,7 @@ import { formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueTable } from './leagueTable'
 import './League.css'
+import { useFilterParams } from '../../app/useFilterParams'
 
 /**
  * The standing of a competition as a grid (owner, 31.07.2026).
@@ -47,7 +47,7 @@ function Grid({
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
-  const [params] = useSearchParams()
+  const [params] = useFilterParams()
   /* Who the grid is drawn from (PDL P11). A member whose fee has run out is not
      in the standing of the season now, and a competition's grid is that standing
      over a subset of its events. It does not show today, because the one such

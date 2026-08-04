@@ -22,7 +22,7 @@
    been drawn. Everything that scales below scales off the disc rather than off
    the viewport, because the same badge is meant to be drawn at more than one
    size on the same screen width. Whoever draws it says how large: the wall of
-   badges sets --badge-art-size and shrinks it on a narrow window (Badges.css).
+   badges sets --badge-art-size and shrinks it on a narrow window (BadgeGallery.css).
    The fallback here is the size the wall uses at its widest.
 
    It carries no padding, and that is load bearing rather than tidy. A container
@@ -162,7 +162,7 @@
    rim thickens to make up for it, for the same reason.
 
    Reached on a telephone, where the wall shrinks the disc to 72px at 360px wide
-   and crosses this line at about 460px (Badges.css).
+   and crosses this line at about 460px (BadgeGallery.css).
 
    There was a second step under it, at 64px, which dropped the emblem and gave
    the number the whole coin. It went, because nothing on this portal draws a

@@ -65,8 +65,7 @@
     grid-template-areas:
       'boards figures'
       'chart next'
-      'address calc'
-      'address slot';
+      'address calc';
     align-items: stretch;
   }
 
@@ -76,7 +75,6 @@
   .home__figures { grid-area: figures; }
   .home__next { grid-area: next; }
   .home__calc { grid-area: calc; }
-  .home__slot { grid-area: slot; }
 
   .home__row--news {
     grid-template-columns: 2fr 1fr;
@@ -197,7 +195,10 @@
   grid-template-columns: 2.25rem 1fr auto;
   gap: 0 var(--space-4);
   align-items: center;
-  padding: var(--space-8) 0;
+  /* Half again as much as it had (owner, 04.08.2026: "malo povećaj vertikalni
+     razmak... možda da bude 1.5 puta trenutni"). Six rows of a date and a name
+     read as a list rather than as a block of lines. */
+  padding: var(--space-12) 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -248,42 +249,8 @@
   font-weight: 400;
 }
 
-/* Seasonal slot */
-
-.home .card--slot {
-  border-color: var(--gold-400);
-}
-
-.slot__price {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.slot__price strong {
-  font-size: clamp(26px, 4vw, 34px);
-  letter-spacing: -0.02em;
-  color: var(--gold-text);
-}
-
-.slot__rsd {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.slot__note {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* The processing fee, under the price: a condition of one way of paying rather
-   than news about the price, so it sits a step below the note beside it. */
-.slot__fee {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
+/* The seasonal slot that stood at the foot of the right column was removed on
+   04.08.2026 (owner), and its styles with it. */
 
 /* Top ten, in the shape the old portal had (owner, 31.07.2026): round faces
    carrying the number of their place, and nothing else. The heading and the
@@ -391,37 +358,9 @@
   line-height: 1;
 }
 
-/* Faces.
-   A circle of the member's own colour carrying their initials, until there are
-   photographs to put in it. The empty one holds a place the league has not
-   filled yet, so the board is the same height all season. */
-
-.home .portrait {
-  display: grid;
-  place-items: center;
-  /* Never squeezed and never stretched: it is a circle, and a circle that gives
-     way to the box around it is an ellipse. */
-  flex: none;
-  inline-size: 2.9rem;
-  block-size: 2.9rem;
-  border-radius: 50%;
-  /* The same recipe the competitor cards use, so one person wears one colour
-     wherever the portal draws them. */
-  background: hsl(var(--face-hue, 214) 45% 32%);
-  color: var(--white);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-/* Drawn in the colour of a control's edge and not a surface's: this ring is the
-   only thing saying the place exists and is waiting, and at the colour of a
-   surface edge it measured 1,49:1 on the light theme and 1,42:1 on the dark
-   one, where the block simply read as though cells were missing. */
-.home .portrait--empty {
-  background: transparent;
-  border: 1px dashed var(--control-border);
-}
+/* The face itself is a shared building block and is styled beside the component
+   that draws it (src/components/Portrait.css). What stays here is the size the
+   top ten gives it, which belongs to that widget. */
 
 /* Calculator */
 
@@ -502,12 +441,32 @@
   color: var(--text-muted);
   font-size: 0.8rem;
   font-weight: 600;
-  /* Down with the figure, not up with the top of the line. */
-  padding-block-end: var(--space-2);
 }
 
+/* On the line of the words beside it (owner, 04.08.2026: the figure "stood
+   above" them).
+ *
+ * Both are laid along the bottom of the row, and what a bottom is depends on the
+ * size of the text in it: below a baseline sits half of the leading and the
+ * depth of the descenders, and both of those are a share of the font. The
+ * figure's font is more than twice the label's, so its baseline was four and a
+ * half pixels higher than the label's while the two boxes ended level, which is
+ * exactly what "raised for no reason" looks like.
+ *
+ * `line-height: 1` takes the leading out of the figure's box, which is the whole
+ * of the difference: what is left under its baseline is its own descender depth,
+ * 5,7px against the label's 5,9px. The row is laid along the bottom rather than
+ * along a shared baseline for the reason written above, and that has not
+ * changed: the answer swaps between a large figure and a short italic line, and
+ * on a shared baseline the label would move each time it did. */
 .calc__result strong {
   font-size: clamp(21px, 3.2vw, 27px);
+  line-height: 1;
+  /* The last two pixels of it, measured on the page at 1440: the figure's
+     baseline stood 4,5px above the label's before, and 1,8px below it once the
+     leading came out of its box. Two pixels is the smallest step the scale has
+     and it lands the two within a fifth of a pixel of each other. */
+  padding-block-end: var(--space-2);
   color: var(--gold-text);
   letter-spacing: -0.02em;
 }
@@ -518,7 +477,6 @@
   color: var(--text-muted);
   font-size: 0.85rem;
   font-style: italic;
-  padding-block-end: var(--space-2);
 }
 
 /* News and sponsor */

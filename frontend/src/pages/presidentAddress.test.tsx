@@ -8,10 +8,11 @@ import { first } from '../test/at'
 import { renderAt } from '../test/render'
 import { ADDRESS_SLUG } from './home/President'
 
-/* The address of the president stands on the front page and on "O ligi", and it
- * is one written record maintained by the administrator rather than a text in
- * the code (PDL P28a, 30.07.2026). Both halves of that are worth holding: that
- * it is drawn in both places, and that it is stored once. */
+/* The address of the president stands on the front page, and it is one written
+ * record maintained by the administrator rather than a text in the code (PDL
+ * P28a, 30.07.2026). It stood on "O ligi" too until that page was deleted
+ * (owner, 04.08.2026); what is held here is that it is drawn from the record and
+ * stored once. */
 
 const pagesOf = () => loadResource<Record<string, StaticPage>>('pages')
 
@@ -121,24 +122,23 @@ describe('the address of the president', () => {
     expect(inCode).toEqual([])
   })
 
-  it('stands on "O ligi" as well, and is the same record there', async () => {
-    const text = await opening()
-    renderAt('/sr/o-ligi')
+  it('is stored once, and the front page is the only screen that draws it', async () => {
+    /* It stood on "O ligi" as well until 04.08.2026, when the owner had that
+       page deleted. The record itself is untouched by that: it is drawn on the
+       front page, maintained on the list of pages, and copied nowhere. */
+    const stored = await pageAt(ADDRESS_SLUG)
+    const pages = await pagesOf()
 
-    const page = await screen.findByRole('article')
-
-    expect(within(page).getByRole('heading', { level: 2, name: 'Reč predsednika' })).toBeVisible()
-    expect(within(page).getByText(text)).toBeVisible()
-  })
-
-  it('is stored once, so a correction cannot land on one of the two pages', async () => {
-    const about = await pageAt('o-ligi')
-
-    // "O ligi" takes the record in; it does not hold a copy of the words.
-    expect(about.includes).toContain(ADDRESS_SLUG)
-    expect(about.sections.map((section) => section.body).join('\n')).not.toContain(
+    expect(stored.sections.map((section) => section.body).join('\n')).toContain(
       'pod popularnim imenom',
     )
+    expect(Object.keys(pages)).not.toContain('o-ligi')
+    expect(
+      Object.entries(pages)
+        .filter(([slug]) => slug !== ADDRESS_SLUG)
+        .flatMap(([, page]) => page.sections.map((section) => section.body))
+        .join('\n'),
+    ).not.toContain('pod popularnim imenom')
   })
 
   it('is maintained in administration, where it has no address of its own', async () => {
@@ -149,10 +149,14 @@ describe('the address of the president', () => {
     expect(
       within(table).getByRole('button', { name: 'Naslov: Reč predsednika. Izmeni' }),
     ).toBeVisible()
-    /* It is a page shown inside other pages, so the row says so instead of
-       linking to an address that would answer "Ove strane nema". */
+    /* And it says so instead of offering an address. Nothing takes the record in
+       through `includes` any more, since "O ligi" was deleted; what says it has
+       no address of its own is the screen that draws it (src/data/pages.ts), and
+       without that this row would offer /rec-predsednika as a link to a page the
+       portal does not serve. */
     expect(within(table).getAllByText('Stoji unutar drugih strana')).toHaveLength(1)
-    expect(within(table).getByRole('link', { name: '/o-ligi' })).toBeVisible()
+    expect(within(table).queryByRole('link', { name: '/rec-predsednika' })).toBeNull()
+    expect(within(table).getByRole('link', { name: '/pravilnik' })).toBeVisible()
   })
 })
 

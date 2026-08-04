@@ -41,18 +41,24 @@ describe('the brand', () => {
 })
 
 describe('a panel that opens under a button', () => {
+  /* Walked on the account menu. It was walked on a navigation group until
+     04.08.2026, when the owner had the groups taken out of the header: "Više
+     neće biti multinivo navigacije". The panel is the same one either way, and
+     every one of these is about the panel rather than about what is in it. */
+  const OPEN = 'Otvori nalog'
+
   it('opens and closes from its own button, and says which panel it controls', async () => {
     const user = setupUser()
-    renderAt('/sr')
+    renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Rangiranje' })
+    const button = await screen.findByRole('button', { name: OPEN })
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(button).toHaveAttribute('aria-controls', 'nav-stats')
-    expect(screen.queryByRole('link', { name: 'Tabela' })).not.toBeInTheDocument()
+    expect(button).toHaveAttribute('aria-controls', 'account-menu')
+    expect(screen.queryByRole('link', { name: 'Podešavanja' })).not.toBeInTheDocument()
 
     await user.click(button)
     expect(button).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('link', { name: 'Tabela' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Podešavanja' })).toBeVisible()
 
     await user.click(button)
     expect(button).toHaveAttribute('aria-expanded', 'false')
@@ -60,9 +66,9 @@ describe('a panel that opens under a button', () => {
 
   it('closes on Escape', async () => {
     const user = setupUser()
-    renderAt('/sr')
+    renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Rangiranje' })
+    const button = await screen.findByRole('button', { name: OPEN })
     await user.click(button)
     await user.keyboard('{Escape}')
 
@@ -71,11 +77,11 @@ describe('a panel that opens under a button', () => {
 
   it('hands the focus back to its own button on Escape', async () => {
     const user = setupUser()
-    renderAt('/sr')
+    renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Rangiranje' })
+    const button = await screen.findByRole('button', { name: OPEN })
     await user.click(button)
-    screen.getByRole('link', { name: 'Tabela' }).focus()
+    screen.getByRole('link', { name: 'Podešavanja' }).focus()
 
     await user.keyboard('{Escape}')
 
@@ -85,21 +91,21 @@ describe('a panel that opens under a button', () => {
   })
 
   it('says it opens a panel rather than a menu of commands', async () => {
-    renderAt('/sr')
+    renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Rangiranje' })
+    const button = await screen.findByRole('button', { name: OPEN })
 
     // A disclosure over a list of links: aria-haspopup would announce a menu
     // widget, and with it the arrow keys a menu is expected to answer to.
     expect(button).not.toHaveAttribute('aria-haspopup')
-    expect(button).toHaveAttribute('aria-controls', 'nav-stats')
+    expect(button).toHaveAttribute('aria-controls', 'account-menu')
   })
 
   it('leaves a key it does not handle alone', async () => {
     const user = setupUser()
-    renderAt('/sr')
+    renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Rangiranje' })
+    const button = await screen.findByRole('button', { name: OPEN })
     await user.click(button)
     await user.keyboard('{ArrowDown}')
 
@@ -108,9 +114,9 @@ describe('a panel that opens under a button', () => {
 
   it('closes when something outside it is clicked', async () => {
     const user = setupUser()
-    renderAt('/sr')
+    renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Rangiranje' })
+    const button = await screen.findByRole('button', { name: OPEN })
     await user.click(button)
     await user.click(screen.getByRole('main'))
 
@@ -121,9 +127,9 @@ describe('a panel that opens under a button', () => {
     const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
-    const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+    const button = await screen.findByRole('button', { name: OPEN })
     await user.click(button)
-    await user.click(await panelOf('Otvori nalog').findByText('Strahinja Vukićević'))
+    await user.click(await panelOf(OPEN).findByText('Strahinja Vukićević'))
 
     expect(button).toHaveAttribute('aria-expanded', 'true')
   })

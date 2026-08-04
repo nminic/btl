@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Markdown } from '../components/Markdown'
+import { PageSectionBody } from '../components/PageSectionBody'
 import { Resource } from '../components/Resource'
 import { livePage, sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
@@ -144,7 +144,11 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
               tabIndex={-1}
             >
               <h2>{section.heading}</h2>
-              <Markdown text={section.body} />
+              {/* The text, and the drawing the record names beside it (owner,
+                  04.08.2026). Drawn through the one component both screens of
+                  written pages share, so a section cannot mean one thing here
+                  and another on the terms (src/components/PageSectionBody.tsx). */}
+              <PageSectionBody section={section} />
             </section>
           ))}
         </div>

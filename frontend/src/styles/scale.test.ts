@@ -54,7 +54,7 @@ const VALUE = /(-?\d*\.?\d+)(rem|px|em|ch)/g
  */
 const ALLOWED = new Map([
   ['index.css | margin | -1px', 'a hairline pulled back over its own border'],
-  ['pages/Badges.css | margin | -1px', 'a hairline pulled back over its own border'],
+  ['components/BadgeGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
   ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
@@ -71,7 +71,7 @@ const ALLOWED = new Map([
     'in em on purpose: the padding around code inside a sentence grows with the code, not with the page',
   ],
   [
-    'pages/home/TopByCategory.css | padding | 3.1rem var(--space-10) 0',
+    'components/ColumnChart.css | padding | 3.1rem var(--space-10) 0',
     'the measured clearance that keeps the pause control off the tenth face',
   ],
   [
@@ -87,12 +87,8 @@ const ALLOWED = new Map([
   ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
   ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],
   [
-    'pages/home/TopByCategory.css | inset-inline | -0.5rem',
+    'components/ColumnChart.css | inset-inline | -0.5rem',
     'the name over a bar reaches past it on both sides, because a name is wider than a bar',
-  ],
-  [
-    'pages/home/TopByCategory.css | inset-block-end | calc(100% - 2.8rem)',
-    'measured against the face above it, so the name clears the bar and stays out of the band the pause control reserves',
   ],
 ])
 
@@ -137,7 +133,10 @@ describe('space and corners are chosen from the scale, not typed', () => {
   it('leaves no bare corner outside a circle and two measured ones', () => {
     const measured = new Set([
       'app/Shell.css | border-radius | 2.5px',
-      'pages/home/TopByCategory.css | border-radius | 2px 2px 0 0',
+      'components/ColumnChart.css | border-radius | 2px 2px 0 0',
+      /* The foot of a two-level bar, which is the foot of the bar: the same two
+         pixels, the other way up. */
+      'components/ColumnChart.css | border-radius | 0 0 2px 2px',
     ])
     const bare: string[] = []
 
@@ -199,8 +198,8 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // The wide layout, and the navigation stops folding away. 819 is its half.
       780, 819, 820,
       // Set by their own content, each said where it is written: the front page
-      // at 860, the rights table at 900, the boards at 1100.
-      860, 900, 1000, 1100,
+      // at 860, the rights table and the Top liste at 900.
+      860, 900, 1000,
     ])
   })
 })

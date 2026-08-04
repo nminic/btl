@@ -15,9 +15,19 @@ import { usePending } from './pending'
 import { totalWaiting } from './queues'
 import '../member/Member.css'
 
+/* The two sections and the price list, which is the whole of administration: the
+ * screens inside a section are reached from the navigation beside it
+ * (SectionNav), and the price list is in no section because nothing is created
+ * or removed on it (entityForms.ts).
+ *
+ * The price list joined this list on 04.08.2026, when the navigation lost its
+ * groups: it had stood in the header beside the two sections, and taking the
+ * group away without putting it here would have left it an address nothing
+ * leads to. */
 const SCREENS = [
   { path: 'administracija/verifikacija', key: 'nav.verification' },
   { path: 'administracija/entiteti', key: 'nav.entities' },
+  { path: 'administracija/cenovnik', key: 'admin.pricing' },
 ]
 
 export function Admin() {

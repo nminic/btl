@@ -1,12 +1,6 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-
-/** The groups in the navigation open as panels, so a screen inside one is two
- *  clicks away: the group, then the screen. */
-async function openGroup(user: ReturnType<typeof setupUser>, name: string) {
-  await user.click(await screen.findByRole('button', { name }))
-}
 
 describe('navigation', () => {
   beforeEach(() => {
@@ -49,14 +43,31 @@ describe('navigation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
   })
 
-  it('opens a screen that sits inside a group', async () => {
+  it('opens every one of the seven from the header, in one click each', async () => {
+    /* Owner, 04.08.2026. The groups are gone, so nothing in the navigation is
+       two clicks away and nothing opens onto a panel. Walked end to end rather
+       than sampled: the point of the change is that all seven behave alike. */
     const user = setupUser()
     renderAt('/sr')
 
-    await openGroup(user, 'Rangiranje')
-    await user.click(screen.getByRole('link', { name: 'Tabela' }))
+    const wanted: [string, string][] = [
+      ['Pravilnik', 'Pravilnik takmičenja BTL 2027'],
+      ['Takmičari', 'Takmičari'],
+      ['BTL tabele', 'BTL tabele'],
+      ['Top liste', 'Top liste'],
+      ['Timovi', 'Timovi'],
+      ['Lige', 'Lige'],
+      ['Kalendar', 'Kalendar'],
+    ]
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Tabela' })).toBeVisible()
+    const menu = within(await screen.findByRole('navigation', { name: 'Glavna navigacija' }))
+
+    expect(menu.queryAllByRole('button')).toEqual([])
+
+    for (const [entry, heading] of wanted) {
+      await user.click(menu.getByRole('link', { name: entry }))
+      expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    }
   })
 
   /* Every address in the navigation has a screen of its own since the badges
@@ -64,28 +75,19 @@ describe('navigation', () => {
      any more. What an address answers with before its screen exists is held in
      src/app/screenFor.test.tsx, address by address being pointless there. */
 
-  /* Both of these had an address and not one link on the whole portal leading to
-     it: pages a person could only reach by typing the address (PDL P28a,
-     30.07.2026). The group is the way in now, so the way in is what is walked. */
-  it('opens the story of the league from the group it now sits in', async () => {
-    const user = setupUser()
-    renderAt('/sr')
+  /* The three that went with the group they stood in (owner, 04.08.2026): the
+     story of the league and the page of prices are deleted, and the badges are a
+     section of the rulebook. An address that still answered would be a page
+     nothing links to, which is what put those three into a group in the first
+     place. */
+  it.each([['/sr/o-ligi'], ['/sr/clanarina'], ['/sr/znacke']])(
+    'no longer serves %s, and sends it to the front page',
+    async (path) => {
+      renderAt(path)
 
-    await openGroup(user, 'O ligi')
-    await user.click(screen.getByRole('link', { name: 'Priča o ligi' }))
-
-    expect(await screen.findByRole('heading', { level: 1, name: 'O ligi' })).toBeVisible()
-  })
-
-  it('opens the badges from the same group', async () => {
-    const user = setupUser()
-    renderAt('/sr')
-
-    await openGroup(user, 'O ligi')
-    await user.click(screen.getByRole('link', { name: 'Značke' }))
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Značke' })).toBeVisible()
-  })
+      await expectFrontPage()
+    },
+  )
 
   it('keeps the current screen when the language changes', async () => {
     const user = setupUser()
@@ -100,7 +102,7 @@ describe('navigation', () => {
         'true',
       ),
     )
-    expect(screen.getByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Top liste' })).toBeVisible()
   })
 
   it('declares the language the text is actually written in', async () => {
@@ -150,7 +152,7 @@ describe('navigation', () => {
       renderAt('/sr', role, '000007')
 
       await screen.findByRole('link', { name: 'Kalendar' })
-      expect(screen.queryByRole('button', { name: 'Administracija' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /Administracija/ })).not.toBeInTheDocument()
     },
   )
 
@@ -164,16 +166,20 @@ describe('navigation', () => {
     expect(screen.getByRole('link', { name: 'Moja članarina' })).toBeVisible()
   })
 
-  it('shows administration to staff', async () => {
+  it('shows administration to staff, as one link carrying what is waiting', async () => {
     const user = setupUser()
     renderAt('/sr', 'moderator', '000007')
 
-    await openGroup(user, 'Administracija')
-
     /* The entry carries the sum of everything waiting in its name, not only in
        the badge (PDL P28a), and something is always waiting, so the number is
-       part of what a screen reader hears here. */
-    expect(screen.getByRole('link', { name: /^Verifikacija/ })).toBeVisible()
+       part of what a screen reader hears here. It stood on Verification while
+       the header had groups; it is on the word that is left. */
+    const entry = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })
+
+    await user.click(entry)
+
+    // And it opens the panel, from which the two sections are reached.
+    expect(await screen.findByRole('link', { name: 'Verifikacija' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
   })
 
@@ -194,19 +200,7 @@ describe('navigation', () => {
     )
   })
 
-  it('closes the menu after following a link out of a group', async () => {
-    const user = setupUser()
-    renderAt('/sr')
-
-    await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
-    await openGroup(user, 'Rangiranje')
-    await user.click(screen.getByRole('link', { name: 'Top 10 liste' }))
-
-    expect(screen.getByRole('button', { name: 'Otvori meni' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Top 10 liste' })).toBeVisible()
-  })
-
-  it('closes the menu after following a link that is not in a group', async () => {
+  it('closes the menu after following a link out of it', async () => {
     const user = setupUser()
     renderAt('/sr')
 

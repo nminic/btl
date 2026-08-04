@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { monogramFor } from '../app/monogram'
 import { Resource } from '../components/Resource'
 import { hueFor } from './competitorFace'
@@ -11,6 +11,7 @@ import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
 import './Competitors.css'
+import { useFilterParams } from '../app/useFilterParams'
 
 /* Cards, not a table (PDL P28a). The league is about people, and a row in a
  * table does not show a person. The picture is the point of the card, so the
@@ -113,7 +114,7 @@ function CompetitorCards({
 
 export function Competitors() {
   const { t } = useI18n()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   const search = params.get('trazi') ?? ''
   /* Only what the cards show. Waiting on the teams as well meant the whole page
    * turned into an error message if that one file failed, over data no card on

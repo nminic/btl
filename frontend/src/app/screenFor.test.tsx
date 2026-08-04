@@ -12,11 +12,11 @@ describe('screenFor', () => {
        all. */
     render(
       <I18nProvider locale="sr">
-        {screenFor({ path: 'jos-nema-ekrana', labelKey: 'nav.badges', seoKey: 'badges' })}
+        {screenFor({ path: 'jos-nema-ekrana', labelKey: 'nav.teams', seoKey: 'teams' })}
       </I18nProvider>,
     )
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Značke' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Timovi' })).toBeVisible()
     expect(screen.getByText(/Ovaj ekran dolazi u sledećoj fazi/)).toBeVisible()
   })
 

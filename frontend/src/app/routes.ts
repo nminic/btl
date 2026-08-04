@@ -17,84 +17,40 @@ export type Address = {
 
 export type RouteDef = Address & { labelKey: string }
 
-/* One entry in the top navigation: either a single screen, or a group that
- * opens. Order here is the order on screen and comes from PDL P28a.
+/* One entry in the top navigation: one word, one screen. Order here is the order
+ * on screen.
  *
- * The two halves are a union rather than two optional fields, so an entry that
- * is both, or neither, does not compile. A screen and a group need different
- * markup, and a runtime fallback for a case the type already rules out is a
- * line nothing can ever reach. */
-export type NavSection = {
-  /** Stable id for the trigger button and the panel it controls. */
+ * There are no groups any more (owner, 04.08.2026). The navigation was two
+ * levels deep for four of its six entries, so most of the portal was two clicks
+ * and one hidden panel away; it is seven names now, each of them a place. What
+ * had been the group "O ligi" is gone with it: the story of the league and the
+ * page of prices are deleted, and the badges have become a section of the
+ * rulebook, which is where the rule that awards them already was. */
+export type NavSection = RouteDef & {
+  /** Stable id, so a test and a stylesheet can name an entry without its words. */
   id: string
-  labelKey: string
   staffOnly?: boolean
-} & (
-  | {
-      /** The entry leads straight to one screen, like the calendar. */
-      path: string
-      seoKey: string
-      items?: never
-    }
-  | { path?: never; seoKey?: never; items: RouteDef[] }
-)
+}
 
 /* The slugs stay Serbian in every language (ADL A2 writes the English route as
  * /en/kalendar). One address per screen, whichever language is shown. */
 export const NAV: NavSection[] = [
-  {
-    id: 'about',
-    labelKey: 'nav.about',
-    /* Five, in this order, and all five settled on 30.07.2026 (PDL P28a).
-     *
-     * Membership is second because it is the page that leads to joining. The
-     * story of the league and the badges are the other two that joined: both had
-     * an address and not one link anywhere on the portal pointed at it, so they
-     * were pages a person could only reach by typing the address. They are here
-     * now and nowhere else; leaving them in UNLISTED_ROUTES as well would be the
-     * same address served twice. */
-    items: [
-      { path: 'o-ligi', labelKey: 'nav.aboutLeague', seoKey: 'aboutLeague' },
-      { path: 'pravilnik', labelKey: 'nav.rules', seoKey: 'rulebook' },
-      { path: 'clanarina', labelKey: 'nav.pricing', seoKey: 'pricing' },
-      { path: 'znacke', labelKey: 'nav.badges', seoKey: 'badges' },
-    ],
-  },
+  { id: 'rules', labelKey: 'nav.rules', path: 'pravilnik', seoKey: 'rulebook' },
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
+  { id: 'table', labelKey: 'nav.table', path: 'tabela', seoKey: 'table' },
+  { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards' },
   { id: 'teams', labelKey: 'nav.teams', path: 'timovi', seoKey: 'teams' },
-  /* "Rangiranje" (owner, 30.07.2026). It was briefly "Statistike", but the group
-     holds three ways of ranking people rather than statistics about them, and the
-     word says what a visitor came for. The standing inside it is free to be
-     called what it is: the table. */
-  {
-    id: 'stats',
-    labelKey: 'nav.stats',
-    items: [
-      { path: 'tabela', labelKey: 'nav.table', seoKey: 'table' },
-      /* One name in the navigation and in the rulebook, Article 56 (PDL P28a).
-         "Rang liste" and "top liste" are no longer used for the same thing. */
-      { path: 'top-liste', labelKey: 'nav.topBoards', seoKey: 'topBoards' },
-      { path: 'lige', labelKey: 'nav.competitions', seoKey: 'leagues' },
-    ],
-  },
+  /* "Lige", which is what they are. They were called "Takmičenja" while they sat
+     inside a group named for ranking, where the plain word would have read as
+     the league itself (owner, 04.08.2026). */
+  { id: 'leagues', labelKey: 'nav.leagues', path: 'lige', seoKey: 'leagues' },
   { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar', seoKey: 'calendar' },
-  {
-    id: 'admin',
-    labelKey: 'nav.admin',
-    staffOnly: true,
-    items: [
-      { path: 'administracija/entiteti', labelKey: 'nav.entities', seoKey: 'adminEntities' },
-      {
-        path: 'administracija/verifikacija',
-        labelKey: 'nav.verification',
-        seoKey: 'adminVerification',
-      },
-      /* Beside the two sections rather than inside one: the price list has four
-         fixed rows, and nothing is created or removed on it (owner,
-         30.07.2026), which is what the section of entities is for. */
-      { path: 'administracija/cenovnik', labelKey: 'admin.pricing', seoKey: 'adminPricing' },
-    ],
-  },
+  /* The way into administration, and the only entry a visitor never sees. It
+     leads to the panel, which is the list of whatever this person may open; the
+     screens behind it carry their own navigation down the side of each one
+     (SectionNav), so nothing was lost by closing the panel that used to hang
+     off this word. */
+  { id: 'admin', labelKey: 'nav.admin', staffOnly: true, path: 'administracija', seoKey: 'admin' },
 ]
 
 /* The member area. It hangs off the picture and the cog in the header, not off
@@ -123,7 +79,16 @@ const UNLISTED_ROUTES: RouteDef[] = [
   /* Reached from the standing of the teams, by whoever is signed in. Not in the
      navigation: proposing a team is something a member does once, if ever. */
   { path: 'novi-tim', labelKey: 'teams.propose', seoKey: 'proposeTeam' },
-  { path: 'administracija', labelKey: 'nav.admin', seoKey: 'admin' },
+  /* The two sections and the price list. They stood in the header while the
+     navigation had groups; they are reached from the panel and from the
+     navigation beside each screen now (owner, 04.08.2026). */
+  { path: 'administracija/entiteti', labelKey: 'nav.entities', seoKey: 'adminEntities' },
+  {
+    path: 'administracija/verifikacija',
+    labelKey: 'nav.verification',
+    seoKey: 'adminVerification',
+  },
+  { path: 'administracija/cenovnik', labelKey: 'admin.pricing', seoKey: 'adminPricing' },
   { path: 'administracija/clanovi', labelKey: 'admin.members', seoKey: 'adminMembers' },
   { path: 'administracija/dogadjaji', labelKey: 'admin.events', seoKey: 'adminEvents' },
   { path: 'administracija/trke', labelKey: 'admin.races', seoKey: 'adminRaces' },
@@ -182,11 +147,7 @@ export const EXTRA_ADDRESSES: Address[] = [
 
 /** Every address the router has to know about, navigation entry or not. */
 export const ROUTES: RouteDef[] = [
-  ...NAV.flatMap((section) =>
-    section.path === undefined
-      ? section.items
-      : [{ path: section.path, labelKey: section.labelKey, seoKey: section.seoKey }],
-  ),
+  ...NAV.map(({ path, labelKey, seoKey }) => ({ path, labelKey, seoKey })),
   ...ACCOUNT_ROUTES,
   ...FOOTER_ROUTES,
   ...UNLISTED_ROUTES,

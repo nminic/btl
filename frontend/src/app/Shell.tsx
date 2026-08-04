@@ -11,7 +11,6 @@ import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
 import { AccountMenu } from './AccountMenu'
 import { Brand } from './Brand'
-import { Dropdown } from './Dropdown'
 import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
@@ -31,8 +30,10 @@ function useRestOfPath(): string {
   return `${rest}${location.search}${location.hash}`
 }
 
-/** The one navigation entry that carries a number beside it (PDL P28a). */
-const VERIFICATION = 'administracija/verifikacija'
+/** The one navigation entry that carries a number beside it (PDL P28a). It was
+ *  Verification while the header had groups; the number moved up with the word
+ *  that is left, and says the same thing (owner, 04.08.2026). */
+const ADMIN = 'administracija'
 
 /**
  * How much work is waiting for a moderator: the sum of the queues on the
@@ -71,43 +72,36 @@ function useWaiting(): number {
 /**
  * The navigation as this person sees it.
  *
- * A group whose every screen is closed to them is a group that opens onto
- * nothing, and a screen they may not open is one they are not to be told about
- * at all (owner, 30.07.2026). Asked through the same table the door is
- * (needs.ts), so a screen cannot be named here and refused there.
+ * A screen they may not open is one they are not to be told about at all (owner,
+ * 30.07.2026). Asked through the same table the door is (needs.ts), so a screen
+ * cannot be named here and refused there.
  */
 function useNavSections(): NavSection[] {
   const { role } = useRole()
   const mayOpen = useMayOpen()
 
-  return navForRole(role)
-    .map((section) =>
-      section.path === undefined
-        ? { ...section, items: section.items.filter((item) => mayOpen(item.path)) }
-        : section,
-    )
-    .filter((section) => (section.path === undefined ? section.items.length > 0 : mayOpen(section.path)))
+  return navForRole(role).filter((section) => mayOpen(section.path))
 }
 
-/* Verification, with the number of items waiting behind it. The count goes into
- * the name of the link and not only into the badge, because an aria-label
+/* Administration, with the number of things waiting behind it. The count goes
+ * into the name of the link and not only into the badge, because an aria-label
  * replaces everything inside the element: a badge described by nothing is a
  * badge a screen reader never reads out. The inbox in MessagesMenu does the
  * same. Nothing at all is shown while nothing is waiting. */
-function VerificationLink({ label, onFollow }: { label: string; onFollow: () => void }) {
+function AdminLink({ label, onNavigate }: { label: string; onNavigate: () => void }) {
   const { locale, t } = useI18n()
   const waiting = useWaiting()
 
   return (
     <NavLink
-      to={`/${locale}/${VERIFICATION}`}
-      className="navgroup__link"
+      to={`/${locale}/${ADMIN}`}
+      className="shell__link"
       aria-label={waiting === 0 ? undefined : `${label}, ${t('shell.waiting', { count: waiting })}`}
-      onClick={onFollow}
+      onClick={onNavigate}
     >
       {label}
       {waiting > 0 && (
-        <span className="navgroup__waiting" aria-hidden="true">
+        <span className="shell__waiting" aria-hidden="true">
           {waiting}
         </span>
       )}
@@ -119,49 +113,14 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
   const { locale, t } = useI18n()
   const label = t(section.labelKey)
 
-  // A group with one screen behind it would be a menu that opens onto a single
-  // choice, so those stay plain links.
-  if (section.path !== undefined) {
-    return (
-      <NavLink to={`/${locale}/${section.path}`} className="shell__link" onClick={onNavigate}>
-        {label}
-      </NavLink>
-    )
+  if (section.path === ADMIN) {
+    return <AdminLink label={label} onNavigate={onNavigate} />
   }
 
   return (
-    <Dropdown
-      id={`nav-${section.id}`}
-      className="navgroup"
-      label={label}
-      trigger={<span className="navgroup__label">{label}</span>}
-    >
-      {(close) => {
-        const follow = () => {
-          close()
-          onNavigate()
-        }
-
-        return (
-          <>
-            {section.items.map((item) =>
-              item.path === VERIFICATION ? (
-                <VerificationLink key={item.path} label={t(item.labelKey)} onFollow={follow} />
-              ) : (
-                <NavLink
-                  key={item.path}
-                  to={`/${locale}/${item.path}`}
-                  className="navgroup__link"
-                  onClick={follow}
-                >
-                  {t(item.labelKey)}
-                </NavLink>
-              ),
-            )}
-          </>
-        )
-      }}
-    </Dropdown>
+    <NavLink to={`/${locale}/${section.path}`} className="shell__link" onClick={onNavigate}>
+      {label}
+    </NavLink>
   )
 }
 
@@ -247,12 +206,15 @@ export function Shell() {
           A data router turns the browser's own handling off, so without this
           every screen opened from halfway down a table opened halfway down.
 
-          Keyed on the path alone, or every filter counts as a new screen: with
-          the default key the table jumped to the top on each letter typed into
-          the search, and the row of six lengths on a profile threw the reader
-          back up the page on every click, which is the very fault this is here
-          to fix, moved from one control to another. */}
-      <ScrollRestoration getKey={(where) => where.pathname} />
+          One saved position per history entry, which is the default and is what
+          makes going back land exactly where it left (owner, 04.08.2026). It was
+          keyed on the path alone for a while, to stop a filter counting as a new
+          screen; that is now said where it is true, on the writing of the filter
+          itself (useFilterParams). The path as a key answered a second question
+          it was never asked: a screen reopened from the navigation found the
+          position of the last visit waiting for it, so pressing "Kalendar"
+          landed halfway down the calendar. */}
+      <ScrollRestoration />
 
       {/* Says out loud which screen just opened. The browser announces a page
           change on its own; a single page application has to do it by hand. */}

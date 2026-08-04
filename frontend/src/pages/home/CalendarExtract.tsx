@@ -83,7 +83,11 @@ export function CalendarExtract({
         </ul>
       )}
 
-      <Link className="card__more" to={`/${locale}/kalendar`}>
+      {/* On the month today is in (owner, 04.08.2026), which is not where the
+          calendar opens by itself: left to choose, it opens on the first month
+          that has anything in it, and in a league whose season starts in January
+          that is months away from whoever pressed this. */}
+      <Link className="card__more" to={`/${locale}/kalendar?mesec=${today.slice(0, 7)}`}>
         {t('home.seeCalendar')}
       </Link>
     </section>

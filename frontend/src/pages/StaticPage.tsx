@@ -1,4 +1,4 @@
-import { Markdown } from '../components/Markdown'
+import { PageSectionBody } from '../components/PageSectionBody'
 import { Resource } from '../components/Resource'
 import { livePage, sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
@@ -40,7 +40,7 @@ export function StaticPage({ slug }: { slug: string }) {
             {sectionsOf(pages, page).map((section) => (
               <section key={section.heading}>
                 <h2>{section.heading}</h2>
-                <Markdown text={section.body} />
+                <PageSectionBody section={section} />
               </section>
             ))}
           </article>

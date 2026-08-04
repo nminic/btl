@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
@@ -26,6 +26,7 @@ import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../compone
  *  silently change the other. */
 const ALL_LENGTHS = 'sve'
 import './Profile.css'
+import { useFilterParams } from '../app/useFilterParams'
 
 /**
  * The biography as it is published, in paragraphs, with no links inside it: a
@@ -134,7 +135,7 @@ function ProfileBody({
   team: Team | undefined
 }) {
   const { locale, t } = useI18n()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   const today = useToday()
   const asked = useSeason()
 

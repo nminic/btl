@@ -1,6 +1,6 @@
-import { useSearchParams } from 'react-router'
 import { useI18n } from '../i18n/useI18n'
 import { ALL_SEASONS } from './season'
+import { useFilterParams } from '../app/useFilterParams'
 
 /**
  * The season control, beside the name of the competitor (owner, 31.07.2026).
@@ -38,7 +38,7 @@ export function SeasonPicker({
   fallback?: string
 }) {
   const { t } = useI18n()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   const all = fallback === undefined
 
   function choose(value: string) {

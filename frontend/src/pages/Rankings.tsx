@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
 import { Resource } from '../components/Resource'
@@ -17,6 +16,7 @@ import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import './Rankings.css'
+import { useFilterParams } from '../app/useFilterParams'
 
 type Filters = {
   gender: Gender
@@ -71,10 +71,12 @@ function Standing({
     [field, results, season, gender, category, search],
   )
 
+  /* No sentence under the heading (owner, 04.08.2026). It said that the 2027
+     season had not started and that what stands here is trial data, which is
+     true of the whole portal until January and was being said on two screens
+     out of thirty. */
   return (
     <>
-      <p className="rankings__note">{t('rankings.historyNote')}</p>
-
       <div className="rankings__filters">
         <div className="rankings__tabs" role="group" aria-label={t('rankings.title')}>
           <button
@@ -189,7 +191,7 @@ function Standing({
 
 export function Rankings() {
   const { t } = useI18n()
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useFilterParams()
   /* Only what the standing shows. Waiting on the events as well meant the whole
    * table turned into an error message if that one file failed, over data no row
    * in it has ever read. */

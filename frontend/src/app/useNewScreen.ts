@@ -44,6 +44,26 @@ export function useNewScreen(main: RefObject<HTMLElement | null>): void {
     }
 
     came.current = pathname
+
+    /* Not over a screen that has already put the focus somewhere of its own.
+     *
+     * A screen's own effect runs before this one, because React runs the
+     * children before the parent they are in. Copying an event opens the form of
+     * the copy with the date field focused, the date being the one thing that is
+     * certainly wrong on a copy; this used to take it straight back off it. It
+     * never showed while the screens were all a moment late in arriving: the
+     * form mounted after this had already run, so the two never met in one
+     * commit. They do now that the data layer hands over what it already holds
+     * (src/data/useResource.ts), which is exactly the sort of thing a change to
+     * a layer underneath surfaces somewhere else.
+     *
+     * Asked as "is the focus in this screen", not "has anything got it": after a
+     * press on an entry in the header the focus is still on that entry, which is
+     * outside the screen and is precisely the case this is here for. */
+    if (main.current?.contains(document.activeElement) === true) {
+      return
+    }
+
     /* Without this the focus can undo the scroll that ScrollRestoration has just
        put back, by pulling the landmark into view. */
     main.current?.focus({ preventScroll: true })

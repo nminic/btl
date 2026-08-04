@@ -36,12 +36,17 @@ function servedPaths(): string[] {
 }
 
 describe('navForRole', () => {
-  it('shows the sections in the order the design fixes', () => {
+  it('shows the seven names the owner fixed, in that order, and administration last', () => {
+    /* Owner, 04.08.2026: "samo osnovna navigacija Pravilnik / Takmičari / BTL
+       tabele / Top liste / Timovi / Lige / Kalendar". Administration is the
+       eighth and is shown to nobody else. */
     expect(navForRole('superadmin').map((section) => section.id)).toEqual([
-      'about',
+      'rules',
       'people',
+      'table',
+      'boards',
       'teams',
-      'stats',
+      'leagues',
       'calendar',
       'admin',
     ])
@@ -58,55 +63,49 @@ describe('navForRole', () => {
   })
 })
 
-describe('the group "O ligi"', () => {
-  it('holds the five screens the owner named, in that order (PDL P28a)', () => {
-    const about = NAV.find((section) => section.id === 'about')
-
-    expect((about?.items ?? []).map((item) => item.path)).toEqual([
-      'o-ligi',
+describe('the shape of the navigation', () => {
+  it('is one word one screen, with nothing that opens', () => {
+    /* Owner, 04.08.2026: "Više neće biti multinivo navigacije". Every entry
+       leads somewhere, so there is no panel to open and nothing behind a word
+       that a reader has to guess at. */
+    expect(NAV.map((section) => section.path)).toEqual([
       'pravilnik',
-      'clanarina',
-      'znacke',
+      'takmicari',
+      'tabela',
+      'top-liste',
+      'timovi',
+      'lige',
+      'kalendar',
+      'administracija',
     ])
   })
 
-  it('serves no address twice, now that two of them moved into it', () => {
-    /* The story of the league and the badges had an address and no link anywhere
-       pointing at it. They joined the group on 30.07.2026 and left the unlisted
-       list on the same day: an entry in both would be one address with two router
-       entries, and the second would never be reached. Read out of the real router
-       table rather than out of ROUTES, because that is what is served. */
+  it('serves no address twice, and none of the three that were deleted', () => {
+    /* The story of the league and the page of prices went with the group they
+       stood in, and the badges became a section of the rulebook (owner,
+       04.08.2026). An address left behind would be a page nothing links to,
+       which is the very thing that put those three into a group in the first
+       place. Read out of the real router table rather than out of ROUTES,
+       because that is what is served. */
     const served = servedPaths()
 
     expect(new Set(served).size).toBe(served.length)
-    expect(served).toContain('o-ligi')
-    expect(served).toContain('znacke')
-  })
-})
-
-describe('the shape of the navigation', () => {
-  it('gives every section either one screen or a group, never both and never neither', () => {
-    for (const section of NAV) {
-      const single = section.path !== undefined
-      const group = (section.items ?? []).length > 0
-
-      expect(single).not.toBe(group)
-    }
+    expect(served).toContain('pravilnik')
+    expect(served).not.toContain('o-ligi')
+    expect(served).not.toContain('clanarina')
+    expect(served).not.toContain('znacke')
   })
 
-  it('opens a group only where there is more than one screen behind it', () => {
-    // A menu that opens onto a single choice is a link with an extra click, so
-    // an entry with one screen behind it stays a plain link.
-    expect(NAV.filter((section) => section.path !== undefined).map((section) => section.path)).toEqual([
-      'takmicari',
-      'timovi',
-      'kalendar',
-    ])
-    expect(
-      NAV.filter((section) => section.path === undefined).every(
-        (section) => (section.items ?? []).length > 1,
-      ),
-    ).toBe(true)
+  it('keeps the two administrative sections as addresses, off the navigation', () => {
+    /* They are reached from the panel and from the navigation beside each
+       screen. Off the header, but still served: a moderator opening the entities
+       from the panel must not meet a redirect. */
+    const served = servedPaths()
+
+    expect(served).toContain('administracija/entiteti')
+    expect(served).toContain('administracija/verifikacija')
+    expect(served).toContain('administracija/cenovnik')
+    expect(NAV.map((section) => section.path)).not.toContain('administracija/entiteti')
   })
 })
 
@@ -127,12 +126,9 @@ describe('ROUTES', () => {
 
   it('carries an address for every navigation entry, account screen and footer link', () => {
     const paths = ROUTES.map((route) => route.path)
-    const inNavigation = NAV.flatMap((section) =>
-      section.path === undefined ? (section.items ?? []).map((item) => item.path) : [section.path],
-    )
 
     for (const path of [
-      ...inNavigation,
+      ...NAV.map((section) => section.path),
       ...ACCOUNT_ROUTES.map((route) => route.path),
       ...FOOTER_ROUTES.map((route) => route.path),
     ]) {

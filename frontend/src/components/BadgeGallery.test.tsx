@@ -13,7 +13,9 @@ const t = (key: string, params?: Record<string, string | number>) =>
 
 const badgesOf = () => loadResource<Badge[]>('badges')
 
-/** The list of badges, once it has arrived. */
+/** The wall of badges, once it has arrived. It is drawn inside the rulebook,
+ *  near the end of it, since the owner made it a section of that page rather
+ *  than a screen of its own (04.08.2026). */
 const wall = () => screen.findByRole('list', { name: 'Značke' })
 
 /** What the badge on that card describes itself with, which is the sentence
@@ -32,10 +34,24 @@ function hintOf(item: HTMLElement): HTMLElement {
   return hint
 }
 
-describe('the badges screen', () => {
+describe('the wall of badges in the rulebook', () => {
+  it('stands in a section of its own, near the end and before the closing provisions', async () => {
+    /* Owner, 04.08.2026: "Značke treba da bude opisna sekcija (sa dosta grafike)
+       pred kraj Pravilnika." Near the end and not at it: what closes a rulebook
+       is its closing provisions. */
+    renderAt('/sr/pravilnik')
+
+    const headings = (await screen.findAllByRole('heading', { level: 2 })).map(
+      (heading) => heading.textContent ?? '',
+    )
+
+    expect(headings.at(-2)).toBe('19. Značke')
+    expect(headings.at(-1)).toBe('20. Izmene pravilnika i završne odredbe')
+  })
+
   it('lists every badge with its threshold and how it is earned', async () => {
     const badges = await badgesOf()
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
     const items = within(await wall()).getAllByRole('listitem')
     expect(items).toHaveLength(badges.length)
@@ -55,10 +71,26 @@ describe('the badges screen', () => {
     })
   })
 
+  it('shows all of them, since nothing here filters any more', async () => {
+    /* The screen this replaced had two filters, by kind and by the period a
+       badge is valid for. What they answered was "which of these can I still
+       win", which is a question about a member and not about the rules; the
+       section of a rulebook shows the rules, all of them. */
+    const badges = await badgesOf()
+    renderAt('/sr/pravilnik')
+
+    await wall()
+
+    expect(screen.queryByLabelText('Vrsta značke')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Period važenja')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Obriši filtere' })).not.toBeInTheDocument()
+    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(badges.length)
+  })
+
   it('says how a badge with no description of its own is earned all the same', async () => {
     const badges = await badgesOf()
     const bare = badges.findIndex((badge) => badge.description === '')
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
     expect(bare).toBeGreaterThan(-1)
 
@@ -70,7 +102,7 @@ describe('the badges screen', () => {
     const badges = await badgesOf()
     const withLabel = badges.findIndex((badge) => badge.label !== '')
     const without = badges.findIndex((badge) => badge.label === '')
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
     const items = within(await wall()).getAllByRole('listitem')
 
@@ -95,23 +127,23 @@ describe('the badges screen', () => {
 
   it('writes every period the way this language writes one, never as it is stored', async () => {
     const badges = await badgesOf()
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
-    const wall = await screen.findByRole('list', { name: 'Značke' })
+    const list = await wall()
 
     /* The rule of a badge carries a range of dates, and the sentence used to
        drop both of them in as they are stored: "računato od 2027-07-01 do
        2027-07-31" on a public page (PDL P28a, 30.07.2026). Where the two ends
        are a whole period, the sentence names the period. */
-    expect(wall.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/)
-    expect(wall).toHaveTextContent('računato za jul 2027.')
-    expect(wall).toHaveTextContent('računato za 2027.')
+    expect(list.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(list).toHaveTextContent('računato za jul 2027.')
+    expect(list).toHaveTextContent('računato za 2027.')
 
     /* And it ends there. Every Serbian date already carries the full stop that
        makes it an ordinal, so an ending that adds one of its own reads
        "računato za jul 2027..", which is the sort of thing a test using
        toContain never sees and a reader sees at once. */
-    expect(wall.textContent).not.toMatch(/\.\./)
+    expect(list.textContent).not.toMatch(/\.\./)
 
     // And the two badges those sentences belong to are still in the data.
     expect(badges.some((badge) => badge.from === '2027-07-01' && badge.to === '2027-07-31')).toBe(
@@ -120,6 +152,29 @@ describe('the badges screen', () => {
     expect(badges.some((badge) => badge.from === '2027-01-01' && badge.to === '2027-12-31')).toBe(
       true,
     )
+  })
+})
+
+describe('a league that has defined no badge at all', () => {
+  it('says so in the section rather than leaving it with a heading and nothing under it', async () => {
+    /* The badges are records an administrator maintains, and the section of the
+       rulebook is drawn whether or not there are any. Nothing in the generated
+       data is an empty list, so the file is emptied here: without it the branch
+       exists and nothing ever walks it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/badges.json')
+        ? new Response('[]', { status: 200 })
+        : real(input)) as typeof fetch
+
+    try {
+      renderAt('/sr/pravilnik')
+
+      expect(await screen.findByText('Liga još nije uvela nijednu značku.')).toBeVisible()
+      expect(screen.queryByRole('list', { name: 'Značke' })).not.toBeInTheDocument()
+    } finally {
+      globalThis.fetch = real
+    }
   })
 })
 
@@ -148,106 +203,10 @@ describe('the badges the administrator has defined', () => {
   })
 })
 
-describe('the filters on the badges screen', () => {
-  it('narrows the list by kind', async () => {
-    const user = setupUser()
-    const badges = await badgesOf()
-    renderAt('/sr/znacke')
-
-    await wall()
-    await user.selectOptions(screen.getByLabelText('Vrsta značke'), 'marathonCount')
-
-    const marathons = badges.filter((badge) => badge.kind === 'marathonCount')
-    expect(marathons.length).toBeGreaterThan(0)
-    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(marathons.length)
-  })
-
-  /* The second filter is the period a badge is valid for, in the place where the
-     screen this was modelled on filters by points. Badges here carry no points at
-     all (PDL P16), and the period is the half of a rule that decides whether a
-     badge can still be won. */
-  it('narrows the list by the period a badge is valid for', async () => {
-    const user = setupUser()
-    const badges = await badgesOf()
-    renderAt('/sr/znacke')
-
-    await wall()
-    await user.selectOptions(screen.getByLabelText('Period važenja'), 'period')
-
-    const limited = badges.filter((badge) => badge.from !== '' || badge.to !== '')
-    expect(limited.length).toBeGreaterThan(0)
-    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(limited.length)
-
-    await user.selectOptions(screen.getByLabelText('Period važenja'), 'trajne')
-
-    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(
-      badges.length - limited.length,
-    )
-  })
-
-  it('says so when the two filters together leave nothing', async () => {
-    const user = setupUser()
-    renderAt('/sr/znacke')
-
-    await wall()
-    await user.selectOptions(screen.getByLabelText('Vrsta značke'), 'marathonCount')
-    await user.selectOptions(screen.getByLabelText('Period važenja'), 'period')
-
-    expect(screen.getByText('Nijedna značka ne odgovara izabranim filterima.')).toBeVisible()
-    expect(screen.queryByRole('list', { name: 'Značke' })).not.toBeInTheDocument()
-  })
-
-  it('clears every filter at once and brings all of them back', async () => {
-    const user = setupUser()
-    const badges = await badgesOf()
-    renderAt('/sr/znacke')
-
-    await wall()
-    await user.selectOptions(screen.getByLabelText('Vrsta značke'), 'totalKm')
-    await user.selectOptions(screen.getByLabelText('Period važenja'), 'trajne')
-    expect(within(await wall()).getAllByRole('listitem').length).toBeLessThan(badges.length)
-
-    await user.click(screen.getByRole('button', { name: 'Obriši filtere' }))
-
-    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(badges.length)
-    expect(screen.getByLabelText('Vrsta značke')).toHaveValue('')
-    expect(screen.getByLabelText('Period važenja')).toHaveValue('')
-  })
-
-  it('puts one filter back to all without disturbing the other', async () => {
-    const user = setupUser()
-    const badges = await badgesOf()
-    renderAt('/sr/znacke')
-
-    await wall()
-    await user.selectOptions(screen.getByLabelText('Period važenja'), 'trajne')
-    await user.selectOptions(screen.getByLabelText('Vrsta značke'), 'totalKm')
-    await user.selectOptions(screen.getByLabelText('Vrsta značke'), '')
-
-    // Choosing "all kinds" is the absence of that filter, not a filter for
-    // nothing, and the period the reader chose before it stays where it was.
-    const forever = badges.filter((badge) => badge.from === '' && badge.to === '')
-    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(forever.length)
-    expect(screen.getByLabelText('Period važenja')).toHaveValue('trajne')
-  })
-
-  it('offers only the kinds something has been defined for', async () => {
-    const badges = await badgesOf()
-    renderAt('/sr/znacke')
-
-    await wall()
-    const options = within(screen.getByLabelText('Vrsta značke')).getAllByRole('option')
-
-    // Every kind in the data, and the entry that stands for all of them.
-    expect(options).toHaveLength(new Set(badges.map((badge) => badge.kind)).size + 1)
-    expect(options[0]).toHaveTextContent('Sve vrste')
-  })
-})
-
 describe('the hint that says how a badge is earned', () => {
   it('opens on a tap and closes on the next one', async () => {
     const user = setupUser()
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
     const face = first(within(await wall()).getAllByRole('button'))
 
@@ -262,7 +221,7 @@ describe('the hint that says how a badge is earned', () => {
 
   it('closes with the escape key, and stays open under any other', async () => {
     const user = setupUser()
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
     const face = first(within(await wall()).getAllByRole('button'))
 
@@ -275,7 +234,7 @@ describe('the hint that says how a badge is earned', () => {
   })
 
   it('sits on a control the keyboard can reach, which a hover alone is not', async () => {
-    renderAt('/sr/znacke')
+    renderAt('/sr/pravilnik')
 
     const face = first(within(await wall()).getAllByRole('button'))
     face.focus()

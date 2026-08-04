@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Badge } from './badgeRule'
 import { useSession } from '../session/useSession'
-import { loadResource, type ResourceName } from './client'
+import { arrivedResource, loadResource, type ResourceName } from './client'
 import type {
   BtlEvent,
   Competitor,
@@ -18,12 +18,41 @@ export type ResourceState<T> =
   | { status: 'ready'; data: T }
   | { status: 'error'; error: Error }
 
+/**
+ * A resource, ready from the first render once this visit has already read it.
+ *
+ * The wait is real only the first time. Everything after it was a wait for
+ * nothing: the value was in hand, and the screen still drew a loading box for a
+ * render because the only way to reach the value was through a promise. What
+ * that cost was not a flash but the scroll: the router puts a reader back where
+ * they were as soon as the screen commits, and a screen that is one loading box
+ * tall at that moment has nowhere to be put back to (owner, 04.08.2026).
+ */
 export function useResource<T>(name: ResourceName): ResourceState<T> {
-  const [state, setState] = useState<ResourceState<T>>({ status: 'loading' })
+  /* Read once, as this mounts, and never again while it is mounted.
+   *
+   * Once is all that is wanted: what the first render of a screen holds is what
+   * decides whether the router has a page to put a scroll position back into.
+   * Reading it on every render would be reading a value nothing here is
+   * subscribed to.
+   *
+   * Which means this is written for a name that does not change, and every
+   * caller passes a literal one: the nine wrappers at the foot of this file, and
+   * `usePending`, which is the tenth resource. Handed a name that changes, the first render under the new one
+   * would draw the old resource's data as though it were ready, and only the
+   * effect would put it right. Making that correct is not a line in the effect,
+   * which runs after that render: it is the state being adjusted during the
+   * render itself. Worth writing on the day a caller needs it, and not before. */
+  const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
 
   useEffect(() => {
+    /* Asked for even when the value is already in hand, and that is what closes
+       the window: a value landing between the render and this effect is seen by
+       neither, and a version of this that returned early here left the screen
+       waiting for ever with nothing scheduled to take it off (there is a test for
+       that, in useResource.test.tsx). `loadResource` answers from the promise it
+       is already holding, so what it costs is a render nobody sees. */
     let active = true
-    setState({ status: 'loading' })
 
     loadResource<T>(name).then(
       (data) => {
@@ -44,6 +73,13 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
   }, [name])
 
   return state
+}
+
+/** What this visit already holds for a resource, as a state a screen can draw. */
+function atHand<T>(name: ResourceName): ResourceState<T> {
+  const known = arrivedResource<T>(name)
+
+  return known === undefined ? { status: 'loading' } : { status: 'ready', data: known }
 }
 
 /**

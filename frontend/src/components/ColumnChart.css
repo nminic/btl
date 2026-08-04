@@ -1,7 +1,14 @@
 /* The bar chart from the old portal: faces on top, blue columns, the number in
- * a circle at the foot of each, and a gold band underneath naming the length.
+ * a circle at the foot of each, and a gold band underneath naming what is
+ * counted.
+ *
+ * Written for the front page's turning chart and shared with the Top liste from
+ * 04.08.2026, where six of the ten boards are drawn this way. The clearance at the
+ * top of the columns is still the one the pause control needs, because a chart
+ * that does not turn has nothing in that corner and loses nothing by leaving it
+ * empty.
  */
-.top-cat {
+.colchart {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -12,13 +19,13 @@
   overflow: hidden;
 }
 
-.top-cat__columns {
+.colchart__columns {
   list-style: none;
   margin: 0;
-  /* The top of this box is the disc's, not the bars'. When every column is
-     the same height, which is the ordinary state of the first weeks of a season
-     and the permanent state of the ultra board, the tenth face reached the top
-     right corner and the disc sat on it. */
+  /* The top of this box is the pause disc's, not the bars'. When every column
+     is the same height, which is the ordinary state of the first weeks of a
+     season and the permanent state of the ultra board, the tenth face reached
+     the top right corner and the disc sat on it. */
   /* Measured, not chosen: the disc reaches 45,6px down from the outer edge, so
      this is the clearance that keeps it off the tenth face. Off the scale on
      purpose, the same as the sizes of the faces themselves. */
@@ -28,8 +35,8 @@
   grid-auto-columns: 1fr;
   gap: var(--space-4);
   align-items: end;
-  /* The chart fills the row it shares with the calendar beside it, so the bars
-     get whatever height that row came out (owner, 31.07.2026). */
+  /* The chart fills the row it was given, so the bars get whatever height that
+     row came out (owner, 31.07.2026). */
   flex: 1;
   min-block-size: 15rem;
 }
@@ -38,7 +45,7 @@
    width of the column and squeezed the height it was given, so the first circle,
    in the widest column, came out an ellipse and none of them stood over the
    middle of their own bar. */
-.top-cat__column {
+.colchart__column {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -50,7 +57,7 @@
 /* The face and the bar are one link (owner, 01.08.2026), so a pointer anywhere
    over the column lights the whole of it and there is one stop for the keyboard
    rather than two for one destination. */
-.top-cat__link {
+.colchart__link {
   position: relative;
   /* The face, and the room under it. Both are read twice: once to draw the face
      and once to put the name across the middle of it. */
@@ -65,23 +72,22 @@
   text-decoration: none;
 }
 
-/* Three names deep, and it has to be. Every sheet is bundled into one, and
-   `.home .portrait` sets a size of its own at the same weight as a two-name
-   selector; whichever lands later wins, and the later one is not this file. The
-   phone rule below has been asking for a smaller face since it was written and
-   never got one, which nothing catches, because a face of the wrong size is
-   still a face. */
+/* Three names deep, and it stays that way. The face is a shared building block
+   with one bare definition of its own (src/components/Portrait.css), and this
+   chart wants a size that is not that one; written with fewer names it would be
+   a coin toss between two rules of equal weight, settled by which sheet the
+   bundle happened to put last. */
 /* On top of its own bar, wherever that bar ended up. In the flow it took height
    away from the bar it stands on, which is what made the bars disagree with the
    numbers in them. */
-.top-cat__column .portrait {
+.colchart__column .portrait {
   position: absolute;
   inset-block-end: calc(var(--bar) + var(--face-gap));
   inset-inline: 0;
   margin-inline: auto;
 }
 
-.top-cat .top-cat__column .portrait {
+.colchart .colchart__column .portrait {
   /* Written through a variable because the name below has to know it: the name
      is centred on the face, and to place it the stylesheet needs the face's own
      size and the gap under it. */
@@ -94,17 +100,17 @@
   transition: outline-color var(--fast);
 }
 
-.top-cat__link:hover .portrait,
-.top-cat__link:focus-visible .portrait {
+.colchart__link:hover .portrait,
+.colchart__link:focus-visible .portrait {
   outline-color: var(--accent);
 }
 
-.top-cat__link:hover .top-cat__bar,
-.top-cat__link:focus-visible .top-cat__bar {
+.colchart__link:hover .colchart__bar,
+.colchart__link:focus-visible .colchart__bar {
   background: var(--blue-600);
 }
 
-.top-cat__link:focus-visible {
+.colchart__link:focus-visible {
   outline: none;
 }
 
@@ -112,7 +118,7 @@
    tooltip takes a second to appear, sits where the mouse is and never appears
    at all for the keyboard. Placed over the column and not in it, so ten of them
    do not each reserve a line nobody is reading. */
-.top-cat__who {
+.colchart__who {
   position: absolute;
   /* Across the middle of the face it names (owner, 03.08.2026).
    *
@@ -151,14 +157,14 @@
   transition: opacity var(--fast);
 }
 
-.top-cat__link:hover .top-cat__who,
-.top-cat__link:focus-visible .top-cat__who {
+.colchart__link:hover .colchart__who,
+.colchart__link:focus-visible .colchart__who {
   opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .top-cat__column .portrait,
-  .top-cat__who {
+  .colchart__column .portrait,
+  .colchart__who {
     transition: none;
   }
 }
@@ -177,20 +183,20 @@
  * so the tallest column puts its face over the band the pause control sits in.
  * The owner accepted that (03.08.2026): the alternative is taking the face's
  * height off every bar, which is the thing that stopped them being bars. */
-.top-cat__track {
+.colchart__track {
   position: relative;
   inline-size: 100%;
   block-size: calc(100% - var(--face) - var(--face-gap));
 }
 
-.top-cat__bar {
+.colchart__bar {
   position: absolute;
   inset-inline: 0;
   inset-block-end: 0;
   display: block;
   pointer-events: none;
   /* Set on the link, because the face and the name need it too
-     (TopByCategory.tsx). A share of the track above, and nothing else: a floor
+     (ColumnChart.tsx). A share of the track above, and nothing else: a floor
      here is what made one race and two races the same height. */
   block-size: var(--bar);
   border-radius: 2px 2px 0 0;
@@ -199,10 +205,45 @@
   transition: background var(--fast);
 }
 
+/* Two levels in one bar (owner, 04.08.2026), for the board of best progress:
+   the season before at the foot, quieter, and this season's gain on top of it.
+   Each is a share of the bar rather than of the track, so the two of them are
+   exactly the bar between them and neither can push the column past the height
+   it asked for.
+
+   Nothing is drawn over the loud level: the bar itself is that colour already,
+   so only the quiet one has a background of its own and the two meet without a
+   seam either of them could leave. */
+.colchart__level {
+  position: absolute;
+  inset-inline: 0;
+  /* Exactly its share and nothing else.
+   *
+   * A floor of one circle was tried here and taken back: it drew a level taller
+   * than the share it stands for, so on the shortest bar of the board of best
+   * progress, two pixels of column, both levels stood at 27px and a block of the
+   * quiet blue hung in the air above the bar. The two circles are half the bar
+   * apart whatever the split, because each sits in the middle of its own level,
+   * so an uneven split was never the case that needed defending. */
+  block-size: var(--level);
+}
+
+.colchart__level--base {
+  inset-block-end: 0;
+  background: var(--bar-quiet);
+  /* The foot of the bar is the foot of this level, so it wears the bar's own
+     square corners; the join at the top of it is a straight line. */
+  border-radius: 0 0 2px 2px;
+}
+
+.colchart__level--top {
+  inset-block-start: 0;
+}
+
 /* Dead in the middle of its bar, both ways (owner, 31.07.2026). It used to sit
    a fixed distance up from the foot, so on a tall bar it was down at the
    bottom and on a short one it was nearly out of it. */
-.top-cat__count {
+.colchart__count {
   position: absolute;
   inset: 0;
   margin: auto;
@@ -217,9 +258,23 @@
   font-weight: 700;
 }
 
-/* The same block of gold the boards above wear, at the same size, so the three
-   widgets read as one family (owner, 31.07.2026). */
-.top-cat__caption {
+/* The figure in the lower level. The same circle, a touch smaller: the level
+   under it is already the quieter of the two, and a second colour of circle
+   would be a third thing for a reader to learn. */
+.colchart__count--quiet {
+  inline-size: 1.45rem;
+  block-size: 1.45rem;
+  font-size: 0.72rem;
+}
+
+/* The block of gold the top ten boards wear, at the same size, so the widgets
+   read as one family (owner, 31.07.2026).
+
+   Last on the screen and first in the markup, which is why it carries an order
+   of its own: a heading has to come before what it names, and this one is drawn
+   under it (ColumnChart.tsx). */
+.colchart__caption {
+  order: 1;
   margin: 0;
   padding: var(--space-8) var(--space-12);
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
@@ -231,30 +286,48 @@
   letter-spacing: -0.01em;
 }
 
-.top-cat .card__empty {
+.colchart .card__empty {
   padding: var(--space-24) var(--space-12);
   text-align: center;
 }
 
 /* On a phone ten columns are unreadable, so the last four drop away. */
 @media (max-width: 559.98px) {
-  .top-cat__column:nth-child(n + 7) {
+  /* Six columns, and the last four go out of the page rather than out of sight.
+   *
+   * Ten of them in the 328px a telephone leaves is a wall of stripes nobody can
+   * read, which is why the front page has cut this chart to six since it was
+   * written; the owner asked for the Top liste to be drawn the same way
+   * (04.08.2026), so the same cut reaches six of the ten boards there.
+   *
+   * Moving them out of view instead was tried and taken back the same day. Each
+   * column carries a link, and a link that is one pixel across is still a stop
+   * for the Tab key with no focus ring anybody can see: four of them per chart,
+   * twenty-four on that page, which is a plain failure of WCAG 2.2 SC 2.4.7 in
+   * place of a design decision. The rule that hiding is done by moving out of
+   * view (ADL A7) is about two labels of one control, where the stop is one
+   * either way.
+   *
+   * What this costs is written down (PDL P28a): on a telephone a chart board is
+   * the first six places, and the whole ten are on any wider screen. */
+  .colchart__column:nth-child(n + 7) {
     display: none;
   }
 
   /* A smaller face on a phone, through the variable, so the name that is
      centred on it moves with it rather than staying where the wide face was. */
-  .top-cat__link {
+  .colchart__link {
     --face: 2.2rem;
   }
 
-  .top-cat__column .portrait {
+  .colchart__column .portrait {
     font-size: 0.7rem;
   }
 }
 
-/* The control that stops the turning (WCAG 2.2 SC 2.2.2), as a discreet gold
- * disc in the top right corner of the widget (owner, 31.07.2026).
+/* The control the caller puts in the top right corner of the widget, which today
+ * is the one that stops the turning on the front page (WCAG 2.2 SC 2.2.2, owner,
+ * 31.07.2026).
  *
  * The disc is the only edge this control has, so it carries the 3:1 that SC
  * 1.4.11 asks of a control boundary, and the icon inside it carries the 3:1 that
@@ -264,7 +337,7 @@
  * The ring of card colour around it fixes what it is measured against: a bar can
  * grow to full height and pass behind it, and a contrast that depends on where
  * the tallest column happens to reach is not a contrast at all. */
-.top-cat__turn {
+.colchart__turn {
   position: absolute;
   inset-block-start: var(--space-8);
   inset-inline-end: var(--space-8);
@@ -283,16 +356,16 @@
   transition: background var(--fast);
 }
 
-.top-cat__turn svg {
+.colchart__turn svg {
   inline-size: 100%;
   block-size: 100%;
 }
 
-.top-cat__turn:hover {
+.colchart__turn:hover {
   background: var(--gold-button-hover);
 }
 
-.top-cat__turn:focus-visible {
+.colchart__turn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
 }

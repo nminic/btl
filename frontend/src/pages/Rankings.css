@@ -26,7 +26,12 @@
   .rankings--tooled {
     display: grid;
     grid-template-columns: 1fr auto;
-    align-items: baseline;
+    /* Centred on the heading rather than sitting on its baseline (owner,
+       04.08.2026). A control is a box and a heading is a line of type: on a
+       shared baseline the box hangs below the words by the whole of its own
+       padding, which on the tallest heading the portal has is most of a line.
+       Centred, the two read as one row. */
+    align-items: center;
     column-gap: var(--tool-gap);
   }
 
@@ -92,19 +97,6 @@
 .rankings__head-tool .rankings__field input[type='search'] {
   inline-size: 32ch;
   min-inline-size: 0;
-}
-
-/* The sentence above the table, in plain muted prose.
- *
- * No gold edge (owner, 01.08.2026, D1). It was a yellow-marked line across the
- * top of the page for a sentence that explains rather than warns, and gold on
- * this portal is reserved for the podium, for medals and for badges
- * (src/styles/tokens.css). A line marked that way reads as something to act on,
- * and there is nothing here to act on. */
-.rankings__note {
-  margin: 0 0 var(--space-16);
-  color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
 .rankings__filters {

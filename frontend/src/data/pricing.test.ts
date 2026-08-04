@@ -1,12 +1,4 @@
-import {
-  daysBetween,
-  nextPrice,
-  nextPriceStart,
-  PRICES,
-  priceOn,
-  registrationOpen,
-  seasonOnOffer,
-} from './pricing'
+import { daysBetween, PRICES, priceOn, registrationOpen } from './pricing'
 import { first, last } from '../test/at'
 
 describe('the four periods', () => {
@@ -61,24 +53,6 @@ describe('priceOn', () => {
   })
 })
 
-describe('what comes next', () => {
-  it('is the next period of the year', () => {
-    expect(nextPrice('2026-10-01').eur).toBe(40)
-    expect(nextPriceStart('2026-10-01')).toBe('2026-10-06')
-  })
-
-  it('wraps to the next year rather than running out', () => {
-    // After the last period of the year the list starts again, in January.
-    expect(nextPrice('2026-12-20').key).toBe('season')
-    expect(nextPriceStart('2026-12-20')).toBe('2027-01-01')
-  })
-
-  it('is the first period of the selling year while the season is running', () => {
-    expect(nextPrice('2027-03-01').eur).toBe(35)
-    expect(nextPriceStart('2027-03-01')).toBe('2027-10-01')
-  })
-})
-
 describe('daysBetween', () => {
   it('counts whole days', () => {
     expect(daysBetween('2026-10-01', '2026-10-06')).toBe(5)
@@ -95,18 +69,9 @@ describe('registrationOpen', () => {
   })
 })
 
-describe('seasonOnOffer', () => {
-  it('never offers a season before the first one', () => {
-    /* 2026 is the year the portal is built in and there is no 2026 season
-       (PDL P2). The price list was quoting for it through the whole summer,
-       because the calendar answer in July 2026 is 2026. */
-    expect(seasonOnOffer('2026-07-30')).toBe(2027)
-    expect(seasonOnOffer('2026-10-02')).toBe(2027)
-  })
-
-  it('turns over on the first of October, every year after that', () => {
-    expect(seasonOnOffer('2027-09-30')).toBe(2027)
-    expect(seasonOnOffer('2027-10-01')).toBe(2028)
-    expect(seasonOnOffer('2031-03-01')).toBe(2031)
-  })
-})
+/* Two pieces went out on 04.08.2026 with the screens that read them: what the
+ * next price is and when it starts, which the widget on the front page said, and
+ * which season is on sale, which the page of prices said. Both screens are gone
+ * (owner), and a function nothing calls is a function nothing can be wrong
+ * about.
+ */

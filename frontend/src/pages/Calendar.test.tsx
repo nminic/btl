@@ -47,10 +47,43 @@ describe('Calendar', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'april 2027.' })).toBeVisible()
   })
 
-  it('says so when a month holds nothing', async () => {
+  it('says nothing at all about a month that holds nothing', async () => {
+    /* Owner, 04.08.2026: "Ne treba da šetam mesec gore dole zbog tog
+       disclaimera." A sentence over the grid moved every day of it down a line
+       on every quiet month, which is most of them outside the season, and the
+       grid with nothing in it already says what the sentence said. */
     renderAt('/sr/kalendar?mesec=2029-01')
 
-    expect(await screen.findByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
+    // The month is drawn, whole, and nothing stands above it.
+    expect(await screen.findByRole('heading', { level: 2, name: 'januar 2029.' })).toBeVisible()
+    expect(screen.getByText('31')).toBeVisible()
+    expect(screen.queryByText('U ovom mesecu nema nijednog događaja.')).not.toBeInTheDocument()
+  })
+
+  it('marks the weekends in gold, and today with the ring alone', async () => {
+    /* Owner, 04.08.2026, and it is his own proposal: the day number goes gold on
+       a Saturday and a Sunday, today keeps the ring it had, and a weekend that is
+       also today wears both. Each mark is spoken as well as drawn, because a
+       colour cannot be the only way to know which day it is (WCAG 2.2 SC 1.4.1)
+       and below tablet width the days stack with no headings over them.
+
+       May 2027 begins on a Saturday, so the 1st and the 2nd are the weekend and
+       the 3rd is not. Read on a day inside that month, so today is one of them
+       and the two marks can be told apart. */
+    renderAt('/sr/kalendar?mesec=2027-05', 'visitor', null, undefined, '2027-05-03')
+
+    const weekend = await screen.findAllByText(', Vikend')
+    const numbers = weekend.map((one) => one.parentElement?.textContent)
+
+    // Ten of them in a month of thirty-one days that begins on a Saturday.
+    expect(weekend).toHaveLength(10)
+    expect(numbers.slice(0, 2)).toEqual(['1, Vikend', '2, Vikend'])
+
+    /* Today is the 3rd, a Monday: it says so, and it says nothing about a
+       weekend. The ring is drawn from a class, and what colour that is belongs
+       to the sweep of the stylesheets. */
+    expect(screen.getByText(', Danas').parentElement?.textContent).toBe('3, Danas')
+    expect(numbers).not.toContain('3, Vikend')
   })
 
   it('draws only the days of the month, never a square of nothing', async () => {

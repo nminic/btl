@@ -99,12 +99,12 @@ describe('the seo entry of every address', () => {
   })
 
   it('calls the boards what the rulebook and the navigation call them', () => {
-    /* "Rang liste" and "top liste" are no longer two names for one page: it is
-       the Top 10 liste, in the navigation and in Article 56 alike (PDL P28a). The
-       description of the home page still counted the boards among the "rang
-       liste", which puts the retired name in front of every visitor and in every
-       search result. */
-    expect(translate(dictionary, 'sr', 'seo.home.description')).toContain('Top 10 liste')
+    /* "Rang liste" is not a second name for the page: it is the Top liste, in
+       the navigation, on the page itself and in Article 55 alike (PDL P28a; the
+       owner shortened it from "Top 10 liste" on 04.08.2026). The description of
+       the home page once counted the boards among the "rang liste", which puts
+       a retired name in front of every visitor and in every search result. */
+    expect(translate(dictionary, 'sr', 'seo.home.description')).toContain('Top liste')
 
     const sentences = SEO_KEYS.map((key) => translate(dictionary, 'sr', `seo.${key}.description`))
     expect(sentences.filter((text) => text.includes('rang liste'))).toEqual([])
