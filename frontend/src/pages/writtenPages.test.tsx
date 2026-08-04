@@ -345,7 +345,11 @@ describe('the rulebook', () => {
        the league may still take a race that misses one of them. */
     expect(rulebook).toMatch(/najkasnije mesec dana pre dana održavanja/)
     expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle trke/)
-    expect(rulebook).toMatch(/Broj učesnika nije manji od 50/)
+    expect(rulebook).toMatch(/Na događaju je učestvovalo najmanje 50 takmičara/)
+    /* Counted over the event rather than the race (owner, 04.08.2026): three
+       races of twenty runners is an event of sixty, and a trail event splits
+       its field across distances by definition. */
+    expect(rulebook).toMatch(/meri na nivou događaja, a ne po pojedinačnoj trci/)
     expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
   })
 
