@@ -7,7 +7,6 @@
  * price is fixed for the season and does not follow the exchange rate.
  */
 
-
 export type PriceRow = {
   key: string
   /**
@@ -101,8 +100,6 @@ export function priceOn(today: string): PriceRow {
   return BY_START.reduce((inForce, row) => (row.from <= day ? row : inForce))
 }
 
-
-
 export function daysBetween(from: string, to: string): number {
   const start = Date.parse(`${from}T00:00:00Z`)
   const end = Date.parse(`${to}T00:00:00Z`)
@@ -113,7 +110,6 @@ export function daysBetween(from: string, to: string): number {
 export function registrationOpen(today: string): boolean {
   return today >= REGISTRATION_OPENS
 }
-
 
 /**
  * The season a renewal now is a renewal for.

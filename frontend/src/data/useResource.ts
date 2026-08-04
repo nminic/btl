@@ -29,38 +29,34 @@ export type ResourceState<T> =
  * tall at that moment has nowhere to be put back to (owner, 04.08.2026).
  */
 export function useResource<T>(name: ResourceName): ResourceState<T> {
-  const [fetched, setFetched] = useState<ResourceState<T>>({ status: 'loading' })
-  /* The same object every render once it is there, so what this hook hands back
-     keeps its identity and the screens that memoise on it are not rebuilt. */
-  const known = arrivedResource<T>(name)
+  /* Read once, as this mounts, and never again while it is mounted.
+   *
+   * Once is all that is wanted: what the first render of a screen holds is what
+   * decides whether the router has a page to put a scroll position back into.
+   * Reading it on every render would be reading a value that nothing here is
+   * subscribed to, and a version of this that did that also skipped its own
+   * effect when the value was already in hand: a value landing between the
+   * render and the effect was then seen by neither, and the screen waited for
+   * ever with nothing scheduled to take it off. State read once and set from the
+   * effect has no such gap, because the effect always asks. */
+  const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
 
   useEffect(() => {
-    /* Asked for even when the value is already in hand, and that is not waste.
-     *
-     * The first version of this returned early when `arrivedResource` answered,
-     * to save a render. It also left a case with no way out: a value that lands
-     * between this render and this effect is invisible to the render, which drew
-     * a loading state, and the effect then sees it and returns without setting
-     * anything, so nothing is ever scheduled and the screen waits for ever. The
-     * window is real, because effects run through the scheduler while the answer
-     * to a fetch lands in a microtask, and every navigation here is inside a
-     * transition.
-     *
-     * `loadResource` answers from the promise it already has, so what this costs
-     * is one render nobody sees; what it buys is that there is no state this can
-     * be left in. */
+    /* Asked for even when the value is already in hand, which costs one render
+       nobody sees: `loadResource` answers from the promise it is already
+       holding. What it buys is that the effect always ends in a state, so there
+       is no way for this to be left waiting. */
     let active = true
-    setFetched({ status: 'loading' })
 
     loadResource<T>(name).then(
       (data) => {
         if (active) {
-          setFetched({ status: 'ready', data })
+          setState({ status: 'ready', data })
         }
       },
       (error: Error) => {
         if (active) {
-          setFetched({ status: 'error', error })
+          setState({ status: 'error', error })
         }
       },
     )
@@ -70,10 +66,14 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
     }
   }, [name])
 
-  return useMemo(
-    () => (known === undefined ? fetched : { status: 'ready', data: known }),
-    [known, fetched],
-  )
+  return state
+}
+
+/** What this visit already holds for a resource, as a state a screen can draw. */
+function atHand<T>(name: ResourceName): ResourceState<T> {
+  const known = arrivedResource<T>(name)
+
+  return known === undefined ? { status: 'loading' } : { status: 'ready', data: known }
 }
 
 /**

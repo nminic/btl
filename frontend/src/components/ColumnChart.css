@@ -3,7 +3,7 @@
  * counted.
  *
  * Written for the front page's turning chart and shared with the Top liste from
- * 04.08.2026, where seven of the boards are drawn this way. The clearance at the
+ * 04.08.2026, where six of the ten boards are drawn this way. The clearance at the
  * top of the columns is still the one the pause control needs, because a chart
  * that does not turn has nothing in that corner and loses nothing by leaving it
  * empty.
@@ -217,13 +217,15 @@
 .colchart__level {
   position: absolute;
   inset-inline: 0;
-  /* Never shorter than the circle that stands in the middle of it. The share is
-     exact and stays exact in the style, which is what the arithmetic is read off
-     in the tests; what a floor buys is that a level of a few pixels does not put
-     its own number over the other level's. A bar that is itself shorter than two
-     circles cannot hold two of them apart at all, and that is a bar of almost no
-     points in a season somebody else ran ten times as far. */
-  block-size: max(var(--level), 1.7rem);
+  /* Exactly its share and nothing else.
+   *
+   * A floor of one circle was tried here and taken back: it drew a level taller
+   * than the share it stands for, so on the shortest bar of the board of best
+   * progress, two pixels of column, both levels stood at 27px and a block of the
+   * quiet blue hung in the air above the bar. The two circles are half the bar
+   * apart whatever the split, because each sits in the middle of its own level,
+   * so an uneven split was never the case that needed defending. */
+  block-size: var(--level);
 }
 
 .colchart__level--base {
@@ -291,27 +293,25 @@
 
 /* On a phone ten columns are unreadable, so the last four drop away. */
 @media (max-width: 559.98px) {
-  /* Out of sight, never out of the page. Ten columns in the 328px a telephone
-     leaves is a wall of stripes nobody can read, so the eye gets six; but a list
-     of ten places is what the list is (PDL P12), and `display: none` took the
-     other four out of the accessibility tree with them. On the front page that
-     was one widget among many; since 04.08.2026 the same chart is six of the ten
-     boards on the Top liste, and those four places had nowhere else to be read.
-
-     Moved out of view rather than removed, which is the rule this portal already
-     wrote down for the row of six lengths on a profile (ADL A7, 31.07.2026). An
-     absolutely positioned child is out of the grid's flow as well, so the six
-     that are left still share the whole width. */
+  /* Six columns, and the last four go out of the page rather than out of sight.
+   *
+   * Ten of them in the 328px a telephone leaves is a wall of stripes nobody can
+   * read, which is why the front page has cut this chart to six since it was
+   * written; the owner asked for the Top liste to be drawn the same way
+   * (04.08.2026), so the same cut reaches six of the ten boards there.
+   *
+   * Moving them out of view instead was tried and taken back the same day. Each
+   * column carries a link, and a link that is one pixel across is still a stop
+   * for the Tab key with no focus ring anybody can see: four of them per chart,
+   * twenty-four on that page, which is a plain failure of WCAG 2.2 SC 2.4.7 in
+   * place of a design decision. The rule that hiding is done by moving out of
+   * view (ADL A7) is about two labels of one control, where the stop is one
+   * either way.
+   *
+   * What this costs is written down (PDL P28a): on a telephone a chart board is
+   * the first six places, and the whole ten are on any wider screen. */
   .colchart__column:nth-child(n + 7) {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
+    display: none;
   }
 
   /* A smaller face on a phone, through the variable, so the name that is

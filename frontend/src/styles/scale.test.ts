@@ -55,10 +55,6 @@ const VALUE = /(-?\d*\.?\d+)(rem|px|em|ch)/g
 const ALLOWED = new Map([
   ['index.css | margin | -1px', 'a hairline pulled back over its own border'],
   ['components/BadgeGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
-  [
-    'components/ColumnChart.css | margin | -1px',
-    'the same hairline: on a telephone the columns past the sixth are moved out of view rather than removed, which is the recipe visually-hidden uses',
-  ],
   ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],

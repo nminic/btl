@@ -152,7 +152,13 @@ describe('the scroll, on the way between screens', () => {
 
     renderAt('/sr/takmicari')
 
-    expect(screen.queryByRole('status', { name: /Učitavanje/ })).not.toBeInTheDocument()
+    /* The word the loading state says out loud, which is the one thing on the
+       screen that tells the two states apart. Asked for by its text and not by
+       its role: `status` is a role two other things on this screen carry, and a
+       `status` has no accessible name to narrow it by, so a query by role either
+       finds the wrong element or, with a name, finds nothing in either state and
+       passes whatever happens. */
+    expect(screen.queryByText('Učitavanje')).not.toBeInTheDocument()
     expect(within(screen.getByRole('list')).getAllByRole('listitem').length).toBeGreaterThan(20)
   })
 })

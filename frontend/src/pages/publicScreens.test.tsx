@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { fieldFor, topByCategory } from '../data/derive'
@@ -202,6 +204,12 @@ describe('Rankings', () => {
 })
 
 describe('TopBoards', () => {
+  /** The day these screens are read on. Handed to the render rather than left to
+   *  the real clock, so what a test works out beside a screen is worked out for
+   *  the same day the screen had (PDL P11: who a season's field is drawn from
+   *  depends on it). */
+  const TODAY = '2026-08-04'
+
   /** The board with the given heading, looked up the way a screen reader does:
    *  through the region the heading names. Both kinds answer to it, the ones
    *  drawn as a table and the ones drawn as a chart. */
@@ -210,10 +218,11 @@ describe('TopBoards', () => {
   }
 
   /* The layout the owner asked for on 04.08.2026, read top to bottom the way a
-     phone reads it: across each row of the wide screen and then down. Two
-     lengths with the kilometres beside them, two more with the time on course,
-     the short races and the progress with the pairs beside them, and the best
-     single races under all of it.
+     phone reads it: two lengths, then the board that stands beside them on a
+     wide screen, then the next two, and the best single races under all of it.
+     Deliberately not the wide screen read strictly across each row, because a
+     board on the right spans two rows on the left and belongs to neither
+     (TopBoards.tsx).
 
      Ten, not eleven. The best team went off this page: the teams have a page of
      their own, and a standing of teams belongs there. */
@@ -258,30 +267,35 @@ describe('TopBoards', () => {
        (Član 57, PDL P12). The tables carry it in a column and the charts had
        nowhere to put it, so it is said rather than drawn.
 
-       Held against what the rule itself worked out, not against the row number.
-       Row numbers are what this is here to stop, and on this board they happen to
-       agree: ten people, four of them level on races run, and every one of them
-       separated by a later rung of the ladder. An assertion about row numbers
-       would therefore pass on a chart that had thrown the places away. */
+       Read on the longer races of 2016, and that is the whole of why this test
+       can fail: those ten end 9, 9. On most boards the ladder separates everybody
+       and the place is the row number, so a chart that had thrown the places away
+       and numbered its rows would pass; here it would say ten where the rule says
+       nine.
+
+       The day is handed to the screen and used here as well, because the field a
+       season is drawn from depends on it (PDL P11): worked out against a
+       different day, this would be comparing the screen with something else. */
     const [competitors, results] = await Promise.all([
       loadResource<Competitor[]>('competitors'),
       loadResource<Result[]>('results'),
     ])
     const ranked = topByCategory(
-      fieldFor(competitors, 2019, '2019-12-31'),
+      fieldFor(competitors, 2016, TODAY),
       results,
-      2019,
-      'short',
+      2016,
+      'long',
       10,
     )
 
-    renderAt('/sr/top-liste?sezona=2019')
+    expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 9])
+
+    renderAt('/sr/top-liste?sezona=2016', 'visitor', null, undefined, TODAY)
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
-    const columns = board('Najviše kraćih trka').getAllByRole('listitem')
+    const columns = board('Najviše dužih trka').getAllByRole('listitem')
 
     expect(columns).toHaveLength(ranked.length)
-    expect(ranked.length).toBeGreaterThan(1)
 
     columns.forEach((column, index) => {
       const row = at(ranked, index)
@@ -289,6 +303,31 @@ describe('TopBoards', () => {
       expect(must(column.textContent, 'stubac')).toContain(`${row.position}. mesto`)
       expect(column).toHaveTextContent(`${row.competitor.firstName} ${row.competitor.lastName}`)
     })
+  })
+
+  it('puts the heading of a chart before the chart, and draws it under it', async () => {
+    /* The gold band is drawn at the foot of a chart, where the old portal had it,
+       and a heading that comes after its own content is a heading nobody can jump
+       to: a reader landing on "Najviše maratona" would find the next board's
+       columns under it. It is first in the markup and last on the screen, which
+       is what `order` in the stylesheet is for. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1, name: 'Top liste' })
+
+    const region = screen.getByRole('region', { name: 'Najviše maratona' })
+    const heading = within(region).getByRole('heading', { level: 2 })
+    const columns = within(region).getByRole('list')
+
+    expect(
+      heading.compareDocumentPosition(columns) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    // And the stylesheet is what puts it back at the foot.
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    const band = css.slice(css.indexOf('.colchart__caption {'))
+
+    expect(band.slice(0, band.indexOf('}'))).toMatch(/order:\s*1/)
   })
 
   it('draws the five lengths as charts, ten columns at the most', async () => {

@@ -1,4 +1,4 @@
-import { Markdown } from '../../components/Markdown'
+import { PageSectionBody } from '../../components/PageSectionBody'
 import { Resource } from '../../components/Resource'
 import { pageOf, PRESIDENT_PAGE } from '../../data/pages'
 import { usePages } from '../../data/useResource'
@@ -41,7 +41,7 @@ export function President() {
             {page.sections.map((section) => (
               <article className="address" key={section.heading}>
                 <h2 className="card__title">{section.heading}</h2>
-                <Markdown text={section.body} />
+                <PageSectionBody section={section} />
               </article>
             ))}
           </div>
