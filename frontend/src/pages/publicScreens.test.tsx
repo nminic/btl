@@ -584,7 +584,7 @@ describe('CompetitorProfile', () => {
     await screen.findByRole('heading', { level: 1 })
     await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
 
-    expect(await screen.findByRole('heading', { name: /Pehari i plakete/ })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: /^Pehari \d+$/ })).toBeVisible()
     /* The season control stands on this part too, and narrows it (owner,
        31.07.2026): one choice at the top of the page governs both. */
     expect(screen.getByLabelText('Sezona')).toBeVisible()

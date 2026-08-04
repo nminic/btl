@@ -160,7 +160,7 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari, plakete i značke osvojene u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i značke osvojene u Balkanskoj trkačkoj ligi."
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -192,7 +192,7 @@
     },
     "competitorAwards": {
       "title": "Priznanja takmičara",
-      "description": "Pehari, plakete i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
+      "description": "Pehari i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
     },
     "proposeTeam": {
       "title": "Predlog tima",
@@ -1261,7 +1261,7 @@
     "openSections": "Sekcije pravilnika"
   },
   "awards": {
-    "trophies": "Pehari i plakete",
+    "trophies": "Pehari",
     "badges": "Značke",
     "note": "Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno.",
     "board": "Lista",
@@ -1269,8 +1269,8 @@
     "overall": "Generalni plasman",
     "category": "Kategorija {category}",
     "position": "{position}. mesto",
-    "empty": "Ovaj takmičar još nema nijedan pehar ni plaketu.",
-    "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.",
+    "empty": "Ovaj takmičar još nema nijedan pehar.",
+    "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar.",
     "noBadges": "Još nijedna značka."
   },
   "report": {

@@ -298,12 +298,11 @@ describe('the rulebook', () => {
       [11, /Pravo rangiranja/],
       [14, /Cena i rokovi/],
       [17, /Šta članstvo donosi/],
-      [18, /Trke koje ulaze u bodovanje/],
       [41, /Ko prijavljuje i šta/],
       [42, /^Rok$/],
       [55, /Top 10 liste/],
-      [70, /Posebna priznanja/],
-      [80, /Postupak/],
+      [69, /Posebna priznanja/],
+      [79, /Postupak/],
     ]
 
     const titles = new Map(
@@ -345,7 +344,11 @@ describe('the rulebook', () => {
        the league may still take a race that misses one of them. */
     expect(rulebook).toMatch(/najkasnije mesec dana pre dana održavanja/)
     expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle trke/)
-    expect(rulebook).toMatch(/Broj učesnika nije manji od 50/)
+    expect(rulebook).toMatch(/Na događaju je učestvovalo najmanje 50 učesnika/)
+    /* Counted over the event rather than the race (owner, 04.08.2026): three
+       races of twenty runners is an event of sixty, and a trail event splits
+       its field across distances by definition. */
+    expect(rulebook).toMatch(/meri na nivou događaja, a ne po pojedinačnoj trci/)
     expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
   })
 
@@ -368,6 +371,38 @@ describe('the rulebook', () => {
     expect(rulebook).toMatch(/ne konkuriše u generalnom plasmanu i ne konkuriše u uzrasnoj kategoriji/)
     expect(rulebook).toMatch(/Nastupa u dve kategorije istovremeno nema/)
     expect(rulebook).toMatch(/promena stupa na snagu od naredne sezone/)
+  })
+
+  it('awards a trophy and nothing else, and says once when a trophy is not given', () => {
+    /* Owner, 04.08.2026: the plaque is gone. One trophy covers the winning team,
+       the first three overall in each sex, and the first three in every
+       category, and the sentence about a category too small to be a category
+       moved into that row, so it no longer reads as a rule about every award in
+       the table. */
+    expect(rulebook).toMatch(/pobedniku u timskom plasmanu/)
+    expect(rulebook).toMatch(
+      /Pehari u jednoj kategoriji se ne uručuju ako u toj kategoriji te sezone ima manje od tri člana/,
+    )
+    expect(rulebook).not.toMatch(/[Pp]laket/)
+    /* And the figure is not given for the best team on top of the trophy: that
+       is one team taking two awards by one measure. */
+    expect(rulebook).toMatch(/osim najboljeg tima, koji dobija pehar/)
+  })
+
+  it('says nothing about the competitions the league runs alongside it', () => {
+    /* Owner, 04.08.2026: the article on the RunTrace league is out, because the
+       rulebook is not where a competition beside the main one is described. What
+       a league is, and that the league itself runs two of its own, stays. */
+    expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
+    expect(rulebook).toMatch(/### Član 64\. Liga kao pojam/)
+  })
+
+  it('cannot be changed inside a season', () => {
+    /* The last of the blanks the rulebook was carrying, answered by the owner on
+       04.08.2026: the article that asked the question is gone and the answer is
+       one sentence in the article about writing a new one each season. */
+    expect(rulebook).toMatch(/U toku sezone se ne menja\./)
+    expect(rulebook).not.toMatch(/Izmene u toku sezone/)
   })
 
   it('asks for the same result the forms ask for', () => {

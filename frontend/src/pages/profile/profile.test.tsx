@@ -71,14 +71,14 @@ describe('what a competitor has won', () => {
        twelve points and figures for the boards of Article 25, and neither is
        here yet, so "no award at all" would have been a claim the screen cannot
        make. */
-    expect(await screen.findByText('Ovaj takmičar još nema nijedan pehar ni plaketu.')).toBeVisible()
+    expect(await screen.findByText('Ovaj takmičar još nema nijedan pehar.')).toBeVisible()
     expect(screen.getByText('Još nijedna značka.')).toBeVisible()
   })
 
   it('lists the seasons a place was taken in, newest first', async () => {
     renderAt('/sr/takmicar/000001/priznanja?sezona=sve')
 
-    const table = await screen.findByRole('table', { name: 'Pehari i plakete' })
+    const table = await screen.findByRole('table', { name: 'Pehari' })
     const seasons = within(table)
       .getAllByRole('row')
       .slice(1)
@@ -312,7 +312,7 @@ describe('the address stays as short as it can be', () => {
        now (owner, 31.07.2026), and the season now has none in it. */
     renderAt('/sr/takmicar/000005/priznanja?sezona=sve')
 
-    const table = await screen.findByRole('table', { name: 'Pehari i plakete' })
+    const table = await screen.findByRole('table', { name: 'Pehari' })
     const boards = within(table)
       .getAllByRole('row')
       .slice(1)
@@ -384,9 +384,9 @@ describe('the season, over both parts of the profile', () => {
     renderAt('/sr/takmicar/000001/priznanja?sezona=2010')
 
     expect(
-      await screen.findByText('U izabranoj sezoni nije osvojen nijedan pehar ni plaketa.'),
+      await screen.findByText('U izabranoj sezoni nije osvojen nijedan pehar.'),
     ).toBeVisible()
-    expect(screen.queryByText('Ovaj takmičar još nema nijedan pehar ni plaketu.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ovaj takmičar još nema nijedan pehar.')).not.toBeInTheDocument()
   })
 
   it('opens on all of them, which is what a profile is', async () => {
