@@ -39,11 +39,12 @@ describe('the top of a table', () => {
 /* The other mark, for the tables that award only the first place (owner,
  * 04.08.2026: "Nagrade se i dodeljuju samo najboljima").
  *
- * Two functions rather than one with a number beside it, because the one place
- * both of them are used is `.map()`, and `.map()` hands the index in as the
- * second argument: written as `podiumClass(position, top = PODIUM)`, the second
- * row of every board asked for a podium of one and the third for a podium of
- * two.
+ * Two functions rather than one with a number beside it. Written as
+ * `podiumClass(position, top = PODIUM)` it is a trap for anybody who reaches for
+ * `.map()`, which hands the index in as its second argument: the second row of
+ * every board would ask for a podium of one and the third for a podium of two.
+ * Nothing in the application calls them that way; these tests do, which is how
+ * the trap was found.
  */
 describe('the leader of a table', () => {
   it('is the first place and no other', () => {

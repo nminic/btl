@@ -45,19 +45,27 @@ function lastNumberIn(row: HTMLElement): number {
  * that row alone would not notice the swap.
  *
  * Kept under the points rather than in the order of the board, because the order
- * is the thing the test beside this one is for.
+ * is the thing the test beside this one is for. All of them under the same
+ * points, not the last one read: 2019 alone has seventy-nine figures that two
+ * results share, and a map that keeps one of each would fail on a correct board
+ * the day two of them meet in the same ten.
  */
-async function racesOf(season: number, locale = 'sr'): Promise<Map<string, string[]>> {
+async function racesOf(season: number, locale = 'sr'): Promise<Map<string, string[][]>> {
   const results = await loadResource<Result[]>('results')
-  const rows = new Map<string, string[]>()
+  const rows = new Map<string, string[][]>()
 
   for (const one of results.filter((result) => result.date.startsWith(String(season)))) {
-    rows.set(formatPoints(one.points, locale), [
-      one.eventName,
-      formatNumber(one.distanceKm, locale, 2),
-      formatNumber(one.ascentM, locale),
-      formatNumber(one.descentM, locale),
-      formatDuration(one.seconds),
+    const points = formatPoints(one.points, locale)
+
+    rows.set(points, [
+      ...(rows.get(points) ?? []),
+      [
+        one.eventName,
+        formatNumber(one.distanceKm, locale, 2),
+        formatNumber(one.ascentM, locale),
+        formatNumber(one.descentM, locale),
+        formatDuration(one.seconds),
+      ],
     ])
   }
 
@@ -479,14 +487,14 @@ describe('TopBoards', () => {
       const cells = within(row).getAllByRole('cell')
 
       expect(cells).toHaveLength(8)
-      expect(cells.map((cell) => cell.textContent).slice(2, 7)).toEqual(
-        record.get(must(last(cells).textContent, 'the points of the row')),
+      expect(record.get(must(last(cells).textContent, 'the points of the row'))).toContainEqual(
+        cells.map((cell) => cell.textContent).slice(2, 7),
       )
     }
   })
 
   it('keeps four columns on a telephone, the way the standing does', async () => {
-    /* Eight columns in 360 pixels is 259 pixels of sideways scroll inside the
+    /* Eight columns in 360 pixels is 211 pixels of sideways scroll inside the
        card, which is the thing PDL P12 forbids in as many words: what a phone
        keeps is the place, the name, one column of its own and the measure. The
        columns are marked rather than dropped, so the head and the body cannot

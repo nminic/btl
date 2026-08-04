@@ -113,11 +113,16 @@ type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
  * first three columns to the left, which is right for a name and wrong for a
  * number, so both say which they are.
  *
- * The last one is the measure the board ranks by, and it wears `table__points`,
- * which is what the portal draws a figure in bold with, and in gold on the row
- * that leads (src/styles/table.css). Read off the position rather than from a
- * flag on the cell, because it is not a property of the cell: it is what being
- * last on a board means.
+ * The last cell of a row is the measure the board ranks by, and it wears
+ * `table__points`, which is what the portal draws a figure in bold with, and in
+ * gold on the row that leads (src/styles/table.css). Read off the position
+ * rather than from a flag on the cell, because it is not a property of the cell:
+ * it is what being last on a board means.
+ *
+ * A row only, which is why the headings ask for none of it. A heading is already
+ * bold from the shared table and stands in no row that can lead, so the mark
+ * draws nothing there; put on it, it would be a class that says the portal
+ * treats this heading differently and it does not.
  *
  * A column the telephone has no room for goes, and what a telephone keeps is the
  * four the standing keeps: the place, the name, one column of its own, and the
@@ -152,12 +157,8 @@ function Board({ id, title, columns, places, empty }: BoardData) {
               <tr>
                 <th scope="col">{t('topBoards.columns.position')}</th>
                 <th scope="col">{t('topBoards.columns.member')}</th>
-                {columns.map((column, index) => (
-                  <th
-                    key={column.text}
-                    scope="col"
-                    className={cellClass(column, index === columns.length - 1)}
-                  >
+                {columns.map((column) => (
+                  <th key={column.text} scope="col" className={cellClass(column, false)}>
                     {column.text}
                   </th>
                 ))}

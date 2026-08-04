@@ -209,10 +209,12 @@ export function ColumnChart({
     <section
       /* The band at the top is room for the control, so it is only kept where
          there is one (owner, 04.08.2026: on the boards "gornji deo widgeta je
-         neiskorišćen"). Fifty pixels of it, which on a board went to nothing at
-         all and now goes to the bars: every one of them is fifty pixels taller
-         for it, which is most of what the shortest bar on a board has to work
-         with in the first place. */
+         neiskorišćen"). Fifty pixels of it, and on a board it went to nothing
+         at all. Ten come back as the padding every chart keeps and twelve as the
+         step under the bars, so the bars are drawn in a box 27,6px taller and
+         share it out between them: measured on "Najviše dužih trka" at 360px,
+         the tallest bar gains that whole 27,6px and the shortest 6,1px, because
+         a bar is a share of the track and not a length of its own. */
       className={control === undefined ? 'colchart' : 'colchart colchart--control'}
       aria-label={captionId === undefined ? label : undefined}
       aria-labelledby={captionId}

@@ -88,16 +88,6 @@
   overflow-wrap: anywhere;
 }
 
-/* And the last of the room comes out of the padding, on the width where every
-   pixel is counted: two pixels a side over four columns is sixteen of the three
-   hundred and sixty a telephone has. */
-@media (max-width: 699.98px) {
-  .boards .table th,
-  .boards .table td {
-    padding-inline: var(--space-6);
-  }
-}
-
 /* Every column that is not the event is a figure. The shared table pushes its
    first three columns to the left, which is right for a name and wrong for a
    number, so the figures say so for themselves. Tabular figures come from the

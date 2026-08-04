@@ -249,11 +249,38 @@ describe('what the owner asked for on 04.08.2026', () => {
       holds: /max-inline-size:\s*100%/,
       why: 'and a number that runs long stays inside its own bar',
     },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__count',
+      /* The other half of the same thought. The box is placed with `inset: 0`
+         and `margin: auto`, so a width left to itself is the whole of the bar:
+         without these two every count in every chart on the portal is a pill the
+         width of its column rather than a disc. */
+      holds: /inline-size:\s*fit-content;\s*min-inline-size:\s*1\.7rem/,
+      why: 'a count is as wide as the number in it, and no wider',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__count',
+      holds: /padding-inline:\s*var\(--space-6\)/,
+      why: 'with the room on its sides that the cap above spends first',
+    },
   ]) {
     it(`${why} (${rule})`, () => {
       expect(bodyOf(read(file), rule)).toMatch(holds)
     })
   }
+
+  it('starts the table itself off that line, not only the sentence standing in for it', () => {
+    /* Both selectors of one rule, and the rule is found by the last of them, so
+       the first was carried by nothing: taken out, the standing on the teams
+       goes from 28px under its heading to 12px, which is the state the note was
+       about, while the half that was held draws only in a season that has no
+       teams in it. */
+    expect(read('src/pages/Rankings.css')).toMatch(
+      /\.rankings--tooled > \.table-scroll,\s*\.rankings--tooled > \.rankings__empty \{/,
+    )
+  })
 
   it('keeps the count round while it is round, and a pill once it is not', () => {
     /* At 50% a box stretched by a long number is an ellipse, which is neither a
