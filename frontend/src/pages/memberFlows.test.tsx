@@ -159,9 +159,13 @@ describe('membership', () => {
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
-    expect(screen.getByText(/nema ni taksu za obradu ni kursnu razliku/)).toBeVisible()
+    const costs = screen.getByText(/nema ni taksu za obradu ni kursnu razliku/)
+
+    /* Both halves. The second one is what regressed three passes running: a
+       dinar payment has no fee of ours and no conversion, and the payer's own
+       bank is still their own bank (PDL P8). */
+    expect(costs).toHaveTextContent('Naknada tvoje banke, ako je ima, ostaje na tebi')
     expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
-    expect(screen.queryByText(/Kursna razlika/)).toBeNull()
   })
 
   it('has a price in any October of any year, because the list repeats', async () => {
@@ -171,8 +175,7 @@ describe('membership', () => {
     renderMembershipOn('2031-10-01')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
-    // A member in Serbia is quoted in dinars, and only in dinars.
-    expect(screen.getAllByText(/4\.200 RSD/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/35 EUR, odnosno 4\.200 RSD/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Članarina se još ne prodaje/)).not.toBeInTheDocument()
   })
 
@@ -456,19 +459,14 @@ describe('the transfer window and renewal', () => {
 })
 
 describe('screens that depend on the date', () => {
-  it('shows the price in force once membership is on sale, in one currency', async () => {
-    /* The one the member would actually pay. Two amounts side by side read as a
-       conversion between them, and they are not one: the dinar price is fixed
-       for the season and does not move with the rate (PDL P8, ADL A12). */
-    const serbia = renderMembershipOn('2026-10-02', '000031')
+  it('shows the price in force once membership is on sale, in both currencies', async () => {
+    /* Side by side and with no choice between them (PDL P8, owner 31.07.2026).
+       The dinar amount is written the way every amount on the portal is
+       written, with the thousands separated: it was the one number on the
+       screen printed as a bare 4200. */
+    renderMembershipOn('2026-10-02', '000031')
 
-    expect(await within(serbia.container).findByText('Danas članarina košta 4.200 RSD.')).toBeVisible()
-    expect(within(serbia.container).queryByText(/35 EUR/)).toBeNull()
-
-    const abroad = renderMembershipOn('2026-10-02', '000010')
-
-    expect(await within(abroad.container).findByText('Danas članarina košta 35 EUR.')).toBeVisible()
-    expect(within(abroad.container).queryByText(/4\.200 RSD/)).toBeNull()
+    expect(await screen.findByText('Danas članarina košta 35 EUR, odnosno 4.200 RSD.')).toBeVisible()
   })
 
   it('moves the whole portal to another day from the switch in the header', async () => {

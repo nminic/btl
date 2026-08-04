@@ -888,8 +888,7 @@
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
     "costsDinar": "Uplata u dinarima nema ni taksu za obradu ni kursnu razliku. Naknada tvoje banke, ako je ima, ostaje na tebi.",
     "costsAbroad": "Uz uplatu iz inostranstva ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika. Kursna razlika i naknada tvoje banke padaju na tebe.",
-    "priceNowRsd": "Danas članarina košta {rsd} RSD.",
-    "priceNowEur": "Danas članarina košta {eur} EUR."
+    "priceNow": "Danas članarina košta {eur} EUR, odnosno {rsd} RSD."
   },
   "review": {
     "title": "Red za proveru rezultata",

@@ -94,19 +94,28 @@ export function Membership() {
                   ? t('membership.honorary')
                   : t('membership.active', { season: me.firstSeason })}
               </p>
-              {/* One price, the one this member would pay. Both side by side
-                  read as a conversion between them, which they are not: the
-                  dinar price is fixed for the season and does not follow the
-                  rate (PDL P8, ADL A12). The screen knows the country; it was
-                  using it for the ways of paying and printing both amounts
-                  anyway. */}
+              {/* Both amounts, side by side, and no choice between them (PDL
+                  P8, owner 31.07.2026): the price follows from where a member
+                  lives, the portal works it out, and what the older rule
+                  forbade was reading one as a conversion of the other. The ban
+                  on showing them together was replaced by a ban on picking. */}
               <p className="member__note">
                 {registrationOpen(today)
-                  ? t(me.country === 'RS' ? 'membership.priceNowRsd' : 'membership.priceNowEur', {
+                  ? t('membership.priceNow', {
                       eur: price.eur,
                       rsd: formatNumber(price.rsd, locale),
                     })
                   : t('membership.notYetSold')}
+              </p>
+              {/* What the payment carries besides the fee, beside the price
+                  rather than only inside the renewal: for the nine months a
+                  season is running the price is quoted and the renewal window
+                  is shut, and a member abroad was reading a number three euro
+                  short of what they would pay. */}
+              <p className="member__note">
+                {me.country === 'RS'
+                  ? t('membership.costsDinar')
+                  : t('membership.costsAbroad', { fee: PROCESSING_FEE_EUR })}
               </p>
               <p className="member__note">{t('membership.junior', { eur: JUNIOR.eur })}</p>
             </section>
@@ -251,16 +260,6 @@ export function Membership() {
                     </div>
                   )}
 
-                  {/* What the payment carries besides the fee, and it differs
-                      by where the money comes from (PDL P8, 03.08.2026). A
-                      dinar payment has neither: no intermediary to pay and no
-                      currency to convert. Said to everybody, both sentences
-                      described somebody else's payment. */}
-                  <p className="member__note">
-                    {me.country === 'RS'
-                      ? t('membership.costsDinar')
-                      : t('membership.costsAbroad', { fee: PROCESSING_FEE_EUR })}
-                  </p>
                 </>
               ) : (
                 <p className="member__note">{t('membership.renewalShut')}</p>
