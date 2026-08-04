@@ -65,11 +65,16 @@
 }
 
 /* The event name is the one column here that is words rather than a number,
-   and the only one that can run long. */
+   and the only one that can run long. The shared table keeps every cell on one
+   line, which is right for a figure and wrong for this: with four columns left
+   on a telephone, one name of thirty characters was still pushing the table
+   eighteen pixels past its own card. It wraps, and only it. */
 .boards .table .boards__detail {
   text-align: left;
   color: var(--text-muted);
   font-size: 0.85rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Every column that is not the event is a figure. The shared table pushes its
