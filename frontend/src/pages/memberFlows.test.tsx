@@ -149,6 +149,18 @@ describe('membership', () => {
     expect(fee).toHaveTextContent('nije deo članarine')
   })
 
+  it('says nothing of that fee to a member in Serbia, who never pays it', async () => {
+    /* The dinar side has no intermediary and no fee (PDL P8), and this screen
+       knows which of the two it is talking to: it works the ways of paying out
+       of the same country a line below. Said to everybody, it is a charge two
+       thirds of the league would look for on a slip that does not carry it. */
+    renderFor('000001')
+
+    await screen.findByRole('heading', { name: 'Moja članarina' })
+
+    expect(screen.queryByText(/taksa za obradu plaćanja/)).toBeNull()
+  })
+
   it('has a price in any October of any year, because the list repeats', async () => {
     /* It used to run out at the end of 2027, and this screen carried a line
        saying membership was not on sale yet for the day it did. The four

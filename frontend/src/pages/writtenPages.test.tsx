@@ -341,7 +341,13 @@ describe('the rulebook', () => {
 
   it('knows an honorary member, and says the fee from abroad is not membership', () => {
     expect(rulebook).toMatch(/počasno članstvo, bez plaćanja članarine/)
-    expect(rulebook).toMatch(/Merilo članstva u sezoni je aktivacija članstva na portalu, ne uplata/)
+    /* Membership is measured by activation, and the deadline for the right to
+       be ranked is measured by the day of payment. Two questions, and they read
+       as a contradiction unless each says which one it answers. */
+    expect(rulebook).toMatch(
+      /meri se aktiviranim članstvom na portalu: počasni član nikad nema uplatu/,
+    )
+    expect(rulebook).toMatch(/Rok se meri po danu uplate, a ne po danu kada je liga uplatu/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
     expect(rulebook).toMatch(/nije deo članarine/)
   })
@@ -541,6 +547,18 @@ describe('what the written pages say the fee buys', () => {
     expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
       /se rezultati ne unose, ne rangiraju i ne ulaze u tabele, a profil se ne prikazuje/,
     )
+  })
+
+  it('measures membership by activation in the terms as well, not only in the rulebook', () => {
+    /* The terms are the document the rulebook itself makes authoritative for the
+       fee (article 3), and they went on defining a member as somebody who has
+       paid. One honorary member reads both and is told in one that they are a
+       member with every right and in the other that their profile is not shown
+       (owner, 03.08.2026). */
+    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+      /kome liga aktivira članstvo, po evidentiranoj uplati članarine ili po odluci o počasnom članstvu/,
+    )
+    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(/Bez aktiviranog članstva/)
   })
 
   it('says nowhere that the formula is a secret', () => {

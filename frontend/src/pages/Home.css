@@ -278,8 +278,7 @@
 }
 
 /* The processing fee, under the price: a condition of one way of paying rather
-   than news about the price. The size is the one the calendar extract already
-   uses for a second line, so this adds no new step to the scale. */
+   than news about the price, so it sits a step below the note beside it. */
 .slot__fee {
   margin: 0;
   font-size: 0.82rem;
