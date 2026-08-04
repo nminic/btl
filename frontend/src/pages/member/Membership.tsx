@@ -103,8 +103,10 @@ export function Membership() {
                   (PDL P8, 03.08.2026). A member paying from abroad pays it on
                   top and buys nothing extra with it, and a member in Serbia
                   never pays it at all, so it is not said to them: this screen
-                  already knows which of the two it is talking to. */}
-              {me.country !== 'RS' && (
+                  already knows which of the two it is talking to. Nor does an
+                  honorary member abroad, who pays nothing whatever and was
+                  being told what a payment they will never make would cost. */}
+              {me.country !== 'RS' && me.membershipBasis !== 'honorary' && (
                 <p className="member__note">
                   {t('membership.processingFee', { fee: PROCESSING_FEE_EUR })}
                 </p>

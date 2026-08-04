@@ -559,6 +559,28 @@ describe('what the written pages say the fee buys', () => {
       /kome liga aktivira članstvo, po evidentiranoj uplati članarine ili po odluci o počasnom članstvu/,
     )
     expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(/Bez aktiviranog članstva/)
+    /* And the section that walks through registration, which described the same
+       thing as a queue of steps ending in a payment. An honorary member never
+       walks two of those steps. */
+    expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
+      /Dok vam članstvo ne bude aktivirano niste vidljivi/,
+    )
+    expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
+      /Počasnog člana aktiviramo bez ta dva koraka/,
+    )
+  })
+
+  it('quotes the processing fee in the terms as the number the portal charges', () => {
+    /* The terms are the binding document for the fee, and they carried the
+       three euro as a typed number while every screen reads it from
+       `pricing.ts`. Changing the constant would have left the one document a
+       member can hold us to saying the old amount. */
+    const terms = sectionOf('uslovi-koriscenja', /taksa za obradu plaćanja/)
+
+    expect(terms).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
+    expect(sectionOf('uslovi-koriscenja', /Na račun udruženja|prema udruženju/)).toMatch(
+      new RegExp(`taksu za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`),
+    )
   })
 
   it('says nowhere that the formula is a secret', () => {

@@ -154,7 +154,7 @@
     "firstSeason2027": false,
     "firstSeason": 2018,
     "active": true,
-    "membershipBasis": "honorary",
+    "membershipBasis": "payment",
     "bio": "",
     "teamId": null,
     "teamSince": null
