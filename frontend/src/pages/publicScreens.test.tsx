@@ -4,6 +4,7 @@ import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { fieldFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
+import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -31,6 +32,36 @@ function lastNumberIn(row: HTMLElement): number {
   }
 
   return figure
+}
+
+/**
+ * Every result of a season, read out of the record and written the way a table
+ * writes it, kept under the points that identify it.
+ *
+ * For the same reason `distancesOf` exists: a test about which column is which
+ * cannot be satisfied by whatever number happens to stand there. Eight columns
+ * of figures all look right until two of them change places, and the row that
+ * leads the board of 2019 has the same ascent as descent, so a test written off
+ * that row alone would not notice the swap.
+ *
+ * Kept under the points rather than in the order of the board, because the order
+ * is the thing the test beside this one is for.
+ */
+async function racesOf(season: number, locale = 'sr'): Promise<Map<string, string[]>> {
+  const results = await loadResource<Result[]>('results')
+  const rows = new Map<string, string[]>()
+
+  for (const one of results.filter((result) => result.date.startsWith(String(season)))) {
+    rows.set(formatPoints(one.points, locale), [
+      one.eventName,
+      formatNumber(one.distanceKm, locale, 2),
+      formatNumber(one.ascentM, locale),
+      formatNumber(one.descentM, locale),
+      formatDuration(one.seconds),
+    ])
+  }
+
+  return rows
 }
 
 /** Every distance this member has raced, newest first, written the way the table
@@ -362,6 +393,14 @@ describe('TopBoards', () => {
       expect(board(name).queryByRole('table')).not.toBeInTheDocument()
       // Nothing turns here, so there is no control to stop it either.
       expect(board(name).queryByRole('button')).not.toBeInTheDocument()
+      /* And no room kept for the one it does not have. The band across the top
+         of the chart is for the pause disc; on a board it was fifty empty pixels
+         over the bars, which is the whole of the owner's sixth note on
+         04.08.2026: "gornji deo widgeta je neiskorišćen". The room is asked for
+         by the class, so the class is what says whether it was asked for: put on
+         every chart, the band comes back on all six boards and nothing else on
+         the portal changes. */
+      expect(screen.getByRole('region', { name })).not.toHaveClass('colchart--control')
     }
   })
 
@@ -426,17 +465,24 @@ describe('TopBoards', () => {
 
     expect([...points].sort((left, right) => right - left)).toEqual(points)
 
-    /* And every cell of the first row is filled, so a column added to the head
-       without a cell under it fails here rather than drawing a gap. */
-    const leader = at(races.getAllByRole('row'), 1)
+    /* And every row says the race it is, not merely eight things that look like
+       a race. Each is looked up in the record by the points it was ranked on,
+       and the five columns after the name are read back off it: a column drawn
+       from the wrong field, or two of them changed places, is eight cells that
+       are all filled and all plausible. */
+    const record = await racesOf(2019)
+    const rows = races.getAllByRole('row').slice(1)
 
-    expect(within(leader).getAllByRole('cell')).toHaveLength(8)
-    expect(
-      within(leader)
-        .getAllByRole('cell')
-        .map((cell) => cell.textContent)
-        .filter((text) => text === null || text.trim() === ''),
-    ).toEqual([])
+    expect(rows.length).toBeGreaterThan(1)
+
+    for (const row of rows) {
+      const cells = within(row).getAllByRole('cell')
+
+      expect(cells).toHaveLength(8)
+      expect(cells.map((cell) => cell.textContent).slice(2, 7)).toEqual(
+        record.get(must(last(cells).textContent, 'the points of the row')),
+      )
+    }
   })
 
   it('keeps four columns on a telephone, the way the standing does', async () => {
@@ -492,6 +538,48 @@ describe('TopBoards', () => {
     }
   })
 
+  it('sets a figure to the right and words to the left, on every board', async () => {
+    /* The shared table pushes its first three columns to the left, which is
+       right for a name and wrong for a number, and on two of these boards the
+       measure is the third column. Each cell therefore says which of the two it
+       is, and the head says the same as the body under it: a heading over its
+       column and the figures under it drifting apart is the one thing a reader
+       sees before anything else.
+
+       Held here because the alignment lives in a stylesheet jsdom does not
+       apply. What is checked is that the marks are on the right cells, and
+       goldBand.test.ts checks that the stylesheet still does something with
+       them. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
+
+    for (const [name, expected] of [
+      ['Najviše kilometara', ['figure']],
+      ['Najduže na stazi', ['figure']],
+      ['Najbolje pojedinačne trke', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
+    ] as const) {
+      const rows = board(name).getAllByRole('row')
+      /* The place and the name are the shared table's own two columns and are
+         set by it; what these marks are for is everything after them. */
+      const setting = (one: Element) => {
+        const words = one.className.includes('boards__detail')
+        const figure = one.className.includes('boards__figure')
+
+        if (words === figure) {
+          throw new Error(`"${one.textContent}" says neither that it is words nor that it is a figure`)
+        }
+
+        return words ? 'words' : 'figure'
+      }
+
+      expect(within(at(rows, 0)).getAllByRole('columnheader').slice(2).map(setting)).toEqual(
+        expected,
+      )
+      expect(within(at(rows, 1)).getAllByRole('cell').slice(2).map(setting)).toEqual(expected)
+    }
+  })
+
   it('marks the leader of a board and nobody else', async () => {
     /* Owner, 04.08.2026: "Nagrade se i dodeljuju samo najboljima." The standing
        still gilds three, because three is its podium; a Top lista gilds one. */
@@ -501,11 +589,17 @@ describe('TopBoards', () => {
 
     for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
       const rows = board(name).getAllByRole('row').slice(1)
-      const gilded = rows.filter((row) => row.className === 'podium')
+      /* Read off the place written in the row rather than counted, because a
+         shared first place is two rows and both of them won: counting one would
+         be a test that fails on correct data. None of these three boards has a
+         tie at the top today, and none of them is promised not to. */
+      const leading = (row: HTMLElement) => first(within(row).getAllByRole('cell')).textContent
 
       expect(rows.length).toBeGreaterThan(3)
-      expect(gilded).toHaveLength(1)
-      expect(gilded[0]).toBe(rows[0])
+      expect(rows.filter((row) => row.className === 'podium').map(leading)).toEqual(
+        rows.filter((row) => leading(row) === '1').map(leading),
+      )
+      expect(first(rows).className).toBe('podium')
     }
   })
 
@@ -531,13 +625,16 @@ describe('TopBoards', () => {
   it('draws the progress as one bar of two levels, the season before under the gain', async () => {
     /* Owner, 04.08.2026: "svaki stubac ima dva nivoa: manje istaknut niži iz
        prethodne godine, u koji je upisan skor iz prethodne sezone, i više
-       istaknut gornji za tekuću godinu, u koji je upisan prirast. Upisuju se
-       zaokruženi bodovi bez decimala."
+       istaknut gornji za tekuću godinu, u koji je upisan prirast."
 
        Both numbers are read, in that order, and each says what it is: two
        figures in one bar with nothing to tell them apart are not a fact anybody
-       can use. Neither carries decimals, which is what "zaokruženi bodovi bez
-       decimala" means and what a comma in either of them would break. */
+       can use.
+
+       Rounded to whole points for a day, on the same owner's word, and then to
+       two decimals on his next one: "neka vrednosti BTL poena u krugovima budu
+       zaokružene na dve decimale. Ovako je neprecizno." The second is what
+       stands, and it is what the portal writes everywhere else. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
@@ -553,9 +650,7 @@ describe('TopBoards', () => {
       const previous = levelIn(column, 'Prethodna sezona')
       const gain = levelIn(column, 'Prirast')
 
-      /* In BTL points, to two decimals, as the portal writes them everywhere
-         else (owner, 04.08.2026). They were written as whole points for a day,
-         and a whole point is not what a BTL point is: two people a quarter of a
+      /* A whole point is not what a BTL point is: two people a quarter of a
          point apart both read the same number. */
       for (const name of ['Prethodna sezona', 'Prirast']) {
         expect(writtenIn(column, name)).toMatch(/^[\d.]+,\d{2}$/)

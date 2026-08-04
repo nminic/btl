@@ -24,9 +24,12 @@
   margin: 0;
   /* A step under the bars, so the number on a short one has somewhere to go: it
      is centred in its bar, and a bar shorter than the circle in it spills that
-     circle onto the gold band below. This lifts every bar by the same amount,
-     so it costs nothing in proportion: twice the races is still twice the bar. */
-  padding: var(--space-10) var(--space-10) var(--space-8);
+     circle onto the gold band below. Twelve pixels, which is what the worst
+     ladder in the record asks for: one race against twenty-eight is a bar of six
+     pixels under a disc of twenty-seven, so ten of that disc hangs below the
+     bar. This lifts every bar by the same amount, so it costs nothing in
+     proportion: twice the races is still twice the bar. */
+  padding: var(--space-10) var(--space-10) var(--space-12);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -257,8 +260,8 @@
  * It was a circle of a fixed width, made when a bar carried a count of races.
  * The board of best progress carries points to two decimals since 04.08.2026
  * (owner), and "334,56" is forty-one pixels of text in a disc of twenty-seven:
- * nine of ten numbers hung out of their own disc, half on it and half on the bare
- * bar. The height is what makes it a disc, so a short number is round exactly as
+ * every number on that board but one hung out of its own disc, half on it and
+ * half on the bare bar. The height is what makes it a disc, so a short number is round exactly as
  * before and a long one grows sideways only. */
 .colchart__count {
   position: absolute;

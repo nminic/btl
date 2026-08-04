@@ -175,8 +175,3 @@
   font-size: 0.85rem;
 }
 
-.rankings__season {
-  display: flex;
-  justify-content: flex-end;
-  margin-block-end: var(--space-12);
-}

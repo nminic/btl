@@ -64,29 +64,33 @@
   font-size: 0.85rem;
 }
 
-/* The event name is the one column here that is words rather than a number,
-   and the only one that can run long. */
+/* The event name is the one column here that is words rather than a number, so
+   it reads from the left, the heading and the cells under it together. */
 .boards .table .boards__detail {
   text-align: left;
-  color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
-/* The name breaks mid-word, and it is the only thing that does. With four
-   columns left on a telephone, one name of thirty characters was still pushing
-   the table eighteen pixels past its own card, and a name of one long word does
-   not break any other way.
+/* Quieter than the figures beside it, and breaking mid-word: with four columns
+   left on a telephone, one name of thirty characters was still pushing the table
+   eighteen pixels past its own card, and a name of one long word does not break
+   any other way.
 
-   On the cell alone. The heading over it carries the same class, and the shared
-   table keeps a heading on one line (`.table th`); a rule written for both won
-   that fight on specificity and the column read "Doga" over "đaj". */
+   On the cell and not on the heading over it, which carries the same class. A
+   heading is set by the shared table, at 0.7rem and in capitals, and 0.85rem
+   reached it too: measured at 360px, "DOGAĐAJ" came out at 13,6px against the
+   11,2px of the seven headings beside it, the one heading on the page drawn to
+   its own size. The break belongs here for a second reason: the shared table
+   keeps a heading on one line (`.table th`), so a heading breaks only if a rule
+   takes that away as well, and a rule that did read "Doga" over "đaj". */
 .boards .table td.boards__detail {
+  color: var(--text-muted);
+  font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
 
-/* And the last of the room the heading needs comes out of the padding, on the
-   width where every pixel is counted. Eight pixels a side over four columns is
-   sixty-four of the three hundred and sixty a telephone has. */
+/* And the last of the room comes out of the padding, on the width where every
+   pixel is counted: two pixels a side over four columns is sixteen of the three
+   hundred and sixty a telephone has. */
 @media (max-width: 699.98px) {
   .boards .table th,
   .boards .table td {
@@ -161,8 +165,10 @@
   }
 
   /* The whole width, under both columns (owner, 04.08.2026). It carries the
-     whole of a result now, six columns after the name, and six columns in two
-     thirds of a page is a table that scrolls inside itself on a desktop. */
+     whole of a result now, six columns after the name, and on the narrower
+     desktops that is a table scrolling inside its own card: in two thirds of a
+     900px page it runs fifteen pixels over, and it takes a page of 940 before it
+     fits. */
   .boards__board--best-races {
     grid-column: 1 / -1;
     grid-row: 7;

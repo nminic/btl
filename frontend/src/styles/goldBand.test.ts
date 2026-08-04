@@ -173,6 +173,98 @@ describe('a column hidden on a telephone', () => {
   })
 })
 
+/**
+ * The nine declarations that answer a request in as many words.
+ *
+ * Six notes came in on 04.08.2026 about how these screens are laid out, and the
+ * answer to most of them is one line of a stylesheet. jsdom lays nothing out, so
+ * every one of them could be deleted with the whole suite staying green: the
+ * calculator would go back to the height of the prose beside it, the board of
+ * best races back to two thirds of the page, and the band of empty pixels back
+ * over the bars of all six charts.
+ *
+ * A declaration read as text is a weaker thing than a measurement, and it is
+ * what this project has (ADL A7): a rule that is present can still be beaten by
+ * another. It holds the one failure that actually happened here, which is a line
+ * disappearing in a later tidy-up, and it names the request it answers so
+ * whoever takes it out knows whose it was.
+ */
+describe('what the owner asked for on 04.08.2026', () => {
+  for (const { of: file, rule, holds, why } of [
+    {
+      of: 'src/pages/Home.css',
+      rule: '.home__calc',
+      holds: /align-self:\s*start/,
+      why: 'the calculator ends where it ends, not where the president\'s word does',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards__board--best-races',
+      holds: /grid-column:\s*1 \/ -1/,
+      why: 'the whole of a result takes the whole width of the page',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards__grid',
+      holds: /margin-block-start:\s*var\(--space-16\)/,
+      why: 'the boards start off the line of the heading, as the cards do',
+    },
+    {
+      of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled > .rankings__empty',
+      holds: /margin-block-start:\s*var\(--space-16\)/,
+      why: 'and so does a table with a control beside its heading',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards .table .boards__figure',
+      holds: /text-align:\s*right/,
+      why: 'a figure reads from the right, whichever column it is in',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards .table td.boards__detail',
+      holds: /overflow-wrap:\s*anywhere/,
+      why: 'one long name breaks rather than pushing the card sideways',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__columns',
+      /* The whole shorthand, because it is the shorthand that carries the step
+         under the bars and the absence of a band over them: written back as four
+         values, or with a `padding-block-start` after it, the band returns and a
+         rule that merely mentions padding would still be here. */
+      holds: /padding:\s*var\(--space-10\) var\(--space-10\) var\(--space-12\);/,
+      why: 'a step under the bars, and nothing kept over them',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart--control .colchart__columns',
+      holds: /padding-block-start:\s*3\.1rem/,
+      why: 'except on the one chart that has a control to put there',
+    },
+    {
+      of: 'src/components/ColumnChart.css',
+      rule: '.colchart__count',
+      holds: /max-inline-size:\s*100%/,
+      why: 'and a number that runs long stays inside its own bar',
+    },
+  ]) {
+    it(`${why} (${rule})`, () => {
+      expect(bodyOf(read(file), rule)).toMatch(holds)
+    })
+  }
+
+  it('keeps the count round while it is round, and a pill once it is not', () => {
+    /* At 50% a box stretched by a long number is an ellipse, which is neither a
+       disc nor a pill. Both circles are drawn the same way, so both are read. */
+    const css = read('src/components/ColumnChart.css')
+
+    expect(bodyOf(css, '.colchart__count')).toMatch(/border-radius:\s*var\(--radius-round\)/)
+    expect(bodyOf(css, '.colchart__count--quiet')).not.toMatch(/border-radius/)
+  })
+})
+
 /* Two more places where gold says something, and one where a figure has to sit
  * on the line of the words beside it. All three are invisible to a screen test,
  * because jsdom applies no stylesheet and works out no colour.
