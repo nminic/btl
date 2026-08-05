@@ -2,12 +2,6 @@
 @import '../styles/counter.css';
 @import '../styles/table.css';
 
-.profile__head h1 {
-  margin: 0 0 var(--space-6);
-  font-size: clamp(26px, 4.5vw, 36px);
-  letter-spacing: -0.02em;
-}
-
 .profile__meta {
   margin: 0 0 var(--space-4);
   color: var(--text-muted);
@@ -67,12 +61,13 @@
 /* The name and the season, level with each other (owner, 31.07.2026). The
    season governs both parts of the profile, so it stands over both rather than
    inside one of them. */
+/* The row itself is the shared one now (Rankings.css). What is left here is the
+   distance under it, which the shared row spends on the content below and this
+   one spends on the line that says who the person is. Set on the row rather than
+   on the heading, so the control beside it moves with it: centring lines the two
+   up only while their bottom margins are the same value. */
 .profile__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
+  --head-end: var(--space-6);
 }
 
 /* The control the years are chosen in.
@@ -117,12 +112,16 @@
   pointer-events: none;
 }
 
+/* The same size and the same leading as every other heading on the portal, so
+   the control beside it stands at the height it stands at on the teams (owner,
+   05.08.2026). It was 36px on a line of 1.15, which is a box sixteen pixels
+   shorter than a heading: centred against it, this one control sat eleven pixels
+   higher than the same control everywhere else. The tighter line was there
+   because a wrapped name gaped; wrapped, it now gapes exactly as much as any
+   other heading on the portal does, which is the price of the row being one row. */
 .profile__name {
   margin: 0 0 var(--space-6);
-  font-size: clamp(26px, 4.5vw, 36px);
-  /* A long name can wrap, and the root 1.55 gapes on a wrapped 36px display
-     line. */
-  line-height: 1.15;
+  font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
   /* A forty character surname with no space in it must not push the page
      sideways. */

@@ -16,6 +16,14 @@
    what the screen is and has to be read first. */
 .rankings--tooled {
   --tool-gap: var(--space-16);
+  /* One value for the two boxes on this row, because centring only lines them
+     up while it is the same value. Each margin box is centred in the row, so a
+     control whose bottom margin differs from the heading's by four pixels is
+     drawn two pixels off, which is what the top boards and a profile each were
+     until 05.08.2026, in different directions. A profile spends less of it,
+     because under that row comes the line saying who the person is rather than
+     the content of the screen. */
+  --head-end: var(--space-12);
 }
 
 .rankings--tooled > h1 {
@@ -35,8 +43,9 @@
     column-gap: var(--tool-gap);
   }
 
-  .rankings--tooled > h1 {
-    margin-block-end: var(--space-12);
+  .rankings--tooled > h1,
+  .rankings--tooled > .rankings__head-tool {
+    margin-block-end: var(--head-end);
   }
 
   /* Everything else in the screen takes the whole width under the two of them. */
@@ -48,9 +57,14 @@
 /* What comes under the row of the heading starts where the cards of the
    competitors start (owner, 04.08.2026): there the content is cleanly off that
    line, and the tables were sitting closer to it than the cards were. The cards
-   carry the same distance in their own sheet, so all three screens agree. */
-.rankings--tooled > .table-scroll,
-.rankings--tooled > .rankings__empty {
+   carry the same distance in their own sheet, so all five screens agree.
+
+   Whatever comes first after the control, rather than a list of the classes that
+   have come first so far: a table on the teams, cards on the competitors, a row
+   of filters on the standing, a month on the calendar (owner, 05.08.2026). Named
+   one by one it was right on the two screens that were thought of and twelve
+   pixels short on the two that came later. */
+.rankings--tooled > .rankings__head-tool + * {
   margin-block-start: var(--space-16);
 }
 

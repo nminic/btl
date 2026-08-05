@@ -8,16 +8,24 @@
 
 /* Level with the heading, at the far right (owner, 01.08.2026). It is drawn
    inside the Resource, which comes after the heading, so it is placed rather
-   than ordered: first row, second column. */
+   than ordered: first row, second column.
+
+   No margin of its own on the row: it is the shared control there and takes the
+   shared distance with it (--head-end in Rankings.css). Sixteen against the
+   heading's twelve drew it two pixels low, which is what the owner saw on
+   05.08.2026 as this one sitting differently from the one on the teams. */
 .boards__filters {
-  margin-bottom: var(--space-16);
+  margin-bottom: var(--space-12);
 }
 
+/* The same margin under it as under the heading beside it, which is what puts
+   the two on one line. Zeroed here until 05.08.2026, and a control whose margin
+   box is twelve pixels shorter than the heading's is centred six pixels lower:
+   the owner saw it as this one sitting differently from the one on the teams. */
 @media (min-width: 560px) {
   .rankings--tooled > .boards__filters {
     grid-row: 1;
     grid-column: 2;
-    margin-bottom: 0;
   }
 }
 

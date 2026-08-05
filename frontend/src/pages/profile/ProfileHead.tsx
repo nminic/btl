@@ -40,16 +40,22 @@ export function ProfileHead({
 
   return (
     <header className="profile__head">
-      <div className="profile__title">
+      {/* The same row every screen with a control has, so the control lands at
+          the height it lands at on the teams (owner, 05.08.2026). It was a row
+          of its own making before, and a name set smaller than a screen title
+          put the control a few pixels higher than anywhere else. */}
+      <div className="profile__title rankings--tooled">
         <h1 className="profile__name">
           {competitor.firstName} {competitor.lastName}
         </h1>
-        {/* Named and shaped like a field, as on the teams and the top boards
-            (owner, 05.08.2026). It was a pill with its name hidden from
-            04.08.2026, on the reasoning that beside a name a labelled field
-            reads as a second heading; the owner has since asked for the one
-            shape everywhere, and one shape is one thing to learn. */}
-        <SeasonPicker seasons={seasons} season={season} named />
+        <div className="rankings__head-tool">
+          {/* Named and shaped like a field, as on the teams and the top boards
+              (owner, 05.08.2026). It was a pill with its name hidden from
+              04.08.2026, on the reasoning that beside a name a labelled field
+              reads as a second heading; the owner has since asked for the one
+              shape everywhere, and one shape is one thing to learn. */}
+          <SeasonPicker seasons={seasons} season={season} named />
+        </div>
       </div>
 
       <p className="profile__meta">

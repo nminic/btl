@@ -495,9 +495,9 @@ describe('what the owner asked for on 04.08.2026', () => {
     },
     {
       of: 'src/pages/Rankings.css',
-      rule: '.rankings--tooled > .rankings__empty',
+      rule: '.rankings--tooled > .rankings__head-tool + *',
       holds: /margin-block-start:\s*var\(--space-16\)/,
-      why: 'and so does a table with a control beside its heading',
+      why: 'and so does whatever comes first under a control beside a heading',
     },
     {
       of: 'src/pages/TopBoards.css',
@@ -555,15 +555,16 @@ describe('what the owner asked for on 04.08.2026', () => {
     })
   }
 
-  it('starts the table itself off that line, not only the sentence standing in for it', () => {
-    /* Both selectors of one rule, and the rule is found by the last of them, so
-       the first was carried by nothing: taken out, the standing on the teams
-       goes from 28px under its heading to 12px, which is the state the note was
-       about, while the half that was held draws only in a season that has no
-       teams in it. */
+  it('starts whatever comes first off that line, not a named few', () => {
+    /* It was two selectors naming two classes, so the two screens nobody thought
+       of started twelve pixels higher than the rest: the standing under its row
+       of filters and the calendar under its month (owner, 05.08.2026). The
+       sibling is what the rule is about, so the sibling is what it selects, and
+       naming a class here again would be the same mistake with a longer list. */
     expect(read('src/pages/Rankings.css')).toMatch(
-      /\.rankings--tooled > \.table-scroll,\s*\.rankings--tooled > \.rankings__empty \{/,
+      /\.rankings--tooled > \.rankings__head-tool \+ \* \{/,
     )
+    expect(read('src/pages/Rankings.css')).not.toMatch(/\.rankings--tooled > \.table-scroll/)
   })
 
   it('keeps the count round while it is round, and a pill once it is not', () => {
