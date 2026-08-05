@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { at, must } from '../test/at'
 import sr from '../i18n/sr.json'
 
 /* The gold band that names a board, and the one thing about it no screen test
@@ -368,6 +369,46 @@ describe('the ink on the gold band', () => {
   })
 })
 
+/* Gold on the row that belongs to whoever is reading.
+ *
+ * A reader in the top three has a row that is both, and the two marks are drawn
+ * by two rules that know nothing about each other: the tint comes from the mark,
+ * the gold from the podium. Nothing on a screen says whether the number can
+ * still be read on it, and the first tint chosen measured 4,40:1, which is under
+ * the 4,5:1 a number owes as text (WCAG 2.2 SC 1.4.3).
+ *
+ * Both themes, and the dark one twice, because it is declared once for the
+ * system setting and once for the switch on the page.
+ */
+describe('the gold on a row that belongs to the reader', () => {
+  it('clears 4,5:1 in both themes', () => {
+    const tokens = read('src/styles/tokens.css')
+    const tints = [...tokens.matchAll(/--mine-surface: (#[0-9a-f]{6});/g)].map(
+      (one) => one[1] as string,
+    )
+    const gold = (name: string) =>
+      must(tokens.match(new RegExp(`${name}: (#[0-9a-f]{6});`))?.[1], `${name} is not a colour`)
+
+    /* One for the light theme and two for the dark, which is how every token
+       with a value per theme is written here. Fewer means a theme has quietly
+       lost its own value and is drawing another one instead. */
+    expect(tints).toHaveLength(3)
+
+    const pairs = [
+      { ink: gold('--gold-600'), on: at(tints, 0), theme: 'light' },
+      { ink: gold('--gold-300'), on: at(tints, 1), theme: 'dark, by the system' },
+      { ink: gold('--gold-300'), on: at(tints, 2), theme: 'dark, by the switch' },
+    ]
+
+    for (const pair of pairs) {
+      expect(
+        contrast(pair.ink, pair.on),
+        `${pair.ink} on ${pair.on} (${pair.theme}) is ${contrast(pair.ink, pair.on).toFixed(2)}:1`,
+      ).toBeGreaterThanOrEqual(FLOOR)
+    }
+  })
+})
+
 describe('the name that has to be cut', () => {
   it('leaves the focus ring more room than it reaches', () => {
     const home = read('src/pages/Home.css')
@@ -556,6 +597,22 @@ describe('what the owner asked for on 04.08.2026', () => {
       rule: '.colchart--control .colchart__columns',
       holds: /padding-block-start:\s*3\.1rem/,
       why: 'except on the one chart that has a control to put there',
+    },
+    {
+      of: 'src/styles/table.css',
+      rule: '.table tbody tr.table__mine',
+      /* The mark itself. Every screen puts the class on the right row, which the
+         screen tests hold; nothing but this says the class paints anything. */
+      holds: /background:\s*var\(--mine-surface\)/,
+      why: 'the row of whoever is reading is tinted',
+    },
+    {
+      of: 'src/styles/table.css',
+      rule: '.table tbody tr.table__mine',
+      /* And a shape as well as a colour, because a difference in colour alone is
+         not one every reader can see (WCAG 2.2 SC 1.4.1). */
+      holds: /box-shadow:\s*inset 3px 0 0 0 var\(--accent\)/,
+      why: 'and carries a bar down its leading edge, not colour alone',
     },
     {
       of: 'src/components/ColumnChart.css',

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { fieldFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
@@ -1293,6 +1293,105 @@ describe('Teams', () => {
     expect(
       within(screen.getByLabelText('Sezona')).queryByRole('option', { name: '1999' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+/* The row that belongs to whoever is reading (owner, 05.08.2026: "moj red ...
+ * treba da bude istaknut").
+ *
+ * Four screens draw it and one class carries it, so what is checked is that each
+ * of the four asks the question and that a visitor is told nothing: the mark is
+ * a fact about the reader, and a portal that marks a row for somebody who has
+ * not signed in is telling them something about a stranger.
+ */
+describe('the row of whoever is signed in', () => {
+  /* 000007 is in the field of 2019 on every one of these screens, and is in a
+     team, which the standing of teams needs. */
+  const ME = '000007'
+
+  const marked = (rows: HTMLElement[]) => rows.filter((row) => row.classList.contains('table__mine'))
+
+  it('is marked in the season table, and nowhere else in it', async () => {
+    renderAt('/sr/tabela?sezona=2019', 'competitor', ME)
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const mine = marked(rows)
+
+    expect(mine).toHaveLength(1)
+    expect(within(at(mine, 0)).getByText(ME)).toBeInTheDocument()
+  })
+
+  it('is marked on every board that is a table and has him, and on no chart', async () => {
+    /* 2015 rather than 2019, because in 2015 he stands on all three boards that
+       are tables. A season where he is on two of them cannot say anything about
+       the third, and the third is where the mark would be missing. */
+    renderAt('/sr/top-liste?sezona=2015', 'competitor', ME)
+
+    await screen.findByRole('table', { name: 'Najviše kilometara' })
+
+    /* His rows are the ones that lead to his profile, so a board that has him
+       and does not mark him is caught rather than covered for by a board that
+       does. Which boards those are is a fact about the season, so they are
+       looked for rather than named. */
+    const his = screen
+      .getAllByRole('row')
+      .filter((row) =>
+        within(row)
+          .queryAllByRole('link')
+          .some((link) => link.getAttribute('href')?.endsWith(`/takmicar/${ME}`) === true),
+      )
+
+    /* Three boards are tables, and he is on all three of them this season. */
+    expect(his.length).toBeGreaterThanOrEqual(3)
+    expect(marked(his)).toEqual(his)
+    /* And nothing inside a chart is marked, which is where the owner drew the
+       line: the boards by length draw bars, not rows. */
+    expect(document.querySelectorAll('.colchart .table__mine')).toHaveLength(0)
+  })
+
+  it('is marked among the results of an event he ran', async () => {
+    const results = await loadResource<Result[]>('results')
+    const ran = must(
+      results.find((one) => one.memberNumber === ME && one.date < '2027-01-01'),
+      'a result of his',
+    )
+    const events = await loadResource<{ id: string; slug: string }[]>('events')
+    const event = must(
+      events.find((one) => ran.raceId.startsWith(`evt-${one.slug}`)),
+      'the event it was run at',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME)
+
+    const rows = await screen.findAllByRole('row')
+
+    expect(marked(rows)).not.toHaveLength(0)
+  })
+
+  it('is marked on the standing of teams, on the row of his own team', async () => {
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const me = must(
+      competitors.find((one) => one.memberNumber === ME),
+      'the member',
+    )
+
+    expect(me.teamId, 'the member has to be in a team for this to say anything').not.toBeNull()
+
+    renderAt('/sr/timovi', 'competitor', ME)
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+
+    expect(marked(rows)).toHaveLength(1)
+  })
+
+  it('says nothing to a visitor, on any of them', async () => {
+    for (const path of ['/sr/tabela?sezona=2019', '/sr/top-liste?sezona=2019', '/sr/timovi']) {
+      cleanup()
+      renderAt(path)
+      await screen.findAllByRole('row')
+
+      expect(marked(screen.getAllByRole('row'))).toHaveLength(0)
+    }
   })
 })
 

@@ -19,6 +19,8 @@ import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatCourseTime, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { leaderClass } from '../components/podium'
+import { mineIn, rowClass } from '../components/mine'
+import { useSession } from '../session/useSession'
 import './Rankings.css'
 import './TopBoards.css'
 
@@ -78,6 +80,10 @@ type Place = {
   /** Written out, or written to give up its surname where the card is too
    *  narrow to hold both words (`NameOrInitial`). */
   name: ReactNode
+  /** Whose row this is, so it can be marked for whoever is reading it
+   *  (src/components/mine.ts). Two of them on a board of pairs, and none at all
+   *  on a board whose rows are not about people. */
+  members: string[]
   /** Everything after the name, in the order the headings name it. Most boards
    *  have one; the board of best single races has six, because the owner asked
    *  for the whole of a result there (04.08.2026). */
@@ -176,6 +182,10 @@ function cellClass(cell: Cell, last: boolean): string {
 
 function Board({ id, title, columns, places, empty }: BoardData) {
   const { t } = useI18n()
+  /* Whoever is reading, so their own row is marked on every board that is a
+     table (owner, 05.08.2026). Not on the charts: a bar with a face over it is
+     already a picture of one person, and the owner drew that line himself. */
+  const { memberNumber: mine } = useSession()
   const headingId = `board-${id}`
 
   return (
@@ -204,7 +214,13 @@ function Board({ id, title, columns, places, empty }: BoardData) {
               {places.map((place) => (
                 /* Gold for the leader alone here, not for three (owner,
                    04.08.2026): "Nagrade se i dodeljuju samo najboljima." */
-                <tr key={place.key} className={leaderClass(place.position)}>
+                <tr
+                  key={place.key}
+                  className={rowClass(
+                    leaderClass(place.position),
+                    mineIn(place.members, mine),
+                  )}
+                >
                   <td className="table__position">{place.position}</td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
@@ -262,7 +278,6 @@ function Boards({
   onSeason: (season: string) => void
 }) {
   const { locale, t } = useI18n()
-
   const today = useToday()
   const seasons = useMemo(() => seasonsWithResults(results), [results])
   const fallback = useMemo(() => defaultSeason(results, today), [results, today])
@@ -351,6 +366,7 @@ function Boards({
         key: row.competitor.memberNumber,
         position: row.position,
         name: <NameOrInitial competitor={row.competitor} />,
+        members: [row.competitor.memberNumber],
         cells: [{ text: formatNumber(row.kilometers, locale, 2) }],
       })),
     }
@@ -366,6 +382,7 @@ function Boards({
         key: row.competitor.memberNumber,
         position: row.position,
         name: <NameOrInitial competitor={row.competitor} />,
+        members: [row.competitor.memberNumber],
         cells: [{ text: formatCourseTime(row.seconds) }],
       })),
     }
@@ -415,6 +432,7 @@ function Boards({
         key: row.result.id,
         position: row.position,
         name: nameOf(row.competitor),
+        members: [row.competitor.memberNumber],
         cells: [
           { text: row.result.eventName, words: true },
           { text: formatNumber(row.result.distanceKm, locale, 2), hidePhone: true },

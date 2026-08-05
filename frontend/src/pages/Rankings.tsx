@@ -15,6 +15,8 @@ import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { mineClass, rowClass } from '../components/mine'
+import { useSession } from '../session/useSession'
 import './Rankings.css'
 import { useFilterParams } from '../app/useFilterParams'
 
@@ -41,6 +43,9 @@ function Standing({
   const { locale, t } = useI18n()
   const { gender, category, search, seasonParam } = filters
   const today = useToday()
+  /* Whoever is reading, so their own row is marked (owner, 05.08.2026). Null for
+     a visitor, and then no row is anybody's. */
+  const { memberNumber: mine } = useSession()
 
   const seasons = useMemo(() => seasonsWithResults(results), [results])
 
@@ -181,8 +186,12 @@ function Standing({
                 <tr
                   key={row.competitor.memberNumber}
                   /* Gold on the podium, as everywhere else
-                     (src/components/podium.ts). */
-                  className={podiumClass(row.position)}
+                     (src/components/podium.ts), and blue on the row of whoever
+                     is reading (src/components/mine.ts). A row can be both. */
+                  className={rowClass(
+                    podiumClass(row.position),
+                    mineClass(row.competitor.memberNumber, mine),
+                  )}
                 >
                   <td className="table__position">{row.position}</td>
                   <td>

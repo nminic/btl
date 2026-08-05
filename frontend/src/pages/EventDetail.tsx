@@ -11,6 +11,8 @@ import {
 } from '../data/useResource'
 import { formatDate, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { mineClass } from '../components/mine'
+import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
 import './Profile.css'
 
@@ -87,6 +89,9 @@ function RaceTable({ eventId }: { eventId: string }) {
 function EventResults({ slug, date }: { slug: string; date: string }) {
   const { locale, t } = useI18n()
   const today = useToday()
+  /* Whoever is reading, so their own result is marked here as their row is in
+     every standing (owner, 05.08.2026). Null for a visitor. */
+  const { memberNumber: mine } = useSession()
   const state = combinePair(useResults(), useCompetitors())
 
   /* An event still to be run draws no section here at all, so while its data is
@@ -161,7 +166,11 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                         : `${person.firstName} ${person.lastName}`
 
                     return (
-                      <tr key={result.id}>
+                      /* The rows of whoever is reading, marked as they are in
+                         every standing (owner, 05.08.2026; src/components/mine.ts).
+                         More than one of them where somebody ran two races of
+                         the same event. */
+                      <tr key={result.id} className={mineClass(result.memberNumber, mine)}>
                         <td>
                           {person !== undefined && person.active ? (
                             <Link to={`/${locale}/takmicar/${result.memberNumber}`}>{name}</Link>

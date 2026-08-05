@@ -44,6 +44,13 @@
   --bg: #f4f6fa;
   --surface: var(--white);
   --surface-hover: #e9edf4;
+  /* The row that belongs to whoever is reading. A tint of the accent rather
+     than a step of the grey scale, so it reads as "you" and not as "hovered".
+     Light enough that gold survives on it: a reader in the top three has a row
+     that is both, and gold-600 measures 4,40:1 on a deeper tint of this against
+     the 4,5:1 that a number owes as text (WCAG 2.2 SC 1.4.3). This one measures
+     4,80:1, and the guard is in styles/goldBand.test.ts. */
+  --mine-surface: #e9effc;
   --text: var(--black);
   --text-muted: var(--gray-700);
   /* The edge of a card, a panel, a row in a table. It divides, it does not tell
@@ -212,6 +219,7 @@
     --bg: #060b16;
     --surface: #101a2e;
     --surface-hover: #17243d;
+    --mine-surface: #172f52;
     --text: #eef2f8;
     --text-muted: #a3b0c4;
     --border: #26364f;
@@ -244,6 +252,7 @@
   --bg: #060b16;
   --surface: #101a2e;
   --surface-hover: #17243d;
+  --mine-surface: #172f52;
   --text: #eef2f8;
   --text-muted: #a3b0c4;
   --border: #26364f;
