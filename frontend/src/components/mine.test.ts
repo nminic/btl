@@ -12,8 +12,9 @@ describe('the row that belongs to the reader', () => {
   it('is the one about them, and only while somebody is reading', () => {
     expect(mineClass('000007', '000007')).toBe(MINE)
     expect(mineClass('000008', '000007')).toBeUndefined()
-    /* Nobody signed in. Every row would otherwise be compared against nothing,
-       and a member number that is somehow empty would match it. */
+    /* Nobody signed in, which is what null means here and why it is null rather
+       than an empty string: a member number nobody has would compare equal to
+       one, and `includes` would then mark that row for a visitor. */
     expect(mineClass('000007', null)).toBeUndefined()
     expect(mineClass('', null)).toBeUndefined()
   })

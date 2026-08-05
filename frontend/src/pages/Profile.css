@@ -70,53 +70,22 @@
   --head-end: var(--space-6);
 }
 
-/* The control the years are chosen in.
- *
- * The colours are set on it and on its options. A select with `appearance: none`
- * and no background of its own hands the browser's own dropdown the page's text
- * colour and a white sheet to put it on, so on the dark theme the open list was
- * light grey on white and the years could not be read. */
-.profile__season select {
-  appearance: none;
-  padding: var(--space-6) var(--space-32) var(--space-6) var(--space-12);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-round);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.profile__season option {
-  background: var(--surface);
-  color: var(--text);
-}
-
-.profile__season {
-  position: relative;
-}
-
-/* The caret the native control lost with appearance: none. */
-.profile__season::after {
-  content: '';
-  position: absolute;
-  right: 0.85rem;
-  top: 50%;
-  width: 0.42rem;
-  height: 0.42rem;
-  border-right: 2px solid var(--text-muted);
-  border-bottom: 2px solid var(--text-muted);
-  transform: translateY(-0.35rem) rotate(45deg);
-  pointer-events: none;
+/* The heading of a page built like a profile that has no control beside it: an
+   event and a league. They draw a bare h1 inside this header and had their whole
+   styling from a rule about `.profile__head h1`, which went when the name of a
+   competitor took its own size (`.profile__name` below). Left alone they fell
+   back to the browser's 2em with a margin of its own. */
+.profile__head > h1 {
+  margin: 0 0 var(--space-6);
+  font-size: clamp(26px, 4.5vw, 36px);
+  letter-spacing: -0.02em;
 }
 
 /* The same size and the same leading as every other heading on the portal, so
    the control beside it stands at the height it stands at on the teams (owner,
-   05.08.2026). It was 36px on a line of 1.15, which is a box sixteen pixels
-   shorter than a heading: centred against it, this one control sat eleven pixels
-   higher than the same control everywhere else. The tighter line was there
+   05.08.2026). It was 36px on a line of 1.15, a box of 41,4px against the 62px
+   every other heading has: centred against the shorter box, this one control was
+   drawn 10,3px above the same control everywhere else. The tighter line was there
    because a wrapped name gaped; wrapped, it now gapes exactly as much as any
    other heading on the portal does, which is the price of the row being one row. */
 .profile__name {

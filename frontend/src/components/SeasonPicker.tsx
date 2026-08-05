@@ -3,7 +3,13 @@ import { ALL_SEASONS } from './season'
 import { useFilterParams } from '../app/useFilterParams'
 
 /**
- * The season control, beside the name of the competitor (owner, 31.07.2026).
+ * The season control, beside the heading of whatever screen it governs.
+ *
+ * One shape everywhere (owner, 05.08.2026). It had two: a named field beside a
+ * heading and a pill with its name hidden beside a person's or a team's name, on
+ * the reasoning that a labelled field next to a name reads as a second heading.
+ * The owner asked for the field on the profile as well, and with that the pill
+ * had nowhere left to be drawn.
  *
  * At the top of the page rather than inside one of its parts, because it governs
  * both of them: the results below and the trophies on the other part are both
@@ -18,7 +24,6 @@ export function SeasonPicker({
   seasons,
   season,
   fallback,
-  named = false,
 }: {
   seasons: number[]
   /**
@@ -37,18 +42,6 @@ export function SeasonPicker({
    * them, which is what they want: a team is a thing of one season.
    */
   fallback?: string
-  /**
-   * Draws the control with its name beside it, in the shape a screen with a
-   * heading uses (owner, 04.08.2026: the one on the teams "je ružnija nego u Top
-   * listama").
-   *
-   * Two shapes, because there are two places. Beside a heading it stands in a row
-   * of controls and says what it is, like the season on the Top liste and the
-   * search on the competitors. Beside a name, on a profile, the name is what the
-   * screen is about and a labelled field beside it would read as a second
-   * heading, so there it is a pill and says its name only to a screen reader.
-   */
-  named?: boolean
 }) {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
@@ -80,18 +73,9 @@ export function SeasonPicker({
     </select>
   )
 
-  if (named) {
-    return (
-      <label className="rankings__field">
-        <span>{t('rankings.season')}</span>
-        {years}
-      </label>
-    )
-  }
-
   return (
-    <label className="profile__season">
-      <span className="visually-hidden">{t('rankings.season')}</span>
+    <label className="rankings__field">
+      <span>{t('rankings.season')}</span>
       {years}
     </label>
   )

@@ -10,18 +10,19 @@
    inside the Resource, which comes after the heading, so it is placed rather
    than ordered: first row, second column.
 
-   No margin of its own on the row: it is the shared control there and takes the
-   shared distance with it (--head-end in Rankings.css). Sixteen against the
-   heading's twelve drew it two pixels low, which is what the owner saw on
-   05.08.2026 as this one sitting differently from the one on the teams. */
+   The shared distance under it on that row (--head-end in Rankings.css). It had
+   none there at all, having been zeroed, and centring puts each margin box in
+   the middle of the row: a control whose box is twelve pixels shorter than the
+   heading's is drawn six pixels low. Measured on the live page before this, six
+   pixels, which is what the owner saw on 05.08.2026 as this one sitting
+   differently from the one on the teams. */
 .boards__filters {
   margin-bottom: var(--space-12);
 }
 
-/* The same margin under it as under the heading beside it, which is what puts
-   the two on one line. Zeroed here until 05.08.2026, and a control whose margin
-   box is twelve pixels shorter than the heading's is centred six pixels lower:
-   the owner saw it as this one sitting differently from the one on the teams. */
+/* Placed rather than ordered, because it is drawn inside the Resource and so
+   comes after the heading in the markup. What goes under it is the shared value,
+   set on the rule above rather than zeroed here. */
 @media (min-width: 560px) {
   .rankings--tooled > .boards__filters {
     grid-row: 1;
@@ -57,8 +58,10 @@
      A query about an inline-size container reads its content box, so these are
      content widths. Measured over all sixteen seasons on the two boards this
      touches: at 245px, which is the narrow column of a 900px page, 144 of 208
-     names wrap; at 312px, eleven; at 361px, none. So the question is asked at
-     340, between the last width that needs it and the first that does not. */
+     names wrap; at 312px, nine; from 320px, none. So the question is asked just
+     under 320, which is the first width at which every name fits. Asked at 340
+     it also shortened every name on a 1400px page, where nine of them would have
+     wrapped and 199 would not. */
   container-type: inline-size;
 }
 
@@ -67,7 +70,7 @@
   display: none;
 }
 
-@container (max-width: 340px) {
+@container (max-width: 319.98px) {
   /* Off the screen rather than out of the page, so the surname is still read
      out. The recipe is `visually-hidden` in index.css, written out here because
      what is being switched is whether it applies, and a class cannot be put on

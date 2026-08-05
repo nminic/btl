@@ -36,10 +36,10 @@ export function mineClass(memberNumber: string, mine: string | null): string | u
  * The classes a row wears, as one attribute.
  *
  * A row can be on the podium and be the reader's own at the same time, and the
- * two marks are drawn by two rules. Written by hand at each call site it was
- * `[a, b].filter(Boolean).join(' ')` four times over, and `undefined` where
- * there is nothing to say, because `class=""` is an attribute that says nothing
- * and still shows up in the markup.
+ * two marks are drawn by two rules. Written by hand it is
+ * `[a, b].filter(Boolean).join(' ')` at each of the three call sites, and
+ * `undefined` where there is nothing to say, because `class=""` is an attribute
+ * that says nothing and still shows up in the markup.
  */
 export function rowClass(...marks: (string | undefined)[]): string | undefined {
   const worn = marks.filter((one) => one !== undefined)

@@ -250,6 +250,69 @@ describe('Rankings', () => {
   })
 })
 
+/* The words on the row of filters, and the count under it (owner, 05.08.2026).
+ *
+ * Each of these is one string in the dictionary and each was asked for by name,
+ * so each is read off the screen rather than trusted to stay: a label that goes
+ * back to what it said is a change nobody would notice for a month.
+ */
+describe('what the filters are called', () => {
+  it('names the category in full, and offers all of them as Sve', async () => {
+    renderAt('/sr/tabela?sezona=2019')
+
+    const category = (await screen.findByLabelText('Kategorija')) as HTMLSelectElement
+
+    /* Written out on the control and short in the table, which is the whole of
+       the decision: both are on this screen at once. */
+    expect(screen.getByRole('columnheader', { name: 'Kat.' })).toBeInTheDocument()
+    expect(within(category).getAllByRole('option').map((one) => one.textContent)[0]).toBe('Sve')
+  })
+
+  it('calls the search Pretraga and says what it takes in the field', async () => {
+    renderAt('/sr/tabela?sezona=2019')
+
+    const search = await screen.findByLabelText('Pretraga')
+
+    expect(search).toHaveAttribute('placeholder', 'Ime, prezime ili članski broj')
+  })
+
+  it('counts women as takmičarke, in the case the number asks for', async () => {
+    /* One, a few and many are three different words in Serbian, and the portal
+       has `Intl.PluralRules` for exactly this. Driven through the search box,
+       because no season happens to hold all three counts. */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2019&pol=z')
+
+    const count = async () => must((await screen.findByText(/takmičar/)).textContent, 'the count')
+    const search = await screen.findByLabelText('Pretraga')
+
+    expect(await count()).toBe('9 takmičarki')
+
+    /* One, and then a few. Searching narrows the same list, so all three cases
+       are read off one season without needing a season that happens to hold
+       them: "ni" leaves one woman in 2019 and "ka" leaves two. */
+    await user.clear(search)
+    await user.type(search, 'ni')
+    expect(await count()).toBe('1 takmičarka')
+
+    await user.clear(search)
+    await user.type(search, 'ka')
+    expect(await count()).toBe('2 takmičarke')
+
+    await user.clear(search)
+    await user.type(search, 'zzzzzz')
+    expect(await count()).toBe('0 takmičarki')
+  })
+
+  it('counts men as takmičari, which is the other word entirely', async () => {
+    renderAt('/sr/tabela?sezona=2019')
+
+    expect(must((await screen.findByText(/takmičar/)).textContent, 'the count')).toMatch(
+      /takmičara?$/,
+    )
+  })
+})
+
 describe('TopBoards', () => {
   /** The day these screens are read on. Handed to the render rather than left to
    *  the real clock, so what a test works out beside a screen is worked out for
@@ -550,6 +613,48 @@ describe('TopBoards', () => {
       /* And nothing before it claims to be the measure. */
       expect(cells.slice(0, -1).filter((one) => one.className.includes('table__points'))).toEqual([])
     }
+  })
+
+  it('tells the stylesheet how many characters the longest number in it is', async () => {
+    /* The circle in a bar is as wide as that (owner, 05.08.2026: it has to be a
+       circle, and a circle holding two decimals is wider than one holding a
+       count of races). The width is worked out in the stylesheet from this one
+       number, so without it every circle falls back to the small disc and the
+       longest numbers stand half on the bare bar again.
+
+       Both levels of a bar count, because both carry a number, and the lower one
+       carries the season before, which is the longer of the two. 2013, because
+       there the season before runs to six characters and the gain to five, so a
+       count taken from the gain alone comes out short and says so. */
+    renderAt('/sr/top-liste?sezona=2013')
+
+    const board = must(
+      (await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })).closest(
+        'section',
+      ),
+      'the board of best progress',
+    )
+    const longest = Math.max(
+      ...within(board)
+        .getAllByRole('listitem')
+        .flatMap((column) =>
+          ['Prethodna sezona', 'Prirast'].map((level) => writtenIn(column, level).length),
+        ),
+    )
+
+    expect(longest).toBeGreaterThan(4)
+    expect(board.style.getPropertyValue('--count-chars')).toBe(String(longest))
+
+    /* And a board of race counts asks for far less, or every chart on the portal
+       would carry the widest circle any of them needs. */
+    const races = must(
+      (await screen.findByRole('heading', { level: 2, name: 'Najviše maratona' })).closest(
+        'section',
+      ),
+      'a board of race counts',
+    )
+
+    expect(Number(races.style.getPropertyValue('--count-chars'))).toBeLessThan(longest)
   })
 
   it('carries a surname and an initial, so a narrow card can swap one for the other', async () => {
@@ -1304,6 +1409,37 @@ describe('Teams', () => {
  * a fact about the reader, and a portal that marks a row for somebody who has
  * not signed in is telling them something about a stranger.
  */
+/* The control beside a heading, on every screen that has one (owner,
+ * 05.08.2026: the same vertical position as on the teams).
+ *
+ * Where it lands is a matter of layout, which jsdom does not do, and the rules
+ * that place it are guarded as text in styles/goldBand.test.ts. What is held
+ * here is the other half of it: that each screen actually asks for that row, so
+ * a page keeping its own arrangement fails rather than quietly sitting where it
+ * used to.
+ */
+describe('the row a screen opens with', () => {
+  for (const [path, screenName] of [
+    ['/sr/tabela', 'the season table'],
+    ['/sr/takmicari', 'the competitors'],
+    ['/sr/timovi', 'the teams'],
+    ['/sr/top-liste', 'the top boards'],
+    ['/sr/kalendar', 'the calendar'],
+    ['/sr/takmicar/000007', 'a profile'],
+    ['/sr/tim/dunavski-trkaci', 'a team'],
+  ] as const) {
+    it(`is the shared one on ${screenName}`, async () => {
+      renderAt(path)
+
+      const heading = await screen.findByRole('heading', { level: 1 })
+      const row = must(heading.parentElement, 'the row around the heading')
+
+      expect(row.className).toContain('rankings--tooled')
+      expect(row.querySelector('.rankings__head-tool')).not.toBeNull()
+    })
+  }
+})
+
 describe('the row of whoever is signed in', () => {
   /* 000007 is in the field of 2019 on every one of these screens, and is in a
      team, which the standing of teams needs. */
@@ -1382,6 +1518,26 @@ describe('the row of whoever is signed in', () => {
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
 
     expect(marked(rows)).toHaveLength(1)
+  })
+
+  it('says so in words as well as in colour', async () => {
+    /* The tint and the bar are for the eye. A reader who is not using one gets
+       nothing from either, and the mark is a fact about the reader rather than
+       decoration, so the row says it (WCAG 2.2 SC 1.4.1 is about not leaning on
+       colour; this is the same thought carried to somebody who sees none of it).
+       Said inside the cell that numbers the row, so it is heard as part of the
+       place rather than tacked onto a name. */
+    renderAt('/sr/tabela?sezona=2019', 'competitor', ME)
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const mine = at(marked(rows), 0)
+
+    expect(within(mine).getByText('vaš red')).toBeInTheDocument()
+
+    /* And nobody else's row says it. */
+    for (const row of rows.filter((one) => !one.classList.contains('table__mine'))) {
+      expect(within(row).queryByText('vaš red')).not.toBeInTheDocument()
+    }
   })
 
   it('says nothing to a visitor, on any of them', async () => {

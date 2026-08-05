@@ -177,6 +177,9 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                           ) : (
                             name
                           )}
+                          {mineClass(result.memberNumber, mine) === undefined ? null : (
+                            <span className="visually-hidden"> {t('rankings.myRow')}</span>
+                          )}
                         </td>
                         <td className="table__hide-phone">
                           {t(`category.${result.category}`)}

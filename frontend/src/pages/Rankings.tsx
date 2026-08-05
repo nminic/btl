@@ -193,7 +193,15 @@ function Standing({
                     mineClass(row.competitor.memberNumber, mine),
                   )}
                 >
-                  <td className="table__position">{row.position}</td>
+                  <td className="table__position">
+                    {row.position}
+                    {/* Heard instead of the colour, inside the cell that
+                        numbers the row, so it reads as part of the place rather
+                        than as a word tacked onto a name. */}
+                    {mineClass(row.competitor.memberNumber, mine) === undefined ? null : (
+                      <span className="visually-hidden"> {t('rankings.myRow')}</span>
+                    )}
+                  </td>
                   <td>
                     <CompetitorName competitor={row.competitor} />{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>

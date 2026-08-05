@@ -54,7 +54,7 @@ export function ProfileHead({
               04.08.2026, on the reasoning that beside a name a labelled field
               reads as a second heading; the owner has since asked for the one
               shape everywhere, and one shape is one thing to learn. */}
-          <SeasonPicker seasons={seasons} season={season} named />
+          <SeasonPicker seasons={seasons} season={season} />
         </div>
       </div>
 

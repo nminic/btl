@@ -394,10 +394,21 @@ describe('the gold on a row that belongs to the reader', () => {
        lost its own value and is drawing another one instead. */
     expect(tints).toHaveLength(3)
 
+    /* Every ink a marked row carries, not the gold alone. A row is a name that
+       leads somewhere, so the accent is on it as often as the gold is, and the
+       first dark tint chosen put the accent at 4,36:1 while the gold on it read
+       8,41:1 and said nothing about it. */
     const pairs = [
-      { ink: gold('--gold-600'), on: at(tints, 0), theme: 'light' },
-      { ink: gold('--gold-300'), on: at(tints, 1), theme: 'dark, by the system' },
-      { ink: gold('--gold-300'), on: at(tints, 2), theme: 'dark, by the switch' },
+      { ink: gold('--gold-600'), on: at(tints, 0), theme: 'light gold' },
+      { ink: gold('--gold-300'), on: at(tints, 1), theme: 'dark gold, by the system' },
+      { ink: gold('--gold-300'), on: at(tints, 2), theme: 'dark gold, by the switch' },
+      { ink: gold('--blue-700'), on: at(tints, 0), theme: 'light link' },
+      { ink: '#5b93ec', on: at(tints, 1), theme: 'dark link, by the system' },
+      { ink: '#5b93ec', on: at(tints, 2), theme: 'dark link, by the switch' },
+      { ink: gold('--black'), on: at(tints, 0), theme: 'light text' },
+      { ink: '#eef2f8', on: at(tints, 1), theme: 'dark text, by the system' },
+      { ink: gold('--gray-700'), on: at(tints, 0), theme: 'light muted' },
+      { ink: '#a3b0c4', on: at(tints, 1), theme: 'dark muted, by the system' },
     ]
 
     for (const pair of pairs) {
@@ -489,7 +500,7 @@ describe('a surname a card has no room for', () => {
 
     expect(bodyOf(css, '.boards__board')).toMatch(/container-type:\s*inline-size/)
 
-    const at = css.indexOf('@container (max-width: 340px) {')
+    const at = css.indexOf('@container (max-width: 319.98px) {')
 
     expect(at, 'there is no question asked of the card').toBeGreaterThan(-1)
 
@@ -599,6 +610,36 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'except on the one chart that has a control to put there',
     },
     {
+      of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled',
+      /* The one value both boxes on that row take. Written twice instead, they
+         drift apart and centring draws the control off the heading by half the
+         difference, which is how the top boards sat six pixels low and a profile
+         three pixels high (owner, 05.08.2026). */
+      holds: /--head-end:\s*var\(--space-12\)/,
+      why: 'the heading and the control beside it end at the same distance',
+    },
+    {
+      of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled > .rankings__head-tool',
+      holds: /margin-block-end:\s*var\(--head-end\)/,
+      why: 'and both of them take it from the one place',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__title',
+      holds: /--head-end:\s*var\(--space-6\)/,
+      why: 'a profile spends less of it, and its control moves with the heading',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__name',
+      /* The same size as every other heading, or the control beside it is drawn
+         at a height nothing else on the portal uses. */
+      holds: /font-size:\s*clamp\(28px, 5vw, 40px\)/,
+      why: 'the name of a competitor is the size a heading is',
+    },
+    {
       of: 'src/styles/table.css',
       rule: '.table tbody tr.table__mine',
       /* The mark itself. Every screen puts the class on the right row, which the
@@ -637,6 +678,16 @@ describe('what the owner asked for on 04.08.2026', () => {
       expect(bodyOf(read(file), rule)).toMatch(holds)
     })
   }
+
+  it('gives the heading and the control one rule, so neither can drift', () => {
+    /* Both selectors of it, and the rule is found by the last of them. Written
+       as two rules they hold the same value until somebody changes one, and
+       centring then draws the control off the heading by half the difference
+       without anything failing. */
+    expect(read('src/pages/Rankings.css')).toMatch(
+      /\.rankings--tooled > h1,\s*\.rankings--tooled > \.rankings__head-tool \{/,
+    )
+  })
 
   it('starts whatever comes first off that line, not a named few', () => {
     /* It was two selectors naming two classes, so the two screens nobody thought

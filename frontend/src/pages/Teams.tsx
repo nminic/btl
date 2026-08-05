@@ -69,7 +69,7 @@ export function Teams() {
                     {t('teams.propose')}
                   </Link>
                 )}
-                <SeasonPicker seasons={seasons} season={season} fallback={running} named />
+                <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 
               {rows.length === 0 ? (
@@ -106,7 +106,13 @@ export function Teams() {
                       >
                         {/* The place, not the row number: a tie nothing separates
                             is shared, so the column can read 1, 1, 3 (PDL P12). */}
-                        <td className="table__position">{row.position}</td>
+                        <td className="table__position">
+                          {row.position}
+                          {myTeam === undefined ||
+                          mineIn([row.team.id], myTeam) === undefined ? null : (
+                            <span className="visually-hidden"> {t('teams.myTeam')}</span>
+                          )}
+                        </td>
                         <td>
                           <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
                         </td>

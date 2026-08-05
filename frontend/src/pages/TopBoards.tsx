@@ -221,7 +221,12 @@ function Board({ id, title, columns, places, empty }: BoardData) {
                     mineIn(place.members, mine),
                   )}
                 >
-                  <td className="table__position">{place.position}</td>
+                  <td className="table__position">
+                    {place.position}
+                    {mineIn(place.members, mine) === undefined ? null : (
+                      <span className="visually-hidden"> {t('rankings.myRow')}</span>
+                    )}
+                  </td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
                   </td>

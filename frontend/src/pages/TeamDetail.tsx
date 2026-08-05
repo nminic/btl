@@ -88,9 +88,15 @@ export function TeamDetail() {
                 <p className="profile__meta">
                   <Link to={`/${locale}/timovi`}>{t('teams.backToTeams')}</Link>
                 </p>
-                <div className="profile__title">
+                {/* The same row a competitor's profile has, and the same named
+                    control (owner, 05.08.2026: one shape everywhere). It carried
+                    a row of its own until then and was left without one when the
+                    profile moved onto the shared row. */}
+                <div className="profile__title rankings--tooled">
                   <h1 className="profile__name">{team.name}</h1>
-                  <SeasonPicker seasons={seasons} season={season} fallback={running} />
+                  <div className="rankings__head-tool">
+                    <SeasonPicker seasons={seasons} season={season} fallback={running} />
+                  </div>
                 </div>
                 <p className="profile__meta">
                   {team.city}
