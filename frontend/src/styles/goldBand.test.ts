@@ -34,12 +34,174 @@ function read(path: string): string {
   return readFileSync(join(process.cwd(), path), 'utf-8')
 }
 
+/**
+ * A copy of the stylesheet with the inside of every comment blanked out, and the
+ * same length as what went in, so a position in it is a position in the original.
+ *
+ * Only the braces are being counted, and a brace written in prose is not one.
+ * None of these sheets has one today; the rules read here are held by a comment
+ * apiece explaining why they exist, so one is a matter of time.
+ */
+function unremarked(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+}
+
+/**
+ * Where the block that opens at `at` is closed.
+ *
+ * Counted rather than found. A search for the first `}` after a media query is
+ * a search for the end of the first rule inside it, and a search for one at the
+ * start of a line is a search for a particular way of laying out a stylesheet:
+ * indent the closing brace of the query and everything after the query reads as
+ * being inside it, which is the whole of what a containment check is for.
+ * Nothing in this project formats CSS, so nothing keeps that indentation either.
+ */
+function closes(css: string, at: number): number {
+  const plain = unremarked(css)
+  let depth = 0
+
+  for (let index = at; index < plain.length; index += 1) {
+    const mark = plain[index]
+
+    if (mark === '{') {
+      depth += 1
+    } else if (mark === '}') {
+      depth -= 1
+
+      if (depth === 0) {
+        return index
+      }
+    }
+  }
+
+  throw new Error(`the block at ${at} is never closed`)
+}
+
+/**
+ * Where that selector begins a rule of its own, and -1 where it does not.
+ *
+ * It has to be the whole of a selector and not the tail of a longer one.
+ * `.table__hide-phone` is written inside `.rankings .table__hide-phone`, so a
+ * plain search finds the second and reports a rule that drops columns on one
+ * screen as one that drops them everywhere: scoped down that way, the whole
+ * suite stayed green while the board of best races showed all eight columns at
+ * 360px and scrolled 211 of them sideways inside its own card (PDL P12).
+ *
+ * So what stands in front of the match is read. A newline, a comma or a brace
+ * put the selector where it is; anything else is part of it, a space included,
+ * because a space between two selectors is a combinator and not a gap.
+ */
+function ruleAt(css: string, selector: string): number {
+  const plain = unremarked(css)
+  const written = `${selector} {`
+
+  for (let at = plain.indexOf(written); at > -1; at = plain.indexOf(written, at + 1)) {
+    let before = at - 1
+
+    /* Back over the indentation, to whatever put the selector on its line. */
+    while (plain[before] === ' ' || plain[before] === '\t') {
+      before -= 1
+    }
+
+    const mark = plain[before]
+
+    if (mark === undefined || mark === '\n' || mark === ',' || mark === '{' || mark === '}') {
+      return at
+    }
+  }
+
+  return -1
+}
+
 /** The body of one rule, from its selector to the brace that closes it. */
 function bodyOf(css: string, selector: string): string {
-  const at = css.indexOf(`${selector} {`)
-  expect(at, `${selector} is not in the stylesheet`).toBeGreaterThan(-1)
-  return css.slice(at, css.indexOf('}', at))
+  const at = ruleAt(css, selector)
+
+  expect(at, `${selector} is not a rule of its own in the stylesheet`).toBeGreaterThan(-1)
+  return css.slice(at, closes(css, at))
 }
+
+/* The two readers above, on stylesheets written here rather than on the real
+ * ones.
+ *
+ * Everything else in this file leans on them, so a mistake in either is a dozen
+ * guards quietly reporting that a rule is where it is not. The real sheets prove
+ * they work today; these prove why they are written the way they are, and they
+ * are the only place the awkward shapes can be tried without writing an awkward
+ * shape into a stylesheet somebody has to read.
+ */
+describe('reading a rule out of a stylesheet', () => {
+  it('takes the selector whole, not the end of a longer one', () => {
+    const css = `.rankings .mark {\n  color: red;\n}\n\n.mark {\n  color: blue;\n}\n`
+
+    /* The scoped rule is written first and ends in the same name. Found by the
+       tail, it would answer for the plain one and say red. */
+    expect(bodyOf(css, '.mark')).toContain('color: blue')
+    expect(bodyOf(css, '.rankings .mark')).toContain('color: red')
+  })
+
+  it('says a scoped rule is not the plain one it ends with', () => {
+    expect(ruleAt('.rankings .mark {\n  color: red;\n}\n', '.mark')).toBe(-1)
+    /* A compound has no space in it and must not be read as one either. */
+    expect(ruleAt('.mark--wide {\n  color: red;\n}\n', '.mark')).toBe(-1)
+  })
+
+  it('reads a selector wherever a rule may put it', () => {
+    /* At the start of the file, second in a list written on one line, indented
+       inside a query, and against a closing brace with nothing between. The list
+       on one line is the case a newline does not cover: there the comma is the
+       only thing saying the selector begins rather than continues. */
+    expect(ruleAt('.mark {\n}\n', '.mark')).toBe(0)
+    expect(ruleAt('.other, .mark {\n}\n', '.mark')).toBeGreaterThan(-1)
+    expect(ruleAt('@media print {\n  .mark {\n  }\n}\n', '.mark')).toBeGreaterThan(-1)
+    expect(ruleAt('.other {\n}.mark {\n}\n', '.mark')).toBeGreaterThan(-1)
+  })
+
+  it('closes a block on its own brace, wherever that brace is written', () => {
+    /* The closing brace of the query indented onto the line above, and a rule
+       of the same name outside it. Read by looking for a brace at the start of a
+       line, the query would swallow everything down to the second rule and
+       report it as being inside. */
+    const css = `@media print {\n  .mark {\n    color: red;\n  } }\n\n.mark {\n  color: blue;\n}\n`
+
+    expect(css.slice(0, closes(css, 0))).not.toContain('color: blue')
+    expect(css.slice(0, closes(css, 0))).toContain('color: red')
+  })
+
+  it('neither counts a brace written in prose nor reads a rule out of it', () => {
+    /* One brace and not a pair, because a pair cancels itself out and would be
+       counted right by accident. */
+    const closer = `.mark {\n  /* Ends with a brace: } */\n  color: blue;\n}\n`
+
+    expect(bodyOf(closer, '.mark')).toContain('color: blue')
+
+    /* And a rule written inside a comment is not a rule. This one starts its own
+       line, so nothing but the blanking tells it from the real one below. */
+    const shown = `/*\n.mark {\n  color: red;\n}\n*/\n.mark {\n  color: blue;\n}\n`
+
+    expect(bodyOf(shown, '.mark')).toContain('color: blue')
+    expect(bodyOf(shown, '.mark')).not.toContain('color: red')
+  })
+
+  it('gives the telephone query its own end, not the first brace on a line', () => {
+    /* The same shape as above, on the reader the guards below actually call.
+       The real stylesheets both put the closing brace of a query at the start of
+       a line, so nothing but this says which of the two ways of finding it is
+       being used, and the other way lets a rule outside the query pass as one
+       inside it. */
+    const css = `@media (max-width: 699.98px) {\n  .mark {\n    display: none;\n  } }\n\n.mark {\n  display: block;\n}\n`
+
+    expect(onTelephone(css)).toContain('display: none')
+    expect(onTelephone(css)).not.toContain('display: block')
+  })
+
+  it('says so rather than running to the end of the file when nothing closes', () => {
+    /* Left to a search, an unclosed block reads as -1 and `slice(at, -1)` is a
+       silent "everything after this", which is a guard that has stopped asking
+       anything at all. */
+    expect(() => closes('.mark {\n  color: red;\n', 0)).toThrow(/never closed/)
+  })
+})
 
 /** WCAG relative luminance of an `#rrggbb` colour. */
 function luminance(hex: string): number {
@@ -147,14 +309,6 @@ describe('the sentence above a table of places', () => {
   })
 })
 
-/* The column a telephone does not have room for.
- *
- * Every table on the portal drops columns below 700px, and what a phone keeps is
- * the place, the name, one column of its own and the measure (PDL P12). All of
- * that rests on one declaration, and nothing was holding it: turned into
- * `opacity: 1` the whole suite stayed green while every such table showed every
- * column on a telephone again, sideways scroll and all.
- */
 /**
  * Everything inside the one query that means a telephone, and nothing after it.
  *
@@ -170,9 +324,17 @@ function onTelephone(css: string): string {
   const at = css.indexOf('@media (max-width: 699.98px) {')
 
   expect(at, 'there is no telephone query').toBeGreaterThan(-1)
-  return css.slice(at, css.indexOf('\n}', at))
+  return css.slice(at, closes(css, at))
 }
 
+/* The column a telephone does not have room for.
+ *
+ * Every table on the portal drops columns below 700px, and what a phone keeps is
+ * the place, the name, one column of its own and the measure (PDL P12). All of
+ * that rests on one declaration, and nothing was holding it: turned into
+ * `opacity: 1` the whole suite stayed green while every such table showed every
+ * column on a telephone again, sideways scroll and all.
+ */
 describe('a column hidden on a telephone', () => {
   it('is taken out of the page, and only on a telephone', () => {
     const query = onTelephone(read('src/styles/table.css'))
@@ -511,9 +673,10 @@ describe('the height of a bar on the column chart', () => {
   })
 
   it('is that share and nothing else, with no floor under it', () => {
-    /* The rule that starts a line, not the hover rule above it, whose selector
-       ends in the same name and would be found first. */
-    const body = bodyOf(css(), `\n.colchart__bar`)
+    /* The rule of that name and not the hover rule above it, whose selector ends
+       in the same name. It used to be asked for with a newline in front of it,
+       which is what `bodyOf` does for itself now. */
+    const body = bodyOf(css(), '.colchart__bar')
 
     expect(body).toMatch(/block-size:\s*var\(--bar\)/)
     expect(body).not.toMatch(/min-block-size/)
