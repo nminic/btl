@@ -50,6 +50,43 @@
 
 .boards__board {
   min-inline-size: 0;
+  /* Each board answers about its own width, so a name can give up its surname on
+     the boards that stand in the narrow column and keep it where there is room
+     (owner, 05.08.2026; `NameOrInitial` in TopBoards.tsx).
+
+     A query about an inline-size container reads its content box, so these are
+     content widths. Measured over all sixteen seasons on the two boards this
+     touches: at 245px, which is the narrow column of a 900px page, 144 of 208
+     names wrap; at 312px, eleven; at 361px, none. So the question is asked at
+     340, between the last width that needs it and the first that does not. */
+  container-type: inline-size;
+}
+
+/* The full name while there is room for it. */
+.boards__initial {
+  display: none;
+}
+
+@container (max-width: 340px) {
+  /* Off the screen rather than out of the page, so the surname is still read
+     out. The recipe is `visually-hidden` in index.css, written out here because
+     what is being switched is whether it applies, and a class cannot be put on
+     an element by a container query. */
+  .boards__family {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .boards__initial {
+    display: inline;
+  }
 }
 
 /* The boards that are tables wear the card; the ones that are charts carry their

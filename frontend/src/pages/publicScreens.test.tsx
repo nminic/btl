@@ -552,6 +552,35 @@ describe('TopBoards', () => {
     }
   })
 
+  it('carries a surname and an initial, so a narrow card can swap one for the other', async () => {
+    /* Owner, 05.08.2026: where a full name would take two lines, the surname
+       gives way to an initial. Which cards those are is a question about width,
+       so the choosing is done by a container query (TopBoards.css) and what is
+       held here is that both halves are in the markup and that the name a reader
+       hears is the whole one either way. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najviše kilometara' })
+
+    for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
+      const rows = board(name).getAllByRole('row').slice(1)
+      const link = within(at(rows, 0)).getByRole('link')
+      const whole = must(link.textContent, 'the name in the row')
+
+      /* The surname stands apart, and the initial after it is the first letter
+         of that surname and a full stop. */
+      const family = must(link.querySelector('.boards__family'), 'the surname').textContent
+      const initial = must(link.querySelector('.boards__initial'), 'the initial')
+
+      expect(family).not.toBe('')
+      expect(initial.textContent).toBe(`${must(family, 'the surname').slice(0, 1)}.`)
+      /* Read out as the whole name and not as the letter beside it: the initial
+         is out of the accessible tree, the surname never is. */
+      expect(initial).toHaveAttribute('aria-hidden', 'true')
+      expect(link).toHaveAccessibleName(whole.replace(initial.textContent ?? '', '').trim())
+    }
+  })
+
   it('sets a figure to the right and words to the left, on every board', async () => {
     /* The shared table pushes its first three columns to the left, which is
        right for a name and wrong for a number, and on two of these boards the
@@ -710,7 +739,13 @@ describe('TopBoards', () => {
        which is the one thing a board about improvement must not do (PDL P12,
        30.07.2026). He is on the boards that measure the season itself. */
     expect(board('Najbolji napredak').queryByText('Miloje Stanojlović')).not.toBeInTheDocument()
-    expect(board('Najviše kilometara').getByText('Miloje Stanojlović')).toBeVisible()
+    /* By the name the link carries rather than by the words on the screen: on
+       this board a surname is drawn in a span of its own, so that a card with no
+       room for it can put an initial there instead, and the whole name is the
+       accessible name rather than one run of text. */
+    expect(
+      board('Najviše kilometara').getByRole('link', { name: 'Miloje Stanojlović' }),
+    ).toBeVisible()
   })
 
   it('stands the progress board empty for a season nobody has a season before', async () => {

@@ -75,7 +75,9 @@ type Place = {
    *  can read 1, 1, 3 (PDL P12). The numbering is done in src/data/derive.ts,
    *  where the ladder of each board is. */
   position: number
-  name: string
+  /** Written out, or written to give up its surname where the card is too
+   *  narrow to hold both words (`NameOrInitial`). */
+  name: ReactNode
   /** Everything after the name, in the order the headings name it. Most boards
    *  have one; the board of best single races has six, because the owner asked
    *  for the whole of a result there (04.08.2026). */
@@ -128,6 +130,40 @@ type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
  * four the standing keeps: the place, the name, one column of its own, and the
  * measure (PDL P12).
  */
+/**
+ * A name that gives up its surname when the card it stands in has no room for
+ * both words (owner, 05.08.2026: "umesto prezimena stavi samo inicijal sa
+ * tačkom").
+ *
+ * Which cards those are is a question about width and not about how long a name
+ * is: at 900px the board of time on course wraps "Predrag Simić" at thirteen
+ * characters, while the board of kilometres beside it holds "Ksenija Vasiljević"
+ * at eighteen, because the column of figures next to the name is wider on one
+ * than on the other. So the card asks itself (`@container` in TopBoards.css)
+ * rather than anybody counting letters.
+ *
+ * Both pieces are always in the markup, and only one of them is ever drawn. The
+ * surname is taken off the screen rather than out of the page, so the whole name
+ * is the accessible name at every width and stays the accessible name even if
+ * the stylesheet never arrives; the initial is `aria-hidden`, or a reader would
+ * hear the letter and then the surname it stands for.
+ *
+ * A copy of the surname that only the narrow card lets into the page would do
+ * the same job with one rule less, and would hand the accessible name over to a
+ * stylesheet: with none applied, which is how these screens are tested, the
+ * surname is in the name twice.
+ */
+function NameOrInitial({ competitor }: { competitor: Competitor }) {
+  return (
+    <>
+      {competitor.firstName} <span className="boards__family">{competitor.lastName}</span>
+      <span className="boards__initial" aria-hidden="true">
+        {`${competitor.lastName.slice(0, 1)}.`}
+      </span>
+    </>
+  )
+}
+
 function cellClass(cell: Cell, last: boolean): string {
   return [
     cell.words === true ? 'boards__detail' : 'boards__figure',
@@ -314,7 +350,7 @@ function Boards({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
-        name: nameOf(row.competitor),
+        name: <NameOrInitial competitor={row.competitor} />,
         cells: [{ text: formatNumber(row.kilometers, locale, 2) }],
       })),
     }
@@ -329,7 +365,7 @@ function Boards({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
-        name: nameOf(row.competitor),
+        name: <NameOrInitial competitor={row.competitor} />,
         cells: [{ text: formatCourseTime(row.seconds) }],
       })),
     }

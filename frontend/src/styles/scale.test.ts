@@ -54,6 +54,10 @@ const VALUE = /(-?\d*\.?\d+)(rem|px|em|ch)/g
  */
 const ALLOWED = new Map([
   ['index.css | margin | -1px', 'a hairline pulled back over its own border'],
+  [
+    'pages/TopBoards.css | margin | -1px',
+    'not a space: the recipe that takes a surname off the screen without taking it out of the page, written out because a container query switches whether it applies and cannot put a class on anything',
+  ],
   ['components/BadgeGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
   ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],

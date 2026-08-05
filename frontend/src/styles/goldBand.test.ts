@@ -431,6 +431,36 @@ function onTelephone(css: string): string {
  * `opacity: 1` the whole suite stayed green while every such table showed every
  * column on a telephone again, sideways scroll and all.
  */
+/* The surname that gives way to an initial where a card has no room for both
+ * (owner, 05.08.2026).
+ *
+ * A container query and nothing else decides it, and jsdom evaluates none, so
+ * the screen test beside this one can only hold that both halves are in the
+ * markup. What is held here is that the swap is written down and that it is
+ * asked of the card rather than of the window: read as a media query it would
+ * shorten every name on the page at that width, including the ones on the board
+ * that runs its whole width, and read against no container at all it would never
+ * shorten anything.
+ */
+describe('a surname a card has no room for', () => {
+  it('is swapped for an initial by the card it stands in, not by the window', () => {
+    const css = read('src/pages/TopBoards.css')
+
+    expect(bodyOf(css, '.boards__board')).toMatch(/container-type:\s*inline-size/)
+
+    const at = css.indexOf('@container (max-width: 340px) {')
+
+    expect(at, 'there is no question asked of the card').toBeGreaterThan(-1)
+
+    const query = css.slice(at, closes(css, at))
+
+    expect(bodyOf(query, '.boards__family')).toMatch(/position:\s*absolute/)
+    expect(bodyOf(query, '.boards__initial')).toMatch(/display:\s*inline/)
+    /* And drawn the other way round outside it. */
+    expect(bodyOf(css, '.boards__initial')).toMatch(/display:\s*none/)
+  })
+})
+
 describe('a column hidden on a telephone', () => {
   it('is taken out of the page, and only on a telephone', () => {
     const query = onTelephone(read('src/styles/table.css'))
