@@ -518,7 +518,7 @@ describe('what the owner asked for on 04.08.2026', () => {
          under the bars and the absence of a band over them: written back as four
          values, or with a `padding-block-start` after it, the band returns and a
          rule that merely mentions padding would still be here. */
-      holds: /padding:\s*var\(--space-10\) var\(--space-10\) var\(--space-12\);/,
+      holds: /padding:\s*var\(--space-10\) var\(--space-10\)\s*max\(var\(--space-12\), calc\(var\(--count-chars, 2\) \* 0\.24rem \+ var\(--space-6\)\)\);/,
       why: 'a step under the bars, and nothing kept over them',
     },
     {
@@ -530,24 +530,20 @@ describe('what the owner asked for on 04.08.2026', () => {
     {
       of: 'src/components/ColumnChart.css',
       rule: '.colchart__count',
-      holds: /max-inline-size:\s*100%/,
-      why: 'and a number that runs long stays inside its own bar',
+      /* One value on both axes, which is the whole of being a circle: written as
+         two, a number of six characters draws the pill the owner asked to be rid
+         of on 05.08.2026, and nothing else on the portal would say so. */
+      holds: /inline-size:\s*var\(--diameter\);\s*block-size:\s*var\(--diameter\)/,
+      why: 'a count is as wide as it is tall',
     },
     {
       of: 'src/components/ColumnChart.css',
       rule: '.colchart__count',
-      /* The other half of the same thought. The box is placed with `inset: 0`
-         and `margin: auto`, so a width left to itself is the whole of the bar:
-         without these two every count in every chart on the portal is a pill the
-         width of its column rather than a disc. */
-      holds: /inline-size:\s*fit-content;\s*min-inline-size:\s*1\.7rem/,
-      why: 'a count is as wide as the number in it, and no wider',
-    },
-    {
-      of: 'src/components/ColumnChart.css',
-      rule: '.colchart__count',
-      holds: /padding-inline:\s*var\(--space-6\)/,
-      why: 'with the room on its sides that the cap above spends first',
+      /* And wide enough for the longest number the chart draws. Left at the
+         floor, "286,25" is fifty-three pixels of text in a circle of
+         twenty-seven and stands half on the bar. */
+      holds: /max\(var\(--floor\), calc\(var\(--count-chars, 2\) \* 1ch \+ var\(--space-8\)\)\)/,
+      why: 'and wide enough for the longest number in its own chart',
     },
   ]) {
     it(`${why} (${rule})`, () => {
@@ -567,13 +563,16 @@ describe('what the owner asked for on 04.08.2026', () => {
     expect(read('src/pages/Rankings.css')).not.toMatch(/\.rankings--tooled > \.table-scroll/)
   })
 
-  it('keeps the count round while it is round, and a pill once it is not', () => {
-    /* At 50% a box stretched by a long number is an ellipse, which is neither a
-       disc nor a pill. Both circles are drawn the same way, so both are read. */
+  it('draws the count as a circle and not as a stadium', () => {
+    /* 50% of a square is a circle; 50% of an oblong is an ellipse, and a large
+       fixed radius on an oblong is the pill this used to be. The radius alone
+       says nothing, so it is read beside the one diameter above, and the quieter
+       circle is drawn by the same rule with a smaller floor and smaller type. */
     const css = read('src/components/ColumnChart.css')
 
-    expect(bodyOf(css, '.colchart__count')).toMatch(/border-radius:\s*var\(--radius-round\)/)
-    expect(bodyOf(css, '.colchart__count--quiet')).not.toMatch(/border-radius/)
+    expect(bodyOf(css, '.colchart__count')).toMatch(/border-radius:\s*50%/)
+    expect(bodyOf(css, '.colchart__count--quiet')).not.toMatch(/border-radius|block-size/)
+    expect(bodyOf(css, '.colchart__count--quiet')).toMatch(/--floor:\s*1\.45rem/)
   })
 })
 

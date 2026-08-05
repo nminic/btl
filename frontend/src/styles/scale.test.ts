@@ -90,6 +90,10 @@ const ALLOWED = new Map([
     'components/ColumnChart.css | inset-inline | -0.5rem',
     'the name over a bar reaches past it on both sides, because a name is wider than a bar',
   ],
+  [
+    'components/ColumnChart.css | padding | var(--space-10) var(--space-10)\n    max(var(--space-12), calc(var(--count-chars, 2) * 0.24rem + var(--space-6)))',
+    'the step under the bars is half the circle that hangs into it, and the circle is as wide as the longest number in the chart, so this one is arithmetic and not a step off the scale',
+  ],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {
