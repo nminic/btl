@@ -84,12 +84,20 @@ function closes(css: string, at: number): number {
  * `.table__hide-phone` is written inside `.rankings .table__hide-phone`, so a
  * plain search finds the second and reports a rule that drops columns on one
  * screen as one that drops them everywhere: scoped down that way, the whole
- * suite stayed green while the board of best races showed all eight columns at
- * 360px and scrolled 211 of them sideways inside its own card (PDL P12).
+ * suite stayed green while the board of best races showed all eight of its
+ * columns at 360px and scrolled 211 pixels sideways inside its own card, which
+ * is what PDL P12 forbids.
  *
  * So what stands in front of the match is read. A newline, a comma or a brace
  * put the selector where it is; anything else is part of it, a space included,
  * because a space between two selectors is a combinator and not a gap.
+ *
+ * And what stands above it. A selector nested inside another rule is preceded by
+ * a newline like any other, so nothing in front of it says that it draws only
+ * where the rule around it draws; `.colchart__bar` nested in `.colchart__track`
+ * would answer for the real one and hold a height nobody uses. An at-rule around
+ * it is a different matter, and the reason this cannot simply refuse depth: half
+ * the rules read here live inside a media query.
  */
 function ruleAt(css: string, selector: string): number {
   const plain = unremarked(css)
@@ -104,13 +112,42 @@ function ruleAt(css: string, selector: string): number {
     }
 
     const mark = plain[before]
+    const begins = mark === undefined || mark === '\n' || mark === ',' || mark === '{' || mark === '}'
 
-    if (mark === undefined || mark === '\n' || mark === ',' || mark === '{' || mark === '}') {
+    if (begins && underAtRulesOnly(plain.slice(0, at))) {
       return at
     }
   }
 
   return -1
+}
+
+/**
+ * Whether every block still open at the end of that text was opened by an
+ * at-rule, `@media` and its kind, rather than by a rule of its own.
+ *
+ * What opened a block is whatever was written between the brace and the
+ * punctuation before it, which is the block's prelude.
+ */
+function underAtRulesOnly(before: string): boolean {
+  const open: string[] = []
+  let prelude = ''
+
+  for (const mark of before) {
+    if (mark === '{') {
+      open.push(prelude.trim())
+      prelude = ''
+    } else if (mark === '}') {
+      open.pop()
+      prelude = ''
+    } else if (mark === ';') {
+      prelude = ''
+    } else {
+      prelude += mark
+    }
+  }
+
+  return open.every((one) => one.startsWith('@'))
 }
 
 /** The body of one rule, from its selector to the brace that closes it. */
@@ -142,8 +179,34 @@ describe('reading a rule out of a stylesheet', () => {
 
   it('says a scoped rule is not the plain one it ends with', () => {
     expect(ruleAt('.rankings .mark {\n  color: red;\n}\n', '.mark')).toBe(-1)
-    /* A compound has no space in it and must not be read as one either. */
-    expect(ruleAt('.mark--wide {\n  color: red;\n}\n', '.mark')).toBe(-1)
+    /* A compound, which has no space in it, and a selector reached through a
+       pseudo-class. Both end in the name and neither is it. */
+    expect(ruleAt('.wide.mark {\n  color: red;\n}\n', '.mark')).toBe(-1)
+    expect(ruleAt('.card:hover .mark {\n  color: red;\n}\n', '.mark')).toBe(-1)
+  })
+
+  it('says a rule nested inside another is not a rule of its own', () => {
+    /* Nesting puts a selector at the start of a line like any other, so nothing
+       in front of it says it draws only where the rule around it draws. A rule
+       inside an at-rule is a different thing and stays readable: half of what
+       this file holds lives inside a media query. */
+    expect(ruleAt('.track {\n  .mark {\n    color: red;\n  }\n}\n', '.mark')).toBe(-1)
+    expect(ruleAt('@media print {\n  .mark {\n    color: red;\n  }\n}\n', '.mark')).toBeGreaterThan(
+      -1,
+    )
+    /* And a rule after a nested one is still its own, so closing is counted too
+       and not merely opening. */
+    expect(
+      ruleAt('.track {\n  .other {\n  }\n}\n\n.mark {\n  color: red;\n}\n', '.mark'),
+    ).toBeGreaterThan(-1)
+
+    /* An at-rule that ends in a semicolon rather than a block, which is how two
+       of these sheets open. Counted into what follows it, the rule it stands
+       above reads as an at-rule itself and everything nested inside that rule
+       goes back to passing for its own. */
+    expect(
+      ruleAt(`@import 'table.css';\n\n.track {\n  .mark {\n  }\n}\n`, '.mark'),
+    ).toBe(-1)
   })
 
   it('reads a selector wherever a rule may put it', () => {
@@ -153,8 +216,10 @@ describe('reading a rule out of a stylesheet', () => {
        only thing saying the selector begins rather than continues. */
     expect(ruleAt('.mark {\n}\n', '.mark')).toBe(0)
     expect(ruleAt('.other, .mark {\n}\n', '.mark')).toBeGreaterThan(-1)
-    expect(ruleAt('@media print {\n  .mark {\n  }\n}\n', '.mark')).toBeGreaterThan(-1)
     expect(ruleAt('.other {\n}.mark {\n}\n', '.mark')).toBeGreaterThan(-1)
+    /* Against the brace of the query itself, which is the one mark a stylesheet
+       written down the page never produces. */
+    expect(ruleAt('@media print {.mark {\n  }\n}\n', '.mark')).toBeGreaterThan(-1)
   })
 
   it('closes a block on its own brace, wherever that brace is written', () => {
@@ -166,6 +231,13 @@ describe('reading a rule out of a stylesheet', () => {
 
     expect(css.slice(0, closes(css, 0))).not.toContain('color: blue')
     expect(css.slice(0, closes(css, 0))).toContain('color: red')
+
+    /* And it is the query's brace and not the first one, which is the rule's.
+       Read too early the answer is still a slice that holds everything anybody
+       looks for inside a query of one rule, and says nothing. */
+    const tidy = `@media print {\n  .mark {\n    color: red;\n  }\n}\n`
+
+    expect(closes(tidy, 0)).toBe(tidy.lastIndexOf('}'))
   })
 
   it('neither counts a brace written in prose nor reads a rule out of it', () => {
@@ -193,6 +265,18 @@ describe('reading a rule out of a stylesheet', () => {
 
     expect(onTelephone(css)).toContain('display: none')
     expect(onTelephone(css)).not.toContain('display: block')
+
+    /* And it is the query the sheet has, not the one a comment mentions. These
+       rules are all explained by a comment beside them, and the shortest way to
+       explain one is to write it out. */
+    const quoted = `/* Everything under \`@media (max-width: 699.98px) {\` goes. */\n@media (max-width: 699.98px) {\n  .mark {\n    display: none;\n  }\n}\n`
+
+    /* What comes back carries no end of a comment in it. Read in the comment
+       instead, the answer begins at the same words and runs through the rest of
+       the prose into the real query, so it looks right from either end and only
+       the middle of it says which one was found. */
+    expect(onTelephone(quoted)).not.toContain('*/')
+    expect(onTelephone(quoted)).toContain('display: none')
   })
 
   it('says so rather than running to the end of the file when nothing closes', () => {
@@ -321,7 +405,9 @@ describe('the sentence above a table of places', () => {
  * finds it and reports the rule safely inside it.
  */
 function onTelephone(css: string): string {
-  const at = css.indexOf('@media (max-width: 699.98px) {')
+  /* Looked for where the comments are blanked, as a selector is, so a query
+     quoted in prose is not the one that gets read. */
+  const at = unremarked(css).indexOf('@media (max-width: 699.98px) {')
 
   expect(at, 'there is no telephone query').toBeGreaterThan(-1)
   return css.slice(at, closes(css, at))
