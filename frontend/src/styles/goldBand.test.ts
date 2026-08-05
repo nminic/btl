@@ -41,6 +41,12 @@ function read(path: string): string {
  * Only the braces are being counted, and a brace written in prose is not one.
  * None of these sheets has one today; the rules read here are held by a comment
  * apiece explaining why they exist, so one is a matter of time.
+ *
+ * A brace inside a string or a `url()` is still counted, and none of the sheets
+ * has one of those either. It is the direction that matters if one arrives: a
+ * closing brace in a string closes a block that is still open, and a rule truly
+ * nested inside another then passes for its own without a word. An opening one
+ * refuses every rule below it in the file, which at least says so.
  */
 function unremarked(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
@@ -96,8 +102,9 @@ function closes(css: string, at: number): number {
  * a newline like any other, so nothing in front of it says that it draws only
  * where the rule around it draws; `.colchart__bar` nested in `.colchart__track`
  * would answer for the real one and hold a height nobody uses. An at-rule around
- * it is a different matter, and the reason this cannot simply refuse depth: half
- * the rules read here live inside a media query.
+ * it is a different matter, and the reason this cannot simply refuse depth: four
+ * of the rules read here live inside a media query, and refusing depth outright
+ * would take those four guards with it.
  */
 function ruleAt(css: string, selector: string): number {
   const plain = unremarked(css)
@@ -188,8 +195,8 @@ describe('reading a rule out of a stylesheet', () => {
   it('says a rule nested inside another is not a rule of its own', () => {
     /* Nesting puts a selector at the start of a line like any other, so nothing
        in front of it says it draws only where the rule around it draws. A rule
-       inside an at-rule is a different thing and stays readable: half of what
-       this file holds lives inside a media query. */
+       inside an at-rule is a different thing and stays readable: four of the
+       rules this file holds live inside a media query. */
     expect(ruleAt('.track {\n  .mark {\n    color: red;\n  }\n}\n', '.mark')).toBe(-1)
     expect(ruleAt('@media print {\n  .mark {\n    color: red;\n  }\n}\n', '.mark')).toBeGreaterThan(
       -1,
@@ -203,17 +210,20 @@ describe('reading a rule out of a stylesheet', () => {
     /* An at-rule that ends in a semicolon rather than a block, which is how two
        of these sheets open. Counted into what follows it, the rule it stands
        above reads as an at-rule itself and everything nested inside that rule
-       goes back to passing for its own. */
+       goes back to passing for its own. Four of the nine sheets read here open
+       that way. */
     expect(
       ruleAt(`@import 'table.css';\n\n.track {\n  .mark {\n  }\n}\n`, '.mark'),
     ).toBe(-1)
   })
 
   it('reads a selector wherever a rule may put it', () => {
-    /* At the start of the file, second in a list written on one line, indented
-       inside a query, and against a closing brace with nothing between. The list
-       on one line is the case a newline does not cover: there the comma is the
-       only thing saying the selector begins rather than continues. */
+    /* At the start of the file, second in a list written on one line, against
+       a closing brace with nothing between, and against the opening brace of a
+       query. The list on one line is the case a newline does not cover: there
+       the comma is the only thing saying the selector begins rather than
+       continues. Inside a query is in the nesting test below, where it is the
+       thing being told apart. */
     expect(ruleAt('.mark {\n}\n', '.mark')).toBe(0)
     expect(ruleAt('.other, .mark {\n}\n', '.mark')).toBeGreaterThan(-1)
     expect(ruleAt('.other {\n}.mark {\n}\n', '.mark')).toBeGreaterThan(-1)
