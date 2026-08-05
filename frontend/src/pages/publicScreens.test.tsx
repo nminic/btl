@@ -222,13 +222,13 @@ describe('Rankings', () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
-    await user.selectOptions(screen.getByLabelText('Kat.'), 'M40-54')
+    await user.selectOptions(screen.getByLabelText('Kategorija'), 'M40-54')
     expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeLessThan(all)
 
-    await user.selectOptions(screen.getByLabelText('Kat.'), '')
+    await user.selectOptions(screen.getByLabelText('Kategorija'), '')
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
 
-    await user.type(screen.getByLabelText('Pretraga po imenu ili članskom broju'), '000007')
+    await user.type(screen.getByLabelText('Pretraga'), '000007')
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
   })
 
@@ -283,7 +283,7 @@ describe('TopBoards', () => {
     'Najviše kraćih trka',
     'Najbolji napredak',
     'Najbolji trkački parovi',
-    'Najbolje pojedinačne trke',
+    'Najbolji pojedinačni rezultati',
   ]
 
   it('carries the ten boards in the order the owner laid them out', async () => {
@@ -456,8 +456,8 @@ describe('TopBoards', () => {
        width of the page. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
-    const races = board('Najbolje pojedinačne trke')
+    await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
+    const races = board('Najbolji pojedinačni rezultati')
 
     expect(races.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
       '#',
@@ -507,8 +507,8 @@ describe('TopBoards', () => {
        disagree about which went. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
-    const races = board('Najbolje pojedinačne trke')
+    await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
+    const races = board('Najbolji pojedinačni rezultati')
 
     const onPhone = (row: HTMLElement, role: 'columnheader' | 'cell') =>
       within(row)
@@ -542,7 +542,7 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
+    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolji pojedinačni rezultati']) {
       const rows = board(name).getAllByRole('row').slice(1)
       const cells = within(at(rows, 0)).getAllByRole('cell')
 
@@ -566,12 +566,12 @@ describe('TopBoards', () => {
        them. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
+    await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
 
     for (const [name, expected] of [
       ['Najviše kilometara', ['figure']],
       ['Najduže na stazi', ['figure']],
-      ['Najbolje pojedinačne trke', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
+      ['Najbolji pojedinačni rezultati', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
     ] as const) {
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
@@ -601,7 +601,7 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
+    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolji pojedinačni rezultati']) {
       const rows = board(name).getAllByRole('row').slice(1)
       /* Read off the place written in the row rather than counted, because a
          shared first place is two rows and both of them won: counting one would
@@ -1126,16 +1126,19 @@ describe('CompetitorProfile', () => {
     expect(screen.queryByText('Počasno članstvo')).not.toBeInTheDocument()
   })
 
-  it('leaves the one on a profile as it was, said and not drawn', async () => {
-    /* The pill stays on a profile, where the name of the competitor is the
-       heading and a labelled field beside it would read as a second one. */
+  it('names itself on a profile too, in the one shape the portal has', async () => {
+    /* It was a pill with its name hidden, on the reasoning that beside a name a
+       labelled field reads as a second heading. The owner asked for the same
+       shape on every screen on 05.08.2026, so the name is drawn here as well,
+       and the first year on offer is all of them. */
     renderAt('/sr/takmicar/000007')
 
     const control = await screen.findByLabelText('Sezona')
 
-    expect(within(must(control.closest('label'), 'labela')).getByText('Sezona')).toHaveClass(
+    expect(within(must(control.closest('label'), 'the label around it')).getByText('Sezona')).not.toHaveClass(
       'visually-hidden',
     )
+    expect(within(control).getAllByRole('option').map((one) => one.textContent)[0]).toBe('Sve')
   })
 })
 
@@ -1205,7 +1208,7 @@ describe('Teams', () => {
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
 
     expect(season.value).toBe('2026')
-    expect(within(season).queryByRole('option', { name: 'Sve sezone' })).not.toBeInTheDocument()
+    expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
 
     /* Every team keeps its row whatever the season, so what has to change is
        what the rows say: the points are of the season being looked at. */

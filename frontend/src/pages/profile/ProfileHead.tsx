@@ -44,7 +44,12 @@ export function ProfileHead({
         <h1 className="profile__name">
           {competitor.firstName} {competitor.lastName}
         </h1>
-        <SeasonPicker seasons={seasons} season={season} />
+        {/* Named and shaped like a field, as on the teams and the top boards
+            (owner, 05.08.2026). It was a pill with its name hidden from
+            04.08.2026, on the reasoning that beside a name a labelled field
+            reads as a second heading; the owner has since asked for the one
+            shape everywhere, and one shape is one thing to learn. */}
+        <SeasonPicker seasons={seasons} season={season} named />
       </div>
 
       <p className="profile__meta">

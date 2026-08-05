@@ -77,7 +77,11 @@ function Standing({
      out of thirty. */
   return (
     <>
-      <div className="rankings__filters">
+      {/* Level with the heading, at the far right, where every screen with a
+          control keeps it (owner, 05.08.2026). It is the one thing on this row
+          that says which table is being read rather than narrowing it, so it
+          belongs with the name of the screen and not among the filters. */}
+      <div className="rankings__head-tool">
         <div className="rankings__tabs" role="group" aria-label={t('rankings.title')}>
           <button
             type="button"
@@ -94,7 +98,9 @@ function Standing({
             {t('rankings.women')}
           </button>
         </div>
+      </div>
 
+      <div className="rankings__filters">
         <label className="rankings__field">
           <span>{t('rankings.season')}</span>
           <select value={season} onChange={(e) => onChange({ sezona: e.target.value })}>
@@ -107,7 +113,10 @@ function Standing({
         </label>
 
         <label className="rankings__field">
-          <span>{t('rankings.columns.category')}</span>
+          {/* Written out here and short in the table (owner, 05.08.2026): a
+              column heading is read against the eight beside it and lives on the
+              width of a telephone, a label on a control is read on its own. */}
+          <span>{t('rankings.categoryFilter')}</span>
           <select value={category ?? ''} onChange={(e) => onChange({ kategorija: e.target.value })}>
             <option value="">{t('rankings.allCategories')}</option>
             {categoriesOf(competitors, gender, season).map((code) => (
@@ -129,7 +138,15 @@ function Standing({
         </label>
       </div>
 
-      <p className="rankings__count">{t('rankings.rowCount', { count: rows.length })}</p>
+      {/* Said of the people counted, not of a word that covers both (owner,
+          05.08.2026): nine women are "9 takmičarki", and the case follows the
+          number the way Serbian asks, one takmičarka, two takmičarke, five
+          takmičarki. */}
+      <p className="rankings__count">
+        {t(gender === 'F' ? 'rankings.rowCountWomen' : 'rankings.rowCount', {
+          count: rows.length,
+        })}
+      </p>
 
       {rows.length === 0 ? (
         <p className="rankings__empty">{t('rankings.empty')}</p>
@@ -212,7 +229,7 @@ export function Rankings() {
   }
 
   return (
-    <div className="rankings">
+    <div className="rankings rankings--tooled">
       <h1>{t('rankings.title')}</h1>
 
       <Resource state={state}>
