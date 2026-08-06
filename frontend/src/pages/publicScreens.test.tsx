@@ -615,6 +615,41 @@ describe('TopBoards', () => {
     }
   })
 
+  it('carries the season in the address only while it is not the one it opens on', async () => {
+    /* The shared control, as on the teams and on a profile (its own reasoning is
+       in SeasonPicker.tsx). This screen used to write the year every time, so an
+       address named the season it was already showing; the boards drew the same
+       thing either way, and it is the one behaviour that changed when the copy
+       of this control here was given up for the shared one. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
+
+    const season = (await screen.findByLabelText('Sezona')) as HTMLSelectElement
+    const opens = season.value
+
+    expect(router.state.location.search).toBe('')
+
+    await user.selectOptions(season, '2019')
+    expect(router.state.location.search).toBe('?sezona=2019')
+
+    await user.selectOptions(season, opens)
+    expect(router.state.location.search).toBe('')
+    /* And the boards are of that season either way. */
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe(opens)
+  })
+
+  it('offers the seasons that have results, and never all of them at once', async () => {
+    /* A board of a season is a ladder of that season, so "all of them" is not a
+       thing it can show. The shared control offers it only where nothing is
+       handed in as the default, and this screen hands one in. */
+    renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
+
+    const season = (await screen.findByLabelText('Sezona')) as HTMLSelectElement
+
+    expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
+    expect(within(season).getAllByRole('option').length).toBeGreaterThan(3)
+  })
+
   it('tells the stylesheet how many characters the longest number in it is', async () => {
     /* The circle in a bar is as wide as that (owner, 05.08.2026: it has to be a
        circle, and a circle holding two decimals is wider than one holding a

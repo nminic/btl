@@ -4,6 +4,7 @@ import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
 import { ColumnChart, type ChartColumn } from '../components/ColumnChart'
 import { Resource } from '../components/Resource'
+import { SeasonPicker } from '../components/SeasonPicker'
 import {
   bestSingleRaces,
   defaultSeason,
@@ -275,12 +276,10 @@ function Boards({
   competitors,
   results,
   seasonParam,
-  onSeason,
 }: {
   competitors: Competitor[]
   results: Result[]
   seasonParam: string | null
-  onSeason: (season: string) => void
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -469,16 +468,15 @@ function Boards({
   return (
     <>
       <div className="boards__filters rankings__head-tool">
-        <label className="rankings__field">
-          <span>{t('topBoards.season')}</span>
-          <select value={season} onChange={(event) => onSeason(event.target.value)}>
-            {seasons.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* The shared control, as on the teams and on a profile. This screen had
+            a copy of the same markup, written before the control was shared; two
+            copies of one shape drift, and this is the shape the owner asked the
+            others to be brought to (04.08.2026).
+
+            `fallback` is the season this screen opens on, so the address carries
+            a year only while it is not that one, which is what every other
+            screen does and is the one thing that changed here. */}
+        <SeasonPicker seasons={seasons} season={String(season)} fallback={String(fallback)} />
       </div>
 
       <div className="boards__grid">
@@ -496,17 +494,10 @@ function Boards({
 
 export function TopBoards() {
   const { t } = useI18n()
-  const [params, setParams] = useFilterParams()
+  const [params] = useFilterParams()
   /* Only what the boards show. The teams went off this page with the layout of
      04.08.2026, and the file of teams went with them. */
   const state = combinePair(useCompetitors(), useResults())
-
-  function changeSeason(season: string) {
-    const merged = new URLSearchParams(params)
-
-    merged.set('sezona', season)
-    setParams(merged)
-  }
 
   return (
     <div className="boards rankings--tooled">
@@ -518,7 +509,6 @@ export function TopBoards() {
             competitors={competitors}
             results={results}
             seasonParam={params.get('sezona')}
-            onSeason={changeSeason}
           />
         )}
       </Resource>
