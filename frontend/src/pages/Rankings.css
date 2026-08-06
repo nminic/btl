@@ -1,7 +1,10 @@
 @import '../styles/table.css';
 
+/* Only what goes above it, as on the other two screens with a heading row: what
+   goes under comes from the rule a few lines down, which carries two classes to
+   this one's one, so a bottom margin written here is one nothing could move. */
 .rankings h1 {
-  margin: 0 0 var(--space-12);
+  margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }

@@ -166,9 +166,9 @@ export function Calendar() {
               {/* The month, then the two steps, then Danas, level with the
                   heading at the far right (owner, 05.08.2026). It stood under
                   the heading in the other order until then, on its own line.
-                  Reading right to left it is now the same three things a reader
-                  reaches for in the same order: where am I, one month either
-                  way, back to today.
+                  Read as it is written it is the three things in the order a
+                  reader wants them: where am I, one month either way, back to
+                  today.
 
                   The steps are arrows and nothing else, so each carries a name
                   of its own: a symbol is a drawing and a drawing is not a

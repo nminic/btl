@@ -644,7 +644,7 @@ describe('what the owner asked for on 04.08.2026', () => {
     },
     {
       of: 'src/pages/Profile.css',
-      rule: '.profile__title',
+      rule: '.profile__title.rankings--tooled',
       holds: /--head-end:\s*var\(--space-6\)/,
       why: 'a profile spends less of it, and its control moves with the heading',
     },
@@ -714,8 +714,8 @@ describe('what the owner asked for on 04.08.2026', () => {
       of: 'src/components/ColumnChart.css',
       rule: '.colchart__count',
       /* And wide enough for the longest number the chart draws. Left at the
-         floor, "286,25" is fifty-three pixels of text in a circle of
-         twenty-seven and stands half on the bar. */
+         floor, "286,25" is forty-one pixels of text in a circle of twenty-seven
+         and stands half on the bar; the circle this asks for is fifty-three. */
       holds: /max\(var\(--floor\), calc\(var\(--count-chars, 2\) \* 1ch \+ var\(--space-8\)\)\)/,
       why: 'and wide enough for the longest number in its own chart',
     },
@@ -733,14 +733,19 @@ describe('what the owner asked for on 04.08.2026', () => {
     for (const [file, rule] of [
       ['src/pages/TopBoards.css', '.boards h1'],
       ['src/pages/Calendar.css', '.calendar h1'],
+      ['src/pages/Rankings.css', '.rankings h1'],
+      ['src/pages/Profile.css', '.profile__name'],
     ] as const) {
-      /* Any bottom margin at all, however it is written: the shorthand, the
-         logical property, the old name, a token or a number. Held to values off
-         the space scale it let `margin-block-end: var(--head-end)` through, which
-         is the same fight in the same direction. `margin-block-start` is not a
-         bottom margin and does not match: after `margin` the pattern wants
-         either nothing or one of the two endings, then a colon. */
-      expect(bodyOf(read(file), rule)).not.toMatch(/margin(-block-end|-bottom)?:/)
+      /* Any bottom margin at all, however it is written: `margin`,
+         `margin-block`, `margin-block-end`, `margin-bottom`, with a token or a
+         number. Held to values off the space scale it let
+         `margin-block-end: var(--head-end)` through, and held to those four
+         spellings without `margin-block` it let the two-value shorthand through,
+         which is the same fight in the same direction each time.
+         `margin-block-start` is not a bottom margin and does not match: after
+         `margin` the pattern wants either nothing or one of the three endings,
+         then a colon. */
+      expect(bodyOf(read(file), rule)).not.toMatch(/margin(-block|-block-end|-bottom)?:/)
     }
   })
 

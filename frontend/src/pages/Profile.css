@@ -66,7 +66,11 @@
    one spends on the line that says who the person is. Set on the row rather than
    on the heading, so the control beside it moves with it: centring lines the two
    up only while their bottom margins are the same value. */
-.profile__title {
+/* Both classes, so this wins on weight rather than on the order the bundle put
+   two sheets in: the row itself carries `rankings--tooled`, which sets the same
+   custom property with one class, and one class against one class is settled by
+   whichever came last. */
+.profile__title.rankings--tooled {
   --head-end: var(--space-6);
 }
 
@@ -89,7 +93,7 @@
    because a wrapped name gaped; wrapped, it now gapes exactly as much as any
    other heading on the portal does, which is the price of the row being one row. */
 .profile__name {
-  margin: 0 0 var(--space-6);
+  margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
   /* A forty character surname with no space in it must not push the page
