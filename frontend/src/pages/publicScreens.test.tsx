@@ -1569,8 +1569,9 @@ describe('the row of whoever is signed in', () => {
        nothing from either, and the mark is a fact about the reader rather than
        decoration, so the row says it (WCAG 2.2 SC 1.4.1 is about not leaning on
        colour; this is the same thought carried to somebody who sees none of it).
-       Said inside the cell that numbers the row, so it is heard as part of the
-       place rather than tacked onto a name. */
+       Said in the first cell of the row, which on three of these four screens is
+       the one that numbers it; the results of an event have no such column, so
+       there it is the cell with the name in it. */
     for (const [path, said] of [
       ['/sr/tabela?sezona=2019', 'vaš red'],
       ['/sr/top-liste?sezona=2015', 'vaš red'],

@@ -1,33 +1,28 @@
 @import '../styles/table.css';
 
 /* Only what goes above it. What goes under is the shared row's business
-   (--head-end in Rankings.css), and a rule here of the same weight is settled by
-   whichever sheet the bundle puts last: the two agreed by coincidence, and below
-   560px they did not agree at all, twelve here against eight everywhere else. */
+   (Rankings.css: --head-end on the row, eight pixels below 560px), and a rule
+   here of the same weight is settled by whichever sheet the bundle puts last:
+   the two agreed by coincidence on the row, and below 560px they did not agree
+   at all, twelve here against eight everywhere else. */
 .boards h1 {
   margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
 
-/* Level with the heading, at the far right (owner, 01.08.2026). It is drawn
-   inside the Resource, which comes after the heading, so it is placed rather
-   than ordered: first row, second column.
+/* Level with the heading, at the far right (owner, 01.08.2026). Placed rather
+   than ordered, because it is drawn inside the Resource and so comes after the
+   heading in the markup: first row, second column.
 
-   Below 560px this is the whole of the distance under it, since the shared row
-   only exists above that. On the row itself the shared rule sets it (--head-end
-   in Rankings.css), and it is the same twelve pixels: centring puts each margin
-   box in the middle of the row, so a control whose box is twelve pixels shorter
+   Nothing here says what goes under it. On the row the shared rule does
+   (--head-end in Rankings.css), and it has to, because centring puts each margin
+   box in the middle of the row: a control whose box is twelve pixels shorter
    than the heading's is drawn six pixels low, which is what this one was until
    05.08.2026 and what the owner saw as it sitting differently from the one on
-   the teams. */
-.boards__filters {
-  margin-bottom: var(--space-12);
-}
-
-/* Placed rather than ordered, because it is drawn inside the Resource and so
-   comes after the heading in the markup. What goes under it is the shared value,
-   set on the rule above rather than zeroed here. */
+   the teams. Below 560px the grid is not there at all and the distance comes
+   from the block under this one, which brings its own. A margin written here was
+   measured at neither width. */
 @media (min-width: 560px) {
   .rankings--tooled > .boards__filters {
     grid-row: 1;
@@ -61,10 +56,10 @@
      (owner, 05.08.2026; `NameOrInitial` in TopBoards.tsx).
 
      A query about an inline-size container reads its content box, so these are
-     content widths. Measured over the seasons on the two boards this touches: at
-     245px, which is the narrow column of a 900px page, 144 of 208 names wrap; at
-     312px, nine; at 320px one still does; 321 is the first width at which none
-     of them does. So the question is asked at 320.
+     content widths. Measured over the seasons on the two boards this touches,
+     counting rows: at 245px, which is the narrow column of a 900px page, 144 of
+     208 wrap; at 312px, eleven; at 320px, seven, all of them the same name; at
+     321px, none. So the question is asked at 320.
 
      Which is a threshold nothing on the portal is near. The main column is
      capped at 1100px (Shell.css), so the narrow board is 317px wide on a 1280px

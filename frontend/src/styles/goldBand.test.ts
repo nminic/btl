@@ -655,6 +655,24 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'a profile spends less of it, and its control moves with the heading',
     },
     {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards h1',
+      /* Only what goes above it, and nothing about what goes under. Written as
+         `margin: 0 0 …` this rule weighs the same as the shared one and is
+         settled by whichever sheet the bundle puts last, so the two agreed by
+         coincidence on the row and not at all below 560px. Written as nothing,
+         the browser's own margin on an h1 returns and takes the control with
+         it. */
+      holds: /margin-block-start:\s*0/,
+      why: 'a heading with a control beside it says only what goes above it',
+    },
+    {
+      of: 'src/pages/Calendar.css',
+      rule: '.calendar h1',
+      holds: /margin-block-start:\s*0/,
+      why: 'and the calendar says the same, for the same reason',
+    },
+    {
       of: 'src/pages/Profile.css',
       rule: '.profile__head > h1',
       /* An event and a league build their head like a profile but have no
@@ -712,6 +730,19 @@ describe('what the owner asked for on 04.08.2026', () => {
       expect(bodyOf(read(file), rule)).toMatch(holds)
     })
   }
+
+  it('leaves what goes under a heading to the one rule that sets it', () => {
+    /* Two screens set the top margin of their own heading and must not set the
+       bottom: a rule of the same weight as the shared one is settled by the
+       order the bundle happens to put the sheets in, which is how these two
+       agreed on the row and disagreed below 560px. */
+    for (const [file, rule] of [
+      ['src/pages/TopBoards.css', '.boards h1'],
+      ['src/pages/Calendar.css', '.calendar h1'],
+    ] as const) {
+      expect(bodyOf(read(file), rule)).not.toMatch(/margin(-block-end|-bottom)?:\s*[^;]*var\(--space/)
+    }
+  })
 
   it('gives the heading and the control one rule, so neither can drift', () => {
     /* Both selectors of it, and the rule is found by the last of them. Written
