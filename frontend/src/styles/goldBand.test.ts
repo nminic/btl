@@ -726,10 +726,14 @@ describe('what the owner asked for on 04.08.2026', () => {
   }
 
   it('leaves what goes under a heading to the one rule that sets it', () => {
-    /* Two screens set the top margin of their own heading and must not set the
-       bottom: a rule of the same weight as the shared one is settled by the
-       order the bundle happens to put the sheets in, which is how these two
-       agreed on the row and disagreed below 560px. */
+    /* Four headings set their own top margin and must not set the bottom. Each
+       loses that argument in its own way and none of them by a rule anybody
+       reads: two of them weigh the same as the shared rule and are settled by
+       the order the bundle puts two sheets in, one by the order inside a single
+       sheet, and the fourth by weight. A bottom margin written in any of them is
+       either dead or a disagreement waiting for somebody to reorder an import,
+       which is how these screens came to keep twelve pixels against everybody
+       else's eight below 560px. */
     for (const [file, rule] of [
       ['src/pages/TopBoards.css', '.boards h1'],
       ['src/pages/Calendar.css', '.calendar h1'],
