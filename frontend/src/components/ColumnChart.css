@@ -34,7 +34,7 @@
      ColumnChart.tsx), because since 05.08.2026 the circle is as wide as the
      longest number in the chart: what hangs below a level of no height is half
      of that, so a chart of single digits keeps its twelve pixels and the one
-     that carries points to two decimals asks for twenty-seven. Written out
+     that carries points to two decimals asks for twenty-nine. Written out
      rather than halving --diameter, which is a length in `ch` of a font this
      element does not have. */
   padding: var(--space-10) var(--space-10)

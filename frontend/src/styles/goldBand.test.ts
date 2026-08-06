@@ -593,12 +593,6 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'the whole of a result takes the whole width of the page',
     },
     {
-      of: 'src/pages/TopBoards.css',
-      rule: '.boards__grid',
-      holds: /margin-block-start:\s*var\(--space-16\)/,
-      why: 'the boards start off the line of the heading, as the cards do',
-    },
-    {
       of: 'src/pages/Rankings.css',
       rule: '.rankings--tooled > .rankings__head-tool + *',
       holds: /margin-block-start:\s*var\(--space-16\)/,
@@ -740,7 +734,13 @@ describe('what the owner asked for on 04.08.2026', () => {
       ['src/pages/TopBoards.css', '.boards h1'],
       ['src/pages/Calendar.css', '.calendar h1'],
     ] as const) {
-      expect(bodyOf(read(file), rule)).not.toMatch(/margin(-block-end|-bottom)?:\s*[^;]*var\(--space/)
+      /* Any bottom margin at all, however it is written: the shorthand, the
+         logical property, the old name, a token or a number. Held to values off
+         the space scale it let `margin-block-end: var(--head-end)` through, which
+         is the same fight in the same direction. `margin-block-start` is not a
+         bottom margin and does not match: after `margin` the pattern wants
+         either nothing or one of the two endings, then a colon. */
+      expect(bodyOf(read(file), rule)).not.toMatch(/margin(-block-end|-bottom)?:/)
     }
   })
 

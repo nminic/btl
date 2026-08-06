@@ -1440,14 +1440,6 @@ describe('Teams', () => {
   })
 })
 
-/* The row that belongs to whoever is reading (owner, 05.08.2026: "moj red ...
- * treba da bude istaknut").
- *
- * Four screens draw it and one class carries it, so what is checked is that each
- * of the four asks the question and that a visitor is told nothing: the mark is
- * a fact about the reader, and a portal that marks a row for somebody who has
- * not signed in is telling them something about a stranger.
- */
 /* The control beside a heading, on every screen that has one (owner,
  * 05.08.2026: the same vertical position as on the teams).
  *
@@ -1484,6 +1476,15 @@ describe('the row a screen opens with', () => {
   }
 })
 
+/* The row that belongs to whoever is reading (owner, 05.08.2026: "moj red ...
+ * treba da bude istaknut").
+ *
+ * Four screens draw it and one class carries it, so what is checked is that
+ * each of the four asks the question, and that three of them say nothing to a
+ * visitor: the mark is a fact about the reader, and a portal that marks a row
+ * for somebody who has not signed in is telling them something about a
+ * stranger.
+ */
 describe('the row of whoever is signed in', () => {
   /* 000007 is in the field of 2019 on every one of these screens, and is in a
      team, which the standing of teams needs. */

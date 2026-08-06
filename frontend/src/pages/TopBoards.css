@@ -34,12 +34,12 @@
    lengths, then the board that stands beside them on a wide screen, and so on
    (TopBoards.tsx).
 
-   The same distance under the row of the heading that the cards of the
-   competitors keep (owner, 04.08.2026: there the content is "savršeno odvojeno"
-   from that line). Every screen with a control beside its heading now starts its
-   content at the same place. */
+   Nothing here about the distance above it. This is the first thing under the
+   row of the heading, so the shared rule sets that (Rankings.css), with two
+   classes to this one's one and the same sixteen pixels: written here as well it
+   was a declaration nothing could move, which is what the margin under the
+   control beside it turned out to be. */
 .boards__grid {
-  margin-block-start: var(--space-16);
   display: grid;
   gap: var(--space-16);
   /* minmax(0, …) rather than a bare 1fr: the smallest a track may be is
