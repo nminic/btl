@@ -15,10 +15,9 @@ import { useFilterParams } from '../app/useFilterParams'
  * both of them: the results below and the trophies on the other part are both
  * read season by season.
  *
- * The colours are set on the control and on its options. A select with
- * `appearance: none` and no background of its own hands the browser's own
- * dropdown a light text colour and a white sheet to put it on, and on the dark
- * theme the years were invisible in the open list.
+ * What it looks like is the shared field's business (`rankings__field` in
+ * Rankings.css), which is what one shape means: the pill had a stylesheet of its
+ * own here, and it went with the pill.
  */
 export function SeasonPicker({
   seasons,

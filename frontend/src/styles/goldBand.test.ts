@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { at, must } from '../test/at'
+import { must } from '../test/at'
 import sr from '../i18n/sr.json'
 
 /* The gold band that names a board, and the one thing about it no screen test
@@ -383,11 +383,42 @@ describe('the ink on the gold band', () => {
 describe('the gold on a row that belongs to the reader', () => {
   it('clears 4,5:1 in both themes', () => {
     const tokens = read('src/styles/tokens.css')
-    const tints = [...tokens.matchAll(/--mine-surface: (#[0-9a-f]{6});/g)].map(
-      (one) => one[1] as string,
-    )
-    const gold = (name: string) =>
-      must(tokens.match(new RegExp(`${name}: (#[0-9a-f]{6});`))?.[1], `${name} is not a colour`)
+
+    /* Every value a token is given, in the order the file gives them: the light
+       theme, then the dark one the system asks for, then the dark one the switch
+       on the page sets. A token with one value has one, and the same one answers
+       for every theme. */
+    const given = (name: string) =>
+      [...tokens.matchAll(new RegExp(`${name}: ([^;]+);`, 'g'))].map((one) => one[1] as string)
+
+    /* Followed to a colour, because half of these are written as the name of
+       another token. Read as text, `--accent: var(--blue-700)` is not a colour
+       and a regex looking for a hex quietly skips it, so the light theme falls
+       out of the check and the first hex it does find answers for it: written
+       out by hand, the dark link was measured against the dark tint here while
+       the value the portal actually draws was somewhere else entirely. */
+    const colour = (value: string, seen: string[] = []): string => {
+      const named = value.trim().match(/^var\((--[a-z0-9-]+)\)$/)
+
+      if (named === null) {
+        expect(value.trim(), `${value} is not a colour`).toMatch(/^#[0-9a-f]{6}$/)
+        return value.trim()
+      }
+
+      const next = must(named[1], 'the name inside var()')
+
+      expect(seen, `${next} is defined in terms of itself`).not.toContain(next)
+      return colour(must(given(next)[0], `${next} has no value`), [...seen, next])
+    }
+
+    /** That token as the theme at `index` draws it, or as the light theme does. */
+    const inTheme = (name: string, index: number) => {
+      const values = given(name)
+
+      return colour(must(values[index] ?? values[0], `${name} has no value`))
+    }
+
+    const tints = given('--mine-surface').map((one) => colour(one))
 
     /* One for the light theme and two for the dark, which is how every token
        with a value per theme is written here. Fewer means a theme has quietly
@@ -398,18 +429,10 @@ describe('the gold on a row that belongs to the reader', () => {
        leads somewhere, so the accent is on it as often as the gold is, and the
        first dark tint chosen put the accent at 4,36:1 while the gold on it read
        8,41:1 and said nothing about it. */
-    const pairs = [
-      { ink: gold('--gold-600'), on: at(tints, 0), theme: 'light gold' },
-      { ink: gold('--gold-300'), on: at(tints, 1), theme: 'dark gold, by the system' },
-      { ink: gold('--gold-300'), on: at(tints, 2), theme: 'dark gold, by the switch' },
-      { ink: gold('--blue-700'), on: at(tints, 0), theme: 'light link' },
-      { ink: '#5b93ec', on: at(tints, 1), theme: 'dark link, by the system' },
-      { ink: '#5b93ec', on: at(tints, 2), theme: 'dark link, by the switch' },
-      { ink: gold('--black'), on: at(tints, 0), theme: 'light text' },
-      { ink: '#eef2f8', on: at(tints, 1), theme: 'dark text, by the system' },
-      { ink: gold('--gray-700'), on: at(tints, 0), theme: 'light muted' },
-      { ink: '#a3b0c4', on: at(tints, 1), theme: 'dark muted, by the system' },
-    ]
+    const inks = ['--gold-text', '--accent', '--text', '--text-muted']
+    const pairs = inks.flatMap((ink) =>
+      tints.map((on, index) => ({ ink: inTheme(ink, index), on, theme: `${ink}, theme ${index}` })),
+    )
 
     for (const pair of pairs) {
       expect(
@@ -500,7 +523,7 @@ describe('a surname a card has no room for', () => {
 
     expect(bodyOf(css, '.boards__board')).toMatch(/container-type:\s*inline-size/)
 
-    const at = css.indexOf('@container (max-width: 319.98px) {')
+    const at = css.indexOf('@container (max-width: 320px) {')
 
     expect(at, 'there is no question asked of the card').toBeGreaterThan(-1)
 
@@ -630,6 +653,17 @@ describe('what the owner asked for on 04.08.2026', () => {
       rule: '.profile__title',
       holds: /--head-end:\s*var\(--space-6\)/,
       why: 'a profile spends less of it, and its control moves with the heading',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__head > h1',
+      /* An event and a league build their head like a profile but have no
+         control beside the name, so they draw a bare h1 here. Their whole
+         styling was a rule about `.profile__head h1`, and when the name of a
+         competitor took its own size that rule went with it and both pages fell
+         back to the browser's 2em. */
+      holds: /font-size:\s*clamp\(26px, 4\.5vw, 36px\)/,
+      why: 'a page built like a profile has a heading even with no control on it',
     },
     {
       of: 'src/pages/Profile.css',

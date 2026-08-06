@@ -23,7 +23,6 @@
       "description": "Svi članovi lige sa kategorijom, brojem trka i osvojenim bodovima, i veza ka profilu svakog od njih."
     },
     "teams": {
-    "myTeam": "vaš tim",
       "title": "BTL timovi",
       "description": "Timovi koji se takmiče u ligi, sa mestom, brojem članova i bodovima koje su osvojili zajedno."
     },
@@ -665,6 +664,7 @@
     }
   },
   "teams": {
+    "myTeam": "vaš tim",
     "title": "Timovi",
     "columns": {
       "team": "Tim",

@@ -195,9 +195,11 @@ function Standing({
                 >
                   <td className="table__position">
                     {row.position}
-                    {/* Heard instead of the colour, inside the cell that
-                        numbers the row, so it reads as part of the place rather
-                        than as a word tacked onto a name. */}
+                    {/* Heard instead of the colour, in the first cell of the
+                        row, which here is the one that numbers it: it reads as
+                        part of the place rather than as a word on a name. The
+                        results of an event have no such column, so there it is
+                        said in the cell that carries the name. */}
                     {mineClass(row.competitor.memberNumber, mine) === undefined ? null : (
                       <span className="visually-hidden"> {t('rankings.myRow')}</span>
                     )}

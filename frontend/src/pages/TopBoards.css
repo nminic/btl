@@ -1,7 +1,11 @@
 @import '../styles/table.css';
 
+/* Only what goes above it. What goes under is the shared row's business
+   (--head-end in Rankings.css), and a rule here of the same weight is settled by
+   whichever sheet the bundle puts last: the two agreed by coincidence, and below
+   560px they did not agree at all, twelve here against eight everywhere else. */
 .boards h1 {
-  margin: 0 0 var(--space-12);
+  margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
@@ -10,12 +14,13 @@
    inside the Resource, which comes after the heading, so it is placed rather
    than ordered: first row, second column.
 
-   The shared distance under it on that row (--head-end in Rankings.css). It had
-   none there at all, having been zeroed, and centring puts each margin box in
-   the middle of the row: a control whose box is twelve pixels shorter than the
-   heading's is drawn six pixels low. Measured on the live page before this, six
-   pixels, which is what the owner saw on 05.08.2026 as this one sitting
-   differently from the one on the teams. */
+   Below 560px this is the whole of the distance under it, since the shared row
+   only exists above that. On the row itself the shared rule sets it (--head-end
+   in Rankings.css), and it is the same twelve pixels: centring puts each margin
+   box in the middle of the row, so a control whose box is twelve pixels shorter
+   than the heading's is drawn six pixels low, which is what this one was until
+   05.08.2026 and what the owner saw as it sitting differently from the one on
+   the teams. */
 .boards__filters {
   margin-bottom: var(--space-12);
 }
@@ -56,12 +61,16 @@
      (owner, 05.08.2026; `NameOrInitial` in TopBoards.tsx).
 
      A query about an inline-size container reads its content box, so these are
-     content widths. Measured over all sixteen seasons on the two boards this
-     touches: at 245px, which is the narrow column of a 900px page, 144 of 208
-     names wrap; at 312px, nine; from 320px, none. So the question is asked just
-     under 320, which is the first width at which every name fits. Asked at 340
-     it also shortened every name on a 1400px page, where nine of them would have
-     wrapped and 199 would not. */
+     content widths. Measured over the seasons on the two boards this touches: at
+     245px, which is the narrow column of a 900px page, 144 of 208 names wrap; at
+     312px, nine; at 320px one still does; 321 is the first width at which none
+     of them does. So the question is asked at 320.
+
+     Which is a threshold nothing on the portal is near. The main column is
+     capped at 1100px (Shell.css), so the narrow board is 317px wide on a 1280px
+     page and on a 1920px one alike, and these two boards abbreviate at every
+     desktop width the portal produces. The number matters if that cap moves, and
+     it is measured rather than guessed for the same reason. */
   container-type: inline-size;
 }
 
@@ -70,7 +79,7 @@
   display: none;
 }
 
-@container (max-width: 319.98px) {
+@container (max-width: 320px) {
   /* Off the screen rather than out of the page, so the surname is still read
      out. The recipe is `visually-hidden` in index.css, written out here because
      what is being switched is whether it applies, and a class cannot be put on

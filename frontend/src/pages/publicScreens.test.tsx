@@ -658,9 +658,13 @@ describe('TopBoards', () => {
        longest numbers stand half on the bare bar again.
 
        Both levels of a bar count, because both carry a number, and the lower one
-       carries the season before, which is the longer of the two. 2013, because
-       there the season before runs to six characters and the gain to five, so a
-       count taken from the gain alone comes out short and says so. */
+       carries the season before. Which of the two runs longer is a fact about
+       the season and not about the chart: in 2013 it is the gain, at six
+       characters against five. So what this holds is that the number handed to
+       the stylesheet is the longest thing actually drawn on the board; that both
+       levels are counted is held on a chart written for it, in
+       pages/home/widgets.test.tsx, because no season in the record has the lower
+       level longer than the upper one. */
     renderAt('/sr/top-liste?sezona=2013')
 
     const board = must(
@@ -1470,7 +1474,12 @@ describe('the row a screen opens with', () => {
       const row = must(heading.parentElement, 'the row around the heading')
 
       expect(row.className).toContain('rankings--tooled')
-      expect(row.querySelector('.rankings__head-tool')).not.toBeNull()
+      /* A child of that row and not merely somewhere inside it: the row places
+         its own children, so a control wrapped in one more element is a control
+         that has left the row while every class it wears is still in the page. */
+      expect(
+        [...row.children].some((one) => one.className.includes('rankings__head-tool')),
+      ).toBe(true)
     })
   }
 })
@@ -1562,16 +1571,32 @@ describe('the row of whoever is signed in', () => {
        colour; this is the same thought carried to somebody who sees none of it).
        Said inside the cell that numbers the row, so it is heard as part of the
        place rather than tacked onto a name. */
-    renderAt('/sr/tabela?sezona=2019', 'competitor', ME)
+    for (const [path, said] of [
+      ['/sr/tabela?sezona=2019', 'vaš red'],
+      ['/sr/top-liste?sezona=2015', 'vaš red'],
+      ['/sr/kalendar/beogradski-maraton-2019-04-14', 'vaš red'],
+      ['/sr/timovi', 'vaš tim'],
+    ] as const) {
+      cleanup()
+      renderAt(path, 'competitor', ME)
+      await screen.findAllByRole('row')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
-    const mine = at(marked(rows), 0)
+      const rows = screen.getAllByRole('row')
+      const mine = marked(rows)
 
-    expect(within(mine).getByText('vaš red')).toBeInTheDocument()
+      expect(mine.length, `no row of his on ${path}`).toBeGreaterThan(0)
 
-    /* And nobody else's row says it. */
-    for (const row of rows.filter((one) => !one.classList.contains('table__mine'))) {
-      expect(within(row).queryByText('vaš red')).not.toBeInTheDocument()
+      /* Once in each of his rows, and in none of anybody else's. Said twice it
+         is heard twice; said in the wrong dictionary block it comes out as the
+         key itself, which is what happened on the teams and what no screen test
+         was looking at. */
+      for (const row of mine) {
+        expect(within(row).getAllByText(said)).toHaveLength(1)
+      }
+
+      for (const row of rows.filter((one) => !one.classList.contains('table__mine'))) {
+        expect(within(row).queryByText(said)).not.toBeInTheDocument()
+      }
     }
   })
 

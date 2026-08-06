@@ -3,8 +3,9 @@
 /* What goes under it is the shared row's business (--head-end in Rankings.css),
    so only what goes above it is set here. Written as `margin: 0 0 …` it was a
    rule of the same weight as the shared one and settled by whichever sheet the
-   bundle happened to put last; written as nothing at all, the browser's own 2em
-   pushed the heading twenty-seven pixels down and took the control with it. */
+   bundle happened to put last; written as nothing at all, the browser's own
+   margin on an h1 pushed the heading twenty-seven pixels down and took the
+   control with it. */
 .calendar h1 {
   margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
