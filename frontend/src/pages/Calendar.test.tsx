@@ -211,8 +211,12 @@ describe('Calendar', () => {
     expect(chips.length).toBeGreaterThan(0)
     await user.click(first(chips))
 
+    /* The event, by its own name in the heading. It used to be checked by the
+       way back to the calendar, which came off on 06.08.2026: the browser
+       already has one, and a screen that draws its own is a second answer to a
+       question nobody asked. */
     expect(
-      await screen.findByRole('link', { name: 'Nazad na kalendar' }, { timeout: 4000 }),
+      await screen.findByRole('heading', { level: 1 }, { timeout: 4000 }),
     ).toBeVisible()
   })
 })

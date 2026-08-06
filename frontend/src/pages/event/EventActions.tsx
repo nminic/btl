@@ -137,7 +137,11 @@ export function EventActions({
   }
 
   return (
-    <div className="event__actions">
+    /* The row's own second child, so a visitor with nothing to press leaves the
+       row with one child rather than an empty box centred against the name
+       (Rankings.css). The component already knows whether it draws anything;
+       wrapping it outside meant the wrapper was drawn either way. */
+    <div className="event__actions rankings__head-tool">
       {mayEdit && (
         <>
           <button type="button" className="button button--secondary" onClick={copy}>

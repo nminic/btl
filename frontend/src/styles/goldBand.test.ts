@@ -1000,28 +1000,22 @@ describe('the height of a bar on the column chart', () => {
   })
 })
 
-/* The head of an event, which becomes a row only when there is something to put
- * in its second column.
+/* The head of an event, since 06.08.2026.
  *
- * Without the condition it was a two-column grid whatever was in it, and the
- * buttons are drawn for an administrator and for a member and for nobody else:
- * every visitor who was not signed in got a head laid out in two columns with
- * nothing in the second, so its four lines paired off into a grid two by two and
- * the name of the event stood beside the way back to the calendar. A screen test
- * cannot see it, because jsdom lays nothing out.
+ * It laid out a grid of its own here, written with `:has` so that a visitor with
+ * no buttons did not get a head in two columns with nothing in the second. It
+ * takes the shared row now (Rankings.css), which answers that more simply: the
+ * buttons draw no box at all when there is nothing to press, so the row has one
+ * child and lays it out as one.
+ *
+ * What is left to hold is that the old grid is gone. Two grids on one head fight
+ * each other and jsdom lays out neither, so nothing else would say so.
  */
 describe('the head of an event', () => {
-  const css = () => read('src/pages/event/EventActions.css')
+  it('leaves the row to the shared rule rather than laying out one of its own', () => {
+    const css = read('src/pages/event/EventActions.css')
 
-  it('becomes a row only where the buttons are', () => {
-    expect(css()).toMatch(/\.profile__head--acting:has\(> \.event__actions\) \{/)
-    /* And never on the class alone, which is on the head whatever is inside it. */
-    expect(css()).not.toMatch(/\n {2}\.profile__head--acting \{/)
-  })
-
-  it('runs the buttons down whatever the head holds, rather than a counted number of rows', () => {
-    expect(bodyOf(css(), '.profile__head--acting:has(> .event__actions) > .event__actions')).toMatch(
-      /grid-row:\s*1 \/ -1/,
-    )
+    expect(css).not.toMatch(/\.profile__head--acting/)
+    expect(css).not.toMatch(/display:\s*grid/)
   })
 })

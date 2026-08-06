@@ -239,38 +239,22 @@ export function EventDetail() {
             />
 
             <div className="profile">
-              {/* What can be done with the event, at the top right of it. The
-                  head becomes a row for it and is a column everywhere else,
-                  which is why the modifier is on the head rather than on the
-                  buttons. */}
-              <header className="profile__head profile__head--acting">
-                <p className="profile__meta">
-                  <Link to={`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`}>
-                    {t('event.backToCalendar')}
-                  </Link>
-                </p>
-                <h1>{event.name}</h1>
-                <p className="profile__meta">
-                  {formatDate(event.date, locale)}
-                  {' · '}
-                  {event.city}
-                  {' · '}
-                  {t(`calendar.status.${event.status}`)}
-                </p>
-                <p className="profile__meta">
-                  {t('event.organizer')}
-                  {': '}
-                  {event.organizer}
-                </p>
+              {/* The name and what can be done with it, on the row every screen
+                  with a control keeps (owner, 05.08.2026; Rankings.css).
 
-                {/* Only once both have arrived, and this is not impatience.
-                    The buttons act on the races and the results: deleting takes
-                    them with it and copying carries them across. Drawn against
-                    what had not loaded yet, the question said "and 0 of its
-                    races", the deletion took the event and left every race and
-                    every result behind it, and the copy came across empty. The
-                    head is a column while they are absent and becomes a row when
-                    they arrive (EventActions.css). */}
+                  Three things came off this head on 06.08.2026, all on the
+                  owner's word: the way back to the calendar, because the browser
+                  already has one; the line reading the date, the city and the
+                  status; and the organiser. What is left is the name of the
+                  event and the two things a reader can do about it.
+
+                  The buttons wait for the races and the results, and this is not
+                  impatience: they act on both. Deleting takes them with it and
+                  copying carries them across, and drawn against what had not
+                  loaded yet the question said "and 0 of its races", the deletion
+                  left every race behind and the copy came across empty. */}
+              <header className="profile__head rankings--tooled">
+                <h1>{event.name}</h1>
                 {races.status === 'ready' && results.status === 'ready' && (
                   <EventActions event={event} races={races.data} results={results.data} />
                 )}
