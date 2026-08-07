@@ -262,6 +262,15 @@ export type PendingItem = {
   /** What the decision is about: the name of the league, the team, the member
    *  or the event. */
   subject: string
+  /**
+   * The same thing by its id, where approving it has to write a record about it.
+   *
+   * A name is what a moderator reads and is not what a record is filed under: two
+   * events across two seasons carry one name (PDL P6), so a comment approved by
+   * its subject would land on whichever of them was looked up first. Empty on
+   * every queue whose approval writes nothing.
+   */
+  subjectId: string
   /** The text to read before deciding: the biography, the comment, the reason
    *  given, or the file name of a picture. */
   body: string

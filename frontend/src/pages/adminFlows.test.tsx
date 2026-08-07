@@ -1471,6 +1471,7 @@ describe('the six queues read from the file', () => {
         memberNumber: '',
         who: '',
         subject: 'Nepoznat pošiljalac',
+        subjectId: '',
         body: 'profilna.jpg',
         currentDate: '',
         proposedDate: '',

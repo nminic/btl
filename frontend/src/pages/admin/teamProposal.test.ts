@@ -13,6 +13,7 @@ const item = (over: Partial<PendingItem> = {}): PendingItem => ({
   memberNumber: '000007',
   who: 'Strahinja Vukićević',
   subject: 'Trkači Morave',
+  subjectId: '',
   body: '',
   currentDate: '',
   proposedDate: '',

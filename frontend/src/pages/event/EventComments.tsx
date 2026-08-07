@@ -5,7 +5,7 @@ import type { Competitor, EventComment } from '../../data/types'
 import { overall } from './overall'
 import { combinePair, useComments, useCompetitors } from '../../data/useResource'
 import { Resource } from '../../components/Resource'
-import { formatDate } from '../../i18n/format'
+import { formatDate, formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import './EventComments.css'
 
@@ -25,7 +25,7 @@ const MARKS = ['organisation', 'value', 'ambience'] as const
  * name leads to their profile the way every name on the portal does (PDL P11).
  */
 export function EventComments({ eventId }: { eventId: string }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const state = combinePair(useComments(), useCompetitors())
 
   return (
@@ -37,7 +37,13 @@ export function EventComments({ eventId }: { eventId: string }) {
           event while its comments were on their way. */}
       <Resource state={state} inline label={t('event.comments')}>
         {([comments, competitors]) => {
-          const mine = comments.filter((one) => one.eventId === eventId)
+          /* Newest first, which is the order anybody reads a list of comments
+             in. Unsorted it was the order of the file, and once a moderator
+             starts publishing during a visit that order is "whatever the file
+             had, then whatever was approved just now". */
+          const mine = comments
+            .filter((one) => one.eventId === eventId)
+            .sort((left, right) => right.date.localeCompare(left.date))
 
           if (mine.length === 0) {
             return <p className="profile__empty">{t('event.noComments')}</p>
@@ -50,7 +56,6 @@ export function EventComments({ eventId }: { eventId: string }) {
                   key={comment.id}
                   comment={comment}
                   who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
-                  locale={locale}
                 />
               ))}
             </ol>
@@ -61,16 +66,8 @@ export function EventComments({ eventId }: { eventId: string }) {
   )
 }
 
-function Comment({
-  comment,
-  who,
-  locale,
-}: {
-  comment: EventComment
-  who: Competitor | undefined
-  locale: string
-}) {
-  const { t } = useI18n()
+function Comment({ comment, who }: { comment: EventComment; who: Competitor | undefined }) {
+  const { locale, t } = useI18n()
 
   return (
     <li className="comments__one">
@@ -92,13 +89,20 @@ function Comment({
           <p className="comments__date">{formatDate(comment.date, locale)}</p>
         </div>
 
+        {/* The figure, and the stars beside it drawn to the whole below it.
+            Rounded to the nearest, 4,7 was five filled stars and a reader heard
+            "5 od 5" beside a printed 4,7; drawn down, the stars never overstate
+            what was given and the figure carries the rest. The stars are the
+            picture and the figure is the fact, so only the figure is named. */}
         <p className="comments__overall">
           <Stars
             name={`overall-${comment.id}`}
             label={t('event.rating.overall')}
-            value={Math.round(overall(comment.rating))}
+            value={Math.floor(overall(comment.rating))}
           />
-          <span className="comments__figure">{overall(comment.rating).toLocaleString(locale)}</span>
+          <span className="comments__figure">
+            {t('event.rating.overall')}: {formatNumber(overall(comment.rating), locale, 1)}
+          </span>
         </p>
       </div>
 

@@ -5,7 +5,10 @@ import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, useTeams } from '../../data/useResource'
-import { formatShortDate } from '../../i18n/format'
+import { Stars } from '../../components/Stars'
+import type { EventRating } from '../../data/types'
+import { formatNumber, formatShortDate } from '../../i18n/format'
+import { overall } from '../event/overall'
 import countries from '../../data/countries.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
@@ -154,6 +157,30 @@ function Refused({ why, id }: { why: string | null; id: string }) {
  * Written into the same overlay of edits the biography uses, keyed by the item,
  * so approving reads whatever is on screen rather than what arrived.
  */
+/** The three marks a comment carries, as they are read everywhere else: not a
+ *  control, and each one says its number in words for anybody who cannot see the
+ *  stars (components/Stars.tsx). */
+function RatingGiven({ rating }: { rating: EventRating }) {
+  const { t } = useI18n()
+
+  return (
+    <dl className="pending__marks">
+      {(['organisation', 'value', 'ambience'] as const).map((mark) => (
+        <div key={mark}>
+          <dt>{t(`event.rating.${mark}`)}</dt>
+          <dd>
+            <Stars name={mark} label={t(`event.rating.${mark}`)} value={rating[mark]} />
+          </dd>
+        </div>
+      ))}
+      <div>
+        <dt>{t('event.rating.overall')}</dt>
+        <dd className="pending__overall">{formatNumber(overall(rating), 'sr', 1)}</dd>
+      </div>
+    </dl>
+  )
+}
+
 function TeamFields({ item }: { item: PendingItem }) {
   const { t } = useI18n()
   const { edits, edit } = useSession()
@@ -458,6 +485,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             is made (owner, 03.08.2026). Only here: the other five
                             queues decide about something that already exists. */}
                         {queue.id === 'teams' && <TeamFields item={one} />}
+
+                        {/* What the member thought of it, which is the half of a
+                            comment the moderator was deciding about without
+                            seeing (owner, 06.08.2026). Only here: a rating is
+                            about an event and the other six queues are not. */}
+                        {queue.id === 'comments' && <RatingGiven rating={one.rating} />}
 
                         <dl className="pending__facts">
                           {datesOf(one).map((fact) => (

@@ -8,6 +8,7 @@ import type {
   EventComment,
   League,
   Moderator,
+  PendingItem,
   Race,
   Result,
   StaticPage,
@@ -209,7 +210,51 @@ function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T)
 }
 
 export const useBadges = () => useResource<Badge[]>('badges')
-export const useComments = () => useResource<EventComment[]>('comments')
+/**
+ * What is published under an event: what the file carries, and what a moderator
+ * has let out during this visit.
+ *
+ * Merged here rather than at the screen, for the reason `usePending` gives about
+ * proposals: one place decides what "published" means, so the event page cannot
+ * disagree with the queue that published it. Without this a moderator approved a
+ * comment and nothing appeared anywhere, which is the whole of what approving one
+ * is for (owner, 06.08.2026).
+ */
+export function useComments(): ResourceState<EventComment[]> {
+  const state = useResource<EventComment[]>('comments')
+  /* The queue read here rather than through `usePending`, which lives with the
+     administration and reads this module: importing it back would be a circle.
+     What that hook adds is the proposals of this visit, which is what the second
+     half of this is. */
+  const queue = useResource<PendingItem[]>('verification')
+  const { decisions, proposals } = useSession()
+
+  return useMemo(() => {
+    if (state.status !== 'ready' || queue.status !== 'ready') {
+      return state
+    }
+
+    const letOut = [...queue.data, ...proposals]
+      .filter((one) => one.queue === 'comments' && decisions[one.id]?.status === 'approved')
+      .map(published)
+
+    return { status: 'ready', data: [...state.data, ...letOut] }
+  }, [state, queue, proposals, decisions])
+}
+
+/** A queue item as the record it becomes. The queue keeps the name the member
+ *  had on the day, which is what a comment carries after they leave (PDL P11). */
+function published(item: PendingItem): EventComment {
+  return {
+    id: item.id,
+    eventId: item.subjectId,
+    memberNumber: item.memberNumber,
+    who: item.who,
+    date: item.date,
+    rating: item.rating,
+    body: item.body,
+  }
+}
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 export const useLeagues = () => useResource<League[]>('leagues')

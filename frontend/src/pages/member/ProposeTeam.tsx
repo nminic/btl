@@ -103,6 +103,8 @@ export function ProposeTeam() {
               memberNumber: mine,
               who,
               subject: name,
+              /* A team does not exist yet, so there is no id to file it under. */
+              subjectId: '',
               /* What the moderator reads before deciding. The town and the
                  country belong in it rather than in fields of their own: the
                  queue shows one piece of text per item, the same on all seven,

@@ -210,10 +210,6 @@
       "few": "{count} nepročitane",
       "other": "{count} nepročitanih"
     },
-    "rateEvent": {
-      "title": "Ocena događaja",
-      "description": "Ocenite organizaciju, vrednost za novac i ambijent, i ostavite komentar drugim članovima."
-    },
     "noMessages": "Nema poruka.",
     "allMessages": "Sve poruke",
     "waiting": "{count} na čekanju",

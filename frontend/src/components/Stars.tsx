@@ -1,8 +1,10 @@
 import { useI18n } from '../i18n/useI18n'
 import './Stars.css'
 
-/** How many points a rating can carry. Five, and the same five everywhere. */
-export const STARS = 5
+/** How many points a rating can carry. Five, and the same five everywhere. Not
+ *  exported: nothing outside asks how many there are, and a number exported for
+ *  nobody is a number two files can start disagreeing about. */
+const STARS = 5
 
 /**
  * A five pointed star, empty or filled.

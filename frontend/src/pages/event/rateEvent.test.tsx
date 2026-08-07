@@ -2,6 +2,8 @@ import { screen, within } from '@testing-library/react'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
+import { loadResource } from '../../data/client'
+import type { PendingItem } from '../../data/types'
 import { overall } from './overall'
 
 /* Rating an event, and reading what other people made of it (owner,
@@ -15,6 +17,17 @@ import { overall } from './overall'
  */
 const EVENT = 'fruskogorski-maraton-2010-05-08'
 const ME = '000007'
+
+/** All three marks given, which is what the form asks for before it will send
+ *  anything: the overall is their average (PDL P6), so one mark on its own would
+ *  be published as a third of itself. */
+async function rateAll(user: ReturnType<typeof setupUser>, mark = 4) {
+  for (const name of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+    const group = screen.getByRole('group', { name })
+
+    await user.click(within(group).getAllByRole('radio')[mark - 1] as HTMLElement)
+  }
+}
 
 describe('rating an event', () => {
   it('asks for three marks and a comment that may be left out', async () => {
@@ -56,9 +69,15 @@ describe('rating an event', () => {
        member came to give. */
     expect(send).toBeDisabled()
 
-    const group = screen.getByRole('group', { name: 'Ambijent' })
+    /* Two of the three is still not a rating. The average divides by three
+       whatever is given, so a mark left out is published as a nought and the
+       same card calls it "Bez ocene". */
+    const ambience = screen.getByRole('group', { name: 'Ambijent' })
 
-    await user.click(within(group).getAllByRole('radio')[3] as HTMLElement)
+    await user.click(within(ambience).getAllByRole('radio')[3] as HTMLElement)
+    expect(send).toBeDisabled()
+
+    await rateAll(user, 4)
     expect(send).toBeEnabled()
 
     await user.click(send)
@@ -78,9 +97,7 @@ describe('rating an event', () => {
     await user.type(box, 'Staza je bila jasno obeležena.')
     expect(box).toHaveValue('Staza je bila jasno obeležena.')
 
-    await user.click(
-      within(screen.getByRole('group', { name: 'Organizacija' })).getAllByRole('radio')[4] as HTMLElement,
-    )
+    await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
@@ -95,9 +112,9 @@ describe('rating an event', () => {
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
 
-    const group = await screen.findByRole('group', { name: 'Organizacija' })
+    await screen.findByRole('group', { name: 'Organizacija' })
 
-    await user.click(within(group).getAllByRole('radio')[2] as HTMLElement)
+    await rateAll(user, 3)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
@@ -116,6 +133,52 @@ describe('rating an event', () => {
     renderAt('/sr/kalendar/nepostojeci-dogadjaj/ocena', 'competitor', ME)
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Ovog događaja nema.' })).toBeVisible()
+  })
+})
+
+describe('a comment a moderator lets out', () => {
+  it('shows the moderator the marks it carries, before they decide', async () => {
+    renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const first = must(within(waiting).getAllByRole('listitem')[0], 'a waiting comment')
+
+    /* A comment is a rating and a paragraph, and the queue was drawing only the
+       paragraph: the moderator was deciding about half of what was sent. */
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent', 'Ukupna ocena']) {
+      expect(within(first).getByText(mark)).toBeInTheDocument()
+    }
+    expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).not.toHaveLength(0)
+  })
+
+  it('appears under its event once it is approved, and not before', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    /* Read out of the record, so what is looked for under the event is the very
+       comment that was approved rather than any comment at all. */
+    const queue = await loadResource<PendingItem[]>('verification')
+    const sent = must(
+      queue.find((one) => one.queue === 'comments' && one.subjectId !== '' && one.body !== ''),
+      'a waiting comment with words in it',
+    )
+
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const item = must(
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((one) => (one.textContent ?? '').includes(sent.body)),
+      'that comment in the queue',
+    )
+
+    await user.click(within(item).getByRole('button', { name: 'Odobri' }))
+
+    /* Approving is what publishes it. Until this it wrote a decision into the
+       session and the event page went on showing what the file carried, so a
+       moderator approved a comment and nothing appeared anywhere. */
+    await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
+
+    expect(await screen.findByText(sent.body)).toBeVisible()
   })
 })
 
@@ -143,8 +206,9 @@ describe('the comments under an event', () => {
     for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
       expect(within(first).getByText(mark)).toBeInTheDocument()
     }
-    /* And the overall, which is the average of the three. */
-    expect(within(first).getByText('4,7')).toBeInTheDocument()
+    /* And the overall, which is the average of the three, said as a figure with
+       its name beside it rather than left to the stars alone. */
+    expect(within(first).getByText('Ukupna ocena: 4,7')).toBeInTheDocument()
   })
 
   it('keeps a comment whose author has left the league, with no link on the name', async () => {

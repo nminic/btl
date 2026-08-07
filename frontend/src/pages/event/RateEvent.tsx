@@ -82,6 +82,9 @@ export function RateEvent() {
               memberNumber: mine,
               who,
               subject: event.name,
+              /* By the id as well, because approving it publishes a comment about
+                 this edition and not about whatever else carries the name. */
+              subjectId: event.id,
               body: comment,
               currentDate: '',
               proposedDate: '',
@@ -134,13 +137,16 @@ export function RateEvent() {
               </div>
 
               <p className="member__actions">
-                {/* Nothing to send until there is a rating. The comment is
-                    optional and the rating is what a member came to give, so
-                    the one that may be empty is not the one that gates it. */}
+                {/* All three, and not one of them. The overall is their average
+                    (PDL P6), so a rating with one mark given divides by three
+                    anyway: five for the organisation alone published as 1,7 and
+                    the same card called the other two "Bez ocene", which is the
+                    record saying "nobody rated this" and averaging it as nought
+                    in one breath. The comment is what may be left out. */}
                 <button
                   type="button"
                   className="button button--primary"
-                  disabled={MARKS.every((mark) => rating[mark] === 0)}
+                  disabled={MARKS.some((mark) => rating[mark] === 0)}
                   onClick={send}
                 >
                   {t('event.commentSend')}

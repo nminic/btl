@@ -25,8 +25,9 @@
 
 .stars--asking legend {
   /* Its own line above the stars, and the whole width of it, because a legend
-     that shares a line with the first star reads as a label on that star. */
-  float: left;
+     that shares a line with the first star reads as a label on that star. The
+     width and the wrapping do that; `float: left` is the old recipe for it and
+     does nothing inside a flex container. */
   inline-size: 100%;
   margin-block-end: var(--space-4);
   padding: 0;
@@ -49,12 +50,6 @@
 .stars__mark {
   inline-size: 1.35rem;
   block-size: 1.35rem;
-}
-
-/* The star the pointer is over, and every star before it, so the row fills as a
-   finger moves along it rather than lighting one star in the middle of five. */
-.stars--asking:hover .stars__pick .stars__mark {
-  color: var(--gold-text);
 }
 
 /* The ring the keyboard needs, drawn around the star rather than around a radio
