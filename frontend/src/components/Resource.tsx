@@ -9,7 +9,7 @@ type Props<T> = {
   /* Set where this Resource owns a part of the screen rather than the screen.
      Four open a second one inside their own: the front page around the
      president's address, the event around its races and its results, the league
-     around its standing, and any written page carrying the wall of badges, which
+     around its standing, and any written page carrying the wall of ducats, which
      since 04.08.2026 is a section of the rulebook. */
   inline?: boolean
   /* What is being waited for, for a part that has a name. Only read when

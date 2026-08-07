@@ -151,7 +151,7 @@ function lastDayOf(year: number, month: number): number {
  * (PDL P28a, 30.07.2026, "Ispis vremenskog opsega").
  *
  * A range that describes a period is not spelled out as one. "od 1. jula do 31.
- * jula 2027" is a sentence a reader has to decode into "jul"; the badges screen
+ * jula 2027" is a sentence a reader has to decode into "jul"; the ducats screen
  * was worse than that and put the two ISO strings on a public page.
  *
  * Three shapes, and the order they are tried in is part of the rule rather than
@@ -166,7 +166,7 @@ function lastDayOf(year: number, month: number): number {
  * Everything else is null, and the caller says "from X to Y" in its own words
  * with the two dates written for the reader.
  *
- * General rather than the badges' own, because a range is a range wherever one
+ * General rather than the ducats' own, because a range is a range wherever one
  * is shown. Both dates are given: a half-open range describes no period.
  */
 export function wholePeriod(from: string, to: string, locale: string): string | null {

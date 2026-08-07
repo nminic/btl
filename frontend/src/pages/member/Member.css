@@ -222,7 +222,7 @@
   font-weight: 700;
 }
 
-.badges__sentence {
+.ducats__sentence {
   margin: 0;
   padding: var(--space-12);
   border-left: 3px solid var(--gold-500);

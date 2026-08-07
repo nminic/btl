@@ -159,13 +159,13 @@ export type PageSection = {
    * has no pictures in it (ADL A7), which is right: an administrator writes these
    * records, and a page that can point at any image is a page that can point at
    * anything. One name for one drawing the portal already has is a different
-   * thing, and it is what the rulebook needed when the owner made the badges a
+   * thing, and it is what the rulebook needed when the owner made the ducats a
    * section of it rather than a screen of their own (04.08.2026).
    *
-   * The list is closed and it is this: `badges`, the wall of every badge the
+   * The list is closed and it is this: `ducats`, the wall of every ducat the
    * league awards.
    */
-  gallery?: 'badges'
+  gallery?: 'ducats'
 }
 
 /** A page of written text: the rulebook, the terms, the page about the league.

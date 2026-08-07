@@ -6,7 +6,7 @@ import moderator from '../../forms/definitions/admin-moderator.form.json'
 import strana from '../../forms/definitions/admin-strana.form.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import trka from '../../forms/definitions/admin-trka.form.json'
-import znacka from '../../forms/definitions/admin-znacka.form.json'
+import dukat from '../../forms/definitions/admin-dukat.form.json'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { isoDate } from '../../forms/dateField'
@@ -245,10 +245,10 @@ export const LEAGUES: EntityDef = {
 }
 
 export const BADGES: EntityDef = {
-  id: 'badges',
-  labelKey: 'admin.badges',
-  path: 'administracija/znacke',
-  form: znacka as FormDef,
+  id: 'ducats',
+  labelKey: 'admin.ducats',
+  path: 'administracija/dukati',
+  form: dukat as FormDef,
   idField: 'id',
   blank: {},
 }

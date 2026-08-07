@@ -9,7 +9,7 @@ import { at, first, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Admin } from './admin/Admin'
-import { ruleSentence, type BadgeRule } from '../data/badgeRule'
+import { ruleSentence, type DucatRule } from '../data/ducatRule'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
@@ -90,7 +90,7 @@ describe('administration is closed to everyone else', () => {
     ['/sr/administracija/entiteti'],
     ['/sr/administracija/clanovi'],
     ['/sr/administracija/dogadjaji'],
-    ['/sr/administracija/znacke'],
+    ['/sr/administracija/dukati'],
     ['/sr/administracija/cenovnik'],
     // Every one of the eight queues, so a screen cannot be added to the list
     // without the door on it. Granular moderator rights (PDL P21) are not
@@ -138,7 +138,7 @@ describe('the panel', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Administracija' })).toBeVisible()
     expect(screen.getByText('Čeka proveru')).toBeVisible()
-    /* Badges are edited from the section of records like the other eight, so
+    /* Ducats are edited from the section of records like the other eight, so
        the panel no longer offers a road of its own to them (owner, 01.08.2026).
        What it offers is the two sections and the price list, which is in neither
        of them and lost its place in the header when the navigation lost its
@@ -146,7 +146,7 @@ describe('the panel', () => {
     expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Cenovnik' })).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Značke' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Dukati' })).not.toBeInTheDocument()
   })
 
   it('counts everything that is waiting, not results alone', async () => {
@@ -304,14 +304,14 @@ describe('the price list', () => {
 })
 
 /** The sentence the rule tryer reads back. It lives in a live region of its own,
- *  which is what tells it apart from the same sentence on a badge in the table
+ *  which is what tells it apart from the same sentence on a ducat in the table
  *  above it. */
 const sentence = () => screen.getByRole('status', { name: 'Proba pravila' })
 
-describe('the badge rule editor', () => {
+describe('the ducat rule editor', () => {
   it('builds a rule from closed lists and reads it back as a sentence', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/znacke', 'superadmin')
+    renderAt('/sr/administracija/dukati', 'superadmin')
 
     await screen.findByLabelText('Vrsta')
     expect(sentence()).toHaveTextContent(/broj trka bude najmanje 10/)
@@ -325,7 +325,7 @@ describe('the badge rule editor', () => {
   /* There is no operator to choose any more: the condition is always "at least"
      (PDL, 30.07.2026), so the only closed list left is the kind. */
   it('offers no way to write a condition by hand', async () => {
-    renderAt('/sr/administracija/znacke', 'superadmin')
+    renderAt('/sr/administracija/dukati', 'superadmin')
 
     await screen.findByLabelText('Vrsta')
     // A free text box here is the shortest path to running code on the server.
@@ -338,7 +338,7 @@ describe('the badge rule editor', () => {
      chosen. */
   it('reads a rule about a single race back as a sentence too', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/znacke', 'superadmin')
+    renderAt('/sr/administracija/dukati', 'superadmin')
 
     await user.selectOptions(await screen.findByLabelText('Vrsta'), 'bestRaceKm')
 
@@ -347,7 +347,7 @@ describe('the badge rule editor', () => {
 })
 
 describe('ruleSentence', () => {
-  const base: BadgeRule = {
+  const base: DucatRule = {
     kind: 'raceCount',
     value: 5,
     from: '',
@@ -357,17 +357,17 @@ describe('ruleSentence', () => {
     `${key}${params === undefined ? '' : JSON.stringify(params)}`
 
   it('says a rule with no dates counts every season', () => {
-    expect(ruleSentence(base, t, 'sr')).toContain('badges.everSince')
+    expect(ruleSentence(base, t, 'sr')).toContain('ducats.everSince')
   })
 
   it('says a rule with both dates counts between them', () => {
     /* A range that describes no whole period is read out from one end to the
        other, and both ends are written for the reader. They used to be dropped
-       in as they are stored, so a badge on the public page said "od 2027-07-01
+       in as they are stored, so a ducat on the public page said "od 2027-07-01
        do 2027-07-15" (PDL P28a, 30.07.2026). */
     const sentence = ruleSentence({ ...base, from: '2027-07-01', to: '2027-07-15' }, t, 'sr')
 
-    expect(sentence).toContain('badges.between')
+    expect(sentence).toContain('ducats.between')
     expect(sentence).toContain('15. 7. 2027.')
     expect(sentence).not.toContain('2027-07')
   })
@@ -377,25 +377,25 @@ describe('ruleSentence', () => {
     const during = (from: string, to: string) =>
       ruleSentence({ ...base, from, to }, t, 'sr')
 
-    expect(during('2027-07-01', '2027-07-31')).toContain('badges.during{"period":"jul 2027.')
-    expect(during('2027-01-01', '2027-12-31')).toContain('badges.during{"period":"2027.')
-    expect(during('2027-10-15', '2027-10-15')).toContain('badges.during{"period":"15. 10. 2027.')
+    expect(during('2027-07-01', '2027-07-31')).toContain('ducats.during{"period":"jul 2027.')
+    expect(during('2027-01-01', '2027-12-31')).toContain('ducats.during{"period":"2027.')
+    expect(during('2027-10-15', '2027-10-15')).toContain('ducats.during{"period":"15. 10. 2027.')
   })
 
   it('says a rule with one date counts from it, or up to it', () => {
     // One end is not a period, so it is a date, and a date is written for the
     // reader here as everywhere else.
     expect(ruleSentence({ ...base, from: '2027-01-01' }, t, 'sr')).toContain(
-      'badges.after{"from":"1. 1. 2027.',
+      'ducats.after{"from":"1. 1. 2027.',
     )
     expect(ruleSentence({ ...base, to: '2027-12-31' }, t, 'sr')).toContain(
-      'badges.before{"to":"31. 12. 2027.',
+      'ducats.before{"to":"31. 12. 2027.',
     )
   })
 
   it('writes the value the way this language writes a number', () => {
     // A marathon is 42,2 in Serbian and 42.2 in the data. The sentence and the
-    // threshold on the badge stand on the same card and must agree.
+    // threshold on the ducat stand on the same card and must agree.
     expect(ruleSentence({ ...base, kind: 'bestRaceKm', value: 42.2 }, t, 'sr')).toContain('42,2')
     expect(ruleSentence({ ...base, kind: 'totalKm', value: 1200 }, t, 'sr')).toContain('1.200')
   })
@@ -612,10 +612,10 @@ describe('payment payloads', () => {
   })
 })
 
-describe('the badge rule dates', () => {
+describe('the ducat rule dates', () => {
   it('narrows the rule to a range and back again', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/znacke', 'superadmin')
+    renderAt('/sr/administracija/dukati', 'superadmin')
 
     /* The superadmin types the dates the way a date field takes them and reads
        back the sentence the member will read, so no date in it is an ISO string
@@ -635,7 +635,7 @@ describe('the badge rule dates', () => {
 
   it('takes a value that is typed rather than chosen', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/znacke', 'superadmin')
+    renderAt('/sr/administracija/dukati', 'superadmin')
 
     const value = await screen.findByLabelText('Vrednost')
     await user.clear(value)
@@ -817,7 +817,7 @@ describe('verification', () => {
       QUEUES.map((queue) => `/sr/${queue.path}`),
     )
 
-    // Nought is shown as well, unlike the badge in the header: here it is the
+    // Nought is shown as well, unlike the ducat in the header: here it is the
     // answer to "is there anything left", and nothing is not an answer.
     expect(within(nav.getByRole('link', { name: /Rezultati/ })).getByText('0')).toBeVisible()
   })
@@ -865,7 +865,7 @@ describe('verification', () => {
     await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
 
     /* The navigation carries the sum of everything waiting (PDL P28a), and it
-       says so in the name of the link rather than only in the badge, so a screen
+       says so in the name of the link rather than only in the ducat, so a screen
        reader hears the number too. It is the one word of administration that is
        left in the header since 04.08.2026, so the sum stands on that. The sum is
        every queue at once, so the one result is checked on its own row. */
@@ -1758,7 +1758,7 @@ describe('the section of entities', () => {
       'Trke',
       'Timovi',
       'Lige',
-      'Značke',
+      'Dukati',
       'Statične strane',
       'Moderatori',
     ]

@@ -13,7 +13,7 @@
 const BASE = '/mock'
 
 export const RESOURCE_NAMES = [
-  'badges',
+  'ducats',
   /* What members wrote about an event, after a moderator let it out (owner,
      06.08.2026). Its own record and not the queue it came through: the queue is
      what is waiting, and reading a published comment out of it would mean every

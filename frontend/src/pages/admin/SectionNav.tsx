@@ -109,7 +109,7 @@ function Section({
                   <span className="adminsection__name">{entry.label}</span>
                   {entry.count !== undefined && (
                     /* Shown at nought as well, unlike the counter in the header.
-                       There it is a badge and nothing is what nought looks like;
+                       There it is a ducat and nothing is what nought looks like;
                        here it is the answer to "is there anything left", and the
                        moderator is watching it come down as they work. */
                     <span
@@ -184,7 +184,7 @@ export function VerificationSection({ children }: { children: ReactNode }) {
         label: t(queue.labelKey),
         /* Counted for this queue rather than looked up in a record of counts.
            The lookup answered `number | undefined`, and the prop takes an
-           optional number, so a queue missing from the record drew no badge at
+           optional number, so a queue missing from the record drew no ducat at
            all, which is the one thing the note below says must not happen. */
         count: countFor(waiting, queue),
       }))}

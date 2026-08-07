@@ -29,7 +29,7 @@ import { Guard } from '../pages/admin/Guard'
 import { needFor } from '../pages/admin/needs'
 import { EntitiesSection, VerificationSection } from '../pages/admin/SectionNav'
 import { Verification } from '../pages/admin/Verification'
-import { AdminBadges } from '../pages/admin/AdminBadges'
+import { AdminDucats } from '../pages/admin/AdminDucats'
 import { AdminEvents } from '../pages/admin/AdminEvents'
 import { AdminMembers } from '../pages/admin/AdminMembers'
 import { AdminLeagues } from '../pages/admin/AdminLeagues'
@@ -53,7 +53,7 @@ import { SignIn } from '../pages/member/SignIn'
 import { LocaleLayout } from './LocaleLayout'
 import { ROUTES, type RouteDef } from './routes'
 
-/* Screens that already exist, which is every address in ROUTES since the badges
+/* Screens that already exist, which is every address in ROUTES since the ducats
  * arrived. Anything else in ROUTES renders a placeholder, so the navigation can
  * be walked end to end from the day an address is added. */
 const SCREENS: Record<string, ReactElement> = {
@@ -190,12 +190,12 @@ export const routeObjects: RouteObject[] = [
         path: route.path,
         element: guarded(route.path, screenFor(route)),
       })),
-      /* Badges are edited from the section of records like the other eight, so
+      /* Ducats are edited from the section of records like the other eight, so
          they are no longer a navigation entry of their own (owner, 01.08.2026).
          The address stays, because the section links to it. */
       {
-        path: 'administracija/znacke',
-        element: guarded('administracija/znacke', <AdminBadges />),
+        path: 'administracija/dukati',
+        element: guarded('administracija/dukati', <AdminDucats />),
       },
       ...DETAILS,
       { path: '*', element: <NotFound /> },

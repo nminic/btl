@@ -5,7 +5,7 @@ import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { BADGE_KINDS } from '../../data/badgeRule'
+import { BADGE_KINDS } from '../../data/ducatRule'
 import {
   BADGES,
   ENTITY_FORMS,
@@ -77,10 +77,10 @@ const SCREENS: Screen[] = [
   { entity: RACES, path: 'administracija/trke', list: 'Trke' },
   { entity: TEAMS, path: 'administracija/timovi', list: 'Timovi' },
   { entity: LEAGUES, path: 'administracija/lige', list: 'Lige' },
-  /* Badges were the one of the eight with no list to open a record from, back
-     when nothing had written a badge down anywhere. They are generated data like
+  /* Ducats were the one of the eight with no list to open a record from, back
+     when nothing had written a ducat down anywhere. They are generated data like
      the other seven now, so they answer the same four questions. */
-  { entity: BADGES, path: 'administracija/znacke', list: 'Značke' },
+  { entity: BADGES, path: 'administracija/dukati', list: 'Dukati' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
   /* The ninth. It is entered and changed by the same renderer reading the same
      kind of JSON as the other eight, which is the whole point of it being an
@@ -244,50 +244,50 @@ describe('a record that is entered rather than changed', () => {
     expect(row.getByText(t('admin.basisValue.honorary'))).toBeVisible()
   })
 
-  /* The screen used to start from an empty list, from the days when no badge was
-     written down anywhere. It reads the same badges the members see now, so a
+  /* The screen used to start from an empty list, from the days when no ducat was
+     written down anywhere. It reads the same ducats the members see now, so a
      new one joins them rather than standing alone. */
-  it('joins the badges already on the screen', async () => {
+  it('joins the ducats already on the screen', async () => {
     const user = setupUser()
-    const title = t('admin.form.new.badges')
-    renderAt('/sr/administracija/znacke', 'superadmin')
+    const title = t('admin.form.new.ducats')
+    renderAt('/sr/administracija/dukati', 'superadmin')
 
     const before = within(
-      await screen.findByRole('table', { name: t('admin.badges') }),
+      await screen.findByRole('table', { name: t('admin.ducats') }),
     ).getAllByRole('row').length
 
     for (const name of ['Prvih deset', 'Prvih sto']) {
       await user.click(screen.getByRole('button', { name: title }))
       const form = open(title)
 
-      await user.type(form.getByLabelText(labelled(t('admin.field.badgeName'))), name)
-      await user.selectOptions(form.getByLabelText(labelled(t('badges.kindLabel'))), 'totalKm')
-      await user.type(form.getByLabelText(labelled(t('badges.valueLabel'))), '100')
+      await user.type(form.getByLabelText(labelled(t('admin.field.ducatName'))), name)
+      await user.selectOptions(form.getByLabelText(labelled(t('ducats.kindLabel'))), 'totalKm')
+      await user.type(form.getByLabelText(labelled(t('ducats.valueLabel'))), '100')
       await user.click(form.getByRole('button', { name: t('form.submit') }))
       await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
     }
 
-    const list = within(screen.getByRole('table', { name: t('admin.badges') }))
+    const list = within(screen.getByRole('table', { name: t('admin.ducats') }))
     expect(list.getAllByRole('row')).toHaveLength(before + 2)
     /* The rule is read back as a sentence, out of the same words the rule tryer
        below the list uses. Read out of the two rows that were entered, because
-       the generated badges have rules of their own and some of them read the
+       the generated ducats have rules of their own and some of them read the
        same way. */
     for (const name of ['Prvih deset', 'Prvih sto']) {
       const row = within(must(list.getByText(name).closest('tr'), 'tr'))
       expect(row.getByText(/ukupno kilometara bude najmanje 100/)).toBeVisible()
     }
 
-    // A badge that was entered can be opened again like any other record.
+    // A ducat that was entered can be opened again like any other record.
     await user.click(list.getByRole('button', { name: 'Otvori: Prvih sto' }))
-    const edit = open(t('admin.form.edit.badges'))
-    await user.clear(edit.getByLabelText(labelled(t('badges.valueLabel'))))
-    await user.type(edit.getByLabelText(labelled(t('badges.valueLabel'))), '1000')
+    const edit = open(t('admin.form.edit.ducats'))
+    await user.clear(edit.getByLabelText(labelled(t('ducats.valueLabel'))))
+    await user.type(edit.getByLabelText(labelled(t('ducats.valueLabel'))), '1000')
     await user.click(edit.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     // Written the way this language writes a number, because the sentence and
-    // the threshold on the badge itself stand on one card and have to agree.
+    // the threshold on the ducat itself stand on one card and have to agree.
     expect(screen.getByText(/ukupno kilometara bude najmanje 1\.000/)).toBeVisible()
   })
 })
@@ -630,13 +630,13 @@ describe('the words the eight forms need', () => {
     })
   })
 
-  it('offer the badge kinds the rule engine knows, and no others', () => {
+  it('offer the ducat kinds the rule engine knows, and no others', () => {
     // Two closed lists that must never drift apart: the one on the form and the
     // one the sentence is built from.
     const options =
       must(
         BADGES.form.fields.find((one) => one.name === 'kind'),
-        'a kind field on the badge form',
+        'a kind field on the ducat form',
       ).options ?? []
 
     expect(options.map((one) => one.value)).toEqual([...BADGE_KINDS])

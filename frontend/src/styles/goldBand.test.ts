@@ -465,7 +465,7 @@ describe('the name that has to be cut', () => {
  *
  * It had a gold edge down its left side, which made a line of plain explanation
  * read as something to act on; gold is reserved for the podium, for medals and
- * for badges (tokens.css). The owner had the edge taken off on 01.08.2026 and
+ * for ducats (tokens.css). The owner had the edge taken off on 01.08.2026 and
  * the sentence itself on 04.08.2026, so what is held now is that neither the
  * rule nor the words came back.
  */

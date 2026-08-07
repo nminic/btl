@@ -1,4 +1,4 @@
-/* The mark of a badge. See BadgeArt.tsx for the contract and for what the
+/* The mark of a ducat. See DucatArt.tsx for the contract and for what the
    drawing is trying to be.
 
    The disc keeps its own colours in both themes, the way the gold medallions of
@@ -7,7 +7,7 @@
    does follow the theme is the label under it, because that is text of the
    page. */
 
-.badge-art {
+.ducat-art {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,9 +20,9 @@
 
    It is its own container, which is how one component knows how large it has
    been drawn. Everything that scales below scales off the disc rather than off
-   the viewport, because the same badge is meant to be drawn at more than one
+   the viewport, because the same ducat is meant to be drawn at more than one
    size on the same screen width. Whoever draws it says how large: the wall of
-   badges sets --badge-art-size and shrinks it on a narrow window (BadgeGallery.css).
+   ducats sets --ducat-art-size and shrinks it on a narrow window (DucatGallery.css).
    The fallback here is the size the wall uses at its widest.
 
    It carries no padding, and that is load bearing rather than tidy. A container
@@ -30,11 +30,11 @@
    cqw and every breakpoint below mean a fraction of what it says: with the 11%
    a side this began with, the 92px cut below matched a disc of 118px. The
    number is inset by its own box instead. */
-.badge-art__disc {
+.ducat-art__disc {
   container-type: inline-size;
-  container-name: badge-art;
+  container-name: ducat-art;
   position: relative;
-  width: var(--badge-art-size, 6.5rem);
+  width: var(--ducat-art-size, 6.5rem);
   max-width: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -46,7 +46,7 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
 }
 
-.badge-art__shape {
+.ducat-art__shape {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -56,20 +56,20 @@
   stroke-linejoin: round;
 }
 
-.badge-art__rim {
+.ducat-art__rim {
   stroke: var(--gold-400);
   stroke-width: 1.7;
 }
 
-.badge-art__rule {
+.ducat-art__rule {
   stroke: var(--gold-400);
   stroke-width: 0.8;
   opacity: 0.42;
 }
 
 /* The emblem: an outline that carries the shape, filled just enough to keep its
-   mass when the badge is small. */
-.badge-art__emblem {
+   mass when the ducat is small. */
+.ducat-art__emblem {
   stroke: var(--gold-300);
   stroke-width: 1.6;
   fill: var(--gold-300);
@@ -78,20 +78,20 @@
 
 /* The wreath is line only: it has no inside to fill. Its spurs are heavier than
    the fine detail of a filled emblem, because they have no mass behind them. */
-.badge-art__wreath {
+.ducat-art__wreath {
   fill: none;
   stroke-width: 2;
 }
 
-.badge-art__wreath .badge-art__fine {
+.ducat-art__wreath .ducat-art__fine {
   stroke-width: 1.6;
   opacity: 0.9;
 }
 
-/* The detail that only exists on a badge above about ninety pixels. Below the
+/* The detail that only exists on a ducat above about ninety pixels. Below the
    size where these strokes stop being lines and start being grey, they are
    removed rather than left to muddy the emblem. */
-.badge-art__fine {
+.ducat-art__fine {
   stroke-width: 1.1;
   fill: none;
   opacity: 0.75;
@@ -112,21 +112,21 @@
 
    The 20cqw cap is exactly the size at which two lines still clear the emblem,
    and everything up to five characters reaches it. That is deliberate: a wall
-   of badges then carries one size of type, and only the rare long number steps
+   of ducats then carries one size of type, and only the rare long number steps
    down. */
-.badge-art__threshold {
+.ducat-art__threshold {
   position: absolute;
   inset: 0 0 18%;
   margin: auto;
   width: fit-content;
   height: fit-content;
-  font-size: min(20cqw, calc(112cqw / var(--badge-art-chars, 4)));
+  font-size: min(20cqw, calc(112cqw / var(--ducat-art-chars, 4)));
   /* Wide enough for the widest word and never wide enough for a second one, so
      a threshold carrying a unit always reads as a number with the unit under
      it. Left to break where it happened to run out of room, "1.000 km" went
      onto two lines while the longer "10.000 km", set smaller, stayed on one:
-     the two badges then looked like two different designs. */
-  max-width: min(78%, calc(var(--badge-art-chars, 4) * 0.66em));
+     the two ducats then looked like two different designs. */
+  max-width: min(78%, calc(var(--ducat-art-chars, 4) * 0.66em));
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.015em;
@@ -142,10 +142,10 @@
 }
 
 /* The second: under the drawing. Absent, rather than empty, when there is none,
-   so a badge without a label is a coin and not a coin with a gap under it. */
-.badge-art__label {
+   so a ducat without a label is a coin and not a coin with a gap under it. */
+.ducat-art__label {
   max-width: 100%;
-  font-size: clamp(0.6rem, calc(var(--badge-art-size, 6.5rem) * 0.105), 0.85rem);
+  font-size: clamp(0.6rem, calc(var(--ducat-art-size, 6.5rem) * 0.105), 0.85rem);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -155,28 +155,28 @@
   overflow-wrap: anywhere;
 }
 
-/* One step down in density, and the badge is the same badge on either side of
+/* One step down in density, and the ducat is the same ducat on either side of
    it: under about ninety pixels the hairlines go, the fine detail of the emblem
    and the inner rule. The cut is where a 1.1 unit stroke stops being a whole
    pixel, which is also where it stops being a line and becomes a paler one. The
    rim thickens to make up for it, for the same reason.
 
    Reached on a telephone, where the wall shrinks the disc to 72px at 360px wide
-   and crosses this line at about 460px (BadgeGallery.css).
+   and crosses this line at about 460px (DucatGallery.css).
 
    There was a second step under it, at 64px, which dropped the emblem and gave
    the number the whole coin. It went, because nothing on this portal draws a
-   badge that small: it was written for a row of badges on a profile that does
+   ducat that small: it was written for a row of ducats on a profile that does
    not exist, so it was a rule that could not run and a comment describing a
    screen nobody could open. It comes back with that row, and with a size that
    actually reaches it. */
-@container badge-art (max-width: 92px) {
-  .badge-art__fine,
-  .badge-art__rule {
+@container ducat-art (max-width: 92px) {
+  .ducat-art__fine,
+  .ducat-art__rule {
     display: none;
   }
 
-  .badge-art__rim {
+  .ducat-art__rim {
     stroke-width: 2.6;
   }
 }

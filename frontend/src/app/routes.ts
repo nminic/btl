@@ -24,7 +24,7 @@ export type RouteDef = Address & { labelKey: string }
  * levels deep for four of its six entries, so most of the portal was two clicks
  * and one hidden panel away; it is seven names now, each of them a place. What
  * had been the group "O ligi" is gone with it: the story of the league and the
- * page of prices are deleted, and the badges have become a section of the
+ * page of prices are deleted, and the ducats have become a section of the
  * rulebook, which is where the rule that awards them already was. */
 export type NavSection = RouteDef & {
   /** Stable id, so a test and a stylesheet can name an entry without its words. */
@@ -122,7 +122,7 @@ export const EXTRA_ADDRESSES: Address[] = [
   /* Reached from the section of records rather than from the navigation of the
      administration, which offered it twice (owner, 01.08.2026). It is still an
      address and still needs a name. */
-  { path: 'administracija/znacke', seoKey: 'adminBadges' },
+  { path: 'administracija/dukati', seoKey: 'adminDucats' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },

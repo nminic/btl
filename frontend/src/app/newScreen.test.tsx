@@ -168,7 +168,7 @@ describe('the width of a screen', () => {
     /* A long screen has a scrollbar and a short one does not, so going between
        them moved every heading, every card and the navigation itself sideways
        by the width of that bar (owner, 31.07.2026). jsdom has no layout, so the
-       rule is read as text, the way the badge art is tested (ADL A7). */
+       rule is read as text, the way the ducat art is tested (ADL A7). */
     const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf-8')
 
     const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')))

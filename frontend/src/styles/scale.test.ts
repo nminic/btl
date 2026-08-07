@@ -65,7 +65,7 @@ const ALLOWED = new Map([
     'pages/TopBoards.css | margin | -1px',
     'not a space: the recipe that takes a surname off the screen without taking it out of the page, written out because a container query switches whether it applies and cannot put a class on anything',
   ],
-  ['components/BadgeGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
+  ['components/DucatGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
   ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
@@ -91,9 +91,9 @@ const ALLOWED = new Map([
   ],
   /* Four offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
-     than swept because moving them is a decision about how far a badge hangs
+     than swept because moving them is a decision about how far a ducat hangs
      off an icon, which is not what this pass is. */
-  ['app/Shell.css | top | -0.35rem', 'a badge pulled up over the icon it counts'],
+  ['app/Shell.css | top | -0.35rem', 'a ducat pulled up over the icon it counts'],
   ['app/Shell.css | right | -0.35rem', 'the same, sideways'],
   ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
   ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],

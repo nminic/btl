@@ -21,7 +21,7 @@ describe('the list of resources', () => {
        published comment out of it would have to decide all over again what
        counts as decided. */
     expect([...RESOURCE_NAMES]).toEqual([
-      'badges',
+      'ducats',
       'comments',
       'competitors',
       'events',
@@ -113,3 +113,83 @@ describe('the screens that draw a section of a written page', () => {
     expect(straight.map((path) => path.slice(SRC.length + 1))).toEqual([])
   })
 })
+
+/**
+ * One name for one thing, after the rename of 06.08.2026.
+ *
+ * The owner asked for the badges to become Dukati and, asked whether that
+ * reached the code and the addresses too, answered that it did (PDL P11). A
+ * rename of four hundred occurrences across seventy-five files is exactly the
+ * kind that half happens: one file keeps the old word, and the portal has two
+ * names for one thing again with nothing saying so.
+ *
+ * Two things keep the old word on purpose and are named here, so that "no
+ * exceptions" does not have to mean "no old address":
+ *
+ * The public page that no longer exists. It was folded into the rulebook on
+ * 04.08.2026, and two tests say so by name; an address that stopped being
+ * served has to go on being written down somewhere or nothing holds that it
+ * stopped.
+ *
+ * And this file, whose own prose is about the rename.
+ */
+describe('what the ducats are called', () => {
+  /* Named one by one rather than by a pattern: a pattern would let the next
+     file that keeps the old word in past it. */
+  const ALLOWED = [
+    'app/navigation.test.tsx',
+    'app/routes.test.ts',
+    'data/contract.test.ts',
+  ]
+
+  it('is nowhere still the old word, in any language', () => {
+    const said: string[] = []
+
+    for (const { path, code } of everySource()) {
+      if (ALLOWED.includes(path)) {
+        continue
+      }
+
+      for (const match of code.matchAll(/[A-Za-z]*[Bb]adge[A-Za-z]*|zna[čc]k[a-zčćšđž]*/g)) {
+        said.push(`${path}: ${match[0]}`)
+      }
+    }
+
+    expect(said).toEqual([])
+  })
+
+  it('keeps the dead public address written down, which is what those two hold', () => {
+    /* So the list above is an exception with a reason rather than a place to put
+       whatever fails. */
+    const kept = everySource().filter((one) => ALLOWED.includes(one.path))
+    const holding = ['app/navigation.test.tsx', 'app/routes.test.ts']
+
+    expect(kept.map((one) => one.path).sort()).toEqual([...ALLOWED].sort())
+    expect(
+      kept.filter((one) => holding.includes(one.path) && one.code.includes('znacke')).length,
+    ).toBe(holding.length)
+  })
+
+  it('reads every file, so the sweep above is looking at something', () => {
+    const all = everySource()
+
+    expect(all.length).toBeGreaterThan(150)
+    expect(all.some((one) => one.path.endsWith('DucatGallery.tsx'))).toBe(true)
+  })
+})
+
+/** Every source file under `src`, with its path relative to it. */
+function everySource(dir = join(process.cwd(), 'src'), prefix = ''): { path: string; code: string }[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = join(dir, entry.name)
+    const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+
+    if (entry.isDirectory()) {
+      return everySource(at, name)
+    }
+
+    return entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.css')
+      ? [{ path: name, code: readFileSync(at, 'utf-8') }]
+      : []
+  })
+}

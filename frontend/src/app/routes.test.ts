@@ -82,7 +82,7 @@ describe('the shape of the navigation', () => {
 
   it('serves no address twice, and none of the three that were deleted', () => {
     /* The story of the league and the page of prices went with the group they
-       stood in, and the badges became a section of the rulebook (owner,
+       stood in, and the ducats became a section of the rulebook (owner,
        04.08.2026). An address left behind would be a page nothing links to,
        which is the very thing that put those three into a group in the first
        place. Read out of the real router table rather than out of ROUTES,

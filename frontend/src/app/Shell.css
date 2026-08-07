@@ -442,7 +442,7 @@
   transform: translateY(-1px);
 }
 
-.inbox__badge {
+.inbox__count {
   position: absolute;
   top: -0.35rem;
   right: -0.35rem;

@@ -1,5 +1,5 @@
 import type { PageSection } from '../data/types'
-import { BadgeGallery } from './BadgeGallery'
+import { DucatGallery } from './DucatGallery'
 import { Markdown } from './Markdown'
 
 /**
@@ -10,7 +10,7 @@ import { Markdown } from './Markdown'
  * page that draws the address of the president. Without it the field was on
  * every section and honoured by one of the three, so a section moved onto
  * another page would have drawn its words and quietly dropped its wall of
- * badges, with nothing on the screen saying why.
+ * ducats, with nothing on the screen saying why.
  *
  * The other half of that rule is where the sections come from: all three read
  * `sectionsOf` rather than `page.sections`, so a record that takes another one
@@ -22,7 +22,7 @@ export function PageSectionBody({ section }: { section: PageSection }) {
   return (
     <>
       <Markdown text={section.body} />
-      {section.gallery === 'badges' && <BadgeGallery />}
+      {section.gallery === 'ducats' && <DucatGallery />}
     </>
   )
 }
