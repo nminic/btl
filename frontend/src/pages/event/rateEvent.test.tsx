@@ -1,4 +1,5 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { formatDate } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
@@ -12,6 +13,16 @@ const initialsOf = (who: string) =>
     .map((part) => part.slice(0, 1))
     .join('')
 import { overall } from './overall'
+
+/** The words on a card, in the order they are on it, with the marks left out:
+ *  those are drawn as pictures and are read by their names elsewhere. */
+/** The name on a card, which is the first paragraph on it. */
+const whoOf = (card: HTMLElement) => paragraphsIn(card)[0] ?? ''
+
+const paragraphsIn = (card: HTMLElement) =>
+  [...card.getElementsByTagName('p')]
+    .map((one) => (one.textContent ?? '').trim())
+    .filter((one) => !one.startsWith('Ukupna ocena'))
 
 /* Rating an event, and reading what other people made of it (owner,
  * 06.08.2026).
@@ -27,6 +38,10 @@ const EVENT = 'fruskogorski-maraton-2010-05-08'
 const AHEAD = 'sidski-novogodisnji-maraton-2027-01-16'
 /** The day that event is run, so the boundary itself can be stood on. */
 const AHEAD_DAY = '2027-01-16'
+/** A day before it, so the three cases about a race nobody has run say what
+ *  they say whatever day the suite is run on. On the real clock they would swap
+ *  their answers on 16.01.2027. */
+const BEFORE_AHEAD = '2026-12-31'
 const ME = '000007'
 
 /** All three marks given, which is what the form asks for before it will send
@@ -486,7 +501,7 @@ describe('what an event nobody has run yet offers', () => {
      the two links, which keeps nothing, so each half is held separately: the row
      does not offer them, and the screens behind them refuse. */
   it('offers neither of the two forms in the row', async () => {
-    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME)
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, BEFORE_AHEAD)
 
     await screen.findByRole('heading', { level: 1 })
 
@@ -495,7 +510,7 @@ describe('what an event nobody has run yet offers', () => {
   })
 
   it('refuses the rating at its own address', async () => {
-    renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME)
+    renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME, undefined, BEFORE_AHEAD)
 
     expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
       .toBeVisible()
@@ -504,7 +519,7 @@ describe('what an event nobody has run yet offers', () => {
   })
 
   it('refuses the report of a result at its own address', async () => {
-    renderAt(`/sr/kalendar/${AHEAD}/prijava`, 'competitor', ME)
+    renderAt(`/sr/kalendar/${AHEAD}/prijava`, 'competitor', ME, undefined, BEFORE_AHEAD)
 
     expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
       .toBeVisible()
@@ -597,6 +612,36 @@ describe('the comments under an event', () => {
     expect(within(gone).queryByRole('link')).not.toBeInTheDocument()
   })
 
+  it('says a comment from before the ratings carries no mark, all four times', async () => {
+    /* Nought on all three is not a rating of nought (types.ts). The three marks
+       already said "Bez ocene" and the overall beside them read "Ukupna ocena:
+       0,0", which is the same card answering one question two ways. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const comments = await loadResource<EventComment[]>('comments')
+    const old = must(
+      comments.find(
+        (one) =>
+          one.eventId === `evt-${EVENT}` &&
+          one.rating.organisation === 0 &&
+          one.rating.value === 0 &&
+          one.rating.ambience === 0,
+      ),
+      'a comment written before the ratings existed',
+    )
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(old.body),
+      ),
+      'that comment under the event',
+    )
+
+    expect(within(card).getByText('Ukupna ocena: Bez ocene')).toBeInTheDocument()
+    expect(card.textContent).not.toContain('Ukupna ocena: 0,0')
+    /* And the three it is the average of, each said the same way. */
+    expect(within(card).getAllByRole('img', { name: /: Bez ocene$/ })).toHaveLength(3)
+  })
+
   it('draws no empty paragraph where nobody wrote anything', async () => {
     /* The comment is optional, so a rating with no words is a card of marks and
        nothing else. Drawn unconditionally it is an empty paragraph: a gap under
@@ -615,7 +660,10 @@ describe('the comments under an event', () => {
       'that rating under the event',
     )
 
-    expect(card.querySelectorAll('.comments__text')).toHaveLength(0)
+    /* Read by what is on the card rather than by the class the paragraph wears:
+       a card with no words has one paragraph, the day it was written, and a
+       second empty one would be a second. */
+    expect(paragraphsIn(card)).toEqual([wordless.who, formatDate(wordless.date, 'sr-Latn')])
 
     /* And the other side of it, so the check above is known to be looking at
        the right thing: a comment that does have words draws exactly one. */
@@ -630,7 +678,11 @@ describe('the comments under an event', () => {
       'that comment under the event',
     )
 
-    expect(said.querySelectorAll('.comments__text')).toHaveLength(1)
+    expect(paragraphsIn(said)).toEqual([
+      whoOf(said),
+      formatDate(spoken.date, 'sr-Latn'),
+      spoken.body,
+    ])
   })
 
   it('draws the portrait, the marks and the words, each of them', async () => {

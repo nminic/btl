@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { Portrait } from '../../components/Portrait'
 import { Stars } from '../../components/Stars'
 import type { Competitor, EventComment } from '../../data/types'
-import { overall } from './overall'
+import { overall, rated } from './overall'
 import { combinePair, useComments, useCompetitors } from '../../data/useResource'
 import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
@@ -108,13 +108,17 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
             and then "Ukupna ocena: 4,7" about one number. */}
         <p className="comments__overall">
           <span aria-hidden="true">
-            <Stars
-              label={t('event.rating.overall')}
-              value={Math.floor(overall(comment.rating))}
-            />
+            <Stars label={t('event.rating.overall')} value={Math.floor(overall(comment.rating))} />
           </span>
           <span className="comments__figure">
-            {t('event.rating.overall')}: {formatNumber(overall(comment.rating), locale, 1)}
+            {t('event.rating.overall')}:{' '}
+            {/* Nought on all three is a comment written before the ratings
+                existed, not a comment rated nothing (types.ts). The three marks
+                beside it already say "Bez ocene", and an overall of 0,0 next to
+                them is the card disagreeing with itself. */}
+            {rated(comment.rating)
+              ? formatNumber(overall(comment.rating), locale, 1)
+              : t('event.rating.unrated')}
           </span>
         </p>
       </div>

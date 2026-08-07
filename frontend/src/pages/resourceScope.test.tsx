@@ -46,9 +46,9 @@ function stallResource(name: ResourceName) {
  *
  * The sheet over the page is right for a screen that is waiting as a whole
  * (owner, 31.07.2026). Three screens open a second Resource inside their own,
- * and there the sheet undid the very thing the split was for: the heading, the
- * date and the organiser arrive first and are useful, and a sheet hid them until
- * the heaviest half landed. Two stacked sheets on one screen also took the page
+ * and there the sheet undid the very thing the split was for: the name of the
+ * record arrives first and is useful, and a sheet hid it until the heaviest half
+ * landed. Two stacked sheets on one screen also took the page
  * to about 95% opaque and said "Učitavanje" twice. */
 describe('a part of a screen waits without covering the page', () => {
   let restore = () => {}

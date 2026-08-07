@@ -15,3 +15,10 @@ import type { EventRating } from '../../data/types'
 export function overall(rating: EventRating): number {
   return Math.round(((rating.organisation + rating.value + rating.ambience) / 3) * 10) / 10
 }
+
+/** Whether anybody gave this rating at all. Nought on all three is a comment
+ *  from before the ratings existed, which is a different thing from a rating of
+ *  nought and is said differently on screen. */
+export function rated(rating: EventRating): boolean {
+  return rating.organisation > 0 || rating.value > 0 || rating.ambience > 0
+}

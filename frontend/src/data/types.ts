@@ -240,13 +240,18 @@ export type EventRating = {
   ambience: number
 }
 
-/** What the six queues that are not about an event carry, and what a comment
- *  written before the ratings existed carries. Written once, so the six do not
- *  each spell out three noughts. */
-/* Frozen, because it is handed out by reference: it is the starting state of
-   the form and the rating on every queue item that has none, so one careless
-   write would give a rating to things that have never been rated. */
-export const NO_RATING: EventRating = Object.freeze({
+/**
+ * A rating nobody has given: the starting state of the form, and what a comment
+ * written before the ratings existed carries.
+ *
+ * Frozen, and deliberately not annotated `: EventRating`. `Object.freeze`
+ * returns `Readonly<T>` and the annotation widened that straight back to
+ * mutable, so the compiler allowed a write to it and the freeze was left to
+ * throw at the reader instead. Without the annotation the write is a build
+ * error, which is where it belongs: this object is handed out by reference, so
+ * one careless assignment would give a rating to everything that has none.
+ */
+export const NO_RATING = Object.freeze({
   organisation: 0,
   value: 0,
   ambience: 0,

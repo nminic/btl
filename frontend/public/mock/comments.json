@@ -50,5 +50,18 @@
       "ambience": 3
     },
     "body": "Komentar je ostao iako član više nije u ligi."
+  },
+  {
+    "id": "kom-5",
+    "eventId": "evt-fruskogorski-maraton-2010-05-08",
+    "memberNumber": "000012",
+    "who": "Stariji komentar",
+    "date": "2010-05-07",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "body": "Komentar iz vremena pre nego sto su ocene postojale."
   }
 ]

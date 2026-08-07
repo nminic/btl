@@ -273,6 +273,12 @@ function LetOut() {
     settle(one.id, { status, note: '', basis: '', memberNumber: '' })
   }
 
+  /* The id of a comment the file already carries. What the queue hands over
+     keeps the id it was queued under (commentFrom), so the day a backend
+     answers with an approved comment under that id both sides name the one
+     comment. */
+  const twice: EventComment = { ...one, id: 'kom-1' }
+
   return (
     <>
       <span data-testid="mine">
@@ -280,11 +286,25 @@ function LetOut() {
           ? state.status
           : state.data.filter((each) => each.id === one.id).length}
       </span>
+      <span data-testid="twice">
+        {state.status !== 'ready'
+          ? state.status
+          : state.data.filter((each) => each.id === twice.id).length}
+      </span>
       <button type="button" onClick={said('approved')}>
         pusti
       </button>
       <button type="button" onClick={said('rejected')}>
         skini
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          publish(twice)
+          settle(twice.id, { status: 'approved', note: '', basis: '', memberNumber: '' })
+        }}
+      >
+        pusti isti
       </button>
     </>
   )
@@ -307,5 +327,21 @@ describe('useComments', () => {
 
     await user.click(screen.getByRole('button', { name: 'skini' }))
     expect(screen.getByTestId('mine')).toHaveTextContent('0')
+  })
+
+  it('draws a comment once when both sides name it', async () => {
+    const user = setupUser()
+
+    render(
+      <SessionProvider>
+        <LetOut />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('twice')).toHaveTextContent('1'))
+
+    await user.click(screen.getByRole('button', { name: 'pusti isti' }))
+
+    expect(screen.getByTestId('twice')).toHaveTextContent('1')
   })
 })

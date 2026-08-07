@@ -175,8 +175,10 @@ export function RateEvent() {
                   door does with its own refusal: there the live region is always
                   in the page and empty, because a region that arrives carrying
                   its words is one nobody is told about (PendingQueue.tsx). Here
-                  the words are there on the first render and only ever go away,
-                  so there is no arrival to miss. */}
+                  it does arrive carrying them, because this whole part waits for
+                  the event to load, so nothing rests on it being announced: the
+                  button points at it with `aria-describedby`, which is what a
+                  reader hears on reaching a button that will not send. */}
               {waiting && (
                 <p id="send-waits" className="rate__hint" role="status">
                   {t('event.commentNeedsMarks')}

@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, screen } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import { renderAt } from '../test/render'
 
@@ -19,19 +19,31 @@ import { renderAt } from '../test/render'
  * wrong by accident: a hook the event page calls started reading the queue in
  * order to find approved comments, and nothing said so. The next hook that does
  * it will not say so either.
+ *
+ * Read as production reads: the two development controls are switched off here.
+ * They fetch the moderators on every screen they are drawn on, and they are
+ * drawn on none in production (src/dev/tools.ts). A sweep that left them on
+ * would have to allow that file everywhere, and it is the one thing on this
+ * list besides the queue that carries staff names, addresses and rights.
  */
 
-/** Named by what is in them rather than one by one, so a new resource of the
- *  same kind is caught by the name it is given. */
-const DENIED = ['verification', 'submissions']
+vi.mock('../dev/tools', () => ({ devToolsEnabled: () => false }))
+
+/** What no public screen may ask for, by the name in the address. */
+const DENIED = ['verification', 'moderators']
 
 /**
- * Every public address, one of each shape.
+ * Every address a signed-out visitor can reach, one for each entry of the route
+ * table.
  *
- * Anchored to the route table below rather than trusted as written: a list of
- * addresses typed out by hand is a list that stops being every address the
- * moment somebody adds a screen, and this one had already missed eight when it
- * was first written.
+ * Held against the table below rather than trusted as written. A list typed out
+ * by hand stops being every address the moment somebody adds a screen, and this
+ * one had already missed eight when it was first written.
+ *
+ * The addresses of an account are here too, and not excluded as "behind a sign
+ * in": nothing guards them. Each of those screens runs its hooks and only then
+ * decides to draw `SignedOut`, so a visitor who types one has already fetched
+ * whatever it reads.
  */
 const PUBLIC = [
   '/sr',
@@ -51,103 +63,134 @@ const PUBLIC = [
   '/sr/lige',
   '/sr/liga/btl-2027',
   '/sr/liga/btl-2027/rezultati',
-  '/sr/znacke',
-  '/sr/cenovnik',
   '/sr/pravilnik',
   '/sr/politika-privatnosti',
   '/sr/uslovi-koriscenja',
   '/sr/registracija',
   '/sr/prijava',
+  '/sr/moj-profil',
+  '/sr/moji-rezultati',
+  '/sr/moja-clanarina',
+  '/sr/podesavanja',
+  '/sr/poruke',
+  '/sr/poruke/msg-1',
+  '/sr/rezultat/novi',
 ]
 
-/** The first segment of an address, which is what one shape of screen is. */
-const shapeOf = (path: string) => path.replace(/^\//, '').split('/')[1] ?? ''
+/**
+ * A route pattern as what it matches: `takmicar/:memberNumber` against
+ * `/sr/takmicar/000001`.
+ *
+ * Whole segments and anchored at both ends, because the first attempt compared
+ * first segments only: `kalendar` then stood for the month, the day, an event,
+ * the report of a result and the rating alike, and a new screen under any of
+ * them joined the portal without joining this sweep.
+ */
+function matcher(path: string): RegExp {
+  return new RegExp(`^/sr${path === '' ? '' : `/${path.replaceAll(/:[^/]+/g, '[^/]+')}`}$`)
+}
+
+/**
+ * Waits until the screen has stopped asking for things.
+ *
+ * Not "until something was asked for", which is what this did and was the whole
+ * of its weakness: the shell fetches before any screen does, and a screen that
+ * reads a second resource inside a `Resource` of the first only mounts once the
+ * first has arrived. Measured on the event page, the old check fired while four
+ * files had been asked for and the comments had not been reached at all, so the
+ * one leak this file exists to catch walked straight past it.
+ */
+async function quiet(asked: string[]): Promise<void> {
+  for (let still = 0; still < 3; ) {
+    const before = asked.length
+
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 5)
+      })
+    })
+
+    still = asked.length === before ? still + 1 : 0
+  }
+}
+
+/** What was in place before a case wrapped it, so it can be put back exactly.
+ *  `vi.unstubAllGlobals` is the wrong tool here: it reverts to what stood before
+ *  the setup file installed its own reader of the disc, which leaves every
+ *  later case in this file with no fetch at all. */
+let unwrapped: typeof globalThis.fetch | null = null
+
+/** Writes down every address asked for, and hands the question on so the screen
+ *  renders exactly as it would. */
+function watch(): string[] {
+  const asked: string[] = []
+  const real = globalThis.fetch
+
+  unwrapped = real
+  globalThis.fetch = async (input: RequestInfo | URL) => {
+    asked.push(String(input))
+    return real(input)
+  }
+
+  return asked
+}
 
 describe('what a visitor downloads', () => {
-  it('covers every shape of public screen the route table has', () => {
-    /* The anchor. Every address in the table that is not administration and not
-       somebody's own account has a screen of its shape in the sweep, so a new
-       public screen either joins the list or fails here. */
-    const shapes = new Set(PUBLIC.map(shapeOf))
-    /* The whole table, the addresses with a record in them included: those are
-       the ones a sweep written by hand forgets, because they cannot be typed
-       without a record to point at. */
-    const every = [...ROUTES, ...EXTRA_ADDRESSES].map((route) => route.path)
-    const missing = every.filter((path) => {
-      const shape = path.split('/')[0] ?? ''
-
-      return shape !== 'administracija' && !ACCOUNT.includes(shape) && !shapes.has(shape)
-    })
+  it('visits every address the route table has, administration aside', () => {
+    const every = [...ROUTES, ...EXTRA_ADDRESSES]
+      .map((route) => route.path)
+      .filter((path) => !path.startsWith('administracija'))
+    const missing = every.filter((path) => !PUBLIC.some((one) => matcher(path).test(one)))
 
     expect(missing).toEqual([])
-    expect(PUBLIC.length).toBeGreaterThan(20)
   })
 
-  it.each(PUBLIC)('asks for no queue of anybody else on %s', async (address) => {
-    const asked: string[] = []
-    const real = globalThis.fetch
-
-    /* The stub in test/setup reads the file off disc; this one writes down what
-       was asked for and then hands the question on, so the screen still gets
-       its data and renders as it would. */
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
-      asked.push(String(input))
-      return real(input)
-    })
+  it.each(PUBLIC)('asks for nothing of anybody else on %s', async (address) => {
+    const asked = watch()
 
     renderAt(address)
 
-    /* Waited for rather than read straight away: a resource is fetched from an
-       effect, so a check that runs before the first paint settles sees nothing
-       asked for at all and passes on every address. */
-    await waitFor(() => {
-      expect(asked.length).toBeGreaterThan(0)
-    })
-    await screen.findByRole('main')
+    await quiet(asked)
 
+    /* The screen is really there. Without this the sweep would pass on an
+       address that fell through to the page saying there is none, and six of
+       these read nothing at all, so counting what was asked for proves nothing
+       about them. */
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
 
-  /* The other half, so the sweep above is known to be looking at something. The
+  /* The other half, so the sweep above is known to be looking at something: the
      queue is fetched, by the screen whose queue it is. */
   it('asks for it on the screen that decides on it', async () => {
-    const asked: string[] = []
-    const real = globalThis.fetch
-
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
-      asked.push(String(input))
-      return real(input)
-    })
+    const asked = watch()
 
     renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
 
-    await waitFor(() => {
-      expect(asked.some((one) => one.includes('verification'))).toBe(true)
-    })
+    await quiet(asked)
+
+    expect(asked.some((one) => one.includes('verification'))).toBe(true)
+  })
+
+  /* And that the waiting is long enough to see a screen's second wave: the
+     comments under an event are read inside the `Resource` of the event, so
+     they are asked for only after it has arrived. */
+  it('waits long enough to see what a screen reads second', async () => {
+    const asked = watch()
+
+    renderAt('/sr/kalendar/fruskogorski-maraton-2010-05-08')
+
+    await quiet(asked)
+
+    expect(asked.some((one) => one.includes('comments'))).toBe(true)
   })
 })
 
-/**
- * The addresses of somebody's own account, which are not public and are not
- * administration either.
- *
- * Left out of the sweep rather than swept: they are behind a sign-in, so what
- * they fetch is a question about what one member may read about themselves,
- * which is a different question from this one.
- */
-const ACCOUNT = [
-  'moj-profil',
-  'moji-rezultati',
-  'moja-clanarina',
-  'poruke',
-  'podesavanja',
-  'rezultat',
-]
-
-/* Every case installs a wrapper around fetch, and a failed assertion must not
-   leave it installed for the next one: the wrapper closes over that case's own
-   list, so a leak would be written down against the wrong address. */
 afterEach(() => {
   cleanup()
-  vi.unstubAllGlobals()
+
+  if (unwrapped !== null) {
+    globalThis.fetch = unwrapped
+    unwrapped = null
+  }
 })
