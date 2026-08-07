@@ -145,7 +145,7 @@ export function Calendar() {
   const today = useToday()
 
   return (
-    <div className="calendar">
+    <div className="calendar rankings--tooled">
       {/* Outside the Resource: a screen that says nothing at all while it waits
           is the one thing every other screen here avoids. */}
       <h1>{t('calendar.title')}</h1>
@@ -163,21 +163,18 @@ export function Calendar() {
 
           return (
             <>
-              {/* Danas, then the two steps, then the month (owner, 01.08.2026).
-                  The steps are arrows and nothing else, so each carries a name of
-                  its own: a symbol is a drawing and a drawing is not a label. */}
-              <div className="calendar__bar">
-                <button
-                  type="button"
-                  className="calendar__today"
-                  /* Nothing to go back to when it is already here. Disabled
-                     rather than hidden, so the row does not change shape under
-                     somebody stepping through the months. */
-                  disabled={month === today.slice(0, 7)}
-                  onClick={() => setParams({ mesec: today.slice(0, 7) })}
-                >
-                  {t('calendar.today')}
-                </button>
+              {/* The month, then the two steps, then Danas, level with the
+                  heading at the far right (owner, 05.08.2026). It stood under
+                  the heading in the other order until then, on its own line.
+                  Read as it is written it is the three things in the order a
+                  reader wants them: where am I, one month either way, back to
+                  today.
+
+                  The steps are arrows and nothing else, so each carries a name
+                  of its own: a symbol is a drawing and a drawing is not a
+                  label. */}
+              <div className="calendar__bar rankings__head-tool">
+                <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
                 <button
                   type="button"
                   className="calendar__step"
@@ -194,7 +191,17 @@ export function Calendar() {
                 >
                   <Chevron />
                 </button>
-                <h2 className="calendar__month">{formatMonth(month, locale)}</h2>
+                <button
+                  type="button"
+                  className="calendar__today"
+                  /* Nothing to go back to when it is already here. Disabled
+                     rather than hidden, so the row does not change shape under
+                     somebody stepping through the months. */
+                  disabled={month === today.slice(0, 7)}
+                  onClick={() => setParams({ mesec: today.slice(0, 7) })}
+                >
+                  {t('calendar.today')}
+                </button>
               </div>
 
               {/* Nothing is said about a month with no events in it (owner,

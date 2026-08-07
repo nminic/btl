@@ -451,9 +451,11 @@
     "men": "Muškarci",
     "women": "Žene",
     "season": "Sezona",
-    "allCategories": "Sve kategorije",
-    "search": "Pretraga po imenu ili članskom broju",
-    "searchPlaceholder": "Ime, prezime ili 000001",
+    "myRow": "vaš red",
+    "categoryFilter": "Kategorija",
+    "allCategories": "Sve",
+    "search": "Pretraga",
+    "searchPlaceholder": "Ime, prezime ili članski broj",
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
     "columns": {
       "position": "#",
@@ -470,11 +472,15 @@
       "one": "{count} takmičar",
       "few": "{count} takmičara",
       "other": "{count} takmičara"
+    },
+    "rowCountWomen": {
+      "one": "{count} takmičarka",
+      "few": "{count} takmičarke",
+      "other": "{count} takmičarki"
     }
   },
   "topBoards": {
     "title": "Top liste",
-    "season": "Sezona",
     "byLength": {
       "short": "Najviše kraćih trka",
       "long": "Najviše dužih trka",
@@ -486,7 +492,7 @@
     "pairsSoon": "Trkački parovi se formiraju obostranom potvrdom, pa ova lista stiže zajedno sa bazom. Do tada nema od čega da se izvede, i radije stoji prazna nego izmišljena.",
     "progress": "Najbolji napredak",
     "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
-    "bestRaces": "Najbolje pojedinačne trke",
+    "bestRaces": "Najbolji pojedinačni rezultati",
     "kilometers": "Najviše kilometara",
     "onCourse": "Najduže na stazi",
     "columns": {
@@ -582,7 +588,7 @@
     "inClub": "U klubu {team} od {season}.",
     "honorary": "Počasno članstvo",
     "noTeam": "Bez tima",
-    "allTime": "Sve sezone",
+    "allTime": "Sve",
     "totals": "Zbirno",
     "races": "Trka",
     "kilometers": "Kilometara",
@@ -658,6 +664,7 @@
     }
   },
   "teams": {
+    "myTeam": "vaš tim",
     "title": "Timovi",
     "columns": {
       "team": "Tim",

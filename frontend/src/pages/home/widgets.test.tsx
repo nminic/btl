@@ -13,6 +13,7 @@ import { FIRST, NEXT } from './rotation'
 import { TopByCategory } from './TopByCategory'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
+import { ColumnChart } from '../../components/ColumnChart'
 import type { NewsItem, SponsorEntry } from './content'
 
 function renderWidget(ui: React.ReactNode) {
@@ -274,6 +275,39 @@ describe('Counters', () => {
 
     expect(screen.getByText(/1\.234,00 km/)).toBeVisible()
     window.matchMedia = previous
+  })
+})
+
+/* How wide the circle in a bar has to be (owner, 05.08.2026).
+ *
+ * Both levels of a bar carry a number and the lower one is the season before,
+ * which can be the longer of the two. No season in the record happens to be that
+ * way round, so the chart is handed one here: read off the upper level alone the
+ * count comes out at four and the circle is drawn too small for what is in it,
+ * and nothing on any screen would say so.
+ */
+describe('the circle in a bar', () => {
+  it('is asked for in the characters of the longest number, on either level', () => {
+    renderWidget(
+      <ColumnChart
+        columns={[
+          {
+            key: 'a',
+            competitor: competitor('000001'),
+            value: 10,
+            label: '1,50',
+            base: { value: 8, label: '1234,56' },
+          },
+        ]}
+        caption="Napredak"
+        empty="Nema"
+        label="Napredak"
+      />,
+    )
+
+    const chart = must(screen.getByRole('region', { name: 'Napredak' }), 'the chart')
+
+    expect(chart.style.getPropertyValue('--count-chars')).toBe('7')
   })
 })
 

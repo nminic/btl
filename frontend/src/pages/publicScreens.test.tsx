@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { fieldFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
@@ -222,13 +222,13 @@ describe('Rankings', () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
-    await user.selectOptions(screen.getByLabelText('Kat.'), 'M40-54')
+    await user.selectOptions(screen.getByLabelText('Kategorija'), 'M40-54')
     expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeLessThan(all)
 
-    await user.selectOptions(screen.getByLabelText('Kat.'), '')
+    await user.selectOptions(screen.getByLabelText('Kategorija'), '')
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
 
-    await user.type(screen.getByLabelText('Pretraga po imenu ili članskom broju'), '000007')
+    await user.type(screen.getByLabelText('Pretraga'), '000007')
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
   })
 
@@ -247,6 +247,69 @@ describe('Rankings', () => {
     const link = within(first(rows)).getByRole('link')
 
     expect(link).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
+  })
+})
+
+/* The words on the row of filters, and the count under it (owner, 05.08.2026).
+ *
+ * Each of these is one string in the dictionary and each was asked for by name,
+ * so each is read off the screen rather than trusted to stay: a label that goes
+ * back to what it said is a change nobody would notice for a month.
+ */
+describe('what the filters are called', () => {
+  it('names the category in full, and offers all of them as Sve', async () => {
+    renderAt('/sr/tabela?sezona=2019')
+
+    const category = (await screen.findByLabelText('Kategorija')) as HTMLSelectElement
+
+    /* Written out on the control and short in the table, which is the whole of
+       the decision: both are on this screen at once. */
+    expect(screen.getByRole('columnheader', { name: 'Kat.' })).toBeInTheDocument()
+    expect(within(category).getAllByRole('option').map((one) => one.textContent)[0]).toBe('Sve')
+  })
+
+  it('calls the search Pretraga and says what it takes in the field', async () => {
+    renderAt('/sr/tabela?sezona=2019')
+
+    const search = await screen.findByLabelText('Pretraga')
+
+    expect(search).toHaveAttribute('placeholder', 'Ime, prezime ili članski broj')
+  })
+
+  it('counts women as takmičarke, in the case the number asks for', async () => {
+    /* One, a few and many are three different words in Serbian, and the portal
+       has `Intl.PluralRules` for exactly this. Driven through the search box,
+       because no season happens to hold all three counts. */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2019&pol=z')
+
+    const count = async () => must((await screen.findByText(/takmičar/)).textContent, 'the count')
+    const search = await screen.findByLabelText('Pretraga')
+
+    expect(await count()).toBe('9 takmičarki')
+
+    /* One, and then a few. Searching narrows the same list, so all three cases
+       are read off one season without needing a season that happens to hold
+       them: "ni" leaves one woman in 2019 and "ka" leaves two. */
+    await user.clear(search)
+    await user.type(search, 'ni')
+    expect(await count()).toBe('1 takmičarka')
+
+    await user.clear(search)
+    await user.type(search, 'ka')
+    expect(await count()).toBe('2 takmičarke')
+
+    await user.clear(search)
+    await user.type(search, 'zzzzzz')
+    expect(await count()).toBe('0 takmičarki')
+  })
+
+  it('counts men as takmičari, which is the other word entirely', async () => {
+    renderAt('/sr/tabela?sezona=2019')
+
+    expect(must((await screen.findByText(/takmičar/)).textContent, 'the count')).toMatch(
+      /takmičara?$/,
+    )
   })
 })
 
@@ -283,7 +346,7 @@ describe('TopBoards', () => {
     'Najviše kraćih trka',
     'Najbolji napredak',
     'Najbolji trkački parovi',
-    'Najbolje pojedinačne trke',
+    'Najbolji pojedinačni rezultati',
   ]
 
   it('carries the ten boards in the order the owner laid them out', async () => {
@@ -456,8 +519,8 @@ describe('TopBoards', () => {
        width of the page. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
-    const races = board('Najbolje pojedinačne trke')
+    await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
+    const races = board('Najbolji pojedinačni rezultati')
 
     expect(races.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
       '#',
@@ -507,8 +570,8 @@ describe('TopBoards', () => {
        disagree about which went. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
-    const races = board('Najbolje pojedinačne trke')
+    await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
+    const races = board('Najbolji pojedinačni rezultati')
 
     const onPhone = (row: HTMLElement, role: 'columnheader' | 'cell') =>
       within(row)
@@ -542,13 +605,123 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
+    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolji pojedinačni rezultati']) {
       const rows = board(name).getAllByRole('row').slice(1)
       const cells = within(at(rows, 0)).getAllByRole('cell')
 
       expect(last(cells).className).toContain('table__points')
       /* And nothing before it claims to be the measure. */
       expect(cells.slice(0, -1).filter((one) => one.className.includes('table__points'))).toEqual([])
+    }
+  })
+
+  it('carries the season in the address only while it is not the one it opens on', async () => {
+    /* The shared control, as on the teams and on a profile (its own reasoning is
+       in SeasonPicker.tsx). This screen used to write the year every time, so an
+       address named the season it was already showing; the boards drew the same
+       thing either way, and it is the one behaviour that changed when the copy
+       of this control here was given up for the shared one. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
+
+    const season = (await screen.findByLabelText('Sezona')) as HTMLSelectElement
+    const opens = season.value
+
+    expect(router.state.location.search).toBe('')
+
+    await user.selectOptions(season, '2019')
+    expect(router.state.location.search).toBe('?sezona=2019')
+
+    await user.selectOptions(season, opens)
+    expect(router.state.location.search).toBe('')
+    /* And the boards are of that season either way. */
+    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe(opens)
+  })
+
+  it('offers the seasons that have results, and never all of them at once', async () => {
+    /* A board of a season is a ladder of that season, so "all of them" is not a
+       thing it can show. The shared control offers it only where nothing is
+       handed in as the default, and this screen hands one in. */
+    renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
+
+    const season = (await screen.findByLabelText('Sezona')) as HTMLSelectElement
+
+    expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
+    expect(within(season).getAllByRole('option').length).toBeGreaterThan(3)
+  })
+
+  it('tells the stylesheet how many characters the longest number in it is', async () => {
+    /* The circle in a bar is as wide as that (owner, 05.08.2026: it has to be a
+       circle, and a circle holding two decimals is wider than one holding a
+       count of races). The width is worked out in the stylesheet from this one
+       number, so without it every circle falls back to the small disc and the
+       longest numbers stand half on the bare bar again.
+
+       Both levels of a bar count, because both carry a number, and the lower one
+       carries the season before. Which of the two runs longer is a fact about
+       the season and not about the chart: in 2013 it is the gain, at six
+       characters against five. So what this holds is that the number handed to
+       the stylesheet is the longest thing actually drawn on the board; that both
+       levels are counted is held on a chart written for it, in
+       pages/home/widgets.test.tsx, because no season in the record has the lower
+       level longer than the upper one. */
+    renderAt('/sr/top-liste?sezona=2013')
+
+    const board = must(
+      (await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })).closest(
+        'section',
+      ),
+      'the board of best progress',
+    )
+    const longest = Math.max(
+      ...within(board)
+        .getAllByRole('listitem')
+        .flatMap((column) =>
+          ['Prethodna sezona', 'Prirast'].map((level) => writtenIn(column, level).length),
+        ),
+    )
+
+    expect(longest).toBeGreaterThan(4)
+    expect(board.style.getPropertyValue('--count-chars')).toBe(String(longest))
+
+    /* And a board of race counts asks for far less, or every chart on the portal
+       would carry the widest circle any of them needs. */
+    const races = must(
+      (await screen.findByRole('heading', { level: 2, name: 'Najviše maratona' })).closest(
+        'section',
+      ),
+      'a board of race counts',
+    )
+
+    expect(Number(races.style.getPropertyValue('--count-chars'))).toBeLessThan(longest)
+  })
+
+  it('carries a surname and an initial, so a narrow card can swap one for the other', async () => {
+    /* Owner, 05.08.2026: where a full name would take two lines, the surname
+       gives way to an initial. Which cards those are is a question about width,
+       so the choosing is done by a container query (TopBoards.css) and what is
+       held here is that both halves are in the markup and that the name a reader
+       hears is the whole one either way. */
+    renderAt('/sr/top-liste?sezona=2019')
+
+    await screen.findByRole('table', { name: 'Najviše kilometara' })
+
+    for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
+      const rows = board(name).getAllByRole('row').slice(1)
+      const link = within(at(rows, 0)).getByRole('link')
+      const whole = must(link.textContent, 'the name in the row')
+
+      /* The surname stands apart, and the initial after it is the first letter
+         of that surname and a full stop. */
+      const family = must(link.querySelector('.boards__family'), 'the surname').textContent
+      const initial = must(link.querySelector('.boards__initial'), 'the initial')
+
+      expect(family).not.toBe('')
+      expect(initial.textContent).toBe(`${must(family, 'the surname').slice(0, 1)}.`)
+      /* Read out as the whole name and not as the letter beside it: the initial
+         is out of the accessible tree, the surname never is. */
+      expect(initial).toHaveAttribute('aria-hidden', 'true')
+      expect(link).toHaveAccessibleName(whole.replace(initial.textContent ?? '', '').trim())
     }
   })
 
@@ -566,12 +739,12 @@ describe('TopBoards', () => {
        them. */
     renderAt('/sr/top-liste?sezona=2019')
 
-    await screen.findByRole('table', { name: 'Najbolje pojedinačne trke' })
+    await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
 
     for (const [name, expected] of [
       ['Najviše kilometara', ['figure']],
       ['Najduže na stazi', ['figure']],
-      ['Najbolje pojedinačne trke', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
+      ['Najbolji pojedinačni rezultati', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
     ] as const) {
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
@@ -601,7 +774,7 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolje pojedinačne trke']) {
+    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolji pojedinačni rezultati']) {
       const rows = board(name).getAllByRole('row').slice(1)
       /* Read off the place written in the row rather than counted, because a
          shared first place is two rows and both of them won: counting one would
@@ -710,7 +883,13 @@ describe('TopBoards', () => {
        which is the one thing a board about improvement must not do (PDL P12,
        30.07.2026). He is on the boards that measure the season itself. */
     expect(board('Najbolji napredak').queryByText('Miloje Stanojlović')).not.toBeInTheDocument()
-    expect(board('Najviše kilometara').getByText('Miloje Stanojlović')).toBeVisible()
+    /* By the name the link carries rather than by the words on the screen: on
+       this board a surname is drawn in a span of its own, so that a card with no
+       room for it can put an initial there instead, and the whole name is the
+       accessible name rather than one run of text. */
+    expect(
+      board('Najviše kilometara').getByRole('link', { name: 'Miloje Stanojlović' }),
+    ).toBeVisible()
   })
 
   it('stands the progress board empty for a season nobody has a season before', async () => {
@@ -1126,16 +1305,19 @@ describe('CompetitorProfile', () => {
     expect(screen.queryByText('Počasno članstvo')).not.toBeInTheDocument()
   })
 
-  it('leaves the one on a profile as it was, said and not drawn', async () => {
-    /* The pill stays on a profile, where the name of the competitor is the
-       heading and a labelled field beside it would read as a second one. */
+  it('names itself on a profile too, in the one shape the portal has', async () => {
+    /* It was a pill with its name hidden, on the reasoning that beside a name a
+       labelled field reads as a second heading. The owner asked for the same
+       shape on every screen on 05.08.2026, so the name is drawn here as well,
+       and the first year on offer is all of them. */
     renderAt('/sr/takmicar/000007')
 
     const control = await screen.findByLabelText('Sezona')
 
-    expect(within(must(control.closest('label'), 'labela')).getByText('Sezona')).toHaveClass(
+    expect(within(must(control.closest('label'), 'the label around it')).getByText('Sezona')).not.toHaveClass(
       'visually-hidden',
     )
+    expect(within(control).getAllByRole('option').map((one) => one.textContent)[0]).toBe('Sve')
   })
 })
 
@@ -1205,7 +1387,7 @@ describe('Teams', () => {
     const season = screen.getByLabelText('Sezona') as HTMLSelectElement
 
     expect(season.value).toBe('2026')
-    expect(within(season).queryByRole('option', { name: 'Sve sezone' })).not.toBeInTheDocument()
+    expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
 
     /* Every team keeps its row whatever the season, so what has to change is
        what the rows say: the points are of the season being looked at. */
@@ -1255,6 +1437,179 @@ describe('Teams', () => {
     expect(
       within(screen.getByLabelText('Sezona')).queryByRole('option', { name: '1999' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+/* The control beside a heading, on every screen that has one (owner,
+ * 05.08.2026: the same vertical position as on the teams).
+ *
+ * Where it lands is a matter of layout, which jsdom does not do, and the rules
+ * that place it are guarded as text in styles/goldBand.test.ts. What is held
+ * here is the other half of it: that each screen actually asks for that row, so
+ * a page keeping its own arrangement fails rather than quietly sitting where it
+ * used to.
+ */
+describe('the row a screen opens with', () => {
+  for (const [path, screenName] of [
+    ['/sr/tabela', 'the season table'],
+    ['/sr/takmicari', 'the competitors'],
+    ['/sr/timovi', 'the teams'],
+    ['/sr/top-liste', 'the top boards'],
+    ['/sr/kalendar', 'the calendar'],
+    ['/sr/takmicar/000007', 'a profile'],
+    ['/sr/tim/dunavski-trkaci', 'a team'],
+  ] as const) {
+    it(`is the shared one on ${screenName}`, async () => {
+      renderAt(path)
+
+      const heading = await screen.findByRole('heading', { level: 1 })
+      const row = must(heading.parentElement, 'the row around the heading')
+
+      expect(row.className).toContain('rankings--tooled')
+      /* A child of that row and not merely somewhere inside it: the row places
+         its own children, so a control wrapped in one more element is a control
+         that has left the row while every class it wears is still in the page. */
+      expect(
+        [...row.children].some((one) => one.className.includes('rankings__head-tool')),
+      ).toBe(true)
+    })
+  }
+})
+
+/* The row that belongs to whoever is reading (owner, 05.08.2026: "moj red ...
+ * treba da bude istaknut").
+ *
+ * Four screens draw it and one class carries it, so what is checked is that
+ * each of the four asks the question, and that three of them say nothing to a
+ * visitor: the mark is a fact about the reader, and a portal that marks a row
+ * for somebody who has not signed in is telling them something about a
+ * stranger.
+ */
+describe('the row of whoever is signed in', () => {
+  /* 000007 is in the field of 2019 on every one of these screens, and is in a
+     team, which the standing of teams needs. */
+  const ME = '000007'
+
+  const marked = (rows: HTMLElement[]) => rows.filter((row) => row.classList.contains('table__mine'))
+
+  it('is marked in the season table, and nowhere else in it', async () => {
+    renderAt('/sr/tabela?sezona=2019', 'competitor', ME)
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const mine = marked(rows)
+
+    expect(mine).toHaveLength(1)
+    expect(within(at(mine, 0)).getByText(ME)).toBeInTheDocument()
+  })
+
+  it('is marked on every board that is a table and has him, and on no chart', async () => {
+    /* 2015 rather than 2019, because in 2015 he stands on all three boards that
+       are tables. A season where he is on two of them cannot say anything about
+       the third, and the third is where the mark would be missing. */
+    renderAt('/sr/top-liste?sezona=2015', 'competitor', ME)
+
+    await screen.findByRole('table', { name: 'Najviše kilometara' })
+
+    /* His rows are the ones that lead to his profile, so a board that has him
+       and does not mark him is caught rather than covered for by a board that
+       does. Which boards those are is a fact about the season, so they are
+       looked for rather than named. */
+    const his = screen
+      .getAllByRole('row')
+      .filter((row) =>
+        within(row)
+          .queryAllByRole('link')
+          .some((link) => link.getAttribute('href')?.endsWith(`/takmicar/${ME}`) === true),
+      )
+
+    /* Three boards are tables, and he is on all three of them this season. */
+    expect(his.length).toBeGreaterThanOrEqual(3)
+    expect(marked(his)).toEqual(his)
+    /* And nothing inside a chart is marked, which is where the owner drew the
+       line: the boards by length draw bars, not rows. */
+    expect(document.querySelectorAll('.colchart .table__mine')).toHaveLength(0)
+  })
+
+  it('is marked among the results of an event he ran', async () => {
+    const results = await loadResource<Result[]>('results')
+    const ran = must(
+      results.find((one) => one.memberNumber === ME && one.date < '2027-01-01'),
+      'a result of his',
+    )
+    const events = await loadResource<{ id: string; slug: string }[]>('events')
+    const event = must(
+      events.find((one) => ran.raceId.startsWith(`evt-${one.slug}`)),
+      'the event it was run at',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME)
+
+    const rows = await screen.findAllByRole('row')
+
+    expect(marked(rows)).not.toHaveLength(0)
+  })
+
+  it('is marked on the standing of teams, on the row of his own team', async () => {
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const me = must(
+      competitors.find((one) => one.memberNumber === ME),
+      'the member',
+    )
+
+    expect(me.teamId, 'the member has to be in a team for this to say anything').not.toBeNull()
+
+    renderAt('/sr/timovi', 'competitor', ME)
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+
+    expect(marked(rows)).toHaveLength(1)
+  })
+
+  it('says so in words as well as in colour', async () => {
+    /* The tint and the bar are for the eye. A reader who is not using one gets
+       nothing from either, and the mark is a fact about the reader rather than
+       decoration, so the row says it (WCAG 2.2 SC 1.4.1 is about not leaning on
+       colour; this is the same thought carried to somebody who sees none of it).
+       Said in the first cell of the row, which on three of these four screens is
+       the one that numbers it; the results of an event have no such column, so
+       there it is the cell with the name in it. */
+    for (const [path, said] of [
+      ['/sr/tabela?sezona=2019', 'vaš red'],
+      ['/sr/top-liste?sezona=2015', 'vaš red'],
+      ['/sr/kalendar/beogradski-maraton-2019-04-14', 'vaš red'],
+      ['/sr/timovi', 'vaš tim'],
+    ] as const) {
+      cleanup()
+      renderAt(path, 'competitor', ME)
+      await screen.findAllByRole('row')
+
+      const rows = screen.getAllByRole('row')
+      const mine = marked(rows)
+
+      expect(mine.length, `no row of his on ${path}`).toBeGreaterThan(0)
+
+      /* Once in each of his rows, and in none of anybody else's. Said twice it
+         is heard twice; said in the wrong dictionary block it comes out as the
+         key itself, which is what happened on the teams and what no screen test
+         was looking at. */
+      for (const row of mine) {
+        expect(within(row).getAllByText(said)).toHaveLength(1)
+      }
+
+      for (const row of rows.filter((one) => !one.classList.contains('table__mine'))) {
+        expect(within(row).queryByText(said)).not.toBeInTheDocument()
+      }
+    }
+  })
+
+  it('says nothing to a visitor, on any of them', async () => {
+    for (const path of ['/sr/tabela?sezona=2019', '/sr/top-liste?sezona=2019', '/sr/timovi']) {
+      cleanup()
+      renderAt(path)
+      await screen.findAllByRole('row')
+
+      expect(marked(screen.getAllByRole('row'))).toHaveLength(0)
+    }
   })
 })
 

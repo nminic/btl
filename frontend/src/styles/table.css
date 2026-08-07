@@ -84,6 +84,29 @@
   color: var(--gold-text);
 }
 
+/* The row that belongs to whoever is reading (owner, 05.08.2026: "moj red ...
+   treba da bude istaknut"). Every standing draws it the same way, so it is one
+   rule here rather than a decision taken again on each screen
+   (src/components/mine.ts).
+
+   Blue and not gold. Gold is the podium, and a row that is both would be saying
+   two things in one colour; blue is what the portal already uses for the thing
+   you are on.
+
+   A bar down the leading edge as well as a tint, because a difference in colour
+   alone is not a difference anybody with a colour deficiency can rely on (WCAG
+   2.2 SC 1.4.1), and because on a phone the tint is the width of the screen and
+   reads as a heading. Drawn with an inset shadow rather than a border: a border
+   on one cell of a row moves every cell in it sideways by its own width. */
+.table tbody tr.table__mine {
+  background: var(--mine-surface);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.table tbody tr.table__mine:hover {
+  background: var(--mine-surface);
+}
+
 /* On a phone the table keeps four columns: position, name, category, points.
    Everything else would force a horizontal scroll nobody reads. */
 @media (max-width: 699.98px) {

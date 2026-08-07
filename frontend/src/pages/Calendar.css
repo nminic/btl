@@ -1,19 +1,23 @@
+@import 'Rankings.css';
+
+/* What goes under it is the shared row's business (--head-end in Rankings.css),
+   so only what goes above it is set here. Written as `margin: 0 0 …` it was a
+   rule of the same weight as the shared one and settled by whichever sheet the
+   bundle happened to put last; written as nothing at all, the browser's own
+   margin on an h1 pushed the heading twenty-seven pixels down and took the
+   control with it. */
 .calendar h1 {
-  margin: 0 0 var(--space-16);
+  margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
 
+/* The month, the two arrows, then Danas, at the right end of the row it now
+   shares with the heading (owner, 05.08.2026; the row itself is in Rankings.css).
+   Its own gap, tighter than the row keeps, because these four are one control
+   and not four: a month with a step either side of it, and the way back. */
 .calendar__bar {
-  display: flex;
-  align-items: center;
-  /* Danas, the two arrows, then the month, in that order and packed to the left
-     (owner, 01.08.2026). It used to push the two steps to the ends of the row
-     with the month between them, which put a pixel of distance between two
-     controls that belong together. */
-  justify-content: flex-start;
   gap: var(--space-8);
-  margin-bottom: var(--space-16);
 }
 
 .calendar__month {

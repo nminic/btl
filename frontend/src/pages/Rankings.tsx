@@ -15,6 +15,8 @@ import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { mineClass, rowClass } from '../components/mine'
+import { useSession } from '../session/useSession'
 import './Rankings.css'
 import { useFilterParams } from '../app/useFilterParams'
 
@@ -41,6 +43,9 @@ function Standing({
   const { locale, t } = useI18n()
   const { gender, category, search, seasonParam } = filters
   const today = useToday()
+  /* Whoever is reading, so their own row is marked (owner, 05.08.2026). Null for
+     a visitor, and then no row is anybody's. */
+  const { memberNumber: mine } = useSession()
 
   const seasons = useMemo(() => seasonsWithResults(results), [results])
 
@@ -77,7 +82,11 @@ function Standing({
      out of thirty. */
   return (
     <>
-      <div className="rankings__filters">
+      {/* Level with the heading, at the far right, where every screen with a
+          control keeps it (owner, 05.08.2026). It is the one thing on this row
+          that says which table is being read rather than narrowing it, so it
+          belongs with the name of the screen and not among the filters. */}
+      <div className="rankings__head-tool">
         <div className="rankings__tabs" role="group" aria-label={t('rankings.title')}>
           <button
             type="button"
@@ -94,7 +103,9 @@ function Standing({
             {t('rankings.women')}
           </button>
         </div>
+      </div>
 
+      <div className="rankings__filters">
         <label className="rankings__field">
           <span>{t('rankings.season')}</span>
           <select value={season} onChange={(e) => onChange({ sezona: e.target.value })}>
@@ -107,7 +118,10 @@ function Standing({
         </label>
 
         <label className="rankings__field">
-          <span>{t('rankings.columns.category')}</span>
+          {/* Written out here and short in the table (owner, 05.08.2026): a
+              column heading is read against the eight beside it and lives on the
+              width of a telephone, a label on a control is read on its own. */}
+          <span>{t('rankings.categoryFilter')}</span>
           <select value={category ?? ''} onChange={(e) => onChange({ kategorija: e.target.value })}>
             <option value="">{t('rankings.allCategories')}</option>
             {categoriesOf(competitors, gender, season).map((code) => (
@@ -129,7 +143,15 @@ function Standing({
         </label>
       </div>
 
-      <p className="rankings__count">{t('rankings.rowCount', { count: rows.length })}</p>
+      {/* Said of the people counted, not of a word that covers both (owner,
+          05.08.2026): nine women are "9 takmičarki", and the case follows the
+          number the way Serbian asks, one takmičarka, two takmičarke, five
+          takmičarki. */}
+      <p className="rankings__count">
+        {t(gender === 'F' ? 'rankings.rowCountWomen' : 'rankings.rowCount', {
+          count: rows.length,
+        })}
+      </p>
 
       {rows.length === 0 ? (
         <p className="rankings__empty">{t('rankings.empty')}</p>
@@ -164,10 +186,24 @@ function Standing({
                 <tr
                   key={row.competitor.memberNumber}
                   /* Gold on the podium, as everywhere else
-                     (src/components/podium.ts). */
-                  className={podiumClass(row.position)}
+                     (src/components/podium.ts), and blue on the row of whoever
+                     is reading (src/components/mine.ts). A row can be both. */
+                  className={rowClass(
+                    podiumClass(row.position),
+                    mineClass(row.competitor.memberNumber, mine),
+                  )}
                 >
-                  <td className="table__position">{row.position}</td>
+                  <td className="table__position">
+                    {row.position}
+                    {/* Heard instead of the colour, in the first cell of the
+                        row, which here is the one that numbers it: it reads as
+                        part of the place rather than as a word on a name. The
+                        results of an event have no such column, so there it is
+                        said in the cell that carries the name. */}
+                    {mineClass(row.competitor.memberNumber, mine) === undefined ? null : (
+                      <span className="visually-hidden"> {t('rankings.myRow')}</span>
+                    )}
+                  </td>
                   <td>
                     <CompetitorName competitor={row.competitor} />{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
@@ -212,7 +248,7 @@ export function Rankings() {
   }
 
   return (
-    <div className="rankings">
+    <div className="rankings rankings--tooled">
       <h1>{t('rankings.title')}</h1>
 
       <Resource state={state}>

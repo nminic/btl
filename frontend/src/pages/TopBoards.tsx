@@ -4,6 +4,7 @@ import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
 import { ColumnChart, type ChartColumn } from '../components/ColumnChart'
 import { Resource } from '../components/Resource'
+import { SeasonPicker } from '../components/SeasonPicker'
 import {
   bestSingleRaces,
   defaultSeason,
@@ -19,6 +20,8 @@ import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatCourseTime, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { leaderClass } from '../components/podium'
+import { mineIn, rowClass } from '../components/mine'
+import { useSession } from '../session/useSession'
 import './Rankings.css'
 import './TopBoards.css'
 
@@ -75,7 +78,13 @@ type Place = {
    *  can read 1, 1, 3 (PDL P12). The numbering is done in src/data/derive.ts,
    *  where the ladder of each board is. */
   position: number
-  name: string
+  /** Written out, or written to give up its surname where the card is too
+   *  narrow to hold both words (`NameOrInitial`). */
+  name: ReactNode
+  /** Whose row this is, so it can be marked for whoever is reading it
+   *  (src/components/mine.ts). Two of them on a board of pairs, and none at all
+   *  on a board whose rows are not about people. */
+  members: string[]
   /** Everything after the name, in the order the headings name it. Most boards
    *  have one; the board of best single races has six, because the owner asked
    *  for the whole of a result there (04.08.2026). */
@@ -128,6 +137,40 @@ type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
  * four the standing keeps: the place, the name, one column of its own, and the
  * measure (PDL P12).
  */
+/**
+ * A name that gives up its surname when the card it stands in has no room for
+ * both words (owner, 05.08.2026: "umesto prezimena stavi samo inicijal sa
+ * tačkom").
+ *
+ * Which cards those are is a question about width and not about how long a name
+ * is: at 900px the board of time on course wraps "Predrag Simić" at thirteen
+ * characters, while the board of kilometres beside it holds "Ksenija Vasiljević"
+ * at eighteen, because the column of figures next to the name is wider on one
+ * than on the other. So the card asks itself (`@container` in TopBoards.css)
+ * rather than anybody counting letters.
+ *
+ * Both pieces are always in the markup, and only one of them is ever drawn. The
+ * surname is taken off the screen rather than out of the page, so the whole name
+ * is the accessible name at every width and stays the accessible name even if
+ * the stylesheet never arrives; the initial is `aria-hidden`, or a reader would
+ * hear the letter and then the surname it stands for.
+ *
+ * A copy of the surname that only the narrow card lets into the page would do
+ * the same job with one rule less, and would hand the accessible name over to a
+ * stylesheet: with none applied, which is how these screens are tested, the
+ * surname is in the name twice.
+ */
+function NameOrInitial({ competitor }: { competitor: Competitor }) {
+  return (
+    <>
+      {competitor.firstName} <span className="boards__family">{competitor.lastName}</span>
+      <span className="boards__initial" aria-hidden="true">
+        {`${competitor.lastName.slice(0, 1)}.`}
+      </span>
+    </>
+  )
+}
+
 function cellClass(cell: Cell, last: boolean): string {
   return [
     cell.words === true ? 'boards__detail' : 'boards__figure',
@@ -140,6 +183,10 @@ function cellClass(cell: Cell, last: boolean): string {
 
 function Board({ id, title, columns, places, empty }: BoardData) {
   const { t } = useI18n()
+  /* Whoever is reading, so their own row is marked on every board that is a
+     table (owner, 05.08.2026). Not on the charts: a bar with a face over it is
+     already a picture of one person, and the owner drew that line himself. */
+  const { memberNumber: mine } = useSession()
   const headingId = `board-${id}`
 
   return (
@@ -168,8 +215,19 @@ function Board({ id, title, columns, places, empty }: BoardData) {
               {places.map((place) => (
                 /* Gold for the leader alone here, not for three (owner,
                    04.08.2026): "Nagrade se i dodeljuju samo najboljima." */
-                <tr key={place.key} className={leaderClass(place.position)}>
-                  <td className="table__position">{place.position}</td>
+                <tr
+                  key={place.key}
+                  className={rowClass(
+                    leaderClass(place.position),
+                    mineIn(place.members, mine),
+                  )}
+                >
+                  <td className="table__position">
+                    {place.position}
+                    {mineIn(place.members, mine) === undefined ? null : (
+                      <span className="visually-hidden"> {t('rankings.myRow')}</span>
+                    )}
+                  </td>
                   <td>
                     {place.to === undefined ? place.name : <Link to={place.to}>{place.name}</Link>}
                   </td>
@@ -218,15 +276,12 @@ function Boards({
   competitors,
   results,
   seasonParam,
-  onSeason,
 }: {
   competitors: Competitor[]
   results: Result[]
   seasonParam: string | null
-  onSeason: (season: string) => void
 }) {
   const { locale, t } = useI18n()
-
   const today = useToday()
   const seasons = useMemo(() => seasonsWithResults(results), [results])
   const fallback = useMemo(() => defaultSeason(results, today), [results, today])
@@ -314,7 +369,8 @@ function Boards({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
-        name: nameOf(row.competitor),
+        name: <NameOrInitial competitor={row.competitor} />,
+        members: [row.competitor.memberNumber],
         cells: [{ text: formatNumber(row.kilometers, locale, 2) }],
       })),
     }
@@ -329,7 +385,8 @@ function Boards({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
-        name: nameOf(row.competitor),
+        name: <NameOrInitial competitor={row.competitor} />,
+        members: [row.competitor.memberNumber],
         cells: [{ text: formatCourseTime(row.seconds) }],
       })),
     }
@@ -379,6 +436,7 @@ function Boards({
         key: row.result.id,
         position: row.position,
         name: nameOf(row.competitor),
+        members: [row.competitor.memberNumber],
         cells: [
           { text: row.result.eventName, words: true },
           { text: formatNumber(row.result.distanceKm, locale, 2), hidePhone: true },
@@ -410,16 +468,15 @@ function Boards({
   return (
     <>
       <div className="boards__filters rankings__head-tool">
-        <label className="rankings__field">
-          <span>{t('topBoards.season')}</span>
-          <select value={season} onChange={(event) => onSeason(event.target.value)}>
-            {seasons.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* The shared control, as on the teams and on a profile. This screen had
+            a copy of the same markup, written before the control was shared; two
+            copies of one shape drift, and this is the shape the owner asked the
+            others to be brought to (04.08.2026).
+
+            `fallback` is the season this screen opens on, so the address carries
+            a year only while it is not that one, which is what every other
+            screen does and is the one thing that changed here. */}
+        <SeasonPicker seasons={seasons} season={String(season)} fallback={String(fallback)} />
       </div>
 
       <div className="boards__grid">
@@ -437,17 +494,10 @@ function Boards({
 
 export function TopBoards() {
   const { t } = useI18n()
-  const [params, setParams] = useFilterParams()
+  const [params] = useFilterParams()
   /* Only what the boards show. The teams went off this page with the layout of
      04.08.2026, and the file of teams went with them. */
   const state = combinePair(useCompetitors(), useResults())
-
-  function changeSeason(season: string) {
-    const merged = new URLSearchParams(params)
-
-    merged.set('sezona', season)
-    setParams(merged)
-  }
 
   return (
     <div className="boards rankings--tooled">
@@ -459,7 +509,6 @@ export function TopBoards() {
             competitors={competitors}
             results={results}
             seasonParam={params.get('sezona')}
-            onSeason={changeSeason}
           />
         )}
       </Resource>

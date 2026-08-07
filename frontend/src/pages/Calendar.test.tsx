@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
-import { first } from '../test/at'
+import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -214,5 +214,34 @@ describe('Calendar', () => {
     expect(
       await screen.findByRole('link', { name: 'Nazad na kalendar' }, { timeout: 4000 }),
     ).toBeVisible()
+  })
+})
+
+/* The month, the two steps, then Danas, level with the heading (owner,
+ * 05.08.2026). The order is the whole of the request: it read the other way
+ * round until then, on its own line under the heading.
+ */
+describe('the row the month is chosen in', () => {
+  it('reads month, back, forward, today, in that order', async () => {
+    renderAt('/sr/kalendar')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const bar = must(
+      screen.getByRole('button', { name: 'Danas' }).closest('div'),
+      'the row around the controls',
+    )
+
+    /* Read off the row itself rather than off the page, so a control moved out
+       of it fails here rather than passing because it still exists somewhere. */
+    expect([...bar.children].map((one) => one.textContent ?? one.getAttribute('aria-label'))).toEqual(
+      [expect.stringMatching(/\d{4}\./), '', '', 'Danas'],
+    )
+    expect(
+      [...bar.children].map((one) => one.getAttribute('aria-label') ?? one.tagName),
+    ).toEqual(['H2', 'Prethodni mesec', 'Sledeći mesec', 'BUTTON'])
+
+    /* And the row is the shared one beside the heading, not a row of its own. */
+    expect(bar.className).toContain('rankings__head-tool')
   })
 })

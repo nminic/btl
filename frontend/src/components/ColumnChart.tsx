@@ -204,6 +204,16 @@ export function ColumnChart({
   control?: ReactNode
 }) {
   const highest = Math.max(1, ...columns.map((one) => one.value))
+  /* How wide the circle in a bar has to be, in characters, which is the longest
+     number this chart draws (owner, 05.08.2026: it has to be a circle, and a
+     circle wide enough for two decimals is wider than one holding a count of
+     races). Counted here rather than guessed in the stylesheet, so a chart of
+     single digits keeps the small disc and only the one that carries points
+     grows. Both levels of a bar are counted, because both carry a number. */
+  const digits = Math.max(
+    1,
+    ...columns.flatMap((one) => [one.label.length, one.base?.label.length ?? 0]),
+  )
 
   return (
     <section
@@ -216,6 +226,7 @@ export function ColumnChart({
          the tallest bar gains that whole 27,6px and the shortest 6,1px, because
          a bar is a share of the track and not a length of its own. */
       className={control === undefined ? 'colchart' : 'colchart colchart--control'}
+      style={{ '--count-chars': digits } as CSSProperties}
       aria-label={captionId === undefined ? label : undefined}
       aria-labelledby={captionId}
     >

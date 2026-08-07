@@ -1,23 +1,32 @@
 @import '../styles/table.css';
 
+/* Only what goes above it. What goes under is the shared row's business
+   (Rankings.css: --head-end on the row, eight pixels below 560px), and a rule
+   here of the same weight is settled by whichever sheet the bundle puts last:
+   the two agreed by coincidence on the row, and below 560px they did not agree
+   at all, twelve here against eight everywhere else. */
 .boards h1 {
-  margin: 0 0 var(--space-12);
+  margin-block-start: 0;
   font-size: clamp(28px, 5vw, 40px);
   letter-spacing: -0.02em;
 }
 
-/* Level with the heading, at the far right (owner, 01.08.2026). It is drawn
-   inside the Resource, which comes after the heading, so it is placed rather
-   than ordered: first row, second column. */
-.boards__filters {
-  margin-bottom: var(--space-16);
-}
+/* Level with the heading, at the far right (owner, 01.08.2026). Placed rather
+   than ordered, because it is drawn inside the Resource and so comes after the
+   heading in the markup: first row, second column.
 
+   Nothing here says what goes under it. On the row the shared rule does
+   (--head-end in Rankings.css), and it has to, because centring puts each margin
+   box in the middle of the row: a control whose box is twelve pixels shorter
+   than the heading's is drawn six pixels low, which is what this one was until
+   05.08.2026 and what the owner saw as it sitting differently from the one on
+   the teams. Below 560px the grid is not there at all and the distance comes
+   from the block under this one, which brings its own. A margin written here was
+   measured at neither width. */
 @media (min-width: 560px) {
   .rankings--tooled > .boards__filters {
     grid-row: 1;
     grid-column: 2;
-    margin-bottom: 0;
   }
 }
 
@@ -25,12 +34,12 @@
    lengths, then the board that stands beside them on a wide screen, and so on
    (TopBoards.tsx).
 
-   The same distance under the row of the heading that the cards of the
-   competitors keep (owner, 04.08.2026: there the content is "savršeno odvojeno"
-   from that line). Every screen with a control beside its heading now starts its
-   content at the same place. */
+   Nothing here about the distance above it. This is the first thing under the
+   row of the heading, so the shared rule sets that (Rankings.css), with two
+   classes to this one's one and the same sixteen pixels: written here as well it
+   was a declaration nothing could move, which is what the margin under the
+   control beside it turned out to be. */
 .boards__grid {
-  margin-block-start: var(--space-16);
   display: grid;
   gap: var(--space-16);
   /* minmax(0, …) rather than a bare 1fr: the smallest a track may be is
@@ -42,6 +51,49 @@
 
 .boards__board {
   min-inline-size: 0;
+  /* Each board answers about its own width, so a name can give up its surname on
+     the boards that stand in the narrow column and keep it where there is room
+     (owner, 05.08.2026; `NameOrInitial` in TopBoards.tsx).
+
+     A query about an inline-size container reads its content box, so these are
+     content widths. Measured over the seasons on the two boards this touches,
+     counting rows: at 245px, which is the narrow column of a 900px page, 144 of
+     208 wrap; at 312px, eleven; at 320px, seven, all of them the same name; at
+     321px, none. So the question is asked at 320.
+
+     Which is a threshold nothing on the portal is near. The main column is
+     capped at 1100px (Shell.css), so the narrow board is 317px wide on a 1280px
+     page and on a 1920px one alike, and these two boards abbreviate at every
+     desktop width the portal produces. The number matters if that cap moves, and
+     it is measured rather than guessed for the same reason. */
+  container-type: inline-size;
+}
+
+/* The full name while there is room for it. */
+.boards__initial {
+  display: none;
+}
+
+@container (max-width: 320px) {
+  /* Off the screen rather than out of the page, so the surname is still read
+     out. The recipe is `visually-hidden` in index.css, written out here because
+     what is being switched is whether it applies, and a class cannot be put on
+     an element by a container query. */
+  .boards__family {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .boards__initial {
+    display: inline;
+  }
 }
 
 /* The boards that are tables wear the card; the ones that are charts carry their

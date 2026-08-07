@@ -8,6 +8,7 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
+import { mineIn, rowClass } from '../components/mine'
 import './Rankings.css'
 
 /**
@@ -48,6 +49,11 @@ export function Teams() {
           const season = offeredSeason(asked, seasons, running)
           const inSeason = results.filter((one) => seasonOf(one) === Number(season))
           const rows = rankTeams(teams, competitors, inSeason, Number(season))
+          /* The team of whoever is reading, so its row is marked (owner,
+             05.08.2026). Read off the member rather than held in the session,
+             because a member can be moved between teams by a moderator and the
+             session would then be marking the row they used to be in. */
+          const myTeam = competitors.find((one) => one.memberNumber === memberNumber)?.teamId
 
           return (
             <>
@@ -63,7 +69,7 @@ export function Teams() {
                     {t('teams.propose')}
                   </Link>
                 )}
-                <SeasonPicker seasons={seasons} season={season} fallback={running} named />
+                <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 
               {rows.length === 0 ? (
@@ -93,11 +99,20 @@ export function Teams() {
                            table: in a season nobody has raced yet every team is
                            level on nothing, and the top row is only the one the
                            sort happened to leave there. */
-                        className={row.position === 1 && row.totals.points > 0 ? 'podium' : undefined}
+                        className={rowClass(
+                          row.position === 1 && row.totals.points > 0 ? 'podium' : undefined,
+                          myTeam === undefined ? undefined : mineIn([row.team.id], myTeam),
+                        )}
                       >
                         {/* The place, not the row number: a tie nothing separates
                             is shared, so the column can read 1, 1, 3 (PDL P12). */}
-                        <td className="table__position">{row.position}</td>
+                        <td className="table__position">
+                          {row.position}
+                          {myTeam === undefined ||
+                          mineIn([row.team.id], myTeam) === undefined ? null : (
+                            <span className="visually-hidden"> {t('teams.myTeam')}</span>
+                          )}
+                        </td>
                         <td>
                           <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
                         </td>

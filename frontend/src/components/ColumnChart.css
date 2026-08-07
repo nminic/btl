@@ -28,8 +28,17 @@
      ladder in the record asks for: one race against twenty-eight is a bar of six
      pixels under a disc of twenty-seven, so ten of that disc hangs below the
      bar. This lifts every bar by the same amount, so it costs nothing in
-     proportion: twice the races is still twice the bar. */
-  padding: var(--space-10) var(--space-10) var(--space-12);
+     proportion: twice the races is still twice the bar.
+
+     Asked for from the same number of characters the circle is (--count-chars,
+     ColumnChart.tsx), because since 05.08.2026 the circle is as wide as the
+     longest number in the chart: what hangs below a level of no height is half
+     of that, so a chart of single digits keeps its twelve pixels and the one
+     that carries points to two decimals asks for twenty-nine. Written out
+     rather than halving --diameter, which is a length in `ch` of a font this
+     element does not have. */
+  padding: var(--space-10) var(--space-10)
+    max(var(--space-12), calc(var(--count-chars, 2) * 0.24rem + var(--space-6)));
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -255,35 +264,35 @@
 /* Dead in the middle of its bar, both ways (owner, 31.07.2026). It used to sit
    a fixed distance up from the foot, so on a tall bar it was down at the
    bottom and on a short one it was nearly out of it. */
-/* A disc while what is in it is short, and a pill when it is not.
+/* A circle, always (owner, 05.08.2026).
  *
- * It was a circle of a fixed width, made when a bar carried a count of races.
- * The board of best progress carries points to two decimals since 04.08.2026
- * (owner), and "334,56" is forty-one pixels of text in a disc of twenty-seven:
- * every number on that board but one hung out of its own disc, half on it and
- * half on the bare bar. The height is what makes it a disc, so a short number is round exactly as
- * before and a long one grows sideways only. */
+ * It was a disc of a fixed width, made when a bar carried a count of races. The
+ * board of best progress carries points to two decimals since 04.08.2026, and
+ * "334,56" is forty-one pixels of text in a disc of twenty-seven, so the box was
+ * let out sideways and drew a pill; the owner reads that as an ellipse, which is
+ * fair, and asked for the circle back.
+ *
+ * A circle that fits the longest number in its own chart, then. The width is
+ * asked for in `ch`, which is the width of a nought and therefore the width of
+ * every digit the portal draws, since the root sets tabular figures; a comma is
+ * narrower, so the count rounds up rather than down. How many characters that is
+ * comes from the chart itself (`--count-chars` in ColumnChart.tsx), so the
+ * boards that carry a count of races keep the small disc they have always had
+ * and only the one board that carries points grows.
+ *
+ * The floor is what a one or two character number wants, and it is what the disc
+ * measured before any of this. */
 .colchart__count {
+  --floor: 1.7rem;
+  --diameter: max(var(--floor), calc(var(--count-chars, 2) * 1ch + var(--space-8)));
   position: absolute;
   inset: 0;
   margin: auto;
-  inline-size: fit-content;
-  min-inline-size: 1.7rem;
-  /* The box never wider than the bar it stands in, or two neighbours touch. The
-     tightest case is the board of best progress, the one chart whose numbers run
-     long and the one whose bars are widest: five of them at 360px, 58px each.
-     What this buys is the twelve pixels of room on the sides of the box, which
-     go first; past that the digits stand out of the box rather than the box out
-     of the bar, which is the lesser of the two and is well out of reach of any
-     difference in points the league has recorded. */
-  max-inline-size: 100%;
-  padding-inline: var(--space-6);
-  block-size: 1.7rem;
+  inline-size: var(--diameter);
+  block-size: var(--diameter);
   display: grid;
   place-items: center;
-  /* Round while it is round, and a pill once it is not. At 50% a stretched box
-     is an ellipse, which is neither. */
-  border-radius: var(--radius-round);
+  border-radius: 50%;
   background: var(--blue-800);
   color: var(--white);
   font-size: 0.82rem;
@@ -292,10 +301,10 @@
 
 /* The figure in the lower level. The same circle, a touch smaller: the level
    under it is already the quieter of the two, and a second colour of circle
-   would be a third thing for a reader to learn. */
+   would be a third thing for a reader to learn. Smaller of itself, too, because
+   the diameter is asked for in `ch` and a `ch` here is the smaller type. */
 .colchart__count--quiet {
-  min-inline-size: 1.45rem;
-  block-size: 1.45rem;
+  --floor: 1.45rem;
   font-size: 0.72rem;
 }
 

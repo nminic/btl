@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { must } from '../test/at'
 import sr from '../i18n/sr.json'
 
 /* The gold band that names a board, and the one thing about it no screen test
@@ -368,6 +369,80 @@ describe('the ink on the gold band', () => {
   })
 })
 
+/* Gold on the row that belongs to whoever is reading.
+ *
+ * A reader in the top three has a row that is both, and the two marks are drawn
+ * by two rules that know nothing about each other: the tint comes from the mark,
+ * the gold from the podium. Nothing on a screen says whether the number can
+ * still be read on it, and the first tint chosen measured 4,40:1, which is under
+ * the 4,5:1 a number owes as text (WCAG 2.2 SC 1.4.3).
+ *
+ * Both themes, and the dark one twice, because it is declared once for the
+ * system setting and once for the switch on the page.
+ */
+describe('the gold on a row that belongs to the reader', () => {
+  it('clears 4,5:1 in both themes', () => {
+    const tokens = read('src/styles/tokens.css')
+
+    /* Every value a token is given, in the order the file gives them: the light
+       theme, then the dark one the system asks for, then the dark one the switch
+       on the page sets. A token with one value has one, and the same one answers
+       for every theme. */
+    const given = (name: string) =>
+      [...tokens.matchAll(new RegExp(`${name}: ([^;]+);`, 'g'))].map((one) => one[1] as string)
+
+    /* Followed to a colour, because half of these are written as the name of
+       another token. Read as text, `--accent: var(--blue-700)` is not a colour
+       and a regex looking for a hex quietly skips it, so the light theme falls
+       out of the check and the first hex it does find answers for it: written
+       out by hand, the dark link was measured against the dark tint here while
+       the value the portal actually draws was somewhere else entirely. */
+    const colour = (value: string, seen: string[] = []): string => {
+      const named = value.trim().match(/^var\((--[a-z0-9-]+)\)$/)
+
+      if (named === null) {
+        expect(value.trim(), `${value} is not a colour`).toMatch(/^#[0-9a-f]{6}$/)
+        return value.trim()
+      }
+
+      const next = must(named[1], 'the name inside var()')
+
+      expect(seen, `${next} is defined in terms of itself`).not.toContain(next)
+      return colour(must(given(next)[0], `${next} has no value`), [...seen, next])
+    }
+
+    /** That token as the theme at `index` draws it, or as the light theme does. */
+    const inTheme = (name: string, index: number) => {
+      const values = given(name)
+
+      return colour(must(values[index] ?? values[0], `${name} has no value`))
+    }
+
+    const tints = given('--mine-surface').map((one) => colour(one))
+
+    /* One for the light theme and two for the dark, which is how every token
+       with a value per theme is written here. Fewer means a theme has quietly
+       lost its own value and is drawing another one instead. */
+    expect(tints).toHaveLength(3)
+
+    /* Every ink a marked row carries, not the gold alone. A row is a name that
+       leads somewhere, so the accent is on it as often as the gold is, and the
+       first dark tint chosen put the accent at 4,36:1 while the gold on it read
+       8,41:1 and said nothing about it. */
+    const inks = ['--gold-text', '--accent', '--text', '--text-muted']
+    const pairs = inks.flatMap((ink) =>
+      tints.map((on, index) => ({ ink: inTheme(ink, index), on, theme: `${ink}, theme ${index}` })),
+    )
+
+    for (const pair of pairs) {
+      expect(
+        contrast(pair.ink, pair.on),
+        `${pair.ink} on ${pair.on} (${pair.theme}) is ${contrast(pair.ink, pair.on).toFixed(2)}:1`,
+      ).toBeGreaterThanOrEqual(FLOOR)
+    }
+  })
+})
+
 describe('the name that has to be cut', () => {
   it('leaves the focus ring more room than it reaches', () => {
     const home = read('src/pages/Home.css')
@@ -431,6 +506,36 @@ function onTelephone(css: string): string {
  * `opacity: 1` the whole suite stayed green while every such table showed every
  * column on a telephone again, sideways scroll and all.
  */
+/* The surname that gives way to an initial where a card has no room for both
+ * (owner, 05.08.2026).
+ *
+ * A container query and nothing else decides it, and jsdom evaluates none, so
+ * the screen test beside this one can only hold that both halves are in the
+ * markup. What is held here is that the swap is written down and that it is
+ * asked of the card rather than of the window: read as a media query it would
+ * shorten every name on the page at that width, including the ones on the board
+ * that runs its whole width, and read against no container at all it would never
+ * shorten anything.
+ */
+describe('a surname a card has no room for', () => {
+  it('is swapped for an initial by the card it stands in, not by the window', () => {
+    const css = read('src/pages/TopBoards.css')
+
+    expect(bodyOf(css, '.boards__board')).toMatch(/container-type:\s*inline-size/)
+
+    const at = css.indexOf('@container (max-width: 320px) {')
+
+    expect(at, 'there is no question asked of the card').toBeGreaterThan(-1)
+
+    const query = css.slice(at, closes(css, at))
+
+    expect(bodyOf(query, '.boards__family')).toMatch(/position:\s*absolute/)
+    expect(bodyOf(query, '.boards__initial')).toMatch(/display:\s*inline/)
+    /* And drawn the other way round outside it. */
+    expect(bodyOf(css, '.boards__initial')).toMatch(/display:\s*none/)
+  })
+})
+
 describe('a column hidden on a telephone', () => {
   it('is taken out of the page, and only on a telephone', () => {
     const query = onTelephone(read('src/styles/table.css'))
@@ -488,16 +593,10 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'the whole of a result takes the whole width of the page',
     },
     {
-      of: 'src/pages/TopBoards.css',
-      rule: '.boards__grid',
-      holds: /margin-block-start:\s*var\(--space-16\)/,
-      why: 'the boards start off the line of the heading, as the cards do',
-    },
-    {
       of: 'src/pages/Rankings.css',
-      rule: '.rankings--tooled > .rankings__empty',
+      rule: '.rankings--tooled > .rankings__head-tool + *',
       holds: /margin-block-start:\s*var\(--space-16\)/,
-      why: 'and so does a table with a control beside its heading',
+      why: 'and so does whatever comes first under a control beside a heading',
     },
     {
       of: 'src/pages/TopBoards.css',
@@ -518,7 +617,7 @@ describe('what the owner asked for on 04.08.2026', () => {
          under the bars and the absence of a band over them: written back as four
          values, or with a `padding-block-start` after it, the band returns and a
          rule that merely mentions padding would still be here. */
-      holds: /padding:\s*var\(--space-10\) var\(--space-10\) var\(--space-12\);/,
+      holds: /padding:\s*var\(--space-10\) var\(--space-10\)\s*max\(var\(--space-12\), calc\(var\(--count-chars, 2\) \* 0\.24rem \+ var\(--space-6\)\)\);/,
       why: 'a step under the bars, and nothing kept over them',
     },
     {
@@ -528,26 +627,97 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'except on the one chart that has a control to put there',
     },
     {
-      of: 'src/components/ColumnChart.css',
-      rule: '.colchart__count',
-      holds: /max-inline-size:\s*100%/,
-      why: 'and a number that runs long stays inside its own bar',
+      of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled',
+      /* The one value both boxes on that row take. Written twice instead, they
+         drift apart and centring draws the control off the heading by half the
+         difference, which is how the top boards sat six pixels low and a profile
+         three pixels high (owner, 05.08.2026). */
+      holds: /--head-end:\s*var\(--space-12\)/,
+      why: 'the heading and the control beside it end at the same distance',
+    },
+    {
+      of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled > .rankings__head-tool',
+      holds: /margin-block-end:\s*var\(--head-end\)/,
+      why: 'and both of them take it from the one place',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__title.rankings--tooled',
+      holds: /--head-end:\s*var\(--space-6\)/,
+      why: 'a profile spends less of it, and its control moves with the heading',
+    },
+    {
+      of: 'src/pages/TopBoards.css',
+      rule: '.boards h1',
+      /* Only what goes above it, and nothing about what goes under. Written as
+         `margin: 0 0 …` this rule weighs the same as the shared one and is
+         settled by whichever sheet the bundle puts last, so the two agreed by
+         coincidence on the row and not at all below 560px. Written as nothing,
+         the browser's own margin on an h1 returns and takes the control with
+         it. */
+      holds: /margin-block-start:\s*0/,
+      why: 'a heading with a control beside it says only what goes above it',
+    },
+    {
+      of: 'src/pages/Calendar.css',
+      rule: '.calendar h1',
+      holds: /margin-block-start:\s*0/,
+      why: 'and the calendar says the same, for the same reason',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__head > h1',
+      /* An event and a league build their head like a profile but have no
+         control beside the name, so they draw a bare h1 here. Their whole
+         styling was a rule about `.profile__head h1`, and when the name of a
+         competitor took its own size that rule went with it and both pages fell
+         back to the browser's 2em. */
+      holds: /font-size:\s*clamp\(26px, 4\.5vw, 36px\)/,
+      why: 'a page built like a profile has a heading even with no control on it',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__name',
+      /* The same size as every other heading, or the control beside it is drawn
+         at a height nothing else on the portal uses. */
+      holds: /font-size:\s*clamp\(28px, 5vw, 40px\)/,
+      why: 'the name of a competitor is the size a heading is',
+    },
+    {
+      of: 'src/styles/table.css',
+      rule: '.table tbody tr.table__mine',
+      /* The mark itself. Every screen puts the class on the right row, which the
+         screen tests hold; nothing but this says the class paints anything. */
+      holds: /background:\s*var\(--mine-surface\)/,
+      why: 'the row of whoever is reading is tinted',
+    },
+    {
+      of: 'src/styles/table.css',
+      rule: '.table tbody tr.table__mine',
+      /* And a shape as well as a colour, because a difference in colour alone is
+         not one every reader can see (WCAG 2.2 SC 1.4.1). */
+      holds: /box-shadow:\s*inset 3px 0 0 0 var\(--accent\)/,
+      why: 'and carries a bar down its leading edge, not colour alone',
     },
     {
       of: 'src/components/ColumnChart.css',
       rule: '.colchart__count',
-      /* The other half of the same thought. The box is placed with `inset: 0`
-         and `margin: auto`, so a width left to itself is the whole of the bar:
-         without these two every count in every chart on the portal is a pill the
-         width of its column rather than a disc. */
-      holds: /inline-size:\s*fit-content;\s*min-inline-size:\s*1\.7rem/,
-      why: 'a count is as wide as the number in it, and no wider',
+      /* One value on both axes, which is the whole of being a circle: written as
+         two, a number of six characters draws the pill the owner asked to be rid
+         of on 05.08.2026, and nothing else on the portal would say so. */
+      holds: /inline-size:\s*var\(--diameter\);\s*block-size:\s*var\(--diameter\)/,
+      why: 'a count is as wide as it is tall',
     },
     {
       of: 'src/components/ColumnChart.css',
       rule: '.colchart__count',
-      holds: /padding-inline:\s*var\(--space-6\)/,
-      why: 'with the room on its sides that the cap above spends first',
+      /* And wide enough for the longest number the chart draws. Left at the
+         floor, "286,25" is forty-one pixels of text in a circle of twenty-seven
+         and stands half on the bar; the circle this asks for is fifty-three. */
+      holds: /max\(var\(--floor\), calc\(var\(--count-chars, 2\) \* 1ch \+ var\(--space-8\)\)\)/,
+      why: 'and wide enough for the longest number in its own chart',
     },
   ]) {
     it(`${why} (${rule})`, () => {
@@ -555,24 +725,66 @@ describe('what the owner asked for on 04.08.2026', () => {
     })
   }
 
-  it('starts the table itself off that line, not only the sentence standing in for it', () => {
-    /* Both selectors of one rule, and the rule is found by the last of them, so
-       the first was carried by nothing: taken out, the standing on the teams
-       goes from 28px under its heading to 12px, which is the state the note was
-       about, while the half that was held draws only in a season that has no
-       teams in it. */
+  it('leaves what goes under a heading to the one rule that sets it', () => {
+    /* Four headings set their own top margin and must not set the bottom. Each
+       loses that argument in its own way and none of them by a rule anybody
+       reads: two of them weigh the same as the shared rule and are settled by
+       the order the bundle puts two sheets in, one by the order inside a single
+       sheet, and the fourth by weight. A bottom margin written in any of them is
+       either dead or a disagreement waiting for somebody to reorder an import,
+       which is how these screens came to keep twelve pixels against everybody
+       else's eight below 560px. */
+    for (const [file, rule] of [
+      ['src/pages/TopBoards.css', '.boards h1'],
+      ['src/pages/Calendar.css', '.calendar h1'],
+      ['src/pages/Rankings.css', '.rankings h1'],
+      ['src/pages/Profile.css', '.profile__name'],
+    ] as const) {
+      /* Any bottom margin at all, however it is written: `margin`,
+         `margin-block`, `margin-block-end`, `margin-bottom`, with a token or a
+         number. Held to values off the space scale it let
+         `margin-block-end: var(--head-end)` through, and held to those four
+         spellings without `margin-block` it let the two-value shorthand through,
+         which is the same fight in the same direction each time.
+         `margin-block-start` is not a bottom margin and does not match: after
+         `margin` the pattern wants either nothing or one of the three endings,
+         then a colon. */
+      expect(bodyOf(read(file), rule)).not.toMatch(/margin(-block|-block-end|-bottom)?:/)
+    }
+  })
+
+  it('gives the heading and the control one rule, so neither can drift', () => {
+    /* Both selectors of it, and the rule is found by the last of them. Written
+       as two rules they hold the same value until somebody changes one, and
+       centring then draws the control off the heading by half the difference
+       without anything failing. */
     expect(read('src/pages/Rankings.css')).toMatch(
-      /\.rankings--tooled > \.table-scroll,\s*\.rankings--tooled > \.rankings__empty \{/,
+      /\.rankings--tooled > h1,\s*\.rankings--tooled > \.rankings__head-tool \{/,
     )
   })
 
-  it('keeps the count round while it is round, and a pill once it is not', () => {
-    /* At 50% a box stretched by a long number is an ellipse, which is neither a
-       disc nor a pill. Both circles are drawn the same way, so both are read. */
+  it('starts whatever comes first off that line, not a named few', () => {
+    /* It was two selectors naming two classes, so the two screens nobody thought
+       of started twelve pixels higher than the rest: the standing under its row
+       of filters and the calendar under its month (owner, 05.08.2026). The
+       sibling is what the rule is about, so the sibling is what it selects, and
+       naming a class here again would be the same mistake with a longer list. */
+    expect(read('src/pages/Rankings.css')).toMatch(
+      /\.rankings--tooled > \.rankings__head-tool \+ \* \{/,
+    )
+    expect(read('src/pages/Rankings.css')).not.toMatch(/\.rankings--tooled > \.table-scroll/)
+  })
+
+  it('draws the count as a circle and not as a stadium', () => {
+    /* 50% of a square is a circle; 50% of an oblong is an ellipse, and a large
+       fixed radius on an oblong is the pill this used to be. The radius alone
+       says nothing, so it is read beside the one diameter above, and the quieter
+       circle is drawn by the same rule with a smaller floor and smaller type. */
     const css = read('src/components/ColumnChart.css')
 
-    expect(bodyOf(css, '.colchart__count')).toMatch(/border-radius:\s*var\(--radius-round\)/)
-    expect(bodyOf(css, '.colchart__count--quiet')).not.toMatch(/border-radius/)
+    expect(bodyOf(css, '.colchart__count')).toMatch(/border-radius:\s*50%/)
+    expect(bodyOf(css, '.colchart__count--quiet')).not.toMatch(/border-radius|block-size/)
+    expect(bodyOf(css, '.colchart__count--quiet')).toMatch(/--floor:\s*1\.45rem/)
   })
 })
 
