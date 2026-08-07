@@ -8,6 +8,20 @@ Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot
 - SAV kod je isključivo na engleskom: nazivi promenljivih, polja, metoda, komentari, poruke izuzetaka, commit poruke, nazivi testova. Jedini srpski u kodu su UI tekstovi vidljivi posetiocima sajta.
 - Nikad ne koristiti em-dash (—) u tekstu za korisnika; u krajnjem slučaju n-dash (–).
 
+## Rad bez prekida (obavezno, iznad svega ostalog)
+
+- **Nikad ne stajati.** Rad se ne prekida ni kad stigne pitanje, ni kad je celina
+  gotova, ni na kraju izveštaja.
+- **Kad vlasnik nešto pita:** odgovoriti kratko i **istog trenutka nastaviti** ono
+  na čemu se radilo, u istoj poruci. Odgovor nije kraj rada nego prekid od par
+  redova.
+- **Izveštavanje:** javljati posle svake gotove celine, kratko i konkretno. Nikad
+  ne pisati „SLEDEĆE:" i stati. Piše se **„POČINJEM:"** i tog trenutka se počinje,
+  u istoj poruci.
+- **Jedino što zaustavlja rad** je izričito „stani" od vlasnika, ili pitanje na
+  koje se bez njegovog odgovora ne može dalje. U drugom slučaju se pitanje postavi
+  i **odmah nastavi sa onim delom posla koji od tog odgovora ne zavisi**.
+
 ## Odluke (izvor istine, pročitati pre rada)
 
 Sve tehničke i produktne odluke žive van repoa, u dva dnevnika odluka koji moraju biti međusobno usklađeni:
