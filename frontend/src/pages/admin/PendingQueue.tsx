@@ -9,7 +9,7 @@ import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
-import { overall } from '../event/overall'
+import { overall, rated } from '../event/overall'
 import countries from '../../data/countries.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
@@ -164,7 +164,12 @@ function RatingGiven({ rating }: { rating: EventRating }) {
       ))}
       <div>
         <dt>{t('event.rating.overall')}</dt>
-        <dd className="pending__overall">{formatNumber(overall(rating), locale, 1)}</dd>
+        {/* The same words the event page uses for a rating nobody gave
+            (EventComments.tsx). Two screens showing one record must not answer
+            "Bez ocene" and "0,0" to the same question. */}
+        <dd className="pending__overall">
+          {rated(rating) ? formatNumber(overall(rating), locale, 1) : t('event.rating.unrated')}
+        </dd>
       </div>
     </dl>
   )

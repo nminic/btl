@@ -250,8 +250,12 @@ export type EventRating = {
  * throw at the reader instead. Without the annotation the write is a build
  * error, which is where it belongs: this object is handed out by reference, so
  * one careless assignment would give a rating to everything that has none.
+ *
+ * The shape is given to `freeze` rather than to the constant, so a mark spelled
+ * wrong is still refused: without it anywhere to check against, an extra field
+ * would go in silently and the three real ones would be the only ones read.
  */
-export const NO_RATING = Object.freeze({
+export const NO_RATING = Object.freeze<EventRating>({
   organisation: 0,
   value: 0,
   ambience: 0,

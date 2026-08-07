@@ -165,7 +165,7 @@ describe('the panel', () => {
     )
 
     const waiting = must((await screen.findByText('Čeka proveru')).closest('div'), 'div')
-    /* Two results are waiting, three memberships, and fourteen items in the six
+    /* Two results are waiting, three memberships, and fifteen items in the six
        queues read from the file. The tile counted the two while the navigation
        counted the lot, which is two numbers disagreeing on one screen. The sum
        is exact because the data is fixed: an "at least" here would survive the
@@ -174,7 +174,7 @@ describe('the panel', () => {
        The moderator holds every right here, so the panel counts all eight. One
        who held fewer would see fewer, which is the point of the number: it is
        the work he can actually reach (owner, 30.07.2026). */
-    expect(within(waiting).getByRole('definition')).toHaveTextContent('19')
+    expect(within(waiting).getByRole('definition')).toHaveTextContent('20')
   })
 })
 
@@ -1319,13 +1319,13 @@ describe('the six queues read from the file', () => {
   it('deletes a comment in one click, and never asks why', async () => {
     const user = await open('comments', 'Komentari')
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
 
     await user.click(first(screen.getAllByRole('button', { name: 'Obriši' })))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Razlog vraćanja' })).not.toBeInTheDocument()
 
     const decided = within(screen.getByRole('table', { name: 'Rešeno' }))

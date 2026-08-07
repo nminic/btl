@@ -1507,7 +1507,10 @@ describe('the head of an event with nothing to offer', () => {
     ['a member before the race', 'competitor', '000007', '/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16'],
   ] as const) {
     it(`draws no box for ${name}`, async () => {
-      renderAt(address, role, member)
+      /* Read on a fixed day. On the real clock the second case says the
+         opposite of itself from 16.01.2027, which is a test that breaks the
+         build on a date rather than on a change. */
+      renderAt(address, role, member, undefined, '2026-12-31')
 
       const heading = await screen.findByRole('heading', { level: 1 })
       const row = must(heading.parentElement, 'the row around the heading')

@@ -280,6 +280,26 @@
     "subjectId": "evt-memorijal-dragutin-tomasevic-2026-05-23"
   },
   {
+    "id": "ver-kom-4",
+    "queue": "comments",
+    "date": "2026-07-11",
+    "memberNumber": "000019",
+    "who": "Rajko Simonović",
+    "subject": "Jadovnički ultramaraton",
+    "body": "Komentar poslat pre nego sto su ocene postojale, jos ceka.",
+    "currentDate": "",
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11"
+  },
+  {
     "id": "ver-ter-1",
     "queue": "schedule",
     "date": "2026-07-25",

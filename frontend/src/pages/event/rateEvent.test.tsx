@@ -5,6 +5,7 @@ import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { loadResource } from '../../data/client'
 import type { Competitor, EventComment, PendingItem } from '../../data/types'
+import { overall, rated } from './overall'
 
 /** The two letters a portrait draws for a name. */
 const initialsOf = (who: string) =>
@@ -12,17 +13,22 @@ const initialsOf = (who: string) =>
     .split(' ')
     .map((part) => part.slice(0, 1))
     .join('')
-import { overall } from './overall'
 
-/** The words on a card, in the order they are on it, with the marks left out:
- *  those are drawn as pictures and are read by their names elsewhere. */
-/** The name on a card, which is the first paragraph on it. */
-const whoOf = (card: HTMLElement) => paragraphsIn(card)[0] ?? ''
-
+/**
+ * The words on a card, in the order they stand on it, with the overall left out:
+ * that one is a figure beside a picture rather than a line of the card.
+ *
+ * Read as paragraphs, which is the one thing here no role reaches: a paragraph
+ * has none, and what is being held is that a card with no words has no empty
+ * one under the marks. Its content is what the checks compare, never its class.
+ */
 const paragraphsIn = (card: HTMLElement) =>
   [...card.getElementsByTagName('p')]
     .map((one) => (one.textContent ?? '').trim())
     .filter((one) => !one.startsWith('Ukupna ocena'))
+
+/** The name on a card, which is the first paragraph on it. */
+const whoOf = (card: HTMLElement) => paragraphsIn(card)[0] ?? ''
 
 /* Rating an event, and reading what other people made of it (owner,
  * 06.08.2026).
@@ -295,6 +301,30 @@ describe('a comment a moderator lets out', () => {
     /* One picture per mark, and one only: `getAllByRole(...).not.toHaveLength(0)`
        stood here and asserted nothing, because getAllByRole throws on none. */
     expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).toHaveLength(1)
+  })
+
+  it('says the same words the event page does about a comment with no marks', async () => {
+    /* The record allows a comment carrying no rating: one written before the
+       ratings existed, still waiting. The queue read it as 0,0 while the event
+       page called it "Bez ocene", which is two answers to one question about one
+       record. */
+    renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    const queue = await loadResource<PendingItem[]>('verification')
+    const bare = must(
+      queue.find(
+        (one) =>
+          one.queue === 'comments' &&
+          one.rating.organisation === 0 &&
+          one.rating.value === 0 &&
+          one.rating.ambience === 0,
+      ),
+      'a waiting comment with no marks',
+    )
+    const card = await cardFor(bare.body)
+
+    expect(within(card).getByText('Bez ocene')).toBeInTheDocument()
+    expect(card.textContent).not.toContain('0,0')
   })
 
   it('draws each of the three marks under its own name, not one under all three', async () => {
@@ -745,14 +775,20 @@ describe('the comments under an event', () => {
       ),
       'that comment under the event',
     )
-    /* The one hidden thing in the card that draws stars: the portrait beside the
-       name is hidden too, and it is the first of the two. */
+    const named = { name: `${'Ukupna ocena'}: ${Math.floor(overall(uneven.rating))} od 5` }
+
+    /* Out of what is read aloud, and found by that: the figure beside it says
+       the number, so a reader hearing the stars as well hears one number twice.
+       Asked for without `hidden` there is nothing to find, which is the whole
+       claim; asked for with it there is exactly one. */
+    expect(within(card).queryAllByRole('img', named)).toHaveLength(0)
+
     const stars = must(
-      [...card.querySelectorAll('[aria-hidden="true"]')].find(
-        (one) => one.querySelector('path') !== null,
-      ),
+      within(card).getAllByRole('img', { ...named, hidden: true })[0],
       'the stars beside the figure',
     )
+    /* The drawing itself, which no role can reach: a filled star and an empty
+       one are one shape and differ by an attribute (Stars.tsx). */
     const filled = [...stars.querySelectorAll('path')].filter(
       (one) => one.getAttribute('fill') === 'currentColor',
     )
@@ -798,5 +834,19 @@ describe('the comments under an event', () => {
     expect(overall({ organisation: 5, value: 4, ambience: 5 })).toBe(4.7)
     expect(overall({ organisation: 3, value: 3, ambience: 3 })).toBe(3)
     expect(overall({ organisation: 0, value: 0, ambience: 0 })).toBe(0)
+  })
+
+  it('calls a rating given when any one mark was given', () => {
+    /* Nought on all three is a comment from before the ratings existed; a nought
+       among marks that were given is not, and never can be from the form, which
+       will not send until all three are there. The record allows it, so the two
+       screens that draw it have to agree about which it is, and `||` is what
+       makes them agree: anything at all was given, so the average is a real
+       number and is written as one. */
+    expect(rated({ organisation: 0, value: 0, ambience: 0 })).toBe(false)
+    expect(rated({ organisation: 5, value: 0, ambience: 0 })).toBe(true)
+    expect(rated({ organisation: 0, value: 5, ambience: 0 })).toBe(true)
+    expect(rated({ organisation: 0, value: 0, ambience: 5 })).toBe(true)
+    expect(rated({ organisation: 4, value: 4, ambience: 3 })).toBe(true)
   })
 })

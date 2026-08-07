@@ -1037,5 +1037,13 @@ describe('the head of an event', () => {
 
     expect(css).not.toMatch(/\.profile__head--acting/)
     expect(css).not.toMatch(/display:\s*grid/)
+
+    /* And what it does say, so the whole file could not be deleted with this
+       still passing: the buttons themselves wrap rather than squeezing a long
+       event name off a telephone. */
+    const buttons = bodyOf(css, '.event__actions')
+
+    expect(buttons).toMatch(/display:\s*flex/)
+    expect(buttons).toMatch(/flex-wrap:\s*wrap/)
   })
 })

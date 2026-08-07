@@ -3,7 +3,7 @@ import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import { renderAt } from '../test/render'
 
 /**
- * What a visitor's browser is allowed to ask the server for.
+ * What a browser is allowed to ask the server for, and on whose behalf.
  *
  * A screen reads a resource by fetching the whole of it, so "the words never
  * reach the page" is not the same as "the words never reach the reader". They
@@ -12,8 +12,9 @@ import { renderAt } from '../test/render'
  * The moderation queue is the one that matters here. It carries the addresses
  * of people who have registered and are not members yet, and the bodies of
  * comments nobody has approved, one of which is the referral spam this portal
- * exists to keep off itself. It is administration's to read, and administration
- * is behind a sign-in.
+ * exists to keep off itself. So does the list of moderators, which carries
+ * staff names, addresses and the whole matrix of rights. Both are
+ * administration's to read, and administration is behind a sign-in.
  *
  * Written as a sweep rather than as a note on one screen, because this went
  * wrong by accident: a hook the event page calls started reading the queue in
@@ -23,59 +24,88 @@ import { renderAt } from '../test/render'
  * Read as production reads: the two development controls are switched off here.
  * They fetch the moderators on every screen they are drawn on, and they are
  * drawn on none in production (src/dev/tools.ts). A sweep that left them on
- * would have to allow that file everywhere, and it is the one thing on this
- * list besides the queue that carries staff names, addresses and rights.
+ * would have to allow that file everywhere.
  */
 
 vi.mock('../dev/tools', () => ({ devToolsEnabled: () => false }))
 
-/** What no public screen may ask for, by the name in the address. */
+/** What no screen outside administration may ask for, by the name in the
+ *  address. */
 const DENIED = ['verification', 'moderators']
 
 /**
- * Every address a signed-out visitor can reach, one for each entry of the route
- * table.
+ * Every address outside administration, with the heading each one is supposed
+ * to draw.
  *
- * Held against the table below rather than trusted as written. A list typed out
- * by hand stops being every address the moment somebody adds a screen, and this
- * one had already missed eight when it was first written.
+ * Held against the route table below rather than trusted as written: a list
+ * typed out by hand stops being every address the moment somebody adds a
+ * screen, and this one had already missed eight when it was first written.
  *
- * The addresses of an account are here too, and not excluded as "behind a sign
- * in": nothing guards them. Each of those screens runs its hooks and only then
- * decides to draw `SignedOut`, so a visitor who types one has already fetched
- * whatever it reads.
+ * The heading is here because without it the sweep swept whatever it happened
+ * to land on. A slug that stops matching the generated data does not fail: the
+ * portal answers an address it does not have by going to the front page, which
+ * has a heading like everything else, and the sweep went on passing while the
+ * screen it names was never drawn. Three of these are records looked up by a
+ * hand-written slug, and those are exactly the ones that would rot quietly.
+ *
+ * Two headings, because half of these screens say something different once
+ * somebody has signed in, and both readings have to be swept: a leak below a
+ * sign-in guard is invisible to a visitor and is still a leak.
  */
-const PUBLIC = [
-  '/sr',
-  '/sr/kalendar',
-  '/sr/kalendar/dan/2027-05-08',
-  '/sr/kalendar/fruskogorski-maraton-2010-05-08',
-  '/sr/kalendar/fruskogorski-maraton-2010-05-08/ocena',
-  '/sr/kalendar/fruskogorski-maraton-2010-05-08/prijava',
-  '/sr/takmicari',
-  '/sr/takmicar/000001',
-  '/sr/takmicar/000001/priznanja',
-  '/sr/timovi',
-  '/sr/tim/dunavski-trkaci',
-  '/sr/novi-tim',
-  '/sr/tabela',
-  '/sr/top-liste',
-  '/sr/lige',
-  '/sr/liga/btl-2027',
-  '/sr/liga/btl-2027/rezultati',
-  '/sr/pravilnik',
-  '/sr/politika-privatnosti',
-  '/sr/uslovi-koriscenja',
-  '/sr/registracija',
-  '/sr/prijava',
-  '/sr/moj-profil',
-  '/sr/moji-rezultati',
-  '/sr/moja-clanarina',
-  '/sr/podesavanja',
-  '/sr/poruke',
-  '/sr/poruke/msg-1',
-  '/sr/rezultat/novi',
+const PUBLIC: [address: string, asVisitor: string, asMember: string][] = [
+  ['/sr', 'Balkanska trkačka liga', 'Balkanska trkačka liga'],
+  ['/sr/kalendar', 'Kalendar', 'Kalendar'],
+  ['/sr/kalendar/dan/2027-05-08', 'Trke, 8. maj 2027.', 'Trke, 8. maj 2027.'],
+  [
+    '/sr/kalendar/fruskogorski-maraton-2010-05-08',
+    'Fruškogorski maraton',
+    'Fruškogorski maraton',
+  ],
+  [
+    '/sr/kalendar/fruskogorski-maraton-2010-05-08/ocena',
+    'Za ovo treba prijava',
+    'Fruškogorski maraton',
+  ],
+  [
+    '/sr/kalendar/fruskogorski-maraton-2010-05-08/prijava',
+    'Za ovo treba prijava',
+    'Prijava rezultata',
+  ],
+  ['/sr/takmicari', 'Takmičari', 'Takmičari'],
+  ['/sr/takmicar/000001', 'Vladan Đurišić', 'Vladan Đurišić'],
+  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić'],
+  ['/sr/timovi', 'Timovi', 'Timovi'],
+  ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
+  ['/sr/novi-tim', 'Za ovo treba prijava', 'Predlog tima'],
+  ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
+  ['/sr/top-liste', 'Top liste', 'Top liste'],
+  ['/sr/lige', 'Lige', 'Lige'],
+  ['/sr/liga/btl-2027', 'Balkanska trkačka liga 2027', 'Balkanska trkačka liga 2027'],
+  [
+    '/sr/liga/btl-2027/rezultati',
+    'Balkanska trkačka liga 2027',
+    'Balkanska trkačka liga 2027',
+  ],
+  ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027', 'Pravilnik takmičenja BTL 2027'],
+  ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
+  ['/sr/uslovi-koriscenja', 'Uslovi korišćenja', 'Uslovi korišćenja'],
+  [
+    '/sr/registracija',
+    'Registracija još nije otvorena',
+    'Registracija još nije otvorena',
+  ],
+  ['/sr/prijava', 'Prijava', 'Prijava'],
+  ['/sr/moj-profil', 'Za ovo treba prijava', 'Strahinja Vukićević'],
+  ['/sr/moji-rezultati', 'Za ovo treba prijava', 'Moji rezultati'],
+  ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],
+  ['/sr/podesavanja', 'Za ovo treba prijava', 'Podešavanja'],
+  ['/sr/poruke', 'Za ovo treba prijava', 'Poruke'],
+  ['/sr/poruke/msg-1', 'Za ovo treba prijava', 'Dobro došao u pripremu sezone 2027'],
+  ['/sr/rezultat/novi', 'Za ovo treba prijava', 'Unos rezultata'],
 ]
+
+/** The member the signed-in half of the sweep reads as. */
+const ME = '000007'
 
 /**
  * A route pattern as what it matches: `takmicar/:memberNumber` against
@@ -86,7 +116,7 @@ const PUBLIC = [
  * the report of a result and the rating alike, and a new screen under any of
  * them joined the portal without joining this sweep.
  */
-function matcher(path: string): RegExp {
+export function matcher(path: string): RegExp {
   return new RegExp(`^/sr${path === '' ? '' : `/${path.replaceAll(/:[^/]+/g, '[^/]+')}`}$`)
 }
 
@@ -120,43 +150,67 @@ async function quiet(asked: string[]): Promise<void> {
  *  later case in this file with no fetch at all. */
 let unwrapped: typeof globalThis.fetch | null = null
 
-/** Writes down every address asked for, and hands the question on so the screen
- *  renders exactly as it would. */
+/** Writes down every address asked for, and hands the question on whole, so the
+ *  screen renders exactly as it would. */
 function watch(): string[] {
   const asked: string[] = []
   const real = globalThis.fetch
 
   unwrapped = real
-  globalThis.fetch = async (input: RequestInfo | URL) => {
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     asked.push(String(input))
-    return real(input)
+    return real(input, init)
   }
 
   return asked
 }
 
-describe('what a visitor downloads', () => {
-  it('visits every address the route table has, administration aside', () => {
+describe('what a browser downloads outside administration', () => {
+  it('visits every address the route table has', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
       .map((route) => route.path)
       .filter((path) => !path.startsWith('administracija'))
-    const missing = every.filter((path) => !PUBLIC.some((one) => matcher(path).test(one)))
+    const missing = every.filter(
+      (path) => !PUBLIC.some(([address]) => matcher(path).test(address)),
+    )
 
     expect(missing).toEqual([])
   })
 
-  it.each(PUBLIC)('asks for nothing of anybody else on %s', async (address) => {
+  it.each(PUBLIC)('asks for nothing of anybody else on %s, to a visitor', async (
+    address,
+    heading,
+  ) => {
     const asked = watch()
 
     renderAt(address)
 
     await quiet(asked)
 
-    /* The screen is really there. Without this the sweep would pass on an
-       address that fell through to the page saying there is none, and six of
-       these read nothing at all, so counting what was asked for proves nothing
-       about them. */
-    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+    /* The screen this row names, by the heading it draws. Without it a slug
+       that stopped matching the data would send the portal to the front page
+       and the sweep would go on passing, having swept the front page three
+       times over. */
+    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
+  })
+
+  /* And the same walk signed in. Half of these screens draw `SignedOut` before
+     they read anything, so to a visitor they are a sweep of an empty room: a
+     hook added under the guard would be invisible. The queue is no less
+     somebody else's in a member's browser than in a stranger's. */
+  it.each(PUBLIC)('asks for nothing of anybody else on %s, to a member', async (
+    address,
+    _visitor,
+    heading,
+  ) => {
+    const asked = watch()
+
+    renderAt(address, 'competitor', ME)
+
+    await quiet(asked)
+
+    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
 
@@ -183,6 +237,20 @@ describe('what a visitor downloads', () => {
     await quiet(asked)
 
     expect(asked.some((one) => one.includes('comments'))).toBe(true)
+  })
+})
+
+describe('the pattern a route is matched by', () => {
+  /* Its own checks, because a matcher that is too loose only ever makes the
+     sweep above pass: it shortens the list of what is missing. */
+  it('matches an address of that shape and nothing longer or shorter', () => {
+    expect(matcher('takmicar/:memberNumber').test('/sr/takmicar/000001')).toBe(true)
+    expect(matcher('takmicar/:memberNumber').test('/sr/takmicar/000001/priznanja')).toBe(false)
+    expect(matcher('takmicar/:memberNumber').test('/sr/takmicar')).toBe(false)
+    expect(matcher('kalendar/:slug').test('/sr/kalendar/dan/2027-05-08')).toBe(false)
+    expect(matcher('kalendar/:slug/ocena').test('/sr/kalendar/neka-trka/ocena')).toBe(true)
+    expect(matcher('').test('/sr')).toBe(true)
+    expect(matcher('').test('/sr/kalendar')).toBe(false)
   })
 })
 
