@@ -3,7 +3,7 @@ import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { loadResource } from '../../data/client'
-import type { EventComment, PendingItem } from '../../data/types'
+import type { Competitor, EventComment, PendingItem } from '../../data/types'
 
 /** The two letters a portrait draws for a name. */
 const initialsOf = (who: string) =>
@@ -23,6 +23,8 @@ import { overall } from './overall'
  * saw on the day.
  */
 const EVENT = 'fruskogorski-maraton-2010-05-08'
+/** One nobody has run yet, read on the real day the suite runs on. */
+const AHEAD = 'sidski-novogodisnji-maraton-2027-01-16'
 const ME = '000007'
 
 /** All three marks given, which is what the form asks for before it will send
@@ -273,7 +275,9 @@ describe('a comment a moderator lets out', () => {
     for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent', 'Ukupna ocena']) {
       expect(within(first).getByText(mark)).toBeInTheDocument()
     }
-    expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).not.toHaveLength(0)
+    /* One picture per mark, and one only: `getAllByRole(...).not.toHaveLength(0)`
+       stood here and asserted nothing, because getAllByRole throws on none. */
+    expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).toHaveLength(1)
   })
 
   it('draws each of the three marks under its own name, not one under all three', async () => {
@@ -319,15 +323,46 @@ describe('a comment a moderator lets out', () => {
     await screen.findByText('Ocena je poslata na odobrenje.')
 
     await router.navigate('/sr/administracija/verifikacija/komentari')
-    await user.click(
-      within(await cardFor('Prva trka u sezoni i dobro postavljena.')).getByRole('button', {
-        name: 'Odobri',
-      }),
+
+    const mineHere = await cardFor('Prva trka u sezoni i dobro postavljena.')
+    const me = must(
+      (await loadResource<Competitor[]>('competitors')).find((one) => one.memberNumber === ME),
+      'the member who wrote it',
     )
+
+    /* The name as it was on the day, which is what the queue shows the
+       moderator and what the card keeps after that member leaves the league
+       (types.ts, `who`). Held here because the event page reads it off the
+       record instead while the member is still there, so a name left blank by
+       the form is invisible on the only screen that would show it. */
+    expect(
+      within(mineHere).getByText(`Poslao ${me.firstName} ${me.lastName}, član ${ME}`),
+    ).toBeInTheDocument()
+
+    await user.click(within(mineHere).getByRole('button', { name: 'Odobri' }))
 
     await router.navigate(`/sr/kalendar/${EVENT}`)
 
     expect(await underEvent('Prva trka u sezoni i dobro postavljena.')).toBe(true)
+
+    /* Not only that it arrived, but whose it is and when. The form fills four
+       things in beside the marks, and three of them were leaving the card blank
+       without anything noticing: the member number is what the portrait and the
+       link are looked up by, the name is what the card says after that member
+       leaves the league, and the date is the day it was written. */
+    const card = must(
+      within(screen.getByRole('list', { name: 'Komentari' }))
+        .getAllByRole('listitem')
+        .find((one) => (one.textContent ?? '').includes('Prva trka u sezoni')),
+      'the comment that was just published',
+    )
+    const mine = within(card).getByRole('link', { name: `${me.firstName} ${me.lastName}` })
+
+    expect(mine).toHaveAttribute('href', `/sr/takmicar/${ME}`)
+    /* The year the suite is running in. The day itself is written by the
+       screen through Intl, and repeating that here would be the source
+       assessing itself. */
+    expect(card.textContent).toContain(String(new Date().getFullYear()))
   })
 
   /* The number is written in the reader's language, not in the one the portal
@@ -347,6 +382,12 @@ describe('a comment a moderator lets out', () => {
     const list = await screen.findByRole('list', { name: /Komentari|Comments/ })
     expect(list.textContent).toMatch(/\d\.\d/)
     expect(list.textContent).not.toMatch(/\d,\d/)
+
+    /* The day the comment was written, the same way. The Serbian date of kom-1
+       is "8. 5. 2010." and the English one is "May 8, 2010": one string cannot
+       be both, so either spelling proves which language did the writing. */
+    expect(list.textContent).toContain('May 8, 2010')
+    expect(list.textContent).not.toContain('8. 5. 2010.')
   })
 
   it('publishes nothing from the queues that are not about comments', async () => {
@@ -438,6 +479,52 @@ describe('a comment a moderator lets out', () => {
   })
 })
 
+describe('what an event nobody has run yet offers', () => {
+  /* The rule is PDL P9: a date in the future is refused. It was kept by hiding
+     the two links, which keeps nothing, so each half is held separately: the row
+     does not offer them, and the screens behind them refuse. */
+  it('offers neither of the two forms in the row', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME)
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
+  })
+
+  it('refuses the rating at its own address', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME)
+
+    expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
+      .toBeVisible()
+    expect(screen.queryByRole('group', { name: /Organizacija/ })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
+  })
+
+  it('refuses the report of a result at its own address', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}/prijava`, 'competitor', ME)
+
+    expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
+      .toBeVisible()
+    expect(screen.queryByLabelText(/^Trka/)).toBeNull()
+  })
+
+  /* And the other half of the row: somebody who runs the portal but is not a
+     member of the league has nothing to report and nothing to rate. Held because
+     the whole condition could be deleted with the rest of the suite still
+     green: the visitor case is answered earlier, by the row drawing nothing at
+     all. */
+  it('offers neither to an administrator who is not a member', async () => {
+    renderAt(`/sr/kalendar/${EVENT}`, 'superadmin')
+
+    /* The row is there: an administrator has the two buttons that edit an
+       event, so this is not the empty row a visitor gets. */
+    expect(await screen.findByRole('button', { name: 'Kopiranje' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
+  })
+})
+
 describe('the comments under an event', () => {
   it('draws each one with its author, the day, and the marks it carries', async () => {
     renderAt(`/sr/kalendar/${EVENT}`)
@@ -481,6 +568,42 @@ describe('the comments under an event', () => {
     )
 
     expect(within(gone).queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('draws no empty paragraph where nobody wrote anything', async () => {
+    /* The comment is optional, so a rating with no words is a card of marks and
+       nothing else. Drawn unconditionally it is an empty paragraph: a gap under
+       the marks that reads as something that failed to load. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const comments = await loadResource<EventComment[]>('comments')
+    const wordless = must(
+      comments.find((one) => one.eventId === `evt-${EVENT}` && one.body === ''),
+      'a rating given with no words',
+    )
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(wordless.who),
+      ),
+      'that rating under the event',
+    )
+
+    expect(card.querySelectorAll('.comments__text')).toHaveLength(0)
+
+    /* And the other side of it, so the check above is known to be looking at
+       the right thing: a comment that does have words draws exactly one. */
+    const spoken = must(
+      comments.find((one) => one.eventId === `evt-${EVENT}` && one.body !== ''),
+      'a comment with words',
+    )
+    const said = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(spoken.body),
+      ),
+      'that comment under the event',
+    )
+
+    expect(said.querySelectorAll('.comments__text')).toHaveLength(1)
   })
 
   it('draws the portrait, the marks and the words, each of them', async () => {

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -203,20 +203,35 @@ describe('Calendar', () => {
 
   it('leads from a chip to the event', async () => {
     const user = setupUser()
-    renderAt('/sr/kalendar?mesec=2027-05')
+    const { router } = renderAt('/sr/kalendar?mesec=2027-05')
 
     await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
     const chips = screen.getAllByRole('link').filter((link) => link.className === 'chip')
 
     expect(chips.length).toBeGreaterThan(0)
-    await user.click(first(chips))
+    const chip = first(chips)
+    const where = chip.getAttribute('href') ?? ''
 
-    /* The event, by its own name in the heading. It used to be checked by the
-       way back to the calendar, which came off on 06.08.2026: the browser
-       already has one, and a screen that draws its own is a second answer to a
-       question nobody asked. */
+    await user.click(chip)
+
+    /* The event, by the address the chip carried and by its own name in the
+       heading. It used to be checked by the way back to the calendar, which came
+       off on 06.08.2026; checking instead that some level one heading had
+       appeared held nothing at all, because the calendar has one of those too
+       and the check passed with the click deleted. */
+    expect(where).toMatch(/\/sr\/kalendar\/[a-z0-9-]+$/)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(where)
+    })
+    /* A prefix, because the chip says the name and then the length of the race
+       under it, and the heading of the event is the name alone. */
+    const said = chip.textContent ?? ''
+
     expect(
-      await screen.findByRole('heading', { level: 1 }, { timeout: 4000 }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: (name: string) => name.length > 0 && said.startsWith(name),
+      }),
     ).toBeVisible()
   })
 })

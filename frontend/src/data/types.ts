@@ -269,10 +269,12 @@ export type PendingItem = {
    * events across two seasons carry one name (PDL P6), so a comment approved by
    * its subject would land on whichever of them was looked up first.
    *
-   * Carried by the two queues whose subject is a record of the portal's own: the
-   * comments, whose approval writes one, and the reported changes of date, whose
-   * approval moves the event it names. Empty on the four that decide about
-   * something with no id yet, or about a person rather than a record.
+   * Read today by the comments queue alone, whose approval writes a record filed
+   * under the event. The reported changes of date carry it as well and nothing
+   * reads it yet: moving the event and its races onto the new date is the next
+   * thing asked for on that queue (owner, 06.08.2026), and it is the id that
+   * will say which event to move. Empty on the four that decide about something
+   * with no id yet, or about a person rather than a record.
    */
   subjectId: string
   /** The text to read before deciding: the biography, the comment, the reason

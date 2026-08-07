@@ -42,27 +42,31 @@ function Star({ filled }: { filled: boolean }) {
  * anybody who cannot see the stars. That is the shape the queue and the list of
  * comments use, where a rating is a fact and not a question.
  */
-export function Stars({
-  name,
-  label,
-  value,
-  onChange,
-}: {
+type Reading = {
+  label: string
+  /** How many of the five are filled, and 0 for a rating nobody has given. */
+  value: number
+  onChange?: undefined
+  name?: undefined
+}
+
+type Asking = {
+  label: string
+  value: number
+  onChange: (value: number) => void
   /**
    * What ties the five radios into one group, and therefore has to be unique on
    * the screen: two groups of one name are ten radios that are one choice.
    *
-   * Asked for in the reading shape as well, where nothing reads it. Made optional
-   * there it would be a prop that means something in one shape and nothing in the
-   * other, and a caller would have to know which shape they were in to know
-   * whether it mattered.
+   * Only on the shape that asks. It was required on both at first, on the
+   * reasoning that a prop meaning something in one shape and nothing in the
+   * other is worse; what that produced was three callers computing a string and
+   * throwing it away. A shape that has no radios has no group to name.
    */
   name: string
-  label: string
-  /** How many of the five are filled, and 0 for a rating nobody has given. */
-  value: number
-  onChange?: (value: number) => void
-}) {
+}
+
+export function Stars({ name, label, value, onChange }: Reading | Asking) {
   const { t } = useI18n()
   const marks = Array.from({ length: STARS }, (_, index) => index + 1)
 
@@ -94,7 +98,7 @@ export function Stars({
             checked={mark === value}
             onChange={() => onChange(mark)}
           />
-          <span className="visually-hidden">{t('event.rating.stars', { count: mark })}</span>
+          <span className="visually-hidden">{t('event.rating.stars', { count: mark, of: STARS })}</span>
           <Star filled={mark <= value} />
         </label>
       ))}
@@ -104,5 +108,5 @@ export function Stars({
 
 /** What a rating reads as when there is nobody to hear the stars. */
 function said(t: (key: string, values?: Record<string, string | number>) => string, value: number) {
-  return value === 0 ? t('event.rating.unrated') : t('event.rating.stars', { count: value })
+  return value === 0 ? t('event.rating.unrated') : t('event.rating.stars', { count: value, of: STARS })
 }

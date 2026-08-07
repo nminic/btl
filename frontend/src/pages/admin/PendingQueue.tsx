@@ -6,6 +6,7 @@ import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
+import { commentFrom } from '../../data/comment'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { overall } from '../event/overall'
@@ -157,7 +158,7 @@ function RatingGiven({ rating }: { rating: EventRating }) {
         <div key={mark}>
           <dt>{t(`event.rating.${mark}`)}</dt>
           <dd>
-            <Stars name={mark} label={t(`event.rating.${mark}`)} value={rating[mark]} />
+            <Stars label={t(`event.rating.${mark}`)} value={rating[mark]} />
           </dd>
         </div>
       ))}
@@ -239,7 +240,7 @@ function TeamFields({ item }: { item: PendingItem }) {
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { create, creations, decisions, edits, notify, settle } = useSession()
+  const { create, creations, decisions, edits, notify, publish, settle } = useSession()
   const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
@@ -338,6 +339,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       })
 
       done += 1
+
+      /* What an approval on this queue actually does: the comment goes onto the
+         event. Written down at the moment it is let out, because the event page
+         is public and must never read this queue to find out (session/context,
+         `published`). */
+      if (queue.id === 'comments') {
+        publish(commentFrom(one))
+      }
 
       if (made === null) {
         continue

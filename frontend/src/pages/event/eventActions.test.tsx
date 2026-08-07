@@ -31,10 +31,7 @@ describe('who is offered what on an event', () => {
     }
 
     expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
-    /* And the head stays the column it is on every other screen: laid out in two
-       columns with nothing in the second, its four lines paired off into a grid
-       two by two (EventActions.css). */
-    expect(document.querySelector('.event__actions')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
   })
 
   it('offers the superadmin the copy and the deletion', async () => {

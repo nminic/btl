@@ -78,6 +78,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     remove: vi.fn(),
     proposals: [],
     propose: vi.fn(),
+  published: [],
+  publish: vi.fn(),
   }
 }
 

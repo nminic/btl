@@ -304,6 +304,8 @@ function renderInbox(inbox: Message[]) {
     remove: vi.fn(),
     proposals: [],
     propose: vi.fn(),
+  published: [],
+  publish: vi.fn(),
   }
 
   return render(

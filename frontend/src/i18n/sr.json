@@ -549,7 +549,7 @@
       "value": "Vrednost za novac",
       "ambience": "Ambijent",
       "overall": "Ukupna ocena",
-      "stars": "{count} od 5",
+      "stars": "{count} od {of}",
       "unrated": "Bez ocene"
     },
     "commentText": "Komentar",
@@ -570,6 +570,8 @@
     "results": "Rezultati članova",
     "noResults": "Sa ovog događaja nema unetih rezultata.",
     "notFound": "Ovog događaja nema.",
+    "notRunYet": "Ovaj događaj još nije održan",
+    "notRunYetWhy": "Rezultat i ocena se unose tek kad se trka istrči.",
     "copy": "Kopiranje",
     "delete": "Brisanje",
     "report": "Prijavi rezultat",

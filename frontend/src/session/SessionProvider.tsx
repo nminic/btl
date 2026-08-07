@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
-import type { PendingItem } from '../data/types'
+import type { EventComment, PendingItem } from '../data/types'
 import {
   SessionContext,
   type Creations,
@@ -55,6 +55,7 @@ export function SessionProvider({
   const [decisions, setDecisions] = useState<Decisions>({})
   const [deletions, setDeletions] = useState<Deletions>({})
   const [proposals, setProposals] = useState<PendingItem[]>([])
+  const [published, setPublished] = useState<EventComment[]>([])
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -74,6 +75,15 @@ export function SessionProvider({
      plainly a decision about something this visit put there. */
   const propose = useCallback((item: Omit<PendingItem, 'id'>) => {
     setProposals((current) => [{ ...item, id: `prop-${current.length + 1}` }, ...current])
+  }, [])
+
+  /* Kept once. A moderator can settle the same item twice (approve, take down,
+     approve again), and a list that grew each time would draw the comment
+     twice on the event page. */
+  const publish = useCallback((comment: EventComment) => {
+    setPublished((current) =>
+      current.some((one) => one.id === comment.id) ? current : [...current, comment],
+    )
   }, [])
 
   const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
@@ -175,6 +185,8 @@ export function SessionProvider({
       remove,
       proposals,
       propose,
+      published,
+      publish,
     }),
     [
       memberNumber,
@@ -199,6 +211,8 @@ export function SessionProvider({
       remove,
       proposals,
       propose,
+      published,
+      publish,
     ],
   )
 

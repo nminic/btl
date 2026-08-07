@@ -8,6 +8,7 @@ import { combinePair, useCompetitors, useEvents } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from '../member/SignedOut'
+import { NotRunYet } from './NotRunYet'
 import '../member/Member.css'
 
 /** The three marks, in the order they are asked for and read back. */
@@ -72,6 +73,13 @@ export function RateEvent() {
           }
 
           const event = found
+
+          /* Checked here and not only where the button is. The address can be
+             typed, and a rule kept by hiding a link is not kept. */
+          if (event.date > today) {
+            return <NotRunYet slug={event.slug} />
+          }
+
           const me = competitors.find((one) => one.memberNumber === mine)
           const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
           /* Nothing to send until all three are given: the overall is their

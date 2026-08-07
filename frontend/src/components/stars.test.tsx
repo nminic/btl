@@ -64,7 +64,7 @@ describe('a rating being given', () => {
 
 describe('a rating that is read rather than given', () => {
   it('is a picture with the number in its name, and nothing to press', () => {
-    draw(<Stars name="x" label="Organizacija" value={4} />)
+    draw(<Stars label="Organizacija" value={4} />)
 
     expect(screen.getByRole('img', { name: 'Organizacija: 4 od 5' })).toBeInTheDocument()
     expect(screen.queryAllByRole('radio')).toHaveLength(0)
@@ -75,7 +75,7 @@ describe('a rating that is read rather than given', () => {
        as well as on the name, because the name is a string this file builds and
        the drawing is what a sighted reader gets: one of the two going wrong is
        invisible to a test that reads only the other. */
-    const { container } = draw(<Stars name="x" label="Organizacija" value={3} />)
+    const { container } = draw(<Stars label="Organizacija" value={3} />)
     const filled = [...container.querySelectorAll('path')].filter(
       (one) => one.getAttribute('fill') === 'currentColor',
     )
@@ -84,11 +84,22 @@ describe('a rating that is read rather than given', () => {
     expect(container.querySelectorAll('path')).toHaveLength(5)
   })
 
+  it('keeps the five drawings out of what is read aloud', async () => {
+    /* The group already carries the whole rating in its name. Left in the tree
+       the five stars are five more things to walk past, and each of them says
+       nothing: an image with no name is announced as an image with no name. */
+    const { container } = draw(<Stars label="Organizacija" value={3} />)
+    const stars = [...container.querySelectorAll('svg')]
+
+    expect(stars).toHaveLength(5)
+    expect(stars.every((one) => one.getAttribute('aria-hidden') === 'true')).toBe(true)
+  })
+
   it('says so where nobody has rated it', () => {
     /* Nought is not "nought out of five": it is a comment that carries no
        rating at all, which the record allows for anything written before the
        ratings existed. */
-    draw(<Stars name="x" label="Ambijent" value={0} />)
+    draw(<Stars label="Ambijent" value={0} />)
 
     expect(screen.getByRole('img', { name: 'Ambijent: Bez ocene' })).toBeInTheDocument()
   })

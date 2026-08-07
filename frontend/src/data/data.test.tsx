@@ -1,14 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
+import { useSession } from '../session/useSession'
+import { setupUser } from '../test/user'
 import { first } from '../test/at'
 import { loadResource, type ResourceName } from './client'
-import type { Competitor } from './types'
+import type { Competitor, EventComment } from './types'
 import {
   combinePair,
   combineFour,
   combineResources,
   dataOr,
   failed,
+  useComments,
   useCompetitors,
   useEvents,
   useLeagues,
@@ -241,5 +244,68 @@ describe('the generated data', () => {
 
     expect(events.length).toBeGreaterThan(0)
     expect([...new Set(events.map((one) => one.status))].sort()).toEqual(['confirmed'])
+  })
+})
+
+/* A comment that has been let out and then taken down again.
+ *
+ * Not reachable from the queue today: a settled item leaves the list of waiting
+ * ones, so no screen offers a second decision on it. The rule is written where
+ * the reading is, because a list of "what is out" that ignored the decisions
+ * would be a second answer to a question `decisions` already answers, and the
+ * two would go out of step the day the queue is rebuilt around exactly this
+ * (owner, 06.08.2026, no section of settled items).
+ */
+function LetOut() {
+  const state = useComments()
+  const { publish, settle } = useSession()
+  const one: EventComment = {
+    id: 'ver-kom-1',
+    eventId: 'evt-fruskogorski-maraton-2010-05-08',
+    memberNumber: '000007',
+    who: 'Ime Prezime',
+    date: '2026-08-06',
+    rating: { organisation: 5, value: 4, ambience: 5 },
+    body: 'Reci koje su izasle.',
+  }
+  const said = (status: 'approved' | 'rejected') => () => {
+    publish(one)
+    settle(one.id, { status, note: '', basis: '', memberNumber: '' })
+  }
+
+  return (
+    <>
+      <span data-testid="mine">
+        {state.status !== 'ready'
+          ? state.status
+          : state.data.filter((each) => each.id === one.id).length}
+      </span>
+      <button type="button" onClick={said('approved')}>
+        pusti
+      </button>
+      <button type="button" onClick={said('rejected')}>
+        skini
+      </button>
+    </>
+  )
+}
+
+describe('useComments', () => {
+  it('drops a comment whose approval is changed to a deletion', async () => {
+    const user = setupUser()
+
+    render(
+      <SessionProvider>
+        <LetOut />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('mine')).toHaveTextContent('0'))
+
+    await user.click(screen.getByRole('button', { name: 'pusti' }))
+    expect(screen.getByTestId('mine')).toHaveTextContent('1')
+
+    await user.click(screen.getByRole('button', { name: 'skini' }))
+    expect(screen.getByTestId('mine')).toHaveTextContent('0')
   })
 })

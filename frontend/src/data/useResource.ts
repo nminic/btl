@@ -8,7 +8,6 @@ import type {
   EventComment,
   League,
   Moderator,
-  PendingItem,
   Race,
   Result,
   StaticPage,
@@ -219,42 +218,33 @@ export const useBadges = () => useResource<Badge[]>('badges')
  * disagree with the queue that published it. Without this a moderator approved a
  * comment and nothing appeared anywhere, which is the whole of what approving one
  * is for (owner, 06.08.2026).
+ *
+ * What it reads is the session and not the queue. Reading the queue here worked
+ * and was wrong: the event page is public, so every visitor's browser fetched
+ * the whole moderation queue, which carries pending members' addresses and the
+ * bodies of comments nobody has approved. The queue is administration's to read;
+ * what comes out of it is written down when it comes out (`publish`), and this
+ * side only ever sees what was let out.
  */
 export function useComments(): ResourceState<EventComment[]> {
   const state = useResource<EventComment[]>('comments')
-  /* The queue read here rather than through `usePending`, which lives with the
-     administration and reads this module: importing it back would be a circle.
-     What that hook adds is the proposals of this visit, which is what the second
-     half of this is. */
-  const queue = useResource<PendingItem[]>('verification')
-  const { decisions, proposals } = useSession()
+  const { decisions, published } = useSession()
 
   return useMemo(() => {
-    if (state.status !== 'ready' || queue.status !== 'ready') {
+    if (state.status !== 'ready') {
       return state
     }
 
-    const letOut = [...queue.data, ...proposals]
-      .filter((one) => one.queue === 'comments' && decisions[one.id]?.status === 'approved')
-      .map(published)
+    /* Read through the decisions rather than trusted as a list of what is out:
+       a comment let out and then taken down again is a decision changed, and
+       the screen must follow the change without the moderator having to be
+       standing on it. */
+    const letOut = published.filter((one) => decisions[one.id]?.status === 'approved')
 
     return { status: 'ready', data: [...state.data, ...letOut] }
-  }, [state, queue, proposals, decisions])
+  }, [state, published, decisions])
 }
 
-/** A queue item as the record it becomes. The queue keeps the name the member
- *  had on the day, which is what a comment carries after they leave (PDL P11). */
-function published(item: PendingItem): EventComment {
-  return {
-    id: item.id,
-    eventId: item.subjectId,
-    memberNumber: item.memberNumber,
-    who: item.who,
-    date: item.date,
-    rating: item.rating,
-    body: item.body,
-  }
-}
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 export const useLeagues = () => useResource<League[]>('leagues')

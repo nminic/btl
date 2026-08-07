@@ -109,7 +109,6 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
         <p className="comments__overall">
           <span aria-hidden="true">
             <Stars
-              name={`overall-${comment.id}`}
               label={t('event.rating.overall')}
               value={Math.floor(overall(comment.rating))}
             />
@@ -126,7 +125,6 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
             <dt>{t(`event.rating.${mark}`)}</dt>
             <dd>
               <Stars
-                name={`${mark}-${comment.id}`}
                 label={t(`event.rating.${mark}`)}
                 value={comment.rating[mark]}
               />

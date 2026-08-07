@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { btlPoints } from '../../data/scoring'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
@@ -9,6 +10,7 @@ import type { FormDef, FormValues } from '../../forms/types'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { NotRunYet } from './NotRunYet'
 import { raceFor } from './raceFor'
 import { SignedOut } from '../member/SignedOut'
 import '../member/Member.css'
@@ -43,6 +45,7 @@ function seconds(values: FormValues): number {
 export function ReportResult() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
+  const today = useToday()
   const { memberNumber, submit } = useSession()
   const state = combinePair(useEvents(), useRaces())
   /** The points the entry earned, once there has been one. */
@@ -85,6 +88,14 @@ export function ReportResult() {
           /* Narrowed once, because the handler below is written inside a
              callback the compiler cannot see runs after the check. */
           const event = found
+
+          /* The same rule the rating keeps, and for the same reason: PDL P9
+             refuses a date in the future, and a form that is merely not offered
+             still answers when the address is typed. */
+          if (event.date > today) {
+            return <NotRunYet slug={event.slug} />
+          }
+
           const mineHere = races.filter((race) => race.eventId === event.id)
           /* The first of them is the one the form opens on, which is what the
              owner asked for: most events hold one race, and where they hold five
