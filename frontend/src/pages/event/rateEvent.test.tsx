@@ -276,33 +276,111 @@ describe('a comment a moderator lets out', () => {
     expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).not.toHaveLength(0)
   })
 
+  it('draws each of the three marks under its own name, not one under all three', async () => {
+    /* Read off the record, and off a comment whose three marks differ: given the
+       same mark three times, a queue drawing the organisation under all three
+       names is indistinguishable from one drawing them right. */
+    renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    const queue = await loadResource<PendingItem[]>('verification')
+    const mixed = must(
+      queue.find(
+        (one) =>
+          one.queue === 'comments' &&
+          new Set([one.rating.organisation, one.rating.value, one.rating.ambience]).size > 1,
+      ),
+      'a comment whose marks are not all the same',
+    )
+
+    const card = await cardFor(mixed.body)
+
+    for (const [mark, name] of [
+      ['organisation', 'Organizacija'],
+      ['value', 'Vrednost za novac'],
+      ['ambience', 'Ambijent'],
+    ] as const) {
+      expect(
+        within(card).getByRole('img', { name: `${name}: ${mixed.rating[mark]} od 5` }),
+      ).toBeInTheDocument()
+    }
+  })
+
+  it('carries a rating from the form all the way under its event', async () => {
+    /* The one path nothing followed end to end: the form writes the id of the
+       event beside the name, and without it an approved rating is published
+       under no event at all and disappears with nothing saying so. */
+    const user = setupUser()
+    const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
+
+    await screen.findByRole('group', { name: 'Organizacija' })
+    await user.type(screen.getByLabelText('Komentar'), 'Prva trka u sezoni i dobro postavljena.')
+    await rateAll(user, 4)
+    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+    await screen.findByText('Ocena je poslata na odobrenje.')
+
+    await router.navigate('/sr/administracija/verifikacija/komentari')
+    await user.click(
+      within(await cardFor('Prva trka u sezoni i dobro postavljena.')).getByRole('button', {
+        name: 'Odobri',
+      }),
+    )
+
+    await router.navigate(`/sr/kalendar/${EVENT}`)
+
+    expect(await underEvent('Prva trka u sezoni i dobro postavljena.')).toBe(true)
+  })
+
+  /* The number is written in the reader's language, not in the one the portal
+     was built in. Held on the queue and on the event both, because each formats
+     its own and a hardcoded 'sr' in either reads 4,7 to somebody on /en. */
+  it('writes the overall mark in the language the page is read in', async () => {
+    const { router } = renderAt('/en/administracija/verifikacija/komentari', 'superadmin')
+
+    const waiting = await screen.findByRole('list', { name: /Čeka|Waiting/ })
+    expect(within(waiting).getByText('4.7')).toBeInTheDocument()
+    expect(within(waiting).queryByText('4,7')).toBeNull()
+
+    await router.navigate(`/en/kalendar/${EVENT}`)
+
+    /* Read off the whole list rather than off one node: the mark stands in the
+       same sentence as the word for it, so it is not a text node of its own. */
+    const list = await screen.findByRole('list', { name: /Komentari|Comments/ })
+    expect(list.textContent).toMatch(/\d\.\d/)
+    expect(list.textContent).not.toMatch(/\d,\d/)
+  })
+
   it('publishes nothing from the queues that are not about comments', async () => {
     /* The merge asks two things of a waiting item: that it was approved, and
        that it is a comment. Without the second, approving a reported change of
        date publishes a card with no words and no marks under a real event, and
        nothing on any screen would say where it came from. */
     const user = setupUser()
+    const about = must(
+      (await loadResource<PendingItem[]>('verification')).find((one) => one.queue === 'schedule'),
+      'a change of date in the record',
+    )
+    /* Its own event, not one picked in advance: what a widened merge would
+       publish is a card on the event the item names, so an event chosen
+       anywhere else is a screen the mistake never reaches. */
+    const slug = about.subjectId.replace(/^evt-/, '')
+
     const { router } = renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
-    const first = must(within(waiting).getAllByRole('listitem')[0], 'a waiting change of date')
-    const about = must(
-      (await loadResource<PendingItem[]>('verification')).find(
-        (one) => one.queue === 'schedule',
-      ),
-      'a change of date in the record',
+    const card = must(
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((one) => (one.textContent ?? '').includes(about.who)),
+      'that change of date in the queue',
     )
 
-    await user.click(within(first).getByRole('button', { name: 'Odobri' }))
-    await router.navigate(`/sr/kalendar/${EVENT}`)
+    await user.click(within(card).getByRole('button', { name: 'Odobri' }))
+    await router.navigate(`/sr/kalendar/${slug}`)
 
-    const list = await screen.findByRole('list', { name: 'Komentari' })
-
-    expect(
-      within(list)
-        .getAllByRole('listitem')
-        .some((one) => (one.textContent ?? '').includes(about.who)),
-    ).toBe(false)
+    /* The event has no comments, so the sentence that says so is what stands
+       there. A card published by mistake takes it away. */
+    expect(await screen.findByText('Za ovaj događaj još nema odobrenih komentara.')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Komentari' })).toBeNull()
   })
 
   it('stays off the portal when it is deleted rather than approved', async () => {
@@ -441,7 +519,55 @@ describe('the comments under an event', () => {
     }
   })
 
+  it('draws the overall down to the whole, and says the figure once', async () => {
+    /* The stars beside the figure are hidden from a reader, which is right: the
+       figure is the fact and hearing both is hearing one number twice. Hidden
+       means no role, so this is the one thing on these screens read out of the
+       markup rather than by role, and it is read because the alternative is a
+       rounding nobody would notice: 4,7 drawn up is five filled stars saying
+       what nobody gave.
+
+       `getByRole('img', { hidden: true })` would find it by role, but it would
+       also find it if the `aria-hidden` came off, which is the other half of
+       what this holds. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const comments = await loadResource<EventComment[]>('comments')
+    const uneven = must(
+      comments.find((one) => Number.isInteger(overall(one.rating)) === false),
+      'a comment whose overall is not a whole number',
+    )
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(uneven.who),
+      ),
+      'that comment under the event',
+    )
+    /* The one hidden thing in the card that draws stars: the portrait beside the
+       name is hidden too, and it is the first of the two. */
+    const stars = must(
+      [...card.querySelectorAll('[aria-hidden="true"]')].find(
+        (one) => one.querySelector('path') !== null,
+      ),
+      'the stars beside the figure',
+    )
+    const filled = [...stars.querySelectorAll('path')].filter(
+      (one) => one.getAttribute('fill') === 'currentColor',
+    )
+
+    expect(filled).toHaveLength(Math.floor(overall(uneven.rating)))
+    /* And the figure itself, said once and named. */
+    expect(
+      within(card).getAllByText(
+        `Ukupna ocena: ${overall(uneven.rating).toString().replace('.', ',')}`,
+      ),
+    ).toHaveLength(1)
+  })
+
   it('puts the newest comment first', async () => {
+    /* The record carries three comments on this event on three days, which it
+       has to for this to say anything: written on one day, the sorted list and
+       the unsorted one are the same list and the sort is unheld. */
     renderAt(`/sr/kalendar/${EVENT}`)
 
     const comments = (await loadResource<EventComment[]>('comments')).filter(

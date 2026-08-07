@@ -48,7 +48,15 @@ export function Stars({
   value,
   onChange,
 }: {
-  /** Unique on the screen: it is what ties the five radios into one group. */
+  /**
+   * What ties the five radios into one group, and therefore has to be unique on
+   * the screen: two groups of one name are ten radios that are one choice.
+   *
+   * Asked for in the reading shape as well, where nothing reads it. Made optional
+   * there it would be a prop that means something in one shape and nothing in the
+   * other, and a caller would have to know which shape they were in to know
+   * whether it mattered.
+   */
   name: string
   label: string
   /** How many of the five are filled, and 0 for a rating nobody has given. */

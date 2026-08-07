@@ -161,8 +161,14 @@ export function RateEvent() {
               </p>
 
               {/* Why it will not go yet, said where it can be read rather than
-                  left to a button that is simply dead. The queue next door
-                  answers the same question the same way (PendingQueue.tsx). */}
+                  left to a button that is simply dead.
+
+                  Drawn only while it is true, which is not what the queue next
+                  door does with its own refusal: there the live region is always
+                  in the page and empty, because a region that arrives carrying
+                  its words is one nobody is told about (PendingQueue.tsx). Here
+                  the words are there on the first render and only ever go away,
+                  so there is no arrival to miss. */}
               {waiting && (
                 <p id="send-waits" className="rate__hint" role="status">
                   {t('event.commentNeedsMarks')}

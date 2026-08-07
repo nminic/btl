@@ -267,8 +267,12 @@ export type PendingItem = {
    *
    * A name is what a moderator reads and is not what a record is filed under: two
    * events across two seasons carry one name (PDL P6), so a comment approved by
-   * its subject would land on whichever of them was looked up first. Empty on
-   * every queue whose approval writes nothing.
+   * its subject would land on whichever of them was looked up first.
+   *
+   * Carried by the two queues whose subject is a record of the portal's own: the
+   * comments, whose approval writes one, and the reported changes of date, whose
+   * approval moves the event it names. Empty on the four that decide about
+   * something with no id yet, or about a person rather than a record.
    */
   subjectId: string
   /** The text to read before deciding: the biography, the comment, the reason
