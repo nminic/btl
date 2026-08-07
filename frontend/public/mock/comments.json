@@ -62,7 +62,7 @@
       "value": 0,
       "ambience": 0
     },
-    "body": "Komentar iz vremena pre nego sto su ocene postojale."
+    "body": "Komentar iz vremena pre nego što su ocene postojale."
   },
   {
     "id": "kom-6",
@@ -75,7 +75,7 @@
       "value": 3,
       "ambience": 4
     },
-    "body": "Komentar clana koji je u medjuvremenu napustio ligu."
+    "body": "Komentar člana koji je u međuvremenu napustio ligu."
   },
   {
     "id": "kom-7",
@@ -88,7 +88,7 @@
       "value": 4,
       "ambience": 0
     },
-    "body": "Ocena kojoj nedostaje treci parametar, iz vremena kad ih je bilo dva."
+    "body": "Ocena kojoj nedostaje treći parametar, iz vremena kad ih je bilo dva."
   },
   {
     "id": "kom-8",
@@ -101,6 +101,6 @@
       "value": 4,
       "ambience": 5
     },
-    "body": "Komentar sa ranijeg izdanja, dogadjaj je pomeren na nov datum."
+    "body": "Komentar sa ranijeg izdanja, događaj je pomeren na nov datum."
   }
 ]

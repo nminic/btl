@@ -53,6 +53,38 @@ describe('every form definition in the portal', () => {
     expect(missing).toEqual([])
   })
 
+  it('gives every long box written by hand a limit as well', () => {
+    /* The rule above reaches the definitions, and three boxes are written by
+       hand: a biography rewritten by a moderator, the rules of a competition
+       rewritten in place, and the comment beside a rating. Each takes its limit
+       off a definition through `limitOf`, and each was written before anything
+       said so: the third one was written in the same week this was, with no
+       limit at all, and every test on the portal passed.
+
+       Read off the source, because there is no other way to see a box that no
+       definition knows about. */
+    const written = sourceFiles().filter(({ code }) => code.includes('<textarea'))
+    const loose = written
+      .filter(({ code }) =>
+        code
+          .split('<textarea')
+          .slice(1)
+          .some((one) => !one.slice(0, one.indexOf('/>')).includes('maxLength=')),
+      )
+      .map(({ path }) => path)
+
+    /* Four files, so the sweep is known to have found the boxes rather than an
+       empty list: the renderer, which draws every box a definition asks for,
+       and the three written by hand. */
+    expect(written.map(({ path }) => path).sort()).toEqual([
+      'forms/FormRenderer.tsx',
+      'pages/LeagueDetail.tsx',
+      'pages/admin/PendingQueue.tsx',
+      'pages/event/RateEvent.tsx',
+    ])
+    expect(loose).toEqual([])
+  })
+
   it('gives every field a name of its own', () => {
     /* Two fields under one name are one field as far as the values are
        concerned: the second overwrites the first, and the form quietly asks for
@@ -125,3 +157,20 @@ describe('every form definition in the portal', () => {
     expect(impossible).toEqual([])
   })
 })
+
+/** Every `.tsx` under `src`, with its path relative to it. The only way to see a
+ *  box that no definition knows about. */
+function sourceFiles(dir = join(process.cwd(), 'src'), prefix = ''): { path: string; code: string }[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = join(dir, entry.name)
+    const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+
+    if (entry.isDirectory()) {
+      return sourceFiles(at, name)
+    }
+
+    return entry.name.endsWith('.tsx') && !entry.name.endsWith('.test.tsx')
+      ? [{ path: name, code: readFileSync(at, 'utf-8') }]
+      : []
+  })
+}

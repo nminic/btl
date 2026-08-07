@@ -5,6 +5,9 @@ import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
 import { NO_RATING, type EventRating } from '../../data/types'
 import { combinePair, useCompetitors, useEvents } from '../../data/useResource'
+import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
+import { limitOf } from '../../forms/records'
+import type { FormDef } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from '../member/SignedOut'
@@ -158,9 +161,18 @@ function RateOne() {
                       član voleo da zna...", which is what a screen reader would
                       have read out before every keystroke. */}
                   <label htmlFor="comment">{t('event.commentText')}</label>
+                  {/* The limit is the one the form beside it uses for the same
+                      field, taken from that form rather than typed again
+                      (records.ts, `limitOf`): every long box on the portal
+                      carries one, and a hand written box is exactly how the two
+                      before this one slipped out from under that rule
+                      (definitions.test.ts, which can only see the definitions).
+                      What is written here goes to a moderator and then onto a
+                      public page. */}
                   <textarea
                     id="comment"
                     rows={5}
+                    maxLength={limitOf(prijava as FormDef, 'comment')}
                     aria-describedby="comment-hint"
                     value={comment}
                     onChange={(one) => setComment(one.target.value)}

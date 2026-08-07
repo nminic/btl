@@ -978,10 +978,19 @@ describe('the search beside the heading', () => {
  * SC 2.4.7, level A). Everywhere else on the portal `:has` is an improvement
  * that degrades into the old layout; here there is nothing to degrade into. */
 describe('the focus ring on a star', () => {
-  it('is drawn without `:has` as well as with it', () => {
+  it('is drawn without `:has` as well as with it, in a rule of its own', () => {
     const css = read('src/components/Stars.css')
 
-    expect(css).toMatch(/\.stars__pick:focus-within,\s+\.stars__pick:has\(:focus-visible\) \{/)
+    /* Two rules, never one list of two selectors. An unrecognised pseudo-class
+       throws away the whole selector list it stands in, so grouped with the
+       `:has` rule the fallback would be dropped by exactly the browsers it is
+       there for, and the ring would be gone with it. */
+    expect(css).not.toMatch(/:focus-within,/)
+    expect(css).not.toMatch(/,\s*\.stars__pick:focus-within/)
+    expect(css).toMatch(/@supports not selector\(:has\(\*\)\) \{/)
+    expect(bodyOf(css, '.stars__pick:focus-within')).toMatch(
+      /outline:\s*2px solid var\(--accent\)/,
+    )
   })
 })
 

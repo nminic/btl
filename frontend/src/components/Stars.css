@@ -56,17 +56,31 @@
 /* The ring the keyboard needs, drawn around the star rather than around a radio
    nobody can see.
 
-   Two selectors doing one job, and not for tidiness. The radio wears
-   `visually-hidden`, which clips it to a pixel, so the portal's own
-   `:focus-visible` outline is clipped away with it: this rule is the whole of
-   the focus indicator on all fifteen radios (WCAG 2.2 SC 2.4.7, level A).
-   Everywhere else `:has` is an improvement that degrades into the old layout;
-   here there is nothing to degrade into, so `:focus-within` carries it where
-   `:has` is not understood. It fires on a pointer press as well, which is a ring
-   drawn once too often rather than a keyboard with none. */
-.stars__pick:focus-within,
+   The radio wears `visually-hidden`, which clips it to a pixel, so the portal's
+   own `:focus-visible` outline is clipped away with it: this is the whole of the
+   focus indicator on all fifteen radios (WCAG 2.2 SC 2.4.7, level A).
+   Everywhere else on the portal `:has` is an improvement that degrades into the
+   old layout; here there is nothing to degrade into. */
 .stars__pick:has(:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-6);
 }
+
+/* And where `:has` is not understood. Two rules and not one list of two
+   selectors: an unrecognised pseudo-class throws away the whole list it stands
+   in, so grouped with the rule above this one would be dropped by the very
+   browsers it is here for.
+
+   Asked for only where the rule above cannot apply, so a browser that
+   understands both does not draw the ring on a pointer press as well: this one
+   fires on any focus, and `:focus-visible` is the browser's own judgement about
+   when a ring is wanted. */
+@supports not selector(:has(*)) {
+  .stars__pick:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-6);
+  }
+}
+
