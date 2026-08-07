@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { at } from '../test/at'
 import { setupUser } from '../test/user'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -104,7 +105,7 @@ describe('a rating being given', () => {
 
     draw(<Stars name="organisation" label="Organizacija" value={0} onChange={(one) => given.push(one)} />)
 
-    await user.click(screen.getAllByRole('radio')[2] as HTMLElement)
+    await user.click(at(screen.getAllByRole('radio'), 2))
 
     expect(given).toEqual([3])
   })

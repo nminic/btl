@@ -79,10 +79,6 @@
    `.profile__head h1`, which went when the name of a competitor took its own
    size (`.profile__name` below), and left alone they fall back to the browser's
    2em with a margin of its own. */
-/* Both classes, so this settles against `.rankings--tooled > h1` on weight
-   rather than on which sheet the bundle put last: the head of an event wears
-   both, and until this was written the six pixels held only because Profile.css
-   imports Rankings.css at its own head. */
 .profile__head > h1 {
   margin: 0 0 var(--space-6);
   font-size: clamp(26px, 4.5vw, 36px);

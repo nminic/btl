@@ -17,9 +17,10 @@ import { EventActions } from './event/EventActions'
 import { EventComments } from './event/EventComments'
 import './Profile.css'
 
-/* The races load separately from the event on purpose: the heading, the date
- * and the organiser are useful the moment they arrive, and the race table is
- * the heavier half. */
+/* The races load separately from the event on purpose: the name of the event is
+ * useful the moment it arrives, and the race table is the heavier half. The date
+ * and the organiser used to be named here too; both came off the head on
+ * 06.08.2026. */
 function RaceTable({ eventId }: { eventId: string }) {
   const { locale, t } = useI18n()
   const races = useRaces()
@@ -97,8 +98,10 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
-     space that resolves into nothing. */
-  if (date > today && state.status === 'loading') {
+     space that resolves into nothing, and on a broken connection an alert about
+     a section that was never going to be there. The comments at the foot say
+     the same thing the same way (event/EventComments.tsx). */
+  if (date > today && state.status !== 'ready') {
     return null
   }
 

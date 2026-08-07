@@ -39,7 +39,9 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
    *
    * Which means this is written for a name that does not change, and every
    * caller passes a literal one: the nine wrappers at the foot of this file, and
-   * `usePending` and `useComments`, which read the queue. Handed a name that changes, the first render under the new one
+   * `usePending`, which reads the queue, and `useComments`, which reads what
+   * has been published and must never read the queue (see its own doc below).
+   * Handed a name that changes, the first render under the new one
    * would draw the old resource's data as though it were ready, and only the
    * effect would put it right. Making that correct is not a line in the effect,
    * which runs after that render: it is the state being adjusted during the

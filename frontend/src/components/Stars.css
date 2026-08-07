@@ -54,7 +54,17 @@
 }
 
 /* The ring the keyboard needs, drawn around the star rather than around a radio
-   nobody can see. */
+   nobody can see.
+
+   Two selectors doing one job, and not for tidiness. The radio wears
+   `visually-hidden`, which clips it to a pixel, so the portal's own
+   `:focus-visible` outline is clipped away with it: this rule is the whole of
+   the focus indicator on all fifteen radios (WCAG 2.2 SC 2.4.7, level A).
+   Everywhere else `:has` is an improvement that degrades into the old layout;
+   here there is nothing to degrade into, so `:focus-within` carries it where
+   `:has` is not understood. It fires on a pointer press as well, which is a ring
+   drawn once too often rather than a keyboard with none. */
+.stars__pick:focus-within,
 .stars__pick:has(:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

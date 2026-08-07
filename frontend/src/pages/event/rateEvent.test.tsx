@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { formatDate } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { must } from '../../test/at'
+import { at, must } from '../../test/at'
 import { loadResource } from '../../data/client'
 import type { Competitor, EventComment, PendingItem } from '../../data/types'
 import { overall, rated } from './overall'
@@ -65,7 +65,7 @@ async function rateAll(user: ReturnType<typeof setupUser>, mark = 4) {
   for (const name of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
     const group = screen.getByRole('group', { name })
 
-    await user.click(within(group).getAllByRole('radio')[mark - 1] as HTMLElement)
+    await user.click(at(within(group).getAllByRole('radio'), mark - 1))
   }
 }
 
@@ -121,7 +121,7 @@ describe('rating an event', () => {
        same card calls it "Bez ocene". */
     const ambience = screen.getByRole('group', { name: 'Ambijent' })
 
-    await user.click(within(ambience).getAllByRole('radio')[3] as HTMLElement)
+    await user.click(at(within(ambience).getAllByRole('radio'), 3))
     expect(send).toHaveAttribute('aria-disabled', 'true')
 
     await rateAll(user, 4)

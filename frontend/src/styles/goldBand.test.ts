@@ -725,6 +725,15 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'a button that cannot act says so without dimming its own focus ring',
     },
     {
+      of: 'src/pages/Home.css',
+      rule: ".button[aria-disabled='true']",
+      /* The ground as well as the ink. The primary button is drawn on the accent
+         and this state is not: muted text on the full accent reads as a button
+         that works. */
+      holds: /background:\s*transparent/,
+      why: 'and it does not keep the ground of a button that does act',
+    },
+    {
       of: 'src/components/Stars.css',
       rule: '.stars__pick',
       /* The box a finger is owed, which is the label around the star and not the
@@ -961,6 +970,21 @@ describe('the search beside the heading', () => {
  * reason: jsdom applies no stylesheet, so nothing a screen test can see says
  * whether two things line up.
  */
+/* The ring on a star, and the reason it is written twice.
+ *
+ * The radio inside each star is clipped to a pixel by `visually-hidden`, so the
+ * portal's own `:focus-visible` outline is clipped away with it: the rule in
+ * Stars.css is the whole of the focus indicator on all fifteen radios (WCAG 2.2
+ * SC 2.4.7, level A). Everywhere else on the portal `:has` is an improvement
+ * that degrades into the old layout; here there is nothing to degrade into. */
+describe('the focus ring on a star', () => {
+  it('is drawn without `:has` as well as with it', () => {
+    const css = read('src/components/Stars.css')
+
+    expect(css).toMatch(/\.stars__pick:focus-within,\s+\.stars__pick:has\(:focus-visible\) \{/)
+  })
+})
+
 describe('the row above the month grid', () => {
   const css = () => read('src/pages/Calendar.css')
 
