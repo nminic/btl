@@ -385,6 +385,11 @@ describe('a comment a moderator lets out', () => {
     expect(
       within(mineHere).getByText(`Poslao ${me.firstName} ${me.lastName}, član ${ME}`),
     ).toBeInTheDocument()
+    /* And the marks the moderator is deciding about, so what is approved here
+       can be compared with what appears under the event. */
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+      expect(within(mineHere).getByRole('img', { name: `${mark}: 4 od 5` })).toBeInTheDocument()
+    }
 
     await user.click(within(mineHere).getByRole('button', { name: 'Odobri' }))
 
@@ -410,6 +415,14 @@ describe('a comment a moderator lets out', () => {
        screen through Intl, and repeating that here would be the source
        assessing itself. */
     expect(card.textContent).toContain(String(new Date().getFullYear()))
+
+    /* And the marks themselves, which is what the whole walk is about and was
+       the one thing it did not check: four given, four approved, four drawn.
+       Anything published in their place passed every test there was. */
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+      expect(within(card).getByRole('img', { name: `${mark}: 4 od 5` })).toBeInTheDocument()
+    }
+    expect(card.textContent).toContain('Ukupna ocena: 4')
   })
 
   /* The number is written in the reader's language, not in the one the portal
@@ -452,7 +465,16 @@ describe('a comment a moderator lets out', () => {
        anywhere else is a screen the mistake never reaches. */
     const slug = about.subjectId.replace(/^evt-/, '')
 
-    const { router } = renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+    /* Read after that event, so the comments are drawn at all: before the race
+       the whole section is absent (EventComments.tsx), and "no card appeared"
+       would then be true of every screen. */
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/termini',
+      'superadmin',
+      null,
+      undefined,
+      '2027-05-01',
+    )
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
     const card = must(
@@ -567,11 +589,32 @@ describe('what an event nobody has run yet offers', () => {
     expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
   })
 
+  it('says nothing about comments at all, not even that there are none', async () => {
+    /* The sentence saying there are none would stand on the whole of next
+       season's calendar and would mean only "not yet", which is the reason the
+       results above it are silent there too (EventDetail.tsx). */
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, BEFORE_AHEAD)
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
+    expect(screen.queryByText('Za ovaj događaj još nema odobrenih komentara.')).toBeNull()
+  })
+
   it('takes a rating on the day the race is run', async () => {
     renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME, undefined, AHEAD_DAY)
 
     expect(await screen.findByRole('group', { name: 'Organizacija' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
+  })
+
+  it('says there are none from the day the race is run', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
+
+    expect(await screen.findByRole('heading', { name: 'Komentari' })).toBeVisible()
+    expect(
+      await screen.findByText('Za ovaj događaj još nema odobrenih komentara.'),
+    ).toBeVisible()
   })
 
   it('takes a reported result on the day the race is run', async () => {
@@ -626,20 +669,49 @@ describe('the comments under an event', () => {
     expect(within(first).getByText('Ukupna ocena: 4,7')).toBeInTheDocument()
   })
 
-  it('keeps a comment whose author has left the league, with no link on the name', async () => {
-    /* A member whose fee has run out has no visible profile (PDL P11), and what
-       they wrote stays where it was published. The name is drawn as it was on
-       the day, because there is no record left to read it off. */
+  it('keeps a comment whose author is in no record at all, with no link', async () => {
+    /* The number on the comment answers to nobody. It is not the case below and
+       was standing in for it: there the member is in the record and is not to
+       be linked to, which is a different question and was the one going wrong. */
     renderAt(`/sr/kalendar/${EVENT}`)
 
     const gone = must(
       (await screen.findAllByRole('listitem')).find((one) =>
         (one.textContent ?? '').includes('Nekadašnji član'),
       ),
-      'a comment by somebody who has left',
+      'a comment by somebody in no record',
     )
 
     expect(within(gone).queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('keeps a comment whose author has left the league, with no link on the name', async () => {
+    /* A member whose fee has run out is still in the record and has no visible
+       profile (PDL P11), so the card must not link to one: it did, and the link
+       led to "Ovog takmičara nema". What they wrote stays where it was
+       published, under the name it was published with. */
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const left = must(
+      competitors.find((one) => !one.active),
+      'a member who has left the league',
+    )
+    const comments = await loadResource<EventComment[]>('comments')
+    const theirs = must(
+      comments.find((one) => one.memberNumber === left.memberNumber),
+      'a comment by that member',
+    )
+
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(theirs.body),
+      ),
+      'that comment under the event',
+    )
+
+    expect(within(card).getByText(`${left.firstName} ${left.lastName}`)).toBeInTheDocument()
+    expect(within(card).queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('says a comment from before the ratings carries no mark, all four times', async () => {
@@ -670,6 +742,36 @@ describe('the comments under an event', () => {
     expect(card.textContent).not.toContain('Ukupna ocena: 0,0')
     /* And the three it is the average of, each said the same way. */
     expect(within(card).getAllByRole('img', { name: /: Bez ocene$/ })).toHaveLength(3)
+  })
+
+  it('withholds the overall where one of the three is missing, and keeps the rest', async () => {
+    /* Two marks and a gap is not an average of three. Read as a rating it drew
+       "Ukupna ocena: 3,0" beside a mark reading "Bez ocene", which is the card
+       the form exists to refuse. What was given is still drawn. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const comments = await loadResource<EventComment[]>('comments')
+    const partial = must(
+      comments.find(
+        (one) =>
+          one.eventId === `evt-${EVENT}` &&
+          !rated(one.rating) &&
+          (one.rating.organisation > 0 || one.rating.value > 0 || one.rating.ambience > 0),
+      ),
+      'a comment missing one of the three marks',
+    )
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(partial.body),
+      ),
+      'that comment under the event',
+    )
+
+    expect(within(card).getByText('Ukupna ocena: Bez ocene')).toBeInTheDocument()
+    expect(
+      within(card).getByRole('img', { name: `Organizacija: ${partial.rating.organisation} od 5` }),
+    ).toBeInTheDocument()
+    expect(within(card).getAllByRole('img', { name: /: Bez ocene$/ })).toHaveLength(1)
   })
 
   it('draws no empty paragraph where nobody wrote anything', async () => {
@@ -836,17 +938,16 @@ describe('the comments under an event', () => {
     expect(overall({ organisation: 0, value: 0, ambience: 0 })).toBe(0)
   })
 
-  it('calls a rating given when any one mark was given', () => {
-    /* Nought on all three is a comment from before the ratings existed; a nought
-       among marks that were given is not, and never can be from the form, which
-       will not send until all three are there. The record allows it, so the two
-       screens that draw it have to agree about which it is, and `||` is what
-       makes them agree: anything at all was given, so the average is a real
-       number and is written as one. */
-    expect(rated({ organisation: 0, value: 0, ambience: 0 })).toBe(false)
-    expect(rated({ organisation: 5, value: 0, ambience: 0 })).toBe(true)
-    expect(rated({ organisation: 0, value: 5, ambience: 0 })).toBe(true)
-    expect(rated({ organisation: 0, value: 0, ambience: 5 })).toBe(true)
+  it('works the overall out only when all three were given', () => {
+    /* The overall is the average of the three (PDL P6), so two of them and a
+       gap is not an overall of anything: read as one it printed 1,7 beside two
+       marks reading "Bez ocene", which is the card the form refuses to send.
+       The marks that were given are still drawn; only the figure is withheld. */
     expect(rated({ organisation: 4, value: 4, ambience: 3 })).toBe(true)
+    expect(rated({ organisation: 0, value: 0, ambience: 0 })).toBe(false)
+    expect(rated({ organisation: 5, value: 0, ambience: 0 })).toBe(false)
+    expect(rated({ organisation: 0, value: 5, ambience: 0 })).toBe(false)
+    expect(rated({ organisation: 0, value: 0, ambience: 5 })).toBe(false)
+    expect(rated({ organisation: 5, value: 4, ambience: 0 })).toBe(false)
   })
 })

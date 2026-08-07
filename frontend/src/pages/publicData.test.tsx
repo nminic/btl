@@ -51,8 +51,13 @@ const DENIED = ['verification', 'moderators']
  * Two headings, because half of these screens say something different once
  * somebody has signed in, and both readings have to be swept: a leak below a
  * sign-in guard is invisible to a visitor and is still a leak.
+ *
+ * Four of these are one part of a screen whose other part carries the same
+ * heading, so the heading alone cannot tell them apart: swapping the awards for
+ * the overview left the sweep green. Those four name the part they are, which
+ * the screen marks as the one being read.
  */
-const PUBLIC: [address: string, asVisitor: string, asMember: string][] = [
+const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: string][] = [
   ['/sr', 'Balkanska trkačka liga', 'Balkanska trkačka liga'],
   ['/sr/kalendar', 'Kalendar', 'Kalendar'],
   ['/sr/kalendar/dan/2027-05-08', 'Trke, 8. maj 2027.', 'Trke, 8. maj 2027.'],
@@ -72,23 +77,35 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string][] = [
     'Prijava rezultata',
   ],
   ['/sr/takmicari', 'Takmičari', 'Takmičari'],
-  ['/sr/takmicar/000001', 'Vladan Đurišić', 'Vladan Đurišić'],
-  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić'],
+  ['/sr/takmicar/000001', 'Vladan Đurišić', 'Vladan Đurišić', 'Svojim rečima'],
+  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 5'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   ['/sr/novi-tim', 'Za ovo treba prijava', 'Predlog tima'],
   ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
   ['/sr/top-liste', 'Top liste', 'Top liste'],
   ['/sr/lige', 'Lige', 'Lige'],
-  ['/sr/liga/btl-2027', 'Balkanska trkačka liga 2027', 'Balkanska trkačka liga 2027'],
+  [
+    '/sr/liga/btl-2027',
+    'Balkanska trkačka liga 2027',
+    'Balkanska trkačka liga 2027',
+    'Propozicije',
+  ],
+  /* The results carry no heading of their own, so the part is named by what
+     the other part has and this one must not: a table of standings instead of
+     the terms of the competition. */
   [
     '/sr/liga/btl-2027/rezultati',
     'Balkanska trkačka liga 2027',
     'Balkanska trkačka liga 2027',
+    '',
   ],
   ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027', 'Pravilnik takmičenja BTL 2027'],
   ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
   ['/sr/uslovi-koriscenja', 'Uslovi korišćenja', 'Uslovi korišćenja'],
+  /* Read on a fixed day, because this heading changes on 01.10.2026 when
+     registration opens (pricing.ts). A row that turns over on a date is a row
+     that breaks the build on a date. */
   [
     '/sr/registracija',
     'Registracija još nije otvorena',
@@ -106,6 +123,17 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string][] = [
 
 /** The member the signed-in half of the sweep reads as. */
 const ME = '000007'
+
+/**
+ * The day every row is read on.
+ *
+ * Fixed, because half these screens say something different on a date: the
+ * registration opens on 01.10.2026 (pricing.ts), and a table of headings read
+ * against the real clock is a table that breaks the build on a morning nobody
+ * changed anything. Chosen before that day and before next season, which is
+ * where the generated calendar lives.
+ */
+const DAY = '2026-08-07'
 
 /**
  * A route pattern as what it matches: `takmicar/:memberNumber` against
@@ -165,6 +193,25 @@ function watch(): string[] {
   return asked
 }
 
+/** The part of a screen that is being read, where two parts share one heading.
+ *  The screen marks it, so it is asked for the way a reader meets it. */
+function expectPart(part: string | undefined): void {
+  if (part === undefined) {
+    return
+  }
+
+  /* Read off the body and not off the navigation: the link is marked by the
+     address, so it says which part was asked for and not which one was drawn.
+     Swapping one part's screen for the other left the sweep green until this
+     read what is actually under the heading. */
+  if (part === '') {
+    expect(screen.queryByRole('heading', { level: 2, name: 'Propozicije' })).toBeNull()
+    return
+  }
+
+  expect(screen.getByRole('heading', { level: 2, name: part })).toBeVisible()
+}
+
 describe('what a browser downloads outside administration', () => {
   it('visits every address the route table has', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
@@ -180,10 +227,12 @@ describe('what a browser downloads outside administration', () => {
   it.each(PUBLIC)('asks for nothing of anybody else on %s, to a visitor', async (
     address,
     heading,
+    _member,
+    part,
   ) => {
     const asked = watch()
 
-    renderAt(address)
+    renderAt(address, 'visitor', null, undefined, DAY)
 
     await quiet(asked)
 
@@ -192,6 +241,7 @@ describe('what a browser downloads outside administration', () => {
        and the sweep would go on passing, having swept the front page three
        times over. */
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
 
@@ -203,14 +253,16 @@ describe('what a browser downloads outside administration', () => {
     address,
     _visitor,
     heading,
+    part,
   ) => {
     const asked = watch()
 
-    renderAt(address, 'competitor', ME)
+    renderAt(address, 'competitor', ME, undefined, DAY)
 
     await quiet(asked)
 
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
 

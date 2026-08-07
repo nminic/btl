@@ -4,7 +4,8 @@ import { useSession } from '../session/useSession'
 import { setupUser } from '../test/user'
 import { first } from '../test/at'
 import { loadResource, type ResourceName } from './client'
-import type { Competitor, EventComment } from './types'
+import { commentFrom } from './comment'
+import type { Competitor, EventComment, PendingItem } from './types'
 import {
   combinePair,
   combineFour,
@@ -343,5 +344,43 @@ describe('useComments', () => {
     await user.click(screen.getByRole('button', { name: 'pusti isti' }))
 
     expect(screen.getByTestId('twice')).toHaveTextContent('1')
+  })
+})
+
+/* What an approval turns a waiting comment into.
+ *
+ * Held field by field, and as a unit, because the screens cannot hold all of
+ * it: the name is drawn off the member's record while they are still in the
+ * league, so a name dropped here is invisible everywhere until the day that
+ * member leaves, and then the card is blank with nothing to say why (PDL P11).
+ */
+describe('commentFrom', () => {
+  it('carries every field of the waiting comment, and nothing of its own', () => {
+    const waiting: PendingItem = {
+      id: 'ver-kom-9',
+      queue: 'comments',
+      date: '2026-08-06',
+      memberNumber: '000007',
+      who: 'Ime Prezime',
+      subject: 'Fruškogorski maraton',
+      subjectId: 'evt-fruskogorski-maraton-2010-05-08',
+      body: 'Reci koje je clan napisao.',
+      currentDate: '',
+      proposedDate: '',
+      email: '',
+      city: '',
+      country: '',
+      rating: { organisation: 5, value: 4, ambience: 3 },
+    }
+
+    expect(commentFrom(waiting)).toEqual({
+      id: 'ver-kom-9',
+      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      memberNumber: '000007',
+      who: 'Ime Prezime',
+      date: '2026-08-06',
+      rating: { organisation: 5, value: 4, ambience: 3 },
+      body: 'Reci koje je clan napisao.',
+    })
   })
 })

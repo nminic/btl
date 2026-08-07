@@ -6,6 +6,7 @@ import { overall, rated } from './overall'
 import { combinePair, useComments, useCompetitors } from '../../data/useResource'
 import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
+import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
 import './EventComments.css'
 
@@ -29,9 +30,18 @@ const MARKS = ['organisation', 'value', 'ambience'] as const
  * A comment shows who wrote it, so it carries their face and their name, and the
  * name leads to their profile the way every name on the portal does (PDL P11).
  */
-export function EventComments({ eventId }: { eventId: string }) {
+export function EventComments({ eventId, date }: { eventId: string; date: string }) {
   const { t } = useI18n()
+  const today = useToday()
   const state = combinePair(useComments(), useCompetitors())
+
+  /* Nothing before the race, heading included. Nobody can rate a race that has
+     not been run (PDL P9), so the sentence saying there are no comments would
+     stand on the whole of next season's calendar and would say only "not yet",
+     which is what the results above already decided (EventDetail.tsx). */
+  if (date > today) {
+    return null
+  }
 
   return (
     <>
@@ -84,11 +94,18 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
       <div className="comments__who">
         <Portrait competitor={who} />
         <div>
-          {/* The name leads to the profile, unless there is nobody to lead to:
-              a member whose fee has run out has no visible profile (PDL P11),
-              and their comment stays where it was published. */}
+          {/* The name leads to the profile, unless there is nobody to lead to.
+              A member whose fee has run out is still in the record and has no
+              visible profile (PDL P11), so "is there a record" is the wrong
+              question: it drew a link to a page that answers "Ovog takmičara
+              nema". What is asked is whether the profile is there to be read,
+              which is what every other list on the portal asks
+              (CompetitorName.tsx, TopBoards.tsx, EventDetail.tsx).
+
+              The name written on the day stands in its place, because there is
+              no record left to read one off (owner, 06.08.2026). */}
           <p className="comments__name">
-            {who === undefined ? (
+            {who === undefined || !who.active ? (
               comment.who
             ) : (
               <Link to={`/${locale}/takmicar/${who.memberNumber}`}>

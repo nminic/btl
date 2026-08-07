@@ -55,7 +55,7 @@
     "id": "kom-5",
     "eventId": "evt-fruskogorski-maraton-2010-05-08",
     "memberNumber": "000012",
-    "who": "Stariji komentar",
+    "who": "Jovana Tomašević",
     "date": "2010-05-07",
     "rating": {
       "organisation": 0,
@@ -63,5 +63,31 @@
       "ambience": 0
     },
     "body": "Komentar iz vremena pre nego sto su ocene postojale."
+  },
+  {
+    "id": "kom-6",
+    "eventId": "evt-fruskogorski-maraton-2010-05-08",
+    "memberNumber": "000032",
+    "who": "Vojislav Antonijević",
+    "date": "2010-05-11",
+    "rating": {
+      "organisation": 4,
+      "value": 3,
+      "ambience": 4
+    },
+    "body": "Komentar clana koji je u medjuvremenu napustio ligu."
+  },
+  {
+    "id": "kom-7",
+    "eventId": "evt-fruskogorski-maraton-2010-05-08",
+    "memberNumber": "000015",
+    "who": "Delimicna ocena",
+    "date": "2010-05-12",
+    "rating": {
+      "organisation": 5,
+      "value": 4,
+      "ambience": 0
+    },
+    "body": "Ocena kojoj nedostaje treci parametar, iz vremena kad ih je bilo dva."
   }
 ]

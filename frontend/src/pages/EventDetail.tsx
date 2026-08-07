@@ -269,8 +269,14 @@ export function EventDetail() {
 
               {/* At the foot of the event, which is where the owner put it
                   (06.08.2026): a reader looks at the races and the results
-                  first, and what other people thought of it after. */}
-              <EventComments eventId={event.id} />
+                  first, and what other people thought of it after.
+
+                  Nothing at all before the race, for the reason the results
+                  above give: nobody can rate a race that has not been run, so
+                  "Za ovaj događaj još nema odobrenih komentara." would stand on
+                  every screen of next season's calendar and would mean only
+                  "not yet". */}
+              <EventComments eventId={event.id} date={event.date} />
             </div>
           </>
         )
