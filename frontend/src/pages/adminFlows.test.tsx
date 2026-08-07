@@ -12,6 +12,7 @@ import { Admin } from './admin/Admin'
 import { ruleSentence, type BadgeRule } from '../data/badgeRule'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
+import { NO_RATING } from '../data/types'
 import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
 import { RIGHTS } from './admin/rights'
 import { ReviewQueue } from './admin/ReviewQueue'
@@ -1473,6 +1474,7 @@ describe('the six queues read from the file', () => {
         body: 'profilna.jpg',
         currentDate: '',
         proposedDate: '',
+        rating: NO_RATING,
         email: '',
         city: '',
         country: '',

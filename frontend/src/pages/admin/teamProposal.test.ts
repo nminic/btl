@@ -1,4 +1,5 @@
 import type { PendingItem } from '../../data/types'
+import { NO_RATING } from '../../data/types'
 import { addressOf, nameError, nameFault, refusal, teamFrom, type Proposed } from './teamProposal'
 
 /* Turning a proposal into a team, as decisions rather than as a screen. One of
@@ -15,6 +16,7 @@ const item = (over: Partial<PendingItem> = {}): PendingItem => ({
   body: '',
   currentDate: '',
   proposedDate: '',
+  rating: NO_RATING,
   email: '',
   city: 'Čačak',
   country: 'RS',

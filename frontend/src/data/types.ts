@@ -206,6 +206,19 @@ export const PENDING_QUEUE_IDS = [
 
 export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
 
+/** The three marks an event is rated on (PDL P6). The names are the owner's,
+ *  with "okruženje" renamed to "ambijent" on 07.08.2026. */
+export type EventRating = {
+  organisation: number
+  value: number
+  ambience: number
+}
+
+/** What the six queues that are not about an event carry, and what a comment
+ *  written before the ratings existed carries. Written once, so the six do not
+ *  each spell out three noughts. */
+export const NO_RATING: EventRating = { organisation: 0, value: 0, ambience: 0 }
+
 export type PendingItem = {
   id: string
   queue: PendingQueueId
@@ -230,6 +243,20 @@ export type PendingItem = {
    *  thing on screen. Empty on every other queue. */
   currentDate: string
   proposedDate: string
+  /**
+   * What a member thought of the event, on the comments queue and nought
+   * everywhere else (PDL P6, owner 06.08.2026).
+   *
+   * Three marks and not four. The fourth is the overall, and PDL P6 says it is
+   * arithmetic: the average of these three. Stored as well it would be a fourth
+   * place for the same fact to disagree with itself, and the first rounding
+   * anybody changed would leave two answers on the portal at once.
+   *
+   * A comment with no rating at all is nought on all three: the rating is what
+   * a member came to give and the comment is optional, so a nought here means
+   * the record predates the rating rather than that somebody rated it nothing.
+   */
+  rating: EventRating
   /** The payments queue only. Until the fee is recorded there is no number to go
    *  by, so a waiting registration is known by its name and its address (PDL
    *  P8). Empty on the other six. */

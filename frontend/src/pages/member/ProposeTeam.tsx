@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
+import { NO_RATING } from '../../data/types'
 import { FormRenderer } from '../../forms/FormRenderer'
 import predlogTima from '../../forms/definitions/predlog-tima.form.json'
 import type { FieldError, FormDef, FormValues } from '../../forms/types'
@@ -114,6 +115,8 @@ export function ProposeTeam() {
               }),
               currentDate: '',
               proposedDate: '',
+              /* Nothing to rate: a team is not an event. */
+              rating: NO_RATING,
               email: '',
               /* In their own fields as well as in the words above, because
                  approving the proposal makes the team out of them (PDL P13):

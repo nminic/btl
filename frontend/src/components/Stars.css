@@ -1,0 +1,66 @@
+/* A rating in five stars (owner, 06.08.2026).
+ *
+ * Gold, because a rating is an award and gold is what the portal awards with
+ * (tokens.css). An empty star is the same star drawn in outline, so a reader
+ * sees five of one shape rather than two shapes.
+ */
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--gold-text);
+}
+
+/* The one asking a question carries its own name, so it is a block with a
+   legend rather than a run of stars in a line of text. */
+.stars--asking {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.stars--asking legend {
+  /* Its own line above the stars, and the whole width of it, because a legend
+     that shares a line with the first star reads as a label on that star. */
+  float: left;
+  inline-size: 100%;
+  margin-block-end: var(--space-4);
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Twenty-four pixels of star with room around it, which is the twenty-four by
+   twenty-four a pointer is owed (WCAG 2.2 SC 2.5.8) without anything being told
+   to have a size. */
+.stars__pick {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  cursor: pointer;
+}
+
+.stars__mark {
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+}
+
+/* The star the pointer is over, and every star before it, so the row fills as a
+   finger moves along it rather than lighting one star in the middle of five. */
+.stars--asking:hover .stars__pick .stars__mark {
+  color: var(--gold-text);
+}
+
+/* The ring the keyboard needs, drawn around the star rather than around a radio
+   nobody can see. */
+.stars__pick:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-6);
+}
