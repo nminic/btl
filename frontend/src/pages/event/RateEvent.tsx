@@ -87,6 +87,13 @@ export function RateEvent() {
           const waiting = MARKS.some((mark) => rating[mark] === 0)
 
           function send() {
+            /* Says so rather than being switched off, so nothing stops the
+               press but this: the rating is not complete and the reason is on
+               the screen beside the button. */
+            if (waiting) {
+              return
+            }
+
             propose({
               queue: 'comments',
               date: today,
@@ -154,10 +161,14 @@ export function RateEvent() {
                     the same card called the other two "Bez ocene", which is the
                     record saying "nobody rated this" and averaging it as nought
                     in one breath. The comment is what may be left out. */}
+                {/* Not switched off, told off: `disabled` takes a control out
+                    of the tab order, so the reason it points at is one nobody
+                    tabbing can ever reach. The portal has answered this twice
+                    already and the same way (PendingQueue.tsx, Pager.tsx). */}
                 <button
                   type="button"
                   className="button button--primary"
-                  disabled={waiting}
+                  aria-disabled={waiting}
                   aria-describedby={waiting ? 'send-waits' : undefined}
                   onClick={send}
                 >
@@ -177,8 +188,8 @@ export function RateEvent() {
                   its words is one nobody is told about (PendingQueue.tsx). Here
                   it does arrive carrying them, because this whole part waits for
                   the event to load, so nothing rests on it being announced: the
-                  button points at it with `aria-describedby`, which is what a
-                  reader hears on reaching a button that will not send. */}
+                  button points at it with `aria-describedby`, and the button is
+                  reachable, which is the half that was missing. */}
               {waiting && (
                 <p id="send-waits" className="rate__hint" role="status">
                   {t('event.commentNeedsMarks')}

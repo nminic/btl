@@ -12,11 +12,22 @@ function draw(ui: React.ReactNode) {
   )
 }
 
-/* The stars, in the shape that reads rather than the one that asks. The asking
- * shape is driven through the screen that uses it (pages/event/rateEvent.test).
- * What is held here is that a reading is not a control and that it says its
- * number in words, including the number nobody gave.
+/* The stars, both shapes.
+ *
+ * The one that asks used to be left to the screen that uses it, and the screen
+ * held its radios, its names and what it hands back, never its drawing: the
+ * control could have filled none of the five, or filled them one short, and
+ * every test on the portal passed. What a member sees is the drawing.
  */
+/** How many of the five are drawn filled. The one thing about these stars that
+ *  no role reaches: a filled star and an empty one are the same shape and differ
+ *  by an attribute (Stars.tsx). */
+function fillingIn(container: HTMLElement): number {
+  return [...container.querySelectorAll('path')].filter(
+    (one) => one.getAttribute('fill') === 'currentColor',
+  ).length
+}
+
 describe('a rating being given', () => {
   it('is one group of five, so the arrow keys move through it', () => {
     /* Five radios of one name are one choice; five of five names are five
@@ -34,6 +45,37 @@ describe('a rating being given', () => {
     expect(new Set(radios.map((one) => one.getAttribute('name')))).toEqual(
       new Set(['organisation']),
     )
+  })
+
+  it('fills the stars up to the mark that was chosen, and no further', async () => {
+    /* The whole of what the owner asked for: "empty stars that fill on a click".
+       The radios were held from the first day and the drawing was not, so the
+       control could have filled none of them, or filled them one short, with
+       nothing on the portal saying so. */
+    const user = setupUser()
+    let given = 0
+    const { container, rerender } = draw(
+      <Stars name="organisation" label="Organizacija" value={given} onChange={(one) => (given = one)} />,
+    )
+
+    expect(fillingIn(container)).toBe(0)
+
+    await user.click(screen.getByRole('radio', { name: '3 od 5' }))
+    rerender(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <Stars
+            name="organisation"
+            label="Organizacija"
+            value={given}
+            onChange={() => undefined}
+          />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(given).toBe(3)
+    expect(fillingIn(container)).toBe(3)
   })
 
   it('gives every star a name of its own, so a reader knows which is which', () => {

@@ -89,5 +89,18 @@
       "ambience": 0
     },
     "body": "Ocena kojoj nedostaje treci parametar, iz vremena kad ih je bilo dva."
+  },
+  {
+    "id": "kom-8",
+    "eventId": "evt-sidski-novogodisnji-maraton-2027-01-16",
+    "memberNumber": "000007",
+    "who": "Strahinja Vukićević",
+    "date": "2026-06-20",
+    "rating": {
+      "organisation": 4,
+      "value": 4,
+      "ambience": 5
+    },
+    "body": "Komentar sa ranijeg izdanja, dogadjaj je pomeren na nov datum."
   }
 ]

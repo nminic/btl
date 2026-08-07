@@ -7,7 +7,6 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
 import { useMay } from '../admin/rights'
-import './EventActions.css'
 
 /**
  * What can be done with an event, from the event's own page.
@@ -147,8 +146,15 @@ export function EventActions({
     /* The row's own second child, so a visitor with nothing to press leaves the
        row with one child rather than an empty box centred against the name
        (Rankings.css). The component already knows whether it draws anything;
-       wrapping it outside meant the wrapper was drawn either way. */
-    <div className="event__actions rankings__head-tool">
+       wrapping it outside meant the wrapper was drawn either way.
+
+       It wears the shared row's control box and nothing of its own. A sheet
+       stood here setting flex, wrap and a gap, all three of which
+       `.rankings__head-tool` already sets on this same element (Rankings.css);
+       the one difference was a smaller gap, written at the same weight as the
+       shared one and so settled by whichever sheet the bundle put last, which
+       is not a decision anybody made. */
+    <div className="rankings__head-tool">
       {mayEdit && (
         <>
           <button type="button" className="button button--secondary" onClick={copy}>

@@ -35,54 +35,61 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
   const today = useToday()
   const state = combinePair(useComments(), useCompetitors())
 
-  /* Nothing before the race, heading included. Nobody can rate a race that has
-     not been run (PDL P9), so the sentence saying there are no comments would
-     stand on the whole of next season's calendar and would say only "not yet",
-     which is what the results above already decided (EventDetail.tsx). */
-  if (date > today) {
-    return null
-  }
-
   return (
-    <>
-      <h2 className="profile__section" id="comments">
-        {t('event.comments')}
-      </h2>
+    /* Inline, like the races and the results above it: this is a part of a
+       screen and not the screen, and a sheet over the page would hide the event
+       while its comments were on their way.
 
-      {/* Inline, like the races and the results above it: this is a part of a
-          screen and not the screen, and a sheet over the page would hide the
-          event while its comments were on their way. */}
-      <Resource state={state} inline label={t('event.comments')}>
-        {([comments, competitors]) => {
-          /* Newest first, which is the order anybody reads a list of comments
-             in. Unsorted it was the order of the file, and once a moderator
-             starts publishing during a visit that order is "whatever the file
-             had, then whatever was approved just now". */
-          const mine = comments
-            .filter((one) => one.eventId === eventId)
-            .sort((left, right) => right.date.localeCompare(left.date))
+       The heading is inside it because whether there is a section at all
+       depends on what arrives. */
+    <Resource state={state} inline label={t('event.comments')}>
+      {([comments, competitors]) => {
+        /* Newest first, which is the order anybody reads a list of comments in.
+           Unsorted it was the order of the file, and once a moderator starts
+           publishing during a visit that order is "whatever the file had, then
+           whatever was approved just now". */
+        const mine = comments
+          .filter((one) => one.eventId === eventId)
+          .sort((left, right) => right.date.localeCompare(left.date))
 
-          if (mine.length === 0) {
-            return <p className="profile__empty">{t('event.noComments')}</p>
-          }
+        /* Nothing at all before the race, heading included: nobody can rate a
+           race that has not been run (PDL P9), so the sentence saying there are
+           none would stand on the whole of next season's calendar and would say
+           only "not yet". The same answer the results above give, and the same
+           shape: what is suppressed is the sentence, never a comment. An event
+           moved onto a later date keeps everything already published under it,
+           which is what the schedule queue does to events (types.ts,
+           `subjectId`). */
+        if (mine.length === 0 && date > today) {
+          return null
+        }
 
-          return (
-            /* Named by the heading over it, so a reader moving by landmarks
-               knows what the list is and does not have to have read the heading
-               on the way past. */
-            <ol className="comments" aria-labelledby="comments">
-              {mine.map((comment) => (
-                <Comment
-                  key={comment.id}
-                  comment={comment}
-                  who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
-                />
-              ))}
-            </ol>
-          )
-        }}
-      </Resource>
-    </>
+        return (
+          <>
+            <h2 className="profile__section" id="comments">
+              {t('event.comments')}
+            </h2>
+
+            {mine.length === 0 ? (
+              <p className="profile__empty">{t('event.noComments')}</p>
+            ) : (
+              /* Named by the heading over it, so a reader moving by landmarks
+                 knows what the list is and does not have to have read the
+                 heading on the way past. */
+              <ol className="comments" aria-labelledby="comments">
+                {mine.map((comment) => (
+                  <Comment
+                    key={comment.id}
+                    comment={comment}
+                    who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
+                  />
+                ))}
+              </ol>
+            )}
+          </>
+        )
+      }}
+    </Resource>
   )
 }
 
@@ -124,9 +131,19 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
             figure is said: with both named a reader heard "Ukupna ocena: 4 od 5"
             and then "Ukupna ocena: 4,7" about one number. */}
         <p className="comments__overall">
-          <span aria-hidden="true">
-            <Stars label={t('event.rating.overall')} value={Math.floor(overall(comment.rating))} />
-          </span>
+          {/* No picture where there is no number: drawn from the average
+              whatever the record carried, a rating missing one of its three
+              showed three filled stars beside the words "Bez ocene", which is
+              the same card answering one question two ways in the one place the
+              answer is a drawing. */}
+          {rated(comment.rating) && (
+            <span aria-hidden="true">
+              <Stars
+                label={t('event.rating.overall')}
+                value={Math.floor(overall(comment.rating))}
+              />
+            </span>
+          )}
           <span className="comments__figure">
             {t('event.rating.overall')}:{' '}
             {/* Nought on all three is a comment written before the ratings

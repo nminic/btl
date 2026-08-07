@@ -48,6 +48,11 @@ const AHEAD_DAY = '2027-01-16'
  *  they say whatever day the suite is run on. On the real clock they would swap
  *  their answers on 16.01.2027. */
 const BEFORE_AHEAD = '2026-12-31'
+/** One nobody has run and nobody has commented on, which is what makes the
+ *  whole section absent rather than empty. AHEAD carries a comment on purpose:
+ *  it stands for an event moved onto a later date. */
+const AHEAD_EMPTY = 'podgoricka-desetka-2027-01-30'
+const AHEAD_EMPTY_NAME = 'Podgorička desetka'
 const ME = '000007'
 
 /** All three marks given, which is what the form asks for before it will send
@@ -98,8 +103,15 @@ describe('rating an event', () => {
     const send = await screen.findByRole('button', { name: 'Pošalji' })
 
     /* The comment may be empty and the rating may not: the rating is what a
-       member came to give. */
-    expect(send).toBeDisabled()
+       member came to give.
+
+       Said and not switched off, so the reason beside it can be tabbed to
+       (Pager.css). Pressed anyway, it sends nothing, which is the half a
+       reader who ignores the word depends on. */
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(send)
+    expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
 
     /* Two of the three is still not a rating. The average divides by three
        whatever is given, so a mark left out is published as a nought and the
@@ -107,10 +119,10 @@ describe('rating an event', () => {
     const ambience = screen.getByRole('group', { name: 'Ambijent' })
 
     await user.click(within(ambience).getAllByRole('radio')[3] as HTMLElement)
-    expect(send).toBeDisabled()
+    expect(send).toHaveAttribute('aria-disabled', 'true')
 
     await rateAll(user, 4)
-    expect(send).toBeEnabled()
+    expect(send).toHaveAttribute('aria-disabled', 'false')
 
     await user.click(send)
 
@@ -290,8 +302,15 @@ describe('a comment a moderator lets out', () => {
   it('shows the moderator the marks it carries, before they decide', async () => {
     renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
 
-    const waiting = await screen.findByRole('list', { name: /Čeka/ })
-    const first = must(within(waiting).getAllByRole('listitem')[0], 'a waiting comment')
+    /* Chosen by what it carries, not by where it sits: taken as the first item
+       of the queue this said nothing the day a comment with no marks was put in
+       front of it, and said it by throwing rather than by failing. */
+    const queue = await loadResource<PendingItem[]>('verification')
+    const marked = must(
+      queue.find((one) => one.queue === 'comments' && rated(one.rating)),
+      'a waiting comment carrying all three marks',
+    )
+    const first = await cardFor(marked.body)
 
     /* A comment is a rating and a paragraph, and the queue was drawing only the
        paragraph: the moderator was deciding about half of what was sent. */
@@ -300,7 +319,9 @@ describe('a comment a moderator lets out', () => {
     }
     /* One picture per mark, and one only: `getAllByRole(...).not.toHaveLength(0)`
        stood here and asserted nothing, because getAllByRole throws on none. */
-    expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).toHaveLength(1)
+    expect(
+      within(first).getAllByRole('img', { name: `Organizacija: ${marked.rating.organisation} od 5` }),
+    ).toHaveLength(1)
   })
 
   it('says the same words the event page does about a comment with no marks', async () => {
@@ -592,13 +613,45 @@ describe('what an event nobody has run yet offers', () => {
   it('says nothing about comments at all, not even that there are none', async () => {
     /* The sentence saying there are none would stand on the whole of next
        season's calendar and would mean only "not yet", which is the reason the
-       results above it are silent there too (EventDetail.tsx). */
-    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, BEFORE_AHEAD)
+       results above it are silent there too (EventDetail.tsx).
 
-    await screen.findByRole('heading', { level: 1 })
+       Walked from an event that has been run, so the absence is read after the
+       comments have arrived: the section is drawn inside a Resource, and asked
+       for the moment the name of the event appears it is not there yet on any
+       screen at all. */
+    const { router } = renderAt(
+      `/sr/kalendar/${EVENT}`,
+      'competitor',
+      ME,
+      undefined,
+      BEFORE_AHEAD,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Komentari' })).toBeVisible()
+
+    await router.navigate(`/sr/kalendar/${AHEAD_EMPTY}`)
+    await screen.findByRole('heading', { level: 1, name: AHEAD_EMPTY_NAME })
 
     expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
     expect(screen.queryByText('Za ovaj događaj još nema odobrenih komentara.')).toBeNull()
+  })
+
+  it('keeps the comments of an event that has been moved onto a later date', async () => {
+    /* Approving a change of date moves an event and its races (types.ts,
+       `subjectId`), so a race that has been run can carry tomorrow's date. What
+       is suppressed before a race is the sentence saying there are none, never
+       a comment somebody wrote: hiding those would take them off the portal
+       with nothing anywhere saying why. */
+    const comments = await loadResource<EventComment[]>('comments')
+    const moved = must(
+      comments.find((one) => one.eventId === `evt-${AHEAD}`),
+      'a comment on an event dated ahead of the day it is read on',
+    )
+
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, BEFORE_AHEAD)
+
+    expect(await screen.findByRole('heading', { name: 'Komentari' })).toBeVisible()
+    expect(screen.getByText(moved.body)).toBeVisible()
   })
 
   it('takes a rating on the day the race is run', async () => {
@@ -609,7 +662,9 @@ describe('what an event nobody has run yet offers', () => {
   })
 
   it('says there are none from the day the race is run', async () => {
-    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
+    /* The one nobody has commented on: AHEAD carries a comment, which is the
+       other case a few lines down. */
+    renderAt(`/sr/kalendar/${AHEAD_EMPTY}`, 'competitor', ME, undefined, '2027-01-30')
 
     expect(await screen.findByRole('heading', { name: 'Komentari' })).toBeVisible()
     expect(
@@ -742,6 +797,10 @@ describe('the comments under an event', () => {
     expect(card.textContent).not.toContain('Ukupna ocena: 0,0')
     /* And the three it is the average of, each said the same way. */
     expect(within(card).getAllByRole('img', { name: /: Bez ocene$/ })).toHaveLength(3)
+    /* No stars for the overall either, where there is no overall to draw. */
+    expect(
+      within(card).queryAllByRole('img', { name: /^Ukupna ocena/, hidden: true }),
+    ).toHaveLength(0)
   })
 
   it('withholds the overall where one of the three is missing, and keeps the rest', async () => {
@@ -772,6 +831,13 @@ describe('the comments under an event', () => {
       within(card).getByRole('img', { name: `Organizacija: ${partial.rating.organisation} od 5` }),
     ).toBeInTheDocument()
     expect(within(card).getAllByRole('img', { name: /: Bez ocene$/ })).toHaveLength(1)
+
+    /* And the picture, which said the opposite of the words beside it: drawn
+       from the average whatever the record held, it filled three stars next to
+       "Bez ocene". Read with `hidden`, because it is out of what is spoken. */
+    expect(
+      within(card).queryAllByRole('img', { name: /^Ukupna ocena/, hidden: true }),
+    ).toHaveLength(0)
   })
 
   it('draws no empty paragraph where nobody wrote anything', async () => {

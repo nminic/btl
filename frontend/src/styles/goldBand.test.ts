@@ -698,6 +698,22 @@ describe('what the owner asked for on 04.08.2026', () => {
     },
     {
       of: 'src/components/Stars.css',
+      rule: '.stars__pick',
+      /* The box a finger is owed, which is the label around the star and not the
+         star: the drawing is 1,35rem and would be a target of about 22px (WCAG
+         2.2 SC 2.5.8 asks for 24). jsdom lays nothing out, so the size is held
+         where it is written. */
+      holds: /inline-size:\s*2rem/,
+      why: 'a star is as big as a finger, without the drawing being told to be',
+    },
+    {
+      of: 'src/components/Stars.css',
+      rule: '.stars__pick',
+      holds: /block-size:\s*2rem/,
+      why: 'and as tall as it is wide',
+    },
+    {
+      of: 'src/components/Stars.css',
       rule: '.stars__pick:has(:focus-visible)',
       /* The radio itself is off the screen, so without this a keyboard moving
          through five stars moves through nothing anybody can see (WCAG 2.2 SC
@@ -1020,30 +1036,3 @@ describe('the height of a bar on the column chart', () => {
   })
 })
 
-/* The head of an event, since 06.08.2026.
- *
- * It laid out a grid of its own here, written with `:has` so that a visitor with
- * no buttons did not get a head in two columns with nothing in the second. It
- * takes the shared row now (Rankings.css), which answers that more simply: the
- * buttons draw no box at all when there is nothing to press, so the row has one
- * child and lays it out as one.
- *
- * What is left to hold is that the old grid is gone. Two grids on one head fight
- * each other and jsdom lays out neither, so nothing else would say so.
- */
-describe('the head of an event', () => {
-  it('leaves the row to the shared rule rather than laying out one of its own', () => {
-    const css = read('src/pages/event/EventActions.css')
-
-    expect(css).not.toMatch(/\.profile__head--acting/)
-    expect(css).not.toMatch(/display:\s*grid/)
-
-    /* And what it does say, so the whole file could not be deleted with this
-       still passing: the buttons themselves wrap rather than squeezing a long
-       event name off a telephone. */
-    const buttons = bodyOf(css, '.event__actions')
-
-    expect(buttons).toMatch(/display:\s*flex/)
-    expect(buttons).toMatch(/flex-wrap:\s*wrap/)
-  })
-})
