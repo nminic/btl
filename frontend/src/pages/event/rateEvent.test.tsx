@@ -1,5 +1,8 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { formatDate } from '../../i18n/format'
+import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
+import { limitOf } from '../../forms/records'
+import type { FormDef } from '../../forms/types'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
@@ -133,6 +136,41 @@ describe('rating an event', () => {
        which is the route every comment has taken since the queues were written
        (PDL P22). */
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+  })
+
+  it('says how much room the comment has, and what a paste lost', async () => {
+    /* The limit is refused at the door (owner, 01.08.2026), and a door that
+       refuses in silence cuts three hundred characters off a pasted race report
+       and says nothing. This box draws the one the form next door draws for the
+       same field of the same definition (forms/LongBox.tsx), so it says all
+       three things: the room on the way in, what a paste lost, and that it will
+       take no more. */
+    const user = setupUser()
+
+    renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+    const box = await screen.findByLabelText('Komentar')
+    const limit = limitOf(prijava as FormDef, 'comment')
+
+    /* Read on the way into the field rather than left to whoever can see it: the
+       box points at the count, so a screen reader says it on arrival. */
+    expect(box.getAttribute('aria-describedby') ?? '').toContain('comment-left')
+    expect(screen.getByText(new RegExp(`^Još ${limit} znak`))).toBeVisible()
+
+    await user.type(box, 'Kratko.')
+
+    expect(screen.getByText(new RegExp(`^Još ${limit - 'Kratko.'.length} znak`))).toBeVisible()
+
+    /* And the door itself: what does not fit does not go in, and the writer is
+       told what was left outside. */
+    await user.clear(box)
+    await user.paste('x'.repeat(limit + 12))
+
+    expect(box).toHaveValue('x'.repeat(limit))
+    /* Twice on purpose: the line under the box for whoever can see it, and the
+       live region for whoever cannot (forms/LongBox.tsx). */
+    expect(screen.getAllByText(/^Nalepljeni tekst je bio 12 znak/)).toHaveLength(2)
+    expect(screen.getByText(new RegExp(`^Dosta je, granica je ${limit} znak`))).toBeVisible()
   })
 
   it('carries the comment a member types, and sends it with the marks', async () => {

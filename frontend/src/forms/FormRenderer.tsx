@@ -1,6 +1,7 @@
-import { memo, useCallback, useRef, useState, type FormEvent } from 'react'
+import { memo, useCallback, useState, type FormEvent } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
+import { LongBox } from './LongBox'
 import type {
   DerivedField,
   FieldDef,
@@ -82,47 +83,8 @@ const Field = memo(function Field({
   open?: boolean
 }) {
   const { t } = useI18n()
-  /**
-   * How many characters the last paste lost, and zero once anything else has
-   * happened in the box.
-   *
-   * The limit is refused at the door by `maxLength` on the element (owner,
-   * 01.08.2026), and the browser refuses it in silence: paste nine thousand
-   * characters into a box that holds eight and it keeps eight, drops a thousand,
-   * and says nothing at all. The counter then reads "the box is full", which is
-   * read as "I filled it" and not as "a thousand characters of what you brought
-   * are gone". Somebody moving the rules of a competition across from a document
-   * loses the last page and finds out when a member asks about it.
-   *
-   * Kept here rather than worked out from the value, because after the event
-   * there is nothing to work it out from: what was dropped never reached React.
-   */
-  const [dropped, setDropped] = useState(0)
-  /** Whether the box will take no more. One sentence hangs off it in three
-   *  places, and reading it three times from three copies of the same
-   *  comparison is how the three drift apart. */
-  const atTheLimit = field.maxLength !== undefined && String(value).length >= field.maxLength
-  /**
-   * Whether the change about to arrive is the paste's own.
-   *
-   * A paste raises the message and then delivers a change, so clearing on every
-   * change puts the message up and takes it down inside one event and nobody
-   * ever sees it. This lets that one change through and clears on the next,
-   * which is the first thing the writer does themselves.
-   *
-   * Set only when the paste will actually deliver a change: pasting into a box
-   * that is already full is refused whole, no change follows, and a flag left
-   * standing would eat the writer's next keystroke instead.
-   */
-  const fromPaste = useRef(false)
   const change = useCallback(
     (next: string | boolean) => {
-      if (fromPaste.current) {
-        fromPaste.current = false
-      } else {
-        setDropped(0)
-      }
-
       onChange(field, next)
     },
     [field, onChange],
@@ -241,112 +203,13 @@ const Field = memo(function Field({
       )}
 
       {field.type === 'textarea' && (
-        <>
-          <textarea
-            {...shared}
-            /* Tall enough for what fits, and no taller. Ten is where a box
-               stops being a box and becomes the screen: the page editor holds
-               eight thousand characters, which at sixty to a line is a hundred
-               and thirty-four rows. */
-            rows={field.maxLength === undefined ? undefined : Math.min(10, Math.ceil(field.maxLength / 60))}
-            value={String(value)}
-            /* The limit is refused at the door rather than reported afterwards
-               (owner, 01.08.2026). `maxLength` on the element does the refusing,
-               so a paste that is too long is cut rather than accepted and then
-               marked wrong. */
-            maxLength={field.maxLength}
-            /* What the browser is about to throw away, counted before it does.
-               The room is what the limit leaves, plus whatever the paste is
-               replacing: pasting over the whole box is not an overflow. */
-            onPaste={(event) => {
-              const box = event.currentTarget
-              const replacing = box.selectionEnd - box.selectionStart
-              /* No limit is unbounded room, which is what `Infinity` says.
-                 Absence has a meaning here rather than standing in for a value
-                 nobody worked out, which is the case a fallback is for (ADL A14,
-                 rule 2). Every textarea the portal has does carry a limit and
-                 `definitions.test.ts` keeps it that way, but the renderer is
-                 handed a definition and is in no position to insist. */
-              const limit = field.maxLength ?? Infinity
-              /* Never below nought. A record can be longer than the limit that
-                 was put on the field after it was written, and a negative room
-                 would report the whole of that overrun as something this paste
-                 lost. */
-              const room = Math.max(0, limit - String(value).length + replacing)
-              /* Line endings as the box will hold them. The clipboard carries
-                 CR LF on Windows and a textarea keeps LF, so counting the
-                 clipboard as it comes charges the writer one character per line
-                 for something the box never had. */
-              const brought = event.clipboardData.getData('text').replace(/\r\n/g, '\n').length
-
-              /* Raised only where the paste will actually deliver a change,
-                 so a flag left standing does not eat the writer's next
-                 keystroke instead. A paste into a box with no room is refused
-                 whole and nothing follows it; a paste over a selection always
-                 changes the box, because the selection goes even when nothing
-                 takes its place. */
-              fromPaste.current = brought > 0 && (room > 0 || replacing > 0)
-              setDropped(Math.max(0, brought - room))
-            }}
-            onChange={(e) => change(e.target.value)}
-          />
-          {field.maxLength !== undefined && (
-            /* How much room is left, counted down.
-             *
-             * Not a live region. It was one, politely, and polite only means the
-             * reader waits its turn: the text changes on every keystroke, so the
-             * queue filled with three hundred and fifty-nine announcements of a
-             * number nobody was waiting to hear, and each one had to be got
-             * through before anything else could be said. What a writer needs is
-             * the count when they arrive at the field and a word when the box
-             * will take no more, and those are two different things.
-             *
-             * The count on arrival is `aria-describedby` above. The word at the
-             * wall is the region at the bottom of this block. */
-            <>
-              <p className="field__left" id={leftId} aria-hidden="true">
-                {atTheLimit
-                  ? t('registration.bioFull', { count: field.maxLength })
-                  : t('registration.bioLeft', { count: field.maxLength - String(value).length })}
-              </p>
-
-              {/* What the last paste lost. Said in full, in its own words, and
-                  not left to be worked out from a counter that has gone to
-                  zero. */}
-              {dropped > 0 && (
-                <p className="field__dropped" aria-hidden="true">
-                  {t('form.pasteCut', { count: dropped })}
-                </p>
-              )}
-
-              {/* The two moments worth saying out loud, and nothing in between.
-               *
-                  One region, always on the page, and only its text changes. A
-                  region that is added to the page together with its text is one
-                  a screen reader often misses, because there was nothing there
-                  to be watching; the portal says so where it does the same thing
-                  for a bank statement (src/pages/admin/Payments.tsx).
-               *
-                  It is empty except at those two moments, which is what makes it
-                  usable. It used to hold the count and change on every keystroke,
-                  and polite only means the reader waits its turn: three hundred
-                  and fifty-nine announcements of a number nobody was waiting for,
-                  each one to be got through before anything else could be said.
-               *
-                  Everything it says is said once. The two visible lines above
-                  carry the same words and are hidden from the reader, which
-                  costs nothing: the count is read on the way into the field
-                  through `aria-describedby`, and a description is read whether
-                  or not the element carrying it is hidden. */}
-              <p className="visually-hidden" role="status">
-                {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
-                {dropped === 0 && atTheLimit
-                  ? t('registration.bioFull', { count: field.maxLength })
-                  : ''}
-              </p>
-            </>
-          )}
-        </>
+        <LongBox
+          {...shared}
+          value={String(value)}
+          maxLength={field.maxLength}
+          leftId={leftId}
+          onChange={change}
+        />
       )}
 
       {field.type === 'date' && (

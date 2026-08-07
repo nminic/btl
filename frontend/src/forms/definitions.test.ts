@@ -53,36 +53,48 @@ describe('every form definition in the portal', () => {
     expect(missing).toEqual([])
   })
 
-  it('gives every long box written by hand a limit as well', () => {
-    /* The rule above reaches the definitions, and three boxes are written by
-       hand: a biography rewritten by a moderator, the rules of a competition
-       rewritten in place, and the comment beside a rating. Each takes its limit
-       off a definition through `limitOf`, and each was written before anything
-       said so: the third one was written in the same week this was, with no
-       limit at all, and every test on the portal passed.
+  it('gives every long box written by hand a limit, from a definition', () => {
+    /* The rule above reaches the definitions, and a box written by hand reaches
+       nothing. Three exist: a biography rewritten by a moderator, the rules of a
+       competition rewritten in place, and the comment beside a rating. The third
+       was written in the same week as this test with no limit at all, and every
+       test on the portal passed.
+
+       It draws `LongBox` now, which is the box that knows what a limit is: the
+       room counted down, what a paste lost, and a word when the box is full. The
+       other two are uncontrolled boxes that save on blur, so they carry the
+       number and not the counting; what they must not do is take whatever is
+       pasted, because the value goes back into the form that made it and the
+       next person to open that form is told their own words are too long.
 
        Read off the source, because there is no other way to see a box that no
-       definition knows about. */
-    const written = sourceFiles().filter(({ code }) => code.includes('<textarea'))
-    const loose = written
+       definition knows about. The tag is bounded by its own first `>`: bounded
+       by `/>` instead, a box written as a pair ran on to the next self-closing
+       tag in the file and borrowed its `maxLength`. */
+    const drawn = sourceFiles().filter(({ code }) => code.includes('<textarea'))
+    const loose = drawn
       .filter(({ code }) =>
         code
           .split('<textarea')
           .slice(1)
-          .some((one) => !one.slice(0, one.indexOf('/>')).includes('maxLength=')),
+          .some((one) => !one.slice(0, one.indexOf('>')).includes('maxLength=')),
       )
       .map(({ path }) => path)
 
-    /* Four files, so the sweep is known to have found the boxes rather than an
-       empty list: the renderer, which draws every box a definition asks for,
-       and the three written by hand. */
-    expect(written.map(({ path }) => path).sort()).toEqual([
-      'forms/FormRenderer.tsx',
+    /* The three, so the sweep is known to have found the boxes rather than an
+       empty list, and so a fourth has to be looked at rather than merely
+       counted. */
+    expect(drawn.map(({ path }) => path).sort()).toEqual([
+      'forms/LongBox.tsx',
       'pages/LeagueDetail.tsx',
       'pages/admin/PendingQueue.tsx',
-      'pages/event/RateEvent.tsx',
     ])
     expect(loose).toEqual([])
+
+    /* And each takes the number from a definition rather than typing one. */
+    for (const { path, code } of drawn) {
+      expect(code, path).toMatch(/maxLength=\{(limitOf\(|maxLength\})/)
+    }
   })
 
   it('gives every field a name of its own', () => {

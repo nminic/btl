@@ -6,6 +6,7 @@ import { Stars } from '../../components/Stars'
 import { NO_RATING, type EventRating } from '../../data/types'
 import { combinePair, useCompetitors, useEvents } from '../../data/useResource'
 import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
+import { LongBox } from '../../forms/LongBox'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
@@ -161,21 +162,20 @@ function RateOne() {
                       član voleo da zna...", which is what a screen reader would
                       have read out before every keystroke. */}
                   <label htmlFor="comment">{t('event.commentText')}</label>
-                  {/* The limit is the one the form beside it uses for the same
-                      field, taken from that form rather than typed again
-                      (records.ts, `limitOf`): every long box on the portal
-                      carries one, and a hand written box is exactly how the two
-                      before this one slipped out from under that rule
-                      (definitions.test.ts, which can only see the definitions).
-                      What is written here goes to a moderator and then onto a
-                      public page. */}
-                  <textarea
+                  {/* The same box the form next door draws for the same field
+                      of the same definition (records.ts, `limitOf`): the limit
+                      is refused at the door, and the writer is told how much
+                      room there is, what a paste has just lost and when the box
+                      will take no more. Carrying only the number, which is what
+                      this did at first, cuts three hundred characters off a
+                      pasted race report in silence. */}
+                  <LongBox
                     id="comment"
-                    rows={5}
-                    maxLength={limitOf(prijava as FormDef, 'comment')}
-                    aria-describedby="comment-hint"
                     value={comment}
-                    onChange={(one) => setComment(one.target.value)}
+                    maxLength={limitOf(prijava as FormDef, 'comment')}
+                    leftId="comment-left"
+                    aria-describedby="comment-hint comment-left"
+                    onChange={setComment}
                   />
                   <p id="comment-hint" className="rate__hint">
                     {t('event.commentHint')}
