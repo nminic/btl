@@ -74,6 +74,9 @@ export function RateEvent() {
           const event = found
           const me = competitors.find((one) => one.memberNumber === mine)
           const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
+          /* Nothing to send until all three are given: the overall is their
+             average, so a mark left out is published as a nought. */
+          const waiting = MARKS.some((mark) => rating[mark] === 0)
 
           function send() {
             propose({
@@ -146,7 +149,8 @@ export function RateEvent() {
                 <button
                   type="button"
                   className="button button--primary"
-                  disabled={MARKS.some((mark) => rating[mark] === 0)}
+                  disabled={waiting}
+                  aria-describedby={waiting ? 'send-waits' : undefined}
                   onClick={send}
                 >
                   {t('event.commentSend')}
@@ -155,6 +159,15 @@ export function RateEvent() {
                   {t('event.commentCancel')}
                 </Link>
               </p>
+
+              {/* Why it will not go yet, said where it can be read rather than
+                  left to a button that is simply dead. The queue next door
+                  answers the same question the same way (PendingQueue.tsx). */}
+              {waiting && (
+                <p id="send-waits" className="rate__hint" role="status">
+                  {t('event.commentNeedsMarks')}
+                </p>
+              )}
             </>
           )
         }}

@@ -297,7 +297,7 @@
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-beogradski-maraton-2027-04-03"
+    "subjectId": ""
   },
   {
     "id": "ver-ter-2",
@@ -317,7 +317,7 @@
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-beogradski-maraton-2027-04-03"
+    "subjectId": ""
   },
   {
     "id": "ver-ter-3",
@@ -337,6 +337,6 @@
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-podgoricka-desetka-2027-01-30"
+    "subjectId": ""
   }
 ]

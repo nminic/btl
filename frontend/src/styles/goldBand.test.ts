@@ -686,6 +686,15 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'the name of a competitor is the size a heading is',
     },
     {
+      of: 'src/components/Stars.css',
+      rule: '.stars__pick:has(:focus-visible)',
+      /* The radio itself is off the screen, so without this a keyboard moving
+         through five stars moves through nothing anybody can see (WCAG 2.2 SC
+         2.4.7). The ring is drawn around the star that stands in for it. */
+      holds: /outline:\s*2px solid var\(--accent\)/,
+      why: 'a star the keyboard is on says so',
+    },
+    {
       of: 'src/styles/table.css',
       rule: '.table tbody tr.table__mine',
       /* The mark itself. Every screen puts the class on the right row, which the

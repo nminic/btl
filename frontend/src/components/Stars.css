@@ -23,11 +23,12 @@
   border: 0;
 }
 
+/* Its own line above the stars, because a legend that shares a line with the
+   first star reads as a label on that star. A legend is laid out by the fieldset
+   and not as a flex item, so it takes its own line whatever this says; the width
+   is written down because a legend that wrapped would still be a legend and this
+   makes it one line's worth of room rather than whatever the words need. */
 .stars--asking legend {
-  /* Its own line above the stars, and the whole width of it, because a legend
-     that shares a line with the first star reads as a label on that star. The
-     width and the wrapping do that; `float: left` is the old recipe for it and
-     does nothing inside a flex container. */
   inline-size: 100%;
   margin-block-end: var(--space-4);
   padding: 0;

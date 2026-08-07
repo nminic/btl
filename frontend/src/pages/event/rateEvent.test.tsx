@@ -1,9 +1,16 @@
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { loadResource } from '../../data/client'
-import type { PendingItem } from '../../data/types'
+import type { EventComment, PendingItem } from '../../data/types'
+
+/** The two letters a portrait draws for a name. */
+const initialsOf = (who: string) =>
+  who
+    .split(' ')
+    .map((part) => part.slice(0, 1))
+    .join('')
 import { overall } from './overall'
 
 /* Rating an event, and reading what other people made of it (owner,
@@ -120,6 +127,78 @@ describe('rating an event', () => {
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
   })
 
+  it('says why it will not send yet, rather than leaving a dead button', async () => {
+    /* A member who came from a button called "Dodaj komentar", wrote a comment
+       and gave one mark used to face a button that did nothing and said nothing.
+       The reason is on the screen and tied to the button, the way the queue next
+       door answers the same question. */
+    const user = setupUser()
+    renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+    const send = await screen.findByRole('button', { name: 'Pošalji' })
+
+    expect(screen.getByText('Dajte sve tri ocene da biste mogli da pošaljete.')).toBeVisible()
+    expect(send).toHaveAccessibleDescription('Dajte sve tri ocene da biste mogli da pošaljete.')
+
+    await rateAll(user, 4)
+
+    /* And gone once there is nothing left to wait for. */
+    expect(
+      screen.queryByText('Dajte sve tri ocene da biste mogli da pošaljete.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('leads there from the event, and only for somebody signed in', async () => {
+    /* Two things one link has to be: the right address, and drawn for the right
+       reader. Pointed at the result form it still reads "Dodaj komentar" and
+       still works, and shown to a visitor it leads to a screen that turns them
+       away. */
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
+
+    const link = await screen.findByRole('link', { name: 'Dodaj komentar' })
+
+    expect(link).toHaveAttribute('href', `/sr/kalendar/${EVENT}/ocena`)
+
+    cleanup()
+    renderAt(`/sr/kalendar/${EVENT}`)
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).not.toBeInTheDocument()
+  })
+
+  it('sends the marks that were given, and not a blank rating', async () => {
+    /* The marks travel from three groups of radios into one record, and nothing
+       between the two says so: sent as noughts, the screen still thanks the
+       member and the queue still shows a card. Read back off the queue the
+       moment it lands. */
+    const user = setupUser()
+    /* Signed in as a member and holding the rights, because this follows one
+       rating from the form it is given on to the queue it lands in, and those
+       are two screens with two doors. */
+    const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
+
+    await screen.findByRole('group', { name: 'Organizacija' })
+    await rateAll(user, 5)
+    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+    await screen.findByText('Ocena je poslata na odobrenje.')
+
+    await router.navigate('/sr/administracija/verifikacija/komentari')
+
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const mine = must(
+      within(waiting)
+        .getAllByRole('listitem')
+        .find((one) => (one.textContent ?? '').includes('Fruškogorski maraton')),
+      'the rating just sent',
+    )
+
+    /* Five on each of the three, so the overall is five as well. */
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+      expect(within(mine).getByRole('img', { name: `${mark}: 5 od 5` })).toBeInTheDocument()
+    }
+    expect(within(mine).getByText('5,0')).toBeInTheDocument()
+  })
+
   it('is not offered to somebody who is not signed in', async () => {
     renderAt(`/sr/kalendar/${EVENT}/ocena`)
 
@@ -136,6 +215,52 @@ describe('rating an event', () => {
   })
 })
 
+/** Whether the words of a comment are drawn in the list under an event.
+ *
+ * Asked of the list and not of the document, because these tests walk between
+ * the queue and the event and the screen they came from is still being taken
+ * down: asked of everything, the queue's own copy of the same words answers. */
+async function underEvent(body: string): Promise<boolean> {
+  await screen.findByRole('heading', { level: 1 })
+
+  /* Waited for until the comments have settled into one of the two things they
+     can be: the list, or the sentence saying there is none. Asked before that,
+     "is it there" is answered by a section that has not loaded yet, which reads
+     as no for the wrong reason. */
+  await waitFor(() => {
+    expect(
+      screen.queryByRole('list', { name: 'Komentari' }) !== null ||
+        screen.queryByText('Za ovaj događaj još nema odobrenih komentara.') !== null,
+    ).toBe(true)
+  })
+
+  const list = screen.queryByRole('list', { name: 'Komentari' })
+
+  /* And read out of that list by name. These tests walk between the queue and
+     the event, and the queue a navigation is still taking down is a list of
+     items carrying the very same words. */
+  return (
+    list !== null &&
+    within(list)
+      .getAllByRole('listitem')
+      .some((one) => (one.textContent ?? '').includes(body))
+  )
+}
+
+/** That comment's card in the queue, found now rather than remembered: these
+ *  tests walk between screens, and a node caught before a navigation is one the
+ *  router has since taken down. */
+async function cardFor(body: string): Promise<HTMLElement> {
+  const waiting = await screen.findByRole('list', { name: /Čeka/ })
+
+  return must(
+    within(waiting)
+      .getAllByRole('listitem')
+      .find((one) => (one.textContent ?? '').includes(body)),
+    'that comment in the queue',
+  )
+}
+
 describe('a comment a moderator lets out', () => {
   it('shows the moderator the marks it carries, before they decide', async () => {
     renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
@@ -151,6 +276,53 @@ describe('a comment a moderator lets out', () => {
     expect(within(first).getAllByRole('img', { name: /Organizacija: \d od 5/ })).not.toHaveLength(0)
   })
 
+  it('publishes nothing from the queues that are not about comments', async () => {
+    /* The merge asks two things of a waiting item: that it was approved, and
+       that it is a comment. Without the second, approving a reported change of
+       date publishes a card with no words and no marks under a real event, and
+       nothing on any screen would say where it came from. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const first = must(within(waiting).getAllByRole('listitem')[0], 'a waiting change of date')
+    const about = must(
+      (await loadResource<PendingItem[]>('verification')).find(
+        (one) => one.queue === 'schedule',
+      ),
+      'a change of date in the record',
+    )
+
+    await user.click(within(first).getByRole('button', { name: 'Odobri' }))
+    await router.navigate(`/sr/kalendar/${EVENT}`)
+
+    const list = await screen.findByRole('list', { name: 'Komentari' })
+
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .some((one) => (one.textContent ?? '').includes(about.who)),
+    ).toBe(false)
+  })
+
+  it('stays off the portal when it is deleted rather than approved', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    const queue = await loadResource<PendingItem[]>('verification')
+    const sent = must(
+      queue.find((one) => one.queue === 'comments' && one.subjectId !== '' && one.body !== ''),
+      'a waiting comment with words in it',
+    )
+
+    /* A comment is deleted rather than sent back (PDL P22), so the decision on
+       it is the other one, and the other one must not publish. */
+    await user.click(within(await cardFor(sent.body)).getByRole('button', { name: 'Obriši' }))
+    await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
+
+    expect(await underEvent(sent.body)).toBe(false)
+  })
+
   it('appears under its event once it is approved, and not before', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
@@ -163,22 +335,28 @@ describe('a comment a moderator lets out', () => {
       'a waiting comment with words in it',
     )
 
-    const waiting = await screen.findByRole('list', { name: /Čeka/ })
-    const item = must(
-      within(waiting)
-        .getAllByRole('listitem')
-        .find((one) => (one.textContent ?? '').includes(sent.body)),
-      'that comment in the queue',
-    )
+    /* Absent first, which is the half the name of this test promises and the
+       half nothing was holding: the event page reads the queue now, so the only
+       thing keeping a waiting comment off the portal is that one word
+       "approved". Read the other way round, or read as "decided", every waiting
+       comment publishes itself, including the one in the fixture offering a
+       discount for a referral link. */
+    await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
 
-    await user.click(within(item).getByRole('button', { name: 'Odobri' }))
+    expect(await underEvent(sent.body)).toBe(false)
+
+    /* Back to the queue, and the card found again: the one caught before the
+       detour is a node two navigations have since taken down, and clicking it
+       does nothing at all while looking exactly like a click. */
+    await router.navigate('/sr/administracija/verifikacija/komentari')
+    await user.click(within(await cardFor(sent.body)).getByRole('button', { name: 'Odobri' }))
 
     /* Approving is what publishes it. Until this it wrote a decision into the
        session and the event page went on showing what the file carried, so a
        moderator approved a comment and nothing appeared anywhere. */
     await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
 
-    expect(await screen.findByText(sent.body)).toBeVisible()
+    expect(await underEvent(sent.body)).toBe(true)
   })
 })
 
@@ -225,6 +403,58 @@ describe('the comments under an event', () => {
     )
 
     expect(within(gone).queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('draws the portrait, the marks and the words, each of them', async () => {
+    /* Every part the owner named (06.08.2026), because each is one line of
+       markup and any one of them can go quietly: the portrait is a drawing with
+       no text, the marks are pictures, and the body is a paragraph that is
+       allowed to be empty. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const comments = await loadResource<EventComment[]>('comments')
+    const here = must(
+      comments.find((one) => one.body !== '' && one.rating.organisation > 0),
+      'a comment with words and marks',
+    )
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(here.body),
+      ),
+      'that comment under the event',
+    )
+
+    expect(within(card).getByText(here.who)).toBeInTheDocument()
+    expect(within(card).getByText(here.body)).toBeInTheDocument()
+    /* The face is a drawing and carries no name of its own, so it is looked for
+       as the initials it draws. */
+    expect(within(card).getByText(initialsOf(here.who))).toBeInTheDocument()
+
+    for (const [mark, name] of [
+      ['organisation', 'Organizacija'],
+      ['value', 'Vrednost za novac'],
+      ['ambience', 'Ambijent'],
+    ] as const) {
+      expect(
+        within(card).getByRole('img', { name: `${name}: ${here.rating[mark]} od 5` }),
+      ).toBeInTheDocument()
+    }
+  })
+
+  it('puts the newest comment first', async () => {
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const comments = (await loadResource<EventComment[]>('comments')).filter(
+      (one) => one.eventId.endsWith(EVENT),
+    )
+
+    expect(comments.length).toBeGreaterThan(1)
+
+    const drawn = (await screen.findAllByRole('listitem'))
+      .map((one) => comments.find((c) => (one.textContent ?? '').includes(c.who))?.date)
+      .filter((one): one is string => one !== undefined)
+
+    expect([...drawn].sort((left, right) => right.localeCompare(left))).toEqual(drawn)
   })
 
   it('says so where nobody has commented yet', async () => {

@@ -145,23 +145,11 @@ function Refused({ why, id }: { why: string | null; id: string }) {
   )
 }
 
-/**
- * The three things a team is made of, changeable before it is made.
- *
- * The owner asked for it in the same breath as the approval itself: whoever
- * decides "may or may not change the team's data, and if they accept it" the
- * member is told (PDL P13, 03.08.2026). A name, a town and a country arrive as
- * the member typed them and the team carries them from then on, so the moment to
- * put a lower-case name right is before the record exists rather than after.
- *
- * Written into the same overlay of edits the biography uses, keyed by the item,
- * so approving reads whatever is on screen rather than what arrived.
- */
 /** The three marks a comment carries, as they are read everywhere else: not a
  *  control, and each one says its number in words for anybody who cannot see the
  *  stars (components/Stars.tsx). */
 function RatingGiven({ rating }: { rating: EventRating }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
 
   return (
     <dl className="pending__marks">
@@ -175,12 +163,24 @@ function RatingGiven({ rating }: { rating: EventRating }) {
       ))}
       <div>
         <dt>{t('event.rating.overall')}</dt>
-        <dd className="pending__overall">{formatNumber(overall(rating), 'sr', 1)}</dd>
+        <dd className="pending__overall">{formatNumber(overall(rating), locale, 1)}</dd>
       </div>
     </dl>
   )
 }
 
+/**
+ * The three things a team is made of, changeable before it is made.
+ *
+ * The owner asked for it in the same breath as the approval itself: whoever
+ * decides "may or may not change the team's data, and if they accept it" the
+ * member is told (PDL P13, 03.08.2026). A name, a town and a country arrive as
+ * the member typed them and the team carries them from then on, so the moment to
+ * put a lower-case name right is before the record exists rather than after.
+ *
+ * Written into the same overlay of edits the biography uses, keyed by the item,
+ * so approving reads whatever is on screen rather than what arrived.
+ */
 function TeamFields({ item }: { item: PendingItem }) {
   const { t } = useI18n()
   const { edits, edit } = useSession()

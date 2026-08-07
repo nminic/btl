@@ -554,6 +554,7 @@
     },
     "commentText": "Komentar",
     "commentHint": "Neobavezno. Šta bi drugi član voleo da zna pre nego što se prijavi.",
+    "commentNeedsMarks": "Dajte sve tri ocene da biste mogli da pošaljete.",
     "commentSend": "Pošalji",
     "commentCancel": "Odustani",
     "commentSent": "Ocena je poslata na odobrenje.",
