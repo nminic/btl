@@ -189,6 +189,10 @@
     "reportResult": {
       "title": "Prijava rezultata",
       "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
+    },
+    "rateEvent": {
+      "title": "Ocena događaja",
+      "description": "Oceni organizaciju, vrednost za novac i ambijent, i ostavi komentar drugim članovima. Moderator odobrava svaku ocenu pre objave."
     }
   },
   "shell": {
@@ -205,6 +209,10 @@
       "one": "{count} nepročitana",
       "few": "{count} nepročitane",
       "other": "{count} nepročitanih"
+    },
+    "rateEvent": {
+      "title": "Ocena događaja",
+      "description": "Ocenite organizaciju, vrednost za novac i ambijent, i ostavite komentar drugim članovima."
     },
     "noMessages": "Nema poruka.",
     "allMessages": "Sve poruke",

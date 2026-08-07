@@ -5,6 +5,7 @@ import { arrivedResource, loadResource, type ResourceName } from './client'
 import type {
   BtlEvent,
   Competitor,
+  EventComment,
   League,
   Moderator,
   Race,
@@ -208,6 +209,7 @@ function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T)
 }
 
 export const useBadges = () => useResource<Badge[]>('badges')
+export const useComments = () => useResource<EventComment[]>('comments')
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 export const useLeagues = () => useResource<League[]>('leagues')

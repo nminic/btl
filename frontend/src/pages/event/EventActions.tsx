@@ -170,6 +170,16 @@ export function EventActions({
           {t('event.report')}
         </Link>
       )}
+
+      {/* And what they thought of it (owner, 06.08.2026). The same rule about
+          the date: an event nobody has run yet is not one anybody can rate, and
+          the rating asks about the organisation and the surroundings, which are
+          things a member saw on the day. */}
+      {memberNumber !== null && event.date <= today && (
+        <Link className="button button--secondary" to={`/${locale}/kalendar/${event.slug}/ocena`}>
+          {t('event.addComment')}
+        </Link>
+      )}
     </div>
   )
 }

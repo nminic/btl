@@ -206,6 +206,32 @@ export const PENDING_QUEUE_IDS = [
 
 export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
 
+/**
+ * What a member wrote about an event, once it is out on the portal.
+ *
+ * The queue item it came from stays in the queue: this is the record of what was
+ * published, and it is what every public screen reads. Keeping one shape for
+ * both would mean a comment on the event page carrying an email address and two
+ * dates it has no use for, and every reader of it deciding all over again what
+ * counts as published.
+ */
+export type EventComment = {
+  id: string
+  /** Which event, by the id and not the name: an event is copied into the next
+   *  season with its name unchanged (PDL P6), and a comment belongs to the one
+   *  it was written about. */
+  eventId: string
+  memberNumber: string
+  /** The name as it was when the comment went out, for a comment whose author
+   *  has since left the league and has no profile to read it off. */
+  who: string
+  date: string
+  rating: EventRating
+  /** Empty where the member rated the event and said nothing, which the form
+   *  allows on purpose (RateEvent.tsx). */
+  body: string
+}
+
 /** The three marks an event is rated on (PDL P6). The names are the owner's,
  *  with "okruženje" renamed to "ambijent" on 07.08.2026. */
 export type EventRating = {

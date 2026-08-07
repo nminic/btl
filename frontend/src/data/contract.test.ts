@@ -9,13 +9,20 @@ import { RESOURCE_NAMES } from './client'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the ten names the backend has to answer for', () => {
-    /* ADL A7 calls this a contract: whoever adds an eleventh resource adds it to
+  it('is the eleven names the backend has to answer for', () => {
+    /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
-       is closed would have gone on saying so. */
+       is closed would have gone on saying so.
+
+       Ten until 07.08.2026, when comments a moderator has published became a
+       record of their own (owner, 06.08.2026). They arrive through the queue and
+       do not live in it: the queue holds what is waiting, and a screen reading a
+       published comment out of it would have to decide all over again what
+       counts as decided. */
     expect([...RESOURCE_NAMES]).toEqual([
       'badges',
+      'comments',
       'competitors',
       'events',
       'leagues',

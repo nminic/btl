@@ -14,6 +14,7 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
+import { EventComments } from './event/EventComments'
 import './Profile.css'
 
 /* The races load separately from the event on purpose: the heading, the date
@@ -265,6 +266,11 @@ export function EventDetail() {
               <RaceTable eventId={event.id} />
 
               <EventResults slug={event.slug} date={event.date} />
+
+              {/* At the foot of the event, which is where the owner put it
+                  (06.08.2026): a reader looks at the races and the results
+                  first, and what other people thought of it after. */}
+              <EventComments eventId={event.id} />
             </div>
           </>
         )

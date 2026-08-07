@@ -1,0 +1,54 @@
+[
+  {
+    "id": "kom-1",
+    "eventId": "evt-fruskogorski-maraton-2010-05-08",
+    "memberNumber": "000007",
+    "who": "Strahinja Vukićević",
+    "date": "2010-05-08",
+    "rating": {
+      "organisation": 5,
+      "value": 4,
+      "ambience": 5
+    },
+    "body": "Odlična organizacija, staza je bila jasno obeležena i osveženje na svakih pet kilometara."
+  },
+  {
+    "id": "kom-2",
+    "eventId": "evt-fruskogorski-maraton-2010-05-08",
+    "memberNumber": "000021",
+    "who": "Ksenija Vasiljević",
+    "date": "2010-05-08",
+    "rating": {
+      "organisation": 4,
+      "value": 3,
+      "ambience": 5
+    },
+    "body": ""
+  },
+  {
+    "id": "kom-3",
+    "eventId": "evt-ironman-70-3-st-polten-2010-05-30",
+    "memberNumber": "000020",
+    "who": "Miloje Stanojlović",
+    "date": "2010-05-30",
+    "rating": {
+      "organisation": 3,
+      "value": 4,
+      "ambience": 4
+    },
+    "body": "Lepa trka, ali startni paket ne opravdava kotizaciju."
+  },
+  {
+    "id": "kom-4",
+    "eventId": "evt-fruskogorski-maraton-2010-05-08",
+    "memberNumber": "000999",
+    "who": "Nekadašnji član",
+    "date": "2010-05-08",
+    "rating": {
+      "organisation": 2,
+      "value": 2,
+      "ambience": 3
+    },
+    "body": "Komentar je ostao iako član više nije u ligi."
+  }
+]
