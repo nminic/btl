@@ -243,7 +243,14 @@ export type EventRating = {
 /** What the six queues that are not about an event carry, and what a comment
  *  written before the ratings existed carries. Written once, so the six do not
  *  each spell out three noughts. */
-export const NO_RATING: EventRating = { organisation: 0, value: 0, ambience: 0 }
+/* Frozen, because it is handed out by reference: it is the starting state of
+   the form and the rating on every queue item that has none, so one careless
+   write would give a rating to things that have never been rated. */
+export const NO_RATING: EventRating = Object.freeze({
+  organisation: 0,
+  value: 0,
+  ambience: 0,
+})
 
 export type PendingItem = {
   id: string

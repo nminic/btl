@@ -25,6 +25,8 @@ import { overall } from './overall'
 const EVENT = 'fruskogorski-maraton-2010-05-08'
 /** One nobody has run yet, read on the real day the suite runs on. */
 const AHEAD = 'sidski-novogodisnji-maraton-2027-01-16'
+/** The day that event is run, so the boundary itself can be stood on. */
+const AHEAD_DAY = '2027-01-16'
 const ME = '000007'
 
 /** All three marks given, which is what the form asks for before it will send
@@ -507,6 +509,31 @@ describe('what an event nobody has run yet offers', () => {
     expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
       .toBeVisible()
     expect(screen.queryByLabelText(/^Trka/)).toBeNull()
+  })
+
+  /* The boundary itself. PDL P9 refuses a date in the future and says nothing
+     against the day of the race, and a rating is given on the way home from it:
+     that is the whole difference between `>` and `>=` here, and it is a
+     difference no test would otherwise see. */
+  it('offers both on the day the race is run', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
+
+    expect(await screen.findByRole('link', { name: 'Dodaj komentar' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+  })
+
+  it('takes a rating on the day the race is run', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME, undefined, AHEAD_DAY)
+
+    expect(await screen.findByRole('group', { name: 'Organizacija' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
+  })
+
+  it('takes a reported result on the day the race is run', async () => {
+    renderAt(`/sr/kalendar/${AHEAD}/prijava`, 'competitor', ME, undefined, AHEAD_DAY)
+
+    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
   })
 
   /* And the other half of the row: somebody who runs the portal but is not a

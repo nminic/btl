@@ -1452,6 +1452,11 @@ describe('Teams', () => {
 describe('the row a screen opens with', () => {
   for (const [path, screenName] of [
     ['/sr/tabela', 'the season table'],
+    /* Signed in and on an event already run, which is the only way this row has
+       anything in it: the event's head became the shared row on 06.08.2026, and
+       nothing held that it had (goldBand.test.ts says only that the old grid is
+       gone, which stays true whatever replaces it). */
+    ['/sr/kalendar/fruskogorski-maraton-2010-05-08', 'an event'],
     ['/sr/takmicari', 'the competitors'],
     ['/sr/timovi', 'the teams'],
     ['/sr/top-liste', 'the top boards'],
@@ -1460,17 +1465,19 @@ describe('the row a screen opens with', () => {
     ['/sr/tim/dunavski-trkaci', 'a team'],
   ] as const) {
     it(`is the shared one on ${screenName}`, async () => {
-      renderAt(path)
+      renderAt(path, 'competitor', '000007')
 
       const heading = await screen.findByRole('heading', { level: 1 })
       const row = must(heading.parentElement, 'the row around the heading')
 
-      expect(row.className).toContain('rankings--tooled')
+      /* The whole class and not a piece of one: `toContain` on the string was
+         happy with `rankings--tooledX`, which is a class no stylesheet has. */
+      expect([...row.classList]).toContain('rankings--tooled')
       /* A child of that row and not merely somewhere inside it: the row places
          its own children, so a control wrapped in one more element is a control
          that has left the row while every class it wears is still in the page. */
       expect(
-        [...row.children].some((one) => one.className.includes('rankings__head-tool')),
+        [...row.children].some((one) => [...one.classList].includes('rankings__head-tool')),
       ).toBe(true)
     })
   }
@@ -1485,6 +1492,31 @@ describe('the row a screen opens with', () => {
  * for somebody who has not signed in is telling them something about a
  * stranger.
  */
+/* An empty box is not nothing.
+ *
+ * The row is a grid of two tracks, so a second child with nothing in it is
+ * still a track: the heading beside it loses the gap and the space that child
+ * would have taken. The component says it draws no box when it has nothing to
+ * put in one, and that claim is the reason the old two by two grid could be
+ * deleted, so it is held here rather than believed. */
+describe('the head of an event with nothing to offer', () => {
+  for (const [name, role, member, address] of [
+    ['a visitor', 'visitor', null, '/sr/kalendar/fruskogorski-maraton-2010-05-08'],
+    /* A member on a race nobody has run: signed in, so the early return cannot
+       be reached by being nobody, and nothing to report or rate. */
+    ['a member before the race', 'competitor', '000007', '/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16'],
+  ] as const) {
+    it(`draws no box for ${name}`, async () => {
+      renderAt(address, role, member)
+
+      const heading = await screen.findByRole('heading', { level: 1 })
+      const row = must(heading.parentElement, 'the row around the heading')
+
+      expect([...row.children].map((one) => one.className)).toEqual([heading.className])
+    })
+  }
+})
+
 describe('the row of whoever is signed in', () => {
   /* 000007 is in the field of 2019 on every one of these screens, and is in a
      team, which the standing of teams needs. */

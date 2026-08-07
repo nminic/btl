@@ -649,6 +649,17 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'a profile spends less of it, and its control moves with the heading',
     },
     {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__head.rankings--tooled',
+      /* The head of an event, which became the shared row when the two things
+         that can be done with an event moved onto the name (owner, 06.08.2026).
+         The six is what the heading above it already carries, and centring lines
+         up margin boxes: the two have to be the one value or the buttons beside
+         the name sit three pixels off it. */
+      holds: /--head-end:\s*var\(--space-6\)/,
+      why: 'an event spends the same as a profile, and its buttons move with the name',
+    },
+    {
       of: 'src/pages/TopBoards.css',
       rule: '.boards h1',
       /* Only what goes above it, and nothing about what goes under. Written as

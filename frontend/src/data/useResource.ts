@@ -240,8 +240,16 @@ export function useComments(): ResourceState<EventComment[]> {
        the screen must follow the change without the moderator having to be
        standing on it. */
     const letOut = published.filter((one) => decisions[one.id]?.status === 'approved')
+    /* By id, because the two sides can name the same comment. Nothing does
+       today, but `commentFrom` keeps the id the queue gave it on purpose, so the
+       day a backend hands back an approved comment under that id the event page
+       would draw it twice, with a repeated React key underneath. */
+    const already = new Set(state.data.map((one) => one.id))
 
-    return { status: 'ready', data: [...state.data, ...letOut] }
+    return {
+      status: 'ready',
+      data: [...state.data, ...letOut.filter((one) => !already.has(one.id))],
+    }
   }, [state, published, decisions])
 }
 

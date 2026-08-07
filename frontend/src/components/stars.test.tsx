@@ -27,7 +27,13 @@ describe('a rating being given', () => {
     const radios = screen.getAllByRole('radio')
 
     expect(radios).toHaveLength(5)
-    expect(new Set(radios.map((one) => (one as HTMLInputElement).name)).size).toBe(1)
+    /* The name itself, not merely one name between them: five radios with no
+       name at all also share one, and that is exactly the broken case. A browser
+       does not tie nameless radios together, so the arrows do nothing and more
+       than one of them can be checked at once. */
+    expect(new Set(radios.map((one) => one.getAttribute('name')))).toEqual(
+      new Set(['organisation']),
+    )
   })
 
   it('gives every star a name of its own, so a reader knows which is which', () => {

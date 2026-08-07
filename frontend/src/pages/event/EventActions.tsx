@@ -132,7 +132,14 @@ export function EventActions({
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }
 
-  if (!mayEdit && memberNumber === null) {
+  /* What a member may do here, which is the same condition twice below and is
+     also half of whether there is a row at all. PDL P9 refuses a date in the
+     future, and the date here is the event's own: nothing to report and nothing
+     to rate on a race nobody has run. The day of the race itself counts, which
+     is where a rating is given. */
+  const mayAct = memberNumber !== null && event.date <= today
+
+  if (!mayEdit && !mayAct) {
     return null
   }
 
@@ -161,7 +168,7 @@ export function EventActions({
           about it: a date in the future is refused, and the date here is the
           event's own, so the only way to keep that rule is not to offer the
           form at all. */}
-      {memberNumber !== null && event.date <= today && (
+      {mayAct && (
         /* A link and not a button, like everything else on the portal that
            leads somewhere: a button has no middle click, no "open in a new
            tab", no address in the status bar, and is announced as a button by
@@ -175,7 +182,7 @@ export function EventActions({
           the date: an event nobody has run yet is not one anybody can rate, and
           the rating asks about the organisation and the surroundings, which are
           things a member saw on the day. */}
-      {memberNumber !== null && event.date <= today && (
+      {mayAct && (
         <Link className="button button--secondary" to={`/${locale}/kalendar/${event.slug}/ocena`}>
           {t('event.addComment')}
         </Link>

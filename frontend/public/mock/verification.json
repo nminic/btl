@@ -222,10 +222,10 @@
   {
     "id": "ver-kom-1",
     "queue": "comments",
-    "date": "2026-07-28",
+    "date": "2026-07-11",
     "memberNumber": "000016",
     "who": "Nemanja Cvetković",
-    "subject": "Beogradski maraton",
+    "subject": "Jadovnički ultramaraton",
     "body": "Organizacija na nivou, ali startni paket je ove godine bio slabiji nego prošle. Staza je odlično obeležena, okrepa na svakih pet kilometara.",
     "currentDate": "",
     "proposedDate": "",
@@ -237,15 +237,15 @@
       "value": 4,
       "ambience": 5
     },
-    "subjectId": "evt-beogradski-maraton-2027-04-03"
+    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11"
   },
   {
     "id": "ver-kom-2",
     "queue": "comments",
-    "date": "2026-07-28",
+    "date": "2026-06-27",
     "memberNumber": "000017",
     "who": "Andrija Pavlović",
-    "subject": "Podgorička desetka",
+    "subject": "Mala Sveta gora",
     "body": "Odlično",
     "currentDate": "",
     "proposedDate": "",
@@ -257,15 +257,15 @@
       "value": 2,
       "ambience": 4
     },
-    "subjectId": "evt-podgoricka-desetka-2027-01-30"
+    "subjectId": "evt-mala-sveta-gora-2026-06-27"
   },
   {
     "id": "ver-kom-3",
     "queue": "comments",
-    "date": "2026-07-28",
+    "date": "2026-05-23",
     "memberNumber": "000018",
     "who": "Teodora Mitrović",
-    "subject": "Avala Trail 2023",
+    "subject": "Memorijal \"Dragutin Tomašević\"",
     "body": "Prijavite se preko mog linka i dobijate popust, pišite mi na poruke.",
     "currentDate": "",
     "proposedDate": "",
@@ -277,7 +277,7 @@
       "value": 4,
       "ambience": 3
     },
-    "subjectId": "evt-avala-trail-2023-2027-02-27"
+    "subjectId": "evt-memorijal-dragutin-tomasevic-2026-05-23"
   },
   {
     "id": "ver-ter-1",
