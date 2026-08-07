@@ -5,7 +5,11 @@ import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, useTeams } from '../../data/useResource'
-import { formatShortDate } from '../../i18n/format'
+import { Stars } from '../../components/Stars'
+import { commentFrom } from '../../data/comment'
+import type { EventRating } from '../../data/types'
+import { formatNumber, formatShortDate } from '../../i18n/format'
+import { overall, rated } from '../event/overall'
 import countries from '../../data/countries.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
@@ -142,6 +146,35 @@ function Refused({ why, id }: { why: string | null; id: string }) {
   )
 }
 
+/** The three marks a comment carries, as they are read everywhere else: not a
+ *  control, and each one says its number in words for anybody who cannot see the
+ *  stars (components/Stars.tsx). */
+function RatingGiven({ rating }: { rating: EventRating }) {
+  const { locale, t } = useI18n()
+
+  return (
+    <dl className="pending__marks">
+      {(['organisation', 'value', 'ambience'] as const).map((mark) => (
+        <div key={mark}>
+          <dt>{t(`event.rating.${mark}`)}</dt>
+          <dd>
+            <Stars label={t(`event.rating.${mark}`)} value={rating[mark]} />
+          </dd>
+        </div>
+      ))}
+      <div>
+        <dt>{t('event.rating.overall')}</dt>
+        {/* The same words the event page uses for a rating nobody gave
+            (EventComments.tsx). Two screens showing one record must not answer
+            "Bez ocene" and "0,0" to the same question. */}
+        <dd className="pending__overall">
+          {rated(rating) ? formatNumber(overall(rating), locale, 1) : t('event.rating.unrated')}
+        </dd>
+      </div>
+    </dl>
+  )
+}
+
 /**
  * The three things a team is made of, changeable before it is made.
  *
@@ -212,7 +245,7 @@ function TeamFields({ item }: { item: PendingItem }) {
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { create, creations, decisions, edits, notify, settle } = useSession()
+  const { create, creations, decisions, edits, notify, publish, settle } = useSession()
   const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
@@ -311,6 +344,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       })
 
       done += 1
+
+      /* What an approval on this queue actually does: the comment goes onto the
+         event. Written down at the moment it is let out, because the event page
+         is public and must never read this queue to find out (session/context,
+         `published`). */
+      if (queue.id === 'comments') {
+        publish(commentFrom(one))
+      }
 
       if (made === null) {
         continue
@@ -458,6 +499,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             is made (owner, 03.08.2026). Only here: the other five
                             queues decide about something that already exists. */}
                         {queue.id === 'teams' && <TeamFields item={one} />}
+
+                        {/* What the member thought of it, which is the half of a
+                            comment the moderator was deciding about without
+                            seeing (owner, 06.08.2026). Only here: a rating is
+                            about an event and the other six queues are not. */}
+                        {queue.id === 'comments' && <RatingGiven rating={one.rating} />}
 
                         <dl className="pending__facts">
                           {datesOf(one).map((fact) => (

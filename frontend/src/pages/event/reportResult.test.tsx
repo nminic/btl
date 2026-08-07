@@ -100,8 +100,10 @@ describe('an event with no races on it', () => {
        the generated data already has a race, so the state is reached here by
        taking the one race away, which is the same thing from the other end and
        is what an organiser dropping a distance does. */
+    /* Read as the day after that race, because a form on an event nobody has run
+       yet says so before it gets as far as the distances (NotRunYet). */
     render(
-      <ClockProvider>
+      <ClockProvider simulatedDay="2027-12-28">
         <I18nProvider locale="sr">
           <MemoryRouter initialEntries={['/sr/kalendar/resolution-run-2027-12-27/prijava']}>
             <SessionProvider initialMemberNumber="000007">

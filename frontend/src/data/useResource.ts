@@ -5,6 +5,7 @@ import { arrivedResource, loadResource, type ResourceName } from './client'
 import type {
   BtlEvent,
   Competitor,
+  EventComment,
   League,
   Moderator,
   Race,
@@ -38,7 +39,9 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
    *
    * Which means this is written for a name that does not change, and every
    * caller passes a literal one: the nine wrappers at the foot of this file, and
-   * `usePending`, which is the tenth resource. Handed a name that changes, the first render under the new one
+   * `usePending`, which reads the queue, and `useComments`, which reads what
+   * has been published and must never read the queue (see its own doc below).
+   * Handed a name that changes, the first render under the new one
    * would draw the old resource's data as though it were ready, and only the
    * effect would put it right. Making that correct is not a line in the effect,
    * which runs after that render: it is the state being adjusted during the
@@ -208,6 +211,50 @@ function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T)
 }
 
 export const useBadges = () => useResource<Badge[]>('badges')
+/**
+ * What is published under an event: what the file carries, and what a moderator
+ * has let out during this visit.
+ *
+ * Merged here rather than at the screen, for the reason `usePending` gives about
+ * proposals: one place decides what "published" means, so the event page cannot
+ * disagree with the queue that published it. Without this a moderator approved a
+ * comment and nothing appeared anywhere, which is the whole of what approving one
+ * is for (owner, 06.08.2026).
+ *
+ * What it reads is the session and not the queue. Reading the queue here worked
+ * and was wrong: the event page is public, so every visitor's browser fetched
+ * the whole moderation queue, which carries pending members' addresses and the
+ * bodies of comments nobody has approved. The queue is administration's to read;
+ * what comes out of it is written down when it comes out (`publish`), and this
+ * side only ever sees what was let out.
+ */
+export function useComments(): ResourceState<EventComment[]> {
+  const state = useResource<EventComment[]>('comments')
+  const { decisions, published } = useSession()
+
+  return useMemo(() => {
+    if (state.status !== 'ready') {
+      return state
+    }
+
+    /* Read through the decisions rather than trusted as a list of what is out:
+       a comment let out and then taken down again is a decision changed, and
+       the screen must follow the change without the moderator having to be
+       standing on it. */
+    const letOut = published.filter((one) => decisions[one.id]?.status === 'approved')
+    /* By id, because the two sides can name the same comment. Nothing does
+       today, but `commentFrom` keeps the id the queue gave it on purpose, so the
+       day a backend hands back an approved comment under that id the event page
+       would draw it twice, with a repeated React key underneath. */
+    const already = new Set(state.data.map((one) => one.id))
+
+    return {
+      status: 'ready',
+      data: [...state.data, ...letOut.filter((one) => !already.has(one.id))],
+    }
+  }, [state, published, decisions])
+}
+
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 export const useLeagues = () => useResource<League[]>('leagues')

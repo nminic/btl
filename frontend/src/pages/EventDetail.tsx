@@ -14,11 +14,13 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
+import { EventComments } from './event/EventComments'
 import './Profile.css'
 
-/* The races load separately from the event on purpose: the heading, the date
- * and the organiser are useful the moment they arrive, and the race table is
- * the heavier half. */
+/* The races load separately from the event on purpose: the name of the event is
+ * useful the moment it arrives, and the race table is the heavier half. The date
+ * and the organiser used to be named here too; both came off the head on
+ * 06.08.2026. */
 function RaceTable({ eventId }: { eventId: string }) {
   const { locale, t } = useI18n()
   const races = useRaces()
@@ -96,8 +98,10 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
-     space that resolves into nothing. */
-  if (date > today && state.status === 'loading') {
+     space that resolves into nothing, and on a broken connection an alert about
+     a section that was never going to be there. The comments at the foot say
+     the same thing the same way (event/EventComments.tsx). */
+  if (date > today && state.status !== 'ready') {
     return null
   }
 
@@ -239,38 +243,22 @@ export function EventDetail() {
             />
 
             <div className="profile">
-              {/* What can be done with the event, at the top right of it. The
-                  head becomes a row for it and is a column everywhere else,
-                  which is why the modifier is on the head rather than on the
-                  buttons. */}
-              <header className="profile__head profile__head--acting">
-                <p className="profile__meta">
-                  <Link to={`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`}>
-                    {t('event.backToCalendar')}
-                  </Link>
-                </p>
-                <h1>{event.name}</h1>
-                <p className="profile__meta">
-                  {formatDate(event.date, locale)}
-                  {' · '}
-                  {event.city}
-                  {' · '}
-                  {t(`calendar.status.${event.status}`)}
-                </p>
-                <p className="profile__meta">
-                  {t('event.organizer')}
-                  {': '}
-                  {event.organizer}
-                </p>
+              {/* The name and what can be done with it, on the row every screen
+                  with a control keeps (owner, 05.08.2026; Rankings.css).
 
-                {/* Only once both have arrived, and this is not impatience.
-                    The buttons act on the races and the results: deleting takes
-                    them with it and copying carries them across. Drawn against
-                    what had not loaded yet, the question said "and 0 of its
-                    races", the deletion took the event and left every race and
-                    every result behind it, and the copy came across empty. The
-                    head is a column while they are absent and becomes a row when
-                    they arrive (EventActions.css). */}
+                  Three things came off this head on 06.08.2026, all on the
+                  owner's word: the way back to the calendar, because the browser
+                  already has one; the line reading the date, the city and the
+                  status; and the organiser. What is left is the name of the
+                  event and the two things a reader can do about it.
+
+                  The buttons wait for the races and the results, and this is not
+                  impatience: they act on both. Deleting takes them with it and
+                  copying carries them across, and drawn against what had not
+                  loaded yet the question said "and 0 of its races", the deletion
+                  left every race behind and the copy came across empty. */}
+              <header className="profile__head rankings--tooled">
+                <h1>{event.name}</h1>
                 {races.status === 'ready' && results.status === 'ready' && (
                   <EventActions event={event} races={races.data} results={results.data} />
                 )}
@@ -281,6 +269,17 @@ export function EventDetail() {
               <RaceTable eventId={event.id} />
 
               <EventResults slug={event.slug} date={event.date} />
+
+              {/* At the foot of the event, which is where the owner put it
+                  (06.08.2026): a reader looks at the races and the results
+                  first, and what other people thought of it after.
+
+                  Nothing at all before the race, for the reason the results
+                  above give: nobody can rate a race that has not been run, so
+                  "Za ovaj događaj još nema odobrenih komentara." would stand on
+                  every screen of next season's calendar and would mean only
+                  "not yet". */}
+              <EventComments eventId={event.id} date={event.date} />
             </div>
           </>
         )

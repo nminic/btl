@@ -159,3 +159,32 @@
   min-inline-size: 0;
   margin: 0;
 }
+
+/* The three marks a comment carries, drawn for the moderator who is deciding
+   about it (owner, 06.08.2026). The same shape as the facts above them, so a
+   queue reads as one list rather than as two. */
+.pending__marks {
+  margin: var(--space-12) 0 0;
+  display: grid;
+  gap: var(--space-8);
+}
+
+@media (min-width: 560px) {
+  .pending__marks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.pending__marks dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.pending__marks dd {
+  margin: 0;
+}
+
+.pending__overall {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

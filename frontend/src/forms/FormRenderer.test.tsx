@@ -262,7 +262,58 @@ describe('a value longer than the limit that was later put on its field', () => 
     fireEvent.paste(box, { clipboardData: { getData: () => 'yyy' } })
     fireEvent.change(box, { target: { value: 'x'.repeat(15) } })
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst/)
+    /* And the number it says, which is what the clamp on the room is for: the
+       box is ten characters over its limit, so an unclamped room is minus five,
+       and the three characters brought would be reported as eight lost. Held on
+       the figure, because the sentence is the same either way. */
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je bio 3 znaka/)
+  })
+
+  it('keeps the message through a paste that fits only in part', async () => {
+    /* Room for three and five brought: the box takes three, drops two, and a
+       change follows carrying the three. That change is the paste's own, so the
+       message about the two must survive it; read as the writer moving on, it
+       goes up and comes down inside one event and nobody sees it. */
+    const user = setupUser()
+    renderWithI18n(
+      <FormRenderer form={capped} onSubmit={vi.fn()} initial={{ beleska: 'x'.repeat(7) }} />,
+    )
+
+    const box = screen.getByLabelText<HTMLTextAreaElement>(/proba.beleska/)
+    await user.click(box)
+
+    box.setSelectionRange(7, 7)
+    fireEvent.paste(box, { clipboardData: { getData: () => 'yyyyy' } })
+    fireEvent.change(box, { target: { value: `${'x'.repeat(7)}yyy` } })
+
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je bio 2 znaka/)
+  })
+
+  it('clears the message on the next keystroke after a refused paste', async () => {
+    /* A paste into a box with no room and nothing selected is refused whole: no
+       change follows it, so the flag that lets one change through must not be
+       raised. Raised anyway, it would eat the writer's next keystroke and the
+       message about what was lost would linger past the moment it was true. */
+    const user = setupUser()
+    renderWithI18n(
+      <FormRenderer form={capped} onSubmit={vi.fn()} initial={{ beleska: 'x'.repeat(10) }} />,
+    )
+
+    const box = screen.getByLabelText<HTMLTextAreaElement>(/proba.beleska/)
+    await user.click(box)
+
+    /* The caret at the end and nothing selected: the box is full, so the paste
+       brings three characters and takes none. */
+    box.setSelectionRange(10, 10)
+    fireEvent.paste(box, { clipboardData: { getData: () => 'yyy' } })
+
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je bio 3 znaka/)
+
+    /* The writer's own next change, which is the first thing that happens after
+       a refused paste. */
+    fireEvent.change(box, { target: { value: 'x'.repeat(9) } })
+
+    expect(screen.getByRole('status')).not.toHaveTextContent(/Nalepljeni tekst/)
   })
 
   it('lets the next thing the writer does clear it', async () => {

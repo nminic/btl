@@ -36,7 +36,13 @@
 }
 
 @media (min-width: 560px) {
-  .rankings--tooled {
+  /* Only where there is a second thing to place. Six screens always draw their
+     control, so for them this asks nothing; the event does not, and there the
+     row was a grid of two tracks with an empty second one, laying the gutter
+     between them and taking sixteen pixels off the name of the race for every
+     visitor. The sheet that used to sit on the event asked the same question
+     the same way before it was deleted as redundant. */
+  .rankings--tooled:has(> .rankings__head-tool) {
     display: grid;
     grid-template-columns: 1fr auto;
     /* Centred on the heading rather than sitting on its baseline (owner,

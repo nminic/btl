@@ -628,6 +628,24 @@ describe('what the owner asked for on 04.08.2026', () => {
     },
     {
       of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled:has(> .rankings__head-tool)',
+      /* Only where there is a control to place. The event draws none for a
+         visitor, and an unconditional grid laid the gutter beside a name with
+         nothing on the other side of it. jsdom lays nothing out, so the
+         condition is held where it is written. */
+      holds: /display:\s*grid/,
+      why: 'a row with nothing beside the heading is not a row of two',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__head.rankings--tooled > h1',
+      /* Two classes, so the six pixels win on weight rather than on the order
+         two sheets landed in the bundle: the head of an event wears both. */
+      holds: /margin-block-end:\s*var\(--space-6\)/,
+      why: 'the name of an event ends where the buttons beside it end',
+    },
+    {
+      of: 'src/pages/Rankings.css',
       rule: '.rankings--tooled',
       /* The one value both boxes on that row take. Written twice instead, they
          drift apart and centring draws the control off the heading by half the
@@ -647,6 +665,17 @@ describe('what the owner asked for on 04.08.2026', () => {
       rule: '.profile__title.rankings--tooled',
       holds: /--head-end:\s*var\(--space-6\)/,
       why: 'a profile spends less of it, and its control moves with the heading',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__head.rankings--tooled',
+      /* The head of an event, which became the shared row when the two things
+         that can be done with an event moved onto the name (owner, 06.08.2026).
+         The six is what the heading above it already carries, and centring lines
+         up margin boxes: the two have to be the one value or the buttons beside
+         the name sit three pixels off it. */
+      holds: /--head-end:\s*var\(--space-6\)/,
+      why: 'an event spends the same as a profile, and its buttons move with the name',
     },
     {
       of: 'src/pages/TopBoards.css',
@@ -684,6 +713,50 @@ describe('what the owner asked for on 04.08.2026', () => {
          at a height nothing else on the portal uses. */
       holds: /font-size:\s*clamp\(28px, 5vw, 40px\)/,
       why: 'the name of a competitor is the size a heading is',
+    },
+    {
+      of: 'src/pages/Home.css',
+      rule: ".button[aria-disabled='true']",
+      /* Not `opacity`, which dims the focus ring with everything else: this
+         control is deliberately still in the order of focus, so somebody lands
+         on it and the ring has to be at full strength there (WCAG 2.2 SC
+         1.4.11). Muted ink and a plain border say it cannot act. */
+      holds: /color:\s*var\(--text-muted\)/,
+      why: 'a button that cannot act says so without dimming its own focus ring',
+    },
+    {
+      of: 'src/pages/Home.css',
+      rule: ".button[aria-disabled='true']",
+      /* The ground as well as the ink. The primary button is drawn on the accent
+         and this state is not: muted text on the full accent reads as a button
+         that works. */
+      holds: /background:\s*transparent/,
+      why: 'and it does not keep the ground of a button that does act',
+    },
+    {
+      of: 'src/components/Stars.css',
+      rule: '.stars__pick',
+      /* The box a finger is owed, which is the label around the star and not the
+         star: the drawing is 1,35rem and would be a target of about 22px (WCAG
+         2.2 SC 2.5.8 asks for 24). jsdom lays nothing out, so the size is held
+         where it is written. */
+      holds: /inline-size:\s*2rem/,
+      why: 'a star is as big as a finger, without the drawing being told to be',
+    },
+    {
+      of: 'src/components/Stars.css',
+      rule: '.stars__pick',
+      holds: /block-size:\s*2rem/,
+      why: 'and as tall as it is wide',
+    },
+    {
+      of: 'src/components/Stars.css',
+      rule: '.stars__pick:has(:focus-visible)',
+      /* The radio itself is off the screen, so without this a keyboard moving
+         through five stars moves through nothing anybody can see (WCAG 2.2 SC
+         2.4.7). The ring is drawn around the star that stands in for it. */
+      holds: /outline:\s*2px solid var\(--accent\)/,
+      why: 'a star the keyboard is on says so',
     },
     {
       of: 'src/styles/table.css',
@@ -897,6 +970,30 @@ describe('the search beside the heading', () => {
  * reason: jsdom applies no stylesheet, so nothing a screen test can see says
  * whether two things line up.
  */
+/* The ring on a star, and the reason it is written twice.
+ *
+ * The radio inside each star is clipped to a pixel by `visually-hidden`, so the
+ * portal's own `:focus-visible` outline is clipped away with it: the rule in
+ * Stars.css is the whole of the focus indicator on all fifteen radios (WCAG 2.2
+ * SC 2.4.7, level A). Everywhere else on the portal `:has` is an improvement
+ * that degrades into the old layout; here there is nothing to degrade into. */
+describe('the focus ring on a star', () => {
+  it('is drawn without `:has` as well as with it, in a rule of its own', () => {
+    const css = read('src/components/Stars.css')
+
+    /* Two rules, never one list of two selectors. An unrecognised pseudo-class
+       throws away the whole selector list it stands in, so grouped with the
+       `:has` rule the fallback would be dropped by exactly the browsers it is
+       there for, and the ring would be gone with it. */
+    expect(css).not.toMatch(/:focus-within,/)
+    expect(css).not.toMatch(/,\s*\.stars__pick:focus-within/)
+    expect(css).toMatch(/@supports not selector\(:has\(\*\)\) \{/)
+    expect(bodyOf(css, '.stars__pick:focus-within')).toMatch(
+      /outline:\s*2px solid var\(--accent\)/,
+    )
+  })
+})
+
 describe('the row above the month grid', () => {
   const css = () => read('src/pages/Calendar.css')
 
@@ -1000,28 +1097,3 @@ describe('the height of a bar on the column chart', () => {
   })
 })
 
-/* The head of an event, which becomes a row only when there is something to put
- * in its second column.
- *
- * Without the condition it was a two-column grid whatever was in it, and the
- * buttons are drawn for an administrator and for a member and for nobody else:
- * every visitor who was not signed in got a head laid out in two columns with
- * nothing in the second, so its four lines paired off into a grid two by two and
- * the name of the event stood beside the way back to the calendar. A screen test
- * cannot see it, because jsdom lays nothing out.
- */
-describe('the head of an event', () => {
-  const css = () => read('src/pages/event/EventActions.css')
-
-  it('becomes a row only where the buttons are', () => {
-    expect(css()).toMatch(/\.profile__head--acting:has\(> \.event__actions\) \{/)
-    /* And never on the class alone, which is on the head whatever is inside it. */
-    expect(css()).not.toMatch(/\n {2}\.profile__head--acting \{/)
-  })
-
-  it('runs the buttons down whatever the head holds, rather than a counted number of rows', () => {
-    expect(bodyOf(css(), '.profile__head--acting:has(> .event__actions) > .event__actions')).toMatch(
-      /grid-row:\s*1 \/ -1/,
-    )
-  })
-})

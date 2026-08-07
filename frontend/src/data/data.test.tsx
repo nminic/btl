@@ -1,14 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
+import { useSession } from '../session/useSession'
+import { setupUser } from '../test/user'
 import { first } from '../test/at'
 import { loadResource, type ResourceName } from './client'
-import type { Competitor } from './types'
+import { commentFrom } from './comment'
+import type { Competitor, EventComment, PendingItem } from './types'
 import {
   combinePair,
   combineFour,
   combineResources,
   dataOr,
   failed,
+  useComments,
   useCompetitors,
   useEvents,
   useLeagues,
@@ -241,5 +245,142 @@ describe('the generated data', () => {
 
     expect(events.length).toBeGreaterThan(0)
     expect([...new Set(events.map((one) => one.status))].sort()).toEqual(['confirmed'])
+  })
+})
+
+/* A comment that has been let out and then taken down again.
+ *
+ * Not reachable from the queue today: a settled item leaves the list of waiting
+ * ones, so no screen offers a second decision on it. The rule is written where
+ * the reading is, because a list of "what is out" that ignored the decisions
+ * would be a second answer to a question `decisions` already answers, and the
+ * two would go out of step the day the queue is rebuilt around exactly this
+ * (owner, 06.08.2026, no section of settled items).
+ */
+function LetOut() {
+  const state = useComments()
+  const { publish, settle } = useSession()
+  const one: EventComment = {
+    id: 'ver-kom-1',
+    eventId: 'evt-fruskogorski-maraton-2010-05-08',
+    memberNumber: '000007',
+    who: 'Ime Prezime',
+    date: '2026-08-06',
+    rating: { organisation: 5, value: 4, ambience: 5 },
+    body: 'Reci koje su izasle.',
+  }
+  const said = (status: 'approved' | 'rejected') => () => {
+    publish(one)
+    settle(one.id, { status, note: '', basis: '', memberNumber: '' })
+  }
+
+  /* The id of a comment the file already carries. What the queue hands over
+     keeps the id it was queued under (commentFrom), so the day a backend
+     answers with an approved comment under that id both sides name the one
+     comment. */
+  const twice: EventComment = { ...one, id: 'kom-1' }
+
+  return (
+    <>
+      <span data-testid="mine">
+        {state.status !== 'ready'
+          ? state.status
+          : state.data.filter((each) => each.id === one.id).length}
+      </span>
+      <span data-testid="twice">
+        {state.status !== 'ready'
+          ? state.status
+          : state.data.filter((each) => each.id === twice.id).length}
+      </span>
+      <button type="button" onClick={said('approved')}>
+        pusti
+      </button>
+      <button type="button" onClick={said('rejected')}>
+        skini
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          publish(twice)
+          settle(twice.id, { status: 'approved', note: '', basis: '', memberNumber: '' })
+        }}
+      >
+        pusti isti
+      </button>
+    </>
+  )
+}
+
+describe('useComments', () => {
+  it('drops a comment whose approval is changed to a deletion', async () => {
+    const user = setupUser()
+
+    render(
+      <SessionProvider>
+        <LetOut />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('mine')).toHaveTextContent('0'))
+
+    await user.click(screen.getByRole('button', { name: 'pusti' }))
+    expect(screen.getByTestId('mine')).toHaveTextContent('1')
+
+    await user.click(screen.getByRole('button', { name: 'skini' }))
+    expect(screen.getByTestId('mine')).toHaveTextContent('0')
+  })
+
+  it('draws a comment once when both sides name it', async () => {
+    const user = setupUser()
+
+    render(
+      <SessionProvider>
+        <LetOut />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('twice')).toHaveTextContent('1'))
+
+    await user.click(screen.getByRole('button', { name: 'pusti isti' }))
+
+    expect(screen.getByTestId('twice')).toHaveTextContent('1')
+  })
+})
+
+/* What an approval turns a waiting comment into.
+ *
+ * Held field by field, and as a unit, because the screens cannot hold all of
+ * it: the name is drawn off the member's record while they are still in the
+ * league, so a name dropped here is invisible everywhere until the day that
+ * member leaves, and then the card is blank with nothing to say why (PDL P11).
+ */
+describe('commentFrom', () => {
+  it('carries every field of the waiting comment, and nothing of its own', () => {
+    const waiting: PendingItem = {
+      id: 'ver-kom-9',
+      queue: 'comments',
+      date: '2026-08-06',
+      memberNumber: '000007',
+      who: 'Ime Prezime',
+      subject: 'Fruškogorski maraton',
+      subjectId: 'evt-fruskogorski-maraton-2010-05-08',
+      body: 'Reci koje je clan napisao.',
+      currentDate: '',
+      proposedDate: '',
+      email: '',
+      city: '',
+      country: '',
+      rating: { organisation: 5, value: 4, ambience: 3 },
+    }
+
+    expect(commentFrom(waiting)).toEqual({
+      id: 'ver-kom-9',
+      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      memberNumber: '000007',
+      who: 'Ime Prezime',
+      date: '2026-08-06',
+      rating: { organisation: 5, value: 4, ambience: 3 },
+      body: 'Reci koje je clan napisao.',
+    })
   })
 })

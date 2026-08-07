@@ -7,7 +7,6 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
 import { useMay } from '../admin/rights'
-import './EventActions.css'
 
 /**
  * What can be done with an event, from the event's own page.
@@ -132,12 +131,30 @@ export function EventActions({
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }
 
-  if (!mayEdit && memberNumber === null) {
+  /* What a member may do here, which is the same condition twice below and is
+     also half of whether there is a row at all. PDL P9 refuses a date in the
+     future, and the date here is the event's own: nothing to report and nothing
+     to rate on a race nobody has run. The day of the race itself counts, which
+     is where a rating is given. */
+  const mayAct = memberNumber !== null && event.date <= today
+
+  if (!mayEdit && !mayAct) {
     return null
   }
 
   return (
-    <div className="event__actions">
+    /* The row's own second child, so a visitor with nothing to press leaves the
+       row with one child rather than an empty box centred against the name
+       (Rankings.css). The component already knows whether it draws anything;
+       wrapping it outside meant the wrapper was drawn either way.
+
+       It wears the shared row's control box and nothing of its own. A sheet
+       stood here setting flex, wrap and a gap, all three of which
+       `.rankings__head-tool` already sets on this same element (Rankings.css);
+       the one difference was a smaller gap, written at the same weight as the
+       shared one and so settled by whichever sheet the bundle put last, which
+       is not a decision anybody made. */
+    <div className="rankings__head-tool">
       {mayEdit && (
         <>
           <button type="button" className="button button--secondary" onClick={copy}>
@@ -157,13 +174,23 @@ export function EventActions({
           about it: a date in the future is refused, and the date here is the
           event's own, so the only way to keep that rule is not to offer the
           form at all. */}
-      {memberNumber !== null && event.date <= today && (
+      {mayAct && (
         /* A link and not a button, like everything else on the portal that
            leads somewhere: a button has no middle click, no "open in a new
            tab", no address in the status bar, and is announced as a button by
            a screen reader when it is a way to another screen. */
         <Link className="button button--primary" to={`/${locale}/kalendar/${event.slug}/prijava`}>
           {t('event.report')}
+        </Link>
+      )}
+
+      {/* And what they thought of it (owner, 06.08.2026). The same rule about
+          the date: an event nobody has run yet is not one anybody can rate, and
+          the rating asks about the organisation and the surroundings, which are
+          things a member saw on the day. */}
+      {mayAct && (
+        <Link className="button button--secondary" to={`/${locale}/kalendar/${event.slug}/ocena`}>
+          {t('event.addComment')}
         </Link>
       )}
     </div>

@@ -189,6 +189,10 @@
     "reportResult": {
       "title": "Prijava rezultata",
       "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
+    },
+    "rateEvent": {
+      "title": "Ocena događaja",
+      "description": "Oceni organizaciju, vrednost za novac i ambijent, i ostavi komentar drugim članovima. Moderator odobrava svaku ocenu pre objave."
     }
   },
   "shell": {
@@ -536,9 +540,26 @@
     "weekend": "Vikend"
   },
   "event": {
-    "backToCalendar": "Nazad na kalendar",
-    "organizer": "Organizator",
     "place": "Mesto",
+    "addComment": "Dodaj komentar",
+    "commentTitle": "Ocena i komentar",
+    "commentIntro": "Ocene i komentar se objavljuju kad ih moderator odobri.",
+    "rating": {
+      "organisation": "Organizacija",
+      "value": "Vrednost za novac",
+      "ambience": "Ambijent",
+      "overall": "Ukupna ocena",
+      "stars": "{count} od {of}",
+      "unrated": "Bez ocene"
+    },
+    "commentText": "Komentar",
+    "commentHint": "Neobavezno. Šta bi drugi član voleo da zna pre nego što se prijavi.",
+    "commentNeedsMarks": "Dajte sve tri ocene da biste mogli da pošaljete.",
+    "commentSend": "Pošalji",
+    "commentCancel": "Odustani",
+    "commentSent": "Ocena je poslata na odobrenje.",
+    "comments": "Komentari",
+    "noComments": "Za ovaj događaj još nema odobrenih komentara.",
     "races": "Trke",
     "competitor": "Takmičar",
     "raceName": "Trka",
@@ -549,6 +570,8 @@
     "results": "Rezultati članova",
     "noResults": "Sa ovog događaja nema unetih rezultata.",
     "notFound": "Ovog događaja nema.",
+    "notRunYet": "Ovaj događaj još nije održan",
+    "notRunYetWhy": "Rezultat i ocena se unose tek kad se trka istrči.",
     "copy": "Kopiranje",
     "delete": "Brisanje",
     "report": "Prijavi rezultat",

@@ -30,7 +30,14 @@ function stylesheets(dir = SRC, prefix = ''): { path: string; css: string }[] {
       return stylesheets(at, name)
     }
 
-    return entry.name.endsWith('.css') ? [{ path: name, css: readFileSync(at, 'utf-8') }] : []
+    /* Line endings normalised, because the value a declaration is written on
+       becomes part of the key a value is allowed under, and git hands these
+       files out with CRLF on Windows and LF elsewhere. Without this the guard
+       passes or fails by how the working copy was checked out, which is a fact
+       about a machine and not about the stylesheet. */
+    return entry.name.endsWith('.css')
+      ? [{ path: name, css: readFileSync(at, 'utf-8').replaceAll('\r\n', '\n') }]
+      : []
   })
 }
 

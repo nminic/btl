@@ -1,0 +1,85 @@
+/* What members wrote about an event (owner, 06.08.2026).
+ *
+ * A list and not a table: a comment is a paragraph with a face and a date on it,
+ * and the three marks under it are pairs of a name and a value, which is what a
+ * description list is for.
+ */
+.comments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.comments__one {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-10);
+  background: var(--surface);
+  padding: var(--space-16);
+}
+
+/* The face, the name with the date under it, and the overall mark at the far
+   end. Wrapping, because on a telephone the mark goes under the name rather
+   than squeezing it. */
+.comments__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.comments__name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.comments__date {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.comments__overall {
+  margin: 0 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.comments__figure {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The three marks. Each pair is a row of its own on a telephone and they share
+   the width above it, because three names of two words each do not fit across
+   360 pixels. */
+.comments__marks {
+  margin: var(--space-12) 0 0;
+  display: grid;
+  gap: var(--space-8);
+}
+
+@media (min-width: 560px) {
+  .comments__marks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.comments__marks dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.comments__marks dd {
+  margin: 0;
+}
+
+.comments__text {
+  margin: var(--space-12) 0 0;
+  /* A comment is somebody's own words and can be one long one, which must not
+     push the card sideways. */
+  overflow-wrap: anywhere;
+}

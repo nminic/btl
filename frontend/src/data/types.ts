@@ -206,6 +206,61 @@ export const PENDING_QUEUE_IDS = [
 
 export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
 
+/**
+ * What a member wrote about an event, once it is out on the portal.
+ *
+ * The queue item it came from stays in the queue: this is the record of what was
+ * published, and it is what every public screen reads. Keeping one shape for
+ * both would mean a comment on the event page carrying an email address and two
+ * dates it has no use for, and every reader of it deciding all over again what
+ * counts as published.
+ */
+export type EventComment = {
+  id: string
+  /** Which event, by the id and not the name: an event is copied into the next
+   *  season with its name unchanged (PDL P6), and a comment belongs to the one
+   *  it was written about. */
+  eventId: string
+  memberNumber: string
+  /** The name as it was when the comment went out, for a comment whose author
+   *  has since left the league and has no profile to read it off. */
+  who: string
+  date: string
+  rating: EventRating
+  /** Empty where the member rated the event and said nothing, which the form
+   *  allows on purpose (RateEvent.tsx). */
+  body: string
+}
+
+/** The three marks an event is rated on (PDL P6). The names are the owner's,
+ *  with "okruženje" renamed to "ambijent" on 07.08.2026. */
+export type EventRating = {
+  organisation: number
+  value: number
+  ambience: number
+}
+
+/**
+ * A rating nobody has given: the starting state of the form, and what a comment
+ * written before the ratings existed carries.
+ *
+ * Frozen, and deliberately not annotated `: EventRating`. `Object.freeze`
+ * returns `Readonly<T>` and the annotation widened that straight back to
+ * mutable, so the compiler allowed a write to it and the freeze was left to
+ * throw at the reader instead. Without the annotation the write is a build
+ * error, which is where it belongs: this object is handed out by reference, so
+ * one careless assignment would give a rating to everything that has none.
+ *
+ * The shape is given to `freeze` rather than to the constant, so a mark spelled
+ * wrong is still refused: without it anywhere to check against, an extra field
+ * would go in silently and the three real ones would be the only ones read.
+ */
+export const NO_RATING = Object.freeze<EventRating>({
+  organisation: 0,
+  value: 0,
+  ambience: 0,
+})
+
 export type PendingItem = {
   id: string
   queue: PendingQueueId
@@ -223,6 +278,21 @@ export type PendingItem = {
   /** What the decision is about: the name of the league, the team, the member
    *  or the event. */
   subject: string
+  /**
+   * The same thing by its id, where approving it has to write a record about it.
+   *
+   * A name is what a moderator reads and is not what a record is filed under: two
+   * events across two seasons carry one name (PDL P6), so a comment approved by
+   * its subject would land on whichever of them was looked up first.
+   *
+   * Read today by the comments queue alone, whose approval writes a record filed
+   * under the event. The reported changes of date carry it as well and nothing
+   * reads it yet: moving the event and its races onto the new date is the next
+   * thing asked for on that queue (owner, 06.08.2026), and it is the id that
+   * will say which event to move. Empty on the four that decide about something
+   * with no id yet, or about a person rather than a record.
+   */
+  subjectId: string
   /** The text to read before deciding: the biography, the comment, the reason
    *  given, or the file name of a picture. */
   body: string
@@ -230,6 +300,20 @@ export type PendingItem = {
    *  thing on screen. Empty on every other queue. */
   currentDate: string
   proposedDate: string
+  /**
+   * What a member thought of the event, on the comments queue and nought
+   * everywhere else (PDL P6, owner 06.08.2026).
+   *
+   * Three marks and not four. The fourth is the overall, and PDL P6 says it is
+   * arithmetic: the average of these three. Stored as well it would be a fourth
+   * place for the same fact to disagree with itself, and the first rounding
+   * anybody changed would leave two answers on the portal at once.
+   *
+   * A comment with no rating at all is nought on all three: the rating is what
+   * a member came to give and the comment is optional, so a nought here means
+   * the record predates the rating rather than that somebody rated it nothing.
+   */
+  rating: EventRating
   /** The payments queue only. Until the fee is recorded there is no number to go
    *  by, so a waiting registration is known by its name and its address (PDL
    *  P8). Empty on the other six. */

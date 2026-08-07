@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { MembershipBasis, RaceCategory, PendingItem } from '../data/types'
+import type { EventComment, MembershipBasis, RaceCategory, PendingItem } from '../data/types'
 
 /* What the prototype remembers between screens.
  *
@@ -226,6 +226,25 @@ export type SessionValue = {
    */
   proposals: PendingItem[]
   propose: (item: Omit<PendingItem, 'id'>) => void
+
+  /**
+   * Comments a moderator has let out during this visit, carrying the id of the
+   * queue item they came from.
+   *
+   * Written down here rather than read back off the queue, because the event
+   * page is public and the queue is not: it holds addresses of people who are
+   * not members yet and the words of comments nobody has approved, and a public
+   * screen that reads it hands all of that to every visitor's browser. The
+   * administration is the only side that reads the queue, so the administration
+   * is what writes down what came out of it.
+   *
+   * Whether one is actually on the portal is still `decisions`, not this list.
+   * A comment let out and then taken down again is a decision changed, and one
+   * list of "what is out" would have to be kept in step with the decisions by
+   * hand, which is how two answers to one question start.
+   */
+  published: EventComment[]
+  publish: (comment: EventComment) => void
 }
 
 export const NOTIFICATION_KEYS: NotificationKey[] = [

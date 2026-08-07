@@ -1,0 +1,86 @@
+/* A rating in five stars (owner, 06.08.2026).
+ *
+ * Gold, because a rating is an award and gold is what the portal awards with
+ * (tokens.css). An empty star is the same star drawn in outline, so a reader
+ * sees five of one shape rather than two shapes.
+ */
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--gold-text);
+}
+
+/* The one asking a question carries its own name, so it is a block with a
+   legend rather than a run of stars in a line of text. */
+.stars--asking {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Its own line above the stars, because a legend that shares a line with the
+   first star reads as a label on that star. A legend is laid out by the fieldset
+   and not as a flex item, so it takes its own line whatever this says; the width
+   is written down because a legend that wrapped would still be a legend and this
+   makes it one line's worth of room rather than whatever the words need. */
+.stars--asking legend {
+  inline-size: 100%;
+  margin-block-end: var(--space-4);
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Twenty-four pixels of star with room around it, which is the twenty-four by
+   twenty-four a pointer is owed (WCAG 2.2 SC 2.5.8) without anything being told
+   to have a size. */
+.stars__pick {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  cursor: pointer;
+}
+
+.stars__mark {
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+}
+
+/* The ring the keyboard needs, drawn around the star rather than around a radio
+   nobody can see.
+
+   The radio wears `visually-hidden`, which clips it to a pixel, so the portal's
+   own `:focus-visible` outline is clipped away with it: this is the whole of the
+   focus indicator on all fifteen radios (WCAG 2.2 SC 2.4.7, level A).
+   Everywhere else on the portal `:has` is an improvement that degrades into the
+   old layout; here there is nothing to degrade into. */
+.stars__pick:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-6);
+}
+
+/* And where `:has` is not understood. Two rules and not one list of two
+   selectors: an unrecognised pseudo-class throws away the whole list it stands
+   in, so grouped with the rule above this one would be dropped by the very
+   browsers it is here for.
+
+   Asked for only where the rule above cannot apply, so a browser that
+   understands both does not draw the ring on a pointer press as well: this one
+   fires on any focus, and `:focus-visible` is the browser's own judgement about
+   when a ring is wanted. */
+@supports not selector(:has(*)) {
+  .stars__pick:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-6);
+  }
+}
+

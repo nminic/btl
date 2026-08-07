@@ -74,15 +74,32 @@
   --head-end: var(--space-6);
 }
 
-/* The heading of a page built like a profile that has no control beside it: an
-   event and a league. They draw a bare h1 inside this header and had their whole
-   styling from a rule about `.profile__head h1`, which went when the name of a
-   competitor took its own size (`.profile__name` below). Left alone they fell
-   back to the browser's 2em with a margin of its own. */
+/* The heading of a page built like a profile: an event and a league draw a bare
+   h1 in this header. Their whole styling came from a rule about
+   `.profile__head h1`, which went when the name of a competitor took its own
+   size (`.profile__name` below), and left alone they fall back to the browser's
+   2em with a margin of its own. */
 .profile__head > h1 {
   margin: 0 0 var(--space-6);
   font-size: clamp(26px, 4.5vw, 36px);
   letter-spacing: -0.02em;
+}
+
+/* Written again with both classes, so it settles against `.rankings--tooled >
+   h1` on weight rather than on which sheet the bundle put last: the head of an
+   event wears both, and until this was written the six pixels held only because
+   this sheet imports that one at its own head. */
+.profile__head.rankings--tooled > h1 {
+  margin-block-end: var(--space-6);
+}
+
+/* An event puts what can be done with it beside the name, so its head is the
+   shared row (Rankings.css). The distance under that row is the six pixels the
+   heading above already carries, or the control beside it would be centred three
+   pixels off: centring lines up margin boxes, and the two have to be the same
+   value. Both classes, so it outweighs the twelve the shared row defaults to. */
+.profile__head.rankings--tooled {
+  --head-end: var(--space-6);
 }
 
 /* The same size and the same leading as every other heading on the portal, so

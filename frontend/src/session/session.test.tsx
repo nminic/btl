@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import type { EventComment } from '../data/types'
 import { setupUser } from '../test/user'
 import { SessionProvider } from './SessionProvider'
 import { useSession } from './useSession'
@@ -124,5 +125,64 @@ describe('useSession', () => {
     expect(() => render(<Probe />)).toThrow('useSession must be used inside SessionProvider')
 
     spy.mockRestore()
+  })
+})
+
+/* What a moderator letting a comment out writes down, and what happens when they
+   let the same one out twice.
+ *
+ * Not reachable from the queue today: an item that has been settled leaves the
+ * list of waiting ones, so nothing on that screen offers a second decision on
+ * it. The rule lives here because the list does, and because the screen is being
+ * rebuilt around exactly this (owner, 06.08.2026, no section of settled items):
+ * a list that grows on every call would draw the comment twice under its event
+ * the day a second decision becomes possible. */
+function Published() {
+  const { published, publish } = useSession()
+  const one: EventComment = {
+    id: 'ver-kom-1',
+    eventId: 'evt-fruskogorski-maraton-2010-05-08',
+    memberNumber: '000007',
+    who: 'Ime Prezime',
+    date: '2026-08-06',
+    rating: { organisation: 5, value: 4, ambience: 5 },
+    body: 'Reci koje su izasle.',
+  }
+
+  return (
+    <>
+      <span data-testid="published">{published.map((each) => each.id).join(',')}</span>
+      <button type="button" onClick={() => publish(one)}>
+        pusti
+      </button>
+      <button type="button" onClick={() => publish({ ...one, id: 'ver-kom-2' })}>
+        pusti drugi
+      </button>
+    </>
+  )
+}
+
+describe('what has been let out', () => {
+  it('keeps one entry however many times the same comment is let out', async () => {
+    const user = setupUser()
+
+    render(
+      <SessionProvider>
+        <Published />
+      </SessionProvider>,
+    )
+
+    expect(screen.getByTestId('published')).toHaveTextContent('')
+
+    await user.click(screen.getByRole('button', { name: 'pusti' }))
+    await user.click(screen.getByRole('button', { name: 'pusti' }))
+
+    expect(screen.getByTestId('published').textContent).toBe('ver-kom-1')
+
+    /* And a different one is a different entry, so the check above is holding
+       the identity rather than the length. */
+    await user.click(screen.getByRole('button', { name: 'pusti drugi' }))
+
+    expect(screen.getByTestId('published').textContent).toBe('ver-kom-1,ver-kom-2')
   })
 })

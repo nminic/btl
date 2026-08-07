@@ -11,7 +11,13 @@
     "proposedDate": "",
     "email": "miodrag.stankovic@primer.rs",
     "city": "Kraljevo",
-    "country": "RS"
+    "country": "RS",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-upl-2",
@@ -25,7 +31,13 @@
     "proposedDate": "",
     "email": "djordje.mitrovic@primer.rs",
     "city": "Beograd",
-    "country": "RS"
+    "country": "RS",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-upl-3",
@@ -39,7 +51,13 @@
     "proposedDate": "",
     "email": "ivana.colakovic@primer.ba",
     "city": "Banja Luka",
-    "country": "BA"
+    "country": "BA",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-lig-1",
@@ -53,7 +71,13 @@
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-lig-2",
@@ -67,7 +91,13 @@
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-tim-1",
@@ -81,7 +111,13 @@
     "proposedDate": "",
     "email": "",
     "city": "Zaječar",
-    "country": "RS"
+    "country": "RS",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-tim-2",
@@ -95,7 +131,13 @@
     "proposedDate": "",
     "email": "",
     "city": "Novi Sad",
-    "country": "RS"
+    "country": "RS",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-bio-1",
@@ -109,7 +151,13 @@
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-bio-2",
@@ -123,7 +171,13 @@
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-sli-1",
@@ -137,7 +191,13 @@
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-sli-2",
@@ -151,49 +211,93 @@
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": ""
   },
   {
     "id": "ver-kom-1",
     "queue": "comments",
-    "date": "2026-07-28",
+    "date": "2026-07-11",
     "memberNumber": "000016",
     "who": "Nemanja Cvetković",
-    "subject": "Beogradski maraton",
+    "subject": "Jadovnički ultramaraton",
     "body": "Organizacija na nivou, ali startni paket je ove godine bio slabiji nego prošle. Staza je odlično obeležena, okrepa na svakih pet kilometara.",
     "currentDate": "",
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 5,
+      "value": 4,
+      "ambience": 5
+    },
+    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11"
   },
   {
     "id": "ver-kom-2",
     "queue": "comments",
-    "date": "2026-07-28",
+    "date": "2026-06-27",
     "memberNumber": "000017",
     "who": "Andrija Pavlović",
-    "subject": "Podgorička desetka",
+    "subject": "Mala Sveta gora",
     "body": "Odlično",
     "currentDate": "",
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 3,
+      "value": 2,
+      "ambience": 4
+    },
+    "subjectId": "evt-mala-sveta-gora-2026-06-27"
   },
   {
     "id": "ver-kom-3",
     "queue": "comments",
-    "date": "2026-07-28",
+    "date": "2026-05-23",
     "memberNumber": "000018",
     "who": "Teodora Mitrović",
-    "subject": "Avala Trail 2023",
+    "subject": "Memorijal \"Dragutin Tomašević\"",
     "body": "Prijavite se preko mog linka i dobijate popust, pišite mi na poruke.",
     "currentDate": "",
     "proposedDate": "",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 4,
+      "value": 4,
+      "ambience": 3
+    },
+    "subjectId": "evt-memorijal-dragutin-tomasevic-2026-05-23"
+  },
+  {
+    "id": "ver-kom-4",
+    "queue": "comments",
+    "date": "2026-07-11",
+    "memberNumber": "000019",
+    "who": "Borivoje Jovanović",
+    "subject": "Jadovnički ultramaraton",
+    "body": "Komentar poslat pre nego što su ocene postojale, još čeka.",
+    "currentDate": "",
+    "proposedDate": "",
+    "email": "",
+    "city": "",
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11"
   },
   {
     "id": "ver-ter-1",
@@ -207,7 +311,13 @@
     "proposedDate": "2027-04-10",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": "evt-beogradski-maraton-2027-04-03"
   },
   {
     "id": "ver-ter-2",
@@ -221,7 +331,13 @@
     "proposedDate": "2027-04-10",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": "evt-beogradski-maraton-2027-04-03"
   },
   {
     "id": "ver-ter-3",
@@ -235,6 +351,12 @@
     "proposedDate": "2027-02-13",
     "email": "",
     "city": "",
-    "country": ""
+    "country": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "subjectId": "evt-podgoricka-desetka-2027-01-30"
   }
 ]

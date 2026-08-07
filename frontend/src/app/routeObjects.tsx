@@ -7,6 +7,7 @@ import { CompetitorAwards } from '../pages/CompetitorAwards'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
 import { CalendarDay } from '../pages/CalendarDay'
 import { EventDetail } from '../pages/EventDetail'
+import { RateEvent } from '../pages/event/RateEvent'
 import { ReportResult } from '../pages/event/ReportResult'
 import { LeagueDetail } from '../pages/LeagueDetail'
 import { TeamDetail } from '../pages/TeamDetail'
@@ -156,6 +157,7 @@ const DETAILS: RouteObject[] = [
      which event it was (owner, 03.08.2026). Under the event's own address,
      because that is what it is about and where the way back leads. */
   { path: 'kalendar/:slug/prijava', element: <ReportResult /> },
+  { path: 'kalendar/:slug/ocena', element: <RateEvent /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
