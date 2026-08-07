@@ -1,5 +1,5 @@
-import { useRef, useState, type TextareaHTMLAttributes } from "react";
-import { useI18n } from "../i18n/useI18n";
+import { useRef, useState, type TextareaHTMLAttributes } from 'react'
+import { useI18n } from '../i18n/useI18n'
 
 /**
  * A box for many words, with the limit and everything the portal says about it.
@@ -24,23 +24,23 @@ export function LongBox({
   onChange,
   ...rest
 }: {
-  value: string;
+  value: string
   /** How many characters the box will hold, or nothing where the definition
    *  named none. Every definition on the portal names one (definitions.test.ts)
    *  and the renderer is handed a definition and is in no position to insist,
    *  so the counting is drawn only where there is something to count down
    *  from. */
-  maxLength: number | undefined;
+  maxLength: number | undefined
   /** The id of the line that counts the room down, which the field points at
    *  with `aria-describedby`: the count is read on the way in rather than left
    *  to whoever can see it. */
-  leftId: string;
-  onChange: (next: string) => void;
+  leftId: string
+  onChange: (next: string) => void
 } & Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
-  "value" | "maxLength" | "onChange" | "onPaste" | "rows"
+  'value' | 'maxLength' | 'onChange' | 'onPaste' | 'rows'
 >) {
-  const { t } = useI18n();
+  const { t } = useI18n()
   /**
    * How many characters the last paste lost.
    *
@@ -53,7 +53,7 @@ export function LongBox({
    * Kept here rather than worked out from the value, because after the event
    * there is nothing to work it out from: what was dropped never reached React.
    */
-  const [dropped, setDropped] = useState(0);
+  const [dropped, setDropped] = useState(0)
   /**
    * Whether the change about to arrive is the paste's own.
    *
@@ -62,11 +62,11 @@ export function LongBox({
    * ever sees it. This lets that one change through and clears on the next,
    * which is the first thing the writer does themselves.
    */
-  const fromPaste = useRef(false);
+  const fromPaste = useRef(false)
   /** Whether the box will take no more. One sentence hangs off it in three
    *  places, and reading it three times from three copies of the same
    *  comparison is how the three drift apart. */
-  const atTheLimit = maxLength !== undefined && value.length >= maxLength;
+  const atTheLimit = maxLength !== undefined && value.length >= maxLength
 
   return (
     <>
@@ -76,19 +76,15 @@ export function LongBox({
            being a box and becomes the screen: the page editor holds eight
            thousand characters, which at sixty to a line is a hundred and
            thirty-four rows. */
-        rows={
-          maxLength === undefined
-            ? undefined
-            : Math.min(10, Math.ceil(maxLength / 60))
-        }
+        rows={maxLength === undefined ? undefined : Math.min(10, Math.ceil(maxLength / 60))}
         value={value}
         maxLength={maxLength}
         /* What the browser is about to throw away, counted before it does. The
            room is what the limit leaves, plus whatever the paste is replacing:
            pasting over the whole box is not an overflow. */
         onPaste={(event) => {
-          const box = event.currentTarget;
-          const replacing = box.selectionEnd - box.selectionStart;
+          const box = event.currentTarget
+          const replacing = box.selectionEnd - box.selectionStart
           /* Never below nought. A record can be longer than the limit that was
              put on the field after it was written, and a negative room would
              report the whole of that overrun as something this paste lost.
@@ -96,34 +92,29 @@ export function LongBox({
              No limit at all is unbounded room, which is what `Infinity` says:
              absence has a meaning here rather than standing in for a value
              nobody worked out (ADL A14, rule 2). */
-          const room = Math.max(
-            0,
-            (maxLength ?? Infinity) - value.length + replacing,
-          );
+          const room = Math.max(0, (maxLength ?? Infinity) - value.length + replacing)
           /* Line endings as the box will hold them. The clipboard carries CR LF
              on Windows and a textarea keeps LF, so counting the clipboard as it
              comes charges the writer one character per line for something the
              box never had. */
-          const brought = event.clipboardData
-            .getData("text")
-            .replace(/\r\n/g, "\n").length;
+          const brought = event.clipboardData.getData('text').replace(/\r\n/g, '\n').length
 
           /* Raised only where the paste will actually deliver a change, so a
              flag left standing does not eat the writer's next keystroke
              instead. A paste into a box with no room is refused whole and
              nothing follows it; a paste over a selection always changes the box,
              because the selection goes even when nothing takes its place. */
-          fromPaste.current = brought > 0 && (room > 0 || replacing > 0);
-          setDropped(Math.max(0, brought - room));
+          fromPaste.current = brought > 0 && (room > 0 || replacing > 0)
+          setDropped(Math.max(0, brought - room))
         }}
         onChange={(event) => {
           if (fromPaste.current) {
-            fromPaste.current = false;
+            fromPaste.current = false
           } else {
-            setDropped(0);
+            setDropped(0)
           }
 
-          onChange(event.target.value);
+          onChange(event.target.value)
         }}
       />
 
@@ -143,15 +134,15 @@ export function LongBox({
             wall is the region at the bottom of this block. */}
           <p className="field__left" id={leftId} aria-hidden="true">
             {atTheLimit
-              ? t("registration.bioFull", { count: maxLength })
-              : t("registration.bioLeft", { count: maxLength - value.length })}
+              ? t('registration.bioFull', { count: maxLength })
+              : t('registration.bioLeft', { count: maxLength - value.length })}
           </p>
 
           {/* What the last paste lost. Said in full, in its own words, and not left
             to be worked out from a counter that has gone to zero. */}
           {dropped > 0 && (
             <p className="field__dropped" aria-hidden="true">
-              {t("form.pasteCut", { count: dropped })}
+              {t('form.pasteCut', { count: dropped })}
             </p>
           )}
 
@@ -169,13 +160,11 @@ export function LongBox({
             and a description is read whether or not the element carrying it is
             hidden. */}
           <p className="visually-hidden" role="status">
-            {dropped > 0 ? t("form.pasteCut", { count: dropped }) : ""}
-            {dropped === 0 && atTheLimit
-              ? t("registration.bioFull", { count: maxLength })
-              : ""}
+            {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
+            {dropped === 0 && atTheLimit ? t('registration.bioFull', { count: maxLength }) : ''}
           </p>
         </>
       )}
     </>
-  );
+  )
 }

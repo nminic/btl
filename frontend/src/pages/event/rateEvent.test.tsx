@@ -154,7 +154,14 @@ describe('rating an event', () => {
 
     /* Read on the way into the field rather than left to whoever can see it: the
        box points at the count, so a screen reader says it on arrival. */
-    expect(box.getAttribute('aria-describedby') ?? '').toContain('comment-left')
+    /* Both halves: the rule the field is for and the room it has left, each
+       read on the way in. Without the first, the one sentence saying the comment
+       may be left out reaches nobody who cannot see it (WCAG 2.2 SC 3.3.2). */
+    expect((box.getAttribute('aria-describedby') ?? '').split(' ').sort()).toEqual([
+      'comment-hint',
+      'comment-left',
+    ])
+    expect(screen.getByText(/^Neobavezno\./)).toHaveAttribute('id', 'comment-hint')
     expect(screen.getByText(new RegExp(`^Još ${limit} znak`))).toBeVisible()
 
     await user.type(box, 'Kratko.')
@@ -405,6 +412,34 @@ describe('a comment a moderator lets out', () => {
     expect(
       within(first).getAllByRole('img', { name: `Organizacija: ${marked.rating.organisation} od 5` }),
     ).toHaveLength(1)
+  })
+
+  it('draws the marks on the comments queue and on none of the others', async () => {
+    /* A rating is about an event and the other six queues are not, so a card in
+       them carrying "Organizacija / Vrednost za novac / Ambijent / Ukupna
+       ocena: Bez ocene" is four lines of nothing on every biography, every
+       photograph and every payment. The condition was written and held nowhere:
+       drawn unconditionally, all 1384 tests passed. */
+    const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    await screen.findByRole('list', { name: /Čeka/ })
+
+    expect(screen.getAllByText('Vrednost za novac').length).toBeGreaterThan(0)
+
+    for (const [address, named] of [
+      ['biografije', 'Trkačke biografije'],
+      ['slike', 'Profilne slike'],
+      ['termini', 'Prijave promene termina'],
+    ] as const) {
+      await router.navigate(`/sr/administracija/verifikacija/${address}`)
+      /* Waited for by the name of the queue that was asked for: the list of
+         waiting items is on every one of these screens, so waiting for that
+         alone is satisfied by the screen already there. */
+      await screen.findByRole('heading', { level: 1, name: named })
+
+      expect(screen.queryAllByText('Vrednost za novac')).toEqual([])
+      expect(screen.queryAllByText('Ukupna ocena')).toEqual([])
+    }
   })
 
   it('says the same words the event page does about a comment with no marks', async () => {
