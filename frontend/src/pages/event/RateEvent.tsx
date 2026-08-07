@@ -32,7 +32,24 @@ const MARKS = ['organisation', 'value', 'ambience'] as const
  * queue a moderator reads (PDL P22), which is the same route a comment has taken
  * since the queues were written.
  */
+/**
+ * The screen, keyed by the event it is about.
+ *
+ * The router keeps one element across a change of the address's own parts, so
+ * without this the marks, the words and "it has been sent" would all survive a
+ * step from one event's rating to another's: the second screen would open
+ * carrying the first one's answers, and one press would file them under the
+ * second event. No path through the portal goes from one of these to another
+ * without an event page in between, which unmounts this; that is a fact about
+ * today's links, not about the screen.
+ */
 export function RateEvent() {
+  const { slug } = useParams()
+
+  return <RateOne key={slug} />
+}
+
+function RateOne() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   const today = useToday()

@@ -628,6 +628,24 @@ describe('what the owner asked for on 04.08.2026', () => {
     },
     {
       of: 'src/pages/Rankings.css',
+      rule: '.rankings--tooled:has(> .rankings__head-tool)',
+      /* Only where there is a control to place. The event draws none for a
+         visitor, and an unconditional grid laid the gutter beside a name with
+         nothing on the other side of it. jsdom lays nothing out, so the
+         condition is held where it is written. */
+      holds: /display:\s*grid/,
+      why: 'a row with nothing beside the heading is not a row of two',
+    },
+    {
+      of: 'src/pages/Profile.css',
+      rule: '.profile__head.rankings--tooled > h1',
+      /* Two classes, so the six pixels win on weight rather than on the order
+         two sheets landed in the bundle: the head of an event wears both. */
+      holds: /margin-block-end:\s*var\(--space-6\)/,
+      why: 'the name of an event ends where the buttons beside it end',
+    },
+    {
+      of: 'src/pages/Rankings.css',
       rule: '.rankings--tooled',
       /* The one value both boxes on that row take. Written twice instead, they
          drift apart and centring draws the control off the heading by half the
@@ -695,6 +713,16 @@ describe('what the owner asked for on 04.08.2026', () => {
          at a height nothing else on the portal uses. */
       holds: /font-size:\s*clamp\(28px, 5vw, 40px\)/,
       why: 'the name of a competitor is the size a heading is',
+    },
+    {
+      of: 'src/pages/Home.css',
+      rule: ".button[aria-disabled='true']",
+      /* Not `opacity`, which dims the focus ring with everything else: this
+         control is deliberately still in the order of focus, so somebody lands
+         on it and the ring has to be at full strength there (WCAG 2.2 SC
+         1.4.11). Muted ink and a plain border say it cannot act. */
+      holds: /color:\s*var\(--text-muted\)/,
+      why: 'a button that cannot act says so without dimming its own focus ring',
     },
     {
       of: 'src/components/Stars.css',

@@ -57,24 +57,6 @@
   cursor: not-allowed;
 }
 
-/* A control that says it cannot act rather than leaving the order of focus, so
-   the reason it points at can be reached (Pager.css says the same about the
-   paging, PendingQueue about approving).
-
-   The colours and not `opacity`, for the reason written there: opacity dims the
-   focus ring along with everything else, and this control is deliberately still
-   focusable, so the ring has to keep its full strength (WCAG 1.4.11). */
-.button[aria-disabled='true'] {
-  background: transparent;
-  color: var(--text-muted);
-  border-color: var(--border);
-  cursor: not-allowed;
-}
-
-.button[aria-disabled='true']:hover {
-  background: transparent;
-  border-color: var(--border);
-}
 
 /* Submissions and messages share a card shape. */
 

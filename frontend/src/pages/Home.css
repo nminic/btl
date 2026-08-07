@@ -101,6 +101,27 @@
   transition: background var(--fast);
 }
 
+/* A control that says it cannot act rather than leaving the order of focus, so
+   the reason it points at can be reached. The portal answers this the same way
+   in three places now (Pager.css, PendingQueue.tsx, RateEvent.tsx), so the
+   answer is written beside the button itself rather than in the sheet of
+   whichever screen asked last.
+
+   The colours and not `opacity`: opacity dims the focus ring along with
+   everything else, and a control kept in the order of focus is one somebody
+   lands on, so the ring has to keep its full strength (WCAG 2.2 SC 1.4.11). */
+.button[aria-disabled='true'] {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.button[aria-disabled='true']:hover {
+  background: transparent;
+  border-color: var(--border);
+}
+
 .button--primary {
   background: var(--accent);
   color: var(--accent-contrast);

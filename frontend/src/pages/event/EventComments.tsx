@@ -35,6 +35,15 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
   const today = useToday()
   const state = combinePair(useComments(), useCompetitors())
 
+  /* An event still to be run draws no section here at all, so while its data is
+     on its way it must not hold a box open either: the reader would watch a
+     space that resolves into nothing, and on a broken connection an alert about
+     a section that was never going to be there. The results above say the same
+     thing the same way (EventDetail.tsx). */
+  if (date > today && state.status !== 'ready') {
+    return null
+  }
+
   return (
     /* Inline, like the races and the results above it: this is a part of a
        screen and not the screen, and a sheet over the page would hide the event

@@ -54,6 +54,9 @@ const BEFORE_AHEAD = '2026-12-31'
 const AHEAD_EMPTY = 'podgoricka-desetka-2027-01-30'
 const AHEAD_EMPTY_NAME = 'Podgorička desetka'
 const ME = '000007'
+/** A second event that has been run, for the step from one rating to another. */
+const OTHER = 'ironman-70-3-st-polten-2010-05-30'
+const OTHER_NAME = 'Ironman 70.3 - St Polten'
 
 /** All three marks given, which is what the form asks for before it will send
  *  anything: the overall is their average (PDL P6), so one mark on its own would
@@ -162,6 +165,48 @@ describe('rating an event', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+  })
+
+  it('starts empty on the next event, rather than carrying the last one over', async () => {
+    /* The router keeps one element across a change of the address's own parts,
+       so the marks, the words and "it has been sent" all survived a step from
+       one event's rating to another's. One press would then have filed the
+       first event's answers under the second. */
+    const user = setupUser()
+    const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+    await screen.findByRole('group', { name: 'Organizacija' })
+    await user.type(screen.getByLabelText('Komentar'), 'Reci o prvoj trci.')
+    await rateAll(user, 4)
+
+    await router.navigate(`/sr/kalendar/${OTHER}/ocena`)
+    await screen.findByRole('heading', { level: 1, name: OTHER_NAME })
+
+    expect(screen.getByLabelText('Komentar')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Pošalji' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+      const group = screen.getByRole('group', { name: mark })
+
+      expect(within(group).queryAllByRole('radio', { checked: true })).toHaveLength(0)
+    }
+  })
+
+  it('carries nothing over after one has been sent either', async () => {
+    const user = setupUser()
+    const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+    await screen.findByRole('group', { name: 'Organizacija' })
+    await rateAll(user, 5)
+    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+    await screen.findByText('Ocena je poslata na odobrenje.')
+
+    await router.navigate(`/sr/kalendar/${OTHER}/ocena`)
+
+    expect(await screen.findByRole('group', { name: 'Organizacija' })).toBeVisible()
+    expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
   })
 
   it('says why it will not send yet, rather than leaving a dead button', async () => {
