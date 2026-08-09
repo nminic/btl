@@ -309,9 +309,9 @@ describe('a result from entry to decision', () => {
    * queue of results. */
   async function openTheQueue(user: ReturnType<typeof setupUser>) {
     await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    // The entry carries the number waiting in its name (PDL P28a), so the name
-    // is matched on the words rather than in full.
-    await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
+    /* Straight to the queue: the sectors stand beside every administrative
+       screen, so there is no road to a section to walk first. The entry carries
+       the number waiting in its name (PDL P28a). */
     await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
   }
 

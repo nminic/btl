@@ -35,6 +35,7 @@
       "description": "Deset lista iz Pravilnika: kilometri, vreme na stazi, najbolja trka, najbolji napredak, trkački parovi i trke po dužini."
     },
     "leagues": {
+    "racesUnknown": "nepoznato",
       "title": "BTL lige",
       "description": "Lige koje teku uporedo sa glavnom: koji događaji ulaze u njih i kako se grupišu takmičari."
     },
@@ -909,6 +910,8 @@
     "yes": "Da",
     "no": "Ne",
     "ducats": "Dukati",
+    "racesOf": "Trke na događaju {event}",
+    "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
     "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
@@ -998,6 +1001,7 @@
       "sectionHeading": "Naslov prve sekcije",
       "sectionBody": "Tekst prve sekcije",
       "email": "Adresa elektronske pošte",
+      "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
       "eventSlug": "Adresa događaja",
       "teamSlug": "Adresa tima"
     },
@@ -1127,10 +1131,8 @@
       "entity": {
         "members": "uređivanje članova",
         "events": "uređivanje događaja",
-        "races": "uređivanje trka",
         "teams": "uređivanje timova",
         "leagues": "uređivanje liga",
-        "ducats": "uređivanje dukata",
         "pricing": "uređivanje cenovnika",
         "pages": "uređivanje statičnih strana"
       },

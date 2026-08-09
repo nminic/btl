@@ -186,14 +186,13 @@ describe('copying an event', () => {
        off the copy, so next season's weekend is last season's weekend with the
        date moved rather than five races typed again.
 
-       Counted on the screen of races, before and after, and that counting is
-       the whole proof. That screen searches by the name of a race and the name
-       of its event, so a copied race whose event cannot be found matches neither:
-       its own name is a distance and its event's name is empty. Read the way it
-       was written first, by looking for rows that name the event, it passed with
-       the fix taken out, because the originals name the event too. */
+       Counted under the copy itself, which is where a race is now seen at all
+       (owner, 06.08.2026): a copied race that answers to no event is a race no
+       screen on the portal draws, so the count under the copy is the whole
+       proof. */
     const user = setupUser()
-    const { router } = await openEvent('superadmin')
+
+    await openEvent('superadmin')
 
     const races = within(await screen.findByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
@@ -201,20 +200,6 @@ describe('copying an event', () => {
 
     expect(races).toBeGreaterThan(1)
 
-    const found = async () => {
-      const box = await screen.findByPlaceholderText(/Traži po nazivu/)
-
-      await user.clear(box)
-      await user.type(box, 'Maraton maratona')
-
-      return within(await screen.findByRole('table')).getAllByRole('row').slice(1).length
-    }
-
-    await router.navigate('/sr/administracija/trke')
-    const before = await found()
-
-    await router.navigate(EVENT)
-    await screen.findByRole('button', { name: 'Kopiranje' })
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
     const date = await screen.findByLabelText(/Datum/)
@@ -222,13 +207,27 @@ describe('copying an event', () => {
     await user.type(date, '14032027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    await router.navigate('/sr/administracija/trke')
+    /* The copy, found by name and then by the day it was moved to: the list
+       opens on what is still ahead and keeps sixty rows, and a copy made for
+       March 2027 is not among the first sixty of those. */
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Maraton maratona')
 
-    /* Every race of the event, and every one of them naming its event. With the
-       screen reading events off the file the copies answer to no event at all,
-       and this number does not move. */
-    expect(await found()).toBe(before + races)
+    const events = within(await screen.findByRole('table', { name: 'Događaji' }))
+    const copy = must(
+      events
+        .getAllByRole('row')
+        .slice(1)
+        .find((row) => (row.textContent ?? '').includes('2027')),
+      'the copied event in the list',
+    )
+
+    await user.click(within(copy).getByRole('button', { name: /^Otvori:/ }))
+
+    const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+
+    expect(under.getAllByRole('row').slice(1)).toHaveLength(races)
   })
 
   it('gives a second copy an identity of its own', async () => {

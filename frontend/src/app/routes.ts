@@ -91,7 +91,6 @@ const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'administracija/cenovnik', labelKey: 'admin.pricing', seoKey: 'adminPricing' },
   { path: 'administracija/clanovi', labelKey: 'admin.members', seoKey: 'adminMembers' },
   { path: 'administracija/dogadjaji', labelKey: 'admin.events', seoKey: 'adminEvents' },
-  { path: 'administracija/trke', labelKey: 'admin.races', seoKey: 'adminRaces' },
   { path: 'administracija/timovi', labelKey: 'admin.teams', seoKey: 'adminTeams' },
   { path: 'administracija/lige', labelKey: 'admin.leagues', seoKey: 'adminLeagues' },
   { path: 'administracija/strane', labelKey: 'admin.pages', seoKey: 'adminPages' },
@@ -122,7 +121,6 @@ export const EXTRA_ADDRESSES: Address[] = [
   /* Reached from the section of records rather than from the navigation of the
      administration, which offered it twice (owner, 01.08.2026). It is still an
      address and still needs a name. */
-  { path: 'administracija/dukati', seoKey: 'adminDucats' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },

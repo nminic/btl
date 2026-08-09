@@ -69,7 +69,7 @@ describe('every box in the matrix', () => {
     const user = setupUser()
     renderAt('/sr/administracija/moderatori', 'superadmin')
 
-    const given = 'Milena Šarić, uređivanje trka'
+    const given = 'Milena Šarić, uređivanje timova'
     const taken = 'Jelena Radulović, odlučivanje o rezultatima'
 
     await user.click((await matrix()).getByRole('checkbox', { name: given }))
@@ -114,7 +114,7 @@ describe('a moderator with no right at all', () => {
     renderAt('/sr/administracija/moderatori', 'superadmin')
 
     await user.click(
-      (await matrix()).getByRole('checkbox', { name: 'Milena Šarić, uređivanje trka' }),
+      (await matrix()).getByRole('checkbox', { name: 'Milena Šarić, uređivanje timova' }),
     )
 
     const row = within((await matrix()).getByRole('rowheader', { name: /Milena Šarić/ }))

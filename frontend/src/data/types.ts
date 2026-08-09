@@ -70,8 +70,13 @@ export type BtlEvent = {
   country: string
   organizer: string
   status: EventStatus
-  raceIds: string[]
 }
+
+/* An event does not list its races. It did, in `raceIds`, and the same link was
+   written a second time on the race itself: two records of one fact drift apart
+   the moment one is written and the other is not, which is what happened to
+   every race entered by hand. The race says which event it belongs to and that
+   is the whole of it (ADL A7, 06.08.2026). */
 
 export type Result = {
   id: string

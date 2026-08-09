@@ -236,12 +236,23 @@ export function RowActions({
   record,
   name,
   onOpen,
+  alsoRemove,
 }: {
   entity: EntityDef
   record: object
   /** What the row is called, for both accessible names. */
   name: string
   onOpen: () => void
+  /**
+   * What goes with the record, where something does.
+   *
+   * An event carries its races: a race is one length of that morning and is
+   * defined inside it (owner, 06.08.2026), so an event deleted without them
+   * leaves races belonging to nothing, and nothing on the portal shows a race
+   * outside its event any more. Handed in rather than worked out here, because
+   * what belongs to what is a fact about the screen's own data.
+   */
+  alsoRemove?: () => void
 }) {
   const { remove } = useSession()
   const id = String((record as Record<string, unknown>)[entity.idField])
@@ -258,6 +269,7 @@ export function RowActions({
       anchor.focus()
     }
 
+    alsoRemove?.()
     remove(entity.id, id)
   }
 

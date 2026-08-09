@@ -4,9 +4,11 @@ import { Resource } from '../../components/Resource'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, recordsOf, type Editing } from './entityForms'
+import { EventRaces } from './EventRaces'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 import { useFilterParams } from '../../app/useFilterParams'
@@ -16,10 +18,14 @@ import { useFilterParams } from '../../app/useFilterParams'
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
+  const { remove } = useSession()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
   /** What was opened by pressing something on this screen. */
   const [chosen, setChosen] = useState<Editing | null>(null)
+  /** Which race of the open event is being edited, if any. Held here because
+   *  the event's own form is put away while one is. */
+  const [race, setRace] = useState<Editing | null>(null)
   const state = combinePair(useEvents(), useRaces())
   const today = useToday()
   /**
@@ -63,8 +69,19 @@ export function AdminEvents() {
           const editing: Editing | null =
             chosen ?? (wanted === undefined ? null : { mode: 'one', record: wanted })
 
+          /* The record the form is open on, as the event it is, so its races
+             can be looked up. Found in the list rather than taken off the form's
+             own record: the form carries what was handed to it, and the list is
+             what the overlay has since made of it. */
+          const openEvent =
+            editing === null || editing.mode === 'new'
+              ? undefined
+              : all.find((one) => one.id === String(editing.record[EVENTS.idField]))
+
           if (editing !== null) {
             return (
+              <>
+              {race === null && (
               <EntityEditor
                 entity={EVENTS}
                 editing={editing}
@@ -75,11 +92,29 @@ export function AdminEvents() {
                 openAt={chosen === null && asked !== null ? 'date' : undefined}
                 onDone={() => {
                   setChosen(null)
+                  setRace(null)
                   /* And the address forgets it, so leaving the form and coming
                      back to this screen does not open it again. */
                   setParams({}, { replace: true })
                 }}
               />
+              )}
+
+              {/* And its races, under the form that names it. A race is one
+                  length of one morning and belongs to the event it is run at
+                  (owner, 06.08.2026); it had a screen of its own, where finding
+                  the event meant searching a list of eleven hundred. Only on a
+                  record that exists: a new event has no identity to hang a race
+                  on until it is saved. */}
+              {openEvent !== undefined && (
+                <EventRaces
+                  event={openEvent}
+                  races={allRaces}
+                  editing={race}
+                  setEditing={setRace}
+                />
+              )}
+              </>
             )
           }
 
@@ -157,6 +192,14 @@ export function AdminEvents() {
                             record={one}
                             name={one.name}
                             onOpen={() => setChosen({ mode: 'one', record: one })}
+                            /* With its races. They are defined inside it and are
+                               shown nowhere else, so an event deleted alone
+                               leaves them belonging to nothing and invisible. */
+                            alsoRemove={() => {
+                              for (const race of allRaces.filter((each) => each.eventId === one.id)) {
+                                remove(RACES.id, race.id)
+                              }
+                            }}
                           />
                         </td>
                       </tr>

@@ -112,13 +112,11 @@ export function mayOpen(need: Need, role: Role, may: (right: string) => boolean)
   }
 
   if (need.of === 'anyEntity') {
-    /* The ones the section actually holds, which is not all of them: an entity
-       whose rows are fixed is not in it (entityForms.ts). Counting it here
-       offered "Entiteti" to a moderator whose one entity right is the price
-       list, and the section it opened was empty. */
-    return ENTITY_FORMS.some(
-      (entity) => entity.fixed !== true && mayOpen(needForEntity(entity), role, may),
-    )
+    /* Every one of them, the price list included since it joined the section
+       (mayOpen.ts). It used to be left out here too, and had to be, because a
+       moderator whose one entity right was the price list was offered a section
+       that opened empty. */
+    return ENTITY_FORMS.some((entity) => mayOpen(needForEntity(entity), role, may))
   }
 
   return need.of === 'staff' || may(need.right.key)

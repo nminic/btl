@@ -121,7 +121,7 @@ export const EVENTS: EntityDef = {
   path: 'administracija/dogadjaji',
   form: dogadjaj as FormDef,
   idField: 'id',
-  blank: { raceIds: [] },
+  blank: {},
   /**
    * The address the event answers at, from its name and its day.
    *
@@ -171,6 +171,26 @@ export function eventSlug(name: string, date: string): string {
  * beside the distance, which let a marathon be saved as a short race and made
  * the board of most marathons lie.
  */
+/** The category, read off the distance. Its own function because two definitions
+ *  share it: the races, and the races of one event (`racesOf`). */
+function categoryFrom(values: FormValues): DerivedValue[] {
+  /* Words and an empty field both come out as not a number, and every
+     comparison against that is false, so one comparison covers both. */
+  const distance = Number(String(values.distanceKm))
+  const known = distance > 0
+  const category = known ? categoryOf(distance) : ''
+
+  return [
+    {
+      name: 'category',
+      labelKey: 'admin.field.category',
+      hintKey: 'admin.hint.category',
+      value: category,
+      shownKey: known ? `category.${category}` : 'admin.field.categoryFromDistance',
+    },
+  ]
+}
+
 export const RACES: EntityDef = {
   id: 'races',
   labelKey: 'admin.races',
@@ -178,23 +198,40 @@ export const RACES: EntityDef = {
   form: trka as FormDef,
   idField: 'id',
   blank: {},
-  derived: (values) => {
-    /* Words and an empty field both come out as not a number, and every
-       comparison against that is false, so one comparison covers both. */
-    const distance = Number(String(values.distanceKm))
-    const known = distance > 0
-    const category = known ? categoryOf(distance) : ''
+  derived: categoryFrom,
+}
 
-    return [
+/**
+ * The races of one event, as the event's own screen edits them.
+ *
+ * The same records as `RACES`, minus the one question the screen has already
+ * answered: which event this is. A race is one length of one morning and is
+ * defined inside its event (owner, 06.08.2026), so offering a list of one
+ * thousand events beside it is offering a wrong answer.
+ *
+ * The event is written on the record all the same, through `derived`, which is
+ * where everything that is not asked for is written (the address of an event,
+ * the category of a race). The link lives on the race and nowhere else, so this
+ * is the only place it is set.
+ */
+export function racesOf(eventId: string, eventName: string): EntityDef {
+  return {
+    ...RACES,
+    form: {
+      ...RACES.form,
+      fields: RACES.form.fields.filter((field) => field.name !== 'eventId'),
+    },
+    derived: (values) => [
+      ...categoryFrom(values),
       {
-        name: 'category',
-        labelKey: 'admin.field.category',
-        hintKey: 'admin.hint.category',
-        value: category,
-        shownKey: known ? `category.${category}` : 'admin.field.categoryFromDistance',
+        name: 'eventId',
+        labelKey: 'admin.field.event',
+        hintKey: 'admin.hint.eventFromScreen',
+        value: eventId,
+        shownKey: eventName,
       },
-    ]
-  },
+    ],
+  }
 }
 
 export const TEAMS: EntityDef = {
@@ -305,16 +342,27 @@ export const MODERATORS: EntityDef = {
 }
 
 /** All nine, so a test can walk them and nothing can be half added. */
+/**
+ * Every entity with a screen of its own, in the order the section lists them
+ * (owner, 06.08.2026).
+ *
+ * The races are not among them: a race is one length of one morning and is
+ * edited inside its event, which is the only place that knows which event it
+ * is. Its definition stands above all the same, because the form is the same
+ * form (`racesOf`).
+ *
+ * Nor are the ducats: they are a catalogue in the rulebook and a collection on
+ * a profile (PDL P11), and the definitions behind them are not something
+ * administration edits day to day.
+ */
 export const ENTITY_FORMS: EntityDef[] = [
   MEMBERS,
   EVENTS,
-  RACES,
   TEAMS,
   LEAGUES,
-  DUCATS,
-  PRICING,
   PAGES,
   MODERATORS,
+  PRICING,
 ]
 
 /** What the editor is open on: a record being changed, or a new one. */

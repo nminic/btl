@@ -270,15 +270,15 @@ describe('calendar helpers', () => {
      March" says which one that is where an index only says where it sits. */
   const sixthOfMarch: BtlEvent = {
     id: 'a', slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
-    organizer: 'x', status: 'confirmed', raceIds: [],
+    organizer: 'x', status: 'confirmed',
   }
   const secondOfMarch: BtlEvent = {
     id: 'b', slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
-    organizer: 'x', status: 'announced', raceIds: [],
+    organizer: 'x', status: 'announced',
   }
   const tenthOfApril: BtlEvent = {
     id: 'c', slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
-    organizer: 'x', status: 'announced', raceIds: [],
+    organizer: 'x', status: 'announced',
   }
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
@@ -321,8 +321,8 @@ describe('calendar helpers', () => {
 
 describe('defaultMonth', () => {
   const events: BtlEvent[] = [
-    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed', raceIds: [] },
-    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed', raceIds: [] },
+    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed' },
+    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed' },
   ]
 
   it('opens on the first month from today onwards that holds something', () => {

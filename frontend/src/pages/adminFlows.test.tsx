@@ -8,13 +8,11 @@ import { SessionContext, type SessionValue, type SubmissionStatus } from '../ses
 import { at, first, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-import { Admin } from './admin/Admin'
 import { ruleSentence, type DucatRule } from '../data/ducatRule'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
 import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
-import { RIGHTS } from './admin/rights'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import {
@@ -26,11 +24,7 @@ import {
   RECIPIENT_NAME,
 } from '../data/paymentQr'
 
-/** A session holding results in the states the panel has to tell apart. */
-/** Every box in the matrix ticked, for the tests about a screen doing its
- *  work rather than about what a limited moderator runs into. */
-const EVERY_RIGHT = RIGHTS.map((right) => right.key)
-
+/** A session holding results in the states the queue has to tell apart. */
 function sessionWith(states: SubmissionStatus[]): SessionValue {
   return {
     memberNumber: '000007',
@@ -133,48 +127,35 @@ describe('administration is closed to everyone else', () => {
 })
 
 describe('the panel', () => {
-  it('counts what is waiting and leads to every screen', async () => {
+  it('carries no content of its own, and the work stands beside it', async () => {
+    /* Four counts and three links stood here, and every one of them said again
+       what the navigation beside it says: the number waiting is on each queue
+       and on the bell in the header, and the links led to the two sectors, which
+       are the navigation itself (owner, 06.08.2026). */
     renderAt('/sr/administracija', 'moderator')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Administracija' })).toBeVisible()
-    expect(screen.getByText('Čeka proveru')).toBeVisible()
-    /* Ducats are edited from the section of records like the other eight, so
-       the panel no longer offers a road of its own to them (owner, 01.08.2026).
-       What it offers is the two sections and the price list, which is in neither
-       of them and lost its place in the header when the navigation lost its
-       groups (owner, 04.08.2026). */
-    expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
+    expect(screen.queryByText('Čeka proveru')).toBeNull()
+
+    /* What is here instead: one navigation of two sectors, on this address as on
+       every other administrative one, so nobody arrives at a dead end. The price
+       list is one of its entries now rather than a road of its own. */
+    expect(screen.getByRole('button', { name: 'Podaci' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Verifikacija' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Cenovnik' })).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Dukati' })).not.toBeInTheDocument()
   })
 
-  it('counts everything that is waiting, not results alone', async () => {
-    render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          {/* Named, and holding everything: "a moderator" is nobody, and nobody
-              holds no rights and therefore reaches no queue (rights.ts). */}
-          <RoleProvider initialRole="moderator" initialModerator={moderatorWith(EVERY_RIGHT)}>
-            <SessionContext.Provider value={sessionWith(['pending', 'pending', 'approved'])}>
-              <Admin />
-            </SessionContext.Provider>
-          </RoleProvider>
-        </MemoryRouter>
-      </I18nProvider>,
-    )
+  it('counts what is waiting in one place, and the header says the same', async () => {
+    /* The panel used to carry a tile of its own with the same sum on it, which
+       is two numbers on one screen and the thing PDL P28a forbids. It is gone
+       (owner, 06.08.2026); what is left is the header, and beside every queue
+       the number waiting in it. The sum is exact because the data is fixed: an
+       "at least" here would survive the counter losing a whole queue. */
+    renderAt('/sr/administracija/verifikacija/rezultati', 'superadmin')
 
-    const waiting = must((await screen.findByText('Čeka proveru')).closest('div'), 'div')
-    /* Two results are waiting, three memberships, and fifteen items in the six
-       queues read from the file. The tile counted the two while the navigation
-       counted the lot, which is two numbers disagreeing on one screen. The sum
-       is exact because the data is fixed: an "at least" here would survive the
-       counter losing a whole queue.
+    const said = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })
 
-       The moderator holds every right here, so the panel counts all eight. One
-       who held fewer would see fewer, which is the point of the number: it is
-       the work he can actually reach (owner, 30.07.2026). */
-    expect(within(waiting).getByRole('definition')).toHaveTextContent('20')
+    expect(said).toHaveAccessibleName('Administracija, 18 na čekanju')
   })
 })
 
@@ -265,13 +246,17 @@ describe('the price list', () => {
     }
   })
 
-  it('stands beside the sections rather than inside the entities', async () => {
+  it('stands in Podaci with the rest of the records', async () => {
+    /* It was outside both sections, because nothing is created or removed on it
+       and the section was about creating and removing. What that produced was a
+       screen in no section, which the panel had to link to because nothing else
+       did. The section is Podaci now, and a price list is data (owner,
+       06.08.2026). */
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     await screen.findByRole('table', { name: 'Cenovnik' })
 
-    // Nothing is created or removed on it, which is what the section is for.
-    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Odeljak Podaci' })).toBeVisible()
   })
 
   it('changes what a period costs and what it is called, and nothing else', async () => {
@@ -300,49 +285,6 @@ describe('the price list', () => {
     expect(table.getByText('33')).toBeVisible()
     // And the period it belongs to is where it was.
     expect(table.getByText('1.10. - 5.10.')).toBeVisible()
-  })
-})
-
-/** The sentence the rule tryer reads back. It lives in a live region of its own,
- *  which is what tells it apart from the same sentence on a ducat in the table
- *  above it. */
-const sentence = () => screen.getByRole('status', { name: 'Proba pravila' })
-
-describe('the ducat rule editor', () => {
-  it('builds a rule from closed lists and reads it back as a sentence', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/dukati', 'superadmin')
-
-    await screen.findByLabelText('Vrsta')
-    expect(sentence()).toHaveTextContent(/broj trka bude najmanje 10/)
-
-    // "Vrsta", not "Veličina" (PDL P28a, 30.07.2026).
-    await user.selectOptions(screen.getByLabelText('Vrsta'), 'totalKm')
-
-    expect(sentence()).toHaveTextContent(/ukupno kilometara bude najmanje 10/)
-  })
-
-  /* There is no operator to choose any more: the condition is always "at least"
-     (PDL, 30.07.2026), so the only closed list left is the kind. */
-  it('offers no way to write a condition by hand', async () => {
-    renderAt('/sr/administracija/dukati', 'superadmin')
-
-    await screen.findByLabelText('Vrsta')
-    // A free text box here is the shortest path to running code on the server.
-    expect(screen.getByLabelText('Vrsta').tagName).toBe('SELECT')
-    expect(screen.queryByLabelText('Uslov')).not.toBeInTheDocument()
-  })
-
-  /* Three of the kinds read one race rather than a season (PDL P28a,
-     30.07.2026), and the sentence has to stay a sentence when one of them is
-     chosen. */
-  it('reads a rule about a single race back as a sentence too', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/dukati', 'superadmin')
-
-    await user.selectOptions(await screen.findByLabelText('Vrsta'), 'bestRaceKm')
-
-    expect(sentence()).toHaveTextContent(/najviše kilometara na jednoj trci bude najmanje 10/)
   })
 })
 
@@ -612,39 +554,6 @@ describe('payment payloads', () => {
   })
 })
 
-describe('the ducat rule dates', () => {
-  it('narrows the rule to a range and back again', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/dukati', 'superadmin')
-
-    /* The superadmin types the dates the way a date field takes them and reads
-       back the sentence the member will read, so no date in it is an ISO string
-       (PDL P28a, 30.07.2026). */
-    await user.type(await screen.findByLabelText('Od datuma'), '2027-01-01')
-    expect(sentence()).toHaveTextContent(/računato od 1\. 1\. 2027\., bez kraja/)
-
-    // Both ends now, and together they are a whole year, so the sentence says
-    // the year rather than reciting the first and the last day of it.
-    await user.type(screen.getByLabelText('Do datuma'), '2027-12-31')
-    expect(sentence()).toHaveTextContent(/računato za 2027\./)
-    expect(sentence()).not.toHaveTextContent('2027-01-01')
-
-    await user.clear(screen.getByLabelText('Od datuma'))
-    expect(sentence()).toHaveTextContent(/računato do 31\. 12\. 2027\./)
-  })
-
-  it('takes a value that is typed rather than chosen', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/dukati', 'superadmin')
-
-    const value = await screen.findByLabelText('Vrednost')
-    await user.clear(value)
-    await user.type(value, '42')
-
-    expect(sentence()).toHaveTextContent(/bude najmanje 42/)
-  })
-})
-
 describe('an empty queue', () => {
   it('says so and offers no decisions', async () => {
     renderAt('/sr/administracija/verifikacija/rezultati', 'moderator')
@@ -871,8 +780,8 @@ describe('verification', () => {
        every queue at once, so the one result is checked on its own row. */
     expect(screen.getByRole('link', { name: /^Administracija, \d+ na čekanju$/ })).toBeVisible()
 
-    await user.click(await screen.findByRole('link', { name: 'Verifikacija' }))
-
+    /* The sector is a navigation of its own now, so its entries stand beside
+       every administrative screen rather than behind a road to a section. */
     const results = await screen.findByRole('link', { name: /Rezultati/ })
     expect(within(results).getByText('1')).toBeVisible()
   })
@@ -1014,7 +923,7 @@ describe('verification', () => {
 
       /* No number in the name of the way in, and none beside it. */
       expect(screen.getByRole('link', { name: 'Administracija' })).toBeVisible()
-      expect(screen.getByRole('link', { name: 'Verifikacija' })).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Verifikacija' })).toBeVisible()
     } finally {
       vi.stubGlobal('fetch', served)
     }
@@ -1213,7 +1122,6 @@ describe('the queue of memberships waiting to be activated', () => {
 
     // The same visit, walked the way an administrator walks it: no reload.
     await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    await user.click(screen.getByRole('link', { name: 'Podaci' }))
     await user.click(await screen.findByRole('link', { name: 'Članovi' }))
 
     await user.click(await screen.findByRole('button', { name: 'Novi član' }))
@@ -1750,24 +1658,34 @@ describe('the section of entities', () => {
   }
 
   it('offers every entity administration owns, screen or not', async () => {
-    /* Eight, not nine: the price list left the section on 30.07.2026, because
-       nothing is created or removed on it and that is what the section is. */
+    /* Seven, in the order the owner gave them (06.08.2026). The price list is
+       among them now; it was outside both sections, because nothing is created
+       or removed on it, which left it an address the panel had to link to. The
+       races are not: a race is edited inside its event. Nor are the ducats,
+       which are a catalogue in the rulebook and a collection on a profile. */
     const names = [
       'Članovi',
       'Događaji',
-      'Trke',
       'Timovi',
       'Lige',
-      'Dukati',
       'Statične strane',
       'Moderatori',
+      'Cenovnik',
     ]
 
     await openSection()
-    /* Eight written out, not counted with the predicate under test: an entity
-       wrongly marked fixed would have satisfied that quietly. */
-    expect(names).toHaveLength(8)
-    expect(ENTITIES).toHaveLength(9)
+    /* Written out and not counted off the list under test: an entity that fell
+       out of it would have satisfied a count taken from itself. */
+    expect(names).toHaveLength(7)
+    expect(ENTITIES.map((one) => one.id)).toEqual([
+      'members',
+      'events',
+      'teams',
+      'leagues',
+      'pages',
+      'moderators',
+      'pricing',
+    ])
 
     const nav = sectionNav()
 
@@ -1921,29 +1839,33 @@ describe('the section of entities', () => {
     await expectFrontPage()
   })
 
-  it('puts the list away when the section is left by any other road', async () => {
+  it('puts the list away when the screen is left by any other road', async () => {
     /* Following an entry used to be the only thing that closed it, so leaving by
        the header menu or by the browser's back button left the panel standing
-       over whatever came next. It is now open at an address rather than open,
-       so going anywhere at all closes it. */
+       over whatever came next. It is open at an address rather than open, so
+       going anywhere at all closes it.
+
+       Read on the sector's own button rather than on the presence of the
+       navigation: both sectors stand beside every administrative screen since
+       06.08.2026, so what changes is whether the list under one of them is
+       unfolded. */
     const user = setupUser()
     await openSection()
 
     await user.click(screen.getByRole('button', { name: 'Podaci' }))
 
+    expect(screen.getByRole('button', { name: 'Podaci' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+
     // Through the header rather than through the panel, which is the road that
     // used to leave it standing open.
     await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    /* By a pattern, because the count of what is waiting is part of the name of
-       that link: "Verifikacija, 17 na čekanju". */
-    await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
-    await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' })
 
-    /* Verifikacija and not Cenovnik: the price list sits outside the section of
-       records, so the section is gone there whatever the code does and the
-       assertion would hold with the behaviour entirely broken. Verifikacija is
-       the other section, so the panel of this one has to be put away rather than
-       be absent by construction. */
-    expect(screen.queryByRole('navigation', { name: 'Odeljak Podaci' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Podaci' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 })

@@ -1,0 +1,104 @@
+import { useI18n } from '../../i18n/useI18n'
+import type { BtlEvent, Race } from '../../data/types'
+import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
+import { racesOf, type Editing } from './entityForms'
+
+/**
+ * The races of one event, on the event's own screen.
+ *
+ * A race is one length of one morning, so it is defined inside the event and
+ * nowhere else (owner, 06.08.2026). It had a screen of its own, which meant a
+ * list of one thousand one hundred and eighty-seven rows opened in order to
+ * find the event somebody already had open, and a race made there could be
+ * saved against the wrong one.
+ *
+ * Which event it belongs to is therefore not asked. The screen already answers
+ * that, and a question whose answer is on the page above it is a question with
+ * a wrong answer available (entityForms.ts, `racesOf`).
+ */
+export function EventRaces({
+  event,
+  races,
+  editing,
+  setEditing,
+}: {
+  event: BtlEvent
+  races: Race[]
+  /** Which race is open, held by the screen above rather than here: while one
+   *  is open the event's own form is put away, and two forms with two save
+   *  buttons on one screen is two questions asked at once. */
+  editing: Editing | null
+  setEditing: (editing: Editing | null) => void
+}) {
+  const { t } = useI18n()
+  const entity = racesOf(event.id, event.name)
+  const mine = races
+    .filter((race) => race.eventId === event.id)
+    .sort((left, right) => left.distanceKm - right.distanceKm)
+
+  if (editing !== null) {
+    return (
+      <section className="entity-races" aria-labelledby="races-of-event">
+        <h2 id="races-of-event" className="profile__section">
+          {t('admin.racesOf', { event: event.name })}
+        </h2>
+
+        <EntityEditor entity={entity} editing={editing} onDone={() => setEditing(null)} />
+      </section>
+    )
+  }
+
+  return (
+    <section className="entity-races" aria-labelledby="races-of-event">
+      <h2 id="races-of-event" className="profile__section">
+        {t('admin.racesOf', { event: event.name })}
+      </h2>
+
+      <EntityBar entity={entity} onNew={() => setEditing({ mode: 'new' })} />
+
+      {mine.length === 0 ? (
+        /* Said rather than left as an empty table. An event with no races yet is
+           the ordinary state of one entered a fortnight before its distances are
+           known (reportResult.test), not a fault. */
+        <p className="profile__empty">{t('admin.noRaces')}</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="table">
+            <caption className="visually-hidden">
+              {t('admin.racesOf', { event: event.name })}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">{t('admin.raceName')}</th>
+                <th scope="col">{t('event.distance')}</th>
+                <th scope="col">{t('event.ascent')}</th>
+                <th scope="col">{t('event.descent')}</th>
+                <th scope="col">{t('event.category')}</th>
+                <th scope="col">{t('admin.form.record')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mine.map((race) => (
+                <tr key={race.id}>
+                  <td>{race.name}</td>
+                  <td>{race.distanceKm}</td>
+                  <td>{race.ascentM}</td>
+                  <td>{race.descentM}</td>
+                  <td>{t(`category.${race.category}`)}</td>
+                  <td>
+                    <RowActions
+                      entity={entity}
+                      record={race}
+                      name={race.name}
+                      onOpen={() => setEditing({ mode: 'one', record: race })}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}

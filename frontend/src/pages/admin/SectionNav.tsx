@@ -42,7 +42,6 @@ function Section({
   /** Said out loud beside the numbers when they cannot be trusted, and nothing
    *  where the section has no numbers. */
   alarm,
-  children,
 }: {
   title: string
   /** Names the panel the button opens, and nothing else. The section itself has
@@ -51,7 +50,6 @@ function Section({
   id: string
   items: SectionItem[]
   alarm?: ReactNode
-  children: ReactNode
 }) {
   const { locale, t } = useI18n()
   const { pathname } = useLocation()
@@ -65,7 +63,7 @@ function Section({
   const panelId = `section-${id}`
 
   return (
-    <div className="adminsection">
+    <>
       {/* The landmark is named apart from the entry that leads to the section,
           so somebody moving landmark by landmark does not hear the same word
           three times over. */}
@@ -131,20 +129,10 @@ function Section({
           {alarm}
         </div>
       </nav>
-
-      {/* Keyed by the address, so moving from one queue to the next builds the
-          screen again instead of handing the next one whatever the last one was
-          in the middle of. React Router does not key what it renders, and these
-          screens are now the same element type in the same place in the tree:
-          without this, opening the box for a reason on one queue and leaving
-          without cancelling reopened it on the queue arrived at next, and took
-          the focus with it. */}
-      <div className="adminsection__body" key={pathname}>
-        {children}
-      </div>
-    </div>
+    </>
   )
 }
+
 
 /**
  * The queues this moderator may work in, each with what is waiting in it.
@@ -160,7 +148,34 @@ function Section({
  * a decision written into the session, and the number beside the queue on the
  * left comes down with it.
  */
-export function VerificationSection({ children }: { children: ReactNode }) {
+export function AdminSections({ children }: { children: ReactNode }) {
+  return (
+    <div className="adminsection">
+      <div className="adminsection__sectors">
+        <QueuesSector />
+        <RecordsSector />
+      </div>
+
+      {/* Keyed by the address, so moving from one screen to the next builds it
+          again instead of handing the next one whatever the last one was in the
+          middle of. React Router does not key what it renders, and these screens
+          are now the same element type in the same place in the tree: without
+          this, opening the box for a reason on one queue and leaving without
+          cancelling reopened it on the queue arrived at next, and took the focus
+          with it. */}
+      <div className="adminsection__body" key={usePathname()}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** The address in view, which is what keys the work beside the navigation. */
+function usePathname(): string {
+  return useLocation().pathname
+}
+
+function QueuesSector() {
   const { t } = useI18n()
   const { submissions, decisions } = useSession()
   const items = usePending()
@@ -200,14 +215,12 @@ export function VerificationSection({ children }: { children: ReactNode }) {
           </p>
         ) : undefined
       }
-    >
-      {children}
-    </Section>
+    />
   )
 }
 
 /**
- * The entities this person may open: all nine for the superadmin, and for a
+ * The records this person may open: all seven for the superadmin, and for a
  * moderator only those he has been given.
  *
  * Moderators are the entity no moderator ever sees, and not because a tick is
@@ -218,7 +231,7 @@ export function VerificationSection({ children }: { children: ReactNode }) {
  * with, and a count beside every entity would mean loading all nine files to
  * draw a navigation.
  */
-export function EntitiesSection({ children }: { children: ReactNode }) {
+function RecordsSector() {
   const { t } = useI18n()
   const entities = usePermittedEntities()
 
@@ -230,8 +243,6 @@ export function EntitiesSection({ children }: { children: ReactNode }) {
         path: entity.path,
         label: t(entity.labelKey),
       }))}
-    >
-      {children}
-    </Section>
+    />
   )
 }

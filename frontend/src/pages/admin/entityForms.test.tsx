@@ -71,16 +71,15 @@ type Screen = {
   list: string
 }
 
+/* Every entity with a screen of its own. The races are not among them: a race is
+   edited inside its event, which is the only place that knows which event it is
+   (owner, 06.08.2026), and the tests for that stand in adminEntities.test. Nor
+   are the ducats, which left administration on the same day. */
 const SCREENS: Screen[] = [
   { entity: MEMBERS, path: 'administracija/clanovi', list: 'Članovi' },
   { entity: EVENTS, path: 'administracija/dogadjaji', list: 'Događaji' },
-  { entity: RACES, path: 'administracija/trke', list: 'Trke' },
   { entity: TEAMS, path: 'administracija/timovi', list: 'Timovi' },
   { entity: LEAGUES, path: 'administracija/lige', list: 'Lige' },
-  /* Ducats were the one of the eight with no list to open a record from, back
-     when nothing had written a ducat down anywhere. They are generated data like
-     the other seven now, so they answer the same four questions. */
-  { entity: DUCATS, path: 'administracija/dukati', list: 'Dukati' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
   /* The ninth. It is entered and changed by the same renderer reading the same
      kind of JSON as the other eight, which is the whole point of it being an
@@ -244,52 +243,7 @@ describe('a record that is entered rather than changed', () => {
     expect(row.getByText(t('admin.basisValue.honorary'))).toBeVisible()
   })
 
-  /* The screen used to start from an empty list, from the days when no ducat was
-     written down anywhere. It reads the same ducats the members see now, so a
-     new one joins them rather than standing alone. */
-  it('joins the ducats already on the screen', async () => {
-    const user = setupUser()
-    const title = t('admin.form.new.ducats')
-    renderAt('/sr/administracija/dukati', 'superadmin')
 
-    const before = within(
-      await screen.findByRole('table', { name: t('admin.ducats') }),
-    ).getAllByRole('row').length
-
-    for (const name of ['Prvih deset', 'Prvih sto']) {
-      await user.click(screen.getByRole('button', { name: title }))
-      const form = open(title)
-
-      await user.type(form.getByLabelText(labelled(t('admin.field.ducatName'))), name)
-      await user.selectOptions(form.getByLabelText(labelled(t('ducats.kindLabel'))), 'totalKm')
-      await user.type(form.getByLabelText(labelled(t('ducats.valueLabel'))), '100')
-      await user.click(form.getByRole('button', { name: t('form.submit') }))
-      await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
-    }
-
-    const list = within(screen.getByRole('table', { name: t('admin.ducats') }))
-    expect(list.getAllByRole('row')).toHaveLength(before + 2)
-    /* The rule is read back as a sentence, out of the same words the rule tryer
-       below the list uses. Read out of the two rows that were entered, because
-       the generated ducats have rules of their own and some of them read the
-       same way. */
-    for (const name of ['Prvih deset', 'Prvih sto']) {
-      const row = within(must(list.getByText(name).closest('tr'), 'tr'))
-      expect(row.getByText(/ukupno kilometara bude najmanje 100/)).toBeVisible()
-    }
-
-    // A ducat that was entered can be opened again like any other record.
-    await user.click(list.getByRole('button', { name: 'Otvori: Prvih sto' }))
-    const edit = open(t('admin.form.edit.ducats'))
-    await user.clear(edit.getByLabelText(labelled(t('ducats.valueLabel'))))
-    await user.type(edit.getByLabelText(labelled(t('ducats.valueLabel'))), '1000')
-    await user.click(edit.getByRole('button', { name: t('form.submit') }))
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
-
-    // Written the way this language writes a number, because the sentence and
-    // the threshold on the ducat itself stand on one card and have to agree.
-    expect(screen.getByText(/ukupno kilometara bude najmanje 1\.000/)).toBeVisible()
-  })
 })
 
 describe('the identity of a record', () => {
@@ -423,14 +377,39 @@ describe('the identity of a record', () => {
   })
 })
 
+/**
+ * A race is entered inside its event, so every one of these opens the event
+ * first (owner, 06.08.2026). The screen of races is gone, and with it the
+ * question of which event a race belongs to.
+ */
+async function newRaceOnFirstEvent(user: ReturnType<typeof setupUser>) {
+  renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+  const events = within(await screen.findByRole('table', { name: 'Događaji' }))
+  const first = at(events.getAllByRole('row'), 1)
+
+  await user.click(within(first).getByRole('button', { name: /^Otvori:/ }))
+  await user.click(await screen.findByRole('button', { name: t('admin.form.new.races') }))
+
+  return open(t('admin.form.new.races'))
+}
+
+/** The row of a race under the event that is open. */
+async function raceRow(named: string) {
+  return within(
+    must(
+      within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+        .getByText(named)
+        .closest('tr'),
+      `the row of the race called ${named}`,
+    ),
+  )
+}
+
 describe('the category of a race', () => {
   it('is read off the distance rather than asked for, and says where it comes from', async () => {
     const user = setupUser()
-    const title = t('admin.form.new.races')
-    renderAt('/sr/administracija/trke', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: title }))
-    const form = open(title)
+    const form = await newRaceOnFirstEvent(user)
 
     /* It was a free choice beside the distance, so a race of 42.2 km could be
        saved as a short one and the board of most marathons lied. The category is
@@ -439,9 +418,9 @@ describe('the category of a race', () => {
     expect(form.queryByLabelText(labelled(t('admin.field.category')))).not.toBeInTheDocument()
     expect(form.getByText(t('admin.field.categoryFromDistance'))).toBeVisible()
 
-    const events = form.getByLabelText(labelled(t('admin.field.event'))) as HTMLSelectElement
-    // The first option is the empty one, so the first event offered is the second.
-    await user.selectOptions(events, at(events.options, 1).value)
+    /* Nor which event it is. The screen it is entered on already answers that. */
+    expect(form.queryByLabelText(labelled(t('admin.field.event')))).not.toBeInTheDocument()
+
     await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera kategorije')
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
@@ -458,15 +437,7 @@ describe('the category of a race', () => {
 
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    const row = within(
-      must(
-        within(await screen.findByRole('table', { name: 'Trke' }))
-          .getByText('Provera kategorije')
-          .closest('tr'),
-        'the row of the race called Provera kategorije',
-      ),
-    )
-    expect(row.getByText(t('category.marathon'))).toBeVisible()
+    expect((await raceRow('Provera kategorije')).getByText(t('category.marathon'))).toBeVisible()
   })
 
   it('is written again when the record is changed, and not only when it is made', async () => {
@@ -480,15 +451,10 @@ describe('the category of a race', () => {
        Whether it can be changed anywhere else is the other question this branch
        answers: not in a cell in the row, for exactly this reason. */
     const user = setupUser()
-    const title = t('admin.form.new.races')
-    renderAt('/sr/administracija/trke', 'superadmin')
+    const form = await newRaceOnFirstEvent(user)
 
     /* Entered rather than picked out of the file, so the race this is about has
        a name no other race shares. */
-    await user.click(await screen.findByRole('button', { name: title }))
-    const form = open(title)
-    const events = form.getByLabelText(labelled(t('admin.field.event'))) as HTMLSelectElement
-    await user.selectOptions(events, at(events.options, 1).value)
     await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera izmene')
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
@@ -496,19 +462,9 @@ describe('the category of a race', () => {
     await user.click(form.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    const rowOf = async () =>
-      within(
-        must(
-          within(await screen.findByRole('table', { name: 'Trke' }))
-            .getByText('Provera izmene')
-            .closest('tr'),
-          'red trke Provera izmene',
-        ),
-      )
+    expect((await raceRow('Provera izmene')).getByText(t('category.marathon'))).toBeVisible()
 
-    expect((await rowOf()).getByText(t('category.marathon'))).toBeVisible()
-
-    await user.click((await rowOf()).getByRole('button', { name: /^Otvori:/ }))
+    await user.click((await raceRow('Provera izmene')).getByRole('button', { name: /^Otvori:/ }))
 
     const distance = await screen.findByLabelText(labelled(t('admin.field.distanceKm')))
     await user.clear(distance)
@@ -516,7 +472,7 @@ describe('the category of a race', () => {
     await user.click(screen.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    const changed = await rowOf()
+    const changed = await raceRow('Provera izmene')
 
     expect(changed.getByText(t('category.short'))).toBeVisible()
     expect(changed.queryByText(t('category.marathon'))).toBeNull()
@@ -524,11 +480,7 @@ describe('the category of a race', () => {
 
   it('is a hundred metres short of a marathon and says so', async () => {
     const user = setupUser()
-    const title = t('admin.form.new.races')
-    renderAt('/sr/administracija/trke', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: title }))
-    const form = open(title)
+    const form = await newRaceOnFirstEvent(user)
 
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.195')
 
