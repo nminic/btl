@@ -26,7 +26,7 @@ import { formatNumber, formatShortDate, wholePeriod } from '../i18n/format'
 /* The last three read one race rather than a whole season: everything above them
  * is a sum that grows all season long, these are the best single result there is.
  * They are monotonic in the same way, because a best never falls. */
-export const BADGE_KINDS = [
+export const DUCAT_KINDS = [
   'raceCount',
   'marathonCount',
   'halfCount',
@@ -45,7 +45,7 @@ export const BADGE_KINDS = [
   'bestRaceAscent',
 ] as const
 
-export type DucatKind = (typeof BADGE_KINDS)[number]
+export type DucatKind = (typeof DUCAT_KINDS)[number]
 
 export type DucatRule = {
   kind: DucatKind

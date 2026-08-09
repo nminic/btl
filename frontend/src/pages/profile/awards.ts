@@ -16,8 +16,8 @@ import type { Competitor, Result } from '../../data/types'
  * come with it, and they matter: two who tie for second are both second and both
  * take the plaque.
  *
- * Permanent by decision: "Značke i uspesi ostaju trajno zabeleženi na profilu"
- * (PDL P11). A season somebody did not race is a season with no award, never one
+ * Permanent by decision: what a member has won stays written on the profile for
+ * good (PDL P11). A season somebody did not race is a season with no award, never one
  * that takes an award away.
  */
 

@@ -5,9 +5,9 @@ import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { BADGE_KINDS } from '../../data/ducatRule'
+import { DUCAT_KINDS } from '../../data/ducatRule'
 import {
-  BADGES,
+  DUCATS,
   ENTITY_FORMS,
   EVENTS,
   LEAGUES,
@@ -80,7 +80,7 @@ const SCREENS: Screen[] = [
   /* Ducats were the one of the eight with no list to open a record from, back
      when nothing had written a ducat down anywhere. They are generated data like
      the other seven now, so they answer the same four questions. */
-  { entity: BADGES, path: 'administracija/dukati', list: 'Dukati' },
+  { entity: DUCATS, path: 'administracija/dukati', list: 'Dukati' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
   /* The ninth. It is entered and changed by the same renderer reading the same
      kind of JSON as the other eight, which is the whole point of it being an
@@ -635,11 +635,11 @@ describe('the words the eight forms need', () => {
     // one the sentence is built from.
     const options =
       must(
-        BADGES.form.fields.find((one) => one.name === 'kind'),
+        DUCATS.form.fields.find((one) => one.name === 'kind'),
         'a kind field on the ducat form',
       ).options ?? []
 
-    expect(options.map((one) => one.value)).toEqual([...BADGE_KINDS])
+    expect(options.map((one) => one.value)).toEqual([...DUCAT_KINDS])
   })
 })
 

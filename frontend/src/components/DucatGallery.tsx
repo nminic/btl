@@ -9,8 +9,8 @@ import './DucatGallery.css'
 /* Every ducat the league awards, drawn.
  *
  * It was a screen of its own with filters by kind and by period until 04.08.2026,
- * when the owner made the ducats a section of the rulebook instead: "Značke
- * treba da bude opisna sekcija (sa dosta grafike) pred kraj Pravilnika." What
+ * when the owner asked for them to be a section of the rulebook instead, near
+ * its end, described in words with a good deal of drawing in it. What
  * filters answered was "which of these can I still win", and that is a question
  * about a member rather than about the rules; what is left is the wall itself,
  * which is what a reader of the rulebook came for.

@@ -244,7 +244,7 @@ export const LEAGUES: EntityDef = {
   blank: { slug: '', eventIds: [] },
 }
 
-export const BADGES: EntityDef = {
+export const DUCATS: EntityDef = {
   id: 'ducats',
   labelKey: 'admin.ducats',
   path: 'administracija/dukati',
@@ -311,7 +311,7 @@ export const ENTITY_FORMS: EntityDef[] = [
   RACES,
   TEAMS,
   LEAGUES,
-  BADGES,
+  DUCATS,
   PRICING,
   PAGES,
   MODERATORS,

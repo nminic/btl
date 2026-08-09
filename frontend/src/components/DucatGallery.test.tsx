@@ -36,9 +36,9 @@ function hintOf(item: HTMLElement): HTMLElement {
 
 describe('the wall of ducats in the rulebook', () => {
   it('stands in a section of its own, near the end and before the closing provisions', async () => {
-    /* Owner, 04.08.2026: "Značke treba da bude opisna sekcija (sa dosta grafike)
-       pred kraj Pravilnika." Near the end and not at it: what closes a rulebook
-       is its closing provisions. */
+    /* The owner asked for a described section with a good deal of drawing in
+       it, towards the end of the rulebook (04.08.2026). Towards the end and not
+       at it: what closes a rulebook is its closing provisions. */
     renderAt('/sr/pravilnik')
 
     const headings = (await screen.findAllByRole('heading', { level: 2 })).map(

@@ -150,7 +150,11 @@ describe('what the ducats are called', () => {
         continue
       }
 
-      for (const match of code.matchAll(/[A-Za-z]*[Bb]adge[A-Za-z]*|zna[čc]k[a-zčćšđž]*/g)) {
+      /* Case-insensitive, because the first pass of this sweep asked for
+         `[Bb]adge` and a constant written `BADGES` walked past it: a rename
+         guard that only sees two of the three ways a word is written is a guard
+         that lets the third one through. */
+      for (const match of code.matchAll(/[A-Za-z]*badge[A-Za-z]*|zna[čc]k[a-zčćšđž]*/gi)) {
         said.push(`${path}: ${match[0]}`)
       }
     }

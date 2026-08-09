@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { useDucats } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { BADGE_KINDS, ruleSentence, type DucatKind, type DucatRule } from '../../data/ducatRule'
+import { DUCAT_KINDS, ruleSentence, type DucatKind, type DucatRule } from '../../data/ducatRule'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { BADGES, recordsOf, type Editing } from './entityForms'
+import { DUCATS, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -27,7 +27,7 @@ export function AdminDucats() {
           browser tab (owner, 30.07.2026). It stays in the markup so the page
           has a name for anyone who cannot see which entry is marked. */}
         <h1 className="visually-hidden">{t('admin.ducats')}</h1>
-        <EntityEditor entity={BADGES} editing={editing} onDone={() => setEditing(null)} />
+        <EntityEditor entity={DUCATS} editing={editing} onDone={() => setEditing(null)} />
       </div>
     )
   }
@@ -36,7 +36,7 @@ export function AdminDucats() {
     <div className="member">
       <h1 className="visually-hidden">{t('admin.ducats')}</h1>
 
-      <EntityBar entity={BADGES} onNew={() => setEditing({ mode: 'new' })} />
+      <EntityBar entity={DUCATS} onNew={() => setEditing({ mode: 'new' })} />
 
       {/* The same ducats the members see. This screen used to start from an
           empty list, from the days when no ducat was written down anywhere, so
@@ -49,7 +49,7 @@ export function AdminDucats() {
           says that plainly enough. */}
       <Resource state={state}>
         {(ducats) => {
-          const rows = recordsOf(BADGES, ducats, overlay)
+          const rows = recordsOf(DUCATS, ducats, overlay)
 
           return (
             <div className="table-scroll">
@@ -69,7 +69,7 @@ export function AdminDucats() {
                       <td>{ruleSentence(ducat, t, locale)}</td>
                       <td>
                         <RowActions
-                          entity={BADGES}
+                          entity={DUCATS}
                           record={ducat}
                           name={ducat.name}
                           onOpen={() => setEditing({ mode: 'one', record: ducat })}
@@ -93,7 +93,7 @@ export function AdminDucats() {
             value={rule.kind}
             onChange={(event) => setRule({ ...rule, kind: event.target.value as DucatKind })}
           >
-            {BADGE_KINDS.map((one) => (
+            {DUCAT_KINDS.map((one) => (
               <option key={one} value={one}>
                 {t(`ducats.kind.${one}`)}
               </option>
