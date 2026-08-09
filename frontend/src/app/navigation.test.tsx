@@ -171,7 +171,7 @@ describe('navigation', () => {
     renderAt('/sr', 'moderator', '000007')
 
     /* The entry carries the sum of everything waiting in its name, not only in
-       the ducat (PDL P28a), and something is always waiting, so the number is
+       the counter (PDL P28a), and something is always waiting, so the number is
        part of what a screen reader hears here. It stood on Verification while
        the header had groups; it is on the word that is left. */
     const entry = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })

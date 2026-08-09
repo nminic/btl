@@ -222,7 +222,7 @@ describe('the inbox in the header', () => {
   it('carries the number of unread messages in the name of the button', async () => {
     renderAt('/sr', 'competitor', '000007')
 
-    // The count is part of the name, not a ducat nobody hears: an aria-label
+    // The count is part of the name, not a counter nobody hears: an aria-label
     // replaces the contents of the button.
     expect(await screen.findByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
   })

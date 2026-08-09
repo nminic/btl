@@ -91,9 +91,9 @@ const ALLOWED = new Map([
   ],
   /* Four offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
-     than swept because moving them is a decision about how far a ducat hangs
+     than swept because moving them is a decision about how far a counter hangs
      off an icon, which is not what this pass is. */
-  ['app/Shell.css | top | -0.35rem', 'a ducat pulled up over the icon it counts'],
+  ['app/Shell.css | top | -0.35rem', 'a counter pulled up over the icon it counts'],
   ['app/Shell.css | right | -0.35rem', 'the same, sideways'],
   ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
   ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],

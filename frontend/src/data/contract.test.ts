@@ -134,27 +134,29 @@ describe('the screens that draw a section of a written page', () => {
  * And this file, whose own prose is about the rename.
  */
 describe('what the ducats are called', () => {
-  /* Named one by one rather than by a pattern: a pattern would let the next
-     file that keeps the old word in past it. */
-  const ALLOWED = [
-    'app/navigation.test.tsx',
-    'app/routes.test.ts',
-    'data/contract.test.ts',
-  ]
+  /**
+   * The three files that keep the old word on purpose.
+   *
+   * Named one by one rather than caught by a pattern: a pattern would let the
+   * next file that keeps the old word in past it. And the list is held to
+   * exactly these three below, because a list nothing bounds is a line anybody
+   * can add to silence a file.
+   */
+  const ALLOWED = ['app/navigation.test.tsx', 'app/routes.test.ts', 'data/contract.test.ts']
 
   it('is nowhere still the old word, in any language', () => {
     const said: string[] = []
 
-    for (const { path, code } of everySource()) {
+    for (const { path, code } of everything()) {
       if (ALLOWED.includes(path)) {
         continue
       }
 
-      /* Case-insensitive, because the first pass of this sweep asked for
-         `[Bb]adge` and a constant written `BADGES` walked past it: a rename
-         guard that only sees two of the three ways a word is written is a guard
-         that lets the third one through. */
-      for (const match of code.matchAll(/[A-Za-z]*badge[A-Za-z]*|zna[čc]k[a-zčćšđž]*/gi)) {
+      /* Without regard to case, because the first pass asked for `[Bb]adge` and
+         a constant written `BADGES` walked past it, as did every capitalised
+         `Značke`: a guard that sees two of the three ways a word is written is
+         one that lets the third through. */
+      for (const match of code.matchAll(/[A-Za-z]*badge[A-Za-z_]*|zna[čc]k[a-zčćšđž]*/gi)) {
         said.push(`${path}: ${match[0]}`)
       }
     }
@@ -162,37 +164,68 @@ describe('what the ducats are called', () => {
     expect(said).toEqual([])
   })
 
-  it('keeps the dead public address written down, which is what those two hold', () => {
-    /* So the list above is an exception with a reason rather than a place to put
-       whatever fails. */
-    const kept = everySource().filter((one) => ALLOWED.includes(one.path))
-    const holding = ['app/navigation.test.tsx', 'app/routes.test.ts']
+  it('holds the list of exceptions to exactly those three', () => {
+    /* Otherwise the list is a place to put whatever fails: adding a path to it
+       and the old word to that file passed everything, which is a guard that
+       can be switched off from inside. */
+    expect(ALLOWED).toHaveLength(3)
+    expect(ALLOWED.filter((one) => one !== 'data/contract.test.ts')).toEqual([
+      'app/navigation.test.tsx',
+      'app/routes.test.ts',
+    ])
+  })
 
-    expect(kept.map((one) => one.path).sort()).toEqual([...ALLOWED].sort())
-    expect(
-      kept.filter((one) => holding.includes(one.path) && one.code.includes('znacke')).length,
-    ).toBe(holding.length)
+  it('keeps the dead public address written down, which is what those two hold', () => {
+    const holding = ['app/navigation.test.tsx', 'app/routes.test.ts']
+    const kept = everything().filter((one) => holding.includes(one.path))
+
+    expect(kept.map((one) => one.path).sort()).toEqual([...holding].sort())
+    expect(kept.every((one) => one.code.includes('znacke'))).toBe(true)
+  })
+
+  it('reads the words a visitor sees, and not only the code', () => {
+    /* The dictionary and the generated records were outside the sweep, and that
+       is where the old word actually survived: a heading that said Dukati over a
+       paragraph whose first word was Značka, and a ducat whose own name began
+       with it. Neither is code, and both are on a public page. */
+    const read = everything().map((one) => one.path)
+
+    expect(read).toContain('i18n/sr.json')
+    expect(read).toContain('mock/pages.json')
+    expect(read).toContain('mock/ducats.json')
   })
 
   it('reads every file, so the sweep above is looking at something', () => {
-    const all = everySource()
-
-    expect(all.length).toBeGreaterThan(150)
-    expect(all.some((one) => one.path.endsWith('DucatGallery.tsx'))).toBe(true)
+    expect(everything().length).toBeGreaterThan(150)
+    expect(everything().some((one) => one.path.endsWith('DucatGallery.tsx'))).toBe(true)
   })
 })
 
-/** Every source file under `src`, with its path relative to it. */
-function everySource(dir = join(process.cwd(), 'src'), prefix = ''): { path: string; code: string }[] {
+/**
+ * Everything the rename had to reach: the code, the words a visitor reads, and
+ * the records the portal is generated from.
+ *
+ * Two roots rather than one, because the old word survived in neither of the
+ * places `src/**` alone could see it. Paths under `public/mock` are given
+ * without that prefix, so a file reads as `mock/pages.json`.
+ */
+function everything(): { path: string; code: string }[] {
+  return [
+    ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
+    ...under(join(process.cwd(), 'public'), '', ['.json']),
+  ]
+}
+
+function under(dir: string, prefix: string, kinds: string[]): { path: string; code: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const at = join(dir, entry.name)
     const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
 
     if (entry.isDirectory()) {
-      return everySource(at, name)
+      return under(at, name, kinds)
     }
 
-    return entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.css')
+    return kinds.some((kind) => entry.name.endsWith(kind))
       ? [{ path: name, code: readFileSync(at, 'utf-8') }]
       : []
   })
