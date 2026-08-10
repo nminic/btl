@@ -1011,10 +1011,45 @@ describe('verification', () => {
       expect(document.title).toContain('Uplate i aktivacija članova (administracija)'),
     )
 
+    /* Moved to a queue that has something in it: an empty queue is not in the
+       navigation any more (owner, 06.08.2026), and the results are empty until
+       somebody sends one in during the visit. */
     const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
-    await user.click(nav.getByRole('link', { name: /Rezultati/ }))
+    await user.click(nav.getByRole('link', { name: /Komentari/ }))
 
-    await waitFor(() => expect(document.title).toContain('Rezultati (administracija)'))
+    await waitFor(() => expect(document.title).toContain('Komentari (administracija)'))
+  })
+
+  it('leaves an empty queue out of the navigation, and keeps the one being worked in', async () => {
+    /* Owner, 06.08.2026. A name that leads to "nothing is waiting" is a step
+       taken for nothing, and a moderator reads this list to find work rather
+       than to count doors. The results are the empty one until somebody sends a
+       result in during the visit. */
+    renderAt(`/sr/${QUEUE.comments.path}`, 'moderator')
+
+    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+    expect(nav.getByRole('link', { name: /Komentari/ })).toBeVisible()
+    expect(nav.queryByRole('link', { name: /Rezultati/ })).toBeNull()
+  })
+
+  it('keeps the queue in view even after the last thing in it is decided', async () => {
+    /* Otherwise the entry disappears from under the moderator at the moment of
+       the last decision, and they are left standing on a screen the navigation
+       beside them says is not there. */
+    const user = setupUser()
+    renderAt(`/sr/${QUEUE.leagues.path}`, 'moderator')
+
+    await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
+
+    const nav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+    while (screen.queryAllByRole('button', { name: 'Odobri' }).length > 0) {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+    }
+
+    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+    expect(nav().getByRole('link', { name: /Predložene lige/ })).toBeVisible()
   })
 
   it('says nothing beside Verification while nothing is waiting', async () => {

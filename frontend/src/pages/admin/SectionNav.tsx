@@ -209,6 +209,8 @@ function QueuesSector() {
   const { submissions, decisions } = useSession()
   const items = usePending()
   const queues = usePermittedQueues()
+  /* Without the language in front of it, which is what a queue's own path is. */
+  const pathname = usePathname().split('/').slice(2).join('/')
 
   if (queues.length === 0) {
     return null
@@ -223,11 +225,32 @@ function QueuesSector() {
     decisions,
   }
 
+  /* An empty queue is not drawn (owner, 06.08.2026). A name that leads to
+     "nothing is waiting" is a step taken for nothing, and a moderator reads the
+     list to find work rather than to count doors. The one being worked in stays
+     whatever it holds: the last decision on a queue empties it, and a screen
+     that took its own entry out from under the moderator at that moment would
+     leave them standing on a page the navigation says is not there.
+
+     Where the file has not arrived, everything is drawn. A count of nought
+     because nothing was read yet is not an empty queue, and hiding on it would
+     empty the whole navigation for as long as the file takes. */
+  const unknown = items.status !== 'ready'
+  const holding = queues.filter(
+    (queue) => unknown || countFor(waiting, queue) > 0 || queue.path === pathname,
+  )
+  /* Unless that would leave nothing. A moderator whose every queue is empty is
+     somebody with no work this morning, not somebody to be shown a section with
+     no way out of it: the landing draws nothing of its own, so an empty
+     navigation beside it is an empty screen. Hiding is for the six that are
+     empty while a seventh is not, which is the case the owner described. */
+  const shown = holding.length === 0 ? queues : holding
+
   return (
     <Section
       title={t('verification.title')}
       id="verifikacija"
-      items={queues.map((queue) => ({
+      items={shown.map((queue) => ({
         path: queue.path,
         label: t(queue.labelKey),
         /* Counted for this queue rather than looked up in a record of counts.
