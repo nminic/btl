@@ -251,6 +251,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const [closed, setClosed] = useState<string | null>(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
+  /** Which card is open, on the width where they are folded. One at a time: two
+   *  open cards on a telephone are the scrolling this was meant to end. */
+  const [shown, setShown] = useState<string | null>(null)
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
@@ -457,8 +460,33 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <span className="submissions__meta">
                             {formatShortDate(one.date, locale)}
                           </span>
+
+                          {/* On a telephone a card is a screenful, so five of
+                              them mean scrolling through four to reach the
+                              third: the card opens on a press and the rest are
+                              a list of names (owner, 06.08.2026). From 820px up
+                              this control is not drawn and every card is open,
+                              exactly as the sectors of the navigation work
+                              (SectionNav). */}
+                          <button
+                            type="button"
+                            className="pending__toggle"
+                            aria-expanded={shown === one.id}
+                            aria-controls={`${one.id}-card`}
+                            onClick={() => setShown(shown === one.id ? null : one.id)}
+                          >
+                            {t(shown === one.id ? 'verification.foldCard' : 'verification.openCard')}
+                          </button>
                         </div>
 
+                        <div
+                          id={`${one.id}-card`}
+                          className={
+                            shown === one.id
+                              ? 'pending__card pending__card--open'
+                              : 'pending__card'
+                          }
+                        >
                         <p className="submissions__meta">
                           {/* A change of date may be reported by somebody with no
                               account at all (PDL P10), so the sender is a name and
@@ -635,6 +663,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             )}
                           </div>
                         )}
+                        </div>
                       </li>
                     )
                   })}

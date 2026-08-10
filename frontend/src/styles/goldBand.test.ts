@@ -771,6 +771,33 @@ describe('what the owner asked for on 04.08.2026', () => {
       within: '@media (min-width: 820px)',
     },
     {
+      of: 'src/pages/admin/Verification.css',
+      rule: '.pending__card',
+      /* Folded on a telephone, where a card is a screenful and five of them mean
+         scrolling through four to reach the third (owner, 06.08.2026). Written
+         here because jsdom lays nothing out: the tests can press the control and
+         watch the state, and only this can say the shut card is actually shut. */
+      holds: /display:\s*none/,
+      why: 'a card that has not been opened is not drawn on a telephone',
+    },
+    {
+      of: 'src/pages/admin/Verification.css',
+      rule: '.pending__card',
+      holds: /display:\s*block/,
+      why: 'and every card is open from the width where a card is not a screenful',
+      within: '@media (min-width: 820px)',
+    },
+    {
+      of: 'src/pages/admin/Verification.css',
+      rule: '.pending__toggle',
+      /* And the control goes, so nothing says "Prikaži" over a card that is
+         already open. The two sectors of the navigation are drawn the same way
+         (SectionNav.css). */
+      holds: /display:\s*none/,
+      why: 'nothing offers to open a card that is open',
+      within: '@media (min-width: 820px)',
+    },
+    {
       of: 'src/components/Stars.css',
       rule: '.stars__pick',
       /* The box a finger is owed, which is the label around the star and not the

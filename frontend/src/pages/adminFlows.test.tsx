@@ -1409,6 +1409,55 @@ describe('the six queues read from the file', () => {
     expect(rows.queryByText('3. 4. 2027.')).toBeNull()
   })
 
+  it('folds a card open and shut, one at a time', async () => {
+    /* On a telephone a card is a screenful, so five of them mean scrolling
+       through four to reach the third (owner, 06.08.2026). The control is drawn
+       at every width in the markup and hidden by the stylesheet from 820px up,
+       exactly as the sectors of the navigation are, so what is held here is the
+       folding itself. */
+    const user = await open('comments', 'Komentari')
+
+    const cards = within(waitingList()).getAllByRole('listitem')
+    const first_card = within(at(cards, 0))
+    const second = within(at(cards, 1))
+
+    expect(first_card.getByRole('button', { name: 'Prikaži' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+
+    await user.click(first_card.getByRole('button', { name: 'Prikaži' }))
+
+    expect(first_card.getByRole('button', { name: 'Sakrij' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+
+    /* One at a time: two open cards on a telephone are the scrolling this was
+       meant to end. */
+    await user.click(second.getByRole('button', { name: 'Prikaži' }))
+
+    expect(second.getByRole('button', { name: 'Sakrij' })).toBeVisible()
+    expect(first_card.getByRole('button', { name: 'Prikaži' })).toBeVisible()
+
+    await user.click(second.getByRole('button', { name: 'Sakrij' }))
+
+    expect(second.getByRole('button', { name: 'Prikaži' })).toBeVisible()
+  })
+
+  it('names the part of the card the control opens', async () => {
+    /* The control says which region it opens, so a screen reader moving by
+       controls knows what is about to appear rather than hearing "Prikaži" four
+       times over. */
+    await open('comments', 'Komentari')
+
+    const card = within(first(within(waitingList()).getAllByRole('listitem')))
+    const opens = card.getByRole('button', { name: 'Prikaži' }).getAttribute('aria-controls')
+
+    expect(opens).not.toBeNull()
+    expect(document.getElementById(String(opens))).not.toBeNull()
+  })
+
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
 

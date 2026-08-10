@@ -948,7 +948,7 @@
         "pages": "Izmena strane",
         "moderators": "Izmena moderatora"
       },
-      "delete": "Obriši",
+    "delete": "Obriši",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",
@@ -1122,6 +1122,8 @@
     "title": "Podaci"
   },
   "verification": {
+    "openCard": "Prikaži",
+    "foldCard": "Sakrij",
     "title": "Verifikacija",
     "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",
