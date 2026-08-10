@@ -722,7 +722,7 @@ describe('the address of a league', () => {
        creates reaches a public screen at all, because those read the file and
        not what this visit has added to it; that is older and wider than this
        form and is written down as its own job (PENDING, R7). */
-    expect(listed.getByRole('link', { name: '/vojvodjanska-2027' })).toHaveAttribute(
+    expect(listed.getByRole('link', { name: '/liga/vojvodjanska-2027' })).toHaveAttribute(
       'href',
       '/sr/liga/vojvodjanska-2027',
     )

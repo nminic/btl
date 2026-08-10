@@ -73,10 +73,13 @@ export function AdminLeagues() {
                             its own form. */}
                         <td>{league.name}</td>
                         <td>
-                          {/* Written the way the addresses of the written pages
-                              are written, so one column reads the same on both
-                              screens (AdminPages). */}
-                          <Link to={`/${locale}/liga/${league.slug}`}>/{league.slug}</Link>
+                          {/* The whole address, read as well as clicked. The
+                              written pages show one segment because that is
+                              their whole address; a league answers a segment
+                              below /liga, so showing the last part alone is a
+                              404 to anybody who copies what they read rather
+                              than following the link. */}
+                          <Link to={`/${locale}/liga/${league.slug}`}>/liga/{league.slug}</Link>
                         </td>
                         <td>{league.season}</td>
                         <td>
