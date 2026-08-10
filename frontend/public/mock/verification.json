@@ -2,6 +2,7 @@
   {
     "id": "ver-upl-1",
     "queue": "payments",
+    "kind": "",
     "date": "2026-07-22",
     "memberNumber": "",
     "who": "Miodrag Stanković",
@@ -22,6 +23,7 @@
   {
     "id": "ver-upl-2",
     "queue": "payments",
+    "kind": "",
     "date": "2026-07-25",
     "memberNumber": "",
     "who": "Đorđe Mitrović",
@@ -42,6 +44,7 @@
   {
     "id": "ver-upl-3",
     "queue": "payments",
+    "kind": "",
     "date": "2026-07-28",
     "memberNumber": "",
     "who": "Ivana Čolaković",
@@ -62,6 +65,7 @@
   {
     "id": "ver-lig-1",
     "queue": "leagues",
+    "kind": "",
     "date": "2026-07-21",
     "memberNumber": "000004",
     "who": "Časlav Radenković",
@@ -82,6 +86,7 @@
   {
     "id": "ver-lig-2",
     "queue": "leagues",
+    "kind": "",
     "date": "2026-07-21",
     "memberNumber": "000005",
     "who": "Bogoljub Nikolajević",
@@ -102,6 +107,7 @@
   {
     "id": "ver-tim-1",
     "queue": "teams",
+    "kind": "",
     "date": "2026-07-24",
     "memberNumber": "000007",
     "who": "Strahinja Vukićević",
@@ -122,6 +128,7 @@
   {
     "id": "ver-tim-2",
     "queue": "teams",
+    "kind": "",
     "date": "2026-07-24",
     "memberNumber": "000008",
     "who": "Ognjen Perišić",
@@ -141,7 +148,8 @@
   },
   {
     "id": "ver-bio-1",
-    "queue": "bios",
+    "queue": "profiles",
+    "kind": "bio",
     "date": "2026-07-26",
     "memberNumber": "000010",
     "who": "Miloje Stanojlović",
@@ -161,7 +169,8 @@
   },
   {
     "id": "ver-bio-2",
-    "queue": "bios",
+    "queue": "profiles",
+    "kind": "bio",
     "date": "2026-07-26",
     "memberNumber": "000011",
     "who": "Vukašin Todorović",
@@ -181,7 +190,8 @@
   },
   {
     "id": "ver-sli-1",
-    "queue": "photos",
+    "queue": "profiles",
+    "kind": "photo",
     "date": "2026-07-27",
     "memberNumber": "000013",
     "who": "Damjan Krstić",
@@ -201,7 +211,8 @@
   },
   {
     "id": "ver-sli-2",
-    "queue": "photos",
+    "queue": "profiles",
+    "kind": "photo",
     "date": "2026-07-27",
     "memberNumber": "000014",
     "who": "Radoslav Milovanović",
@@ -222,6 +233,7 @@
   {
     "id": "ver-kom-1",
     "queue": "comments",
+    "kind": "",
     "date": "2026-07-11",
     "memberNumber": "000016",
     "who": "Nemanja Cvetković",
@@ -242,6 +254,7 @@
   {
     "id": "ver-kom-2",
     "queue": "comments",
+    "kind": "",
     "date": "2026-06-27",
     "memberNumber": "000017",
     "who": "Andrija Pavlović",
@@ -262,6 +275,7 @@
   {
     "id": "ver-kom-3",
     "queue": "comments",
+    "kind": "",
     "date": "2026-05-23",
     "memberNumber": "000018",
     "who": "Teodora Mitrović",
@@ -282,6 +296,7 @@
   {
     "id": "ver-kom-4",
     "queue": "comments",
+    "kind": "",
     "date": "2026-07-11",
     "memberNumber": "000019",
     "who": "Borivoje Jovanović",
@@ -302,6 +317,7 @@
   {
     "id": "ver-ter-1",
     "queue": "schedule",
+    "kind": "",
     "date": "2026-07-25",
     "memberNumber": "000019",
     "who": "Borivoje Jovanović",
@@ -322,6 +338,7 @@
   {
     "id": "ver-ter-2",
     "queue": "schedule",
+    "kind": "",
     "date": "2026-07-26",
     "memberNumber": "",
     "who": "",
@@ -342,6 +359,7 @@
   {
     "id": "ver-ter-3",
     "queue": "schedule",
+    "kind": "",
     "date": "2026-07-27",
     "memberNumber": "000022",
     "who": "Dušan Marković",

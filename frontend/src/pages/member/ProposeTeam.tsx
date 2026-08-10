@@ -100,6 +100,9 @@ export function ProposeTeam() {
 
             propose({
               queue: 'teams',
+      /* No sorts on this queue: one is only told apart where a queue holds two
+         (data/types.ts, `kind`). */
+      kind: '',
               date: today,
               memberNumber: mine,
               who,

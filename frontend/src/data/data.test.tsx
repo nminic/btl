@@ -359,6 +359,7 @@ describe('commentFrom', () => {
     const waiting: PendingItem = {
       id: 'ver-kom-9',
       queue: 'comments',
+    kind: '',
       date: '2026-08-06',
       memberNumber: '000007',
       who: 'Ime Prezime',

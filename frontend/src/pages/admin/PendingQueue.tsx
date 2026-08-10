@@ -21,7 +21,7 @@ import { idFor, recordsOf, TEAMS } from './entityForms'
 import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
-import { canSendBack, type Queue } from './queues'
+import { canSendBack, outcomeFor, type Queue } from './queues'
 import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
@@ -51,8 +51,10 @@ import './Verification.css'
 /** Whether a queue has a second decision that hands the work back to its
  *  author. Five of the seven, plus the pictures, which hand back an instruction
  *  (queues.ts). */
-function handsBack(queue: Queue): boolean {
-  return queue.outcome === 'sendBack' || queue.outcome === 'instruct'
+function handsBack(queue: Queue, item: PendingItem): boolean {
+  const outcome = outcomeFor(queue, item)
+
+  return outcome === 'sendBack' || outcome === 'instruct'
 }
 
 /**
@@ -302,7 +304,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            settled items can show what the member's profile now says rather than
            what they sent in. Nothing else writes anything on an approval, which
            explains itself. */
-        note: queue.outcome === 'editAndPublish' ? textOf(one) : '',
+        note: outcomeFor(queue, one) === 'editAndPublish' ? textOf(one) : '',
         basis: '',
         memberNumber: '',
       })
@@ -340,9 +342,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     return done
   }
 
-  /** What the text on the card is called: the biography, the comment, the reason
-   *  given, or the file name of a picture. */
-  const bodyLabel = t(`verification.body.${queue.id}`)
+  /** What the text on the card is called: the comment, the reason given, the
+   *  biography, or the file name of a picture. Off the sort of thing rather than
+   *  off the queue where one queue holds two sorts (queues.ts, `outcomeFor`). */
+  const bodyLabelFor = (one: PendingItem) =>
+    t(queue.id === 'profiles' ? `verification.body.${one.kind}` : `verification.body.${queue.id}`)
 
   return (
     <div className="member">
@@ -473,10 +477,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             </div>
                           ))}
                           <div className="pending__text">
-                            <dt>{bodyLabel}</dt>
-                            {queue.outcome === 'editAndPublish' ? (
+                            <dt>{bodyLabelFor(one)}</dt>
+                            {outcomeFor(queue, one) === 'editAndPublish' ? (
                               <dd className="pending__edit">
-                                <EditableBody id={one.id} label={bodyLabel} value={one.body} />
+                                <EditableBody id={one.id} label={bodyLabelFor(one)} value={one.body} />
                               </dd>
                             ) : (
                               <dd className="pending__body">{one.body}</dd>
@@ -491,7 +495,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                enough to work from, because that reason is what the
                                member reads and changes the picture by. */
                             placeholderKey={
-                              queue.outcome === 'instruct'
+                              outcomeFor(queue, one) === 'instruct'
                                 ? 'review.instructionPlaceholder'
                                 : 'review.reasonPlaceholder'
                             }
@@ -508,7 +512,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  is expected to act on it. The portal already has an
                                  inbox, so it goes there in the words the moderator
                                  wrote (PDL P22, P28a). */
-                              if (queue.outcome === 'instruct') {
+                              if (outcomeFor(queue, one) === 'instruct') {
                                 notify({
                                   from: t('app.name'),
                                   to: one.memberNumber,
@@ -538,7 +542,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               aria-describedby={why === null ? undefined : `${one.id}-blocked`}
                               onClick={() => approveAll([one], teams)}
                             >
-                              {queue.outcome === 'editAndPublish'
+                              {outcomeFor(queue, one) === 'editAndPublish'
                                 ? t('verification.publish')
                                 : t('review.approve')}
                             </button>
@@ -546,7 +550,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             {/* One click and the comment is gone, the same as
                                 accepting it. There is no box to open, so there is
                                 no focus to hand back either. */}
-                            {queue.outcome === 'delete' && (
+                            {outcomeFor(queue, one) === 'delete' && (
                               <button
                                 type="button"
                                 className="button button--secondary"
@@ -568,7 +572,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 is autofocused when the page first draws. A
                                 biography has no button here at all, because it
                                 never goes back. */}
-                            {handsBack(queue) && canSendBack(queue, one) && (
+                            {handsBack(queue, one) && canSendBack(queue, one) && (
                               <button
                                 type="button"
                                 className="button button--secondary"
@@ -592,7 +596,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 that quietly does nothing teaches a moderator that
                                 the screen is broken; this one says which fact is
                                 missing and that it is not his to fix. */}
-                            {handsBack(queue) && !canSendBack(queue, one) && (
+                            {handsBack(queue, one) && !canSendBack(queue, one) && (
                               <p className="pending__blocked">{t('verification.noRecipient')}</p>
                             )}
                           </div>

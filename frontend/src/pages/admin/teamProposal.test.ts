@@ -9,6 +9,7 @@ import { addressOf, nameError, nameFault, refusal, teamFrom, type Proposed } fro
 const item = (over: Partial<PendingItem> = {}): PendingItem => ({
   id: 'prop-1',
   queue: 'teams',
+    kind: '',
   date: '2027-01-10',
   memberNumber: '000007',
   who: 'Strahinja Vukićević',

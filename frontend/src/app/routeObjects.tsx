@@ -149,8 +149,7 @@ const DETAILS: RouteObject[] = [
   { path: QUEUE.payments.path, element: <Payments /> },
   { path: QUEUE.leagues.path, element: <PendingQueue queue={QUEUE.leagues} /> },
   { path: QUEUE.teams.path, element: <PendingQueue queue={QUEUE.teams} /> },
-  { path: QUEUE.bios.path, element: <PendingQueue queue={QUEUE.bios} /> },
-  { path: QUEUE.photos.path, element: <PendingQueue queue={QUEUE.photos} /> },
+  { path: QUEUE.profiles.path, element: <PendingQueue queue={QUEUE.profiles} /> },
   { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
   { path: QUEUE.schedule.path, element: <PendingQueue queue={QUEUE.schedule} /> },
 ].map((route) => ({ ...route, element: guarded(route.path, route.element) }))

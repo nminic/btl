@@ -15,8 +15,7 @@
       "queue:payments",
       "queue:leagues",
       "queue:teams",
-      "queue:bios",
-      "queue:photos",
+      "queue:profiles",
       "queue:comments",
       "queue:schedule"
     ]
@@ -44,8 +43,7 @@
     "email": "aleksandra.milovanovic@primer.ba",
     "rights": [
       "entity:events",
-      "queue:bios",
-      "queue:photos",
+      "queue:profiles",
       "queue:comments",
       "queue:schedule"
     ]

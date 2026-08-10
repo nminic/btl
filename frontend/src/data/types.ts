@@ -207,8 +207,7 @@ export const PENDING_QUEUE_IDS = [
   'payments',
   'leagues',
   'teams',
-  'bios',
-  'photos',
+  'profiles',
   'comments',
   'schedule',
 ] as const
@@ -278,6 +277,16 @@ export const NO_RATING = Object.freeze<EventRating>({
 export type PendingItem = {
   id: string
   queue: PendingQueueId
+  /**
+   * Which sort of thing it is, where one queue holds more than one.
+   *
+   * The racing profile alone: a biography and a picture are the same member's
+   * profile and are looked at together (owner, 06.08.2026), but the decision
+   * over them is not the same one. The text is edited and published; the
+   * picture is accepted or handed back with an instruction. Empty everywhere
+   * else, because every other queue holds one sort of thing.
+   */
+  kind: string
   /** The day it arrived in the queue. */
   date: string
   /**

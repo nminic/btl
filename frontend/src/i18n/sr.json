@@ -1086,8 +1086,7 @@
         "payments": "Uplate",
         "leagues": "Predložene lige",
         "teams": "Novi timovi",
-        "bios": "Biografije",
-        "photos": "Slike",
+        "profiles": "Trkački profil",
         "comments": "Komentari",
         "schedule": "Termini"
       }
@@ -1106,8 +1105,7 @@
         "payments": "odlučivanje o uplatama",
         "leagues": "odlučivanje o predloženim ligama",
         "teams": "odlučivanje o novim timovima",
-        "bios": "odlučivanje o biografijama",
-        "photos": "odlučivanje o profilnim slikama",
+        "profiles": "odlučivanje o trkačkim profilima",
         "comments": "odlučivanje o komentarima",
         "schedule": "odlučivanje o prijavama termina"
       }
@@ -1141,8 +1139,8 @@
     "body": {
       "leagues": "Opis lige",
       "teams": "Obrazloženje",
-      "bios": "Tekst biografije",
-      "photos": "Datoteka",
+      "bio": "Tekst biografije",
+      "photo": "Datoteka",
       "comments": "Komentar",
       "schedule": "Šta je prijavljeno"
     },
@@ -1150,17 +1148,15 @@
     "payments": "Uplate i aktivacija članova",
     "leagues": "Predložene lige",
     "teams": "Novi timovi",
-    "bios": "Trkačke biografije",
-    "photos": "Profilne slike",
-    "comments": "Komentari",
+    "profiles": "Trkački profil",
+        "comments": "Komentari",
     "schedule": "Prijave promene termina",
     "fromResults": "Rezultat ulazi u tabele tek posle odobrenja",
     "fromPayments": "Član postaje punopravan kad se evidentira uplata",
     "fromLeagues": "Nova liga se objavljuje tek kad je odobrena",
     "fromTeams": "Nov tim odobrava Superadmin ili moderator sa pravom nad ovim redom",
-    "fromBios": "Biografiju piše član, a moderator je uređuje i objavljuje",
-    "fromPhotos": "Vraćena slika nosi razlog koji član dobija u poruci",
-    "fromComments": "Komentar se prihvata ili briše, odmah i bez obrazloženja",
+    "fromProfiles": "Biografiju piše član i moderator je uređuje; vraćena slika nosi razlog koji član dobija u poruci",
+        "fromComments": "Komentar se prihvata ili briše, odmah i bez obrazloženja",
     "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine",
     "delete": "Obriši",
     "deleted": "Obrisano",

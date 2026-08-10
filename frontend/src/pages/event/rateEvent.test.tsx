@@ -427,8 +427,7 @@ describe('a comment a moderator lets out', () => {
     expect(screen.getAllByText('Vrednost za novac').length).toBeGreaterThan(0)
 
     for (const [address, named] of [
-      ['biografije', 'Trkačke biografije'],
-      ['slike', 'Profilne slike'],
+      ['trkacki-profil', 'Trkački profil'],
       ['termini', 'Prijave promene termina'],
     ] as const) {
       await router.navigate(`/sr/administracija/verifikacija/${address}`)

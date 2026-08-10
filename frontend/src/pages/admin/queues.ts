@@ -111,18 +111,15 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
     path: `${ADDRESS}/timovi`,
     outcome: 'sendBack',
   },
-  bios: {
-    id: 'bios',
-    labelKey: 'verification.bios',
-    sourceKey: 'verification.fromBios',
-    path: `${ADDRESS}/biografije`,
-    outcome: 'editAndPublish',
-  },
-  photos: {
-    id: 'photos',
-    labelKey: 'verification.photos',
-    sourceKey: 'verification.fromPhotos',
-    path: `${ADDRESS}/slike`,
+  profiles: {
+    id: 'profiles',
+    labelKey: 'verification.profiles',
+    sourceKey: 'verification.fromProfiles',
+    path: `${ADDRESS}/trkacki-profil`,
+    /* The one queue whose items are not all decided the same way, so what stands
+       here is what it is for the sort that is not named: a picture is handed
+       back with an instruction, and the text is edited and published
+       (`outcomeFor`). */
     outcome: 'instruct',
   },
   comments: {
@@ -170,8 +167,30 @@ export const QUEUES: Queue[] = [QUEUE.results, ...PENDING_QUEUE_IDS.map((id) => 
  * today, which is exactly the kind of safety that lasts until the backend hands
  * over the first row that does not.
  */
-export function canSendBack(queue: Queue, item: { memberNumber: string }): boolean {
-  return queue.outcome !== 'instruct' || item.memberNumber !== ''
+export function canSendBack(queue: Queue, item: { kind: string; memberNumber: string }): boolean {
+  return outcomeFor(queue, item) !== 'instruct' || item.memberNumber !== ''
+}
+
+/**
+ * What is to be done with one item, which is what the queue says except where
+ * the queue holds two sorts of thing.
+ *
+ * The racing profile is that one queue (owner, 06.08.2026): a member's
+ * biography and their picture are looked at together, because they are the same
+ * profile, and the decision over each is not the same. The text is edited and
+ * published, and never goes back; the picture is accepted or handed back with an
+ * instruction the member works from.
+ *
+ * Read off the item and not off its shape. A biography is a paragraph and a
+ * picture is a file name, and telling them apart by looking would be a rule that
+ * holds until somebody writes a biography that reads like a file name.
+ */
+export function outcomeFor(queue: Queue, item: { kind: string }): QueueOutcome {
+  if (queue.id !== 'profiles') {
+    return queue.outcome
+  }
+
+  return item.kind === 'bio' ? 'editAndPublish' : 'instruct'
 }
 
 /**

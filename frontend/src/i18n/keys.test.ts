@@ -136,10 +136,18 @@ describe('the names the portal composes out of a list', () => {
       each: [...ENTITY_FORMS, RACES].filter((one) => one.fixed !== true).map((one) => one.id),
     },
     { of: 'admin.form.edit', each: [...ENTITY_FORMS, RACES].map((one) => one.id) },
-    /* The queues drawn by PendingQueue, which is what asks for this name. The
-       results and the payments have screens written for them, and neither shows a
-       card with text on it. */
-    { of: 'verification.body', each: PENDING_QUEUE_IDS.filter((id) => id !== 'payments') },
+    /* What the text on a card is called, asked for by PendingQueue. Not one per
+       queue: the results and the payments have screens written for them and
+       neither shows a card with text, and the racing profile holds two sorts of
+       thing and asks by the sort (`bodyLabelFor`). */
+    {
+      of: 'verification.body',
+      each: [
+        ...PENDING_QUEUE_IDS.filter((id) => id !== 'payments' && id !== 'profiles'),
+        'bio',
+        'photo',
+      ],
+    },
     { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },
     { of: 'calendar.status', each: EVENT_STATUSES },
     { of: 'profile.lengthsShort', each: ['all', ...CATEGORIES] },

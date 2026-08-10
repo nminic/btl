@@ -230,13 +230,31 @@ describe('one decision for a whole queue', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
-      renderAt('/sr/administracija/verifikacija/biografije', 'superadmin', null, undefined, null, <Decided />)
+      renderAt(
+        '/sr/administracija/verifikacija/trkacki-profil',
+        'superadmin',
+        null,
+        undefined,
+        null,
+        <Decided />,
+      )
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
-      /* The text itself, read under the words that name it on the card, and not
-         the whole card: the card carries the member's name above it, and a word
-         taken from there is a word the published text never had. */
-      const card = within(first(within(waiting).getAllByRole('listitem')))
+      /* The card of a biography, which is what this is about: the queue holds
+         the pictures too since 06.08.2026, and a picture is not published, it is
+         accepted or handed back (queues.ts, `outcomeFor`).
+
+         The text itself, read under the words that name it, and not the whole
+         card: the card carries the member's name above it, and a word taken from
+         there is a word the published text never had. */
+      const card = within(
+        must(
+          within(waiting)
+            .getAllByRole('listitem')
+            .find((one) => within(one).queryByText('Tekst biografije') !== null),
+          'a card carrying a biography',
+        ),
+      )
       const first_text = must(
         must(
           card.getByText('Tekst biografije').nextElementSibling,

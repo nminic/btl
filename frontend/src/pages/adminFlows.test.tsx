@@ -1336,7 +1336,6 @@ describe('the six queues read from the file', () => {
   it.each([
     ['leagues', 'Predložene lige', 2],
     ['teams', 'Novi timovi', 2],
-    ['photos', 'Profilne slike', 2],
     ['schedule', 'Prijave promene termina', 3],
   ] as [PendingQueueId, string, number][])(
     'has something waiting in %s, and decides it both ways',
@@ -1393,15 +1392,58 @@ describe('the six queues read from the file', () => {
   /* Biographies go their own way too, and further: there is no second decision at
      all. The moderator adjusts the text as they see fit and publishes what they
      left, and it never goes back to the competitor (PDL P22, 30.07.2026). */
+  it('holds the text and the picture in one queue, decided each its own way', async () => {
+    /* Owner, 06.08.2026: the same member's profile is one thing to look at, so
+       the two used to be two queues and are one. What is done with them is not
+       one thing: a biography is edited and published and never goes back, a
+       picture is accepted or handed back with an instruction to work from. */
+    await open('profiles', 'Trkački profil')
+
+    const cards = within(waitingList()).getAllByRole('listitem')
+    const texts = cards.filter((one) => within(one).queryByText('Tekst biografije') !== null)
+    const pictures = cards.filter((one) => within(one).queryByText('Datoteka') !== null)
+
+    expect(texts).toHaveLength(2)
+    expect(pictures).toHaveLength(2)
+
+    for (const one of texts) {
+      const card = within(one)
+
+      expect(card.getByRole('button', { name: 'Objavi' })).toBeVisible()
+      expect(card.queryByRole('button', { name: 'Odbij' })).toBeNull()
+      expect(card.queryByRole('button', { name: 'Odobri' })).toBeNull()
+    }
+
+    for (const one of pictures) {
+      const card = within(one)
+
+      expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
+      expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
+      expect(card.queryByRole('button', { name: 'Objavi' })).toBeNull()
+    }
+  })
+
   it('edits a biography in place and publishes what the moderator left', async () => {
-    const user = await open('bios', 'Trkačke biografije')
+    const user = await open('profiles', 'Trkački profil')
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
-    // Nothing here goes back, so there is no button for it and no reason to write.
-    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
+    /* Two biographies and two pictures, in one queue since 06.08.2026: the same
+       member's profile is looked at in one place. */
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
 
-    const card = within(first(within(waitingList()).getAllByRole('listitem')))
+    /* The card of a biography, found by the words that name what is on it. A
+       biography never goes back to the competitor, so its card has no button for
+       it and nothing to write; the pictures beside it do. */
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Tekst biografije') !== null),
+        'a card carrying a biography',
+      ),
+    )
+
+    expect(card.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
+    expect(card.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
 
     await user.click(card.getByRole('button', { name: 'Izmeni' }))
     const box = card.getByRole('textbox', { name: 'Tekst biografije' })
@@ -1415,7 +1457,7 @@ describe('the six queues read from the file', () => {
 
     await user.click(card.getByRole('button', { name: 'Objavi' }))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     // And what was published is the edited version, not what came in.
     expect(
@@ -1426,7 +1468,7 @@ describe('the six queues read from the file', () => {
   })
 
   it('publishes a biography nobody touched exactly as it came in', async () => {
-    const user = await open('bios', 'Trkačke biografije')
+    const user = await open('profiles', 'Trkački profil')
 
     const card = within(first(within(waitingList()).getAllByRole('listitem')))
     // Two paragraphs with an empty line between them, which is what a biography
@@ -1448,7 +1490,7 @@ describe('the six queues read from the file', () => {
      asked to write, since that reason is what the member reads and changes the
      picture by (PDL P22, owner, 30.07.2026). */
   it('asks the picture queue for a reason precise enough to work from', async () => {
-    const user = await open('photos', 'Profilne slike')
+    const user = await open('profiles', 'Trkački profil')
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
@@ -1472,8 +1514,8 @@ describe('the six queues read from the file', () => {
        one person at the keyboard and the point of the test is where the message
        lands. A message carries the number it was written to (Message.to), so a
        moderator who is somebody else never sees it. */
-    renderAt(`/sr/${QUEUE.photos.path}`, 'moderator', '000013')
-    await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000013')
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
     const card = within(
       must(
@@ -1519,15 +1561,19 @@ describe('the six queues read from the file', () => {
     it('is decided by the queue rather than by the screen that draws it', () => {
       // Every other queue hands work back to somebody it can name, or does not
       // hand it back at all, so only the one that instructs is asked.
-      expect(canSendBack(QUEUE.photos, { memberNumber: '000013' })).toBe(true)
-      expect(canSendBack(QUEUE.photos, { memberNumber: '' })).toBe(false)
-      expect(canSendBack(QUEUE.teams, { memberNumber: '' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '000013' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '' })).toBe(false)
+      /* A biography on the same queue is never handed back at all, so the
+         question does not arise and the answer is yes. */
+      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(true)
+      expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(true)
     })
 
     it('offers no way to send it, and says why in the place the button stood', async () => {
       const orphan: PendingItem = {
         id: 'ver-sli-bez-clana',
-        queue: 'photos',
+        queue: 'profiles',
+        kind: 'photo',
         date: '2026-07-27',
         memberNumber: '',
         who: '',
@@ -1552,8 +1598,8 @@ describe('the six queues read from the file', () => {
             )
           : original(input)) as typeof fetch
 
-      renderAt(`/sr/${QUEUE.photos.path}`, 'moderator')
-      await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
+      renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator')
+      await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
       expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
       expect(
@@ -1647,7 +1693,7 @@ describe('the six queues read from the file', () => {
   })
 
   it('shows a biography of three and a half thousand characters whole', async () => {
-    await open('bios', 'Trkačke biografije')
+    await open('profiles', 'Trkački profil')
 
     const cards = within(waitingList()).getAllByRole('listitem')
     const longest = first(
@@ -1688,20 +1734,24 @@ describe('the six queues read from the file', () => {
   })
 
   it('closes the reason without deciding anything', async () => {
-    const user = await open('photos', 'Profilne slike')
+    const user = await open('profiles', 'Trkački profil')
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
   })
 
   it('keeps the focus on the card in both directions', async () => {
-    const user = await open('photos', 'Profilne slike')
-    const cards = within(waitingList()).getAllByRole('listitem')
-    // The second and not the first, because the fault being held is the focus
-    // landing on the top card instead of the one the moderator was working on.
+    const user = await open('profiles', 'Trkački profil')
+    /* The pictures, because a biography is never handed back and has no box to
+       open (queues.ts, `outcomeFor`). The second of them and not the first,
+       because the fault being held is the focus landing on the top card instead
+       of the one the moderator was working on. */
+    const cards = within(waitingList())
+      .getAllByRole('listitem')
+      .filter((one) => within(one).queryByRole('button', { name: 'Odbij' }) !== null)
     const second = within(at(cards, 1))
 
     /* The box takes the place of the buttons of its own card, so both directions
@@ -1719,7 +1769,7 @@ describe('the six queues read from the file', () => {
   })
 
   it('carries no dates on a queue that has none', async () => {
-    await open('photos', 'Profilne slike')
+    await open('profiles', 'Trkački profil')
 
     expect(screen.queryByText('Prijavljen datum')).not.toBeInTheDocument()
     expect(screen.getByText('profilna-sa-maratona.jpg')).toBeVisible()
@@ -1741,8 +1791,8 @@ describe('what is counted beside a queue', () => {
       pendingResults: 3,
       items: [
         item('u', 'payments'),
-        item('a', 'bios'),
-        item('b', 'bios'),
+        item('a', 'profiles'),
+        item('b', 'profiles'),
         item('c', 'comments'),
         item('d', 'schedule'),
       ],
@@ -1751,7 +1801,7 @@ describe('what is counted beside a queue', () => {
 
     expect(counts.results).toBe(3)
     expect(counts.payments).toBe(1)
-    expect(counts.bios).toBe(2)
+    expect(counts.profiles).toBe(2)
     expect(counts.comments).toBe(1)
     expect(counts.schedule).toBe(1)
   })
