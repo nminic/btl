@@ -198,13 +198,62 @@ describe('a screen waits only on the data it shows', () => {
     const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
 
     expect(approve).toHaveAttribute('aria-disabled', 'true')
-    expect(cards.getAllByText(/Odluka čeka trke/).length).toBeGreaterThan(0)
+    /* Said once for the queue rather than on every card. */
+    expect(screen.getByText(/Odluka čeka trke/)).toBeVisible()
+    /* And the same hold on the one decision that settles the whole queue: taken
+       without the races it is forty half-moves rather than one. */
+    expect(screen.getByRole('button', { name: 'Odobri sve' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
 
     /* Reachable and pressable, so the reason can be read; it simply does not
        decide. */
     await setupUser().click(approve)
 
-    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
+    /* Answered yes, so what holds the sweep back is the hold and not the
+       question: unanswered, jsdom's confirm is a no and the sweep would stop
+       there whatever the code did. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      await setupUser().click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
+      expect(screen.queryByText(/Rešeno je/)).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('decides a change of date while the events themselves are still coming', async () => {
+    /* The queue does not draw an event, only what was reported about one, so it
+       must not wait for the file of events. What it loses while they are away is
+       the day the event is on now, and it falls back to the day the report says
+       it was on, which is what the report is about. */
+    restore = stallResource('events')
+
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+    const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+
+    await user.click(first(cards.getAllByRole('button', { name: 'Odobri' })))
+
+    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 2/ })).toBeVisible()
+  })
+
+  it('says the races failed rather than that it is waiting for them', async () => {
+    /* Two different things, and `dataOr` answers the same for both: told to wait
+       for a file that will never come, a moderator who holds the right is
+       refused it for good and reads a sentence that is not true. */
+    restore = breakResource('races')
+    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+    await screen.findByRole('list', { name: /Čeka proveru/ })
+
+    expect(screen.getByText(/trke se ne mogu učitati/)).toBeVisible()
+    expect(screen.queryByText(/Odluka čeka trke/)).toBeNull()
   })
 
   /* The other half of the same rule: a screen must still fail on data it does

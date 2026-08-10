@@ -148,8 +148,13 @@ export function EntityEditor({
                 <dd>{t(shownValue(field, value, options))}</dd>
               </div>
             ))}
-            {/* What was saved without being asked for, read off the rest of it. */}
-            {(entity.derived?.(saved) ?? []).map((one) => (
+            {/* What was saved without being asked for, read off the rest of it,
+                and off the record it was saved over where there is one: the
+                address of an event that carried more than the rule builds is
+                the address it still carries. */}
+            {(
+              entity.derived?.(saved, editing.mode === 'one' ? editing.record : undefined) ?? []
+            ).map((one) => (
               <div key={one.name}>
                 <dt>{t(one.labelKey)}</dt>
                 <dd>{t(one.shownKey)}</dd>
@@ -186,6 +191,12 @@ export function EntityEditor({
             : `admin.form.edit.${entity.id}`,
         )}
         initial={editing.mode === 'new' ? entity.start : valuesFor(form, editing.record)}
+        /* So the address the form shows is the address the save will leave, and
+           not the one the rule would build out of the fields: an event whose
+           address carries more than the rule can build keeps it, and an
+           administrator reading the form before they save was reading an
+           address that would 404 (entityForms.ts, `addressOfEvent`). */
+        was={editing.mode === 'one' ? editing.record : undefined}
         options={options}
         check={(values) => ({ ...takenIdentity(entity, values, others), ...also?.(values) })}
         derived={entity.derived}

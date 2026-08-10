@@ -1121,8 +1121,11 @@
   },
   "verification": {
     "waitingForRaces": "Odluka čeka trke tog događaja, da bi se pomerile sa njim.",
+    "racesFailed": "Odluka nije moguća: trke se ne mogu učitati, a pomeraju se zajedno sa događajem.",
     "openCard": "Prikaži",
+    "openCardNamed": "Prikaži: {name}",
     "foldCard": "Sakrij",
+    "foldCardNamed": "Sakrij: {name}",
     "title": "Verifikacija",
     "shortCount": "Jedan izvor podataka nije dostupan, pa neki brojevi mogu biti manji od stvarnih. Osveži stranu; ako se ponovi, prijavi grešku.",
     "empty": "Nema nijedne stavke na čekanju.",

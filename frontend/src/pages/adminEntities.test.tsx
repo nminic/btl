@@ -8,6 +8,7 @@ import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, must } from '../test/at'
 import { loadResource } from '../data/client'
+import { eventSlug } from './admin/entityForms'
 import { formatNumber, formatShortDate } from '../i18n/format'
 import type { BtlEvent, Race, Result } from '../data/types'
 import { expectFrontPage, renderAt } from '../test/render'
@@ -399,6 +400,50 @@ describe('the races of an event', () => {
     await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
 
     expect(screen.getByTestId('removed-results')).toHaveTextContent('')
+  })
+
+  it('shows the address the save will leave, not the one the rule would build', async () => {
+    /* Fifteen pairs of events in the history share a name inside one year, so
+       their address carries the month as well, which the rule cannot build. The
+       save keeps it; the form and the confirmation were showing the rule's
+       answer, so an administrator copying a link before saving copied one that
+       answers nowhere. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const carried = must(
+      events.find((one) => one.slug !== eventSlug(one.name, one.date)),
+      'an event whose address carries more than the rule builds',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.type(await screen.findByLabelText(/Pretraga/), carried.name)
+
+    const row = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        /* By the day, because the two of that name in that year are what put
+           the month in the address in the first place. The list writes a date
+           the way this language does. */
+        .find((one) =>
+          (one.textContent ?? '').includes(
+            `${Number(carried.date.slice(8))}. ${Number(carried.date.slice(5, 7))}. ${carried.date.slice(0, 4)}.`,
+          ),
+        ),
+      'the row of that event',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+
+    const form = within(await screen.findByRole('form', { name: /Izmena događaja/ }))
+
+    expect(form.getByText(carried.slug)).toBeVisible()
+
+    await user.click(form.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(said).toHaveTextContent(carried.slug)
   })
 
   it('refuses to save a second event onto an address one already answers at', async () => {

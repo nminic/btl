@@ -64,7 +64,14 @@ function Wrappers() {
 describe('the address of an event', () => {
   it('is the one the rule builds, or that one with more on it', async () => {
     const events = await loadResource<BtlEvent[]>('events')
-    const wrong = events.filter((one) => !one.slug.startsWith(eventSlug(one.name, one.date)))
+    /* The rule's answer, or the rule's answer and more after a dash: "more"
+       must not run into the next address, so gradska-liga-usce-2017-05 counts
+       and gradska-liga-usce-201705 does not. */
+    const wrong = events.filter((one) => {
+      const rule = eventSlug(one.name, one.date)
+
+      return one.slug !== rule && !one.slug.startsWith(`${rule}-`)
+    })
 
     expect(events.length).toBeGreaterThan(1000)
     expect(wrong.map((one) => `${one.slug} (${one.name}, ${one.date})`)).toEqual([])

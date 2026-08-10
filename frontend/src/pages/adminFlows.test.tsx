@@ -1451,20 +1451,20 @@ describe('the six queues read from the file', () => {
        nothing out. The button's own label proves nothing: it reads off the same
        state either way. */
     const bodyOf = (card: ReturnType<typeof within>) => {
-      const opens = card.getByRole('button', { name: /^(Prikaži|Sakrij)$/ }).getAttribute('aria-controls')
+      const opens = card.getByRole('button', { name: /^(Prikaži|Sakrij): / }).getAttribute('aria-controls')
 
       return must(document.getElementById(String(opens)), 'the part of the card that folds')
     }
 
-    expect(first_card.getByRole('button', { name: 'Prikaži' })).toHaveAttribute(
+    expect(first_card.getByRole('button', { name: /^Prikaži: / })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
     expect(bodyOf(first_card).className).not.toContain('--open')
 
-    await user.click(first_card.getByRole('button', { name: 'Prikaži' }))
+    await user.click(first_card.getByRole('button', { name: /^Prikaži: / }))
 
-    expect(first_card.getByRole('button', { name: 'Sakrij' })).toHaveAttribute(
+    expect(first_card.getByRole('button', { name: /^Sakrij: / })).toHaveAttribute(
       'aria-expanded',
       'true',
     )
@@ -1472,12 +1472,12 @@ describe('the six queues read from the file', () => {
 
     /* One at a time: two open cards on a telephone are the scrolling this was
        meant to end. */
-    await user.click(second.getByRole('button', { name: 'Prikaži' }))
+    await user.click(second.getByRole('button', { name: /^Prikaži: / }))
 
     expect(bodyOf(second).className).toContain('--open')
     expect(bodyOf(first_card).className).not.toContain('--open')
 
-    await user.click(second.getByRole('button', { name: 'Sakrij' }))
+    await user.click(second.getByRole('button', { name: /^Sakrij: / }))
 
     expect(bodyOf(second).className).not.toContain('--open')
   })
@@ -1489,7 +1489,7 @@ describe('the six queues read from the file', () => {
     await open('comments', 'Komentari')
 
     const card = within(first(within(waitingList()).getAllByRole('listitem')))
-    const opens = card.getByRole('button', { name: 'Prikaži' }).getAttribute('aria-controls')
+    const opens = card.getByRole('button', { name: /^Prikaži: / }).getAttribute('aria-controls')
 
     expect(opens).not.toBeNull()
     expect(document.getElementById(String(opens))).not.toBeNull()

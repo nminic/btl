@@ -40,7 +40,16 @@ type Props = {
   check?: (values: FormValues) => Record<string, FieldError>
   /** Values the form shows but does not ask for, because they are read off the
    *  ones it does ask for. They follow the fields as words. */
-  derived?: (values: FormValues) => DerivedField[]
+  derived?: (values: FormValues, was?: Record<string, unknown>) => DerivedField[]
+  /**
+   * The record being changed, where there is one.
+   *
+   * Only for the derived values, which are not all a function of the fields
+   * alone: the address of an event stays as it was written unless the name or
+   * the year has changed, so the form cannot show what a save will leave behind
+   * without knowing what it started from (entityForms.ts, `addressOfEvent`).
+   */
+  was?: Record<string, unknown>
   /**
    * The field the cursor starts in, by name.
    *
@@ -254,6 +263,7 @@ export function FormRenderer({
   options = {},
   check,
   derived,
+  was,
   openAt,
 }: Props) {
   const { t } = useI18n()
@@ -354,7 +364,7 @@ export function FormRenderer({
           where it went, and read only, so it cannot contradict what it is read
           off. It says where it comes from, or a value nobody can change reads
           as a fault rather than as a rule. */}
-      {(derived?.(values) ?? []).map((one) => (
+      {(derived?.(values, was) ?? []).map((one) => (
         <p className="field field--derived" key={one.name}>
           <span className="field__label">{t(one.labelKey)}</span>
           <strong className="field__derived">{t(one.shownKey)}</strong>

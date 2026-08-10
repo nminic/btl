@@ -4,7 +4,7 @@ import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { combinePair, dataOr, useRaces, useTeams } from '../../data/useResource'
+import { combinePair, dataOr, failed, useEvents, useRaces, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import { RATING_MARKS } from '../../data/types'
@@ -18,7 +18,7 @@ import { useSession } from '../../session/useSession'
 import { moveEvent } from './moveEvent'
 import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
-import { idFor, recordsOf, TEAMS } from './entityForms'
+import { EVENTS, idFor, RACES, recordsOf, TEAMS } from './entityForms'
 import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
@@ -269,8 +269,38 @@ export function PendingQueue({ queue }: { queue: Queue }) {
      are read, and the buttons say what they are waiting for
      (`whyNoDecision`). */
   const racesState = useRaces()
-  const allRaces = dataOr(racesState, [])
-  const racesUnknown = queue.id === 'schedule' && racesState.status !== 'ready'
+  /* Through the overlay, like every other screen that reads records: a race
+     whose day an administrator corrected during this visit is moved from the day
+     it now has, and a race entered during it is moved at all. */
+  const allRaces = recordsOf(RACES, dataOr(racesState, []), overlay)
+  const eventsState = useEvents()
+  const allEvents = recordsOf(EVENTS, dataOr(eventsState, []), overlay)
+
+  /** The day the event of a reported change is on now, or the day the report
+   *  says it was on where the events have not arrived. */
+  const dayOfEvent = (one: PendingItem) =>
+    allEvents.find((each) => each.id === one.subjectId)?.date ?? one.currentDate
+  /**
+   * Why no decision can be taken on this queue just now, or nothing.
+   *
+   * Only the reported changes of date, and only over the races: accepting one
+   * moves the event and everything run at it by the same number of days
+   * (moveEvent), so without them the event would move alone, a week away from
+   * its own races, and nothing brings a decision back.
+   *
+   * Three states and not two, because `dataOr` answers the same for a file on
+   * its way and one that failed. Told to wait for something that will never
+   * come, a moderator who holds the right is refused it for good and reads a
+   * sentence that is not true (AdminEvents does the same thing for the same
+   * reason).
+   */
+  const whyNoDecision =
+    queue.id !== 'schedule' || racesState.status === 'ready'
+      ? null
+      : failed(racesState)
+        ? t('verification.racesFailed')
+        : t('verification.waitingForRaces')
+  const racesUnknown = whyNoDecision !== null
 
   /* Both dates of a reported change, so the difference is the thing on screen
      and not something the reader works out. Empty on the other five queues. */
@@ -316,10 +346,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       settle(one.id, {
         status: 'approved',
-        /* A published biography is written down as it went out, so the table of
-           settled items can show what the member's profile now says rather than
-           what they sent in. Nothing else writes anything on an approval, which
-           explains itself. */
+        /* A published biography is written down as it went out: what the
+           member's profile now says, rather than what they sent in. Nothing
+           reads it on a screen since the tables of settled items were taken away
+           (owner, 06.08.2026); it is kept because it is what the database will
+           be given when there is one, and because a decision that records
+           nothing about what it published cannot be answered for. */
         note: outcomeFor(queue, one) === 'editAndPublish' ? textOf(one) : '',
         basis: '',
         memberNumber: '',
@@ -345,7 +377,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          into, and against the id the report carries rather than the name: two
          events across two seasons carry one name (PDL P6). */
       if (queue.id === 'schedule' && one.subjectId !== '' && one.proposedDate !== '') {
-        moveEvent(one.subjectId, one.currentDate, one.proposedDate, allRaces, editRecord)
+        /* From the day the event is on now and not from the day the report
+           says it was on: a report written a fortnight ago may name a day the
+           event has since been moved off, and the races follow the event rather
+           than the report. */
+        moveEvent(one.subjectId, dayOfEvent(one), one.proposedDate, allRaces, editRecord)
       }
 
       if (made === null) {
@@ -422,7 +458,16 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   <button
                     type="button"
                     className="button button--secondary"
+                    /* Held back for the same reason one card is: the sweep is
+                       the same decision taken forty times, and taken without the
+                       races it is forty half-moves. */
+                    aria-disabled={racesUnknown}
+                    aria-describedby={racesUnknown ? `${waitingId}-blocked` : undefined}
                     onClick={() => {
+                      if (racesUnknown) {
+                        return
+                      }
+
                       const ask =
                         queue.id === 'teams'
                           ? 'verification.approveAllAskTeams'
@@ -442,6 +487,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   >
                     {t('verification.approveAll')}
                   </button>
+                )}
+
+                {/* Said once for the whole queue rather than on every card: the
+                    same sentence under forty cards is the noise a screen reader
+                    reads forty times. */}
+                {whyNoDecision !== null && (
+                  <p className="pending__blocked" id={`${waitingId}-blocked`}>
+                    {whyNoDecision}
+                  </p>
                 )}
 
                 <Swept count={swept} />
@@ -486,6 +540,16 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             className="pending__toggle"
                             aria-expanded={shown === one.id}
                             aria-controls={`${one.id}-card`}
+                            /* Named after the card it opens: five buttons called
+                               "Prikaži" are five controls a screen reader cannot
+                               tell apart, which is the rule the rest of the
+                               portal keeps. */
+                            aria-label={t(
+                              shown === one.id
+                                ? 'verification.foldCardNamed'
+                                : 'verification.openCardNamed',
+                              { name: one.subject },
+                            )}
                             onClick={() => setShown(shown === one.id ? null : one.id)}
                           >
                             {t(shown === one.id ? 'verification.foldCard' : 'verification.openCard')}
@@ -626,7 +690,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 why !== null
                                   ? `${one.id}-blocked`
                                   : racesUnknown
-                                    ? `${one.id}-waiting`
+                                    ? `${waitingId}-blocked`
                                     : undefined
                               }
                               onClick={() => {
@@ -644,12 +708,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? t('verification.publish')
                                 : t('review.approve')}
                             </button>
-
-                            {racesUnknown && (
-                              <p className="pending__blocked" id={`${one.id}-waiting`}>
-                                {t('verification.waitingForRaces')}
-                              </p>
-                            )}
 
                             {/* Deleting opens the same box the refusals open,
                                 and asks for a note that may be left empty
