@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { PendingItem } from '../../data/types'
 import { useResource, type ResourceState } from '../../data/useResource'
-import type { Decision, Decisions } from '../../session/context'
+import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
 /* What is waiting in the seven queues that are read from a file.
@@ -56,39 +56,6 @@ export function waitingIn(
   queue: string,
 ): PendingItem[] {
   return items.filter((one) => one.queue === queue && decisions[one.id] === undefined)
-}
-
-/**
- * Everything in one queue that has been decided during this visit, each item
- * beside the decision that settled it.
- *
- * Both halves at once, because they are one fact. An item is on this list
- * precisely because a decision was written down for it, and a screen that is
- * handed only the item has to go back to the decisions for every row and prove
- * all over again that it finds one, on a question this walk has already
- * answered. The screens showed the status and the reason by reaching back in,
- * and that reach could return nothing, on a row that exists only because it
- * cannot.
- */
-export function settledWith(
-  items: PendingItem[],
-  decisions: Decisions,
-  queue: string,
-): { item: PendingItem; decision: Decision }[] {
-  /* `queue` is a string and not a QueueId on purpose, so that this stays the
-     exact complement of `waitingIn` above it: the two partition the same items
-     and must always be able to be called the same way. */
-  const settled: { item: PendingItem; decision: Decision }[] = []
-
-  for (const item of items) {
-    const decision = decisions[item.id]
-
-    if (decision !== undefined && item.queue === queue) {
-      settled.push({ item, decision })
-    }
-  }
-
-  return settled
 }
 
 /* A decision about a membership fee used to be remembered under a key of its own,

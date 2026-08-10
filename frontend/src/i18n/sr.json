@@ -797,7 +797,7 @@
   "status": {
     "pending": "Čeka proveru",
     "approved": "Odobreno",
-    "rejected": "Vraćeno"
+    "rejected": "Odbijeno"
   },
   "messages": {
     "title": "Poruke",
@@ -860,14 +860,14 @@
     "empty": "Nema nijednog rezultata na čekanju.",
     "decided": "Rešeno",
     "approve": "Odobri",
-    "sendBack": "Vrati na doradu",
-    "sendBackNamed": "Vraćanje na doradu: {name}",
-    "reason": "Razlog vraćanja",
-    "reasonPlaceholder": "Bez razloga se ne vraća.",
+    "sendBack": "Odbij",
+    "sendBackNamed": "Odbijanje: {name}",
+    "reason": "Razlog odbijanja",
+    "reasonPlaceholder": "Bez razloga se ne odbija. Član dobija tvoj razlog i sme da pošalje ponovo.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
     "officialResults": "Zvanični rezultati",
     "decision": "Odluka",
-    "confirmSendBack": "Vrati uz ovaj razlog",
+    "confirmSendBack": "Odbij uz ovaj razlog",
     "cancel": "Odustani",
     "explanation": "Obrazloženje",
     "statement": {
@@ -1168,7 +1168,7 @@
     "published": "Objavljeno",
     "publishedText": "Objavljen tekst",
     "photoReturned": "Profilna slika je vraćena",
-    "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se vrati. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
+    "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se odbije uz razlog. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
     "activateAllPayment": "Aktiviraj sve po osnovu uplate",
     "activateAllAsk": {
       "one": "Aktivirati {count} članstvo po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
@@ -1182,8 +1182,8 @@
     },
     "teamAccepted": "Tim „{name}\" je prihvaćen",
     "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator.",
-    "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili vrati predlog na doradu.",
-    "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili vrati predlog na doradu.",
+    "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili odbij predlog.",
+    "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili odbij predlog.",
     "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",
     "teamNoMember": "Ovaj predlog nema člana koji ga je poslao, pa nema ko da bude organizator tima ni ko da dobije odgovor."
   },

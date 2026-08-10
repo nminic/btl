@@ -366,8 +366,16 @@ describe('a result from entry to decision', () => {
     expect(waiting).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Odobri' }))
 
-    expect(screen.getByRole('heading', { name: 'Rešeno' })).toBeVisible()
-    expect(screen.getByText('Odobreno')).toBeVisible()
+    /* The queue holds what is waiting and nothing else since 06.08.2026: what
+       has been settled is not work standing before a moderator. So the decision
+       is read where the member reads it, which is the point of the whole
+       journey. */
+    expect(screen.getByText('Nema nijednog rezultata na čekanju.')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Otvori nalog' }))
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    expect(await screen.findByText('Odobreno')).toBeVisible()
 
     unmount()
   })
@@ -405,22 +413,21 @@ describe('a result from entry to decision', () => {
 
     // The reason is asked for after the decision to send back, and the
     // confirmation stays shut until it is written.
-    await user.click(await screen.findByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(await screen.findByRole('button', { name: 'Odbij' }))
 
-    const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
+    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
     expect(confirm).toBeDisabled()
 
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Link ne otvara rezultate.')
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Link ne otvara rezultate.')
     expect(confirm).toBeEnabled()
 
     await user.click(confirm)
-    expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
 
-    // And the member finds the same sentence on their own screen, reached
+    // And the member finds the sentence on their own screen, reached
     // through the account menu in the header.
     await user.click(screen.getByRole('button', { name: 'Otvori nalog' }))
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
-    expect(await screen.findByText('Vraćeno')).toBeVisible()
+    expect(await screen.findByText('Odbijeno')).toBeVisible()
     expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
   })
 })

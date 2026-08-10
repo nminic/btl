@@ -5,6 +5,7 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import { at, first, must } from '../../test/at'
+import { Decided } from '../../test/decided'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { Entities } from './Entities'
@@ -198,7 +199,7 @@ describe('one decision for a whole queue', () => {
     })
 
     try {
-      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin', null, undefined, null, <Decided />)
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
       const before = within(waiting).getAllByRole('listitem').length
@@ -209,8 +210,11 @@ describe('one decision for a whole queue', () => {
       expect(asked).toHaveLength(1)
       expect(first(asked)).toContain(String(before))
       expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+      /* Every one of them decided, read off the session rather than off a table
+         of settled items: a queue shows what is waiting and nothing else since
+         06.08.2026. */
       expect(
-        within(screen.getByRole('table', { name: 'Rešeno' })).getAllByRole('row').slice(1),
+        within(screen.getByRole('list', { name: 'Odluke sesije' })).getAllByRole('listitem'),
       ).toHaveLength(before)
     } finally {
       confirm.mockRestore()
@@ -226,20 +230,27 @@ describe('one decision for a whole queue', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
-      renderAt('/sr/administracija/verifikacija/biografije', 'superadmin')
+      renderAt('/sr/administracija/verifikacija/biografije', 'superadmin', null, undefined, null, <Decided />)
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      /* The text itself, read under the words that name it on the card, and not
+         the whole card: the card carries the member's name above it, and a word
+         taken from there is a word the published text never had. */
+      const card = within(first(within(waiting).getAllByRole('listitem')))
       const first_text = must(
-        within(waiting).getAllByRole('listitem')[0]?.textContent,
+        must(
+          card.getByText('Tekst biografije').nextElementSibling,
+          'the biography under the words that name it',
+        ).textContent,
         'the first waiting biography',
       )
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      const settled = within(screen.getByRole('table', { name: 'Rešeno' }))
+      const decided = within(screen.getByRole('list', { name: 'Odluke sesije' }))
       const words = must(first_text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')
 
-      expect(settled.getAllByText(new RegExp(words[0])).length).toBeGreaterThan(0)
+      expect(decided.getAllByText(new RegExp(words[0])).length).toBeGreaterThan(0)
     } finally {
       confirm.mockRestore()
     }
@@ -256,7 +267,7 @@ describe('one decision for a whole queue', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
-      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin', null, undefined, null, <Decided />)
 
       const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
       const before = within(waiting).getAllByRole('row').slice(1).length
@@ -264,20 +275,19 @@ describe('one decision for a whole queue', () => {
 
       await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
 
-      const settled = within(screen.getByRole('table', { name: 'Rešeno' }))
-      /* The second cell is the column headed "Članski broj". Read by its place
-         in the row rather than by a class name, which is a fact about the
-         stylesheet and not about the table. */
-      const numbers = settled
-        .getAllByRole('row')
-        .slice(1)
-        .map((row) => at(within(row).getAllByRole('cell'), 1).textContent)
+      /* Read off the session, where the number handed out lives: the screen
+         shows what is waiting and nothing else. Each line is one decision, and
+         the number it handed out is the last field of it. */
+      const lines = within(screen.getByRole('list', { name: 'Odluke sesije' }))
+        .getAllByRole('listitem')
+        .map((one) => String(one.textContent))
+      const numbers = lines.map((line) => at(line.split(' | '), 4))
 
       expect(numbers).toHaveLength(before)
       expect(new Set(numbers).size).toBe(before)
       /* And every one of them is a membership on the ground of a fee, which is
          what the words on the button say it writes down. */
-      expect(settled.getAllByText('Uplata')).toHaveLength(before)
+      expect(lines.filter((line) => line.includes('payment'))).toHaveLength(before)
     } finally {
       confirm.mockRestore()
     }

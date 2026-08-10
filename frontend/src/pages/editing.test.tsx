@@ -149,12 +149,12 @@ describe('the last few branches these screens have', () => {
     /* Straight to the queue: the sectors stand beside every administrative
        screen now, so there is no road to a section to walk first. */
     await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
-    await user.click(await screen.findByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(await screen.findByRole('button', { name: 'Odbij' }))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
     // The result stays where it was, waiting.
-    expect(screen.queryByRole('button', { name: 'Vrati uz ovaj razlog' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Vrati na doradu' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Odbij uz ovaj razlog' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Odbij' })).toBeVisible()
   })
 
   it('leaves an already written competition text alone unless it is changed', async () => {

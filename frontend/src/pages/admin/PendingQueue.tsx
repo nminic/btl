@@ -14,15 +14,14 @@ import { overall, rated } from '../event/overall'
 import countries from '../../data/countries.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
-import type { Decision } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import { usePending, waitingIn, settledWith } from './pending'
+import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { idFor, recordsOf, TEAMS } from './entityForms'
 import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
-import { canSendBack, type Queue, type QueueOutcome } from './queues'
+import { canSendBack, type Queue } from './queues'
 import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
@@ -49,30 +48,11 @@ import './Verification.css'
  * a biography of three and a half thousand characters has no column it fits in.
  */
 
-/**
- * What the last column of the table of settled items holds, which is not the
- * same thing on every queue.
- *
- * Comments are the one that has no such column: nothing is ever written down
- * about one, neither when it is let out nor when it is deleted, so a column
- * there would be a heading over a run of empty cells.
- */
 /** Whether a queue has a second decision that hands the work back to its
- *  author. Five of the eight, plus the pictures, which hand back an instruction
+ *  author. Five of the seven, plus the pictures, which hand back an instruction
  *  (queues.ts). */
 function handsBack(queue: Queue): boolean {
   return queue.outcome === 'sendBack' || queue.outcome === 'instruct'
-}
-
-const SETTLED_COLUMN: Record<QueueOutcome, string | undefined> = {
-  sendBack: 'review.explanation',
-  /* The pictures write down a reason like the rest, and it is called what it is
-     called everywhere else. It is only expected to be precise enough for the
-     member to work from, which is a fact about what is written and not about
-     where it is shown. */
-  instruct: 'review.explanation',
-  editAndPublish: 'verification.publishedText',
-  delete: undefined,
 }
 
 /**
@@ -286,23 +266,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
      the moderator has been editing it, and what is published is what they left. */
   const textOf = (one: PendingItem) => edits[one.id]?.body ?? one.body
 
-  /* What the decision is called once it has been taken. "Vraćeno" is the word
-     where a refusal hands work back. A deleted comment is "Obrisano" and not
-     "Odbijeno", because a refused comment sounds like one that is being kept
-     somewhere and could be brought back, and none is (PDL P22). A biography is
-     never refused at all, so its one outcome is "Objavljeno". */
-  const stateKey = (status: Decision['status']) => {
-    if (queue.outcome === 'editAndPublish') {
-      return 'verification.published'
-    }
-
-    if (queue.outcome === 'delete' && status === 'rejected') {
-      return 'verification.deleted'
-    }
-
-    return `status.${status}`
-  }
-
   /**
    * Approving, one item or forty, with everything the next one has to know.
    *
@@ -377,7 +340,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     return done
   }
 
-  const settledColumn = SETTLED_COLUMN[queue.outcome]
   /** What the text on the card is called: the biography, the comment, the reason
    *  given, or the file name of a picture. */
   const bodyLabel = t(`verification.body.${queue.id}`)
@@ -403,10 +365,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           const refusedFor = (one: PendingItem) =>
             queue.id === 'teams' ? refusal(teamFrom(one, edits), addresses, one) : null
           const waiting = waitingIn(items, decisions, queue.id)
-          /* Each settled item with the decision that settled it, so the row
-             below shows what was decided instead of going back for it
-             (queues.ts). */
-          const settled = settledWith(items, decisions, queue.id)
 
           return (
             <>
@@ -645,44 +603,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                 </ul>
               )}
 
-              {settled.length > 0 && (
-                <>
-                  <h2 className="profile__section">{t('review.decided')}</h2>
-                  <div className="table-scroll">
-                    <table className="table">
-                      <caption className="visually-hidden">{t('review.decided')}</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">{t('verification.subject')}</th>
-                          <th scope="col">{t('admin.state')}</th>
-                          {settledColumn !== undefined && (
-                            <th scope="col">{t(settledColumn)}</th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {settled.map(({ item, decision }) => (
-                          <tr key={item.id}>
-                            {/* What it was called when it was decided. A name
-                                corrected on the card is the name the team now
-                                carries, so the row that records the decision
-                                must not go on showing the one that arrived. */}
-                            <td>
-                              {queue.id === 'teams' ? teamFrom(item, edits).name : item.subject}
-                            </td>
-                            <td>
-                              <span className={`tag tag--${decision.status}`}>
-                                {t(stateKey(decision.status))}
-                              </span>
-                            </td>
-                            {settledColumn !== undefined && <td>{decision.note}</td>}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
             </>
           )
         }}

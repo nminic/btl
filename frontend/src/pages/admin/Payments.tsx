@@ -6,7 +6,7 @@ import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
-import { usePending, waitingIn, settledWith } from './pending'
+import { usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
@@ -139,11 +139,6 @@ export function Payments() {
       <Resource state={state}>
         {([items, competitors]) => {
           const waiting = waitingIn(items, decisions, queue.id)
-          /* Each settled registration with the decision that settled it, so the
-             row below shows what was decided instead of going back for it
-             (queues.ts). */
-          const settled = settledWith(items, decisions, queue.id)
-
           /**
            * Activation, and the reason box shut behind it.
            *
@@ -315,62 +310,6 @@ export function Payments() {
                 />
               )}
 
-              {settled.length > 0 && (
-                <>
-                  <h2 className="profile__section">{t('review.decided')}</h2>
-                  <div className="table-scroll">
-                    <table className="table">
-                      <caption className="visually-hidden">{t('review.decided')}</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">{t('competitors.columns.member')}</th>
-                          {/* The number the activation handed out. It is the first
-                              thing the administrator passes on to the member, so
-                              it is a column and not a detail. */}
-                          <th scope="col">{t('admin.field.memberNumber')}</th>
-                          <th scope="col">{t('admin.state')}</th>
-                          <th scope="col">{t('admin.basis')}</th>
-                          <th scope="col">{t('review.explanation')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {settled.map(({ item, decision }) => (
-                          <tr key={item.id}>
-                            <td>
-                              {item.who}
-                              <span className="pending__country">{item.email}</span>
-                            </td>
-                            <td>
-                              {decision.memberNumber === '' ? (
-                                ''
-                              ) : (
-                                <span className="table__member-number">
-                                  {decision.memberNumber}
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <span className={`tag tag--${decision.status}`}>
-                                {t(`status.${decision.status}`)}
-                              </span>
-                            </td>
-                            <td>
-                              {decision.basis === '' ? (
-                                ''
-                              ) : (
-                                <span className={`tag tag--${decision.basis}`}>
-                                  {t(`admin.basisValue.${decision.basis}`)}
-                                </span>
-                              )}
-                            </td>
-                            <td>{decision.note}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
             </>
           )
         }}
