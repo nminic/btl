@@ -120,8 +120,11 @@ describe('the wall of ducats in the rulebook', () => {
     const gendered = families.filter((family) => family.topFemale !== '')
 
     expect(gendered.length).toBeGreaterThan(1)
-    expect(gendered.some((family) => wallText.includes(family.topFemale))).toBe(true)
-    expect(gendered.some((family) => wallText.includes(family.top))).toBe(true)
+    /* Alternating from the first, so which family speaks to whom is settled here
+       and not by the order two of them happen to be in. */
+    expect(wallText).toContain(first(gendered).topFemale)
+    expect(wallText).toContain(at(gendered, 1).top)
+    expect(wallText).not.toContain(first(gendered).top)
   })
 
   it('has nothing to press, and nothing that opens', async () => {

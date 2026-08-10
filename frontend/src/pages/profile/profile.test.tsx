@@ -484,7 +484,10 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
     }) as typeof fetch
 
     try {
-      renderAt('/sr/takmicar/000001/priznanja?sezona=sve', 'visitor', null, undefined, '2027-08-01')
+      /* A season that is not the ducat's, on purpose: a trophy belongs to the
+         season it was won in and the filter narrows those, but a ducat is
+         permanent and the filter must not touch it (PDL P11). */
+      renderAt('/sr/takmicar/000001/priznanja?sezona=2010', 'visitor', null, undefined, '2027-08-01')
 
       expect(await screen.findByText('jul 2027.')).toBeVisible()
 

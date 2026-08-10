@@ -74,6 +74,19 @@ describe('the two legends', () => {
     expect(radiusOf(container, 'bottom')).toBeCloseTo(82, 4)
   })
 
+  it('steps the legend down twice, and six of the fifteen live in the middle step', () => {
+    /* Three sizes, not two: nine letters, fourteen and seventeen. The middle one
+       was unasserted, and six real legends sit in it (ISTRČANIH TRKA, BTL
+       KRAĆIH TRKA, BTL DUŽIH TRKA among them), so a step that quietly became the
+       size above it would have shown on the wall and nowhere else. */
+    const size = (top: string) =>
+      sizeOf(render(<DucatArt ducat={{ ...coin, top }} label="Proba" />).container, 'ducat-art__legend')
+
+    expect(size('ISTRČANIH')).toBe(13)
+    expect(size('ISTRČANIH TRKA')).toBe(11.5)
+    expect(size('BTL ULTRAMARATONA')).toBe(10.5)
+  })
+
   it('strikes both of them, and the number, as text', () => {
     /* Selectable, searchable, and read out as the words and the number they are.
        Drawn as paths they would be a picture of a legend, and no search on this

@@ -5,7 +5,7 @@ import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
 import { Resource } from '../components/Resource'
 import { earnedDucats } from '../data/ducatEarned'
-import { unitOf, type Ducat } from '../data/ducatRule'
+import { unitFor, type Ducat } from '../data/ducatRule'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import {
@@ -123,7 +123,7 @@ function AwardsFor({
      The period and the value are not in it, because both stand beside the coin
      as words of the page and a screen reader reads the whole card. */
   const labelFor = (ducat: Ducat) => {
-    const unit = unitOf(ducat)
+    const unit = unitFor(ducat.kind)
 
     return `${ducat.name}, ${formatNumber(ducat.value, locale, 0)}${unit === '' ? '' : ` ${unit}`}.`
   }
@@ -195,8 +195,8 @@ function AwardsFor({
               <li key={ducat.id} className="awards__ducat">
                 <DucatArt ducat={ducat} label={labelFor(ducat)} />
                 <strong>{ducat.name}</strong>
-                {/* The coin carries the month, and the coin is hidden from a
-                    screen reader, so the month has to stand here too: without
+                {/* The name the coin carries leaves the period out on purpose,
+                    so the month stands here as words of the page: without
                     it a profile holding July and August reads as one ducat
                     written down twice. Through the same reader of ranges the
                     rest of the portal uses, so "1. do 31. jul" is never what a
