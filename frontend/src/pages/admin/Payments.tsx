@@ -202,7 +202,6 @@ export function Payments() {
               settle(item.id, { status: 'approved', note: '', basis: 'payment', memberNumber })
             }
 
-
             /* Every one of them has been decided, so nothing the box could be
                open on is still waiting. Confirming it after the sweep would
                overwrite an activation with a refusal (see `activate`). */
@@ -247,9 +246,6 @@ export function Payments() {
                 <Swept count={swept} />
               </div>
 
-              {/* The numbers given, in the order they were given. A member number
-                  is what the administrator writes to whoever paid, so it is on
-                  screen from the moment it exists until the screen is left. */}
               {/* Drawn whether or not anything has been given, so the region is
                   on the page before it has anything to say: one added together
                   with its text is the kind a screen reader misses (Swept). */}

@@ -1180,12 +1180,24 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(lines.some((line) => line.endsWith('000034'))).toBe(true)
   })
 
+  it('has the region for the numbers before there is a number to put in it', async () => {
+    /* A live region added to the page together with its text is the kind a
+       screen reader misses, which is the rule the sweep line beside it keeps
+       (Swept). So it is drawn empty and says so. */
+    await openPayments()
+
+    const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
+
+    expect(said.getByText('Još nijedan broj nije dodeljen na ovom ekranu.')).toBeVisible()
+    expect(said.queryAllByRole('listitem')).toEqual([])
+  })
+
   it('still says the numbers after the moderator has been somewhere else', async () => {
     /* Held in the session and not in the screen: a number given is a number the
        administrator writes to whoever paid, and a walk to another queue and back
        used to take it away. */
     const user = setupUser()
-    const { router } = renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, undefined, null, <Decided />)
+    const { router } = renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
 
     await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
