@@ -6,7 +6,6 @@ import moderator from '../../forms/definitions/admin-moderator.form.json'
 import strana from '../../forms/definitions/admin-strana.form.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import trka from '../../forms/definitions/admin-trka.form.json'
-import dukat from '../../forms/definitions/admin-dukat.form.json'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { isoDate } from '../../forms/dateField'
@@ -152,6 +151,29 @@ export const EVENTS: EntityDef = {
 }
 
 /**
+ * Why this event cannot be saved, or nothing.
+ *
+ * Two events at one address is the fault this exists to stop. The address is
+ * read off the name and the day (`eventSlug`), and copying an event keeps both
+ * until somebody changes the date, so pressing Kopiraj and saving without
+ * touching the date wrote a second record answering at the first one's address.
+ * Everything that joins to an event by address then means both of them: the
+ * results of the one are the results of the other, and deleting either takes
+ * the other's with it.
+ *
+ * Said on the form rather than refused quietly, and on the date, because the
+ * date is what a copy is expected to change.
+ */
+export function eventClash(
+  values: FormValues,
+  taken: string[],
+): Record<string, FieldError> {
+  const address = eventSlug(String(values.name), String(values.date))
+
+  return taken.includes(address) ? { date: { key: 'admin.eventTaken' } } : {}
+}
+
+/**
  * The address an event answers at: its name, then the day it is run.
  *
  * The day is part of it because the same race is run every year and the name on
@@ -194,6 +216,9 @@ function categoryFrom(values: FormValues): DerivedValue[] {
 export const RACES: EntityDef = {
   id: 'races',
   labelKey: 'admin.races',
+  /* No screen answers here since 06.08.2026: a race is edited inside its event
+     (`racesOf`). Kept because every entity carries one and the guards are built
+     from it; nothing routes it. */
   path: 'administracija/trke',
   form: trka as FormDef,
   idField: 'id',
@@ -281,14 +306,6 @@ export const LEAGUES: EntityDef = {
   blank: { slug: '', eventIds: [] },
 }
 
-export const DUCATS: EntityDef = {
-  id: 'ducats',
-  labelKey: 'admin.ducats',
-  path: 'administracija/dukati',
-  form: dukat as FormDef,
-  idField: 'id',
-  blank: {},
-}
 
 /* The one entity whose rows are the year itself: four windows that tile it and
  * repeat, plus the junior price that has none. Nothing is added and nothing is

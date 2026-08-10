@@ -1,13 +1,13 @@
 import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
-import type { FieldDef } from '../../forms/types'
+import dukat from '../../forms/definitions/admin-dukat.form.json'
+import type { FieldDef, FormDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { DUCAT_KINDS } from '../../data/ducatRule'
 import {
-  DUCATS,
   ENTITY_FORMS,
   EVENTS,
   LEAGUES,
@@ -585,9 +585,12 @@ describe('the words the eight forms need', () => {
   it('offer the ducat kinds the rule engine knows, and no others', () => {
     // Two closed lists that must never drift apart: the one on the form and the
     // one the sentence is built from.
+    /* Read off the definition rather than through an entity: the ducats left
+       administration on 06.08.2026, and an `EntityDef` kept alive only so a test
+       could reach its form is a record of a screen that does not exist. */
     const options =
       must(
-        DUCATS.form.fields.find((one) => one.name === 'kind'),
+        (dukat as FormDef).fields.find((one) => one.name === 'kind'),
         'a kind field on the ducat form',
       ).options ?? []
 

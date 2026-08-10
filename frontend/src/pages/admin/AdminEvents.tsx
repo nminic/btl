@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { EVENTS, RACES, recordsOf, type Editing } from './entityForms'
+import { EVENTS, RACES, eventClash, recordsOf, type Editing } from './entityForms'
 import { EventRaces } from './EventRaces'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
@@ -91,6 +91,24 @@ export function AdminEvents() {
                    away from whoever opened it, and the copy is the one case
                    where the cursor already knows where it is wanted. */
                 openAt={chosen === null && asked !== null ? 'date' : undefined}
+                /* Not onto an address another event already answers at. A copy
+                   keeps the name and the day it was copied from, so saving one
+                   without changing the date wrote a second event at the first
+                   one's address, and everything that joins to an event by
+                   address then meant both: deleting either took the other's
+                   results with it (entityForms.ts, `eventClash`). */
+                also={(values) =>
+                  eventClash(
+                    values,
+                    all
+                      .filter(
+                        (each) =>
+                          each.id !==
+                          (editing.mode === 'one' ? String(editing.record[EVENTS.idField]) : ''),
+                      )
+                      .map((each) => each.slug),
+                  )
+                }
                 onDone={() => {
                   setChosen(null)
                   setRace(null)
@@ -210,9 +228,24 @@ export function AdminEvents() {
                                 remove(RACES.id, race.id)
                               }
 
-                              for (const result of allResults.filter(
-                                (each) => each.eventSlug === one.slug,
-                              )) {
+                              /* Only where the address belongs to this event
+                                 alone. A result names its event by address, and
+                                 a copy keeps the name and the day it was copied
+                                 from until somebody changes the date, so for as
+                                 long as two events answer at one address there
+                                 is no telling whose result is whose. Deleting
+                                 them then takes the other event's with it, which
+                                 is worse than leaving them: the form refuses to
+                                 save a second event onto a taken address
+                                 (`eventClash`), so this is the window before
+                                 that save. */
+                              const shared = all.some(
+                                (each) => each.id !== one.id && each.slug === one.slug,
+                              )
+
+                              for (const result of shared
+                                ? []
+                                : allResults.filter((each) => each.eventSlug === one.slug)) {
                                 remove(RESULTS, result.id)
                               }
                             }}

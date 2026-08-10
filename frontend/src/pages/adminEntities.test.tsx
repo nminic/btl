@@ -93,6 +93,56 @@ describe('the races of an event', () => {
     expect(said).toHaveTextContent(named)
   })
 
+  it('leaves the results alone while two events answer at one address', async () => {
+    /* A copy keeps the name and the day it was copied from, so until somebody
+       changes the date two events answer where one did. A result names its event
+       by address, so there is no telling whose is whose, and deleting them with
+       either event takes the other's away. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const scoredAt = await loadResource<Result[]>('results')
+    const one = must(
+      events.find((each) => scoredAt.some((result) => result.eventSlug === each.slug)),
+      'an event that has results',
+    )
+
+    render(
+      <ClockProvider>
+        <I18nProvider locale="sr">
+          <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
+            <RoleProvider initialRole="superadmin" initialModerator={null}>
+              <SessionProvider>
+                <Removed />
+                <Copy of={one} />
+                <Routes>
+                  <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
+                </Routes>
+              </SessionProvider>
+            </RoleProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    /* The copy, made the way the button on the event makes it: same name, same
+       day, so the same address. */
+    await user.click(await screen.findByRole('button', { name: 'kopiraj' }))
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), one.name)
+
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find((each) => (each.textContent ?? '').includes(formatShortDate(one.date, 'sr-Latn'))),
+      'that event in the list',
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
+    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
+
+    expect(screen.getByTestId('removed-results')).toHaveTextContent('')
+  })
+
   it('writes the distances and the climbs the way this language writes them', async () => {
     /* Like every other table on the portal (EventDetail, ReviewQueue, the top
        boards). Read raw, a climb of 7120 metres printed as four digits and a
@@ -252,6 +302,30 @@ describe('the written pages', () => {
  *  it. The only way to see a race that is no longer anywhere: nothing on the
  *  portal draws a race outside its event, which is the whole reason the deletion
  *  has to carry them. */
+/** Makes a copy of an event the way the button on its own page does: the same
+ *  name and the same day, so the same address (event/EventActions.tsx). */
+function Copy({ of }: { of: BtlEvent }) {
+  const { create } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        create('events', `${of.id}-kopija-1`, {
+          name: of.name,
+          date: `${of.date.slice(8, 10)}/${of.date.slice(5, 7)}/${of.date.slice(0, 4)}`,
+          city: of.city,
+          country: of.country,
+          organizer: of.organizer,
+          status: of.status,
+        })
+      }
+    >
+      kopiraj
+    </button>
+  )
+}
+
 function Removed() {
   const { deletions } = useSession()
 

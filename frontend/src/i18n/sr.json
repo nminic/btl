@@ -188,6 +188,7 @@
     }
   },
   "shell": {
+    "waiting": "{count} na čekanju",
     "skipToContent": "Preskoči na sadržaj",
     "openMenu": "Otvori meni",
     "closeMenu": "Zatvori meni",
@@ -204,7 +205,6 @@
     },
     "noMessages": "Nema poruka.",
     "allMessages": "Sve poruke",
-    "waiting": "{count} na čekanju",
     "account": "Nalog",
     "settings": "Podešavanja",
     "signIn": "Prijavi se",
@@ -312,7 +312,6 @@
     "ascentUnit": " m+",
     "descentUnit": " m-",
     "members": "Članova lige",
-    "results": "Prijavljenih rezultata",
     "calcResult": "BTL poeni:"
   },
   "data": {
@@ -888,10 +887,8 @@
   "admin": {
     "title": "Administracija",
     "sectionNav": "Odeljak {name}",
-    "waiting": "Čeka proveru",
     "members": "Članovi",
     "events": "Događaji",
-    "results": "Rezultata",
     "basis": "Osnov članstva",
     "basisValue": {
       "payment": "Uplata",
@@ -902,21 +899,19 @@
     "yes": "Da",
     "no": "Ne",
     "ducats": "Dukati",
+    "eventTaken": "Događaj sa tim nazivom i tim datumom već postoji. Promenite datum: adresa se pravi od naziva i dana.",
     "racesOf": "Trke na događaju {event}",
     "racesPutFormAway": "Dok se trka uređuje, forma događaja se sklanja. Sačuvajte izmene na događaju pre nego što otvorite trku.",
     "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
-    "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
     "state": "Stanje",
     "change": "Izmeni",
     "races": "Trke",
     "teams": "Timovi",
     "leagues": "Lige",
     "pages": "Statične strane",
-    "searchRaces": "Traži po nazivu trke ili događaja",
     "raceName": "Naziv trke",
-    "noEvent": "Bez događaja",
     "organizer": "Organizator",
     "noOrganizer": "Nema organizatora",
     "byCategory": "Po kategorijama",
@@ -933,7 +928,6 @@
       "back": "Nazad na spisak",
       "saved": "Sačuvano",
       "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
-      "tryRule": "Proba pravila",
       "new": {
         "members": "Novi član",
         "events": "Novi događaj",
@@ -986,7 +980,6 @@
       "ducatName": "Naziv dukata",
       "ducatLabel": "Labela na dukatu",
       "description": "Opis",
-      "rule": "Pravilo",
       "priceLabel": "Naziv perioda",
       "eur": "Cena u evrima",
       "rsd": "Cena u dinarima",
@@ -994,7 +987,6 @@
       "sectionHeading": "Naslov prve sekcije",
       "sectionBody": "Tekst prve sekcije",
       "email": "Adresa elektronske pošte",
-      "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
       "eventSlug": "Adresa događaja",
       "teamSlug": "Adresa tima"
     },
@@ -1028,6 +1020,7 @@
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
+      "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
       "eventSlug": "Portal je pravi sam, od naziva i datuma. Ne unosi se i ne menja.",
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja."
     },
@@ -1053,7 +1046,6 @@
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
-    "closedList": "Spisak vrsta je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa dukat koji je osvojen ne može kasnije da se izgubi.",
     "kind": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
