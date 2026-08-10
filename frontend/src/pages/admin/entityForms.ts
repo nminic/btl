@@ -138,6 +138,10 @@ export const EVENTS: EntityDef = {
   form: dogadjaj as FormDef,
   idField: 'id',
   blank: {},
+  /* A new event opens on Trka (owner, 10.08.2026). Nearly every one of them is
+     a race, and a required field whose answer is the same ninety nine times in
+     a hundred is a press taken from whoever is entering a whole calendar. */
+  start: { kind: 'race' },
   /**
    * The address the event answers at, from its name and its year.
    *
@@ -604,6 +608,14 @@ export function recordFrom(entity: EntityDef, created: Created): Record<string, 
 
   for (const { field, value } of fieldValues(entity.form, created.values)) {
     record[field.name] = recordValue(field, value)
+
+    /* And the country the town came with, which the loop cannot see: a place
+       writes two values and only one of them is a field (forms/types.ts). Left
+       out, an event entered on this screen was filed in no country at all,
+       while the form had been holding one the whole time. */
+    if (field.type === 'place') {
+      record.country = String(created.values.country)
+    }
   }
 
   /* What the form did not ask for but the record carries all the same, read off

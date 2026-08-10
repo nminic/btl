@@ -222,14 +222,42 @@ describe('Rankings', () => {
     renderAt('/sr/tabela?sezona=2020')
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
-    await user.selectOptions(screen.getByLabelText('Kategorija'), 'M40-54')
+    const categories = within(screen.getByRole('group', { name: 'Kategorija' }))
+
+    await user.click(categories.getByRole('button', { name: 'M40-54' }))
     expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeLessThan(all)
 
-    await user.selectOptions(screen.getByLabelText('Kategorija'), '')
+    await user.click(categories.getByRole('button', { name: 'Sve' }))
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
 
     await user.type(screen.getByLabelText('Pretraga'), '000007')
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
+  })
+
+  it('says which category is being read, and says it in the buttons themselves', async () => {
+    /* Chosen by pressing one rather than out of a list that opens (owner,
+       11.08.2026). Which one is on is said by `aria-pressed` and not by colour
+       alone, because a row of buttons where the chosen one is merely darker
+       says nothing to anybody who cannot see it (WCAG 2.2 SC 1.4.1). */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2020')
+
+    const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
+    expect(categories.getByRole('button', { name: 'Sve' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await user.click(categories.getByRole('button', { name: 'M40-54' }))
+
+    expect(categories.getByRole('button', { name: 'M40-54' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(categories.getByRole('button', { name: 'Sve' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 
   it('says so when a filter leaves nothing', async () => {
@@ -260,12 +288,12 @@ describe('what the filters are called', () => {
   it('names the category in full, and offers all of them as Sve', async () => {
     renderAt('/sr/tabela?sezona=2019')
 
-    const category = (await screen.findByLabelText('Kategorija')) as HTMLSelectElement
+    const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
 
     /* Written out on the control and short in the table, which is the whole of
        the decision: both are on this screen at once. */
     expect(screen.getByRole('columnheader', { name: 'Kat.' })).toBeInTheDocument()
-    expect(within(category).getAllByRole('option').map((one) => one.textContent)[0]).toBe('Sve')
+    expect(categories.getAllByRole('button').map((one) => one.textContent)[0]).toBe('Sve')
   })
 
   it('calls the search Pretraga and says what it takes in the field', async () => {

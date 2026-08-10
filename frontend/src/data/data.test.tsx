@@ -309,15 +309,23 @@ describe('the generated data', () => {
     expect(memberships.filter((one) => one.email === '')).toEqual([])
   })
 
-  it('carries no event in a state the portal does not have', async () => {
-    /* A race has no state "announced" and none "postponed" (PDL P10). The
-       generator wrote thirty of them, which is a state no screen and no decision
-       knows what to do with. It lives outside the repo, so this is the only place
-       that can notice. */
-    const events = await loadResource<{ status: string }[]>('events')
+  it('carries no event of a kind the portal does not have, and no state at all', async () => {
+    /* An event has a kind and no state (owner, 10.08.2026): what is on the
+       portal is on. The generator lives outside the repo, so this is the only
+       place that can notice it writing a word no screen knows.
+
+       All three kinds are asked for, because the calendar carries training and
+       gatherings as well as races (PDL P10) and a generator that quietly wrote
+       every event as a race would leave both untested on every screen. */
+    const events = await loadResource<{ kind: string; status?: string }[]>('events')
 
     expect(events.length).toBeGreaterThan(0)
-    expect([...new Set(events.map((one) => one.status))].sort()).toEqual(['confirmed'])
+    expect([...new Set(events.map((one) => one.kind))].sort()).toEqual([
+      'gathering',
+      'race',
+      'training',
+    ])
+    expect(events.filter((one) => one.status !== undefined)).toEqual([])
   })
 })
 

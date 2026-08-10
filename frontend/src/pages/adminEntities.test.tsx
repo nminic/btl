@@ -566,9 +566,8 @@ describe('the races of an event', () => {
     await user.type(screen.getByLabelText(/^Naziv događaja/), one.name)
     await user.type(screen.getByLabelText(/^Datum/), day)
     await user.type(screen.getByLabelText(/^Mesto/), one.city)
-    await user.selectOptions(screen.getByLabelText(/^Država/), one.country)
     await user.type(screen.getByLabelText(/^Organizator/), one.organizer)
-    await user.selectOptions(screen.getByLabelText(/^Stanje/), 'confirmed')
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(
@@ -672,9 +671,11 @@ describe('the races of an event', () => {
     await user.type(screen.getByLabelText(/^Naziv događaja/), 'Trka bez trka')
     await user.type(screen.getByLabelText(/^Datum/), '01062027')
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/^Organizator/), 'BTL')
-    await user.selectOptions(screen.getByLabelText(/^Stanje/), 'confirmed')
+    /* Already chosen, and left as it is: a new event is a race until somebody
+       says otherwise (owner, 10.08.2026), so entering a calendar of a hundred
+       races does not mean answering the same question a hundred times. */
+    expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
@@ -696,7 +697,7 @@ describe('the races of an event', () => {
 
 describe('the address of a league', () => {
   /* A league is filed under an id nobody sees and answers at an address somebody
-     chose: `btl-2027` is not what the rule would make of "Balkanska trkačka liga
+     chose: `runtrace-2027` is not what the rule would make of "RunTrace liga
      2027". So the form asks for it, like a written page, rather than deriving it
      from the name, which would take the address away from everyone who has it
      (PENDING, and the rule for teams and events of 03.08.2026). */
@@ -775,7 +776,7 @@ describe('the address of a league', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
     await user.type(screen.getByLabelText(/^Naziv lige/), 'Druga liga')
-    await user.type(screen.getByLabelText(/^Adresa/), 'btl-2027')
+    await user.type(screen.getByLabelText(/^Adresa/), 'runtrace-2027')
     await user.type(screen.getByLabelText(/^Sezona/), '2027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -887,7 +888,7 @@ function Copy({ of }: { of: BtlEvent }) {
           city: of.city,
           country: of.country,
           organizer: of.organizer,
-          status: of.status,
+          kind: of.kind,
         })
       }
     >

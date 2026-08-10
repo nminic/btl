@@ -277,7 +277,7 @@ export function AdminEvents() {
                       <th scope="col">{t('profile.columns.event')}</th>
                       <th scope="col">{t('event.place')}</th>
                       <th scope="col">{t('event.races')}</th>
-                      <th scope="col">{t('admin.state')}</th>
+                      <th scope="col">{t('admin.field.kind')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
@@ -306,11 +306,10 @@ export function AdminEvents() {
                             copied here said it had none while its races were in
                             the next screen along. */}
                         <td>{allRaces.filter((race) => race.eventId === one.id).length}</td>
-                        <td>
-                          <span className={`tag tag--${one.status}`}>
-                            {t(`calendar.status.${one.status}`)}
-                          </span>
-                        </td>
+                        {/* What is being put on, in words. An event with no
+                            kind of its own is a race, which is what all but a
+                            handful of them are (owner, 10.08.2026). */}
+                        <td>{t(`event.kind.${one.kind}`)}</td>
                         <td>
                           <RowActions
                             entity={EVENTS}

@@ -266,20 +266,17 @@ describe('categoriesOf', () => {
 })
 
 describe('calendar helpers', () => {
-  /* Named one by one rather than reached for by position, because the tests
-     below take a copy of a particular one and call it off, and "the event of 6
-     March" says which one that is where an index only says where it sits. */
   const sixthOfMarch: BtlEvent = {
     id: 'a', slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
-    organizer: 'x', status: 'confirmed',
+    organizer: 'x', kind: 'race',
   }
   const secondOfMarch: BtlEvent = {
     id: 'b', slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
-    organizer: 'x', status: 'announced',
+    organizer: 'x', kind: 'race',
   }
   const tenthOfApril: BtlEvent = {
     id: 'c', slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
-    organizer: 'x', status: 'announced',
+    organizer: 'x', kind: 'gathering',
   }
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
@@ -289,30 +286,14 @@ describe('calendar helpers', () => {
     expect(eventsInMonth(events, 2027, 12)).toEqual([])
   })
 
-  it('leaves a cancelled event out of the grid, and keeps its record', () => {
-    /* Owner, 31.07.2026: a cancelled event keeps its record, because somebody
-       has it in their calendar and a subscription has to be able to say it is
-       off; what it loses is its square in the grid, where it would read as
-       something still to come. */
-    const called: BtlEvent[] = [
-      ...events,
-      { ...sixthOfMarch, id: 'd', slug: 'd', status: 'cancelled' },
-    ]
-
-    expect(eventsInMonth(called, 2027, 3).map((event) => event.id)).toEqual(['b', 'a'])
-  })
-
-  /* The same question asked twice has to get the same answer. Asking it in one
-     place and not the other put a month whose only event was cancelled on the
-     list of months that hold something, so the calendar could open on a month
-     with nothing in it. */
-  it('leaves a month out entirely when its only event was cancelled', () => {
-    const called: BtlEvent[] = [
-      sixthOfMarch,
-      { ...tenthOfApril, id: 'd', slug: 'd', status: 'cancelled' },
-    ]
-
-    expect(monthsWithEvents(called)).toEqual(['2027-03'])
+  it('draws what is not a race, because the calendar carries those too', () => {
+    /* An event has a kind and no state (owner, 10.08.2026). What used to be
+       here were two tests over a cancelled event, which the calendar left out;
+       there is no such event any more, because one that is off is deleted. What
+       is worth holding in its place is that nothing else is left out either: a
+       gathering with no race in it is in the month like anything else. */
+    expect(eventsInMonth(events, 2027, 4).map((event) => event.id)).toEqual(['c'])
+    expect(monthsWithEvents(events)).toContain('2027-04')
   })
 
   it('lists the months that hold something, oldest first', () => {
@@ -322,8 +303,8 @@ describe('calendar helpers', () => {
 
 describe('defaultMonth', () => {
   const events: BtlEvent[] = [
-    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed' },
-    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', status: 'confirmed' },
+    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', kind: 'race' },
+    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', kind: 'race' },
   ]
 
   it('opens on the first month from today onwards that holds something', () => {
@@ -1042,7 +1023,7 @@ describe('categoriesAt', () => {
     city: 'Niš',
     country: 'RS',
     organizer: 'BTL',
-    status: 'confirmed',
+    kind: 'race',
   })
 
   const race = (id: string, eventId: string, category: RaceCategory): Race => ({

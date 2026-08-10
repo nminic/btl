@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
+import { MAIN_LEAGUE_SLUG } from '../../data/pricing'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -27,7 +28,17 @@ export function AdminLeagues() {
 
       <Resource state={state}>
         {(leagues) => {
-          const rows = recordsOf(LEAGUES, leagues, overlay)
+          /* Everything but the league the portal itself is (owner,
+             10.08.2026): "Ona se podrazumeva i ne uređuje se." Every event
+             counts towards it, its standings are the BTL tables, and there is
+             nothing on this form anybody would ever change about it. Offered
+             here it was a fourth row with a delete beside it.
+
+             The same league is left off the public list of competitions, by the
+             same name (pages/Leagues.tsx), so both screens mean one thing. */
+          const rows = recordsOf(LEAGUES, leagues, overlay).filter(
+            (one) => one.slug !== MAIN_LEAGUE_SLUG,
+          )
 
           if (editing !== null) {
             return (

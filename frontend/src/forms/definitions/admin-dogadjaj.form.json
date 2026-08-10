@@ -20,16 +20,11 @@
     },
     {
       "name": "city",
-      "type": "text",
+      "type": "place",
       "labelKey": "admin.field.city",
+      "hintKey": "admin.hint.city",
       "required": true,
       "maxLength": 80
-    },
-    {
-      "name": "country",
-      "type": "country",
-      "labelKey": "admin.field.country",
-      "required": true
     },
     {
       "name": "organizer",
@@ -40,14 +35,24 @@
       "maxLength": 80
     },
     {
-      "name": "status",
+      "name": "kind",
       "type": "select",
-      "labelKey": "admin.state",
-      "hintKey": "admin.hint.status",
+      "labelKey": "admin.field.kind",
+      "hintKey": "admin.hint.kind",
       "required": true,
       "options": [
-        { "value": "confirmed", "labelKey": "calendar.status.confirmed" },
-        { "value": "checking", "labelKey": "calendar.status.checking" }
+        {
+          "value": "race",
+          "labelKey": "event.kind.race"
+        },
+        {
+          "value": "training",
+          "labelKey": "event.kind.training"
+        },
+        {
+          "value": "gathering",
+          "labelKey": "event.kind.gathering"
+        }
       ]
     }
   ]

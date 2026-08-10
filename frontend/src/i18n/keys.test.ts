@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
 import { CATEGORIES } from '../data/derive'
-import { EVENT_STATUSES, ITEM_KINDS, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
+import { EVENT_KINDS, ITEM_KINDS, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
 import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
 import { LOCALES } from './config'
 import { ROLES } from '../roles/context'
@@ -150,7 +150,7 @@ describe('the names the portal composes out of a list', () => {
       ],
     },
     { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },
-    { of: 'calendar.status', each: EVENT_STATUSES },
+    { of: 'event.kind', each: EVENT_KINDS },
     { of: 'profile.lengthsShort', each: ['all', ...CATEGORIES] },
     { of: 'profile.categoryWord', each: CATEGORIES },
     { of: 'category', each: CATEGORIES },

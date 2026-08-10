@@ -16,6 +16,7 @@ import {
   TEAMS,
   addressField,
   idFor,
+  recordFrom,
   takenAddress,
   type EntityDef,
 } from './entityForms'
@@ -559,20 +560,49 @@ describe('the words the seven forms need', () => {
     expect(withRule.filter((field) => field.hintKey === undefined)).toEqual([])
   })
 
-  it('offer an event the two states it can be in, and no others', () => {
-    /* A race has no state "announced" and none "postponed": it is entered once the
-       date is confirmed, and a cancelled one is deleted from the calendar (PDL
-       P10). The form offered all four, so the calendar could be filled with dates
-       the portal promises never to show as certain. Cancelled stays in the type,
-       because the iCal feed has to send it (STATUS:CANCELLED), and it is not
-       something anybody types on this form. */
+  it('offer an event the three kinds it can be, and asks for no state', () => {
+    /* An event has no state at all (owner, 10.08.2026): one on the portal is
+       confirmed, one that is not confirmed is not entered, and one that is off
+       is deleted. What it has instead is a kind, and a race is the first of the
+       three because that is what nearly every one of them is.
+
+       The field the state used to be is named here as well, so that removing it
+       stays removed: it was a required select, and a required field left on the
+       definition would stop every event from being saved. */
     const options =
       must(
-        EVENTS.form.fields.find((one) => one.name === 'status'),
-        'a status field on the event form',
+        EVENTS.form.fields.find((one) => one.name === 'kind'),
+        'a kind field on the event form',
       ).options ?? []
 
-    expect(options.map((one) => one.value)).toEqual(['confirmed', 'checking'])
+    expect(options.map((one) => one.value)).toEqual(['race', 'training', 'gathering'])
+    expect(EVENTS.form.fields.map((one) => one.name)).not.toContain('status')
+    /* And a new one opens on a race before anybody answers (owner,
+       10.08.2026). Written as what the form starts holding rather than as what
+       a created record carries, because it is a press saved on the form. */
+    expect(EVENTS.start).toEqual({ kind: 'race' })
+  })
+
+  it('file an event in the country its town came with, which is not a field', () => {
+    /* The place field writes two values and only one of them is a field
+       (forms/types.ts), so the record is built out of a loop that cannot see
+       the second. Left out, an event entered on this screen was filed in no
+       country at all while the form had been holding one the whole time, and
+       nothing on the screen said so, because the country is no longer drawn. */
+    const made = recordFrom(EVENTS, {
+      id: 'evt-proba',
+      values: {
+        name: 'Probna trka',
+        date: '2027-05-01',
+        city: 'Beograd',
+        country: 'RS',
+        organizer: 'BTL',
+        kind: 'race',
+      },
+    })
+
+    expect(made.city).toBe('Beograd')
+    expect(made.country).toBe('RS')
   })
 
   it('offer no choice at all where the value is read off another one', () => {
@@ -683,8 +713,8 @@ describe('which field of a form carries the address', () => {
   /* Two shapes, because a record answers at an address in two ways. A written
      page is filed under it: the address is the identity and the form asks for
      it. A league is filed under an id nobody sees and answers at an address
-     somebody chose (`btl-2027` is not what the rule would make of "Balkanska
-     trkačka liga 2027"), so the address is a field of its own. An event's is
+     somebody chose (`runtrace-2027` is not what the rule would make of "RunTrace
+     liga 2027"), so the address is a field of its own. An event's is
      neither: it is worked out from the name and the year and never typed. */
   it('is the field where there is one, and nothing where the address is not typed', () => {
     expect(addressField(PAGES)).toBe('slug')
@@ -694,10 +724,10 @@ describe('which field of a form carries the address', () => {
   })
 
   it('is what two records are refused for sharing', () => {
-    expect(takenAddress(LEAGUES, { slug: 'btl-2027' }, ['btl-2027'])).toEqual({
+    expect(takenAddress(LEAGUES, { slug: 'runtrace-2027' }, ['runtrace-2027'])).toEqual({
       slug: { key: 'form.errors.taken' },
     })
-    expect(takenAddress(LEAGUES, { slug: 'btl-2028' }, ['btl-2027'])).toEqual({})
+    expect(takenAddress(LEAGUES, { slug: 'runtrace-2028' }, ['runtrace-2027'])).toEqual({})
     /* And an event is refused by its own rule, on the date, not by this one
        (entityForms.ts, `eventClash`). */
     expect(takenAddress(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})

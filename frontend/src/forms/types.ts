@@ -19,6 +19,17 @@ export type FieldType =
    *  because a list of 252 countries has no business being copied into a form
    *  definition. */
   | 'country'
+  /**
+   * A town, offered out of the codebook of the world from the second letter,
+   * each answer carrying the country it is in (owner, 10.08.2026).
+   *
+   * It writes two values: its own, and `country`. That is fixed rather than
+   * configured, because a form has one place on it and the country of that
+   * place has one name; a setting here would be a knob with one position. The
+   * country field goes off the form when a place field goes on it, so
+   * `emptyValues` puts `country` in the values itself (src/forms/validate.ts).
+   */
+  | 'place'
   | 'checkbox'
   | 'textarea'
   /** A picture attached as proof. Optional, and deleted once the result has

@@ -9,7 +9,7 @@ import { RESOURCE_NAMES } from './client'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the eleven names the backend has to answer for', () => {
+  it('is the twelve names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -19,7 +19,12 @@ describe('the list of resources', () => {
        record of their own (owner, 06.08.2026). They arrive through the queue and
        do not live in it: the queue holds what is waiting, and a screen reading a
        published comment out of it would have to decide all over again what
-       counts as decided. */
+       counts as decided.
+
+       Eleven until 10.08.2026, when the codebook of the world's towns arrived:
+       the event form offers a town from the second letter typed, and the list it
+       offers from is nine hundred kilobytes that no screen but that one asks
+       for (owner, 10.08.2026). */
     expect([...RESOURCE_NAMES]).toEqual([
       'ducats',
       'comments',
@@ -28,6 +33,7 @@ describe('the list of resources', () => {
       'leagues',
       'moderators',
       'pages',
+      'places',
       'races',
       'results',
       'teams',
@@ -207,6 +213,10 @@ describe('what the ducats are called', () => {
     expect(read).toContain('components/DucatArt.css')
     /* And the page the browser is handed, which carries words of its own. */
     expect(read).toContain('index.html')
+    /* And not the codebook of towns, for the reason written where it is
+       dropped. Held here so that dropping it stays a decision rather than
+       something that quietly grows to cover whatever fails next. */
+    expect(read).not.toContain('mock/places.json')
   })
 
   it('reads every file, so the sweep above is looking at something', () => {
@@ -227,10 +237,14 @@ function everything(): { path: string; code: string }[] {
   return [
     ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
     ...under(join(process.cwd(), 'public'), '', ['.json']),
+    /* The codebook of the world's towns is not among them, and is dropped
+       below: it is forty seven thousand place names nobody here wrote, and one
+       of them is a town in Alaska called Badger. Reading it for the words the
+       portal uses would be reading somebody else's atlas for our own prose. */
     /* The page the browser is handed before any of that. It carries a title and
        a description of its own, which is words a visitor reads. */
     { path: 'index.html', code: readFileSync(join(process.cwd(), 'index.html'), 'utf-8') },
-  ]
+  ].filter((one) => one.path !== 'mock/places.json')
 }
 
 function under(dir: string, prefix: string, kinds: string[]): { path: string; code: string }[] {

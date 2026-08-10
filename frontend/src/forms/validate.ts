@@ -139,11 +139,24 @@ export function trimValues(values: FormValues): FormValues {
   return trimmed
 }
 
+/**
+ * Every value a form holds, empty.
+ *
+ * One value per field, and one more where there is a place field: a place
+ * writes the country it came with, and the country is no longer a field of its
+ * own (src/forms/types.ts). Without it here the country would be missing from
+ * the values the form is seeded with, so an event edited without touching its
+ * town would be saved into no country at all.
+ */
 export function emptyValues(form: FormDef): FormValues {
   const values: FormValues = {}
 
   for (const field of form.fields) {
     values[field.name] = field.type === 'checkbox' ? false : ''
+
+    if (field.type === 'place') {
+      values.country = ''
+    }
   }
 
   return values

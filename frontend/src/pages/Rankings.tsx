@@ -117,22 +117,7 @@ function Standing({
           </select>
         </label>
 
-        <label className="rankings__field">
-          {/* Written out here and short in the table (owner, 05.08.2026): a
-              column heading is read against the eight beside it and lives on the
-              width of a telephone, a label on a control is read on its own. */}
-          <span>{t('rankings.categoryFilter')}</span>
-          <select value={category ?? ''} onChange={(e) => onChange({ kategorija: e.target.value })}>
-            <option value="">{t('rankings.allCategories')}</option>
-            {categoriesOf(competitors, gender, season).map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="rankings__field rankings__field--wide">
+        <label className="rankings__field rankings__field--search">
           <span>{t('rankings.search')}</span>
           <input
             type="search"
@@ -141,6 +126,37 @@ function Standing({
             onChange={(e) => onChange({ trazi: e.target.value })}
           />
         </label>
+      </div>
+
+      {/* Chosen by pressing one, not out of a list that has to be opened first
+          (owner, 11.08.2026), and the same row of buttons the results on a
+          profile already use. A category is one of eight or so, all of them
+          worth seeing at once; a select showed one and hid the rest behind two
+          presses.
+
+          Written out here and short in the table (owner, 05.08.2026): a column
+          heading is read against the eight beside it and lives on the width of
+          a telephone, a label on a control is read on its own. */}
+      <div className="rankings__categories" role="group" aria-label={t('rankings.categoryFilter')}>
+        <button
+          type="button"
+          className={category === undefined ? 'rankings__category rankings__category--on' : 'rankings__category'}
+          aria-pressed={category === undefined}
+          onClick={() => onChange({ kategorija: '' })}
+        >
+          {t('rankings.allCategories')}
+        </button>
+        {categoriesOf(competitors, gender, season).map((code) => (
+          <button
+            key={code}
+            type="button"
+            className={category === code ? 'rankings__category rankings__category--on' : 'rankings__category'}
+            aria-pressed={category === code}
+            onClick={() => onChange({ kategorija: code })}
+          >
+            {code}
+          </button>
+        ))}
       </div>
 
       {/* Said of the people counted, not of a word that covers both (owner,
