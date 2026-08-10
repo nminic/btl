@@ -57,6 +57,10 @@ const ASKED = new RegExp(
        entity says `hintKey: 'admin.hint.eventFromScreen'`, and that one printed
        itself under a form field for want of being read here. */
     KEYS + ":\\s*'(" + NAME + ")'",
+    /* And the name an error carries: a rule answers with `{ key: 'admin.eventTaken' }`,
+       which is a name written out in full like any other and stood outside this net
+       until a rule was added that uses one. */
+    "\\bkey:\\s*'(" + NAME + ")'",
   ].join('|'),
   'g',
 )
@@ -81,7 +85,7 @@ describe('what the portal asks the dictionary for', () => {
   const asked = under(['.ts', '.tsx', '.json']).flatMap(({ path, code }) =>
     [...code.matchAll(ASKED)].map((one) => ({
       path,
-      name: one[1] ?? one[2] ?? one[3] ?? '',
+      name: one[1] ?? one[2] ?? one[3] ?? one[4] ?? '',
     })),
   )
 

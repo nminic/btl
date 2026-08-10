@@ -84,7 +84,6 @@ describe('administration is closed to everyone else', () => {
     ['/sr/administracija/entiteti'],
     ['/sr/administracija/clanovi'],
     ['/sr/administracija/dogadjaji'],
-    ['/sr/administracija/dukati'],
     ['/sr/administracija/cenovnik'],
     // Every one of the eight queues, so a screen cannot be added to the list
     // without the door on it. Granular moderator rights (PDL P21) are not

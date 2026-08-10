@@ -94,7 +94,7 @@ const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'administracija/timovi', labelKey: 'admin.teams', seoKey: 'adminTeams' },
   { path: 'administracija/lige', labelKey: 'admin.leagues', seoKey: 'adminLeagues' },
   { path: 'administracija/strane', labelKey: 'admin.pages', seoKey: 'adminPages' },
-  /* The ninth entity, reached from the list of entities like the other eight,
+  /* The seventh entity, reached from the list of entities like the other six,
      and shown there to the superadmin alone (PDL P21, P28a). */
   { path: 'administracija/moderatori', labelKey: 'admin.moderators', seoKey: 'adminModerators' },
 ]

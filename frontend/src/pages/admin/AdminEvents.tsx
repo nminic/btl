@@ -7,7 +7,14 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { EVENTS, RACES, eventClash, recordsOf, type Editing } from './entityForms'
+import {
+  EVENTS,
+  RACES,
+  eventClash,
+  recordsOf,
+  type Editing,
+  type EntityDef,
+} from './entityForms'
 import { EventRaces } from './EventRaces'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
@@ -53,7 +60,14 @@ export function AdminEvents() {
              the file the count below said an event copied here had no races,
              while its races were on the next screen along. */
           const allRaces = recordsOf(RACES, races, overlay)
-          const allResults = recordsOf({ ...EVENTS, id: RESULTS, idField: 'id' }, results, overlay)
+          /* A result is not an entity anybody edits here, so there is no
+             definition of one to reach for. What `recordsOf` reads off a
+             definition is its `id` and its `idField`; everything else is carried
+             along unread, and `EVENTS` is here only because the parameter is
+             typed as a whole definition. Written out so the line is not read as
+             a claim that a result is an event. */
+          const asResults: EntityDef = { ...EVENTS, id: RESULTS, idField: 'id' }
+          const allResults = recordsOf(asResults, results, overlay)
           /* Worked out rather than copied into state.
            *
              It was an effect that put the record from the address into state,

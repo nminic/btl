@@ -4,6 +4,12 @@ import { join } from 'node:path'
 /**
  * A class or a custom property named on one side and not the other.
  *
+ * Not every one on the portal: the names read here are the ones the two changes
+ * of 06.08.2026 touched, listed as prefixes in `CLASS` and `SET` below. A class
+ * named outside that list is not seen, and joins the day its prefix does. What
+ * makes the list is a family that a rename or a rebuild has already moved, since
+ * that is where an end gets left behind.
+ *
  * The rename of 06.08.2026 moved five hundred occurrences across markup and
  * stylesheets, and the guard written for the word catches the word that went,
  * never a name changed in one file and left standing in the other. Half-renaming
