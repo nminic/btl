@@ -15,7 +15,7 @@ import './Entity.css'
  * the other half: the whole record, with every field it has, validated by the
  * rules written in its definition rather than by anything on this screen.
  *
- * There is one of these for all eight entities. What differs between them is a
+ * There is one of these for all seven entities, and for the races inside an event. What differs between them is a
  * JSON file (PDL P30).
  */
 export function EntityEditor({
@@ -181,7 +181,7 @@ export function EntityEditor({
  * control that starts a record that does not exist yet on the right.
  *
  * The button carries the name of the thing being created, because "new record"
- * on nine screens is nine buttons a screen reader cannot tell apart.
+ * on every screen is a row of buttons a screen reader cannot tell apart.
  *
  * It sits at the end of the row rather than above it (owner, 30.07.2026). Above
  * the search it was the first thing on a screen whose work is reading a list;
@@ -223,9 +223,9 @@ export function EntityBar({
 /**
  * What every row of every list ends with: open the record, or remove it.
  *
- * One component for both, so a tenth screen cannot be written with the one and
- * not the other, and so the two are always the same distance apart in the same
- * order on all nine.
+ * One component for both, so a new screen cannot be written with the one and not
+ * the other, and so the two are always the same distance apart in the same order
+ * wherever a list is edited.
  *
  * The identity comes off the record through the entity's own definition rather
  * than being handed in, because which field is the identity is a fact about the

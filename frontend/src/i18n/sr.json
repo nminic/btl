@@ -934,7 +934,7 @@
         "races": "Nova trka",
         "teams": "Novi tim",
         "leagues": "Nova liga",
-          "pages": "Nova strana",
+        "pages": "Nova strana",
         "moderators": "Nov moderator"
       },
       "edit": {
@@ -943,7 +943,7 @@
         "races": "Izmena trke",
         "teams": "Izmena tima",
         "leagues": "Izmena lige",
-          "pricing": "Izmena reda cenovnika",
+        "pricing": "Izmena reda cenovnika",
         "pages": "Izmena strane",
         "moderators": "Izmena moderatora"
       },
@@ -1029,10 +1029,6 @@
   "ducats": {
     "title": "Dukati",
     "empty": "Liga još nije uvela nijedan dukat.",
-    "kindLabel": "Vrsta",
-    "valueLabel": "Vrednost",
-    "from": "Od datuma",
-    "to": "Do datuma",
     "sentence": "Dukat se dodeljuje kad {kind} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
     "during": ", računato za {period}",

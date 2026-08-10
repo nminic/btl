@@ -14,16 +14,16 @@ import { applyChanges, recordValue } from '../../forms/records'
 import type { DerivedField, FieldDef, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Deletions, Edits } from '../../session/context'
 
-/* The nine entities administration owns, described rather than programmed.
+/* The seven entities administration owns, described rather than programmed.
  *
  * Each one is a JSON definition of its fields and a few facts about the record
  * behind them: what it is called, where its screen lives, what its identity is
  * called, and what it carries that the form does not ask about. There is one
- * renderer, one editor and one list merger for all nine, so a tenth entity is a
+ * renderer, one editor and one list merger for all seven, so an eighth entity is a
  * JSON file and four lines here, never a screen (PDL P30).
  *
  * This list is also what the list of entities and the rights matrix are built
- * from, so a tenth entity appears on both the day it is added rather than on the
+ * from, so an eighth entity appears on both the day it is added rather than on the
  * day somebody remembers a second list.
  */
 export type EntityDef = {
@@ -31,7 +31,7 @@ export type EntityDef = {
    * Both the key its new records are remembered under in the session and the
    * stem of the two headings in the dictionary: admin.form.new.<id> and
    * admin.form.edit.<id>. Serbian will not interpolate a noun into "new", so the
-   * nine titles are written out rather than composed.
+   * titles are written out rather than composed.
    */
   id: string
   /** The words that name it: on the list of entities, and over its column in
@@ -306,7 +306,6 @@ export const LEAGUES: EntityDef = {
   blank: { slug: '', eventIds: [] },
 }
 
-
 /* The one entity whose rows are the year itself: four windows that tile it and
  * repeat, plus the junior price that has none. Nothing is added and nothing is
  * removed (owner, 30.07.2026), so it is not in the section that is about
@@ -334,7 +333,7 @@ export const PAGES: EntityDef = {
 }
 
 /**
- * The ninth, and the one that is unlike the other eight in what it is for rather
+ * The sixth, and the one that is unlike the other six in what it is for rather
  * than in how it is entered (PDL P28a, 30.07.2026).
  *
  * The form asks for three things and nothing else. What a moderator may do is
@@ -343,7 +342,7 @@ export const PAGES: EntityDef = {
  * a second answer to one question. A moderator entered here therefore starts
  * with none, which is exactly what a newly made moderator is.
  *
- * The identity is made up rather than typed, like six of the other eight. The
+ * The identity is made up rather than typed, like three of the other six. The
  * address of a moderator is the obvious candidate and is deliberately not used:
  * it is the one field on the form somebody may have to correct, and an identity
  * that changes takes every right hung off it with it.
@@ -358,7 +357,6 @@ export const MODERATORS: EntityDef = {
   blank: { rights: [] },
 }
 
-/** All nine, so a test can walk them and nothing can be half added. */
 /**
  * Every entity with a screen of its own, in the order the section lists them
  * (owner, 06.08.2026).

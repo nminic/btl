@@ -18,10 +18,14 @@ import {
   type EntityDef,
 } from './entityForms'
 
-/* The eight entities, each opened whole.
+/* The six entities entered whole, each opened whole.
+ *
+ * The price list is not among them: its rows are given rather than entered, and
+ * the screen for it is its own (adminEntities.test).
+ *
  *
  * Every screen behind Entities used to change one text field in a row and had no
- * way at all to enter a record. These tests walk all eight through the same four
+ * way at all to enter a record. These tests walk all six through the same four
  * questions: does the form show every field the entity has, does an empty
  * obligatory field stop the save and say so beside itself, does a change survive
  * the way back to the list, and is every one of them shut to a competitor.
@@ -79,8 +83,8 @@ const SCREENS: Screen[] = [
   { entity: TEAMS, path: 'administracija/timovi', list: 'Timovi' },
   { entity: LEAGUES, path: 'administracija/lige', list: 'Lige' },
   { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
-  /* The ninth. It is entered and changed by the same renderer reading the same
-     kind of JSON as the other eight, which is the whole point of it being an
+  /* The last of them. It is entered and changed by the same renderer reading the
+     same kind of JSON as the five above, which is the whole point of it being an
      entity rather than a screen somebody wrote by hand (PDL P28a). What it may
      do is not on the form; that is the matrix below the list. */
   { entity: MODERATORS, path: 'administracija/moderatori', list: 'Moderatori' },
@@ -579,8 +583,6 @@ describe('the words the seven forms need', () => {
       shownKey: 'category.half',
     })
   })
-
-
 })
 
 describe('the identity a new record is handed', () => {

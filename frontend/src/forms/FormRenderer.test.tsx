@@ -9,7 +9,8 @@ import type { FormDef, FormValues } from './types'
 
 /* A caller may hand the renderer a different definition without remounting it.
  * No screen does today, and every one of the seven admin screens passes a
- * module-level constant, so this is a contract of the component rather than a
+ * module-level constant, and the races inside an event hold theirs across
+ * renders (EventRaces), so this is a contract of the component rather than a
  * path anybody walks. It is held anyway, because the fault it guards is not the
  * empty box: a field the state is not holding used to be saved as the string
  * "undefined", since `textFrom` in records.ts is `String(value)`. Blank on

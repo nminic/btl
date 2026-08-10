@@ -121,8 +121,8 @@ export const RIGHTS: Right[] = RIGHT_GROUPS.flatMap((group) => group.rights)
  * The first right of every group after the first, which is where the line
  * between two groups is drawn.
  *
- * Counted from the groups rather than written into the stylesheet as the
- * ninth column. A tenth entity would move that line silently and leave it
+ * Counted from the groups rather than written into the stylesheet as a fixed
+ * column number. An entity added or removed would move that line silently and leave it
  * drawn through the middle of the entities, which is exactly the sort of thing
  * nobody notices for a year.
  *

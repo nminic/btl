@@ -214,15 +214,16 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
                                 <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
                               </td>
                               <td>{event.city}</td>
-                              {/* Counted off the races themselves, like the administration counts
-                                them: a list the event carries is written by the
-                                generator and by nothing else, so a race entered
-                                by hand was one this column never saw. */}
-                            <td>
-                              {races === null
-                                ? t('leagues.racesUnknown')
-                                : races.filter((race) => race.eventId === event.id).length}
-                            </td>
+                              {/* Counted off the races themselves, the way
+                                  administration counts them: a list the event
+                                  carries is written by the generator and by
+                                  nothing else, so a race entered by hand was one
+                                  this column never saw. */}
+                              <td>
+                                {races === null
+                                  ? t('leagues.racesUnknown')
+                                  : races.filter((race) => race.eventId === event.id).length}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

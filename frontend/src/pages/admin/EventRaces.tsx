@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { BtlEvent, Race } from '../../data/types'
@@ -32,7 +33,13 @@ export function EventRaces({
   setEditing: (editing: Editing | null) => void
 }) {
   const { locale, t } = useI18n()
-  const entity = racesOf(event.id, event.name)
+  /* Held across renders. Every other screen hands the renderer a definition made
+     once at module level, and this is the only one that builds its own: the form
+     is the races' form with the event taken out of it and the event put back as
+     a derived field, which cannot be known before the screen knows its event.
+     Built afresh on every render it is a new object every time, which is a
+     changed prop on a form of one thousand rows waiting to happen. */
+  const entity = useMemo(() => racesOf(event.id, event.name), [event.id, event.name])
   const mine = races
     .filter((race) => race.eventId === event.id)
     .sort((left, right) => left.distanceKm - right.distanceKm)

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
+import { DUCAT_KINDS } from '../data/ducatRule'
 import { QUEUES } from '../pages/admin/queues'
 import type { FormDef } from '../forms/types'
 import sr from './sr.json'
@@ -77,6 +78,20 @@ describe('the seo entry of every address', () => {
     )
 
     expect(repeated).toEqual([])
+  })
+
+  it('names every kind a ducat rule can be written in', () => {
+    /* Composed rather than written out: `ruleSentence` asks for
+       `ducats.kind.${rule.kind}`, which said.test does not read, since a name
+       built out of a value is a family and not a name. The family is closed, so
+       it is walked here instead.
+
+       These sixteen had a guard by accident until 10.08.2026: the ducat editor's
+       definition listed them all in full, and deleting that screen took the only
+       place they were written out with it. A kind left unnamed prints
+       `ducats.kind.halfCount` in the middle of a sentence in the rulebook and on
+       every member's page of awards. */
+    expect(DUCAT_KINDS.filter((kind) => !resolves(`ducats.kind.${kind}`))).toEqual([])
   })
 
   it('names each of the eight queues, within the same 160 characters', () => {

@@ -208,8 +208,8 @@ describe('the columns of the matrix', () => {
   })
 
   it('draw the line between the two groups from the groups, not from a number', () => {
-    // Written into the stylesheet as "the ninth column", it would move silently
-    // the day a tenth entity arrives.
+    // Written into the stylesheet as a fixed column number, the line would move
+    // silently the day an entity is added or taken away.
     expect([...GROUP_STARTS]).toEqual([`queue:${first(QUEUES).id}`])
   })
 
