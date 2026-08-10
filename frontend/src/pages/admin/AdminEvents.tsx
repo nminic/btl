@@ -148,6 +148,7 @@ export function AdminEvents() {
                                 : ''),
                           )
                           .map((each) => each.slug),
+                        editing.mode === 'one' ? editing.record : undefined,
                       )
                     }
                     /* The races move with the event, by the same number of days

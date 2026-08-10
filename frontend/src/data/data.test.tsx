@@ -6,6 +6,7 @@ import { first } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
+import { ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
@@ -61,6 +62,29 @@ function Wrappers() {
  * carry more; what is not allowed is an address the rule would build differently
  * out of the same name and year.
  */
+describe('what a waiting item says it is', () => {
+  it('carries a kind the queue that draws it knows', async () => {
+    /* `kind` is a closed list (types.ts) and the file is read as one without
+       being checked, so a value outside it would be drawn under the literal
+       `verification.body.` and a biography would be offered the button that
+       hands it back to the member. */
+    const items = await loadResource<PendingItem[]>('verification')
+    const strange = items.filter((one) => !ITEM_KINDS.some((kind) => kind === one.kind))
+
+    expect(items.length).toBeGreaterThan(10)
+    expect(strange.map((one) => `${one.id}: ${one.kind}`)).toEqual([])
+  })
+
+  it('says which sort it is on the one queue that holds two, and on no other', async () => {
+    const items = await loadResource<PendingItem[]>('verification')
+    const named = items.filter((one) => one.kind !== '')
+
+    expect(named.length).toBeGreaterThan(0)
+    expect(named.filter((one) => one.queue !== 'profiles')).toEqual([])
+    expect(items.filter((one) => one.queue === 'profiles' && one.kind === '')).toEqual([])
+  })
+})
+
 describe('the address of an event', () => {
   it('is the one the rule builds, or that one with more on it', async () => {
     const events = await loadResource<BtlEvent[]>('events')

@@ -31,14 +31,14 @@ import './Verification.css'
 /* One screen for five queues: proposed leagues, new teams, racing profiles,
  * comments, and reported changes of date.
  *
- * One screen rather than six because the work is the same work every time. The
+ * One screen rather than five because the work is the same work every time. The
  * moderator reads a piece of text somebody wrote, and then decides what becomes
  * of it. What differs is the word for the text, whether there are two dates to
  * compare, and what the decision other than "yes" is, and none of those is a
  * screen.
  *
  * That last one is the only difference the moderator can feel, and there are four
- * of them (queues.ts, PDL P22). Three queues go their own way: a comment is
+ * of them (queues.ts, PDL P22). Two queues go their own way: a comment is
  * deleted on the spot, a biography is edited and published and never goes back,
  * and a picture goes back with an instruction that reaches the member's inbox.
  * Which of the four a queue is comes off the queue itself, so it is one fact in
@@ -303,7 +303,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const racesUnknown = whyNoDecision !== null
 
   /* Both dates of a reported change, so the difference is the thing on screen
-     and not something the reader works out. Empty on the other five queues. */
+     and not something the reader works out. Empty on the other four queues. */
   const datesOf = (one: PendingItem) =>
     [
       { key: 'verification.currentDate', value: one.currentDate },
@@ -453,7 +453,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     lie in the question that the line under the button was
                     written to avoid. On the other five nothing is ever left
                     standing, so there the question says the number, and a
-                    hedge on all six would be a hedge that means nothing. */}
+                    hedge on all five would be a hedge that means nothing. */}
                 {waiting.length > 0 && (
                   <button
                     type="button"

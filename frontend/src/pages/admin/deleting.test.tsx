@@ -214,7 +214,7 @@ describe('one decision for a whole queue', () => {
          of settled items: a queue shows what is waiting and nothing else since
          06.08.2026. */
       expect(
-        within(screen.getByRole('list', { name: 'Odluke sesije' })).getAllByRole('listitem'),
+        within(screen.getByRole('list', { name: 'session decisions' })).getAllByRole('listitem'),
       ).toHaveLength(before)
     } finally {
       confirm.mockRestore()
@@ -265,7 +265,7 @@ describe('one decision for a whole queue', () => {
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      const decided = within(screen.getByRole('list', { name: 'Odluke sesije' }))
+      const decided = within(screen.getByRole('list', { name: 'session decisions' }))
       const words = must(first_text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')
 
       expect(decided.getAllByText(new RegExp(words[0])).length).toBeGreaterThan(0)
@@ -296,7 +296,7 @@ describe('one decision for a whole queue', () => {
       /* Read off the session, where the number handed out lives: the screen
          shows what is waiting and nothing else. Each line is one decision, and
          the number it handed out is the last field of it. */
-      const lines = within(screen.getByRole('list', { name: 'Odluke sesije' }))
+      const lines = within(screen.getByRole('list', { name: 'session decisions' }))
         .getAllByRole('listitem')
         .map((one) => String(one.textContent))
       const numbers = lines.map((line) => at(line.split(' | '), 4))

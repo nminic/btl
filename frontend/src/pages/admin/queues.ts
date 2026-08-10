@@ -246,7 +246,7 @@ export function countFor({ pendingResults, items, decisions }: Waiting, queue: Q
  *
  * Over the queues given, which is not always all seven: a moderator sees only
  * the queues he may work in (owner, 30.07.2026), and a total counting the other
- * seven would send him looking for work he cannot reach and cannot see.
+ * ones would send him looking for work he cannot reach and cannot see.
  */
 export function totalWaiting(waiting: Waiting, queues: Queue[] = QUEUES): number {
   return queues.reduce((sum, queue) => sum + countFor(waiting, queue), 0)

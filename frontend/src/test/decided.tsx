@@ -17,7 +17,7 @@ export function Decided() {
   const { decisions, submissions } = useSession()
 
   return (
-    <ul aria-label="Odluke sesije">
+    <ul aria-label="session decisions">
       {Object.entries(decisions).map(([id, decision]) => (
         <li key={id}>
           {`${id} | ${decision.status} | ${decision.note} | ${decision.basis} | ${decision.memberNumber}`}

@@ -91,3 +91,43 @@ describe('the address a save leaves an event at', () => {
     expect(eventSlug('Maraton maratona', '14/03/2015')).toBe('maraton-maratona-2015')
   })
 })
+
+describe('a name the address cannot be spelt from', () => {
+  it('takes the whole day, so two of them are two addresses', () => {
+    /* The calendar carries Greek races and the table of letters spells Latin and
+       Cyrillic. With the name gone the address would be the year alone: two
+       races of one season at one address, and the form refusing the second one
+       for a name that is not taken. */
+    expect(eventSlug('Υψηλάντειος Αγώνας Δρόμου', '2019-09-14')).toBe('2019-09-14')
+    expect(eventSlug('Παναθηναϊκός δρόμος', '2019-01-05')).toBe('2019-01-05')
+  })
+
+  it('is refused where another event already answers there', () => {
+    expect(
+      eventClash({ name: 'Υψηλάντειος Αγώνας Δρόμου', date: '14/09/2019' }, ['2019-09-14']),
+    ).toEqual({ date: { key: 'admin.eventTaken' } })
+  })
+})
+
+describe('the address a clash is tested against', () => {
+  it('is the one the save will leave, not the one the rule would build', () => {
+    /* An event whose address carries the month keeps it while the name and the
+       year stand. Tested against the rule's answer instead, a save that changed
+       nothing but the town was refused for an address it was not taking, and
+       the message told the administrator to change the year of a race run eight
+       years ago. */
+    const was = {
+      name: 'Gradska liga - Ušće',
+      date: '2017-05-06',
+      slug: 'gradska-liga-usce-2017-05',
+    }
+
+    expect(
+      eventClash(
+        { name: was.name, date: '06/05/2017', city: 'Niš' },
+        ['gradska-liga-usce-2017'],
+        was,
+      ),
+    ).toEqual({})
+  })
+})

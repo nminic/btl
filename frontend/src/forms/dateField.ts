@@ -86,9 +86,10 @@ export function maskDate(text: string): string {
  *
  * Both ends are built in UTC, which has no change of clocks, so the difference
  * between them is whole days and the division is exact. Built from local dates
- * instead, a week across the last Sunday in March is six days and twenty three
- * hours, which rounds to six: an event put off a week would take its races six
- * days along and the Sunday race would land on the Saturday.
+ * it is not: a week across the last Sunday in March is six days and twenty three
+ * hours. Rounded, that still answers seven, which is why this cannot be held by
+ * a test and is written here instead: what it would cost is the arithmetic that
+ * follows, where a difference of hours is no longer a difference of days.
  */
 export function daysBetween(from: string, to: string): number {
   if (!ISO.test(from) || !ISO.test(to)) {

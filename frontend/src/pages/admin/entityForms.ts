@@ -219,8 +219,13 @@ export function addressOfEvent(values: FormValues, was?: Record<string, unknown>
 export function eventClash(
   values: FormValues,
   taken: string[],
+  was?: Record<string, unknown>,
 ): Record<string, FieldError> {
-  const address = eventSlug(String(values.name), String(values.date))
+  /* The address the save will leave, not the one the rule would build out of the
+     fields: an event whose address carries more than the rule can build keeps it
+     (`addressOfEvent`), and asked about the rule's answer instead, a save that
+     changed the town was refused for an address it was not going to take. */
+  const address = addressOfEvent(values, was)
 
   return taken.includes(address) ? { date: { key: 'admin.eventTaken' } } : {}
 }
@@ -243,9 +248,19 @@ export function eventSlug(name: string, date: string): string {
      keeps gggg-mm-dd, and the copy of an event hands over what the record keeps.
      Read as a form value alone, the copy's address came out with no year at all
      and the rule could never have built it. */
-  const year = ISO_DAY.test(date) ? date.slice(0, 4) : isoDate(date).slice(0, 4)
+  const day = ISO_DAY.test(date) ? date : isoDate(date)
+  const written = slugify(name)
 
-  return [slugify(name), year].filter((part) => part !== '').join('-')
+  /* The whole day where the name cannot be spelt at all. The calendar carries
+     Greek races (Υψηλάντειος Αγώνας Δρόμου), and the table of letters spells
+     Latin and Cyrillic: with the name gone the address would be the year and
+     nothing else, so two Greek races of one season would answer at one address
+     and the refusal would say the name is taken, which is not what is wrong. */
+  if (written === '') {
+    return day
+  }
+
+  return [written, day.slice(0, 4)].filter((part) => part !== '').join('-')
 }
 
 /** What a stored date looks like, as against what a form writes. */

@@ -1034,6 +1034,24 @@ describe('verification', () => {
     expect(nav.queryByRole('link', { name: /Rezultati/ })).toBeNull()
   })
 
+  it('draws every queue where the moderator has nothing waiting anywhere', async () => {
+    /* Somebody with no work this morning, not somebody to be shown a section
+       with no way out of it: the landing draws nothing of its own, so an empty
+       navigation beside it is an empty screen. */
+    const served = globalThis.fetch
+    vi.stubGlobal('fetch', async () => new Response('[]', { status: 200 }))
+
+    try {
+      renderAt('/sr/administracija', 'moderator')
+
+      const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+      expect(nav.getAllByRole('link').length).toBeGreaterThan(1)
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
   it('keeps the queue in view even after the last thing in it is decided', async () => {
     /* Otherwise the entry disappears from under the moderator at the moment of
        the last decision, and they are left standing on a screen the navigation
@@ -1089,7 +1107,7 @@ describe('the queue of memberships waiting to be activated', () => {
      draws what is waiting and nothing else since 06.08.2026. Every line is one
      decision, written as id, state, reason, ground, member number. */
   const decidedLines = () =>
-    within(screen.getByRole('list', { name: 'Odluke sesije' }))
+    within(screen.getByRole('list', { name: 'session decisions' }))
       .queryAllByRole('listitem')
       .map((one) => String(one.textContent))
 
@@ -1495,6 +1513,80 @@ describe('the six queues read from the file', () => {
     expect(document.getElementById(String(opens))).not.toBeNull()
   })
 
+  it('moves a race entered during the visit, and moves it from the day it now has', async () => {
+    /* Two things the queue reads through the session rather than off the file:
+       a race entered or re-dated during this visit is moved with its event, and
+       the day it is moved from is the day the event is on now. A report written
+       a fortnight ago may name a day the event has since left. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const find2027 = async () => {
+      const search = await screen.findByLabelText(/Pretraga/)
+
+      await user.clear(search)
+      await user.type(search, 'Beogradski maraton')
+
+      return must(
+        within(await screen.findByRole('table', { name: 'Događaji' }))
+          .getAllByRole('row')
+          .find(
+            (one) =>
+              /Beogradski maraton/.test(one.textContent ?? '') &&
+              /2027/.test(one.textContent ?? ''),
+          ),
+        'the event of 2027',
+      )
+    }
+
+    /* A race added to it this visit, on the day the event begins. */
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+    await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Štafeta')
+    await user.type(screen.getByLabelText(/^Dužina/), '5')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* And the event moved a day on before the report is answered, so the day the
+       report names is a day the event has already left. */
+    const date = screen.getByLabelText(/^Datum/)
+
+    await user.clear(date)
+    await user.type(date, '04042027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* And the change of date accepted, onto 10 April: six days from where the
+       event stands now, not seven from where the report says it stood. */
+    await router.navigate(`/sr/${QUEUE.schedule.path}`)
+
+    const card = within(
+      must(
+        within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+          .getAllByRole('listitem')
+          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
+        'the reported change of date',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/dogadjaji')
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const mine = must(
+      races.getAllByRole('row').find((one) => (one.textContent ?? '').includes('Štafeta')),
+      'the race entered during the visit',
+    )
+
+    /* Moved with everything else, rather than left on the day it was entered on,
+       and moved by six days rather than seven. */
+    expect(within(mine).getByText('10. 4. 2027.')).toBeVisible()
+  })
+
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
 
@@ -1522,7 +1614,7 @@ describe('the six queues read from the file', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
-    const decided = within(screen.getByRole('list', { name: 'Odluke sesije' }))
+    const decided = within(screen.getByRole('list', { name: 'session decisions' }))
     expect(decided.getAllByRole('listitem')).toHaveLength(1)
     expect(decided.getByText(/Reklama za prodavnicu opreme\./)).toBeVisible()
   })
@@ -1535,7 +1627,7 @@ describe('the six queues read from the file', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
     expect(
-      within(screen.getByRole('list', { name: 'Odluke sesije' })).getAllByRole('listitem'),
+      within(screen.getByRole('list', { name: 'session decisions' })).getAllByRole('listitem'),
     ).toHaveLength(1)
   })
 
@@ -1611,7 +1703,7 @@ describe('the six queues read from the file', () => {
 
     // And what was published is the edited version, not what came in.
     expect(
-      within(screen.getByRole('list', { name: 'Odluke sesije' })).getByText(
+      within(screen.getByRole('list', { name: 'session decisions' })).getByText(
         /Rekreativac iz Čačka, trči zbog druženja\./,
       ),
     ).toBeVisible()
@@ -1627,7 +1719,7 @@ describe('the six queues read from the file', () => {
 
     await user.click(card.getByRole('button', { name: 'Objavi' }))
 
-    const lines = within(screen.getByRole('list', { name: 'Odluke sesije' }))
+    const lines = within(screen.getByRole('list', { name: 'session decisions' }))
       .getAllByRole('listitem')
       .map((one) => String(one.textContent))
 
@@ -1826,7 +1918,7 @@ describe('the six queues read from the file', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(
-      within(screen.getByRole('list', { name: 'Odluke sesije' })).getByText(
+      within(screen.getByRole('list', { name: 'session decisions' })).getByText(
         /Naziv je već zauzet\./,
       ),
     ).toBeVisible()
