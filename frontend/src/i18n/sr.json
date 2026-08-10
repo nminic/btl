@@ -266,6 +266,7 @@
     "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
   },
   "home": {
+    "results": "Prijavljenih rezultata",
     "season": "Sezona {season}.",
     "seasonSample": "Sezona {season}, probni podaci",
     "kilometers": "Kilometara",

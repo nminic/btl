@@ -143,6 +143,69 @@ describe('the races of an event', () => {
     expect(screen.getByTestId('removed-results')).toHaveTextContent('')
   })
 
+  it('refuses to save a second event onto an address one already answers at', async () => {
+    /* The rule itself is held in clash.test; what is held here is that the screen
+       asks it, and asks it about the other events rather than about the one being
+       saved. Given an empty list the check is inert and the copy goes through;
+       given a list that includes the record itself, no event can ever be saved
+       again. Both passed everything until this. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const one = must(
+      events.find((each) => each.date > '2027-01-01'),
+      'an event ahead of us',
+    )
+    const day = `${one.date.slice(8, 10)}${one.date.slice(5, 7)}${one.date.slice(0, 4)}`
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.type(screen.getByLabelText(/^Naziv događaja/), one.name)
+    await user.type(screen.getByLabelText(/^Datum/), day)
+    await user.type(screen.getByLabelText(/^Mesto/), one.city)
+    await user.selectOptions(screen.getByLabelText(/^Država/), one.country)
+    await user.type(screen.getByLabelText(/^Organizator/), one.organizer)
+    await user.selectOptions(screen.getByLabelText(/^Stanje/), 'confirmed')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(
+      await screen.findByText(/Događaj sa tim nazivom i tim datumom već postoji/),
+    ).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    /* And it goes through on another day, so the refusal is about the address
+       and not about saving. */
+    const date = screen.getByLabelText(/^Datum/)
+
+    await user.clear(date)
+    await user.type(date, '15062027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+
+  it('lets an event be saved again without moving it', async () => {
+    /* The other direction: an event compared against itself can never be saved,
+       and every edit to any event is refused. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const rows = await table('Događaji')
+    const first = at(rows.getAllByRole('row'), 1)
+    const named = must(within(first).getAllByRole('cell')[1]?.textContent, 'the event')
+
+    await user.click(within(first).getByRole('button', { name: `Otvori: ${named}` }))
+
+    const city = await screen.findByLabelText(/^Mesto/)
+
+    await user.clear(city)
+    await user.type(city, 'Vranje')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+
   it('writes the distances and the climbs the way this language writes them', async () => {
     /* Like every other table on the portal (EventDetail, ReviewQueue, the top
        boards). Read raw, a climb of 7120 metres printed as four digits and a

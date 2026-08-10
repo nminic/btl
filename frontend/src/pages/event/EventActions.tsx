@@ -127,6 +127,14 @@ export function EventActions({
       remove(RESULTS, result.id)
     }
 
+    /* No question here of a second event answering at this address, which is
+       what the same deletion in administration has to allow for
+       (admin/AdminEvents.tsx). A copy is a record of this visit, and a public
+       screen reads the file minus what has been deleted and nothing else
+       (data/useResource.ts, useLive): what is created in a session never reaches
+       it. The two buttons therefore delete the same amount of the same thing;
+       they differ only in what each side can see. */
+
     remove(EVENTS.id, event.id)
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }

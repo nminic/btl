@@ -95,7 +95,7 @@ describe('deleting an event', () => {
 
     try {
       await openEvent('superadmin')
-      await user.click(screen.getByRole('button', { name: 'Brisanje' }))
+      await user.click(await screen.findByRole('button', { name: 'Brisanje' }))
 
       expect(asked).toHaveLength(1)
       expect(first(asked)).toMatch(/Obrisati događaj/)
