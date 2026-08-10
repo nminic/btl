@@ -1,3 +1,4 @@
+import { countryName } from '../../data/countryName'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../../clock/useClock'
@@ -112,7 +113,7 @@ export function ProposeTeam() {
                  one shape was chosen to avoid (src/data/types.ts). */
               body: t('teams.proposeBody', {
                 city: String(values.city),
-                country: t(`country.${String(values.country)}`),
+                country: countryName(String(values.country)),
                 note: String(values.note),
               }),
               currentDate: '',

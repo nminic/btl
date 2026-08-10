@@ -406,13 +406,6 @@
       "other": "Učlanjenje se otvara {date}, za {count} dana."
     }
   },
-  "country": {
-    "RS": "Srbija",
-    "BA": "Bosna i Hercegovina",
-    "ME": "Crna Gora",
-    "MK": "Severna Makedonija",
-    "HR": "Hrvatska"
-  },
   "shirt": {
     "XS": "XS",
     "S": "S",

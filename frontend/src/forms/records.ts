@@ -1,4 +1,4 @@
-import countries from '../data/countries.json'
+import { countryName } from '../data/countryName'
 import { fieldDate, isoDate } from './dateField'
 import type { FieldDef, FieldOption, FormDef, FormValues } from './types'
 
@@ -110,10 +110,6 @@ export function recordValue(field: FieldDef, text: string): unknown {
   }
 
   return text
-}
-
-function countryName(code: string): string {
-  return [...countries.region, ...countries.rest].find((one) => one.code === code)?.name ?? code
 }
 
 /**

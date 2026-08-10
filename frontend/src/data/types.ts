@@ -11,7 +11,11 @@ export type Gender = 'M' | 'F'
    where the order is decided and where a test holds it. */
 export type RaceCategory = 'short' | 'half' | 'long' | 'marathon' | 'ultra'
 
-export type EventStatus = 'announced' | 'confirmed' | 'checking' | 'cancelled'
+/* A list rather than a union, so the guard over the words for these can be
+   walked (keys.test). A union is gone by the time anything runs. */
+export const EVENT_STATUSES = ['announced', 'confirmed', 'checking', 'cancelled'] as const
+
+export type EventStatus = (typeof EVENT_STATUSES)[number]
 
 export type MembershipBasis = 'payment' | 'honorary'
 
