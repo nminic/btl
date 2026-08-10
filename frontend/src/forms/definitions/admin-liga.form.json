@@ -11,6 +11,15 @@
       "maxLength": 80
     },
     {
+      "name": "slug",
+      "type": "text",
+      "labelKey": "admin.address",
+      "hintKey": "admin.hint.leagueSlug",
+      "required": true,
+      "maxLength": 60,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    {
       "name": "season",
       "type": "number",
       "labelKey": "rankings.season",

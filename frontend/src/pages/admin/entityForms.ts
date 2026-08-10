@@ -391,7 +391,9 @@ export const LEAGUES: EntityDef = {
   path: 'administracija/lige',
   form: liga as FormDef,
   idField: 'id',
-  blank: { slug: '', eventIds: [] },
+  /* No address here: the form asks for one, and an empty default is exactly what
+     left a league answering at /liga/ (PENDING, 10.08.2026). */
+  blank: { eventIds: [] },
 }
 
 /* The one entity whose rows are the year itself: four windows that tile it and
@@ -527,30 +529,51 @@ export function idFor(
 }
 
 /**
- * Whether the identity typed into the form belongs to somebody already, as an
- * error beside that field.
+ * Whether the address typed into the form is answered at by something already,
+ * as an error beside that field.
  *
- * The address of a written page is unique, and without this it was taken as
- * typed: two records answered to one identity, the list drew two rows with the
- * same key, and one change reached both of them, because the overlay of changes
- * is keyed by exactly that identity. Two pages on /pravilnik was enough.
+ * An address is unique or it is not an address. Without this it was taken as
+ * typed: two written pages answered on /pravilnik, the list drew two rows under
+ * one key, and one change reached both, because the overlay of changes is keyed
+ * by the identity a page is filed under, which is its address.
  *
- * Only for the entities whose form asks for their identity, which is now written
- * pages alone. A member number is unique too (PDL P8), and it is kept unique by
- * being handed out rather than checked: the number the system gives is the first
- * one nobody holds, so there is no typed value left to refuse. The other six
- * generate an identity that cannot collide.
+ * Only for the two entities whose form asks for one: a written page, filed under
+ * its address, and a league, filed under an id nobody sees and answering at an
+ * address somebody chose (`addressField`). An event's address is worked out from
+ * the name and the year and refused by a rule of its own (`eventClash`). A member
+ * number is unique too (PDL P8) and kept so by being handed out rather than
+ * checked: the number the system gives is the first nobody holds, so there is no
+ * typed value to refuse. The rest are filed under an identity nobody types.
  */
-export function takenIdentity(
+export function takenAddress(
   entity: EntityDef,
   values: FormValues,
   taken: string[],
 ): Record<string, FieldError> {
-  const typed = String(values[entity.idField] ?? '').trim()
+  /* The field the address is typed into, which is the identity for a written
+     page and a field of its own for a league: a league is filed under an id it
+     never shows and answers at an address somebody chose (`btl-2027` is not what
+     the rule would make of "Balkanska trkačka liga 2027"). Either way it is the
+     one field two records must not share. */
+  const named = addressField(entity)
+  const typed = String(values[named] ?? '').trim()
 
-  return namesItself(entity) && taken.includes(typed)
-    ? { [entity.idField]: { key: 'form.errors.taken' } }
-    : {}
+  return named !== '' && taken.includes(typed) ? { [named]: { key: 'form.errors.taken' } } : {}
+}
+
+/**
+ * Which field of a form carries the address, or nothing where the form does not
+ * ask for one.
+ *
+ * It is the field called `slug`, wherever it appears, and that is the whole
+ * rule. A written page is filed under its address, so for it the field is the
+ * identity as well; a league is filed under an id nobody sees and answers at an
+ * address somebody chose, so there it is a field like any other. An event is
+ * neither: its address is worked out from the name and the year and never typed,
+ * so its form has no such field and this answers with nothing.
+ */
+export function addressField(entity: EntityDef): string {
+  return entity.form.fields.some((field) => field.name === 'slug') ? 'slug' : ''
 }
 
 /**

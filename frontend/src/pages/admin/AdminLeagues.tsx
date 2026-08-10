@@ -1,9 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { LEAGUES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
@@ -31,7 +31,17 @@ export function AdminLeagues() {
 
           if (editing !== null) {
             return (
-              <EntityEditor entity={LEAGUES} editing={editing} onDone={() => setEditing(null)} />
+              <EntityEditor
+                entity={LEAGUES}
+                editing={editing}
+                /* The addresses already answered at, so a second league cannot
+                   be saved onto one. A league is filed under an id nobody sees
+                   and answers at an address somebody chose, so the address is a
+                   field like any other and the check is the one written pages
+                   already use (entityForms.ts, `takenAddress`). */
+                taken={rows.map((league) => league.slug)}
+                onDone={() => setEditing(null)}
+              />
             )
           }
 
@@ -45,6 +55,7 @@ export function AdminLeagues() {
                   <thead>
                     <tr>
                       <th scope="col">{t('leagues.name')}</th>
+                      <th scope="col">{t('admin.address')}</th>
                       <th scope="col">{t('rankings.season')}</th>
                       <th scope="col">{t('event.races')}</th>
                       <th scope="col">{t('admin.byCategory')}</th>
@@ -54,13 +65,21 @@ export function AdminLeagues() {
                   <tbody>
                     {rows.map((league) => (
                       <tr key={league.id}>
+                        {/* Read, not edited in place. Deliberate, and the
+                            owner's own record of it (PENDING, 10.08.2026): a
+                            league is changed on the form that now asks for
+                            everything it answers at, so there is one place
+                            where its name and its address are settled
+                            together. The other five lists keep their cell. */}
+                        <td>{league.name}</td>
                         <td>
-                          <EditableCell
-                            id={league.id}
-                            field="name"
-                            value={league.name}
-                            label={t('leagues.name')}
-                          />
+                          {/* The whole address, read as well as clicked. The
+                              written pages show one segment because that is
+                              their whole address; a league answers a segment
+                              below /liga, so showing the last part alone is a
+                              404 to anybody who copies what they read rather
+                              than following the link. */}
+                          <Link to={`/${locale}/liga/${league.slug}`}>/liga/{league.slug}</Link>
                         </td>
                         <td>{league.season}</td>
                         <td>

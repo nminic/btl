@@ -4,7 +4,14 @@ import { shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { fieldValues, idFor, takenIdentity, type EntityDef, type Editing } from './entityForms'
+import {
+  addressField,
+  fieldValues,
+  idFor,
+  takenAddress,
+  type EntityDef,
+  type Editing,
+} from './entityForms'
 import './Entity.css'
 
 /* One record of one entity, opened whole.
@@ -60,12 +67,14 @@ export function EntityEditor({
    *  the members who can run a team. */
   options?: Record<string, FieldOption[]>
   /**
-   * The identities already in use, for the two entities that care.
+   * What is spoken for already, for the three entities that care.
    *
-   * A written page asks for its own address and has to be told the address is
-   * gone. A member does not ask at all: its number is handed out first free in
-   * order (PDL P8, 30.07.2026), which is the same list read the other way round.
-   * The other six generate an identity that cannot collide.
+   * A written page asks for its own address, and is filed under it, so it has to
+   * be told when the address is gone. A league asks for an address it is not
+   * filed under, and has to be told the same thing. A member does not ask at
+   * all: its number is handed out first free in order (PDL P8, 30.07.2026),
+   * which is the same list read the other way round. The rest are filed under an
+   * identity nobody types and answer at an address worked out for them.
    */
   taken?: string[]
   /**
@@ -186,12 +195,16 @@ export function EntityEditor({
     )
   }
 
-  /* A record being changed is not competing with itself, so its own identity is
-     not in the way of it. */
+  /* A record being changed is not competing with itself, so its own address is
+     not in the way of it. Its address and not its identity: a league is filed
+     under an id it never shows and answers at an address of its own, so
+     comparing identities would leave every league refusing its own address
+     (entityForms.ts, `addressField`). */
+  const named = addressField(entity)
   const others =
-    editing.mode === 'new'
+    editing.mode === 'new' || named === ''
       ? taken
-      : taken.filter((one) => one !== String(editing.record[entity.idField]))
+      : taken.filter((one) => one !== String(editing.record[named]))
 
   return (
     <div className="entity-editor">
@@ -215,7 +228,7 @@ export function EntityEditor({
            address that would 404 (entityForms.ts, `addressOfEvent`). */
         was={editing.mode === 'one' ? editing.record : undefined}
         options={options}
-        check={(values) => ({ ...takenIdentity(entity, values, others), ...also?.(values) })}
+        check={(values) => ({ ...takenAddress(entity, values, others), ...also?.(values) })}
         derived={entity.derived}
         openAt={openAt}
         onSubmit={handleSubmit}
