@@ -127,6 +127,29 @@ describe('administration is closed to everyone else', () => {
 })
 
 describe('the panel', () => {
+  it('draws no sector a moderator holds nothing in', async () => {
+    /* A moderator is not to be aware that there are actions nobody gave him
+       (owner, 30.07.2026). Both sectors were drawn to everybody, and the one he
+       held nothing in opened an empty list: a control that answers nothing, and
+       an inventory of the rooms he is being kept out of. */
+    renderAt(
+      '/sr/administracija/verifikacija/rezultati',
+      'moderator',
+      null,
+      moderatorWith(['queue:results']),
+    )
+
+    expect(await screen.findByRole('button', { name: 'Verifikacija' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Podaci' })).toBeNull()
+  })
+
+  it('draws the other one alone for somebody who only keeps records', async () => {
+    renderAt('/sr/administracija/clanovi', 'moderator', null, moderatorWith(['entity:members']))
+
+    expect(await screen.findByRole('button', { name: 'Podaci' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Verifikacija' })).toBeNull()
+  })
+
   it('carries no content of its own, and the work stands beside it', async () => {
     /* Four counts and three links stood here, and every one of them said again
        what the navigation beside it says: the number waiting is on each queue

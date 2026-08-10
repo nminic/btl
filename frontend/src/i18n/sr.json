@@ -35,7 +35,6 @@
       "description": "Deset lista iz Pravilnika: kilometri, vreme na stazi, najbolja trka, najbolji napredak, trkački parovi i trke po dužini."
     },
     "leagues": {
-    "racesUnknown": "nepoznato",
       "title": "BTL lige",
       "description": "Lige koje teku uporedo sa glavnom: koji događaji ulaze u njih i kako se grupišu takmičari."
     },
@@ -91,15 +90,11 @@
     },
     "adminEntities": {
       "title": "Podaci (administracija)",
-      "description": "Članovi, događaji, trke, timovi i lige na jednom mestu, za unos i ispravku."
+      "description": "Članovi, događaji, timovi, lige, statične strane i cenovnik na jednom mestu, za unos i ispravku."
     },
     "adminVerification": {
       "title": "Verifikacija (administracija)",
       "description": "Redovi čekanja: prijavljeni rezultati, novi članovi i sve što traži odluku moderatora."
-    },
-    "adminDucats": {
-      "title": "Dukati (administracija)",
-      "description": "Definicije dukata i uslovi po kojima se dodeljuju članovima lige."
     },
     "adminMembers": {
       "title": "Članovi (administracija)",
@@ -108,10 +103,6 @@
     "adminEvents": {
       "title": "Događaji (administracija)",
       "description": "Unos i ispravka događaja iz kalendara, sa datumom, mestom i organizatorom."
-    },
-    "adminRaces": {
-      "title": "Trke (administracija)",
-      "description": "Unos i ispravka trka unutar događaja, sa dužinom, usponom i spustom."
     },
     "adminTeams": {
       "title": "Timovi (administracija)",
@@ -719,6 +710,7 @@
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
   },
   "leagues": {
+    "racesUnknown": "nepoznato",
     "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
@@ -1109,10 +1101,8 @@
       "entity": {
         "members": "Članovi",
         "events": "Događaji",
-        "races": "Trke",
         "teams": "Timovi",
         "leagues": "Lige",
-        "ducats": "Dukati",
         "pricing": "Cenovnik",
         "pages": "Strane"
       },

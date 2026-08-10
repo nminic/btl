@@ -67,7 +67,7 @@ function Section({
       {/* The landmark is named apart from the entry that leads to the section,
           so somebody moving landmark by landmark does not hear the same word
           three times over. */}
-      <nav className="adminsection__nav" aria-label={t('admin.sectionNav', { name: title })}>
+      <nav aria-label={t('admin.sectionNav', { name: title })}>
         {/* On a telephone the list would push the work off the first screen, so
             there it sits behind a button. From tablet up the button goes away
             and the list stands beside the work and follows it down. */}
@@ -152,6 +152,11 @@ export function AdminSections({ children }: { children: ReactNode }) {
   return (
     <div className="adminsection">
       <div className="adminsection__sectors">
+        {/* A sector nobody may open is not drawn at all. A moderator is not to
+            be aware that there are actions nobody gave him (owner, 30.07.2026):
+            naming a sector to somebody who holds nothing in it is telling him
+            about a room he may not enter, and the button opened an empty list,
+            which is a control that answers nothing. */}
         <QueuesSector />
         <RecordsSector />
       </div>
@@ -180,6 +185,10 @@ function QueuesSector() {
   const { submissions, decisions } = useSession()
   const items = usePending()
   const queues = usePermittedQueues()
+
+  if (queues.length === 0) {
+    return null
+  }
 
   /* Read for what it is worth rather than waited for, exactly as the header
      reads it: a section that waited for the file would hold up the screen behind
@@ -234,6 +243,10 @@ function QueuesSector() {
 function RecordsSector() {
   const { t } = useI18n()
   const entities = usePermittedEntities()
+
+  if (entities.length === 0) {
+    return null
+  }
 
   return (
     <Section

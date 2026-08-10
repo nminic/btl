@@ -1,3 +1,4 @@
+import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
@@ -30,7 +31,7 @@ export function EventRaces({
   editing: Editing | null
   setEditing: (editing: Editing | null) => void
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const entity = racesOf(event.id, event.name)
   const mine = races
     .filter((race) => race.eventId === event.id)
@@ -81,9 +82,13 @@ export function EventRaces({
               {mine.map((race) => (
                 <tr key={race.id}>
                   <td>{race.name}</td>
-                  <td>{race.distanceKm}</td>
-                  <td>{race.ascentM}</td>
-                  <td>{race.descentM}</td>
+                  {/* Written the way this language writes a number, like every
+                      other table on the portal: read raw, a climb of 7120 metres
+                      is printed as four digits and a distance of 42.2 km with a
+                      full stop, neither of which is Serbian. */}
+                  <td>{formatNumber(race.distanceKm, locale, 2)}</td>
+                  <td>{formatNumber(race.ascentM, locale)}</td>
+                  <td>{formatNumber(race.descentM, locale)}</td>
                   <td>{t(`category.${race.category}`)}</td>
                   <td>
                     <RowActions

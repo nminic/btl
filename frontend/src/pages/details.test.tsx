@@ -1,5 +1,6 @@
 import { act, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
+import type { BtlEvent, Race } from '../data/types'
 import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -229,6 +230,15 @@ describe('EventDetail, the results of the league members who ran it', () => {
   })
 })
 
+/** The event a row leads to, found by the address on its link. By the name it
+ *  would be the wrong one: the same race is run every year and eight events
+ *  carry that name. */
+const eventOf = (events: BtlEvent[], row: HTMLElement) => {
+  const href = within(row).getByRole('link').getAttribute('href') ?? ''
+
+  return events.find((one) => href.endsWith(`/${one.slug}`))
+}
+
 describe('LeagueDetail', () => {
   it('lists the events that count towards the league', async () => {
     renderAt('/sr/liga/btl-2027')
@@ -242,6 +252,30 @@ describe('LeagueDetail', () => {
       'href',
       expect.stringContaining('/sr/kalendar/'),
     )
+  })
+
+  it('counts the races of each event off the races themselves', async () => {
+    /* The count used to be read off a list the event carried, which only the
+       generator ever filled, so a race entered by hand was one this column never
+       saw (ADL A7, 06.08.2026). Read off the races, the two agree by
+       construction. */
+    renderAt('/sr/liga/btl-2027')
+
+    await screen.findByRole('heading', { level: 1, name: /Balkanska trkačka liga 2027/ })
+
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
+    const found = must(
+      rows
+        .map((row) => ({ row, event: eventOf(events, row) }))
+        .find(({ event }) => races.some((race) => race.eventId === event?.id)),
+      'an event of the league that has races',
+    )
+    const mine = races.filter((race) => race.eventId === found.event?.id).length
+
+    expect(mine).toBeGreaterThan(0)
+    expect(within(found.row).getAllByRole('cell')[3]?.textContent).toBe(String(mine))
   })
 
   it('shows the rules and the prizes that have been written', async () => {

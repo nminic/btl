@@ -1,4 +1,5 @@
 import {
+  categoriesAt,
   CATEGORIES,
   boardOfTen,
   categoriesOf,
@@ -22,7 +23,7 @@ import {
   monthFrom,
 } from './derive'
 import { at, first } from '../test/at'
-import type { BtlEvent, Competitor, Result, Team } from './types'
+import type { BtlEvent, Competitor, Race, RaceCategory, Result, Team } from './types'
 
 const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Competitor => ({
   memberNumber,
@@ -1021,5 +1022,63 @@ describe('boardOfTen', () => {
     expect(boardOfTen(mixed, [], 2027, 'F').map((slot) => slot.competitor.memberNumber)).toEqual([
       '000002',
     ])
+  })
+})
+
+/**
+ * The lengths run at an event, which is what the coloured dots beside it are.
+ *
+ * Read off the races themselves since 06.08.2026. It used to be read off a list
+ * the event carried, which only the generator ever filled, so an event whose
+ * races were entered by hand carried no dots at all and one copied here carried
+ * none either (ADL A7). One dot per length actually run, never one per race.
+ */
+describe('categoriesAt', () => {
+  const event = (id: string): BtlEvent => ({
+    id,
+    slug: id,
+    name: id,
+    date: '2027-05-08',
+    city: 'Niš',
+    country: 'RS',
+    organizer: 'BTL',
+    status: 'confirmed',
+  })
+
+  const race = (id: string, eventId: string, category: RaceCategory): Race => ({
+    id,
+    eventId,
+    name: id,
+    distanceKm: 10,
+    ascentM: 0,
+    descentM: 0,
+    category,
+  })
+
+  it('takes the lengths of that event and of no other', () => {
+    const races = [
+      race('a', 'one', 'short'),
+      race('b', 'one', 'marathon'),
+      /* The other event's, which is the whole of what the join is for: read
+         without it, every event on the calendar carried every colour. */
+      race('c', 'two', 'ultra'),
+    ]
+
+    expect(categoriesAt(event('one'), races)).toEqual(['short', 'marathon'])
+    expect(categoriesAt(event('two'), races)).toEqual(['ultra'])
+  })
+
+  it('says one length once, however many races are run at it', () => {
+    const races = [
+      race('a', 'one', 'half'),
+      race('b', 'one', 'half'),
+      race('c', 'one', 'half'),
+    ]
+
+    expect(categoriesAt(event('one'), races)).toEqual(['half'])
+  })
+
+  it('says nothing for an event whose races nobody has entered', () => {
+    expect(categoriesAt(event('one'), [])).toEqual([])
   })
 })

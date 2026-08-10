@@ -1,5 +1,15 @@
-import { screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { ClockProvider } from '../clock/ClockProvider'
+import { I18nProvider } from '../i18n/I18nProvider'
+import { RoleProvider } from '../roles/RoleProvider'
+import { SessionProvider } from '../session/SessionProvider'
+import { useSession } from '../session/useSession'
+import { AdminEvents } from './admin/AdminEvents'
 import { at, must } from '../test/at'
+import { loadResource } from '../data/client'
+import { formatShortDate } from '../i18n/format'
+import type { BtlEvent, Race } from '../data/types'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -180,31 +190,81 @@ describe('the written pages', () => {
   })
 })
 
+/** What the session has been told to remove, drawn beside the screen that tells
+ *  it. The only way to see a race that is no longer anywhere: nothing on the
+ *  portal draws a race outside its event, which is the whole reason the deletion
+ *  has to carry them. */
+function Removed() {
+  const { deletions } = useSession()
+
+  return <span data-testid="removed">{(deletions.races ?? []).join(',')}</span>
+}
+
 describe('an event that is deleted', () => {
   it('takes its races with it, since nothing shows a race outside its event', async () => {
     /* This is what used to leave an orphan: the race screen kept showing a race
        whose event was gone, because it was the one place a race could be seen at
        all. There is no such place now (owner, 06.08.2026), so a race left behind
-       would be a record nobody can reach. */
+       would be a record nobody can reach.
+
+       Read off the session and not off a screen. The row goes whether or not the
+       cascade runs, so the list of events proved nothing; and a record entered
+       again under the same name is handed a new identity (entityForms.ts,
+       `idFor`), so the races could not be made to reappear under it either. */
     const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const one = must(
+      events.find(
+        (each) => each.date > '2027-01-01' && races.some((race) => race.eventId === each.id),
+      ),
+      'an event ahead of us that has races',
+    )
+    const its = races.filter((race) => race.eventId === one.id).map((race) => race.id)
 
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    expect(its.length).toBeGreaterThan(0)
 
-    const rows = await table('Događaji')
-    const first = at(rows.getAllByRole('row'), 1)
-    const named = must(within(first).getAllByRole('cell')[1]?.textContent, 'the event')
-    const had = Number(within(first).getAllByRole('cell')[3]?.textContent)
+    render(
+      <ClockProvider>
+        <I18nProvider locale="sr">
+          <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
+            <RoleProvider initialRole="superadmin" initialModerator={null}>
+              <SessionProvider>
+                <Removed />
+                <Routes>
+                  <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
+                </Routes>
+              </SessionProvider>
+            </RoleProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
 
-    expect(had).toBeGreaterThan(0)
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), one.name)
 
-    await user.click(within(first).getByRole('button', { name: `Obriši: ${named}` }))
-    await user.click(within(first).getByRole('button', { name: `Potvrdi brisanje: ${named}` }))
+    /* By the name and the day both: the same race is run every year, so eight
+       rows carry that name and only one of them is this morning. */
+    const shown = formatShortDate(one.date, 'sr-Latn')
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(one.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      'that event in the list',
+    )
 
-    /* The event is gone from the list, and so is the count that was beside it:
-       what is held here is that the races went with it, which the calendar reads
-       off the race itself (derive.ts, categoriesAt). */
-    expect(
-      (await table('Događaji')).queryAllByRole('cell', { name: named }),
-    ).toHaveLength(0)
+    await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
+    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
+
+    const removed = (screen.getByTestId('removed').textContent ?? '').split(',')
+
+    for (const race of its) {
+      expect(removed, `${race} went with its event`).toContain(race)
+    }
   })
 })

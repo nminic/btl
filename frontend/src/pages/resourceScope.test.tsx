@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import type { ResourceName } from '../data/client'
 import { renderAt } from '../test/render'
 
@@ -118,6 +118,16 @@ describe('a screen waits only on the data it shows', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga/ })).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    /* And the column that needed them says so rather than saying nought. A
+       count of none where the file did not arrive is the table telling a lie,
+       and the word for it has to be a word: it was written into the wrong branch
+       of the dictionary and the cell read `leagues.racesUnknown` to every
+       visitor whose connection was slow. */
+    const table = within(await screen.findByRole('table', { name: /Događaji/ }))
+
+    expect(table.getAllByText('nepoznato').length).toBeGreaterThan(0)
+    expect(table.queryByText('leagues.racesUnknown')).toBeNull()
   })
 
   /* The other half of the same rule: a screen must still fail on data it does

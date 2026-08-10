@@ -2,6 +2,22 @@
    rulebook's list of articles, which is the one the owner asked for: folded
    behind a button on a telephone, standing and staying put from tablet up. */
 
+/* The two sectors, one under the other, with the work beside them. They were
+   one navigation each wrapping its own screens until 06.08.2026; now one column
+   carries both, so the space between them is written here rather than falling
+   out of a grid that has one child. */
+.adminsection__sectors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* The races of an event, under the form that names it. Set off from the form
+   above rather than running straight on from it. */
+.entity-races {
+  margin-block-start: var(--space-32);
+}
+
 .adminsection {
   display: grid;
   gap: var(--space-16);
@@ -133,11 +149,15 @@
     padding: 0;
   }
 
-  .adminsection__nav {
+  /* The column of both sectors together, not each of them. Written on the nav
+     itself it was one rule for one navigation, and there are two of them since
+     06.08.2026: stuck separately they share one containing block, so the second
+     paints over the first as soon as both are held. */
+  .adminsection__sectors {
     position: sticky;
     top: var(--space-16);
-    /* Nine entries plus the section itself are taller than a short window, so
-       the list scrolls inside itself rather than running off the screen. */
+    /* Two sectors of seven and eight entries are taller than a short window, so
+       the column scrolls inside itself rather than running off the screen. */
     max-height: calc(100svh - 2rem);
     overflow-y: auto;
   }
