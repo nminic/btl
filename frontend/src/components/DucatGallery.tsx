@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { DucatArt } from './DucatArt'
 import { Resource } from './Resource'
 import { firstOf, ruleSentence } from '../data/ducatRule'
@@ -12,18 +11,28 @@ import './DucatGallery.css'
  *
  * It was a screen of its own with filters until 04.08.2026, when the owner asked
  * for it to be a section of the rulebook instead, near its end, described in
- * words with a good deal of drawing in it. What the filters answered was "which
- * of these can I still win", and that is a question about a member rather than
- * about the rules.
+ * words with a good deal of drawing in it.
+ *
+ * ## Still, and silent
+ *
+ * The card carried a hint until 11.08.2026: the rule of the ducat, opened by a
+ * hover, by a tap or by the keyboard. The owner asked for the coins to stand
+ * still and for the words to be said once, above them, in the voice of the
+ * president's address rather than in a specification. So there is no control
+ * here at all, nothing to open, nothing to press, and no state.
+ *
+ * What that changes for a reader who cannot see the coins: the drawing used to
+ * be decorative because the hint beside it carried the rule. With the hint gone
+ * it has to carry its own name, so each coin is an image with a sentence for a
+ * label. Nothing of that shows on the page, which is what was asked for; it is
+ * what a screen reader is given instead of a picture of a coin.
  *
  * ## Fifteen coins, not fifty-five
  *
  * What stands here is one coin per family, not one per ducat. Four families give
  * a ducat every season and two give one every month, so the count of ducats that
  * exist is fifty-five in the first season and grows by twenty-eight a year
- * (ADL A12, 7). A rulebook that drew them all would be a rulebook that has to be
- * scrolled past. The coin drawn is the first of the family, and the sentence
- * under it says that it repeats.
+ * (ADL A12, 7). The coin drawn is the first of its family.
  *
  * ## The order
  *
@@ -31,12 +40,6 @@ import './DucatGallery.css'
  * the one nobody is expected to: the file is in that order and this draws it in
  * file order, three to a row, five rows. Nothing here sorts, because the order is
  * a judgement about how hard a thing is to do and not a property of the data.
- *
- * ## The card
- *
- * The coin, and under it two or three words that say what it is about and never
- * how much (the owner, 10.08.2026). The threshold is on the coin itself and in
- * the sentence; a name that repeats it would say the same number three times.
  */
 
 /** Three families read differently for a woman. With no member to read it for,
@@ -54,8 +57,6 @@ function exampleGender(family: DucatFamily, families: DucatFamily[]): Gender {
 
 export function DucatGallery() {
   const { locale, t } = useI18n()
-  /** The ducat whose hint is pinned open by a tap; empty when none is. */
-  const [pinned, setPinned] = useState('')
   const state = useDucats()
 
   /* `inline`, because this is a part of a page rather than a page: the section
@@ -70,31 +71,13 @@ export function DucatGallery() {
           <ul className="ducats" aria-label={t('ducats.title')}>
             {families.map((family) => (
               <li className="ducat" key={family.id}>
-                <button
-                  type="button"
-                  className="ducat__face"
-                  aria-describedby={`ducat-${family.id}-rule`}
-                  aria-expanded={pinned === family.id}
-                  onClick={() => setPinned(pinned === family.id ? '' : family.id)}
-                  /* A hint opened by a tap has to close again without hunting
-                     for the same spot. */
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') {
-                      setPinned('')
-                    }
-                  }}
-                >
-                  <DucatArt ducat={firstOf(family, exampleGender(family, families))} />
-                  <span className="ducat__name">{family.name}</span>
-                </button>
-
-                {/* How it is earned. Drawn on hover, on focus and when pinned;
-                    read by a screen reader always, through the description
-                    above. */}
-                <div className="ducat__hint" id={`ducat-${family.id}-rule`}>
-                  <p>{ruleSentence(family, t, locale)}</p>
-                  <p>{t(`ducats.tier${family.tier}`)}</p>
-                </div>
+                <DucatArt
+                  ducat={firstOf(family, exampleGender(family, families))}
+                  label={`${family.name}. ${ruleSentence(family, t, locale)} ${t(
+                    `ducats.tier.${family.tier}`,
+                  )}`}
+                />
+                <span className="ducat__name">{family.name}</span>
               </li>
             ))}
           </ul>

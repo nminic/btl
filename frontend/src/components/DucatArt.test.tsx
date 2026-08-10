@@ -53,7 +53,7 @@ describe('the two legends', () => {
        different gaps, which is exactly what the owner saw (10.08.2026). So the
        lower baseline is the circle both of them touch, and the upper one is that
        circle less the height of a capital. */
-    const { container } = render(<DucatArt ducat={coin} />)
+    const { container } = render(<DucatArt ducat={coin} label="Proba" />)
     const size = sizeOf(container, 'ducat-art__legend')
 
     expect(radiusOf(container, 'bottom')).toBeCloseTo(82, 4)
@@ -66,7 +66,7 @@ describe('the two legends', () => {
        not allowed to change how far it stands from the edge, and the arithmetic
        above is what keeps the two apart. */
     const long = { ...coin, top: 'BTL ULTRAMARATONA' }
-    const { container } = render(<DucatArt ducat={long} />)
+    const { container } = render(<DucatArt ducat={long} label="Proba" />)
     const size = sizeOf(container, 'ducat-art__legend')
 
     expect(size).toBeLessThan(13)
@@ -78,20 +78,21 @@ describe('the two legends', () => {
     /* Selectable, searchable, and read out as the words and the number they are.
        Drawn as paths they would be a picture of a legend, and no search on this
        page would ever find one. */
-    const { container } = render(<DucatArt ducat={coin} />)
+    const { container } = render(<DucatArt ducat={coin} label="Proba" />)
 
     expect(container).toHaveTextContent('ISTRČANIH')
     expect(container).toHaveTextContent('JUL 2027')
     expect(screen.getByText('125')).toBeVisible()
   })
 
-  it('hides the drawing from a screen reader, which is given the words instead', () => {
-    /* Decorative on purpose. The name of the ducat and the sentence of its rule
-       stand beside it on every screen that draws one; a name of its own would be
-       the same ducat read out twice. */
-    const { container } = render(<DucatArt ducat={coin} />)
+  it('is an image with a name, and not a heap of fragments', () => {
+    /* Everything struck on the coin is text, and text inside a drawing is read
+       out piece by piece: "ISTRČANIH", "125", "km", "JUL 2027". The label is the
+       same coin said as a sentence, and it is the only thing a screen reader is
+       given, because the owner took the hint beside it away (11.08.2026). */
+    render(<DucatArt ducat={coin} label="Mesečni kilometri, 125 km." />)
 
-    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByRole('img', { name: 'Mesečni kilometri, 125 km.' })).toBeInTheDocument()
   })
 })
 
@@ -101,14 +102,14 @@ describe('the number in the middle', () => {
        it than twelve, so a number is never wider than a hundred and fourteen.
        The owner asked for the number to be much larger and then, seeing it,
        for the space beside it to be kept (10.08.2026). */
-    const { container } = render(<DucatArt ducat={coin} />)
+    const { container } = render(<DucatArt ducat={coin} label="Proba" />)
     const size = sizeOf(container, 'ducat-art__number')
 
     expect(3 * 0.5605 * size).toBeCloseTo(114, 1)
   })
 
   it('steps down as the number gains a figure, so that it never leaves the coin', () => {
-    const { container } = render(<DucatArt ducat={{ ...coin, value: 1000 }} />)
+    const { container } = render(<DucatArt ducat={{ ...coin, value: 1000 }} label="Proba" />)
 
     expect(4 * 0.5605 * sizeOf(container, 'ducat-art__number')).toBeCloseTo(114, 1)
   })
@@ -117,26 +118,41 @@ describe('the number in the middle', () => {
     /* By the space alone, two figures would be set at a hundred and one, and
        beside a coin carrying four they would read as a different drawing. A wall
        of ducats has to be one set. */
-    const { container } = render(<DucatArt ducat={{ ...coin, value: 20 }} />)
+    const { container } = render(<DucatArt ducat={{ ...coin, value: 20 }} label="Proba" />)
 
     expect(sizeOf(container, 'ducat-art__number')).toBe(86)
   })
 
+  it('centres the number and its unit together on the middle of the coin', () => {
+    /* Not the number on its own. With the unit under it, a number centred by
+       itself sits high by half the unit, and a wall of coins where half the
+       numbers sit high is a wall that looks untidy without anybody being able to
+       say why. */
+    const { container } = render(<DucatArt ducat={coin} label="Proba" />)
+    const number = must(container.querySelector('.ducat-art__number'), 'a number')
+    const unit = must(container.querySelector('.ducat-art__unit'), 'a unit')
+
+    const top = Number(number.getAttribute('y')) - 0.7187 * Number(number.getAttribute('font-size'))
+    const foot = Number(unit.getAttribute('y'))
+
+    expect((top + foot) / 2).toBeCloseTo(100, 4)
+  })
+
   it('carries its unit under it, where the quantity is measured in one', () => {
-    const { container } = render(<DucatArt ducat={coin} />)
+    const { container } = render(<DucatArt ducat={coin} label="Proba" />)
 
     expect(screen.getByText('km')).toBeVisible()
     expect(container.querySelector('.ducat-art__unit')).not.toBeNull()
   })
 
   it('carries none where the legend under it already names what is counted', () => {
-    const { container } = render(<DucatArt ducat={{ ...coin, kind: 'raceCount' }} />)
+    const { container } = render(<DucatArt ducat={{ ...coin, kind: 'raceCount' }} label="Proba" />)
 
     expect(container.querySelector('.ducat-art__unit')).toBeNull()
   })
 
   it('gives the middle to a drawing where a family has one, and then sets no number', () => {
-    const { container } = render(<DucatArt ducat={{ ...coin, art: 'globe' }} />)
+    const { container } = render(<DucatArt ducat={{ ...coin, art: 'globe' }} label="Proba" />)
 
     expect(container.querySelector('.ducat-art__art')).not.toBeNull()
     expect(container.querySelector('.ducat-art__number')).toBeNull()
@@ -144,8 +160,8 @@ describe('the number in the middle', () => {
   })
 
   it('draws the galaxy for the one that climbs and the globe for the one that circles', () => {
-    const climbed = render(<DucatArt ducat={{ ...coin, art: 'galaxy' }} />).container
-    const circled = render(<DucatArt ducat={{ ...coin, art: 'globe' }} />).container
+    const climbed = render(<DucatArt ducat={{ ...coin, art: 'galaxy' }} label="Proba" />).container
+    const circled = render(<DucatArt ducat={{ ...coin, art: 'globe' }} label="Proba" />).container
 
     // The galaxy is turned on the coin; the globe stands square.
     expect(must(climbed.querySelector('.ducat-art__art'), 'a galaxy').getAttribute('transform'))
@@ -156,7 +172,7 @@ describe('the number in the middle', () => {
 
 describe('what says how much a ducat is worth', () => {
   it('carries the value on the coin as a fact, and the metal follows from it', () => {
-    const { container } = render(<DucatArt ducat={{ ...coin, tier: 3 }} />)
+    const { container } = render(<DucatArt ducat={{ ...coin, tier: 3 }} label="Proba" />)
 
     expect(must(container.firstElementChild, 'the coin')).toHaveAttribute('data-tier', '3')
   })
@@ -165,8 +181,8 @@ describe('what says how much a ducat is worth', () => {
     /* More metal in the same place, without a second colour, and outwards rather
        than inwards: inwards is the seven units of air between the legend and the
        edge, and that measure is the same on all five. */
-    const fourth = render(<DucatArt ducat={{ ...coin, tier: 4 }} />).container
-    const third = render(<DucatArt ducat={{ ...coin, tier: 3 }} />).container
+    const fourth = render(<DucatArt ducat={{ ...coin, tier: 4 }} label="Proba" />).container
+    const third = render(<DucatArt ducat={{ ...coin, tier: 3 }} label="Proba" />).container
 
     expect(fourth.querySelector('.ducat-art__band')).not.toBeNull()
     expect(third.querySelector('.ducat-art__band')).toBeNull()
@@ -180,8 +196,8 @@ describe('a wall of them', () => {
        along the arcs of the first. */
     const { container } = render(
       <>
-        <DucatArt ducat={coin} />
-        <DucatArt ducat={{ ...coin, id: 'duk-druga' }} />
+        <DucatArt ducat={coin} label="Proba" />
+        <DucatArt ducat={{ ...coin, id: 'duk-druga' }} label="Proba" />
       </>,
     )
 

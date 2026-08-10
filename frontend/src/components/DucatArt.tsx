@@ -164,16 +164,23 @@ function Globe() {
 
 export type DucatArtProps = {
   ducat: Ducat
+  /** What the coin is, in one sentence, for a reader who cannot see it.
+   *
+   *  The drawing was decorative while a hint stood beside it carrying the rule.
+   *  The owner took the hint away on 11.08.2026 and asked for the coins to stand
+   *  still and say nothing, so the coin now has to carry its own name. Nothing
+   *  of this shows on the page. */
+  label: string
 }
 
 /* The value of the ducat rides on the element as a fact rather than as five
  * class names, the way the kind of the ducat already did. It is data: one of
  * five, chosen by the rule and not by the drawing, and the stylesheet answers it
  * with the metal it is struck in. */
-export function DucatArt({ ducat }: DucatArtProps) {
+export function DucatArt({ ducat, label }: DucatArtProps) {
   /* The two arcs are referred to by name, and a wall draws fifteen coins on one
      page, so the names have to be this drawing's own. */
-  const own = useId().replace(/:/g, '')
+  const own = useId()
   const number = coinNumber(ducat)
   const unit = unitOf(ducat)
 
@@ -191,10 +198,11 @@ export function DucatArt({ ducat }: DucatArtProps) {
 
   return (
     <span className="ducat-art" data-tier={ducat.tier}>
-      {/* Decorative on purpose: everything the drawing says is said in words
-          beside it, by the name of the ducat and by the sentence of its rule.
-          Given a name of its own it would be read out twice. */}
-      <svg className="ducat-art__coin" viewBox="0 0 200 200" aria-hidden="true">
+      {/* An image with a name, rather than a decoration. Everything struck on
+          it is struck as text, but text inside a drawing is read out as a heap
+          of fragments: "ISTRČANIH", "125", "km", "JUL 2027". The label is the
+          same coin said as a sentence. */}
+      <svg className="ducat-art__coin" viewBox="0 0 200 200" role="img" aria-label={label}>
         <defs>
           <path id={`${own}-top`} d={arcPath(TOUCH - CAP * topSize, true)} />
           <path id={`${own}-bottom`} d={arcPath(TOUCH, false)} />

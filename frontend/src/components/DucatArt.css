@@ -22,10 +22,13 @@
    the opacity it already carries, and the guard over these names allows the
    ducats exactly two of them (styles/hooks.test.ts).
 
-   Measured against the face of the coin (#06214a at its darkest):
-   bronze 6.9:1, silver 11.4:1, gold 9.9:1, and the blue of the fifth value on
-   its gold face 5.3:1. All four clear the 4.5:1 of WCAG 2.2 AA, for the legend
-   and for the mark alike. */
+   Measured at the worst place, which is the lighter end of the face (#0b3372)
+   and not the darker one the eye goes to: bronze 5.78:1, silver 8.88:1, gold
+   7.63:1, and the blue of the fifth value against the darker end of its gold
+   face 5.30:1. All four clear the 4.5:1 of WCAG 2.2 AA.
+   That is the legend and the number. The mark of the kind is drawn at six
+   tenths and does not reach it: it is an ornament and says nothing that is not
+   said in the name the coin carries. */
 
 .ducat-art {
   display: block;
@@ -138,6 +141,8 @@
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
+  /* An ornament, and dimmed as one. Everything it hints at is said outright in
+     the name of the coin, so it is not held to the contrast a legend is. */
   opacity: 0.6;
 }
 

@@ -280,7 +280,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
   gap: var(--space-16);
 }
 
@@ -290,7 +290,10 @@
   align-items: center;
   gap: var(--space-6);
   text-align: center;
-  --ducat-art-size: clamp(4.5rem, 20vw, 6.5rem);
+  /* Never under 7.5rem, which is the 120 pixels a legend around the rim needs to
+     stay a legend (ADL A12, 9). The coin carried no words until 10.08.2026 and
+     was drawn from 72 up; from that day every word it says is on it. */
+  --ducat-art-size: clamp(7.5rem, 26vw, 8.5rem);
 }
 
 /* Two across from tablet up. */

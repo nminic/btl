@@ -50,30 +50,26 @@ export type DucatKind = (typeof DUCAT_KINDS)[number]
 
 /** The small mark at nine and at three o'clock, which says what is being
  *  counted without saying how much. One per kind of quantity, not one per
- *  family, so a wall of ducats reads as a set with seven signs in it. */
-export const DUCAT_MARKS = [
-  'distance',
-  'time',
-  'points',
-  'races',
-  'vertical',
-  'club',
-  'countries',
-] as const
-
-export type DucatMark = (typeof DUCAT_MARKS)[number]
+ *  family, so a wall of ducats reads as a set with seven signs in it.
+ *
+ *  A union rather than a list, unlike the kinds below it: nothing reads these at
+ *  run time, and a list nobody reads is a list that only looks like a contract. */
+export type DucatMark =
+  | 'distance'
+  | 'time'
+  | 'points'
+  | 'races'
+  | 'vertical'
+  | 'club'
+  | 'countries'
 
 /** What stands in the middle when a number would say less than a drawing.
  *  Exactly two families have one, and they are the two whose threshold is a
  *  place rather than a score (PDL P16). */
-export const DUCAT_ARTS = ['none', 'galaxy', 'globe'] as const
-
-export type DucatArtName = (typeof DUCAT_ARTS)[number]
+export type DucatArtName = 'none' | 'galaxy' | 'globe'
 
 /** How a family repeats through time. */
-export const DUCAT_PERIODS = ['always', 'month', 'season'] as const
-
-export type DucatPeriod = (typeof DUCAT_PERIODS)[number]
+export type DucatPeriod = 'always' | 'month' | 'season'
 
 /** One to five, low to high, exactly as the owner ranked them on 10.08.2026.
  *  Drawn as metal rather than as an ornament, because colour is the only signal
@@ -274,12 +270,15 @@ export function instancesOf(family: DucatFamily, today: string, gender: Gender):
   return out
 }
 
+/** One value up, and the fifth is the top: there is no sixth metal to strike.
+ *  Written out rather than added to, because `tier + 1` is a number and the
+ *  scale is five names, and telling the compiler otherwise takes a cast. */
+const NEXT: Record<DucatTier, DucatTier> = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 5 }
+
 /** The value of one ducat of a family: the family's own, one higher from the
  *  threshold at which the owner said the series stops being ordinary. */
 export function tierOf(family: DucatFamily, value: number): DucatTier {
-  const stepped = family.tierUpFrom > 0 && value >= family.tierUpFrom
-
-  return (stepped ? Math.min(5, family.tier + 1) : family.tier) as DucatTier
+  return family.tierUpFrom > 0 && value >= family.tierUpFrom ? NEXT[family.tier] : family.tier
 }
 
 /** The one instance the rulebook draws for a family: the first of them, which

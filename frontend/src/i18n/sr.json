@@ -1033,11 +1033,13 @@
     "everyMonth": ", računato za svaki mesec, počev od januara {season}.",
     "everySeason": ", računato za svaku sezonu, počev od {season}.",
     "again": " Ponavlja se na svakih {step}, do {last}.",
-    "tier1": "Vrednost 1 od 5, bronzani dukat.",
-    "tier2": "Vrednost 2 od 5, srebrni dukat.",
-    "tier3": "Vrednost 3 od 5, zlatni dukat.",
-    "tier4": "Vrednost 4 od 5, zlatni dukat sa punim pojasom.",
-    "tier5": "Vrednost 5 od 5, zlatno lice.",
+    "tier": {
+      "1": "Vrednost 1 od 5, bronzani dukat.",
+      "2": "Vrednost 2 od 5, srebrni dukat.",
+      "3": "Vrednost 3 od 5, zlatni dukat.",
+      "4": "Vrednost 4 od 5, zlatni dukat sa punim pojasom.",
+      "5": "Vrednost 5 od 5, zlatno lice."
+    },
     "kind": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
@@ -1048,7 +1050,7 @@
       "totalKm": "ukupno kilometara",
       "totalAscent": "ukupan uspon u metrima",
       "totalDescent": "ukupan spust u metrima",
-      "totalTime": "ukupno sati na stazi",
+      "totalTime": "ukupan broj sati na stazi",
       "points": "broj bodova",
       "countryCount": "broj zemalja",
       "seasonCount": "broj sezona",

@@ -7,7 +7,6 @@ import sr from '../i18n/sr.json'
 import { translate, type Dictionary } from '../i18n/translate'
 import { at, first, must } from '../test/at'
 import { renderAt } from '../test/render'
-import { setupUser } from '../test/user'
 
 const dictionary = sr as Dictionary
 const t = (key: string, params?: Record<string, string | number>) =>
@@ -21,16 +20,6 @@ const css = readFileSync(join(__dirname, 'DucatGallery.css'), 'utf8')
  *  near the end of it, since the owner made it a section of that page rather
  *  than a screen of its own (04.08.2026). */
 const wall = () => screen.findByRole('list', { name: 'Dukati' })
-
-/** What the card describes itself with: the sentence saying how the ducat is
- *  earned. It is the accessible description at all times, drawn or not, because
- *  a fact only a mouse can reach is a fact most people do not have. */
-function hintOf(item: HTMLElement): HTMLElement {
-  const face = within(item).getByRole('button')
-  const id = must(face.getAttribute('aria-describedby'), 'a description on the card')
-
-  return must(document.getElementById(id), 'the element the card describes itself with')
-}
 
 describe('the wall of ducats in the rulebook', () => {
   it('stands in a section of its own, near the end and before the closing provisions', async () => {
@@ -72,13 +61,15 @@ describe('the wall of ducats in the rulebook', () => {
 
     families.forEach((family) => {
       expect(family.name).not.toMatch(/\d/)
-      expect(family.name.split(' ').length).toBeLessThanOrEqual(2)
+      expect(family.name.split(' ').length).toBeLessThanOrEqual(3)
     })
   })
 
   it('keeps a name on one line, however narrow the card is', async () => {
-    // Also the owner's, the same day: the words under a coin do not wrap.
-    expect(css).toContain('white-space: nowrap')
+    /* Also the owner's, the same day: the words under a coin do not wrap. Read
+       through its own selector, because `nowrap` appears elsewhere in this file
+       and a search over the whole of it passes while the name wraps. */
+    expect(css).toMatch(/\.ducat__name\s*\{[^}]*white-space:\s*nowrap/)
 
     const families = await familiesOf()
     renderAt('/sr/pravilnik')
@@ -99,18 +90,22 @@ describe('the wall of ducats in the rulebook', () => {
     expect(at(families, families.length - 1).tier).toBe(5)
   })
 
-  it('says how a ducat is earned, to a screen reader as well as to a mouse', async () => {
+  it('gives every coin a name, since nothing beside it says what it is', async () => {
+    /* The card carried a hint until 11.08.2026, when the owner asked for the
+       coins to stand still and for the words to be said once above them. The
+       hint was what a screen reader was given, so each coin now carries its own
+       name: what it is, how it is earned, and what it is worth. */
     const families = await familiesOf()
     renderAt('/sr/pravilnik')
 
     const items = within(await wall()).getAllByRole('listitem')
 
     families.forEach((family, index) => {
-      const hint = hintOf(at(items, index))
+      const named = within(at(items, index)).getByRole('img')
 
-      expect(hint).toHaveTextContent(ruleSentence(family, t, 'sr'))
-      // And what it is worth, in words, because the metal says it in colour.
-      expect(hint).toHaveTextContent(t(`ducats.tier${family.tier}`))
+      expect(named).toHaveAccessibleName(
+        `${family.name}. ${ruleSentence(family, t, 'sr')} ${t(`ducats.tier.${family.tier}`)}`,
+      )
     })
   })
 
@@ -129,26 +124,15 @@ describe('the wall of ducats in the rulebook', () => {
     expect(gendered.some((family) => wallText.includes(family.top))).toBe(true)
   })
 
-  it('opens a hint on a tap and closes it again without hunting for the spot', async () => {
-    const user = setupUser()
+  it('has nothing to press, and nothing that opens', async () => {
+    /* The owner's instruction of 11.08.2026, in one assertion: the coins stand
+       still. No control, no hover, no state, and no explanation under a coin. */
     renderAt('/sr/pravilnik')
 
-    const face = within(first(within(await wall()).getAllByRole('listitem'))).getByRole('button')
+    const inside = within(await wall())
 
-    await user.click(face)
-    expect(face).toHaveAttribute('aria-expanded', 'true')
-
-    // Every other key leaves it as it was: only Escape closes it.
-    await user.keyboard('a')
-    expect(face).toHaveAttribute('aria-expanded', 'true')
-
-    await user.keyboard('{Escape}')
-    expect(face).toHaveAttribute('aria-expanded', 'false')
-
-    // And the same spot closes it too, for the hand that opened it there.
-    await user.click(face)
-    await user.click(face)
-    expect(face).toHaveAttribute('aria-expanded', 'false')
+    expect(inside.queryAllByRole('button')).toEqual([])
+    expect(inside.queryAllByRole('link')).toEqual([])
   })
 
   it('says so in the section when the file yields nothing at all', async () => {
@@ -169,5 +153,42 @@ describe('the wall of ducats in the rulebook', () => {
     } finally {
       globalThis.fetch = real
     }
+  })
+
+  it('is the fifteen the owner named, each with the rule he gave it', async () => {
+    /* The list is closed and nobody may add to it (PDL P16), so the file is the
+       specification and this is the only thing holding the two together. Without
+       it a threshold, a period or a value could be edited and every other test
+       here would stay green: they count the families, read their order and read
+       their names, and none of them reads a rule. */
+    const families = await familiesOf()
+    const said = families.map((one) => [
+      one.id,
+      one.kind,
+      one.value,
+      one.period,
+      one.tier,
+      one.step,
+      one.last,
+      one.tierUpFrom,
+    ])
+
+    expect(said).toEqual([
+      ['duk-mesecni-km', 'totalKm', 125, 'month', 1, 0, 0, 0],
+      ['duk-mesecni-sati', 'totalTime', 20, 'month', 1, 0, 0, 0],
+      ['duk-sezonski-km', 'totalKm', 1000, 'season', 2, 0, 0, 0],
+      ['duk-sezonski-bodovi', 'points', 1000, 'season', 2, 0, 0, 0],
+      ['duk-sezonski-sati', 'totalTime', 200, 'season', 2, 0, 0, 0],
+      ['duk-sezonske-trke', 'raceCount', 50, 'season', 2, 0, 0, 0],
+      ['duk-drzave', 'countryCount', 10, 'always', 3, 10, 100, 50],
+      ['duk-sve-trke', 'raceCount', 100, 'always', 3, 100, 1000, 500],
+      ['duk-krace-trke', 'shortCount', 100, 'always', 3, 0, 0, 0],
+      ['duk-polumaratoni', 'halfCount', 100, 'always', 3, 0, 0, 0],
+      ['duk-duze-trke', 'longCount', 100, 'always', 4, 0, 0, 0],
+      ['duk-maratoni', 'marathonCount', 100, 'always', 4, 0, 0, 0],
+      ['duk-uspon', 'totalAscent', 100000, 'always', 4, 0, 0, 0],
+      ['duk-ultramaratoni', 'ultraCount', 100, 'always', 4, 0, 0, 0],
+      ['duk-obim-planete', 'totalKm', 40075, 'always', 5, 0, 0, 0],
+    ])
   })
 })

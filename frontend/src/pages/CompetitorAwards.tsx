@@ -5,6 +5,7 @@ import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
 import { Resource } from '../components/Resource'
 import { earnedDucats } from '../data/ducatEarned'
+import { unitOf, type Ducat } from '../data/ducatRule'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import {
@@ -114,6 +115,19 @@ function AwardsFor({
     [competitor, results, ducats, today],
   )
 
+  /* One held ducat, in a sentence, for a reader who cannot see the coin. The
+     coin is an image with a name rather than a decoration since the hint went
+     (11.08.2026), and the name has to tell the hundredth race from the three
+     hundredth, which on the coin is the only difference there is.
+     
+     The period and the value are not in it, because both stand beside the coin
+     as words of the page and a screen reader reads the whole card. */
+  const labelFor = (ducat: Ducat) => {
+    const unit = unitOf(ducat)
+
+    return `${ducat.name}, ${formatNumber(ducat.value, locale, 0)}${unit === '' ? '' : ` ${unit}`}.`
+  }
+
   const name = `${competitor.firstName} ${competitor.lastName}`
 
   return (
@@ -179,7 +193,7 @@ function AwardsFor({
           <ul className="awards__ducats">
             {earned.map((ducat) => (
               <li key={ducat.id} className="awards__ducat">
-                <DucatArt ducat={ducat} />
+                <DucatArt ducat={ducat} label={labelFor(ducat)} />
                 <strong>{ducat.name}</strong>
                 {/* The coin carries the month, and the coin is hidden from a
                     screen reader, so the month has to stand here too: without
@@ -192,6 +206,10 @@ function AwardsFor({
                     {wholePeriod(ducat.from, ducat.to, locale)}
                   </span>
                 )}
+                {/* What it is worth, in words. The metal says it in colour, and
+                    colour is never the only thing that says anything
+                    (PDL P16, WCAG 2.2 SC 1.4.1). */}
+                <span className="profile__scope">{t(`ducats.tier.${ducat.tier}`)}</span>
               </li>
             ))}
           </ul>
