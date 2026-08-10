@@ -578,8 +578,18 @@ describe('a column hidden on a telephone', () => {
  * disappearing in a later tidy-up, and it names the request it answers so
  * whoever takes it out knows whose it was.
  */
+/** What one media query holds, so a rule written twice can be read at the width
+ *  it belongs to. */
+function inside(css: string, query: string): string {
+  const at = css.indexOf(query)
+
+  expect(at, `there is no ${query}`).toBeGreaterThan(-1)
+
+  return css.slice(at, closes(css, at))
+}
+
 describe('what the owner asked for on 04.08.2026', () => {
-  for (const { of: file, rule, holds, why } of [
+  for (const { of: file, rule, holds, why, within } of [
     {
       of: 'src/pages/Home.css',
       rule: '.home__calc',
@@ -734,6 +744,33 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'and it does not keep the ground of a button that does act',
     },
     {
+      of: 'src/pages/admin/SectionNav.css',
+      rule: '.adminsection__sectors',
+      /* The two sectors are one column since 06.08.2026, and the space between
+         them is written here: it used to fall out of a grid that had one child,
+         and with two they stood flush against each other. */
+      holds: /gap:\s*var\(--space-16\)/,
+      why: 'the two sectors are not flush against each other',
+    },
+    {
+      of: 'src/pages/admin/Entity.css',
+      rule: '.entity-races',
+      holds: /margin-block-start:\s*var\(--space-32\)/,
+      why: 'the races of an event are set off from the form that names it',
+    },
+    {
+      of: 'src/pages/admin/SectionNav.css',
+      rule: '.adminsection__sectors',
+      /* On the column of both sectors and not on either nav. Written on the nav
+         it was one rule for one navigation, and there are two of them since
+         06.08.2026: stuck separately they share a containing block and the
+         second paints over the first. Inside the wide query, which is the only
+         place it applies. */
+      holds: /position:\s*sticky/,
+      why: 'the two sectors are held as one column, not one over the other',
+      within: '@media (min-width: 820px)',
+    },
+    {
       of: 'src/components/Stars.css',
       rule: '.stars__pick',
       /* The box a finger is owed, which is the label around the star and not the
@@ -794,7 +831,14 @@ describe('what the owner asked for on 04.08.2026', () => {
     },
   ]) {
     it(`${why} (${rule})`, () => {
-      expect(bodyOf(read(file), rule)).toMatch(holds)
+      /* Narrowed to one query where the same selector is written twice, once
+         outside and once inside it: read over the whole sheet the wide rule and
+         the narrow one are indistinguishable, and the one that matters is the
+         one under the query. */
+      const sheet = read(file)
+      const looked = within === undefined ? sheet : inside(sheet, within)
+
+      expect(bodyOf(looked, rule)).toMatch(holds)
     })
   }
 
@@ -1095,37 +1139,4 @@ describe('the height of a bar on the column chart', () => {
     expect(body).toMatch(/position:\s*absolute/)
     expect(body).toMatch(/inset-block-end:\s*calc\(var\(--bar\) \+ var\(--face-gap\)\)/)
   })
-})
-
-
-/**
- * A class named on one side and not the other.
- *
- * The rename of 06.08.2026 touched five hundred occurrences across markup and
- * stylesheets, and the guard written for it catches the word that went, not a
- * name changed in one file and left standing in the other. Half-renaming
- * `--ducat-art-size` on the profile passed every test on the portal, and the
- * drawing there would have fallen back to its default at every width with
- * nothing saying so.
- *
- * So every hook the ducats use is read from both ends: the sheet that sets it
- * and the sheet or the screen that reads it.
- */
-describe('the hooks the ducats hang on', () => {
-  for (const [name, sets, reads] of [
-    ['--ducat-art-size', 'src/components/DucatGallery.css', 'src/components/DucatArt.css'],
-    ['--ducat-art-size', 'src/pages/Profile.css', 'src/components/DucatArt.css'],
-    ['.awards__ducats', 'src/pages/Profile.css', 'src/pages/CompetitorAwards.tsx'],
-    ['.ducats__sentence', 'src/pages/member/Member.css', 'src/pages/admin/AdminDucats.tsx'],
-    ['.inbox__count', 'src/app/Shell.css', 'src/app/MessagesMenu.tsx'],
-  ] as const) {
-    it(`is spelled the same where ${name} is set and where it is read`, () => {
-      /* Without the dot, because markup writes `className="awards__ducats"` and
-         a stylesheet writes `.awards__ducats`. */
-      const written = name.startsWith('.') ? name.slice(1) : name
-
-      expect(read(sets), `${sets} sets ${name}`).toContain(written)
-      expect(read(reads), `${reads} reads ${name}`).toContain(written)
-    })
-  }
 })

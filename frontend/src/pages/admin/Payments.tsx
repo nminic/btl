@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
+import { countryName } from '../../data/countryName'
 import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
@@ -258,7 +259,7 @@ export function Payments() {
                           </td>
                           <td>
                             {one.city}
-                            <span className="pending__country">{t(`country.${one.country}`)}</span>
+                            <span className="pending__country">{countryName(one.country)}</span>
                           </td>
                           <td>
                             <div className="review__decide">

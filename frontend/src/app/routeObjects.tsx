@@ -24,23 +24,20 @@ import { Registration } from '../pages/Registration'
 import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
 import { Entities } from '../pages/admin/Entities'
-import { ENTITY_FORMS } from '../pages/admin/entityForms'
 import { Guard } from '../pages/admin/Guard'
 import { needFor } from '../pages/admin/needs'
-import { EntitiesSection, VerificationSection } from '../pages/admin/SectionNav'
+import { AdminSections } from '../pages/admin/SectionNav'
 import { Verification } from '../pages/admin/Verification'
-import { AdminDucats } from '../pages/admin/AdminDucats'
 import { AdminEvents } from '../pages/admin/AdminEvents'
 import { AdminMembers } from '../pages/admin/AdminMembers'
 import { AdminLeagues } from '../pages/admin/AdminLeagues'
 import { AdminModerators } from '../pages/admin/AdminModerators'
 import { AdminPages } from '../pages/admin/AdminPages'
 import { AdminPricing } from '../pages/admin/AdminPricing'
-import { AdminRaces } from '../pages/admin/AdminRaces'
 import { AdminTeams } from '../pages/admin/AdminTeams'
 import { Payments } from '../pages/admin/Payments'
 import { PendingQueue } from '../pages/admin/PendingQueue'
-import { QUEUE, QUEUES } from '../pages/admin/queues'
+import { QUEUE } from '../pages/admin/queues'
 import { ReviewQueue } from '../pages/admin/ReviewQueue'
 import { Membership } from '../pages/member/Membership'
 import { MessageDetail } from '../pages/member/MessageDetail'
@@ -77,7 +74,6 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/clanovi': <AdminMembers />,
   'administracija/dogadjaji': <AdminEvents />,
   'administracija/cenovnik': <AdminPricing />,
-  'administracija/trke': <AdminRaces />,
   'administracija/timovi': <AdminTeams />,
   'administracija/lige': <AdminLeagues />,
   'administracija/strane': <AdminPages />,
@@ -98,34 +94,15 @@ export function screenFor(route: RouteDef): ReactElement {
   return SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />
 }
 
-/* Which administrative section an address belongs to, read off the same two
- * lists the guards and the rights matrix are read off. A tenth entity or a
- * ninth queue therefore appears inside its section on the day it is added,
- * rather than on the day somebody remembers a third list. */
-const VERIFICATION_PATHS = new Set([
-  'administracija/verifikacija',
-  ...QUEUES.map((queue) => queue.path),
-])
-
-/* A fixed entity is not in the section: nothing is created or removed there,
-   which is what the section is (entityForms.ts). */
-const ENTITY_PATHS = new Set([
-  'administracija/entiteti',
-  ...ENTITY_FORMS.filter((one) => one.fixed !== true).map((one) => one.path),
-])
-
-/** The screen with its section standing beside it, where it is in one (owner,
- *  30.07.2026). Everything else is handed through untouched. */
+/** The screen with the administration's navigation beside it (owner,
+ *  30.07.2026, in two sectors since 06.08.2026). Everything else is handed
+ *  through untouched. */
 function inSection(path: string, screen: ReactElement): ReactElement {
-  if (VERIFICATION_PATHS.has(path)) {
-    return <VerificationSection>{screen}</VerificationSection>
-  }
-
-  if (ENTITY_PATHS.has(path)) {
-    return <EntitiesSection>{screen}</EntitiesSection>
-  }
-
-  return screen
+  return path === 'administracija' || path.startsWith('administracija/') ? (
+    <AdminSections>{screen}</AdminSections>
+  ) : (
+    screen
+  )
 }
 
 /**
@@ -190,13 +167,6 @@ export const routeObjects: RouteObject[] = [
         path: route.path,
         element: guarded(route.path, screenFor(route)),
       })),
-      /* Ducats are edited from the section of records like the other eight, so
-         they are no longer a navigation entry of their own (owner, 01.08.2026).
-         The address stays, because the section links to it. */
-      {
-        path: 'administracija/dukati',
-        element: guarded('administracija/dukati', <AdminDucats />),
-      },
       ...DETAILS,
       { path: '*', element: <NotFound /> },
     ],

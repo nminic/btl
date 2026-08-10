@@ -1,6 +1,16 @@
 /* The column that stands beside administrative work. Same shape as the
    rulebook's list of articles, which is the one the owner asked for: folded
-   behind a button on a telephone, standing and staying put from tablet up. */
+   behind a button on a telephone, standing and staying put from 820px up. */
+
+/* The two sectors, one under the other, with the work beside them. They were
+   one navigation each wrapping its own screens until 06.08.2026; now one column
+   carries both, so the space between them is written here rather than falling
+   out of a grid that has one child. */
+.adminsection__sectors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
 
 .adminsection {
   display: grid;
@@ -25,6 +35,13 @@
 
 .adminsection__toggle:hover {
   border-color: var(--accent);
+}
+
+/* The other half of the button: one of the two is drawn at any width, never
+   both and never neither. Below 820px the button says it and this is not
+   there; from 820px up the button is gone and this says it. */
+.adminsection__title {
+  display: none;
 }
 
 .adminsection__panel {
@@ -116,7 +133,7 @@
   min-width: 0;
 }
 
-/* From tablet up the section stands beside the work and follows it down the
+/* From 820px up the section stands beside the work and follows it down the
    page, and the button that opened it stops existing. */
 @media (min-width: 820px) {
   .adminsection {
@@ -128,16 +145,31 @@
     display: none;
   }
 
+  .adminsection__title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 var(--space-4) var(--space-8);
+    border-bottom: 1px solid var(--border);
+  }
+
   .adminsection__panel {
     display: block;
     padding: 0;
   }
 
-  .adminsection__nav {
+  /* The column of both sectors together, not each of them. Written on the nav
+     itself it was one rule for one navigation, and there are two of them since
+     06.08.2026: stuck separately they share one containing block, so the second
+     paints over the first as soon as both are held. */
+  .adminsection__sectors {
     position: sticky;
     top: var(--space-16);
-    /* Nine entries plus the section itself are taller than a short window, so
-       the list scrolls inside itself rather than running off the screen. */
+    /* Two sectors of seven and eight entries are taller than a short window, so
+       the column scrolls inside itself rather than running off the screen. */
     max-height: calc(100svh - 2rem);
     overflow-y: auto;
   }

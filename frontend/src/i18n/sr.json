@@ -90,15 +90,11 @@
     },
     "adminEntities": {
       "title": "Podaci (administracija)",
-      "description": "Članovi, događaji, trke, timovi i lige na jednom mestu, za unos i ispravku."
+      "description": "Članovi, događaji, timovi, lige, statične strane i cenovnik na jednom mestu, za unos i ispravku."
     },
     "adminVerification": {
       "title": "Verifikacija (administracija)",
       "description": "Redovi čekanja: prijavljeni rezultati, novi članovi i sve što traži odluku moderatora."
-    },
-    "adminDucats": {
-      "title": "Dukati (administracija)",
-      "description": "Definicije dukata i uslovi po kojima se dodeljuju članovima lige."
     },
     "adminMembers": {
       "title": "Članovi (administracija)",
@@ -107,10 +103,6 @@
     "adminEvents": {
       "title": "Događaji (administracija)",
       "description": "Unos i ispravka događaja iz kalendara, sa datumom, mestom i organizatorom."
-    },
-    "adminRaces": {
-      "title": "Trke (administracija)",
-      "description": "Unos i ispravka trka unutar događaja, sa dužinom, usponom i spustom."
     },
     "adminTeams": {
       "title": "Timovi (administracija)",
@@ -196,6 +188,7 @@
     }
   },
   "shell": {
+    "waiting": "{count} na čekanju",
     "skipToContent": "Preskoči na sadržaj",
     "openMenu": "Otvori meni",
     "closeMenu": "Zatvori meni",
@@ -212,7 +205,6 @@
     },
     "noMessages": "Nema poruka.",
     "allMessages": "Sve poruke",
-    "waiting": "{count} na čekanju",
     "account": "Nalog",
     "settings": "Podešavanja",
     "signIn": "Prijavi se",
@@ -274,6 +266,7 @@
     "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
   },
   "home": {
+    "results": "Prijavljenih rezultata",
     "season": "Sezona {season}.",
     "seasonSample": "Sezona {season}, probni podaci",
     "kilometers": "Kilometara",
@@ -320,7 +313,6 @@
     "ascentUnit": " m+",
     "descentUnit": " m-",
     "members": "Članova lige",
-    "results": "Prijavljenih rezultata",
     "calcResult": "BTL poeni:"
   },
   "data": {
@@ -413,13 +405,6 @@
       "few": "Učlanjenje se otvara {date}, za {count} dana.",
       "other": "Učlanjenje se otvara {date}, za {count} dana."
     }
-  },
-  "country": {
-    "RS": "Srbija",
-    "BA": "Bosna i Hercegovina",
-    "ME": "Crna Gora",
-    "MK": "Severna Makedonija",
-    "HR": "Hrvatska"
   },
   "shirt": {
     "XS": "XS",
@@ -718,6 +703,7 @@
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
   },
   "leagues": {
+    "racesUnknown": "nepoznato",
     "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
@@ -895,10 +881,8 @@
   "admin": {
     "title": "Administracija",
     "sectionNav": "Odeljak {name}",
-    "waiting": "Čeka proveru",
     "members": "Članovi",
     "events": "Događaji",
-    "results": "Rezultata",
     "basis": "Osnov članstva",
     "basisValue": {
       "payment": "Uplata",
@@ -908,9 +892,14 @@
     "ranking": "Pravo rangiranja",
     "yes": "Da",
     "no": "Ne",
-    "ducats": "Dukati",
+    "eventTaken": "Događaj sa tim nazivom i tim datumom već postoji. Promenite datum: adresa se pravi od naziva i dana.",
+    "racesOf": "Trke na događaju {event}",
+    "racesPutFormAway": "Dok se trka uređuje, forma događaja se sklanja. Sačuvajte izmene na događaju pre nego što otvorite trku.",
+    "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
+    "waitingForResults": "Brisanje čeka rezultate",
+    "resultsFailed": "Brisanje nije moguće: rezultati se ne mogu učitati",
     "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
     "state": "Stanje",
     "change": "Izmeni",
@@ -918,9 +907,7 @@
     "teams": "Timovi",
     "leagues": "Lige",
     "pages": "Statične strane",
-    "searchRaces": "Traži po nazivu trke ili događaja",
     "raceName": "Naziv trke",
-    "noEvent": "Bez događaja",
     "organizer": "Organizator",
     "noOrganizer": "Nema organizatora",
     "byCategory": "Po kategorijama",
@@ -937,14 +924,12 @@
       "back": "Nazad na spisak",
       "saved": "Sačuvano",
       "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
-      "tryRule": "Proba pravila",
       "new": {
         "members": "Novi član",
         "events": "Novi događaj",
         "races": "Nova trka",
         "teams": "Novi tim",
         "leagues": "Nova liga",
-        "ducats": "Novi dukat",
         "pages": "Nova strana",
         "moderators": "Nov moderator"
       },
@@ -954,7 +939,6 @@
         "races": "Izmena trke",
         "teams": "Izmena tima",
         "leagues": "Izmena lige",
-        "ducats": "Izmena dukata",
         "pricing": "Izmena reda cenovnika",
         "pages": "Izmena strane",
         "moderators": "Izmena moderatora"
@@ -987,10 +971,6 @@
       "teamName": "Naziv tima",
       "teamOrganizer": "Organizator tima",
       "leagueName": "Naziv lige",
-      "ducatName": "Naziv dukata",
-      "ducatLabel": "Labela na dukatu",
-      "description": "Opis",
-      "rule": "Pravilo",
       "priceLabel": "Naziv perioda",
       "eur": "Cena u evrima",
       "rsd": "Cena u dinarima",
@@ -1021,16 +1001,12 @@
       "season": "Sezona za koju liga važi.",
       "groupsByCategory": "Bez ovoga se poredak lige grupiše samo po polu.",
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
-      "description": "Jedna do dve rečenice koje član vidi uz dukat.",
-      "ducatLabel": "Kratak tekst pri dnu dukata, na primer Jul 2027. Sme da ostane prazan; tada dukat nosi samo prag.",
-      "kind": "Vrsta se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
-      "ducatValue": "Uslov je uvek najmanje ova vrednost, pa dukat koji je osvojen ne može kasnije da se izgubi. Prag stoji na sredini dukata i nikad nije prazan.",
-      "ducatPeriod": "Bez datuma dukat se računa kroz sve sezone.",
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
+      "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
       "eventSlug": "Portal je pravi sam, od naziva i datuma. Ne unosi se i ne menja.",
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja."
     },
@@ -1046,17 +1022,12 @@
   "ducats": {
     "title": "Dukati",
     "empty": "Liga još nije uvela nijedan dukat.",
-    "kindLabel": "Vrsta",
-    "valueLabel": "Vrednost",
-    "from": "Od datuma",
-    "to": "Do datuma",
     "sentence": "Dukat se dodeljuje kad {kind} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
     "during": ", računato za {period}",
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
-    "closedList": "Spisak vrsta je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa dukat koji je osvojen ne može kasnije da se izgubi.",
     "kind": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
@@ -1105,10 +1076,8 @@
       "entity": {
         "members": "Članovi",
         "events": "Događaji",
-        "races": "Trke",
         "teams": "Timovi",
         "leagues": "Lige",
-        "ducats": "Dukati",
         "pricing": "Cenovnik",
         "pages": "Strane"
       },
@@ -1127,10 +1096,8 @@
       "entity": {
         "members": "uređivanje članova",
         "events": "uređivanje događaja",
-        "races": "uređivanje trka",
         "teams": "uređivanje timova",
         "leagues": "uređivanje liga",
-        "ducats": "uređivanje dukata",
         "pricing": "uređivanje cenovnika",
         "pages": "uređivanje statičnih strana"
       },

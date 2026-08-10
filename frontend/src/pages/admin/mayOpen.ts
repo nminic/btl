@@ -48,20 +48,22 @@ export function usePermittedQueues(): Queue[] {
 /**
  * The entities this person may open.
  *
- * Eight for the superadmin. For a moderator, those whose box is ticked, less
+ * Seven for the superadmin. For a moderator, those whose box is ticked, less
  * moderators themselves: assigning rights is the single thing the superadmin
  * cannot hand over (PDL P21), so that one has no box to tick and is answered by
  * the same table as everything else (needs.ts).
  *
- * And less the price list, whose rows are fixed (owner, 30.07.2026). This
- * section is what is created and removed; a screen where neither is possible
- * belongs beside the sections rather than inside one.
+ * The price list among them since 06.08.2026. It was left out because nothing
+ * is created or removed on it and the section was about creating and removing;
+ * what that produced was a screen in no section, which the panel had to link to
+ * because nothing else did. The section is Podaci now, and a price list is
+ * data.
  */
 export function usePermittedEntities(): EntityDef[] {
   const open = useMayOpen()
 
   return useMemo(
-    () => ENTITY_FORMS.filter((entity) => entity.fixed !== true && open(entity.path)),
+    () => ENTITY_FORMS.filter((entity) => open(entity.path)),
     [open],
   )
 }

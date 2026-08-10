@@ -136,6 +136,17 @@ describe('membership', () => {
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
+  it('says which country the ways of paying come from, in words', async () => {
+    /* The sentence above them says the ways of paying follow the country on the
+       profile, and the country is kept as a code. It was printed raw, so a member
+       in Montenegro read "(ME)"; the words come off the same file the select is
+       filled from (countryName). */
+    renderFor('000009')
+
+    expect(await screen.findByText(/Crna Gora/)).toBeVisible()
+    expect(screen.queryByText(/\(ME\)/)).not.toBeInTheDocument()
+  })
+
   it('says what a payment carries besides the fee, to everybody', async () => {
     /* The owner asked for the fee to be something anybody can look up, not
        something only whoever pays it is told (04.08.2026). What differs is who
@@ -309,9 +320,9 @@ describe('a result from entry to decision', () => {
    * queue of results. */
   async function openTheQueue(user: ReturnType<typeof setupUser>) {
     await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    // The entry carries the number waiting in its name (PDL P28a), so the name
-    // is matched on the words rather than in full.
-    await user.click(screen.getByRole('link', { name: /^Verifikacija/ }))
+    /* Straight to the queue: the sectors stand beside every administrative
+       screen, so there is no road to a section to walk first. The entry carries
+       the number waiting in its name (PDL P28a). */
     await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
   }
 

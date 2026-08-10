@@ -222,9 +222,8 @@ describe('the role switch', () => {
        menu again, the way the owner walks it. */
     await expectFrontPage()
     await user.click(screen.getByRole('link', { name: new RegExp(`^${t('nav.admin')}`) }))
-    await user.click(screen.getByRole('link', { name: t('nav.entities') }))
 
-    /* And the price list has left the section beside her. Before the matrix was
+    /* And the price list has left the sector beside her. Before the matrix was
        enforced the box was remembered and read by nothing at all; before this it
        was read by the door alone, so the screen was named and then refused. */
     const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Podaci' }))

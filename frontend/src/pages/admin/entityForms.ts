@@ -6,7 +6,6 @@ import moderator from '../../forms/definitions/admin-moderator.form.json'
 import strana from '../../forms/definitions/admin-strana.form.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import trka from '../../forms/definitions/admin-trka.form.json'
-import dukat from '../../forms/definitions/admin-dukat.form.json'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { isoDate } from '../../forms/dateField'
@@ -15,16 +14,16 @@ import { applyChanges, recordValue } from '../../forms/records'
 import type { DerivedField, FieldDef, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Deletions, Edits } from '../../session/context'
 
-/* The nine entities administration owns, described rather than programmed.
+/* The seven entities administration owns, described rather than programmed.
  *
  * Each one is a JSON definition of its fields and a few facts about the record
  * behind them: what it is called, where its screen lives, what its identity is
  * called, and what it carries that the form does not ask about. There is one
- * renderer, one editor and one list merger for all nine, so a tenth entity is a
+ * renderer, one editor and one list merger for all seven, so an eighth entity is a
  * JSON file and four lines here, never a screen (PDL P30).
  *
  * This list is also what the list of entities and the rights matrix are built
- * from, so a tenth entity appears on both the day it is added rather than on the
+ * from, so an eighth entity appears on both the day it is added rather than on the
  * day somebody remembers a second list.
  */
 export type EntityDef = {
@@ -32,7 +31,7 @@ export type EntityDef = {
    * Both the key its new records are remembered under in the session and the
    * stem of the two headings in the dictionary: admin.form.new.<id> and
    * admin.form.edit.<id>. Serbian will not interpolate a noun into "new", so the
-   * nine titles are written out rather than composed.
+   * titles are written out rather than composed.
    */
   id: string
   /** The words that name it: on the list of entities, and over its column in
@@ -121,7 +120,7 @@ export const EVENTS: EntityDef = {
   path: 'administracija/dogadjaji',
   form: dogadjaj as FormDef,
   idField: 'id',
-  blank: { raceIds: [] },
+  blank: {},
   /**
    * The address the event answers at, from its name and its day.
    *
@@ -152,6 +151,29 @@ export const EVENTS: EntityDef = {
 }
 
 /**
+ * Why this event cannot be saved, or nothing.
+ *
+ * Two events at one address is the fault this exists to stop. The address is
+ * read off the name and the day (`eventSlug`), and copying an event keeps both
+ * until somebody changes the date, so pressing Kopiraj and saving without
+ * touching the date wrote a second record answering at the first one's address.
+ * Everything that joins to an event by address then means both of them: the
+ * results of the one are the results of the other, and deleting either takes
+ * the other's with it.
+ *
+ * Said on the form rather than refused quietly, and on the date, because the
+ * date is what a copy is expected to change.
+ */
+export function eventClash(
+  values: FormValues,
+  taken: string[],
+): Record<string, FieldError> {
+  const address = eventSlug(String(values.name), String(values.date))
+
+  return taken.includes(address) ? { date: { key: 'admin.eventTaken' } } : {}
+}
+
+/**
  * The address an event answers at: its name, then the day it is run.
  *
  * The day is part of it because the same race is run every year and the name on
@@ -171,30 +193,73 @@ export function eventSlug(name: string, date: string): string {
  * beside the distance, which let a marathon be saved as a short race and made
  * the board of most marathons lie.
  */
+/** The category, read off the distance. Its own function because two definitions
+ *  share it: the races, and the races of one event (`racesOf`). */
+function categoryFrom(values: FormValues): DerivedValue[] {
+  /* Words and an empty field both come out as not a number, and every
+     comparison against that is false, so one comparison covers both. */
+  const distance = Number(String(values.distanceKm))
+  const known = distance > 0
+  const category = known ? categoryOf(distance) : ''
+
+  return [
+    {
+      name: 'category',
+      labelKey: 'admin.field.category',
+      hintKey: 'admin.hint.category',
+      value: category,
+      shownKey: known ? `category.${category}` : 'admin.field.categoryFromDistance',
+    },
+  ]
+}
+
 export const RACES: EntityDef = {
   id: 'races',
+  /* Neither of these two is read by anything. A definition carries both because
+     every entity does, and the races are the one entity whose screen is inside
+     another: nothing routes the address since 06.08.2026, and the words are on
+     the list of entities, which the races left the same day. They stay as what
+     the entity is called and where it would live, so a definition is a whole
+     entity rather than the part that happens to be used today. */
   labelKey: 'admin.races',
   path: 'administracija/trke',
   form: trka as FormDef,
   idField: 'id',
   blank: {},
-  derived: (values) => {
-    /* Words and an empty field both come out as not a number, and every
-       comparison against that is false, so one comparison covers both. */
-    const distance = Number(String(values.distanceKm))
-    const known = distance > 0
-    const category = known ? categoryOf(distance) : ''
+  derived: categoryFrom,
+}
 
-    return [
+/**
+ * The races of one event, as the event's own screen edits them.
+ *
+ * The same records as `RACES`, minus the one question the screen has already
+ * answered: which event this is. A race is one length of one morning and is
+ * defined inside its event (owner, 06.08.2026), so offering a list of one
+ * thousand events beside it is offering a wrong answer.
+ *
+ * The event is written on the record all the same, through `derived`, which is
+ * where everything that is not asked for is written (the address of an event,
+ * the category of a race). The link lives on the race and nowhere else, so this
+ * is the only place it is set.
+ */
+export function racesOf(eventId: string, eventName: string): EntityDef {
+  return {
+    ...RACES,
+    form: {
+      ...RACES.form,
+      fields: RACES.form.fields.filter((field) => field.name !== 'eventId'),
+    },
+    derived: (values) => [
+      ...categoryFrom(values),
       {
-        name: 'category',
-        labelKey: 'admin.field.category',
-        hintKey: 'admin.hint.category',
-        value: category,
-        shownKey: known ? `category.${category}` : 'admin.field.categoryFromDistance',
+        name: 'eventId',
+        labelKey: 'admin.field.event',
+        hintKey: 'admin.hint.eventFromScreen',
+        value: eventId,
+        shownKey: eventName,
       },
-    ]
-  },
+    ],
+  }
 }
 
 export const TEAMS: EntityDef = {
@@ -244,15 +309,6 @@ export const LEAGUES: EntityDef = {
   blank: { slug: '', eventIds: [] },
 }
 
-export const DUCATS: EntityDef = {
-  id: 'ducats',
-  labelKey: 'admin.ducats',
-  path: 'administracija/dukati',
-  form: dukat as FormDef,
-  idField: 'id',
-  blank: {},
-}
-
 /* The one entity whose rows are the year itself: four windows that tile it and
  * repeat, plus the junior price that has none. Nothing is added and nothing is
  * removed (owner, 30.07.2026), so it is not in the section that is about
@@ -280,7 +336,7 @@ export const PAGES: EntityDef = {
 }
 
 /**
- * The ninth, and the one that is unlike the other eight in what it is for rather
+ * The sixth, and the one that is unlike the other six in what it is for rather
  * than in how it is entered (PDL P28a, 30.07.2026).
  *
  * The form asks for three things and nothing else. What a moderator may do is
@@ -289,7 +345,7 @@ export const PAGES: EntityDef = {
  * a second answer to one question. A moderator entered here therefore starts
  * with none, which is exactly what a newly made moderator is.
  *
- * The identity is made up rather than typed, like six of the other eight. The
+ * The identity is made up rather than typed, like four of the other six. The
  * address of a moderator is the obvious candidate and is deliberately not used:
  * it is the one field on the form somebody may have to correct, and an identity
  * that changes takes every right hung off it with it.
@@ -304,17 +360,27 @@ export const MODERATORS: EntityDef = {
   blank: { rights: [] },
 }
 
-/** All nine, so a test can walk them and nothing can be half added. */
+/**
+ * Every entity with a screen of its own, in the order the section lists them
+ * (owner, 06.08.2026).
+ *
+ * The races are not among them: a race is one length of one morning and is
+ * edited inside its event, which is the only place that knows which event it
+ * is. Its definition stands above all the same, because the form is the same
+ * form (`racesOf`).
+ *
+ * Nor are the ducats: they are a catalogue in the rulebook and a collection on
+ * a profile (PDL P11), and the definitions behind them are not something
+ * administration edits day to day.
+ */
 export const ENTITY_FORMS: EntityDef[] = [
   MEMBERS,
   EVENTS,
-  RACES,
   TEAMS,
   LEAGUES,
-  DUCATS,
-  PRICING,
   PAGES,
   MODERATORS,
+  PRICING,
 ]
 
 /** What the editor is open on: a record being changed, or a new one. */

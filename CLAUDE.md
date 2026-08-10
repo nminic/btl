@@ -18,6 +18,15 @@ Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot
 - **Izveštavanje:** javljati posle svake gotove celine, kratko i konkretno. Nikad
   ne pisati „SLEDEĆE:" i stati. Piše se **„POČINJEM:"** i tog trenutka se počinje,
   u istoj poruci.
+- **Prvo se radi, pa se piše da je početo.** Nijedna poruka ne sme da se završi
+  najavom. Reč „POČINJEM" opisuje ono što je u toj istoj poruci već pokrenuto, ne
+  ono što sledi. Redosled u poruci je: kratak odgovor ako je bilo pitanje, pa
+  posao, pa izveštaj o onome što je upravo urađeno.
+  - **Zašto ovo pravilo postoji:** poruka se završava onog trenutka kad prestanu
+    pozivi alata. Najava na kraju poruke znači da posao nije pokrenut i da se
+    ništa neće izvršiti dok vlasnik ponovo ne piše. Oblik „izveštaj pa najava"
+    uvek završi kao prekid; ispravan oblik je „posao pa izveštaj".
+  - Jedini dozvoljen kraj bez posla je izričito „stao sam i čekam", uz razlog.
 - **Jedino što zaustavlja rad** je izričito „stani" od vlasnika, ili pitanje na
   koje se bez njegovog odgovora ne može dalje. U drugom slučaju se pitanje postavi
   i **odmah nastavi sa onim delom posla koji od tog odgovora ne zavisi**.

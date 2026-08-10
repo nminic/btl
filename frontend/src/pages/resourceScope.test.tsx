@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import type { ResourceName } from '../data/client'
 import { renderAt } from '../test/render'
 
@@ -80,6 +80,18 @@ describe('a part of a screen waits without covering the page', () => {
     expect(said).toContain('Učitavanje: Rezultati članova')
   })
 
+  it('leaves the count of races empty while they are on their way, not "nepoznato"', async () => {
+    /* The word means the answer will not come. While the file is on its way it
+       is coming, so the word is the same lie as a nought would be, in the other
+       direction. Said only where the file failed (the case below). */
+    restore = stallResource('races')
+    renderAt('/sr/liga/runtrace-2027')
+
+    const table = within(await screen.findByRole('table', { name: /Događaji/ }))
+
+    expect(table.queryByText('nepoznato')).toBeNull()
+  })
+
   it('keeps the front page readable while the president is still on his way', async () => {
     restore = stallResource('pages')
     renderAt('/sr')
@@ -118,6 +130,58 @@ describe('a screen waits only on the data it shows', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga/ })).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    /* And the column that needed them says so rather than saying nought. A
+       count of none where the file did not arrive is the table telling a lie,
+       and the word for it has to be a word: it was written into the wrong branch
+       of the dictionary and the cell read `leagues.racesUnknown` to every
+       visitor whose connection was slow. */
+    const table = within(await screen.findByRole('table', { name: /Događaji/ }))
+
+    expect(table.getAllByText('nepoznato').length).toBeGreaterThan(0)
+    expect(table.queryByText('leagues.racesUnknown')).toBeNull()
+  })
+
+  it('draws the events of administration when the results cannot be loaded', async () => {
+    /* The fourth screen to ship this way, and the first inside administration.
+       No row here shows a result: they are read only so that deleting an event
+       takes its results with it. Waited for, a results file that failed replaced
+       the screen, and with it every way of editing an event or a race, since the
+       races moved inside the event on 06.08.2026. */
+    restore = breakResource('results')
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const table = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
+
+    /* And the deletion says the file failed rather than that it is waiting for
+       it. Held back either way, because deleting an event without its results
+       leaves them counting for an event that is gone; but a row that says it is
+       waiting, for ever, is an administrator refused a right he holds and told
+       something untrue about why. */
+    expect(table.getAllByText(/rezultati se ne mogu učitati/).length).toBeGreaterThan(0)
+    expect(table.queryByText('Brisanje čeka rezultate')).toBeNull()
+    expect(table.queryByRole('button', { name: /^Obriši/ })).toBeNull()
+  })
+
+  it('does not offer to delete an event while its results are still on their way', async () => {
+    /* The other half of reading them for what they are worth. Deleting an event
+       takes its results along, and until they are here there is nothing to take:
+       the deletion would leave them pointing at an event that is gone, each one
+       still counting in the standing. The row says what it is waiting for
+       instead of offering a button that does half the work. */
+    restore = stallResource('results')
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const table = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    expect(table.getAllByText('Brisanje čeka rezultate').length).toBeGreaterThan(0)
+    expect(table.queryByRole('button', { name: /^Obriši/ })).toBeNull()
+    /* And the other control is there, so this is the deletion held back rather
+       than the row being empty. */
+    expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
   })
 
   /* The other half of the same rule: a screen must still fail on data it does

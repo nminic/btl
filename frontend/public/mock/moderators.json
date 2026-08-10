@@ -7,10 +7,8 @@
     "rights": [
       "entity:members",
       "entity:events",
-      "entity:races",
       "entity:teams",
       "entity:leagues",
-      "entity:ducats",
       "entity:pricing",
       "entity:pages",
       "queue:results",
@@ -46,7 +44,6 @@
     "email": "aleksandra.milovanovic@primer.ba",
     "rights": [
       "entity:events",
-      "entity:races",
       "queue:bios",
       "queue:photos",
       "queue:comments",

@@ -28,7 +28,6 @@ const event = (id: string, date: string): BtlEvent => ({
   country: 'RS',
   organizer: 'Road',
   status: 'confirmed',
-  raceIds: [],
 })
 
 const race = (id: string, eventId: string, name: string, distanceKm = 10): Race => ({

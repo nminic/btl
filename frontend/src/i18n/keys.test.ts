@@ -2,6 +2,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
+import { CATEGORIES } from '../data/derive'
+import { EVENT_STATUSES, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
+import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
+import { LOCALES } from './config'
+import { ROLES } from '../roles/context'
+import { DUCAT_KINDS } from '../data/ducatRule'
+import { JUNIOR, PRICES } from '../data/pricing'
+import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
 import { QUEUES } from '../pages/admin/queues'
 import type { FormDef } from '../forms/types'
 import sr from './sr.json'
@@ -14,7 +22,13 @@ const dictionary = sr as Dictionary
  * nav.nepostoji renders "nav.nepostoji" and nothing fails. This is the test
  * that notices. */
 function resolves(key: string): boolean {
-  return translate(dictionary, 'sr', key) !== key
+  /* All three counts, because a leaf may be the three forms of a plural rather
+     than a sentence. Without a count at all, translate answers a plural leaf
+     with the key itself, which reads exactly like a name that is not there; with
+     one count only, a leaf that has "one" and has lost the other two answers for
+     a single race and prints its own name for every other number. Serbian picks
+     a different form at 1, at 2 and at 5. */
+  return [1, 2, 5].every((count) => translate(dictionary, 'sr', key, { count }) !== key)
 }
 
 describe('translation keys used in code', () => {
@@ -79,6 +93,87 @@ describe('the seo entry of every address', () => {
     expect(repeated).toEqual([])
   })
 
+})
+
+/**
+ * The names the portal does not write out: a stem and a value off a closed list,
+ * `t(`ducats.kind.${rule.kind}`)`.
+ *
+ * said.test reads names written out in full and cannot read one of these, since
+ * a name built out of a value is a family rather than a name. Each family is
+ * therefore walked here against the list it is built from.
+ *
+ * Three of these went missing in a fortnight, all invisibly. The sixteen ducat
+ * kinds had a guard by accident until 10.08.2026: the ducat editor listed them
+ * all in full, and deleting that screen took the only place they were written
+ * out with it. The heading over the form for a race lost its cover the same way,
+ * when the races left the list of entities the walk over the screens is built
+ * from. The five countries in the dictionary were a second list beside the file
+ * the select is filled from, and it holds two hundred and fifty two: a team
+ * proposed from Slovenia reached the moderator as `country.SI`. That one is not
+ * on the list below because it is gone: both screens read the file (countryName).
+ *
+ * A family belongs here the day a name is composed out of a value, whether or
+ * not `t(` is on the same line: `rights.ts` and `entityForms.ts` build one into a
+ * field and hand it on. What finds them is a search for a backticked string
+ * whose text ends in a dot before the `${`.
+ *
+ * Where a family is walked somewhere better it stays there and not here: the
+ * rights matrix walks its own names (rights.test) and the addresses walk theirs
+ * (SEO_KEYS above).
+ */
+describe('the names the portal composes out of a list', () => {
+  const FAMILIES: { of: string; each: readonly string[] }[] = [
+    { of: 'ducats.kind', each: DUCAT_KINDS },
+    /* Both halves for every entity that has a form, the races included: theirs is
+       edited inside its event and is therefore not in ENTITY_FORMS, which is
+       exactly how the heading over it came to be uncovered.
+
+       A fixed entity has no "new" heading and must not have one: its rows are the
+       year itself, nothing is added and nothing is removed (owner, 30.07.2026). */
+    {
+      of: 'admin.form.new',
+      each: [...ENTITY_FORMS, RACES].filter((one) => one.fixed !== true).map((one) => one.id),
+    },
+    { of: 'admin.form.edit', each: [...ENTITY_FORMS, RACES].map((one) => one.id) },
+    /* The queues drawn by PendingQueue, which is what asks for this name. The
+       results and the payments have screens written for them, and neither shows a
+       card with text on it. */
+    { of: 'verification.body', each: PENDING_QUEUE_IDS.filter((id) => id !== 'payments') },
+    { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },
+    { of: 'calendar.status', each: EVENT_STATUSES },
+    { of: 'profile.lengthsShort', each: ['all', ...CATEGORIES] },
+    { of: 'profile.categoryWord', each: CATEGORIES },
+    { of: 'category', each: CATEGORIES },
+    { of: 'home.mostOf', each: CATEGORIES },
+    { of: 'calendar.weekdays', each: ['1', '2', '3', '4', '5', '6', '7'] },
+    { of: 'myProfile.notify', each: NOTIFICATION_KEYS },
+    /* The role switch, which is a thing of the workshop rather than of the
+       portal, and still a select somebody reads. */
+    { of: 'role', each: ROLES },
+    { of: 'admin.basisValue', each: ['payment', 'honorary'] },
+    { of: 'status', each: SUBMISSION_STATUSES },
+    { of: 'topBoards.byLength', each: CATEGORIES },
+    { of: 'event.rating', each: RATING_MARKS },
+    { of: 'language', each: LOCALES },
+  ]
+
+  it('has every one of them, for every value on the list it is built from', () => {
+    const missing = FAMILIES.flatMap(({ of, each }) =>
+      [...each].map((value) => `${of}.${value}`).filter((key) => !resolves(key)),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('walks a family of more than one value, so the check is not over nothing', () => {
+    /* The lists are read off the source, and a list that became empty would make
+       its family pass by having nothing in it. */
+    expect(FAMILIES.filter((one) => one.each.length < 2)).toEqual([])
+  })
+})
+
+describe('the words the search engine is given', () => {
   it('names each of the eight queues, within the same 160 characters', () => {
     /* The eight queues share one address pattern, so their words are composed
        rather than written out (QueueMeta). A search engine cuts a description at

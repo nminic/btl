@@ -15,7 +15,8 @@ import './Entity.css'
  * the other half: the whole record, with every field it has, validated by the
  * rules written in its definition rather than by anything on this screen.
  *
- * There is one of these for all eight entities. What differs between them is a
+ * There is one of these for all seven entities, and for the
+ * races inside an event. What differs between them is a
  * JSON file (PDL P30).
  */
 export function EntityEditor({
@@ -181,7 +182,7 @@ export function EntityEditor({
  * control that starts a record that does not exist yet on the right.
  *
  * The button carries the name of the thing being created, because "new record"
- * on nine screens is nine buttons a screen reader cannot tell apart.
+ * on every screen is a row of buttons a screen reader cannot tell apart.
  *
  * It sits at the end of the row rather than above it (owner, 30.07.2026). Above
  * the search it was the first thing on a screen whose work is reading a list;
@@ -223,9 +224,9 @@ export function EntityBar({
 /**
  * What every row of every list ends with: open the record, or remove it.
  *
- * One component for both, so a tenth screen cannot be written with the one and
- * not the other, and so the two are always the same distance apart in the same
- * order on all nine.
+ * One component for both, so a new screen cannot be written with the one and not
+ * the other, and so the two are always the same distance apart in the same order
+ * wherever a list is edited.
  *
  * The identity comes off the record through the entity's own definition rather
  * than being handed in, because which field is the identity is a fact about the
@@ -236,12 +237,37 @@ export function RowActions({
   record,
   name,
   onOpen,
+  alsoRemove,
+  whyNoRemove,
 }: {
   entity: EntityDef
   record: object
   /** What the row is called, for both accessible names. */
   name: string
   onOpen: () => void
+  /**
+   * What goes with the record, where something does.
+   *
+   * An event carries its races: a race is one length of that morning and is
+   * defined inside it (owner, 06.08.2026), so an event deleted without them
+   * leaves races belonging to nothing, and nothing on the portal shows a race
+   * outside its event any more. Handed in rather than worked out here, because
+   * what belongs to what is a fact about the screen's own data.
+   */
+  alsoRemove?: () => void
+  /**
+   * Why this record cannot be deleted, where something stops it.
+   *
+   * The events screen reads the results only so that deleting an event takes
+   * them along, and it no longer waits for them: a file of a million and a half
+   * bytes must not decide whether an event can be edited. While they are on
+   * their way there is nothing to take along, and a deletion in that window
+   * leaves results pointing at an event that is gone, each of them still
+   * counting in the standing and linking to a page that says so. The answer is
+   * to wait for the one thing the deletion needs rather than for the screen, and
+   * to say what is being waited for.
+   */
+  whyNoRemove?: string
 }) {
   const { remove } = useSession()
   const id = String((record as Record<string, unknown>)[entity.idField])
@@ -258,13 +284,28 @@ export function RowActions({
       anchor.focus()
     }
 
+    alsoRemove?.()
     remove(entity.id, id)
   }
 
   return (
     <span className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      <DeleteRecord name={name} onDelete={deleteRow} />
+      {whyNoRemove === undefined ? (
+        <DeleteRecord name={name} onDelete={deleteRow} />
+      ) : (
+        /* Said rather than drawn and refused. A button that answers nothing is
+           worse than no button, and the words are in the row, where anybody
+           running the row meets them in the place the second button would be.
+
+           Not a live region. It was one, and there are forty five rows on the
+           events screen: forty five regions carrying one sentence, all of them
+           changing together the moment the file fails, is forty five identical
+           announcements. What is said once is worth saying; said forty five
+           times it is noise, which is the rule the event page already keeps
+           (resourceScope.test). */
+        <span className="entity-row-note">{whyNoRemove}</span>
+      )}
     </span>
   )
 }

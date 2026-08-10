@@ -23,7 +23,7 @@ import './Rights.css'
  * standing in front of his own row of boxes is not a moderator being limited by
  * anything.
  *
- * A moderator is entered and changed the way the other eight entities are, by
+ * A moderator is entered and changed the way the other six entities are, by
  * the one renderer reading one JSON definition. The rights are not on that form
  * on purpose: they are the matrix, and a second place to set them would be a
  * second answer to the same question.

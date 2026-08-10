@@ -11,7 +11,11 @@ export type Gender = 'M' | 'F'
    where the order is decided and where a test holds it. */
 export type RaceCategory = 'short' | 'half' | 'long' | 'marathon' | 'ultra'
 
-export type EventStatus = 'announced' | 'confirmed' | 'checking' | 'cancelled'
+/* A list rather than a union, so the guard over the words for these can be
+   walked (keys.test). A union is gone by the time anything runs. */
+export const EVENT_STATUSES = ['announced', 'confirmed', 'checking', 'cancelled'] as const
+
+export type EventStatus = (typeof EVENT_STATUSES)[number]
 
 export type MembershipBasis = 'payment' | 'honorary'
 
@@ -70,8 +74,13 @@ export type BtlEvent = {
   country: string
   organizer: string
   status: EventStatus
-  raceIds: string[]
 }
+
+/* An event does not list its races. It did, in `raceIds`, and the same link was
+   written a second time on the race itself: two records of one fact drift apart
+   the moment one is written and the other is not, which is what happened to
+   every race entered by hand. The race says which event it belongs to and that
+   is the whole of it (ADL A7, 06.08.2026). */
 
 export type Result = {
   id: string
@@ -232,13 +241,18 @@ export type EventComment = {
   body: string
 }
 
-/** The three marks an event is rated on (PDL P6). The names are the owner's,
- *  with "okruženje" renamed to "ambijent" on 07.08.2026. */
-export type EventRating = {
-  organisation: number
-  value: number
-  ambience: number
-}
+/* The three marks an event is rated on (PDL P6). The names are the owner's, with
+   "okruženje" renamed to "ambijent" on 07.08.2026.
+
+   A list with the shape derived from it, rather than the shape alone. Both the
+   form that asks and the card that shows walk them, and both wrote the list out
+   again for want of one to import; the words for them are walked off it too
+   (keys.test). */
+export const RATING_MARKS = ['organisation', 'value', 'ambience'] as const
+
+export type RatingMark = (typeof RATING_MARKS)[number]
+
+export type EventRating = Record<RatingMark, number>
 
 /**
  * A rating nobody has given: the starting state of the form, and what a comment

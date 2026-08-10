@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
-import { NO_RATING, type EventRating } from '../../data/types'
+import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
 import { combinePair, useCompetitors, useEvents } from '../../data/useResource'
 import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
 import { LongBox } from '../../forms/LongBox'
@@ -14,9 +14,6 @@ import { useSession } from '../../session/useSession'
 import { SignedOut } from '../member/SignedOut'
 import { NotRunYet } from './NotRunYet'
 import '../member/Member.css'
-
-/** The three marks, in the order they are asked for and read back. */
-const MARKS = ['organisation', 'value', 'ambience'] as const
 
 /**
  * What a member thought of an event, given on a screen of its own.
@@ -105,7 +102,7 @@ function RateOne() {
           const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
           /* Nothing to send until all three are given: the overall is their
              average, so a mark left out is published as a nought. */
-          const waiting = MARKS.some((mark) => rating[mark] === 0)
+          const waiting = RATING_MARKS.some((mark) => rating[mark] === 0)
 
           function send() {
             /* Says so rather than being switched off, so nothing stops the
@@ -145,7 +142,7 @@ function RateOne() {
                   member pressing Enter after the third star would send a comment
                   they had not written yet. */}
               <div className="rate">
-                {MARKS.map((mark) => (
+                {RATING_MARKS.map((mark) => (
                   <Stars
                     key={mark}
                     name={mark}

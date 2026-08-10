@@ -12,7 +12,11 @@ import type { EventComment, MembershipBasis, RaceCategory, PendingItem } from '.
  * session and calls the API; the screens ask the same questions either way.
  */
 
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected'
+/* A list rather than a union, so the words for the three can be walked
+   (keys.test). A union is gone by the time anything runs. */
+export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
+
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
 export type Submission = {
   id: string
@@ -160,7 +164,7 @@ export type Decisions = Record<string, Decision>
  * arrives this becomes a DELETE and the screens do not notice.
  *
  * By entity, exactly as `creations` is, and not one flat list of identities for
- * all nine. Identities are only unique inside their own entity: a member is
+ * all of them. Identities are only unique inside their own entity: a member is
  * `000012` and a price row is a key, and nothing stops two entities from using
  * the same string one day. A single namespace would then delete a row of one
  * entity by deleting a row of another, and the fault would look like a screen

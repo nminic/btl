@@ -193,43 +193,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Administration */
-
-.admin__counts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: var(--space-14);
-  margin: 0;
-}
-
-.admin__counts div {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-8);
-  padding: var(--space-12);
-}
-
-.admin__counts dt {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 700;
-}
-
-.admin__counts dd {
-  margin: var(--space-4) 0 0;
-  font-size: clamp(20px, 3vw, 26px);
-  font-weight: 700;
-}
-
-.ducats__sentence {
-  margin: 0;
-  padding: var(--space-12);
-  border-left: 3px solid var(--gold-500);
-  background: var(--surface);
-  font-size: 1rem;
-}
-
 .pay__code {
   display: flex;
   flex-direction: column;

@@ -42,7 +42,6 @@ function Section({
   /** Said out loud beside the numbers when they cannot be trusted, and nothing
    *  where the section has no numbers. */
   alarm,
-  children,
 }: {
   title: string
   /** Names the panel the button opens, and nothing else. The section itself has
@@ -51,7 +50,6 @@ function Section({
   id: string
   items: SectionItem[]
   alarm?: ReactNode
-  children: ReactNode
 }) {
   const { locale, t } = useI18n()
   const { pathname } = useLocation()
@@ -65,85 +63,132 @@ function Section({
   const panelId = `section-${id}`
 
   return (
+    /* The landmark is named apart from the entry that leads to the section, so
+       somebody moving landmark by landmark does not hear the same word three
+       times over. */
+    <nav aria-label={t('admin.sectionNav', { name: title })}>
+      {/* On a telephone the list would push the work off the first screen, so
+          there it sits behind a button. From 820px up the button goes away and
+          the list stands beside the work and follows it down. */}
+      <button
+        type="button"
+        className="adminsection__toggle"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpenAt(open ? null : pathname)}
+      >
+        {title}
+      </button>
+
+      {/* And the same word where the button is not drawn. From 820px up the
+          button goes away, and until this the two sectors were two runs of links
+          one under the other with nothing saying which was which and nothing
+          between them. Said once either way: the button carries it below that
+          width, this above it.
+
+          Not a heading. The landmark around it already carries the same word
+          (aria-label above), and this stands before the screen's own h1, which
+          is inside the work beside it: a heading here would put the sector above
+          the page it belongs to and level with the sections of that page. */}
+      <p className="adminsection__title">{title}</p>
+
+      <div
+        id={panelId}
+        className={open ? 'adminsection__panel adminsection__panel--open' : 'adminsection__panel'}
+      >
+        <ul className="adminsection__list">
+          {items.map((entry) => (
+            <li key={entry.path}>
+              <NavLink
+                /* `end` so an entry is marked only on its own screen. No entry
+                   is a prefix of another today, and this is what keeps that from
+                   mattering. */
+                end
+                to={`/${locale}/${entry.path}`}
+                className="adminsection__link"
+                /* The number is said in words or not at all. An aria-label
+                   replaces everything inside the element, so the digit is
+                   hidden and the name carries it: a bare "0" read out after a
+                   name is a number with no unit. */
+                aria-label={
+                  entry.count === undefined
+                    ? undefined
+                    : `${entry.label}, ${t('shell.waiting', { count: entry.count })}`
+                }
+              >
+                <span className="adminsection__name">{entry.label}</span>
+                {entry.count !== undefined && (
+                  /* Shown at nought as well, unlike the counter in the header.
+                     There it is a counter and nothing is what nought looks like;
+                     here it is the answer to "is there anything left", and the
+                     moderator is watching it come down as they work. */
+                  <span
+                    aria-hidden="true"
+                    className={
+                      entry.count > 0
+                        ? 'adminsection__count adminsection__count--waiting'
+                        : 'adminsection__count'
+                    }
+                  >
+                    {formatNumber(entry.count, locale)}
+                  </span>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Outside the panel, which is folded on a telephone: an alert that is
+          `display: none` when it is drawn is not announced, and unfolding the
+          list later does not announce it either, because nothing new is
+          inserted. The one warning that the numbers above cannot be trusted was
+          therefore both invisible and silent on the screen where the list is
+          folded. */}
+      {alarm}
+    </nav>
+  )
+}
+
+/**
+ * The frame the whole of administration is drawn in: the navigation of two
+ * sectors on the left, and whatever screen is open beside it (owner,
+ * 06.08.2026).
+ *
+ * It draws nothing of its own, because the landing page has nothing of its own:
+ * what used to stand on it is either in the navigation or on the screen the
+ * navigation opens.
+ */
+export function AdminSections({ children }: { children: ReactNode }) {
+  return (
     <div className="adminsection">
-      {/* The landmark is named apart from the entry that leads to the section,
-          so somebody moving landmark by landmark does not hear the same word
-          three times over. */}
-      <nav className="adminsection__nav" aria-label={t('admin.sectionNav', { name: title })}>
-        {/* On a telephone the list would push the work off the first screen, so
-            there it sits behind a button. From tablet up the button goes away
-            and the list stands beside the work and follows it down. */}
-        <button
-          type="button"
-          className="adminsection__toggle"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpenAt(open ? null : pathname)}
-        >
-          {title}
-        </button>
+      <div className="adminsection__sectors">
+        {/* A sector nobody may open is not drawn at all. A moderator is not to
+            be aware that there are actions nobody gave him (owner, 30.07.2026):
+            naming a sector to somebody who holds nothing in it is telling him
+            about a room he may not enter, and the button opened an empty list,
+            which is a control that answers nothing. */}
+        <QueuesSector />
+        <RecordsSector />
+      </div>
 
-        <div
-          id={panelId}
-          className={open ? 'adminsection__panel adminsection__panel--open' : 'adminsection__panel'}
-        >
-          <ul className="adminsection__list">
-            {items.map((entry) => (
-              <li key={entry.path}>
-                <NavLink
-                  /* `end` so the section itself is not marked as the screen in
-                     view whenever one of its screens is. */
-                  end
-                  to={`/${locale}/${entry.path}`}
-                  className="adminsection__link"
-                  /* The number is said in words or not at all. An aria-label
-                     replaces everything inside the element, so the digit is
-                     hidden and the name carries it: a bare "0" read out after a
-                     name is a number with no unit. */
-                  aria-label={
-                    entry.count === undefined
-                      ? undefined
-                      : `${entry.label}, ${t('shell.waiting', { count: entry.count })}`
-                  }
-                >
-                  <span className="adminsection__name">{entry.label}</span>
-                  {entry.count !== undefined && (
-                    /* Shown at nought as well, unlike the counter in the header.
-                       There it is a counter and nothing is what nought looks like;
-                       here it is the answer to "is there anything left", and the
-                       moderator is watching it come down as they work. */
-                    <span
-                      aria-hidden="true"
-                      className={
-                        entry.count > 0
-                          ? 'adminsection__count adminsection__count--waiting'
-                          : 'adminsection__count'
-                      }
-                    >
-                      {formatNumber(entry.count, locale)}
-                    </span>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-
-          {alarm}
-        </div>
-      </nav>
-
-      {/* Keyed by the address, so moving from one queue to the next builds the
-          screen again instead of handing the next one whatever the last one was
-          in the middle of. React Router does not key what it renders, and these
-          screens are now the same element type in the same place in the tree:
-          without this, opening the box for a reason on one queue and leaving
-          without cancelling reopened it on the queue arrived at next, and took
-          the focus with it. */}
-      <div className="adminsection__body" key={pathname}>
+      {/* Keyed by the address, so moving from one screen to the next builds it
+          again instead of handing the next one whatever the last one was in the
+          middle of. React Router does not key what it renders, and these screens
+          are now the same element type in the same place in the tree: without
+          this, opening the box for a reason on one queue and leaving without
+          cancelling reopened it on the queue arrived at next, and took the focus
+          with it. */}
+      <div className="adminsection__body" key={usePathname()}>
         {children}
       </div>
     </div>
   )
+}
+
+/** The address in view, which is what keys the work beside the navigation. */
+function usePathname(): string {
+  return useLocation().pathname
 }
 
 /**
@@ -155,16 +200,19 @@ function Section({
  * invitation to ask what is behind it. The superadmin sees all eight, because he
  * may open all eight.
  *
- * Counted through countsFor, which is what the number in the header counts
- * through as well, so the two cannot disagree. A decision taken on the right is
- * a decision written into the session, and the number beside the queue on the
- * left comes down with it.
+ * Counted through countFor, one queue at a time (queues.ts). A decision taken
+ * on the right is a decision written into the session, and the number beside the
+ * queue on the left comes down with it.
  */
-export function VerificationSection({ children }: { children: ReactNode }) {
+function QueuesSector() {
   const { t } = useI18n()
   const { submissions, decisions } = useSession()
   const items = usePending()
   const queues = usePermittedQueues()
+
+  if (queues.length === 0) {
+    return null
+  }
 
   /* Read for what it is worth rather than waited for, exactly as the header
      reads it: a section that waited for the file would hold up the screen behind
@@ -191,8 +239,10 @@ export function VerificationSection({ children }: { children: ReactNode }) {
       /* Beside the numbers, because that is where the numbers are now. A file
          that failed counts every queue it feeds as nought, and eight quiet
          noughts read as an afternoon's work already done. This used to be said
-         on the hub, which was the only screen the numbers were on; they are on
-         all nine now, and an alarm on one of them is an alarm nobody sees. */
+         on the hub, which was the only screen the numbers were on; the hub draws
+         nothing of its own now (owner, 06.08.2026), so the numbers stand in the
+         navigation, on every screen, and an alarm on one of them is an alarm
+         nobody sees. */
       alarm={
         failed(items) ? (
           <p className="adminsection__alarm" role="alert">
@@ -200,27 +250,29 @@ export function VerificationSection({ children }: { children: ReactNode }) {
           </p>
         ) : undefined
       }
-    >
-      {children}
-    </Section>
+    />
   )
 }
 
 /**
- * The entities this person may open: all nine for the superadmin, and for a
+ * The records this person may open: all seven for the superadmin, and for a
  * moderator only those he has been given.
  *
  * Moderators are the entity no moderator ever sees, and not because a tick is
  * missing: assigning rights is the single thing the superadmin cannot hand over
- * (PDL P21). The other eight come and go with the boxes in the matrix.
+ * (PDL P21). The other six come and go with the boxes in the matrix.
  *
  * No numbers. How many members there are is not a thing waiting to be dealt
- * with, and a count beside every entity would mean loading all nine files to
+ * with, and a count beside every entity would mean loading all seven files to
  * draw a navigation.
  */
-export function EntitiesSection({ children }: { children: ReactNode }) {
+function RecordsSector() {
   const { t } = useI18n()
   const entities = usePermittedEntities()
+
+  if (entities.length === 0) {
+    return null
+  }
 
   return (
     <Section
@@ -230,8 +282,6 @@ export function EntitiesSection({ children }: { children: ReactNode }) {
         path: entity.path,
         label: t(entity.labelKey),
       }))}
-    >
-      {children}
-    </Section>
+    />
   )
 }

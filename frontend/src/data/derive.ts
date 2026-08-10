@@ -594,8 +594,13 @@ export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
  * than four.
  */
 export function categoriesAt(event: BtlEvent, races: Race[]): RaceCategory[] {
+  /* Read off the race and not off a list the event carries. The list is written
+     by the generator and by nothing else, so a race added in administration was
+     run by nobody as far as this was concerned: its event lost the dot for that
+     length, and the league beside it counted one race fewer. A race says which
+     event it belongs to, and that is the one place it is written down (ADL A7). */
   const held = new Set(
-    races.filter((race) => event.raceIds.includes(race.id)).map((race) => race.category),
+    races.filter((race) => race.eventId === event.id).map((race) => race.category),
   )
 
   return CATEGORIES.filter((one) => held.has(one))

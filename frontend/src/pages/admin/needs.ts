@@ -15,12 +15,13 @@ import { entityRight, queueRight, type Right } from './rights'
  *
  * A fifteenth screen therefore cannot be added without answering this question,
  * because a route under `administracija` that is not in here has no entry at all
- * and a test says so (needs.test.ts).
+ * and a test says so (guard.test.tsx).
  */
 export type Need =
-  /** Administration, and nothing finer. The panel, which is a list of whatever
-   *  the person may open and is empty rather than closed. */
-  | { of: 'staff' }
+  /** Administration itself: anything at all inside it, whether a queue or a
+   *  record. The address draws no content of its own, so somebody who may open
+   *  nothing there has nothing to arrive at. */
+  | { of: 'anything' }
   /**
    * The way into a section: at least one thing inside it must be open.
    *
@@ -40,7 +41,16 @@ export type Need =
   | { of: 'right'; right: Right }
 
 const HUB_NEEDS: Record<string, Need> = {
-  administracija: { of: 'staff' },
+  /* At least one thing to open, and not merely the word staff.
+   *
+   * It asked only for staff, back when the address drew a panel listing whatever
+   * that person could reach; a moderator holding nothing got a page that said so
+   * by being short. The panel is gone (owner, 06.08.2026) and the sectors beside
+   * it draw nothing where there is nothing to draw, so the same person now gets
+   * a white screen with a hidden heading, reached by a link the header still
+   * offers him. Every other "you may open nothing here" on the portal answers
+   * with the front page, and so does this. */
+  administracija: { of: 'anything' },
   'administracija/entiteti': { of: 'anyEntity' },
   'administracija/verifikacija': { of: 'anyQueue' },
 }
@@ -102,6 +112,14 @@ export function mayOpen(need: Need, role: Role, may: (right: string) => boolean)
     return role === 'superadmin'
   }
 
+  if (need.of === 'anything') {
+    /* Either sector will do. The address itself draws nothing, so what makes it
+       worth arriving at is that something stands beside it. */
+    return (
+      mayOpen({ of: 'anyQueue' }, role, may) || mayOpen({ of: 'anyEntity' }, role, may)
+    )
+  }
+
   if (need.of === 'anyQueue') {
     /* Asked of the queue itself rather than of its entry in the table above.
        The queue is in hand, and its address is only the name the table files it
@@ -112,14 +130,12 @@ export function mayOpen(need: Need, role: Role, may: (right: string) => boolean)
   }
 
   if (need.of === 'anyEntity') {
-    /* The ones the section actually holds, which is not all of them: an entity
-       whose rows are fixed is not in it (entityForms.ts). Counting it here
-       offered "Entiteti" to a moderator whose one entity right is the price
-       list, and the section it opened was empty. */
-    return ENTITY_FORMS.some(
-      (entity) => entity.fixed !== true && mayOpen(needForEntity(entity), role, may),
-    )
+    /* Every one of them, the price list included since it joined the section
+       (mayOpen.ts). It used to be left out here too, and had to be, because a
+       moderator whose one entity right was the price list was offered a section
+       that opened empty. */
+    return ENTITY_FORMS.some((entity) => mayOpen(needForEntity(entity), role, may))
   }
 
-  return need.of === 'staff' || may(need.right.key)
+  return may(need.right.key)
 }

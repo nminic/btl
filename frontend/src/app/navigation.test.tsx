@@ -178,9 +178,9 @@ describe('navigation', () => {
 
     await user.click(entry)
 
-    // And it opens the panel, from which the two sections are reached.
-    expect(await screen.findByRole('link', { name: 'Verifikacija' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Podaci' })).toBeVisible()
+    // And it opens administration, whose navigation carries the two sectors.
+    expect(await screen.findByRole('button', { name: 'Verifikacija' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Podaci' })).toBeVisible()
   })
 
   it('opens and closes the mobile menu', async () => {

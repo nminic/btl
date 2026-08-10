@@ -8,7 +8,7 @@ import { PartsNav } from '../components/PartsNav'
 import { Resource } from '../components/Resource'
 import { useMay } from './admin/rights'
 import { useSession } from '../session/useSession'
-import { combinePair, useEvents, useLeagues } from '../data/useResource'
+import { combinePair, dataOr, failed, useEvents, useLeagues, useRaces } from '../data/useResource'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { LeagueResults } from './league/LeagueResults'
@@ -97,6 +97,18 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
      results and the members itself, so a competition still names itself while
      the heaviest file on the portal is on its way. */
   const state = combinePair(useLeagues(), useEvents())
+  /* Read for what it is worth and not waited for. The races are one column of
+     one table here, and a league that will not draw because a column cannot be
+     filled is a screen held hostage by its smallest part (resourceScope.test).
+
+     Three states and not two. A count of nought where the file did not arrive is
+     the table telling a lie, and so is "not known" while the file is still on
+     its way: the answer is coming, and a cell saying it never will, for a second
+     and a half, is the same lie in the other direction. Empty while it comes,
+     the word when it fails. */
+  const racesState = useRaces()
+  const races = dataOr(racesState, null)
+  const racesFailed = failed(racesState)
 
   return (
     <Resource state={state}>
@@ -208,7 +220,18 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
                                 <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
                               </td>
                               <td>{event.city}</td>
-                              <td>{event.raceIds.length}</td>
+                              {/* Counted off the races themselves, the way
+                                  administration counts them: a list the event
+                                  carries is written by the generator and by
+                                  nothing else, so a race entered by hand was one
+                                  this column never saw. */}
+                              <td>
+                                {races !== null
+                                  ? races.filter((race) => race.eventId === event.id).length
+                                  : racesFailed
+                                    ? t('leagues.racesUnknown')
+                                    : ''}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

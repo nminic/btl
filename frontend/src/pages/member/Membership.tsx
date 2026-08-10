@@ -1,3 +1,4 @@
+import { countryName } from '../../data/countryName'
 import { useToday } from '../../clock/useClock'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
@@ -194,7 +195,7 @@ export function Membership() {
                   <h3 className="profile__section">{t('membership.payNow')}</h3>
 
                   <p className="member__note">
-                    {t('membership.byCountry', { country: me.country })}
+                    {t('membership.byCountry', { country: countryName(me.country) })}
                   </p>
 
                   {/* The same four facts the code carries, in writing, because a
