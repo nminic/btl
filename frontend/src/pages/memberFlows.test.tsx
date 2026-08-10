@@ -136,6 +136,17 @@ describe('membership', () => {
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
+  it('says which country the ways of paying come from, in words', async () => {
+    /* The sentence above them says the ways of paying follow the country on the
+       profile, and the country is kept as a code. It was printed raw, so a member
+       in Montenegro read "(ME)"; the words come off the same file the select is
+       filled from (countryName). */
+    renderFor('000009')
+
+    expect(await screen.findByText(/Crna Gora/)).toBeVisible()
+    expect(screen.queryByText(/\(ME\)/)).not.toBeInTheDocument()
+  })
+
   it('says what a payment carries besides the fee, to everybody', async () => {
     /* The owner asked for the fee to be something anybody can look up, not
        something only whoever pays it is told (04.08.2026). What differs is who

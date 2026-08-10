@@ -176,6 +176,21 @@ describe('the hooks the ducats hang on', () => {
     expect(lonely).toEqual([])
   })
 
+  /* Every custom property on the portal, not only the ones the ducats hang on.
+     A name read and never set is a declaration the browser throws away whole:
+     `border-bottom: 1px solid var(--line)` with no --line anywhere draws no
+     border at all, silently, and that is how the sector names on the wide screen
+     shipped without the rule under them (tenth review, 10.08.2026). */
+  const ANY_SET = /(--[a-z][a-z0-9-]*)\s*(?::|'\s*\]?\s*:|"\s*\]?\s*:)/g
+  const ANY_READ = /var\(\s*(--[a-z][a-z0-9-]*)/g
+
+  it('reads no custom property that nothing sets', () => {
+    const set = properties(ANY_SET)
+    const missing = [...properties(ANY_READ)].filter((name) => !set.has(name))
+
+    expect(missing).toEqual([])
+  })
+
   it('sets every custom property somewhere and reads it somewhere else', () => {
     /* Not "in a stylesheet and outside one": one of the two is set in a sheet
        and read in another sheet, and the other is set from a component and read

@@ -7,6 +7,7 @@ import { Resource } from '../../components/Resource'
 import { combinePair, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
+import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { overall, rated } from '../event/overall'
@@ -154,7 +155,7 @@ function RatingGiven({ rating }: { rating: EventRating }) {
 
   return (
     <dl className="pending__marks">
-      {(['organisation', 'value', 'ambience'] as const).map((mark) => (
+      {RATING_MARKS.map((mark) => (
         <div key={mark}>
           <dt>{t(`event.rating.${mark}`)}</dt>
           <dd>

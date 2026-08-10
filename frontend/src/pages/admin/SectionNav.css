@@ -1,6 +1,6 @@
 /* The column that stands beside administrative work. Same shape as the
    rulebook's list of articles, which is the one the owner asked for: folded
-   behind a button on a telephone, standing and staying put from tablet up. */
+   behind a button on a telephone, standing and staying put from 820px up. */
 
 /* The two sectors, one under the other, with the work beside them. They were
    one navigation each wrapping its own screens until 06.08.2026; now one column
@@ -45,7 +45,7 @@
 
 /* The other half of the button: one of the two is drawn at any width, never
    both and never neither. Below 820px the button says it and this is not
-   there. */
+   there; from 820px up the button is gone and this says it. */
 .adminsection__title {
   display: none;
 }
@@ -159,7 +159,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 0 var(--space-4) var(--space-8);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--border);
   }
 
   .adminsection__panel {

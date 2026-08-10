@@ -49,6 +49,8 @@ function under(kinds: string[], dir = SRC, prefix = ''): { path: string; code: s
  */
 const NAME = '[a-z][a-zA-Z0-9]*(?:\\.[a-zA-Z0-9]+)+'
 const KEYS = '(?:label|hint|title|submit|placeholder|shown|source)Key'
+/** What the dictionary opens with, which is what tells a name from a sentence. */
+const TOP = Object.keys(sr).join('|')
 const ASKED = new RegExp(
   [
     "\\bt\\(\\s*'(" + NAME + ")'",
@@ -61,6 +63,16 @@ const ASKED = new RegExp(
        which is a name written out in full like any other and stood outside this net
        until a rule was added that uses one. */
     "\\bkey:\\s*'(" + NAME + ")'",
+    /* And a name that reaches `t` through something else: a queue picks between
+       two questions and asks for whichever it chose, a helper answers with the
+       name of a state. Thirty six names were written out in full and stood
+       outside this net for want of `t(` on the same line (tenth review,
+       10.08.2026).
+
+       What tells one of these from an ordinary string is its first segment: it
+       is one of the names the dictionary opens with, and prose does not use
+       those with a dot after them. */
+    "'((?:" + TOP + ")(?:\\.[a-zA-Z0-9]+)+)'",
   ].join('|'),
   'g',
 )
@@ -85,7 +97,7 @@ describe('what the portal asks the dictionary for', () => {
   const asked = under(['.ts', '.tsx', '.json']).flatMap(({ path, code }) =>
     [...code.matchAll(ASKED)].map((one) => ({
       path,
-      name: one[1] ?? one[2] ?? one[3] ?? one[4] ?? '',
+      name: one[1] ?? one[2] ?? one[3] ?? one[4] ?? one[5] ?? '',
     })),
   )
 

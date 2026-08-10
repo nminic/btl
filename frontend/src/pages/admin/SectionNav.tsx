@@ -68,8 +68,8 @@ function Section({
        times over. */
     <nav aria-label={t('admin.sectionNav', { name: title })}>
       {/* On a telephone the list would push the work off the first screen, so
-          there it sits behind a button. From tablet up the button goes away
-          and the list stands beside the work and follows it down. */}
+          there it sits behind a button. From 820px up the button goes away and
+          the list stands beside the work and follows it down. */}
       <button
         type="button"
         className="adminsection__toggle"
@@ -83,9 +83,14 @@ function Section({
       {/* And the same word where the button is not drawn. From 820px up the
           button goes away, and until this the two sectors were two runs of links
           one under the other with nothing saying which was which and nothing
-          between them. Said once either way: the button carries it on a
-          telephone, this carries it above. */}
-      <h2 className="adminsection__title">{title}</h2>
+          between them. Said once either way: the button carries it below that
+          width, this above it.
+
+          Not a heading. The landmark around it already carries the same word
+          (aria-label above), and this stands before the screen's own h1, which
+          is inside the work beside it: a heading here would put the sector above
+          the page it belongs to and level with the sections of that page. */}
+      <p className="adminsection__title">{title}</p>
 
       <div
         id={panelId}
