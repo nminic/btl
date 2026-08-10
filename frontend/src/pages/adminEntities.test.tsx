@@ -722,10 +722,28 @@ describe('the address of a league', () => {
        creates reaches a public screen at all, because those read the file and
        not what this visit has added to it; that is older and wider than this
        form and is written down as its own job (PENDING, R7). */
-    expect(listed.getByRole('link', { name: 'vojvodjanska-2027' })).toHaveAttribute(
+    expect(listed.getByRole('link', { name: '/vojvodjanska-2027' })).toHaveAttribute(
       'href',
       '/sr/liga/vojvodjanska-2027',
     )
+  })
+
+  it('takes only what an address may be made of', async () => {
+    /* Lower case, digits and dashes. A capital or a space is not refused for
+       tidiness: the address is what the portal answers at, and a value that
+       cannot stand in one is a league nobody reaches. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+    await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
+    await user.type(screen.getByLabelText(/^Adresa/), 'BTL 2027')
+    await user.type(screen.getByLabelText(/^Sezona/), '2027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
   })
 
   it('is refused where another league already answers at it', async () => {

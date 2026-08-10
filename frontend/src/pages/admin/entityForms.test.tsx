@@ -16,7 +16,7 @@ import {
   TEAMS,
   addressField,
   idFor,
-  takenIdentity,
+  takenAddress,
   type EntityDef,
 } from './entityForms'
 
@@ -694,12 +694,12 @@ describe('which field of a form carries the address', () => {
   })
 
   it('is what two records are refused for sharing', () => {
-    expect(takenIdentity(LEAGUES, { slug: 'btl-2027' }, ['btl-2027'])).toEqual({
+    expect(takenAddress(LEAGUES, { slug: 'btl-2027' }, ['btl-2027'])).toEqual({
       slug: { key: 'form.errors.taken' },
     })
-    expect(takenIdentity(LEAGUES, { slug: 'btl-2028' }, ['btl-2027'])).toEqual({})
+    expect(takenAddress(LEAGUES, { slug: 'btl-2028' }, ['btl-2027'])).toEqual({})
     /* And an event is refused by its own rule, on the date, not by this one
        (entityForms.ts, `eventClash`). */
-    expect(takenIdentity(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
+    expect(takenAddress(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
   })
 })

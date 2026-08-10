@@ -8,7 +8,7 @@ import {
   addressField,
   fieldValues,
   idFor,
-  takenIdentity,
+  takenAddress,
   type EntityDef,
   type Editing,
 } from './entityForms'
@@ -225,7 +225,7 @@ export function EntityEditor({
            address that would 404 (entityForms.ts, `addressOfEvent`). */
         was={editing.mode === 'one' ? editing.record : undefined}
         options={options}
-        check={(values) => ({ ...takenIdentity(entity, values, others), ...also?.(values) })}
+        check={(values) => ({ ...takenAddress(entity, values, others), ...also?.(values) })}
         derived={entity.derived}
         openAt={openAt}
         onSubmit={handleSubmit}

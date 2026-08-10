@@ -38,7 +38,7 @@ export function AdminLeagues() {
                    be saved onto one. A league is filed under an id nobody sees
                    and answers at an address somebody chose, so the address is a
                    field like any other and the check is the one written pages
-                   already use (entityForms.ts, `takenIdentity`). */
+                   already use (entityForms.ts, `takenAddress`). */
                 taken={rows.map((league) => league.slug)}
                 onDone={() => setEditing(null)}
               />
@@ -65,17 +65,18 @@ export function AdminLeagues() {
                   <tbody>
                     {rows.map((league) => (
                       <tr key={league.id}>
-                        {/* Read, not edited in place. The cell was here because
-                            the form did not ask for the address and a name
-                            changed on the form would have left the league
-                            answering where it always did; the form asks now, so
-                            the name and the address are changed together, in one
-                            place, where the address can be refused if it is
-                            taken (owner's rule for teams and events,
-                            03.08.2026). */}
+                        {/* Read, not edited in place. The cell was a stopgap
+                            for as long as the form did not ask for the address
+                            (PENDING: "do tada u spisku liga ostaje ćelija za
+                            naziv"); it asks now, so the stopgap goes. A league
+                            is changed where every other record is changed, on
+                            its own form. */}
                         <td>{league.name}</td>
                         <td>
-                          <Link to={`/${locale}/liga/${league.slug}`}>{league.slug}</Link>
+                          {/* Written the way the addresses of the written pages
+                              are written, so one column reads the same on both
+                              screens (AdminPages). */}
+                          <Link to={`/${locale}/liga/${league.slug}`}>/{league.slug}</Link>
                         </td>
                         <td>{league.season}</td>
                         <td>

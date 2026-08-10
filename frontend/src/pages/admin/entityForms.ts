@@ -391,7 +391,9 @@ export const LEAGUES: EntityDef = {
   path: 'administracija/lige',
   form: liga as FormDef,
   idField: 'id',
-  blank: { slug: '', eventIds: [] },
+  /* No address here: the form asks for one, and an empty default is exactly what
+     left a league answering at /liga/ (PENDING, 10.08.2026). */
+  blank: { eventIds: [] },
 }
 
 /* The one entity whose rows are the year itself: four windows that tile it and
@@ -527,21 +529,23 @@ export function idFor(
 }
 
 /**
- * Whether the identity typed into the form belongs to somebody already, as an
- * error beside that field.
+ * Whether the address typed into the form is answered at by something already,
+ * as an error beside that field.
  *
- * The address of a written page is unique, and without this it was taken as
- * typed: two records answered to one identity, the list drew two rows with the
- * same key, and one change reached both of them, because the overlay of changes
- * is keyed by exactly that identity. Two pages on /pravilnik was enough.
+ * An address is unique or it is not an address. Without this it was taken as
+ * typed: two written pages answered on /pravilnik, the list drew two rows under
+ * one key, and one change reached both, because the overlay of changes is keyed
+ * by the identity a page is filed under, which is its address.
  *
- * Only for the entities whose form asks for their identity, which is now written
- * pages alone. A member number is unique too (PDL P8), and it is kept unique by
- * being handed out rather than checked: the number the system gives is the first
- * one nobody holds, so there is no typed value left to refuse. The other six
- * generate an identity that cannot collide.
+ * Only for the two entities whose form asks for one: a written page, filed under
+ * its address, and a league, filed under an id nobody sees and answering at an
+ * address somebody chose (`addressField`). An event's address is worked out from
+ * the name and the year and refused by a rule of its own (`eventClash`). A member
+ * number is unique too (PDL P8) and kept so by being handed out rather than
+ * checked: the number the system gives is the first nobody holds, so there is no
+ * typed value to refuse. The rest are filed under an identity nobody types.
  */
-export function takenIdentity(
+export function takenAddress(
   entity: EntityDef,
   values: FormValues,
   taken: string[],
