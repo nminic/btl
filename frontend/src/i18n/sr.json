@@ -764,6 +764,8 @@
     "title": "Moji rezultati",
     "add": "Unesi rezultat",
     "sentIn": "Poslato na proveru",
+    "sendAgain": "Ispravi i pošalji ponovo",
+    "sendAgainNamed": "Ispravi i pošalji ponovo: {name}",
     "noneSent": "Nisi poslao nijedan rezultat na proveru.",
     "counted": "Uračunato"
   },
@@ -771,6 +773,8 @@
     "title": "Unos rezultata",
     "submit": "Pošalji na proveru",
     "note": "Rezultat ulazi u rang liste tek kad ga administrator odobri. Dok čeka, vidiš ga samo ti.",
+    "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
+    "againDone": "Rezultat je ponovo poslat na proveru.",
     "eventName": "Naziv događaja",
     "eventNameHint": "Onako kako ga je organizator nazvao.",
     "date": "Datum trke",

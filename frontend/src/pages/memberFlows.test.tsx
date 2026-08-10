@@ -5,7 +5,7 @@ import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
-import { first } from '../test/at'
+import { first, must } from '../test/at'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
@@ -402,6 +402,75 @@ describe('a result from entry to decision', () => {
     // And the way back to an empty form, for the second race of a weekend.
     await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
     expect(screen.getByRole('button', { name: 'Pošalji na proveru' })).toBeVisible()
+  })
+
+  it('is corrected and sent again, as the same result rather than a second one', async () => {
+    /* Owner, 06.08.2026. A refusal is not the end of a result: the member is
+       told why, corrects it and sends the same race again, and it goes back into
+       the queue it came from. One row and not two, because it is one race. */
+    const user = setupUser()
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+
+    await enterResult(user)
+
+    /* A second race, which this must leave alone: one correction is about one
+       result, and a list rewritten wholesale would carry the correction into
+       every row of it. */
+    await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Druga trka')
+    await user.type(screen.getByLabelText(/Datum trke/), '11052026')
+    await user.type(screen.getByLabelText(/Dužina/), '10')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '0')
+    await user.type(screen.getByLabelText('Minuta'), '44')
+    await user.type(screen.getByLabelText('Sekundi'), '2')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/druga')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    await openTheQueue(user)
+
+    const probna = must(
+      screen
+        .getAllByRole('row')
+        .find((one) => (one.textContent ?? '').includes('Probna trka')),
+      'the row of the first race',
+    )
+
+    await user.click(within(probna).getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Link ne otvara rezultate.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    await user.click(screen.getByRole('button', { name: 'Otvori nalog' }))
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const sent = within(await screen.findByRole('list'))
+    expect(sent.getAllByRole('listitem')).toHaveLength(2)
+
+    await user.click(screen.getByRole('link', { name: /Ispravi i pošalji ponovo: / }))
+
+    /* The form opens on what was refused, and says why it is full. */
+    expect(await screen.findByText(/Link ne otvara rezultate\./)).toBeVisible()
+    const link = screen.getByLabelText(/^Link/)
+    expect(link).toHaveValue('https://primer.rs/rezultati')
+
+    await user.clear(link)
+    await user.type(link, 'https://primer.rs/ispravno')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+
+    /* One result, waiting again, and the reason that was answered is gone with
+       the version it was about. */
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const again = within(await screen.findByRole('list'))
+
+    expect(again.getAllByRole('listitem')).toHaveLength(2)
+    expect(again.getAllByText('Čeka proveru')).toHaveLength(2)
+    expect(again.queryByText(/Link ne otvara rezultate\./)).toBeNull()
+    // And the race that was never refused still says what it always said.
+    expect(again.getByText('Druga trka')).toBeVisible()
   })
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {

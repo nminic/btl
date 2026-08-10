@@ -49,6 +49,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       note: '',
     })),
     submit: vi.fn(),
+    resubmit: vi.fn(),
     decide: vi.fn(),
     inbox: [],
     markRead: vi.fn(),
