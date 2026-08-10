@@ -342,7 +342,7 @@ export const PAGES: EntityDef = {
  * a second answer to one question. A moderator entered here therefore starts
  * with none, which is exactly what a newly made moderator is.
  *
- * The identity is made up rather than typed, like three of the other six. The
+ * The identity is made up rather than typed, like four of the other six. The
  * address of a moderator is the obvious candidate and is deliberately not used:
  * it is the one field on the form somebody may have to correct, and an identity
  * that changes takes every right hung off it with it.

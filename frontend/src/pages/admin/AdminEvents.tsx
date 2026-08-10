@@ -96,57 +96,57 @@ export function AdminEvents() {
           if (editing !== null) {
             return (
               <>
-              {race === null && (
-              <EntityEditor
-                entity={EVENTS}
-                editing={editing}
-                /* The date, and only where the address asked for a record. A
-                   form that grabs the cursor is a form that has taken the page
-                   away from whoever opened it, and the copy is the one case
-                   where the cursor already knows where it is wanted. */
-                openAt={chosen === null && asked !== null ? 'date' : undefined}
-                /* Not onto an address another event already answers at. A copy
-                   keeps the name and the day it was copied from, so saving one
-                   without changing the date wrote a second event at the first
-                   one's address, and everything that joins to an event by
-                   address then meant both: deleting either took the other's
-                   results with it (entityForms.ts, `eventClash`). */
-                also={(values) =>
-                  eventClash(
-                    values,
-                    all
-                      .filter(
-                        (each) =>
-                          each.id !==
-                          (editing.mode === 'one' ? String(editing.record[EVENTS.idField]) : ''),
+                {race === null && (
+                  <EntityEditor
+                    entity={EVENTS}
+                    editing={editing}
+                    /* The date, and only where the address asked for a record. A
+                       form that grabs the cursor is a form that has taken the page
+                       away from whoever opened it, and the copy is the one case
+                       where the cursor already knows where it is wanted. */
+                    openAt={chosen === null && asked !== null ? 'date' : undefined}
+                    /* Not onto an address another event already answers at. A copy
+                       keeps the name and the day it was copied from, so saving one
+                       without changing the date wrote a second event at the first
+                       one's address, and everything that joins to an event by
+                       address then meant both: deleting either took the other's
+                       results with it (entityForms.ts, `eventClash`). */
+                    also={(values) =>
+                      eventClash(
+                        values,
+                        all
+                          .filter(
+                            (each) =>
+                              each.id !==
+                              (editing.mode === 'one' ? String(editing.record[EVENTS.idField]) : ''),
+                          )
+                          .map((each) => each.slug),
                       )
-                      .map((each) => each.slug),
-                  )
-                }
-                onDone={() => {
-                  setChosen(null)
-                  setRace(null)
-                  /* And the address forgets it, so leaving the form and coming
-                     back to this screen does not open it again. */
-                  setParams({}, { replace: true })
-                }}
-              />
-              )}
+                    }
+                    onDone={() => {
+                      setChosen(null)
+                      setRace(null)
+                      /* And the address forgets it, so leaving the form and coming
+                         back to this screen does not open it again. */
+                      setParams({}, { replace: true })
+                    }}
+                  />
+                )}
 
-              {/* And its races, under the form that names it. A race is one
-                  length of one morning and belongs to the event it is run at
-                  (owner, 06.08.2026); it had a screen of its own, where finding
-                  the event meant searching a list of eleven hundred. Only on a
-                  record that exists: a new event has no identity to hang a race
-                  on until it is saved. */}
-              {openEvent !== undefined && (
-                <EventRaces
-                  event={openEvent}
-                  races={allRaces}
-                  editing={race}
-                  setEditing={setRace}
-                />
-              )}
+                {/* And its races, under the form that names it. A race is one
+                    length of one morning and belongs to the event it is run at
+                    (owner, 06.08.2026); it had a screen of its own, where finding
+                    the event meant searching a list of eleven hundred. Only on a
+                    record that exists: a new event has no identity to hang a race
+                    on until it is saved. */}
+                {openEvent !== undefined && (
+                  <EventRaces
+                    event={openEvent}
+                    races={allRaces}
+                    editing={race}
+                    setEditing={setRace}
+                  />
+                )}
               </>
             )
           }

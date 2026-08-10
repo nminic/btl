@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
+import { CATEGORIES } from '../data/derive'
+import { PENDING_QUEUE_IDS } from '../data/types'
 import { DUCAT_KINDS } from '../data/ducatRule'
+import { JUNIOR, PRICES } from '../data/pricing'
+import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
 import { QUEUES } from '../pages/admin/queues'
 import type { FormDef } from '../forms/types'
 import sr from './sr.json'
@@ -80,18 +84,57 @@ describe('the seo entry of every address', () => {
     expect(repeated).toEqual([])
   })
 
-  it('names every kind a ducat rule can be written in', () => {
-    /* Composed rather than written out: `ruleSentence` asks for
-       `ducats.kind.${rule.kind}`, which said.test does not read, since a name
-       built out of a value is a family and not a name. The family is closed, so
-       it is walked here instead.
+  /**
+   * The names the portal does not write out: a stem and a value off a closed
+   * list, `t(`ducats.kind.${rule.kind}`)`. said.test cannot read one, since a
+   * name built out of a value is a family rather than a name, so each family is
+   * walked here against the list it is built from.
+   *
+   * Two of these went missing in one week, both invisibly. The sixteen ducat
+   * kinds had a guard by accident until 10.08.2026: the ducat editor listed them
+   * all in full, and deleting that screen took the only place they were written
+   * out with it. The heading over the form for a race lost its cover the same
+   * way, when the races left the list of entities that the walk over the screens
+   * is built from. Either prints its own key where a sentence or a heading
+   * should be, and the rulebook and every member's page of awards are public.
+   *
+   * A family belongs here the day its stem is written with a backtick. What
+   * makes that findable is the search for "t(`" in the source, which is how this
+   * list was built and how it is added to.
+   */
+  const FAMILIES: { of: string; each: string[] }[] = [
+    { of: 'ducats.kind', each: [...DUCAT_KINDS] },
+    /* Both halves for every entity that has a form, the races included: theirs
+       is edited inside its event and is therefore not in ENTITY_FORMS, which is
+       exactly how the heading over it came to be uncovered. */
+    /* A fixed entity has no such heading and must not: its rows are the year
+       itself, nothing is added and nothing is removed (owner, 30.07.2026). */
+    {
+      of: 'admin.form.new',
+      each: [...ENTITY_FORMS, RACES].filter((one) => one.fixed !== true).map((one) => one.id),
+    },
+    { of: 'admin.form.edit', each: [...ENTITY_FORMS, RACES].map((entity) => entity.id) },
+    /* The queues drawn by PendingQueue, which is what asks for this name. The
+       results and the payments have screens written for them and neither shows a
+       card with text on it. */
+    { of: 'verification.body', each: PENDING_QUEUE_IDS.filter((id) => id !== 'payments') },
+    { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },
+    { of: 'calendar.status', each: ['announced', 'confirmed', 'checking', 'cancelled'] },
+    { of: 'profile.lengthsShort', each: ['all', ...CATEGORIES] },
+  ]
 
-       These sixteen had a guard by accident until 10.08.2026: the ducat editor's
-       definition listed them all in full, and deleting that screen took the only
-       place they were written out with it. A kind left unnamed prints
-       `ducats.kind.halfCount` in the middle of a sentence in the rulebook and on
-       every member's page of awards. */
-    expect(DUCAT_KINDS.filter((kind) => !resolves(`ducats.kind.${kind}`))).toEqual([])
+  it('has every name it composes out of a list, for every value on that list', () => {
+    const missing = FAMILIES.flatMap(({ of, each }) =>
+      each.map((value) => `${of}.${value}`).filter((key) => !resolves(key)),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('walks a family of more than one value, so the check is not over nothing', () => {
+    /* The lists are read off the source, and a list that became empty would make
+       every family above pass by having nothing in it. */
+    expect(FAMILIES.filter((one) => one.each.length < 2)).toEqual([])
   })
 
   it('names each of the eight queues, within the same 160 characters', () => {

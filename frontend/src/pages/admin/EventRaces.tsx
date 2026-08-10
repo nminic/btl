@@ -34,11 +34,12 @@ export function EventRaces({
 }) {
   const { locale, t } = useI18n()
   /* Held across renders. Every other screen hands the renderer a definition made
-     once at module level, and this is the only one that builds its own: the form
-     is the races' form with the event taken out of it and the event put back as
-     a derived field, which cannot be known before the screen knows its event.
-     Built afresh on every render it is a new object every time, which is a
-     changed prop on a form of one thousand rows waiting to happen. */
+     once at module level; this is the only one that builds its own, since the
+     form is the races' form with the event taken out of it and put back as a
+     derived field, which cannot be known before the screen knows its event.
+     Nothing depends on that identity today, and the memo is here so that nothing
+     has to: a definition rebuilt on every keystroke is the sort of prop a memo
+     downstream is one day written against. */
   const entity = useMemo(() => racesOf(event.id, event.name), [event.id, event.name])
   const mine = races
     .filter((race) => race.eventId === event.id)
