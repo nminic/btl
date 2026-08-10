@@ -215,10 +215,13 @@ function categoryFrom(values: FormValues): DerivedValue[] {
 
 export const RACES: EntityDef = {
   id: 'races',
+  /* Neither of these two is read by anything. A definition carries both because
+     every entity does, and the races are the one entity whose screen is inside
+     another: nothing routes the address since 06.08.2026, and the words are on
+     the list of entities, which the races left the same day. They stay as what
+     the entity is called and where it would live, so a definition is a whole
+     entity rather than the part that happens to be used today. */
   labelKey: 'admin.races',
-  /* No screen answers here since 06.08.2026: a race is edited inside its event
-     (`racesOf`). Kept because every entity carries one and the guards are built
-     from it; nothing routes it. */
   path: 'administracija/trke',
   form: trka as FormDef,
   idField: 'id',

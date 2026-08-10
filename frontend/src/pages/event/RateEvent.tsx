@@ -15,7 +15,6 @@ import { SignedOut } from '../member/SignedOut'
 import { NotRunYet } from './NotRunYet'
 import '../member/Member.css'
 
-/** The three marks, in the order they are asked for and read back. */
 /**
  * What a member thought of an event, given on a screen of its own.
  *

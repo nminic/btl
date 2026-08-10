@@ -71,7 +71,13 @@ const ASKED = new RegExp(
 
        What tells one of these from an ordinary string is its first segment: it
        is one of the names the dictionary opens with, and prose does not use
-       those with a dot after them. */
+       those with a dot after them.
+
+       Which is a rule about the words and not about their meaning, so a sort key
+       or a field path that happens to begin with one of them ('event.date',
+       'profile.name') will be reported here as a name the dictionary does not
+       have. The report names the file and the string; the answer is to build
+       that string from something other than a literal, not to widen this. */
     "'((?:" + TOP + ")(?:\\.[a-zA-Z0-9]+)+)'",
   ].join('|'),
   'g',

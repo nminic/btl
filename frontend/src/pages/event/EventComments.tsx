@@ -11,7 +11,6 @@ import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
 import './EventComments.css'
 
-/** The three marks, in the order they were asked for. */
 /**
  * What members thought of an event, under the event.
  *

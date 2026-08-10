@@ -181,7 +181,13 @@ describe('the hooks the ducats hang on', () => {
      `border-bottom: 1px solid var(--line)` with no --line anywhere draws no
      border at all, silently, and that is how the sector names on the wide screen
      shipped without the rule under them (tenth review, 10.08.2026). */
-  const ANY_SET = /(--[a-z][a-z0-9-]*)\s*(?::|'\s*\]?\s*:|"\s*\]?\s*:)/g
+  /* Nothing may stand before the two dashes. Without that, a modifier class
+     inside a ternary (`open ? 'a a--open' : 'a'`) and a pseudo-class on one in a
+     sheet (`.rankings--tooled:has(...)`) both read as a property being set, and
+     twelve names the portal never sets counted as set: --open and --waiting are
+     modifiers of this very navigation, so `var(--waiting)` here, which is the
+     exact typo this test is for, passed. */
+  const ANY_SET = /(?<![\w-])(--[a-z][a-z0-9-]*)\s*(?::|'\s*\]?\s*:|"\s*\]?\s*:|'\s*,)/g
   const ANY_READ = /var\(\s*(--[a-z][a-z0-9-]*)/g
 
   it('reads no custom property that nothing sets', () => {
