@@ -7,6 +7,7 @@ import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { QrCode } from '../components/QrCode'
 import { first, must } from '../test/at'
+import { digestOf } from '../test/digest'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
@@ -126,16 +127,17 @@ describe('membership', () => {
      in dinars, at a Serbian bank, and paying into it from abroad is the slowest
      and dearest way there is. PayPal or a card, and nothing else. */
   it('draws the slip the member is told to pay, and not some other text', async () => {
-    /* The two ends joined: the payload has its own tests and the drawing has
-       its own, and neither says the square on the screen is a drawing of this
-       member's slip. The screen shows the payload in words under "Prikaži
-       sadržaj koda", so the two are read off one render and compared. */
-    const user = setupUser()
+    /* The two ends joined: the payload has its own tests and the drawing has its
+       own, and neither says the square on the screen is a drawing of this
+       member's slip. The screen writes the payload out under "Prikaži sadržaj
+       koda", so the two are read off one render and compared.
 
+       Not opened first: what is inside a `details` is in the page whether it is
+       open or not, and what this is about is the two agreeing, not the
+       disclosure. */
     renderFor('000001')
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
-    await user.click(first(screen.getAllByText('Prikaži sadržaj koda')))
 
     const said = must(
       screen.getByRole('img', { name: /QR/ }).querySelector('path')?.getAttribute('d'),
@@ -149,8 +151,12 @@ describe('membership', () => {
     /* Drawn again on its own from the words the screen shows: the same text
        draws the same figure, so a code carrying anything else fails here. */
     const { container } = render(<QrCode text={payload} label="probni" />)
+    const drawn = must(container.querySelector('path')?.getAttribute('d'), 'the figure')
 
-    expect(must(container.querySelector('path')?.getAttribute('d'), 'the figure')).toBe(said)
+    /* Compared by length and by digest rather than by ten thousand characters of
+       path, so a failure reads as two numbers instead of two walls of
+       `M..h1v1h-1z` (components/qrCode.test.tsx). */
+    expect([drawn.length, digestOf(drawn)]).toEqual([said.length, digestOf(said)])
   })
 
   it('offers a member abroad PayPal and a card, and no code at all', async () => {
