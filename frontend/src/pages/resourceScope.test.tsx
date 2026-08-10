@@ -249,18 +249,22 @@ describe('a screen waits only on the data it shows', () => {
     expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
   })
 
-  it('says the races failed rather than that it is waiting for them', async () => {
-    /* Two different things, and `dataOr` answers the same for both: told to wait
-       for a file that will never come, a moderator who holds the right is
-       refused it for good and reads a sentence that is not true. */
-    restore = breakResource('races')
-    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+  it.each([['races'], ['events']] as [ResourceName][])(
+    'says %s failed rather than that it is waiting for it',
+    async (name) => {
+      /* Two different things, and `dataOr` answers the same for both: told to
+         wait for a file that will never come, a moderator who holds the right is
+         refused it for good and reads a sentence that is not true. */
+      restore = breakResource(name)
+      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
 
-    await screen.findByRole('list', { name: /Čeka proveru/ })
+      await screen.findByRole('list', { name: /Čeka proveru/ })
 
-    expect(screen.getByText(/se ne mogu učitati/)).toBeVisible()
-    expect(screen.queryByText(/Odluka čeka/)).toBeNull()
-  })
+      expect(screen.getByText(/se ne mogu učitati/)).toBeVisible()
+      expect(screen.queryByText(/Odluka čeka/)).toBeNull()
+    },
+  )
+
 
   /* The other half of the same rule: a screen must still fail on data it does
    * show, so the cases above cannot be satisfied by swallowing every error. */

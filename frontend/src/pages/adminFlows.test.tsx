@@ -1152,7 +1152,7 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(lines.filter((line) => line.includes('| honorary |'))).toHaveLength(1)
   })
 
-  it('shows the number it handed out, first free and one per activation', async () => {
+  it('shows the number it handed out on screen, beside who it went to', async () => {
     const user = await openPayments()
 
     /* The generated members hold 000001 to 000032, so the next free one is
@@ -1162,6 +1162,14 @@ describe('the queue of memberships waiting to be activated', () => {
        twice is the fault this is here to catch. */
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Počasno članstvo' })))
+
+    /* On the screen and not only in the session: a member number is the first
+       thing the administrator passes on to whoever paid (PDL P8), and the table
+       of settled items that used to carry it is gone (owner, 06.08.2026). */
+    const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
+
+    expect(said.getByText('000033')).toBeVisible()
+    expect(said.getByText('000034')).toBeVisible()
 
     const lines = decidedLines()
 
@@ -1585,6 +1593,33 @@ describe('the six queues read from the file', () => {
     /* Moved with everything else, rather than left on the day it was entered on,
        and moved by six days rather than seven. */
     expect(within(mine).getByText('10. 4. 2027.')).toBeVisible()
+
+    /* And the second report of the same change moves nothing more. Two
+       independent reports are what a reported change is made of (PDL P10), so
+       answering both is the ordinary case, and answering the second from the day
+       the first one named would move the races a second time. */
+    await router.navigate(`/sr/${QUEUE.schedule.path}`)
+
+    const second = within(
+      must(
+        within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+          .getAllByRole('listitem')
+          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
+        'the second report of the same change',
+      ),
+    )
+
+    await user.click(second.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/dogadjaji')
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+
+    expect(after).toEqual(['10. 4. 2027.', '10. 4. 2027.', '11. 4. 2027.'])
   })
 
   it('deletes a comment with a note nobody has to write', async () => {

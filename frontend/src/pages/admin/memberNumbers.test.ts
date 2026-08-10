@@ -109,10 +109,12 @@ describe('numbers handed out several at a time', () => {
       ['a', 'b', 'c'],
     )
 
+    /* Each answer beside the thing it was asked about, so the screen does not
+       have to pair them back up by their place in two lists. */
     expect(given).toEqual([
-      { id: 'a', memberNumber: '000010' },
-      { id: 'b', memberNumber: '000011' },
-      { id: 'c', memberNumber: '000012' },
+      { item: 'a', memberNumber: '000010' },
+      { item: 'b', memberNumber: '000011' },
+      { item: 'c', memberNumber: '000012' },
     ])
   })
 

@@ -90,17 +90,21 @@ export function handOutMemberNumber(
  * up against the wrong person, which is the same fault wearing different
  * clothes.
  */
-export function handOutMemberNumbersFor(
+export function handOutMemberNumbersFor<T>(
   competitors: Competitor[],
   sources: NumberSources,
-  ids: string[],
-): { id: string; memberNumber: string }[] {
+  /* Whatever the caller is handing numbers to, given back beside the number it
+     got. It used to take the identities alone, and the screen then had to pair
+     the answers back up with what it had asked about: an index into two lists,
+     or a lookup that has to answer for finding nothing. */
+  items: T[],
+): { item: T; memberNumber: string }[] {
   const taken = takenMemberNumbers(competitors, sources)
 
-  return ids.map((id) => {
+  return items.map((item) => {
     const memberNumber = nextMemberNumber(taken)
     taken.push(memberNumber)
 
-    return { id, memberNumber }
+    return { item, memberNumber }
   })
 }

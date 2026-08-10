@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { countryName } from '../../data/countryName'
 import { combinePair, useCompetitors } from '../../data/useResource'
-import type { MembershipBasis } from '../../data/types'
+import type { MembershipBasis, PendingItem } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
@@ -120,6 +120,16 @@ export function Payments() {
   const [open, setOpen] = useState<Refusing | null>(null)
   /** How many the last sweep activated, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
+  /**
+   * The numbers this visit has handed out, with the names they went to.
+   *
+   * Said because nothing else says it. Recording a fee hands out a member
+   * number, and that number is the first thing the administrator passes on to
+   * whoever paid (PDL P8, 30.07.2026): it used to stand in the table of settled
+   * items, and that table is gone (owner, 06.08.2026). A number given and shown
+   * nowhere is a number nobody can pass on.
+   */
+  const [given, setGiven] = useState<{ who: string; memberNumber: string }[]>([])
   /* The member list is read for one reason only: a number can only be handed out
      against every number that is already gone. */
   const state = combinePair(usePending(), useCompetitors())
@@ -154,14 +164,14 @@ export function Payments() {
            * silently replaced the first and the ground of the membership went with
            * it.
            */
-          const activate = (id: string, basis: MembershipBasis) => {
-            settle(id, {
-              status: 'approved',
-              note: '',
-              basis,
-              memberNumber: handOutMemberNumber(competitors, session),
-            })
-            setOpen((current) => (current?.key === id ? null : current))
+          const activate = (item: PendingItem, basis: MembershipBasis) => {
+            const memberNumber = handOutMemberNumber(competitors, session)
+
+            settle(item.id, { status: 'approved', note: '', basis, memberNumber })
+            /* Named as well as numbered: a list of numbers with nobody beside
+               them is a list an administrator has to match up by memory. */
+            setGiven((sofar) => [...sofar, { who: item.who, memberNumber }])
+            setOpen((current) => (current?.key === item.id ? null : current))
           }
 
           /**
@@ -176,14 +186,17 @@ export function Payments() {
            * module that is allowed to do it (memberNumbers.ts, PDL P8), which is
            * where it now is.
            */
-          const activateAll = (ids: string[]) => {
-            for (const { id, memberNumber } of handOutMemberNumbersFor(
-              competitors,
-              session,
-              ids,
-            )) {
-              settle(id, { status: 'approved', note: '', basis: 'payment', memberNumber })
+          const activateAll = (items: PendingItem[]) => {
+            const handed = handOutMemberNumbersFor(competitors, session, items)
+
+            for (const { item, memberNumber } of handed) {
+              settle(item.id, { status: 'approved', note: '', basis: 'payment', memberNumber })
             }
+
+            setGiven((sofar) => [
+              ...sofar,
+              ...handed.map(({ item, memberNumber }) => ({ who: item.who, memberNumber })),
+            ])
 
             /* Every one of them has been decided, so nothing the box could be
                open on is still waiting. Confirming it after the sweep would
@@ -218,7 +231,7 @@ export function Payments() {
                         return
                       }
 
-                      activateAll(waiting.map((one) => one.id))
+                      activateAll(waiting)
                       setSwept(waiting.length)
                     }}
                   >
@@ -228,6 +241,29 @@ export function Payments() {
 
                 <Swept count={swept} />
               </div>
+
+              {/* The numbers given, in the order they were given. A member number
+                  is what the administrator writes to whoever paid, so it is on
+                  screen from the moment it exists until the screen is left. */}
+              {given.length > 0 && (
+                <div
+                  className="member__panel"
+                  role="status"
+                  aria-label={t('verification.numbersGiven')}
+                >
+                  <h2 className="profile__section">{t('verification.numbersGiven')}</h2>
+
+                  <ul className="pending__given">
+                    {given.map((one) => (
+                      <li key={one.memberNumber}>
+                        {one.who}
+                        {' · '}
+                        <span className="table__member-number">{one.memberNumber}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>
@@ -261,14 +297,14 @@ export function Payments() {
                               <button
                                 type="button"
                                 className="button button--primary"
-                                onClick={() => activate(one.id, 'payment')}
+                                onClick={() => activate(one, 'payment')}
                               >
                                 {t('verification.activatePayment')}
                               </button>
                               <button
                                 type="button"
                                 className="button button--secondary"
-                                onClick={() => activate(one.id, 'honorary')}
+                                onClick={() => activate(one, 'honorary')}
                               >
                                 {t('verification.activateHonorary')}
                               </button>
