@@ -643,7 +643,12 @@ describe('a comment a moderator lets out', () => {
 
     /* A comment is deleted rather than sent back (PDL P22), so the decision on
        it is the other one, and the other one must not publish. */
-    await user.click(within(await cardFor(sent.body)).getByRole('button', { name: 'Obriši' }))
+    /* Deleting asks for a note since 06.08.2026, which may be left empty, so it
+       is two presses rather than one. */
+    await user.click(
+      within(await cardFor(sent.body)).getByRole('button', { name: /^Brisanje komentara: / }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
     await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
 
     expect(await underEvent(sent.body)).toBe(false)

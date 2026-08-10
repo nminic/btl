@@ -493,11 +493,35 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             /* Same box, same words, on every queue that hands work
                                back. What the pictures ask for is a reason precise
                                enough to work from, because that reason is what the
-                               member reads and changes the picture by. */
+                               member reads and changes the picture by.
+
+                               And the comments, which are not handed back at all:
+                               there the box asks for a note nobody has to write,
+                               a trace for whoever reads the queue next rather
+                               than a reason given to anybody (owner,
+                               06.08.2026). */
                             placeholderKey={
-                              outcomeFor(queue, one) === 'instruct'
-                                ? 'review.instructionPlaceholder'
-                                : 'review.reasonPlaceholder'
+                              outcomeFor(queue, one) === 'delete'
+                                ? 'verification.deleteNotePlaceholder'
+                                : outcomeFor(queue, one) === 'instruct'
+                                  ? 'review.instructionPlaceholder'
+                                  : 'review.reasonPlaceholder'
+                            }
+                            optional={outcomeFor(queue, one) === 'delete'}
+                            aboutKey={
+                              outcomeFor(queue, one) === 'delete'
+                                ? 'verification.deleteNamed'
+                                : 'review.sendBackNamed'
+                            }
+                            labelKey={
+                              outcomeFor(queue, one) === 'delete'
+                                ? 'verification.deleteNote'
+                                : 'review.reason'
+                            }
+                            confirmKey={
+                              outcomeFor(queue, one) === 'delete'
+                                ? 'verification.confirmDelete'
+                                : 'review.confirmSendBack'
                             }
                             onConfirm={(reason) => {
                               settle(one.id, {
@@ -547,21 +571,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 : t('review.approve')}
                             </button>
 
-                            {/* One click and the comment is gone, the same as
-                                accepting it. There is no box to open, so there is
-                                no focus to hand back either. */}
+                            {/* Deleting opens the same box the refusals open,
+                                and asks for a note that may be left empty
+                                (owner, 06.08.2026). Nothing is sent to the
+                                member either way: the note is a trace for
+                                whoever reads the queue next, not a reason given
+                                to anybody. */}
                             {outcomeFor(queue, one) === 'delete' && (
                               <button
                                 type="button"
                                 className="button button--secondary"
-                                onClick={() =>
-                                  settle(one.id, {
-                                    status: 'rejected',
-                                    note: '',
-                                    basis: '',
-                                    memberNumber: '',
-                                  })
-                                }
+                                aria-label={t('verification.deleteNamed', { name: one.subject })}
+                                onClick={() => setOpen(one.id)}
                               >
                                 {t('verification.delete')}
                               </button>

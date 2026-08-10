@@ -1367,27 +1367,51 @@ describe('the six queues read from the file', () => {
     },
   )
 
-  /* Comments go their own way (PDL P22, 30.07.2026): accepted or deleted, in one
-     click, with no reason asked for and nothing at all sent to the member. The
-     word is half the decision. "Odbijeno" reads as a refused comment being kept
-     somewhere it could be brought back from, and there is no such place. */
-  it('deletes a comment in one click, and never asks why', async () => {
+  /* Comments go their own way (PDL P22, 30.07.2026): accepted or deleted, and
+     nothing at all is sent to the member either way. The word is half the
+     decision. "Odbijeno" reads as a refused comment being kept somewhere it
+     could be brought back from, and there is no such place.
+
+     Deleting asks for a note since 06.08.2026, and the note may be left empty:
+     it is a trace for whoever reads the queue next, not a reason given to
+     anybody. A trace nobody is obliged to leave is a trace that gets left; one
+     that is obliged is three dots typed to get past a button. */
+  it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Obriši' })))
+    await user.click(first(screen.getAllByRole('button', { name: /^Brisanje komentara: / })))
+
+    /* Not a reason: the words say what it is and what it is for. */
+    const note = screen.getByLabelText('Napomena o brisanju')
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
+
+    const confirm = screen.getByRole('button', { name: 'Obriši komentar' })
+    // Empty is an answer here, unlike everywhere else the box is opened.
+    expect(confirm).toBeEnabled()
+
+    await user.type(note, 'Reklama za prodavnicu opreme.')
+    await user.click(confirm)
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
-    expect(screen.queryByRole('textbox', { name: 'Razlog odbijanja' })).not.toBeInTheDocument()
 
-    /* The comment is gone from the queue and nothing at all was written down
-       about it: no reason asked for, none recorded. */
+    const decided = within(screen.getByRole('list', { name: 'Odluke sesije' }))
+    expect(decided.getAllByRole('listitem')).toHaveLength(1)
+    expect(decided.getByText(/Reklama za prodavnicu opreme\./)).toBeVisible()
+  })
+
+  it('takes an empty note for a deletion, which is the whole point of it', async () => {
+    const user = await open('comments', 'Komentari')
+
+    await user.click(first(screen.getAllByRole('button', { name: /^Brisanje komentara: / })))
+    await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
     expect(
-      within(screen.getByRole('list', { name: 'Odluke sesije' })).getAllByRole('listitem').length,
-    ).toBe(1)
+      within(screen.getByRole('list', { name: 'Odluke sesije' })).getAllByRole('listitem'),
+    ).toHaveLength(1)
   })
 
   /* Biographies go their own way too, and further: there is no second decision at
