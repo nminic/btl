@@ -200,10 +200,11 @@ export function EntityEditor({
      under an id it never shows and answers at an address of its own, so
      comparing identities would leave every league refusing its own address
      (entityForms.ts, `addressField`). */
+  const named = addressField(entity)
   const others =
-    editing.mode === 'new'
+    editing.mode === 'new' || named === ''
       ? taken
-      : taken.filter((one) => one !== String(editing.record[addressField(entity)]))
+      : taken.filter((one) => one !== String(editing.record[named]))
 
   return (
     <div className="entity-editor">
