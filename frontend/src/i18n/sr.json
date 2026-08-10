@@ -1120,8 +1120,8 @@
     "title": "Podaci"
   },
   "verification": {
-    "waitingForRaces": "Odluka čeka trke tog događaja, da bi se pomerile sa njim.",
-    "racesFailed": "Odluka nije moguća: trke se ne mogu učitati, a pomeraju se zajedno sa događajem.",
+    "waitingForRaces": "Odluka čeka događaj i njegove trke, da bi se pomerili zajedno.",
+    "racesFailed": "Odluka nije moguća: podaci o događaju i njegovim trkama se ne mogu učitati, a pomeraju se zajedno.",
     "openCard": "Prikaži",
     "openCardNamed": "Prikaži: {name}",
     "foldCard": "Sakrij",

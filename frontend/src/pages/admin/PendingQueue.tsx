@@ -276,17 +276,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const eventsState = useEvents()
   const allEvents = recordsOf(EVENTS, dataOr(eventsState, []), overlay)
 
-  /** The day the event of a reported change is on now, or the day the report
-   *  says it was on where the events have not arrived. */
-  const dayOfEvent = (one: PendingItem) =>
-    allEvents.find((each) => each.id === one.subjectId)?.date ?? one.currentDate
+  /** The event a reported change is about, as the list has it now: the decision
+   *  waits for the events, so by the time one is taken this is there. */
+  const eventOf = (one: PendingItem) => allEvents.find((each) => each.id === one.subjectId)
   /**
    * Why no decision can be taken on this queue just now, or nothing.
    *
-   * Only the reported changes of date, and only over the races: accepting one
-   * moves the event and everything run at it by the same number of days
-   * (moveEvent), so without them the event would move alone, a week away from
-   * its own races, and nothing brings a decision back.
+   * Only the reported changes of date, and over both the races and the events:
+   * accepting one moves the event and everything run at it by the same number of
+   * days (moveEvent). Without the races the event moves alone. Without the
+   * events the day it is moved from is the day the report claims, and a second
+   * report about the same event then moves the races again from a day that is no
+   * longer the event's: two reports of one change, and the races a week past the
+   * event they are run at. Nothing brings either back.
    *
    * Three states and not two, because `dataOr` answers the same for a file on
    * its way and one that failed. Told to wait for something that will never
@@ -295,9 +297,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * reason).
    */
   const whyNoDecision =
-    queue.id !== 'schedule' || racesState.status === 'ready'
+    queue.id !== 'schedule' ||
+    (racesState.status === 'ready' && eventsState.status === 'ready')
       ? null
-      : failed(racesState)
+      : failed(racesState, eventsState)
         ? t('verification.racesFailed')
         : t('verification.waitingForRaces')
   const racesUnknown = whyNoDecision !== null
@@ -376,12 +379,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          Written into the same overlay the administration writes an edited event
          into, and against the id the report carries rather than the name: two
          events across two seasons carry one name (PDL P6). */
-      if (queue.id === 'schedule' && one.subjectId !== '' && one.proposedDate !== '') {
-        /* From the day the event is on now and not from the day the report
-           says it was on: a report written a fortnight ago may name a day the
-           event has since been moved off, and the races follow the event rather
-           than the report. */
-        moveEvent(one.subjectId, dayOfEvent(one), one.proposedDate, allRaces, editRecord)
+      /* From the day the event is on now and not from the day the report says it
+         was on: a report written a fortnight ago may name a day the event has
+         since been moved off, and the races follow the event rather than the
+         report. Where the event is not in the list at all there is nothing to
+         move: a report about an event somebody has deleted. */
+      const about = queue.id === 'schedule' && one.proposedDate !== '' ? eventOf(one) : undefined
+
+      if (about !== undefined) {
+        moveEvent(about.id, about.date, one.proposedDate, allRaces, editRecord)
       }
 
       if (made === null) {

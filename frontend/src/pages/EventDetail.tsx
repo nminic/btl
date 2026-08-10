@@ -45,44 +45,44 @@ function RaceTable({ eventId }: { eventId: string }) {
         const overDays = new Set(mine.map((race) => race.date)).size > 1
 
         return (
-        <div className="table-scroll">
-          <table className="table">
-            {/* Named, like every other table on the portal. Two tables stand on
-                this screen once anybody has run the event, and a screen reader
-                offered two unnamed ones cannot say which is which. */}
-            <caption className="visually-hidden">{t('event.races')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('event.raceName')}</th>
-                {/* The day, drawn only where the event runs over more than one
-                    (owner, 10.08.2026). A column of one repeated date under a
-                    heading that already says the day is a column that says
-                    nothing. */}
-                {overDays && <th scope="col">{t('event.raceDay')}</th>}
-                <th scope="col">{t('event.category')}</th>
-                <th scope="col">{t('event.distance')}</th>
-                <th scope="col" className="table__hide-phone">
-                  {t('event.ascent')}
-                </th>
-                <th scope="col" className="table__hide-phone">
-                  {t('event.descent')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {mine.map((race) => (
-                  <tr key={race.id}>
-                    <td>{race.name}</td>
-                    {overDays && <td>{formatShortDate(race.date, locale)}</td>}
-                    <td>{t(`category.${race.category}`)}</td>
-                    <td>{formatNumber(race.distanceKm, locale, 2)}</td>
-                    <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
-                    <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+          <div className="table-scroll">
+            <table className="table">
+              {/* Named, like every other table on the portal. Two tables stand on
+                  this screen once anybody has run the event, and a screen reader
+                  offered two unnamed ones cannot say which is which. */}
+              <caption className="visually-hidden">{t('event.races')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('event.raceName')}</th>
+                  {/* The day, drawn only where the event runs over more than one
+                      (owner, 10.08.2026). A column of one repeated date under a
+                      heading that already says the day is a column that says
+                      nothing. */}
+                  {overDays && <th scope="col">{t('event.raceDay')}</th>}
+                  <th scope="col">{t('event.category')}</th>
+                  <th scope="col">{t('event.distance')}</th>
+                  <th scope="col" className="table__hide-phone">
+                    {t('event.ascent')}
+                  </th>
+                  <th scope="col" className="table__hide-phone">
+                    {t('event.descent')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {mine.map((race) => (
+                    <tr key={race.id}>
+                      <td>{race.name}</td>
+                      {overDays && <td>{formatShortDate(race.date, locale)}</td>}
+                      <td>{t(`category.${race.category}`)}</td>
+                      <td>{formatNumber(race.distanceKm, locale, 2)}</td>
+                      <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
+                      <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         )
       }}
     </Resource>

@@ -199,7 +199,7 @@ describe('a screen waits only on the data it shows', () => {
 
     expect(approve).toHaveAttribute('aria-disabled', 'true')
     /* Said once for the queue rather than on every card. */
-    expect(screen.getByText(/Odluka čeka trke/)).toBeVisible()
+    expect(screen.getByText(/Odluka čeka događaj/)).toBeVisible()
     /* And the same hold on the one decision that settles the whole queue: taken
        without the races it is forty half-moves rather than one. */
     expect(screen.getByRole('button', { name: 'Odobri sve' })).toHaveAttribute(
@@ -226,21 +226,27 @@ describe('a screen waits only on the data it shows', () => {
     }
   })
 
-  it('decides a change of date while the events themselves are still coming', async () => {
-    /* The queue does not draw an event, only what was reported about one, so it
-       must not wait for the file of events. What it loses while they are away is
-       the day the event is on now, and it falls back to the day the report says
-       it was on, which is what the report is about. */
+  it('holds back a change of date while the events themselves are still coming', async () => {
+    /* The other half of the same hold. Without the events the day the event is
+       moved from is the day the report claims, and a second report about the
+       same change then moves the races again from a day the event has already
+       left: two reports of one change, and the races a week past the event they
+       are run at. The queue holds both reports of the Beogradski maraton, which
+       is what a reported change is made of. */
     restore = stallResource('events')
 
     const user = setupUser()
     renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
 
     const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+    const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
 
-    await user.click(first(cards.getAllByRole('button', { name: 'Odobri' })))
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(/Odluka čeka događaj/)).toBeVisible()
 
-    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 2/ })).toBeVisible()
+    await user.click(approve)
+
+    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
   })
 
   it('says the races failed rather than that it is waiting for them', async () => {
@@ -252,8 +258,8 @@ describe('a screen waits only on the data it shows', () => {
 
     await screen.findByRole('list', { name: /Čeka proveru/ })
 
-    expect(screen.getByText(/trke se ne mogu učitati/)).toBeVisible()
-    expect(screen.queryByText(/Odluka čeka trke/)).toBeNull()
+    expect(screen.getByText(/se ne mogu učitati/)).toBeVisible()
+    expect(screen.queryByText(/Odluka čeka/)).toBeNull()
   })
 
   /* The other half of the same rule: a screen must still fail on data it does

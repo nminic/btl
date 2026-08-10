@@ -77,6 +77,25 @@ describe('the address a save leaves an event at', () => {
     )
   })
 
+  it('keeps the address of an event a race has already moved into the next year', () => {
+    /* The form is drawn again from the record as it now is when a race moves the
+       event under it (AdminEvents). Asked about the record the form was opened
+       with instead, the check tested the address of the year the event has since
+       left: a save refused for an address it was never going to take. */
+    const moved = {
+      name: 'Novogodišnja trka',
+      date: '2028-01-01',
+      slug: 'novogodisnja-trka-2027',
+    }
+
+    expect(addressOfEvent({ name: moved.name, date: '01/01/2028' }, moved)).toBe(
+      'novogodisnja-trka-2027',
+    )
+    expect(
+      eventClash({ name: moved.name, date: '01/01/2028' }, ['novogodisnja-trka-2028'], moved),
+    ).toEqual({})
+  })
+
   it('builds one from nothing where there is no record yet', () => {
     expect(addressOfEvent({ name: 'Novi maraton', date: '01/06/2027' })).toBe(
       'novi-maraton-2027',
