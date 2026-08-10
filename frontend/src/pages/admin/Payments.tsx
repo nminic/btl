@@ -120,16 +120,6 @@ export function Payments() {
   const [open, setOpen] = useState<Refusing | null>(null)
   /** How many the last sweep activated, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
-  /**
-   * The numbers this visit has handed out, with the names they went to.
-   *
-   * Said because nothing else says it. Recording a fee hands out a member
-   * number, and that number is the first thing the administrator passes on to
-   * whoever paid (PDL P8, 30.07.2026): it used to stand in the table of settled
-   * items, and that table is gone (owner, 06.08.2026). A number given and shown
-   * nowhere is a number nobody can pass on.
-   */
-  const [given, setGiven] = useState<{ who: string; memberNumber: string }[]>([])
   /* The member list is read for one reason only: a number can only be handed out
      against every number that is already gone. */
   const state = combinePair(usePending(), useCompetitors())
@@ -150,6 +140,28 @@ export function Payments() {
         {([items, competitors]) => {
           const waiting = waitingIn(items, decisions, queue.id)
           /**
+           * The numbers this visit has handed out, with the names they went to.
+           *
+           * Said because nothing else says it. Recording a fee hands out a member
+           * number, and that number is the first thing the administrator passes
+           * on to whoever paid (PDL P8); it used to stand in the table of settled
+           * items, and that table is gone (owner, 06.08.2026).
+           *
+           * Read off the decisions rather than remembered beside them, so it is
+           * still there after the moderator has been to another queue and come
+           * back: the decision is what the session holds, and a list held in the
+           * screen goes with the screen.
+           */
+          const given: { who: string; memberNumber: string }[] = []
+
+          for (const one of items) {
+            const decision = decisions[one.id]
+
+            if (one.queue === queue.id && decision !== undefined && decision.memberNumber !== '') {
+              given.push({ who: one.who, memberNumber: decision.memberNumber })
+            }
+          }
+          /**
            * Activation, and the reason box shut behind it.
            *
            * The number is asked for rather than worked out here, because this
@@ -168,9 +180,6 @@ export function Payments() {
             const memberNumber = handOutMemberNumber(competitors, session)
 
             settle(item.id, { status: 'approved', note: '', basis, memberNumber })
-            /* Named as well as numbered: a list of numbers with nobody beside
-               them is a list an administrator has to match up by memory. */
-            setGiven((sofar) => [...sofar, { who: item.who, memberNumber }])
             setOpen((current) => (current?.key === item.id ? null : current))
           }
 
@@ -193,10 +202,6 @@ export function Payments() {
               settle(item.id, { status: 'approved', note: '', basis: 'payment', memberNumber })
             }
 
-            setGiven((sofar) => [
-              ...sofar,
-              ...handed.map(({ item, memberNumber }) => ({ who: item.who, memberNumber })),
-            ])
 
             /* Every one of them has been decided, so nothing the box could be
                open on is still waiting. Confirming it after the sweep would
@@ -245,14 +250,19 @@ export function Payments() {
               {/* The numbers given, in the order they were given. A member number
                   is what the administrator writes to whoever paid, so it is on
                   screen from the moment it exists until the screen is left. */}
-              {given.length > 0 && (
-                <div
-                  className="member__panel"
-                  role="status"
-                  aria-label={t('verification.numbersGiven')}
-                >
-                  <h2 className="profile__section">{t('verification.numbersGiven')}</h2>
+              {/* Drawn whether or not anything has been given, so the region is
+                  on the page before it has anything to say: one added together
+                  with its text is the kind a screen reader misses (Swept). */}
+              <div
+                className="member__panel"
+                role="status"
+                aria-label={t('verification.numbersGiven')}
+              >
+                <h2 className="profile__section">{t('verification.numbersGiven')}</h2>
 
+                {given.length === 0 ? (
+                  <p className="profile__empty">{t('verification.noNumbersYet')}</p>
+                ) : (
                   <ul className="pending__given">
                     {given.map((one) => (
                       <li key={one.memberNumber}>
@@ -262,8 +272,8 @@ export function Payments() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              )}
+                )}
+              </div>
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>

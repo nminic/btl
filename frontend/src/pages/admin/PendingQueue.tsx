@@ -718,9 +718,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             {/* Deleting opens the same box the refusals open,
                                 and asks for a note that may be left empty
                                 (owner, 06.08.2026). Nothing is sent to the
-                                member either way: the note is a trace for
-                                whoever reads the queue next, not a reason given
-                                to anybody. */}
+                                member either way. The note is not read on any
+                                screen since the tables of settled items were
+                                taken away (owner, 06.08.2026); it is written
+                                down because it is what the database will be
+                                given when there is one, and because a deletion
+                                that records nothing about itself cannot be
+                                answered for. */}
                             {outcomeFor(queue, one) === 'delete' && (
                               <button
                                 type="button"

@@ -1167,14 +1167,38 @@ describe('the queue of memberships waiting to be activated', () => {
        thing the administrator passes on to whoever paid (PDL P8), and the table
        of settled items that used to carry it is gone (owner, 06.08.2026). */
     const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
+    const lines_shown = said.getAllByRole('listitem').map((one) => String(one.textContent))
 
-    expect(said.getByText('000033')).toBeVisible()
-    expect(said.getByText('000034')).toBeVisible()
+    /* Each number beside the name it went to: a list of numbers with nobody
+       against them is a list the administrator has to match up from memory. */
+    expect(lines_shown.filter((line) => /000033/.test(line) && /\p{L}/u.test(line))).toHaveLength(1)
+    expect(lines_shown.filter((line) => /000034/.test(line) && /\p{L}/u.test(line))).toHaveLength(1)
 
     const lines = decidedLines()
 
     expect(lines.some((line) => line.endsWith('000033'))).toBe(true)
     expect(lines.some((line) => line.endsWith('000034'))).toBe(true)
+  })
+
+  it('still says the numbers after the moderator has been somewhere else', async () => {
+    /* Held in the session and not in the screen: a number given is a number the
+       administrator writes to whoever paid, and a walk to another queue and back
+       used to take it away. */
+    const user = setupUser()
+    const { router } = renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, undefined, null, <Decided />)
+
+    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
+
+    await router.navigate(`/sr/${QUEUE.comments.path}`)
+    await screen.findByRole('heading', { level: 1, name: 'Komentari' })
+    await router.navigate(`/sr/${QUEUE.payments.path}`)
+
+    const said = within(
+      await screen.findByRole('status', { name: 'Dodeljeni članski brojevi' }),
+    )
+
+    expect(said.getByText('000033')).toBeVisible()
   })
 
   it('hands out no number to a membership it sends back', async () => {

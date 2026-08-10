@@ -230,3 +230,13 @@
     display: none;
   }
 }
+
+/* The numbers handed out, one to a line. A list of member numbers is read down
+   rather than across, and the bullet says nothing the line does not. */
+.pending__given {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-6);
+}

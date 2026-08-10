@@ -4,7 +4,7 @@ import { livePage } from '../../data/pages'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
-import { at, first, must } from '../../test/at'
+import { first, must } from '../../test/at'
 import { Decided } from '../../test/decided'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -293,13 +293,17 @@ describe('one decision for a whole queue', () => {
 
       await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
 
-      /* Read off the session, where the number handed out lives: the screen
-         shows what is waiting and nothing else. Each line is one decision, and
-         the number it handed out is the last field of it. */
+      /* Read off the screen, which is where the administrator reads it: every
+         number handed out, one to a line, beside the name it went to. The
+         session is read as well, since the ground of the membership is written
+         there and drawn nowhere. */
+      const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
+      const numbers = said
+        .getAllByRole('listitem')
+        .map((one) => String(one.textContent).replace(/^.*· /, ''))
       const lines = within(screen.getByRole('list', { name: 'session decisions' }))
         .getAllByRole('listitem')
         .map((one) => String(one.textContent))
-      const numbers = lines.map((line) => at(line.split(' | '), 4))
 
       expect(numbers).toHaveLength(before)
       expect(new Set(numbers).size).toBe(before)
@@ -383,8 +387,7 @@ describe('one decision for a whole queue', () => {
           .getAllByRole('row')
           .slice(1),
       ).toHaveLength(before)
-      expect(screen.queryByRole('table', { name: 'Rešeno' })).toBeNull()
-    } finally {
+      } finally {
       confirm.mockRestore()
     }
   })

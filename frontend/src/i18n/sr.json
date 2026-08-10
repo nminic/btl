@@ -1179,6 +1179,7 @@
     "photoReturned": "Profilna slika je vraćena",
     "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se odbije uz razlog. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
     "numbersGiven": "Dodeljeni članski brojevi",
+    "noNumbersYet": "Još nijedan broj nije dodeljen na ovom ekranu.",
     "activateAllPayment": "Aktiviraj sve po osnovu uplate",
     "activateAllAsk": {
       "one": "Aktivirati {count} članstvo po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
