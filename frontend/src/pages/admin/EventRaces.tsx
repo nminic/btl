@@ -26,6 +26,7 @@ export function EventRaces({
   races,
   editing,
   setEditing,
+  onEventMoved,
 }: {
   event: BtlEvent
   races: Race[]
@@ -34,6 +35,9 @@ export function EventRaces({
    *  buttons on one screen is two questions asked at once. */
   editing: Editing | null
   setEditing: (editing: Editing | null) => void
+  /** Said when a race has moved the event, so the event's own form is drawn
+   *  again from the day it is on now (AdminEvents). */
+  onEventMoved: () => void
 }) {
   const { locale, t } = useI18n()
   const { editRecord } = useSession()
@@ -83,6 +87,7 @@ export function EventRaces({
 
             if (first !== undefined && first !== event.date) {
               editRecord(event.id, { date: first })
+              onEventMoved()
             }
           }}
           onDone={() => setEditing(null)}
@@ -165,6 +170,7 @@ export function EventRaces({
 
                         if (left !== undefined && left !== event.date) {
                           editRecord(event.id, { date: left })
+                          onEventMoved()
                         }
                       }}
                     />

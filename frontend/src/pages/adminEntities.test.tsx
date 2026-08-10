@@ -203,6 +203,63 @@ describe('the races of an event', () => {
     ).toBeVisible()
   })
 
+  it('does not drag the races back when the event is saved after one of them moved it', async () => {
+    /* The workflow the screen invites: change something about the races, then
+       correct the town on the event and save. The form was seeded when it was
+       drawn, so it still held the day the event was on before the race moved it,
+       and the save measured the move from there: a two-day event whose first
+       race had just been deleted had the race that was left dragged back onto
+       the morning nothing runs on any more. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const find2027 = async () => {
+      const search = await screen.findByLabelText(/Pretraga/)
+
+      await user.clear(search)
+      await user.type(search, 'Beogradski maraton')
+
+      return must(
+        within(await screen.findByRole('table', { name: 'Događaji' }))
+          .getAllByRole('row')
+          .find(
+            (one) =>
+              /Beogradski maraton/.test(one.textContent ?? '') &&
+              /2027/.test(one.textContent ?? ''),
+          ),
+        'the event of 2027',
+      )
+    }
+
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 1).textContent)
+    const first_race = within(at(races, 0))
+
+    await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
+    await user.click(first_race.getByRole('button', { name: /^Potvrdi brisanje/ }))
+
+    /* The event's own form is still on screen. Saved without a word changed. */
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Opened again from the list, so what is read is what the session now
+       holds. */
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+
+    expect(after).toEqual([second_day])
+  })
+
   it('stays where it is when a race that is not the first is deleted', async () => {
     const user = setupUser()
 
