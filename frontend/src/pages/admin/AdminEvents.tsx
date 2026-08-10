@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { combinePair, useEvents, useRaces } from '../../data/useResource'
+import { RESULTS, combineResources, useEvents, useRaces, useResults } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -26,7 +26,7 @@ export function AdminEvents() {
   /** Which race of the open event is being edited, if any. Held here because
    *  the event's own form is put away while one is. */
   const [race, setRace] = useState<Editing | null>(null)
-  const state = combinePair(useEvents(), useRaces())
+  const state = combineResources(useEvents(), useRaces(), useResults())
   const today = useToday()
   /**
    * The record this screen was sent to open, and the field to open it at.
@@ -47,12 +47,13 @@ export function AdminEvents() {
       <h1 className="visually-hidden">{t('admin.events')}</h1>
 
       <Resource state={state}>
-        {([events, races]) => {
+        {([events, races, results]) => {
           const all = recordsOf(EVENTS, events, overlay)
           /* Through the overlay, like the events beside them. Read straight from
              the file the count below said an event copied here had no races,
              while its races were on the next screen along. */
           const allRaces = recordsOf(RACES, races, overlay)
+          const allResults = recordsOf({ ...EVENTS, id: RESULTS, idField: 'id' }, results, overlay)
           /* Worked out rather than copied into state.
            *
              It was an effect that put the record from the address into state,
@@ -192,12 +193,27 @@ export function AdminEvents() {
                             record={one}
                             name={one.name}
                             onOpen={() => setChosen({ mode: 'one', record: one })}
-                            /* With its races. They are defined inside it and are
-                               shown nowhere else, so an event deleted alone
-                               leaves them belonging to nothing and invisible. */
+                            /* With its races and its results, which is what the
+                               same deletion does from the event's own page
+                               (event/EventActions.tsx). The races are defined
+                               inside it and are shown nowhere else, so an event
+                               deleted alone leaves them belonging to nothing and
+                               invisible; a result carries the address of its
+                               event, so left behind it goes on counting in the
+                               standing, in the top boards and in the team
+                               totals, each of them linking to a page that says
+                               the event does not exist. Two buttons that delete
+                               one thing must not delete two different amounts of
+                               it. */
                             alsoRemove={() => {
                               for (const race of allRaces.filter((each) => each.eventId === one.id)) {
                                 remove(RACES.id, race.id)
+                              }
+
+                              for (const result of allResults.filter(
+                                (each) => each.eventSlug === one.slug,
+                              )) {
+                                remove(RESULTS, result.id)
                               }
                             }}
                           />

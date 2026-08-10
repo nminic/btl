@@ -903,6 +903,7 @@
     "no": "Ne",
     "ducats": "Dukati",
     "racesOf": "Trke na događaju {event}",
+    "racesPutFormAway": "Dok se trka uređuje, forma događaja se sklanja. Sačuvajte izmene na događaju pre nego što otvorite trku.",
     "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",

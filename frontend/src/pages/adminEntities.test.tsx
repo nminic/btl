@@ -8,8 +8,8 @@ import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, must } from '../test/at'
 import { loadResource } from '../data/client'
-import { formatShortDate } from '../i18n/format'
-import type { BtlEvent, Race } from '../data/types'
+import { formatNumber, formatShortDate } from '../i18n/format'
+import type { BtlEvent, Race, Result } from '../data/types'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -49,6 +49,17 @@ describe('the races of an event', () => {
     expect(screen.queryByLabelText('Događaj')).toBeNull()
   })
 
+  it('says that opening a race puts the event form away', async () => {
+    /* The form is unmounted while a race is open, so what was typed into it and
+       not saved is gone. Said before the button rather than discovered after
+       it. */
+    await openFirstEvent()
+
+    expect(
+      await screen.findByText(/Dok se trka uređuje, forma događaja se sklanja/),
+    ).toBeVisible()
+  })
+
   it('has no screen of its own any more', async () => {
     renderAt('/sr/administracija/trke', 'superadmin')
 
@@ -80,6 +91,53 @@ describe('the races of an event', () => {
 
     expect(said).toHaveTextContent('Probna trka')
     expect(said).toHaveTextContent(named)
+  })
+
+  it('writes the distances and the climbs the way this language writes them', async () => {
+    /* Like every other table on the portal (EventDetail, ReviewQueue, the top
+       boards). Read raw, a climb of 7120 metres printed as four digits and a
+       distance as 42.2, neither of which is Serbian, and nothing on the portal
+       said so. */
+    const user = setupUser()
+    const races = await loadResource<Race[]>('races')
+    const steep = must(
+      races.find((race) => race.ascentM >= 1000),
+      'a race with a climb over a thousand metres',
+    )
+    const events = await loadResource<BtlEvent[]>('events')
+    const its = must(
+      events.find((one) => one.id === steep.eventId),
+      'the event that race is run at',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), its.name)
+
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find((each) => (each.textContent ?? '').includes(formatShortDate(its.date, 'sr-Latn'))),
+      'that event in the list',
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${its.name}` }))
+
+    const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const mine = must(
+      under
+        .getAllByRole('row')
+        .slice(1)
+        .find((each) => (each.textContent ?? '').includes(steep.name)),
+      'that race under its event',
+    )
+
+    expect(within(mine).getByText(formatNumber(steep.distanceKm, 'sr-Latn', 2))).toBeVisible()
+    expect(within(mine).getByText(formatNumber(steep.ascentM, 'sr-Latn'))).toBeVisible()
+    /* And the raw number is not what stands there, which is what the assertions
+       above would still allow for a climb under a thousand. */
+    expect(within(mine).queryByText(String(steep.ascentM))).toBeNull()
   })
 
   it('says so where an event has none yet', async () => {
@@ -197,7 +255,12 @@ describe('the written pages', () => {
 function Removed() {
   const { deletions } = useSession()
 
-  return <span data-testid="removed">{(deletions.races ?? []).join(',')}</span>
+  return (
+    <>
+      <span data-testid="removed">{(deletions.races ?? []).join(',')}</span>
+      <span data-testid="removed-results">{(deletions.results ?? []).join(',')}</span>
+    </>
+  )
 }
 
 describe('an event that is deleted', () => {
@@ -214,11 +277,14 @@ describe('an event that is deleted', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const races = await loadResource<Race[]>('races')
+    const scoredAt = await loadResource<Result[]>('results')
     const one = must(
       events.find(
-        (each) => each.date > '2027-01-01' && races.some((race) => race.eventId === each.id),
+        (each) =>
+          races.some((race) => race.eventId === each.id) &&
+          scoredAt.some((result) => result.eventSlug === each.slug),
       ),
-      'an event ahead of us that has races',
+      'an event that has both races and results',
     )
     const its = races.filter((race) => race.eventId === one.id).map((race) => race.id)
 
@@ -265,6 +331,18 @@ describe('an event that is deleted', () => {
 
     for (const race of its) {
       expect(removed, `${race} went with its event`).toContain(race)
+    }
+
+    /* And its results, which is what the same deletion does from the event's own
+       page: left behind they go on counting in the standing and in the boards,
+       each of them linking to a page that says the event does not exist. */
+    const scored = scoredAt.filter((each) => each.eventSlug === one.slug).map((each) => each.id)
+    const dropped = (screen.getByTestId('removed-results').textContent ?? '').split(',')
+
+    expect(scored.length).toBeGreaterThan(0)
+
+    for (const result of scored) {
+      expect(dropped, `${result} went with its event`).toContain(result)
     }
   })
 })

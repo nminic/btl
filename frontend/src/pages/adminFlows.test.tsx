@@ -127,6 +127,29 @@ describe('administration is closed to everyone else', () => {
 })
 
 describe('the panel', () => {
+  it('sends away a moderator who holds nothing at all', async () => {
+    /* The address draws no content of its own since 06.08.2026, and a sector
+       with nothing in it is not drawn either, so somebody holding no right at
+       all arrived at a white screen with a hidden heading, by a link the header
+       still offered him. Every other closed door on the portal answers with the
+       front page. */
+    renderAt('/sr/administracija', 'moderator', null, moderatorWith([]))
+
+    await expectFrontPage()
+  })
+
+  it.each([
+    ['queue:results', 'Verifikacija'],
+    /* Both sides, because either sector on its own is enough: asked only about
+       the queues, a moderator who keeps records and decides nothing was turned
+       away from a screen with his own work standing on it. */
+    ['entity:members', 'Podaci'],
+  ])('lets in a moderator who holds only %s', async (right, sector) => {
+    renderAt('/sr/administracija', 'moderator', null, moderatorWith([right]))
+
+    expect(await screen.findByRole('button', { name: sector })).toBeVisible()
+  })
+
   it('draws no sector a moderator holds nothing in', async () => {
     /* A moderator is not to be aware that there are actions nobody gave him
        (owner, 30.07.2026). Both sectors were drawn to everybody, and the one he
