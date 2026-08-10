@@ -1,5 +1,5 @@
 import jsQR from 'jsqr'
-import { must } from './at'
+import { at, must } from './at'
 
 /**
  * What a telephone would read off a drawn QR code.
@@ -20,7 +20,7 @@ export function readQr(drawn: Element): string | null {
      read off the box rather than worked out from the module count, so widening
      that zone is a wider picture here and not a picture read at an offset. */
   const box = must(drawn.getAttribute('viewBox'), 'the box the figure is drawn in').split(' ')
-  const span = Number(box[2])
+  const span = Number(at(box, 2))
   const figure = must(
     drawn.querySelector('path')?.getAttribute('d'),
     'the figure the code drew',

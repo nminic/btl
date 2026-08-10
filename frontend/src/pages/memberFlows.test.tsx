@@ -5,9 +5,8 @@ import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
-import { QrCode } from '../components/QrCode'
 import { first, must } from '../test/at'
-import { digestOf } from '../test/digest'
+import { readQr } from '../test/readQr'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
@@ -139,28 +138,15 @@ describe('membership', () => {
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
-    const said = must(
-      screen.getByRole('img', { name: /QR/ }).querySelector('path')?.getAttribute('d'),
-      'the figure the code drew',
-    )
     const payload = must(
       screen.getByText(/^K:PR\|V:01/).textContent,
       'the payload the screen shows',
     )
 
-    /* Drawn again on its own from the words the screen shows: the same text
-       draws the same figure, so a code carrying anything else fails here. */
-    render(<QrCode text={payload} label="probni" />)
-
-    const drawn = must(
-      screen.getByRole('img', { name: 'probni' }).querySelector('path')?.getAttribute('d'),
-      'the figure',
-    )
-
-    /* Compared by length and by digest rather than by ten thousand characters of
-       path, so a failure reads as two numbers instead of two walls of
-       `M..h1v1h-1z` (components/qrCode.test.tsx). */
-    expect([drawn.length, digestOf(drawn)]).toEqual([said.length, digestOf(said)])
+    /* Read off the square itself, by the decoder, rather than compared with a
+       second drawing of the same words: what has to hold is that the code on
+       this member's screen says this member's slip (test/readQr.ts). */
+    expect(readQr(screen.getByRole('img', { name: /QR/ }))).toBe(payload)
   })
 
   it('offers a member abroad PayPal and a card, and no code at all', async () => {

@@ -105,6 +105,19 @@ describe('what a telephone reads off the drawing', () => {
     expect(readQr(screen.getByRole('img', { name: 'uplatnica' }))).toBe(PAYLOAD)
   })
 
+  it('reads the letters of this language back as they were written', () => {
+    /* The encoder writes one byte a character unless it is told otherwise, and
+       everything above 255 is thrown away by that: the payee went into the code
+       as "Sportsko udru~enje BTL", and the name of the payee is the one field a
+       payer checks before they press send. Found by reading the code back, and
+       by nothing else: it drew, it decoded, and it was wrong. */
+    const named = 'K:PR|V:01|C:1|N:Sportsko udruženje BTL|S:Članarina za 2027. godinu'
+
+    render(<QrCode text={named} label="sa slovima" />)
+
+    expect(readQr(screen.getByRole('img', { name: 'sa slovima' }))).toBe(named)
+  })
+
   it('reads a long payload as well as a short one', () => {
     /* The encoder picks its own version, so a longer text is a bigger grid. The
        one the slip carries abroad is the long one. */
