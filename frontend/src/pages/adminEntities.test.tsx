@@ -760,9 +760,12 @@ describe('the address of a league', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-    /* And the complaint is about the address, not about some other field: an
-       error anywhere would pass a count. */
-    expect(screen.getByLabelText(/^Adresa/)).toHaveAccessibleDescription(/mala latinična/)
+    /* The complaint itself, and on the address. Matched against the words the
+       hint under the field uses, this passed whether or not anything was wrong:
+       the hint is part of what describes the field either way. */
+    expect(screen.getByLabelText(/^Adresa/)).toHaveAccessibleDescription(
+      /nije u očekivanom obliku/,
+    )
   })
 
   it('is refused where another league already answers at it', async () => {

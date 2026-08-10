@@ -65,11 +65,12 @@ export function AdminLeagues() {
                   <tbody>
                     {rows.map((league) => (
                       <tr key={league.id}>
-                        {/* Read, not edited in place. The cell was a stopgap for
-                            as long as the form did not ask for the address
-                            (PENDING, 10.08.2026); it asks now, so the stopgap
-                            goes and a league is changed where every other record
-                            is changed, on its own form. */}
+                        {/* Read, not edited in place. Deliberate, and the
+                            owner's own record of it (PENDING, 10.08.2026): a
+                            league is changed on the form that now asks for
+                            everything it answers at, so there is one place
+                            where its name and its address are settled
+                            together. The other five lists keep their cell. */}
                         <td>{league.name}</td>
                         <td>
                           {/* The whole address, read as well as clicked. The
