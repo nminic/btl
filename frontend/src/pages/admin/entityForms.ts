@@ -84,9 +84,17 @@ export type EntityDef = {
    * change, and it starts on the day of the event it is being entered under.
    */
   start?: FormValues
-  /** What the record carries that is read off the fields rather than asked for.
-   *  Shown on the form as words, and written onto the record on saving. */
-  derived?: (values: FormValues) => DerivedValue[]
+  /**
+   * What the record carries that is read off the fields rather than asked for.
+   * Shown on the form as words, and written onto the record on saving.
+   *
+   * The record as it was is handed in where there is one, because one derived
+   * value is not a function of the fields alone: an address that was written
+   * once must not be rewritten by a save that did not touch what it is made of
+   * (`EVENTS`, and the events whose address carries more than the rule can
+   * build).
+   */
+  derived?: (values: FormValues, was?: Record<string, unknown>) => DerivedValue[]
 }
 
 /** A derived value as the record needs it: the words the form shows, plus the
@@ -131,7 +139,7 @@ export const EVENTS: EntityDef = {
   idField: 'id',
   blank: {},
   /**
-   * The address the event answers at, from its name and its day.
+   * The address the event answers at, from its name and its year.
    *
    * Not on the form and never will be, for the same reason the category of a
    * race is not: it is read off what the form does ask for, so there is nothing
@@ -148,24 +156,59 @@ export const EVENTS: EntityDef = {
    * Shown on the form, because an administrator who is about to send somebody a
    * link should be able to read it before they save.
    */
-  derived: (values) => [
-    {
-      name: 'slug',
-      labelKey: 'admin.field.eventSlug',
-      hintKey: 'admin.hint.eventSlug',
-      value: eventSlug(String(values.name), String(values.date)),
-      shownKey: eventSlug(String(values.name), String(values.date)),
-    },
-  ],
+  derived: (values, was) => {
+    const address = addressOfEvent(values, was)
+
+    return [
+      {
+        name: 'slug',
+        labelKey: 'admin.field.eventSlug',
+        hintKey: 'admin.hint.eventSlug',
+        value: address,
+        shownKey: address,
+      },
+    ]
+  },
+}
+
+/**
+ * The address a save leaves the event at.
+ *
+ * Worked out from the name and the year, except where nothing that goes into it
+ * has changed: then the address the record already carries stays, whatever it
+ * is. Two reasons, and both are about records the rule cannot build.
+ *
+ * The first is history. Some events of one name were run twice in one year, so
+ * their address carries the month as well (Gradska liga, 2017); recomputed on a
+ * save that changed the town, it would collapse onto the address its sibling
+ * answers at, every result of it would come loose, and the sibling could never
+ * be saved again.
+ *
+ * The second is the point of the year (owner, 10.08.2026): an event put off a
+ * week keeps its address and everything joined to it. Rewriting an address that
+ * nobody asked to change is the same fault in a smaller size.
+ */
+export function addressOfEvent(values: FormValues, was?: Record<string, unknown>): string {
+  const wanted = eventSlug(String(values.name), String(values.date))
+
+  if (was === undefined) {
+    return wanted
+  }
+
+  const before = eventSlug(String(was.name), fieldDate(String(was.date)))
+
+  return before === wanted ? String(was.slug) : wanted
 }
 
 /**
  * Why this event cannot be saved, or nothing.
  *
  * Two events at one address is the fault this exists to stop. The address is
- * read off the name and the day (`eventSlug`), and copying an event keeps both
- * until somebody changes the date, so pressing Kopiraj and saving without
- * touching the date wrote a second record answering at the first one's address.
+ * read off the name and the year (`eventSlug`), and copying an event keeps both
+ * until somebody moves it, so pressing Kopiraj and saving without touching the
+ * date wrote a second record answering at the first one's address. A copy is
+ * made for the next season, so moving it out of the year is the ordinary thing
+ * to do with one.
  * Everything that joins to an event by address then means both of them: the
  * results of the one are the results of the other, and deleting either takes
  * the other's with it.
@@ -196,10 +239,17 @@ export function eventClash(
  * keeps its address, and everything joined to it by address stays joined.
  */
 export function eventSlug(name: string, date: string): string {
-  const year = isoDate(date).slice(0, 4)
+  /* Both shapes, because both reach here: a form speaks dd/mm/gggg and a record
+     keeps gggg-mm-dd, and the copy of an event hands over what the record keeps.
+     Read as a form value alone, the copy's address came out with no year at all
+     and the rule could never have built it. */
+  const year = ISO_DAY.test(date) ? date.slice(0, 4) : isoDate(date).slice(0, 4)
 
   return [slugify(name), year].filter((part) => part !== '').join('-')
 }
+
+/** What a stored date looks like, as against what a form writes. */
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * The category of a race is not on the form and never will be: it is read off

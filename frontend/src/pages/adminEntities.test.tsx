@@ -202,6 +202,91 @@ describe('the races of an event', () => {
     ).toBeVisible()
   })
 
+  it('stays where it is when a race that is not the first is deleted', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const find2027 = async () => {
+      const search = await screen.findByLabelText(/Pretraga/)
+
+      await user.clear(search)
+      await user.type(search, 'Beogradski maraton')
+
+      return must(
+        within(await screen.findByRole('table', { name: 'Događaji' }))
+          .getAllByRole('row')
+          .find(
+            (one) =>
+              /Beogradski maraton/.test(one.textContent ?? '') &&
+              /2027/.test(one.textContent ?? ''),
+          ),
+        'the event of 2027',
+      )
+    }
+
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+
+    /* Two mornings, which is what makes either end of the rule sayable. */
+    expect(new Set(races.map((row) => at(within(row).getAllByRole('cell'), 1).textContent)).size).toBe(2)
+
+    const first_day = String(at(within(at(races, 0)).getAllByRole('cell'), 1).textContent)
+
+    /* The last one first, which must move nothing: the event begins when it
+       began, whatever is taken off the end of it. */
+    const last = within(at(races, races.length - 1))
+
+    await user.click(last.getByRole('button', { name: /^Obriši/ }))
+    await user.click(last.getByRole('button', { name: /^Potvrdi brisanje/ }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    expect(within(await find2027()).getByText(first_day)).toBeVisible()
+  })
+
+  it('follows what is left when the first race is deleted', async () => {
+    /* The other end of the same rule: an event dated on a morning nothing runs
+       on is as wrong as one dated before its first race (owner, 10.08.2026). */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const find2027 = async () => {
+      const search = await screen.findByLabelText(/Pretraga/)
+
+      await user.clear(search)
+      await user.type(search, 'Beogradski maraton')
+
+      return must(
+        within(await screen.findByRole('table', { name: 'Događaji' }))
+          .getAllByRole('row')
+          .find(
+            (one) =>
+              /Beogradski maraton/.test(one.textContent ?? '') &&
+              /2027/.test(one.textContent ?? ''),
+          ),
+        'the event of 2027',
+      )
+    }
+
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 1).textContent)
+    const first_race = within(at(races, 0))
+
+    await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
+    await user.click(first_race.getByRole('button', { name: /^Potvrdi brisanje/ }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    expect(within(await find2027()).getByText(second_day)).toBeVisible()
+  })
+
   it('moves the races with the event, by the same number of days', async () => {
     /* Owner, 10.08.2026: this is what makes copying last season's event worth
        doing. Two races on the Saturday and one on the Sunday stay two and one

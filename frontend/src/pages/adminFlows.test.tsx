@@ -1501,7 +1501,7 @@ describe('the six queues read from the file', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
 
-    await user.click(first(screen.getAllByRole('button', { name: /^Brisanje komentara: / })))
+    await user.click(first(screen.getAllByRole('button', { name: /^Obriši: / })))
 
     /* Not a reason: the words say what it is and what it is for, and so does
        the name of the box around them. The one word this queue must not use is
@@ -1530,7 +1530,7 @@ describe('the six queues read from the file', () => {
   it('takes an empty note for a deletion, which is the whole point of it', async () => {
     const user = await open('comments', 'Komentari')
 
-    await user.click(first(screen.getAllByRole('button', { name: /^Brisanje komentara: / })))
+    await user.click(first(screen.getAllByRole('button', { name: /^Obriši: / })))
     await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()

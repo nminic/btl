@@ -1120,6 +1120,7 @@
     "title": "Podaci"
   },
   "verification": {
+    "waitingForRaces": "Odluka čeka trke tog događaja, da bi se pomerile sa njim.",
     "openCard": "Prikaži",
     "foldCard": "Sakrij",
     "title": "Verifikacija",
@@ -1166,7 +1167,8 @@
     "fromComments": "Komentar se prihvata ili briše, odmah i bez obrazloženja",
     "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine",
     "delete": "Obriši",
-    "deleteNamed": "Brisanje komentara: {name}",
+    "deleteNamed": "Obriši: {name}",
+    "deleteBox": "Brisanje komentara: {name}",
     "deleteNote": "Napomena o brisanju",
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",

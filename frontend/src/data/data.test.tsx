@@ -3,9 +3,10 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { setupUser } from '../test/user'
 import { first } from '../test/at'
+import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
-import type { Competitor, EventComment, PendingItem } from './types'
+import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
   combineFour,
@@ -49,6 +50,47 @@ function Wrappers() {
 
   return <span>spremno: {all.filter((state) => state.status === 'ready').length}</span>
 }
+
+/**
+ * The address of every event, against the rule that builds one.
+ *
+ * The two came apart and nothing said so: the file held addresses carrying a
+ * month, which the rule cannot build, and the administration rewrote one of
+ * them on any save at all. Fifteen pairs of events share a name inside one year
+ * in the history, so those addresses are the file's business and are allowed to
+ * carry more; what is not allowed is an address the rule would build differently
+ * out of the same name and year.
+ */
+describe('the address of an event', () => {
+  it('is the one the rule builds, or that one with more on it', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const wrong = events.filter((one) => !one.slug.startsWith(eventSlug(one.name, one.date)))
+
+    expect(events.length).toBeGreaterThan(1000)
+    expect(wrong.map((one) => `${one.slug} (${one.name}, ${one.date})`)).toEqual([])
+  })
+
+  it('answers for one event only', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const twice = events
+      .map((one) => one.slug)
+      .filter((slug, at, all) => all.indexOf(slug) !== at)
+
+    expect(twice).toEqual([])
+  })
+
+  it('is what every result of it is joined by', async () => {
+    /* A result names its event by address (EventDetail), so an address in the
+       results that no event answers at is a race whose results are on nobody's
+       page. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const results = await loadResource<Result[]>('results')
+    const addresses = new Set(events.map((one) => one.slug))
+
+    expect(results.length).toBeGreaterThan(1000)
+    expect([...new Set(results.map((one) => one.eventSlug))].filter((slug) => !addresses.has(slug))).toEqual([])
+  })
+})
 
 describe('loadResource', () => {
   it('resolves a known resource', async () => {
@@ -262,7 +304,7 @@ function LetOut() {
   const { publish, settle } = useSession()
   const one: EventComment = {
     id: 'ver-kom-1',
-    eventId: 'evt-fruskogorski-maraton-2010',
+    eventId: 'evt-fruskogorski-maraton-2010-05-08',
     memberNumber: '000007',
     who: 'Ime Prezime',
     date: '2026-08-06',
@@ -364,7 +406,7 @@ describe('commentFrom', () => {
       memberNumber: '000007',
       who: 'Ime Prezime',
       subject: 'Fruškogorski maraton',
-      subjectId: 'evt-fruskogorski-maraton-2010',
+      subjectId: 'evt-fruskogorski-maraton-2010-05-08',
       body: 'Reci koje je clan napisao.',
       currentDate: '',
       proposedDate: '',
@@ -376,7 +418,7 @@ describe('commentFrom', () => {
 
     expect(commentFrom(waiting)).toEqual({
       id: 'ver-kom-9',
-      eventId: 'evt-fruskogorski-maraton-2010',
+      eventId: 'evt-fruskogorski-maraton-2010-05-08',
       memberNumber: '000007',
       who: 'Ime Prezime',
       date: '2026-08-06',

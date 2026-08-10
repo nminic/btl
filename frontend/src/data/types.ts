@@ -304,8 +304,8 @@ export type PendingItem = {
    *
    * A closed list and not an open string, exactly as the queues are: a value
    * outside it would be quietly treated as a picture, so a biography would be
-   * offered the button that hands it back and printed under a name the
-   * dictionary does not have.
+   * offered the button that hands it back. The empty one is every queue that
+   * holds a single sort of thing, and the racing profile never carries it.
    */
   kind: ItemKind
   /** The day it arrived in the queue. */

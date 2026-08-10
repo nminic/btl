@@ -270,8 +270,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-tron-roendanski-polumaraton-2014-03-01",
-    "slug": "tron-roendanski-polumaraton-2014",
+    "id": "evt-tron-rodendanski-polumaraton-2014-03-01",
+    "slug": "tron-rodendanski-polumaraton-2014",
     "name": "Tron rođendanski polumaraton",
     "date": "2014-03-01",
     "city": "Sarajevo",
@@ -830,8 +830,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-tron-roendanski-polumaraton-2015-03-01",
-    "slug": "tron-roendanski-polumaraton-2015",
+    "id": "evt-tron-rodendanski-polumaraton-2015-03-01",
+    "slug": "tron-rodendanski-polumaraton-2015",
     "name": "Tron rođendanski polumaraton",
     "date": "2015-03-01",
     "city": "Sarajevo",
@@ -1640,8 +1640,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-btr-roendanski-polumaraton-2016-01-01",
-    "slug": "btr-roendanski-polumaraton-2016",
+    "id": "evt-btr-rodendanski-polumaraton-2016-01-01",
+    "slug": "btr-rodendanski-polumaraton-2016",
     "name": "BTR rođendanski polumaraton",
     "date": "2016-01-01",
     "city": "Kragujevac",
@@ -1760,8 +1760,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-tron-roendanski-polumaraton-2016-03-05",
-    "slug": "tron-roendanski-polumaraton-2016",
+    "id": "evt-tron-rodendanski-polumaraton-2016-03-05",
+    "slug": "tron-rodendanski-polumaraton-2016",
     "name": "Tron rođendanski polumaraton",
     "date": "2016-03-05",
     "city": "Sarajevo",
@@ -3130,8 +3130,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-trka-uz-beograanku-2017-04-30",
-    "slug": "trka-uz-beograanku-2017",
+    "id": "evt-trka-uz-beogradanku-2017-04-30",
+    "slug": "trka-uz-beogradanku-2017",
     "name": "Trka uz Beograđanku",
     "date": "2017-04-30",
     "city": "Beograd",
@@ -4200,8 +4200,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-btr-roendanski-polumaraton-2018-01-01",
-    "slug": "btr-roendanski-polumaraton-2018",
+    "id": "evt-btr-rodendanski-polumaraton-2018-01-01",
+    "slug": "btr-rodendanski-polumaraton-2018",
     "name": "BTR rođendanski polumaraton",
     "date": "2018-01-01",
     "city": "Kragujevac",
@@ -6060,8 +6060,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-inija-trail-2019-03-03",
-    "slug": "inija-trail-2019",
+    "id": "evt-indija-trail-2019-03-03",
+    "slug": "indija-trail-2019",
     "name": "Inđija trail",
     "date": "2019-03-03",
     "city": "Kragujevac",
@@ -7360,8 +7360,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-ramska-tvrava-2019-09-28",
-    "slug": "ramska-tvrava-2019",
+    "id": "evt-ramska-tvrdava-2019-09-28",
+    "slug": "ramska-tvrdava-2019",
     "name": "Ramska tvrđava",
     "date": "2019-09-28",
     "city": "Kragujevac",
@@ -7950,8 +7950,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-btr-roendanski-polumaraton-2020-01-01",
-    "slug": "btr-roendanski-polumaraton-2020",
+    "id": "evt-btr-rodendanski-polumaraton-2020-01-01",
+    "slug": "btr-rodendanski-polumaraton-2020",
     "name": "BTR rođendanski polumaraton",
     "date": "2020-01-01",
     "city": "Kragujevac",
@@ -8150,8 +8150,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-inija-trail-2020-03-01",
-    "slug": "inija-trail-2020",
+    "id": "evt-indija-trail-2020-03-01",
+    "slug": "indija-trail-2020",
     "name": "Inđija trail",
     "date": "2020-03-01",
     "city": "Kragujevac",
@@ -8270,8 +8270,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-trka-uz-beograanku-2020-06-21",
-    "slug": "trka-uz-beograanku-2020",
+    "id": "evt-trka-uz-beogradanku-2020-06-21",
+    "slug": "trka-uz-beogradanku-2020",
     "name": "Trka uz Beograđanku",
     "date": "2020-06-21",
     "city": "Beograd",
@@ -8910,8 +8910,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-inija-trail-2021-03-14",
-    "slug": "inija-trail-2021",
+    "id": "evt-indija-trail-2021-03-14",
+    "slug": "indija-trail-2021",
     "name": "Inđija trail",
     "date": "2021-03-14",
     "city": "Kragujevac",
@@ -10180,8 +10180,8 @@
     "status": "confirmed"
   },
   {
-    "id": "evt-ramska-tvrava-2021-11-27",
-    "slug": "ramska-tvrava-2021",
+    "id": "evt-ramska-tvrdava-2021-11-27",
+    "slug": "ramska-tvrdava-2021",
     "name": "Ramska tvrđava",
     "date": "2021-11-27",
     "city": "Kragujevac",

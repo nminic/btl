@@ -152,6 +152,21 @@ export function EventRaces({
                       record={race}
                       name={race.name}
                       onOpen={() => setEditing({ mode: 'one', record: race })}
+                      /* And the event follows what is left, the same way it
+                         follows a race entered or moved: taking the first
+                         morning away moves the event onto the next one, and an
+                         event dated on a morning nothing runs on is the rule
+                         broken from the other end (owner, 10.08.2026). */
+                      alsoRemove={() => {
+                        const left = mine
+                          .filter((each) => each.id !== race.id)
+                          .map((each) => each.date)
+                          .sort()[0]
+
+                        if (left !== undefined && left !== event.date) {
+                          editRecord(event.id, { date: left })
+                        }
+                      }}
                     />
                   </td>
                 </tr>

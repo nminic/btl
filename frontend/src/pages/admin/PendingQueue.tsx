@@ -264,11 +264,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
      card here draws a race, and a queue that would not open because the races
      have not arrived is a queue held up by a file it does not show
      (resourceScope.test). Where they are missing nothing is moved, and the day
-     of the event alone would be the half-move this is here to prevent. Where
-     they are missing the event moves and its races do not, which is why this is
-     read at all rather than left to the screen that edits events. */
+     of the event alone would be the half-move this is here to prevent. So the
+     decision waits for them, and only the decision: the screen draws, the cards
+     are read, and the buttons say what they are waiting for
+     (`whyNoDecision`). */
   const racesState = useRaces()
   const allRaces = dataOr(racesState, [])
+  const racesUnknown = queue.id === 'schedule' && racesState.status !== 'ready'
 
   /* Both dates of a reported change, so the difference is the thing on screen
      and not something the reader works out. Empty on the other five queues. */
@@ -562,7 +564,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             optional={outcomeFor(queue, one) === 'delete'}
                             aboutKey={
                               outcomeFor(queue, one) === 'delete'
-                                ? 'verification.deleteNamed'
+                                ? 'verification.deleteBox'
                                 : 'review.sendBackNamed'
                             }
                             /* Named after what it decides, which is what the box
@@ -619,14 +621,35 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  takes the keyboard with it, and this one is meant
                                  to be reachable so its reason can be read. It says
                                  it cannot act and points at why. */
-                              aria-disabled={why !== null}
-                              aria-describedby={why === null ? undefined : `${one.id}-blocked`}
-                              onClick={() => approveAll([one], teams)}
+                              aria-disabled={why !== null || racesUnknown}
+                              aria-describedby={
+                                why !== null
+                                  ? `${one.id}-blocked`
+                                  : racesUnknown
+                                    ? `${one.id}-waiting`
+                                    : undefined
+                              }
+                              onClick={() => {
+                                /* Accepting a change of date moves the races
+                                   with the event, so until they are here there
+                                   is nothing to move them by: the event alone
+                                   would be the half-move this decision is meant
+                                   to make whole (moveEvent). */
+                                if (!racesUnknown) {
+                                  approveAll([one], teams)
+                                }
+                              }}
                             >
                               {outcomeFor(queue, one) === 'editAndPublish'
                                 ? t('verification.publish')
                                 : t('review.approve')}
                             </button>
+
+                            {racesUnknown && (
+                              <p className="pending__blocked" id={`${one.id}-waiting`}>
+                                {t('verification.waitingForRaces')}
+                              </p>
+                            )}
 
                             {/* Deleting opens the same box the refusals open,
                                 and asks for a note that may be left empty
@@ -638,6 +661,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               <button
                                 type="button"
                                 className="button button--secondary"
+                                /* The visible word is inside the name it is
+                                   read by, which is what speech input works
+                                   from (WCAG 2.2 SC 2.5.3): "Obriši: X" and not
+                                   "Brisanje komentara: X", which does not
+                                   contain the word on the button. Every other
+                                   named control on the portal is written this
+                                   way. */
                                 aria-label={t('verification.deleteNamed', { name: one.subject })}
                                 onClick={() => setOpen(one.id)}
                               >

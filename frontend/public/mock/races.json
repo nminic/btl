@@ -2460,8 +2460,8 @@
     "category": "ultra"
   },
   {
-    "id": "evt-btr-roendanski-polumaraton-2016-01-01-2110",
-    "eventId": "evt-btr-roendanski-polumaraton-2016-01-01",
+    "id": "evt-btr-rodendanski-polumaraton-2016-01-01-2110",
+    "eventId": "evt-btr-rodendanski-polumaraton-2016-01-01",
     "name": "21.10 km",
     "date": "2016-01-01",
     "distanceKm": 21.1,
@@ -2470,8 +2470,8 @@
     "category": "half"
   },
   {
-    "id": "evt-btr-roendanski-polumaraton-2018-01-01-2110",
-    "eventId": "evt-btr-roendanski-polumaraton-2018-01-01",
+    "id": "evt-btr-rodendanski-polumaraton-2018-01-01-2110",
+    "eventId": "evt-btr-rodendanski-polumaraton-2018-01-01",
     "name": "21.10 km",
     "date": "2018-01-01",
     "distanceKm": 21.1,
@@ -2480,8 +2480,8 @@
     "category": "half"
   },
   {
-    "id": "evt-btr-roendanski-polumaraton-2020-01-01-2110",
-    "eventId": "evt-btr-roendanski-polumaraton-2020-01-01",
+    "id": "evt-btr-rodendanski-polumaraton-2020-01-01-2110",
+    "eventId": "evt-btr-rodendanski-polumaraton-2020-01-01",
     "name": "21.10 km",
     "date": "2020-01-01",
     "distanceKm": 21.1,
@@ -4850,8 +4850,8 @@
     "category": "half"
   },
   {
-    "id": "evt-inija-trail-2019-03-03-1950",
-    "eventId": "evt-inija-trail-2019-03-03",
+    "id": "evt-indija-trail-2019-03-03-1950",
+    "eventId": "evt-indija-trail-2019-03-03",
     "name": "19.50 km",
     "date": "2019-03-03",
     "distanceKm": 19.5,
@@ -4860,8 +4860,8 @@
     "category": "short"
   },
   {
-    "id": "evt-inija-trail-2019-03-03-940",
-    "eventId": "evt-inija-trail-2019-03-03",
+    "id": "evt-indija-trail-2019-03-03-940",
+    "eventId": "evt-indija-trail-2019-03-03",
     "name": "9.40 km",
     "date": "2019-03-03",
     "distanceKm": 9.4,
@@ -4870,8 +4870,8 @@
     "category": "short"
   },
   {
-    "id": "evt-inija-trail-2020-03-01-1050",
-    "eventId": "evt-inija-trail-2020-03-01",
+    "id": "evt-indija-trail-2020-03-01-1050",
+    "eventId": "evt-indija-trail-2020-03-01",
     "name": "10.50 km",
     "date": "2020-03-01",
     "distanceKm": 10.5,
@@ -4880,8 +4880,8 @@
     "category": "short"
   },
   {
-    "id": "evt-inija-trail-2020-03-01-2100",
-    "eventId": "evt-inija-trail-2020-03-01",
+    "id": "evt-indija-trail-2020-03-01-2100",
+    "eventId": "evt-indija-trail-2020-03-01",
     "name": "21.00 km",
     "date": "2020-03-01",
     "distanceKm": 21.0,
@@ -4890,8 +4890,8 @@
     "category": "short"
   },
   {
-    "id": "evt-inija-trail-2021-03-14-2560",
-    "eventId": "evt-inija-trail-2021-03-14",
+    "id": "evt-indija-trail-2021-03-14-2560",
+    "eventId": "evt-indija-trail-2021-03-14",
     "name": "25.60 km",
     "date": "2021-03-14",
     "distanceKm": 25.6,
@@ -10080,8 +10080,8 @@
     "category": "marathon"
   },
   {
-    "id": "evt-ramska-tvrava-2019-09-28-1055",
-    "eventId": "evt-ramska-tvrava-2019-09-28",
+    "id": "evt-ramska-tvrdava-2019-09-28-1055",
+    "eventId": "evt-ramska-tvrdava-2019-09-28",
     "name": "10.55 km",
     "date": "2019-09-28",
     "distanceKm": 10.55,
@@ -10090,8 +10090,8 @@
     "category": "short"
   },
   {
-    "id": "evt-ramska-tvrava-2021-11-27-1055",
-    "eventId": "evt-ramska-tvrava-2021-11-27",
+    "id": "evt-ramska-tvrdava-2021-11-27-1055",
+    "eventId": "evt-ramska-tvrdava-2021-11-27",
     "name": "10.55 km",
     "date": "2021-11-27",
     "distanceKm": 10.55,
@@ -13420,8 +13420,8 @@
     "category": "short"
   },
   {
-    "id": "evt-trka-uz-beograanku-2017-04-30-055",
-    "eventId": "evt-trka-uz-beograanku-2017-04-30",
+    "id": "evt-trka-uz-beogradanku-2017-04-30-055",
+    "eventId": "evt-trka-uz-beogradanku-2017-04-30",
     "name": "0.55 km",
     "date": "2017-04-30",
     "distanceKm": 0.55,
@@ -13430,8 +13430,8 @@
     "category": "short"
   },
   {
-    "id": "evt-trka-uz-beograanku-2020-06-21-055",
-    "eventId": "evt-trka-uz-beograanku-2020-06-21",
+    "id": "evt-trka-uz-beogradanku-2020-06-21-055",
+    "eventId": "evt-trka-uz-beogradanku-2020-06-21",
     "name": "0.55 km",
     "date": "2020-06-21",
     "distanceKm": 0.55,
@@ -13530,8 +13530,8 @@
     "category": "half"
   },
   {
-    "id": "evt-tron-roendanski-polumaraton-2014-03-01-2110",
-    "eventId": "evt-tron-roendanski-polumaraton-2014-03-01",
+    "id": "evt-tron-rodendanski-polumaraton-2014-03-01-2110",
+    "eventId": "evt-tron-rodendanski-polumaraton-2014-03-01",
     "name": "21.10 km",
     "date": "2014-03-01",
     "distanceKm": 21.1,
@@ -13540,8 +13540,8 @@
     "category": "half"
   },
   {
-    "id": "evt-tron-roendanski-polumaraton-2015-03-01-2110",
-    "eventId": "evt-tron-roendanski-polumaraton-2015-03-01",
+    "id": "evt-tron-rodendanski-polumaraton-2015-03-01-2110",
+    "eventId": "evt-tron-rodendanski-polumaraton-2015-03-01",
     "name": "21.10 km",
     "date": "2015-03-01",
     "distanceKm": 21.1,
@@ -13550,8 +13550,8 @@
     "category": "half"
   },
   {
-    "id": "evt-tron-roendanski-polumaraton-2016-03-05-2110",
-    "eventId": "evt-tron-roendanski-polumaraton-2016-03-05",
+    "id": "evt-tron-rodendanski-polumaraton-2016-03-05-2110",
+    "eventId": "evt-tron-rodendanski-polumaraton-2016-03-05",
     "name": "21.10 km",
     "date": "2016-03-05",
     "distanceKm": 21.1,

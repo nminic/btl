@@ -69,8 +69,8 @@ async function eventAt(slug: string): Promise<BtlEvent> {
   )
 }
 
-/** And the other way round: the address of the event with that id. */
-async function eventAt2(id: string): Promise<BtlEvent> {
+/** And the other way round: the event carrying that id. */
+async function eventWithId(id: string): Promise<BtlEvent> {
   const events = await loadResource<BtlEvent[]>('events')
 
   return must(
@@ -622,7 +622,7 @@ describe('a comment a moderator lets out', () => {
     /* Its own event, not one picked in advance: what a widened merge would
        publish is a card on the event the item names, so an event chosen
        anywhere else is a screen the mistake never reaches. */
-    const slug = (await eventAt2(about.subjectId)).slug
+    const slug = (await eventWithId(about.subjectId)).slug
 
     /* Read after that event, so the comments are drawn at all: before the race
        the whole section is absent (EventComments.tsx), and "no card appeared"
@@ -667,10 +667,10 @@ describe('a comment a moderator lets out', () => {
     /* Deleting asks for a note since 06.08.2026, which may be left empty, so it
        is two presses rather than one. */
     await user.click(
-      within(await cardFor(sent.body)).getByRole('button', { name: /^Brisanje komentara: / }),
+      within(await cardFor(sent.body)).getByRole('button', { name: /^Obriši: / }),
     )
     await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
-    await router.navigate(`/sr/kalendar/${(await eventAt2(sent.subjectId)).slug}`)
+    await router.navigate(`/sr/kalendar/${(await eventWithId(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(false)
   })
@@ -693,7 +693,7 @@ describe('a comment a moderator lets out', () => {
        "approved". Read the other way round, or read as "decided", every waiting
        comment publishes itself, including the one in the fixture offering a
        discount for a referral link. */
-    await router.navigate(`/sr/kalendar/${(await eventAt2(sent.subjectId)).slug}`)
+    await router.navigate(`/sr/kalendar/${(await eventWithId(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(false)
 
@@ -706,7 +706,7 @@ describe('a comment a moderator lets out', () => {
     /* Approving is what publishes it. Until this it wrote a decision into the
        session and the event page went on showing what the file carried, so a
        moderator approved a comment and nothing appeared anywhere. */
-    await router.navigate(`/sr/kalendar/${(await eventAt2(sent.subjectId)).slug}`)
+    await router.navigate(`/sr/kalendar/${(await eventWithId(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(true)
   })

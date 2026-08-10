@@ -1,6 +1,8 @@
 import { screen, within } from '@testing-library/react'
 import type { ResourceName } from '../data/client'
+import { first } from '../test/at'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 /* A screen must wait only on the data it actually shows.
  *
@@ -182,6 +184,27 @@ describe('a screen waits only on the data it shows', () => {
     /* And the other control is there, so this is the deletion held back rather
        than the row being empty. */
     expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
+  })
+
+  it('holds back a change of date while the races of the event are on their way', async () => {
+    /* Accepting one moves the event and its races by the same number of days
+       (moveEvent). Until the races are here there is nothing to move them by,
+       and the event alone is the half-move the decision exists to make whole:
+       an event a week later than the races it is run with. */
+    restore = stallResource('races')
+    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+    const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+    const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
+
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
+    expect(cards.getAllByText(/Odluka čeka trke/).length).toBeGreaterThan(0)
+
+    /* Reachable and pressable, so the reason can be read; it simply does not
+       decide. */
+    await setupUser().click(approve)
+
+    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
   })
 
   /* The other half of the same rule: a screen must still fail on data it does

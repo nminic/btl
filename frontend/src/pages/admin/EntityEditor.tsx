@@ -92,7 +92,11 @@ export function EntityEditor({
      * have changed. */
     const text = {
       ...textFrom(form, values),
-      ...Object.fromEntries((entity.derived?.(values) ?? []).map((one) => [one.name, one.value])),
+      ...Object.fromEntries(
+        (
+          entity.derived?.(values, editing.mode === 'one' ? editing.record : undefined) ?? []
+        ).map((one) => [one.name, one.value]),
+      ),
     }
 
     if (editing.mode === 'new') {

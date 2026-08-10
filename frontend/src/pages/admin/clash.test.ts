@@ -1,9 +1,9 @@
-import { eventClash, eventSlug } from './entityForms'
+import { addressOfEvent, eventClash, eventSlug } from './entityForms'
 
 /**
  * Two events at one address.
  *
- * The address of an event is made of its name and the day it is run
+ * The address of an event is made of its name and the year it is run in
  * (`eventSlug`), and copying one keeps both until somebody changes the date. A
  * copy saved untouched is therefore a second record answering where the first
  * one answers, and everything that joins to an event by address then means both
@@ -19,7 +19,7 @@ describe('eventClash', () => {
     })
   })
 
-  it('lets the same name through on another day, which is what a copy is', () => {
+  it('lets the same name through in another year, which is what a copy is', () => {
     expect(eventClash({ name: 'Maraton maratona', date: '14/03/2027' }, taken)).toEqual({})
   })
 
@@ -31,6 +31,63 @@ describe('eventClash', () => {
     /* The form speaks dd/mm/gggg and the record stores gggg-mm-dd. Read without
        that in mind the computed address carried no date at all and no copy ever
        clashed with anything. */
+    expect(eventSlug('Maraton maratona', '14/03/2015')).toBe('maraton-maratona-2015')
+  })
+})
+
+describe('the address a save leaves an event at', () => {
+  const was = {
+    id: 'evt-gradska-liga-usce-2017-05-06',
+    name: 'Gradska liga - Ušće',
+    date: '2017-05-06',
+    /* Its address carries the month, because the same name was run twice that
+       year and the rule can only build the name and the year. The generated
+       data holds fifteen such pairs. */
+    slug: 'gradska-liga-usce-2017-05',
+    city: 'Kragujevac',
+  }
+
+  it('leaves an address the rule cannot build where nothing it is made of changed', () => {
+    /* The town corrected, the name and the day untouched. Recomputed, the
+       address would collapse onto the one its sibling of November answers at:
+       every result of it would come loose, and the sibling could never be saved
+       again, because the form would refuse the address as taken. */
+    expect(
+      addressOfEvent({ name: was.name, date: '06/05/2017', city: 'Niš' }, was),
+    ).toBe('gradska-liga-usce-2017-05')
+  })
+
+  it('follows the year where the year is what changed', () => {
+    expect(addressOfEvent({ name: was.name, date: '06/05/2018' }, was)).toBe(
+      'gradska-liga-usce-2018',
+    )
+  })
+
+  it('follows the name where the name is what changed', () => {
+    expect(addressOfEvent({ name: 'Gradska liga - Ada', date: '06/05/2017' }, was)).toBe(
+      'gradska-liga-ada-2017',
+    )
+  })
+
+  it('stays put when the day moves inside the year, which is the point of it', () => {
+    /* Owner, 10.08.2026: an event put off a week keeps its address, and with it
+       everything joined to it. */
+    expect(addressOfEvent({ name: was.name, date: '13/05/2017' }, was)).toBe(
+      'gradska-liga-usce-2017-05',
+    )
+  })
+
+  it('builds one from nothing where there is no record yet', () => {
+    expect(addressOfEvent({ name: 'Novi maraton', date: '01/06/2027' })).toBe(
+      'novi-maraton-2027',
+    )
+  })
+
+  it('reads a stored date as well as a typed one, which is what a copy hands over', () => {
+    /* The copy of an event hands over the shape a record keeps. Read as a form
+       value alone it produced an address with no year in it, which the rule can
+       never build and which the guard against a shared address cannot match. */
+    expect(eventSlug('Maraton maratona', '2015-03-14')).toBe('maraton-maratona-2015')
     expect(eventSlug('Maraton maratona', '14/03/2015')).toBe('maraton-maratona-2015')
   })
 })
