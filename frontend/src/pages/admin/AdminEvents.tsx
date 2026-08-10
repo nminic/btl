@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
+import { isoDate } from '../../forms/dateField'
 import { Resource } from '../../components/Resource'
 import {
   RESULTS,
@@ -15,15 +16,9 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import {
-  EVENTS,
-  RACES,
-  eventClash,
-  recordsOf,
-  type Editing,
-  type EntityDef,
-} from './entityForms'
+import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { EventRaces } from './EventRaces'
+import { moveEvent } from './moveEvent'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 import { useFilterParams } from '../../app/useFilterParams'
@@ -33,7 +28,7 @@ import { useFilterParams } from '../../app/useFilterParams'
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { remove } = useSession()
+  const { editRecord, remove } = useSession()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
   /** What was opened by pressing something on this screen. */
@@ -41,6 +36,23 @@ export function AdminEvents() {
   /** Which race of the open event is being edited, if any. Held here because
    *  the event's own form is put away while one is. */
   const [race, setRace] = useState<Editing | null>(null)
+  /**
+   * How many times the races have moved the event while its own form was open.
+   *
+   * The form is seeded once, when it is drawn (FormRenderer), and the races
+   * beside it may move the event: entering one on an earlier morning, or taking
+   * the first one away, makes that day the event's (owner, 10.08.2026). The form
+   * then holds the day the event used to be on, and saving it, even untouched,
+   * moved every race by the difference between the two: delete the first race of
+   * a two-day event, press Sačuvaj without touching anything, and the race that
+   * was left went back to the morning nothing runs on any more.
+   *
+   * So the form is drawn again from the record as it now is. Counted rather than
+   * keyed on the date itself, because the date also changes when the form is the
+   * thing that changed it, and there the form must stay where it is: it has just
+   * said "Sačuvano" and remounting would take that away.
+   */
+  const [movedByRaces, setMovedByRaces] = useState(0)
   const state = combinePair(useEvents(), useRaces())
   /* Read for what it is worth rather than waited for. No row here shows a
      result: they are read only to take them down with the event they belong to.
@@ -128,8 +140,13 @@ export function AdminEvents() {
               <>
                 {race === null && (
                   <EntityEditor
+                    /* Drawn again where the races have moved the event under it,
+                       so it is seeded from the day the event is on now. */
+                    seed={movedByRaces}
                     entity={EVENTS}
-                    editing={editing}
+                    editing={
+                      openEvent === undefined ? editing : { mode: 'one', record: openEvent }
+                    }
                     /* The date, and only where the address asked for a record. A
                        form that grabs the cursor is a form that has taken the page
                        away from whoever opened it, and the copy is the one case
@@ -148,10 +165,44 @@ export function AdminEvents() {
                           .filter(
                             (each) =>
                               each.id !==
-                              (editing.mode === 'one' ? String(editing.record[EVENTS.idField]) : ''),
+                              (editing.mode === 'one'
+                                ? String(editing.record[EVENTS.idField])
+                                : ''),
                           )
                           .map((each) => each.slug),
+                        /* The same record the editor was handed, so the address
+                           the clash is tested against is the address the save
+                           will write. Undefined where a new event is being
+                           entered, which is what says there is nothing to
+                           keep. */
+                        openEvent,
                       )
+                    }
+                    /* The races move with the event, by the same number of days
+                       (owner, 10.08.2026). That is what makes a copy of last
+                       season's event worth making: two races on the Saturday and
+                       one on the Sunday stay two and one after the date is
+                       moved, and a single race is corrected on its own form
+                       afterwards. An ordinary correction of a date moves them
+                       too, which is the same rule and the same expectation. */
+                    /* Nothing to move where the form is entering an event: it
+                       has no races yet, and no day to move them from. */
+                    alsoSave={
+                      openEvent === undefined
+                        ? undefined
+                        : (values) => {
+                            /* Off the list rather than off the form's own
+                               record: the list is what the overlay has since
+                               made of it, and the day being moved from is the
+                               day it is on now. */
+                            moveEvent(
+                              openEvent.id,
+                              openEvent.date,
+                              isoDate(String(values.date)),
+                              allRaces,
+                              editRecord,
+                            )
+                          }
                     }
                     onDone={() => {
                       setChosen(null)
@@ -175,6 +226,7 @@ export function AdminEvents() {
                     races={allRaces}
                     editing={race}
                     setEditing={setRace}
+                    onEventMoved={() => setMovedByRaces((many) => many + 1)}
                   />
                 )}
               </>
@@ -235,7 +287,7 @@ export function AdminEvents() {
                         <td>{formatShortDate(one.date, locale)}</td>
                         {/* Read here and changed on the form, unlike the town
                             beside it: the address an event answers at is made
-                            out of its name and its day (entityForms.ts), and a
+                            out of its name and its year (entityForms.ts), and a
                             cell writes one field and cannot put the address
                             right after it. Renamed in a cell, an event kept the
                             address of the name it used to have. */}
@@ -285,7 +337,9 @@ export function AdminEvents() {
                                one thing must not delete two different amounts of
                                it. */
                             alsoRemove={() => {
-                              for (const race of allRaces.filter((each) => each.eventId === one.id)) {
+                              for (const race of allRaces.filter(
+                                (each) => each.eventId === one.id,
+                              )) {
                                 remove(RACES.id, race.id)
                               }
 

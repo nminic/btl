@@ -280,6 +280,7 @@ function renderInbox(inbox: Message[]) {
     signOut: vi.fn(),
     submissions: [],
     submit: vi.fn(),
+    resubmit: vi.fn(),
     decide: vi.fn(),
     inbox,
     markRead: vi.fn(),

@@ -57,6 +57,24 @@ export function MyResults() {
                   {formatPoints(one.points, locale)} BTL points
                 </p>
                 {one.note !== '' && <p className="submissions__note">{one.note}</p>}
+
+                {/* And the way back in, on the one that was refused. A refusal
+                    is not the end of a result: the member is told why, corrects
+                    it and sends the same race again (owner, 06.08.2026). The
+                    name of the race is in the accessible name, because a list of
+                    six refusals is six buttons a screen reader cannot tell
+                    apart. */}
+                {one.status === 'rejected' && (
+                  <p className="submissions__again">
+                    <Link
+                      className="button button--secondary"
+                      aria-label={t('myResults.sendAgainNamed', { name: one.eventName })}
+                      to={`/${locale}/rezultat/novi?ponovo=${one.id}`}
+                    >
+                      {t('myResults.sendAgain')}
+                    </Link>
+                  </p>
+                )}
               </li>
             ))}
           </ul>

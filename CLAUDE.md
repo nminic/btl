@@ -1,5 +1,11 @@
 # BTL Portal — pravila projekta
 
+> **PRVO PRAVILO, iznad svih ostalih:** poruka vlasniku ne sme da se završi bez
+> posla pokrenutog u toj istoj poruci. Ako je poslednje što je u poruci napisano
+> najava onoga što sledi, poruka je pogrešna: posao se pokreće pa se piše da je
+> počet. Provera pre slanja: da li poslednji red opisuje nešto što je već
+> urađeno? Ako ne, poruka se ne šalje.
+
 Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot, Maven wrapper), `frontend/` (React + TypeScript, Vite), `docker-compose.yml` (PostgreSQL 18).
 
 ## Komunikacija

@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import type { PendingItem } from '../../data/types'
 import { useResource, type ResourceState } from '../../data/useResource'
-import type { Decision, Decisions } from '../../session/context'
+import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
-/* What is waiting in the seven queues that are read from a file.
+/* What is waiting in the six queues that are read from a file.
  *
- * Results are the eighth and are not here: a competitor sends those in during
+ * Results are the seventh and are not here: a competitor sends those in during
  * the visit, so they live in the session.
  *
  * Payments were not here either, and are now. A membership waiting to be
@@ -31,7 +31,7 @@ import { useSession } from '../../session/useSession'
  *
  * A competitor may propose a team, and a proposal is not a different kind of
  * thing from the teams already in the queue. Merged here rather than at each of
- * the eight screens, so the counters in the navigation, the queue itself and the
+ * the seven screens, so the counters in the navigation, the queue itself and the
  * door that decides whether a section is empty all count the same items. One of
  * the three forgetting to merge is a moderator who is told there is nothing
  * waiting on a screen that is about to show them something.
@@ -58,42 +58,9 @@ export function waitingIn(
   return items.filter((one) => one.queue === queue && decisions[one.id] === undefined)
 }
 
-/**
- * Everything in one queue that has been decided during this visit, each item
- * beside the decision that settled it.
- *
- * Both halves at once, because they are one fact. An item is on this list
- * precisely because a decision was written down for it, and a screen that is
- * handed only the item has to go back to the decisions for every row and prove
- * all over again that it finds one, on a question this walk has already
- * answered. The screens showed the status and the reason by reaching back in,
- * and that reach could return nothing, on a row that exists only because it
- * cannot.
- */
-export function settledWith(
-  items: PendingItem[],
-  decisions: Decisions,
-  queue: string,
-): { item: PendingItem; decision: Decision }[] {
-  /* `queue` is a string and not a QueueId on purpose, so that this stays the
-     exact complement of `waitingIn` above it: the two partition the same items
-     and must always be able to be called the same way. */
-  const settled: { item: PendingItem; decision: Decision }[] = []
-
-  for (const item of items) {
-    const decision = decisions[item.id]
-
-    if (decision !== undefined && item.queue === queue) {
-      settled.push({ item, decision })
-    }
-  }
-
-  return settled
-}
-
 /* A decision about a membership fee used to be remembered under a key of its own,
  * "pay-000012", because the queue was read off the member list and a member
  * number and the id of an item from this file shared one record: 000012 must
  * never have meant two things. A registration now carries an id from the same
  * file as everything else, so there is nothing left to keep apart and the key is
- * the id, on all seven queues alike. */
+ * the id, on all six queues alike. */

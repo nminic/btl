@@ -1,6 +1,8 @@
 import { screen, within } from '@testing-library/react'
 import type { ResourceName } from '../data/client'
+import { first } from '../test/at'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 
 /* A screen must wait only on the data it actually shows.
  *
@@ -59,7 +61,7 @@ describe('a part of a screen waits without covering the page', () => {
 
   it('keeps the event readable while its races are still on their way', async () => {
     restore = stallResource('races')
-    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     expect(await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })).toBeVisible()
     // A sheet is a `.loader` that is not the inline one. There must be none.
@@ -68,7 +70,7 @@ describe('a part of a screen waits without covering the page', () => {
 
   it('names each part it is waiting for rather than saying the same thing twice', async () => {
     restore = stallResource('results')
-    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })
     const said = screen.getAllByRole('status').map((one) => one.textContent)
@@ -183,6 +185,86 @@ describe('a screen waits only on the data it shows', () => {
        than the row being empty. */
     expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
   })
+
+  it('holds back a change of date while the races of the event are on their way', async () => {
+    /* Accepting one moves the event and its races by the same number of days
+       (moveEvent). Until the races are here there is nothing to move them by,
+       and the event alone is the half-move the decision exists to make whole:
+       an event a week later than the races it is run with. */
+    restore = stallResource('races')
+    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+    const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+    const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
+
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
+    /* Said once for the queue rather than on every card. */
+    expect(screen.getByText(/Odluka čeka događaj/)).toBeVisible()
+    /* And the same hold on the one decision that settles the whole queue: taken
+       without the races it is forty half-moves rather than one. */
+    expect(screen.getByRole('button', { name: 'Odobri sve' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    /* Reachable and pressable, so the reason can be read; it simply does not
+       decide. */
+    await setupUser().click(approve)
+
+    /* Answered yes, so what holds the sweep back is the hold and not the
+       question: unanswered, jsdom's confirm is a no and the sweep would stop
+       there whatever the code did. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      await setupUser().click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
+      expect(screen.queryByText(/Rešeno je/)).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('holds back a change of date while the events themselves are still coming', async () => {
+    /* The other half of the same hold. Without the events the day the event is
+       moved from is the day the report claims, and a second report about the
+       same change then moves the races again from a day the event has already
+       left: two reports of one change, and the races a week past the event they
+       are run at. The queue holds both reports of the Beogradski maraton, which
+       is what a reported change is made of. */
+    restore = stallResource('events')
+
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+    const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+    const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
+
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(/Odluka čeka događaj/)).toBeVisible()
+
+    await user.click(approve)
+
+    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
+  })
+
+  it.each([['races'], ['events']] as [ResourceName][])(
+    'says %s failed rather than that it is waiting for it',
+    async (name) => {
+      /* Two different things, and `dataOr` answers the same for both: told to
+         wait for a file that will never come, a moderator who holds the right is
+         refused it for good and reads a sentence that is not true. */
+      restore = breakResource(name)
+      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+      await screen.findByRole('list', { name: /Čeka proveru/ })
+
+      expect(screen.getByText(/se ne mogu učitati/)).toBeVisible()
+      expect(screen.queryByText(/Odluka čeka/)).toBeNull()
+    },
+  )
+
 
   /* The other half of the same rule: a screen must still fail on data it does
    * show, so the cases above cannot be satisfied by swallowing every error. */

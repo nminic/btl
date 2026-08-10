@@ -59,6 +59,16 @@ export type Race = {
   id: string
   eventId: string
   name: string
+  /**
+   * The day this race is run on, which is not always the day of its event.
+   *
+   * One event may run over more than one morning: two races on the Saturday and
+   * one on the Sunday are one event with three races and not two events (owner,
+   * 10.08.2026). The event's own date is the day it begins, which is the day of
+   * its first race, and that is the date its address is made from; a race that
+   * runs later carries the day it runs on.
+   */
+  date: string
   distanceKm: number
   ascentM: number
   descentM: number
@@ -207,8 +217,7 @@ export const PENDING_QUEUE_IDS = [
   'payments',
   'leagues',
   'teams',
-  'bios',
-  'photos',
+  'profiles',
   'comments',
   'schedule',
 ] as const
@@ -275,9 +284,30 @@ export const NO_RATING = Object.freeze<EventRating>({
   ambience: 0,
 })
 
+/* What sorts of thing a queue may hold. The empty one is every queue that holds
+   only one sort, which is all of them but the racing profile. */
+export const ITEM_KINDS = ['', 'bio', 'photo'] as const
+
+export type ItemKind = (typeof ITEM_KINDS)[number]
+
 export type PendingItem = {
   id: string
   queue: PendingQueueId
+  /**
+   * Which sort of thing it is, where one queue holds more than one.
+   *
+   * The racing profile alone: a biography and a picture are the same member's
+   * profile and are looked at together (owner, 06.08.2026), but the decision
+   * over them is not the same one. The text is edited and published; the
+   * picture is accepted or handed back with an instruction. Empty everywhere
+   * else, because every other queue holds one sort of thing.
+   *
+   * A closed list and not an open string, exactly as the queues are: a value
+   * outside it would be quietly treated as a picture, so a biography would be
+   * offered the button that hands it back. The empty one is every queue that
+   * holds a single sort of thing, and the racing profile never carries it.
+   */
+  kind: ItemKind
   /** The day it arrived in the queue. */
   date: string
   /**

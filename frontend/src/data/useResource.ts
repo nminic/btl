@@ -90,7 +90,7 @@ function atHand<T>(name: ResourceName): ResourceState<T> {
  *
  * For the places that must not wait and must not turn into an error message: the
  * count beside Verification in the header sits above every screen on the portal,
- * and the list of queues has eight rows of which any one file feeds two at most.
+ * and the list of queues has seven rows of which any one file feeds two at most.
  * A number one short is better than a header that holds up the page, or a whole
  * screen refusing to draw over a file none of its rows come from. Everywhere
  * else <Resource> is the answer, because a screen showing half its data as if it

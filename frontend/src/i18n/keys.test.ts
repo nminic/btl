@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
 import { CATEGORIES } from '../data/derive'
-import { EVENT_STATUSES, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
+import { EVENT_STATUSES, ITEM_KINDS, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
 import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
 import { LOCALES } from './config'
 import { ROLES } from '../roles/context'
@@ -136,10 +136,19 @@ describe('the names the portal composes out of a list', () => {
       each: [...ENTITY_FORMS, RACES].filter((one) => one.fixed !== true).map((one) => one.id),
     },
     { of: 'admin.form.edit', each: [...ENTITY_FORMS, RACES].map((one) => one.id) },
-    /* The queues drawn by PendingQueue, which is what asks for this name. The
-       results and the payments have screens written for them, and neither shows a
-       card with text on it. */
-    { of: 'verification.body', each: PENDING_QUEUE_IDS.filter((id) => id !== 'payments') },
+    /* What the text on a card is called, asked for by PendingQueue. Not one per
+       queue: the results and the payments have screens written for them and
+       neither shows a card with text, and the racing profile holds two sorts of
+       thing and asks by the sort (`bodyLabelFor`). */
+    {
+      of: 'verification.body',
+      each: [
+        ...PENDING_QUEUE_IDS.filter((id) => id !== 'payments' && id !== 'profiles'),
+        /* And one per sort of thing the racing profile holds, off the same list
+           the screen reads (data/types.ts). */
+        ...ITEM_KINDS.filter((kind) => kind !== ''),
+      ],
+    },
     { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },
     { of: 'calendar.status', each: EVENT_STATUSES },
     { of: 'profile.lengthsShort', each: ['all', ...CATEGORIES] },
@@ -174,8 +183,8 @@ describe('the names the portal composes out of a list', () => {
 })
 
 describe('the words the search engine is given', () => {
-  it('names each of the eight queues, within the same 160 characters', () => {
-    /* The eight queues share one address pattern, so their words are composed
+  it('names each of the seven queues, within the same 160 characters', () => {
+    /* The seven queues share one address pattern, so their words are composed
        rather than written out (QueueMeta). A search engine cuts a description at
        the same place whether it was composed or not. */
     const composed = QUEUES.map((queue) => ({

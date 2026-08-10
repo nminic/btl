@@ -153,17 +153,20 @@ describe('Calendar', () => {
 
   it('sends a day with more on it than fits to a page of its own', async () => {
     const user = setupUser()
-    // 1 June 2019 holds six events, one more than a day shows.
-    renderAt('/sr/kalendar?mesec=2019-06')
+    /* 3 April 2027 holds six events, one more than a day shows. The generated
+       data puts them there on purpose: such a day used to appear by accident,
+       out of multi-day events written as one row per day, and those are one
+       event since 10.08.2026. */
+    renderAt('/sr/kalendar?mesec=2027-04')
 
-    await screen.findByRole('heading', { level: 2, name: 'jun 2019.' })
+    await screen.findByRole('heading', { level: 2, name: 'april 2027.' })
     await user.click(screen.getByRole('link', { name: /Još 1/ }))
 
     /* A page and not a panel: a day is a thing somebody sends to somebody else,
        and the panel used to draw itself under the whole grid, which on a
        telephone is under everything. */
     expect(
-      await screen.findByRole('heading', { level: 1, name: /1\. jun 2019\./ }),
+      await screen.findByRole('heading', { level: 1, name: /3\. april 2027\./ }),
     ).toBeVisible()
     expect(within(screen.getByRole('list', { name: '' })).getAllByRole('listitem')).toHaveLength(6)
   })

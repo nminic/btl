@@ -20,6 +20,10 @@ import { useI18n } from '../../i18n/useI18n'
 export function SendBack({
   placeholderKey = 'review.reasonPlaceholder',
   subject,
+  optional = false,
+  confirmKey = 'review.confirmSendBack',
+  labelKey = 'review.reason',
+  aboutKey = 'review.sendBackNamed',
   onConfirm,
   onCancel,
 }: {
@@ -37,12 +41,33 @@ export function SendBack({
    */
   placeholderKey?: string
   /**
-   * What is being sent back, named. Handed in where the box stands away from
-   * the thing it decides, which is any screen that is a table: a reason box
-   * under twenty rows says nothing about whose membership is being refused.
-   * Left out where the box sits inside the card it belongs to.
+   * What is being decided, named.
+   *
+   * On a screen that is a table the box stands away from the row it belongs to,
+   * and a reason box under twenty rows says nothing about whose membership is
+   * being refused. Inside a card it is not needed for that, and it is asked for
+   * all the same: the name of the box is where the decision says which one it
+   * is, and a deletion whose box is called "Odbij" is the one word the queue of
+   * comments must not use (queues.ts).
    */
-  subject?: string
+  subject: string
+  /**
+   * Whether the box may be confirmed empty.
+   *
+   * One case, and it is not a refusal: a deleted comment (owner, 06.08.2026).
+   * The note there is not a reason given to anybody, since nothing at all is
+   * sent to the member, but a trace left for whoever reads the queue next:
+   * why this was taken down. A trace nobody is obliged to leave is a trace that
+   * gets left, and one that is obliged is three dots typed to get past the
+   * button.
+   */
+  optional?: boolean
+  /** The words on the confirming button, where the decision is not a refusal. */
+  confirmKey?: string
+  /** The words over the field, where what is asked for is not a reason. */
+  labelKey?: string
+  /** What the box is called, where the decision it takes is not a refusal. */
+  aboutKey?: string
   onConfirm: (reason: string) => void
   onCancel: () => void
 }) {
@@ -59,14 +84,14 @@ export function SendBack({
     field.current?.focus()
   }, [])
 
-  const about = subject === undefined ? undefined : t('review.sendBackNamed', { name: subject })
+  const about = t(aboutKey, { name: subject })
 
   return (
-    <div className="review__reason" role="group" aria-label={about ?? t('review.sendBack')}>
-      {about !== undefined && <p className="review__about">{about}</p>}
+    <div className="review__reason" role="group" aria-label={about}>
+      <p className="review__about">{about}</p>
 
       <label className="rankings__field rankings__field--wide">
-        <span>{t('review.reason')}</span>
+        <span>{t(labelKey)}</span>
         <input
           ref={field}
           type="text"
@@ -79,10 +104,10 @@ export function SendBack({
         <button
           type="button"
           className="button button--primary"
-          disabled={note.trim() === ''}
+          disabled={!optional && note.trim() === ''}
           onClick={() => onConfirm(note.trim())}
         >
-          {t('review.confirmSendBack')}
+          {t(confirmKey)}
         </button>
         <button type="button" className="button button--secondary" onClick={onCancel}>
           {t('review.cancel')}

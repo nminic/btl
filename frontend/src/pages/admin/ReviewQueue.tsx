@@ -35,7 +35,6 @@ export function ReviewQueue() {
   const [swept, setSwept] = useState<number | null>(null)
 
   const waiting = submissions.filter((one) => one.status === 'pending')
-  const decided = submissions.filter((one) => one.status !== 'pending')
 
   return (
     <div className="member">
@@ -218,36 +217,6 @@ export function ReviewQueue() {
         </div>
       )}
 
-      {decided.length > 0 && (
-        <>
-          <h2 className="profile__section">{t('review.decided')}</h2>
-          <div className="table-scroll">
-            <table className="table">
-              <caption className="visually-hidden">{t('review.decided')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t('profile.columns.event')}</th>
-                  <th scope="col">{t('competitors.columns.member')}</th>
-                  <th scope="col">{t('admin.state')}</th>
-                  <th scope="col">{t('review.explanation')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {decided.map((one) => (
-                  <tr key={one.id}>
-                    <td>{one.eventName}</td>
-                    <td>{one.memberNumber}</td>
-                    <td>
-                      <span className={`tag tag--${one.status}`}>{t(`status.${one.status}`)}</span>
-                    </td>
-                    <td>{one.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
     </div>
   )
 }

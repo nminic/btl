@@ -54,6 +54,16 @@ export function renderAt(
   /** The day the portal is read as, for the screens that change with it. Left
    *  alone, a test runs on the real one, exactly as the portal does. */
   today: string | null = null,
+  /**
+   * Something drawn beside the portal, inside the same session.
+   *
+   * For what the session holds and no screen shows. The queues used to draw a
+   * table of what had been decided, and tests read the decision off it; the
+   * table is gone (owner, 06.08.2026), because what is settled is not work
+   * standing before a moderator. What was decided is still the thing to hold, so
+   * it is read where it lives rather than where it used to be drawn.
+   */
+  probe: ReactNode = null,
 ) {
   const router = createMemoryRouter(routeObjects, { initialEntries: [path] })
 
@@ -63,6 +73,7 @@ export function renderAt(
         <RoleProvider initialRole={role} initialModerator={role === 'moderator' ? moderator : null}>
           <SessionProvider initialMemberNumber={memberNumber}>
             <RouterProvider router={router} />
+            {probe}
           </SessionProvider>
         </RoleProvider>
       </ClockProvider>,

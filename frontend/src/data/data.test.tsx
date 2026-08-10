@@ -3,9 +3,11 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { setupUser } from '../test/user'
 import { first } from '../test/at'
+import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
-import type { Competitor, EventComment, PendingItem } from './types'
+import { ITEM_KINDS } from './types'
+import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
   combineFour,
@@ -49,6 +51,77 @@ function Wrappers() {
 
   return <span>spremno: {all.filter((state) => state.status === 'ready').length}</span>
 }
+
+/**
+ * The address of every event, against the rule that builds one.
+ *
+ * The two came apart and nothing said so: the file held addresses carrying a
+ * month, which the rule cannot build, and the administration rewrote one of
+ * them on any save at all. Fifteen pairs of events share a name inside one year
+ * in the history, so those addresses are the file's business and are allowed to
+ * carry more; what is not allowed is an address the rule would build differently
+ * out of the same name and year.
+ */
+describe('what a waiting item says it is', () => {
+  it('carries a kind the queue that draws it knows', async () => {
+    /* `kind` is a closed list (types.ts) and the file is read as one without
+       being checked, so a value outside it would be drawn under the literal
+       `verification.body.` and a biography would be offered the button that
+       hands it back to the member. */
+    const items = await loadResource<PendingItem[]>('verification')
+    const strange = items.filter((one) => !ITEM_KINDS.some((kind) => kind === one.kind))
+
+    expect(items.length).toBeGreaterThan(10)
+    expect(strange.map((one) => `${one.id}: ${one.kind}`)).toEqual([])
+  })
+
+  it('says which sort it is on the one queue that holds two, and on no other', async () => {
+    const items = await loadResource<PendingItem[]>('verification')
+    const named = items.filter((one) => one.kind !== '')
+
+    expect(named.length).toBeGreaterThan(0)
+    expect(named.filter((one) => one.queue !== 'profiles')).toEqual([])
+    expect(items.filter((one) => one.queue === 'profiles' && one.kind === '')).toEqual([])
+  })
+})
+
+describe('the address of an event', () => {
+  it('is the one the rule builds, or that one with more on it', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    /* The rule's answer, or the rule's answer and more after a dash: "more"
+       must not run into the next address, so gradska-liga-usce-2017-05 counts
+       and gradska-liga-usce-201705 does not. */
+    const wrong = events.filter((one) => {
+      const rule = eventSlug(one.name, one.date)
+
+      return one.slug !== rule && !one.slug.startsWith(`${rule}-`)
+    })
+
+    expect(events.length).toBeGreaterThan(1000)
+    expect(wrong.map((one) => `${one.slug} (${one.name}, ${one.date})`)).toEqual([])
+  })
+
+  it('answers for one event only', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const twice = events
+      .map((one) => one.slug)
+      .filter((slug, at, all) => all.indexOf(slug) !== at)
+
+    expect(twice).toEqual([])
+  })
+
+  it('is what every result of it is joined by', async () => {
+    /* A result names its event by address (EventDetail), so an address in the
+       results that no event answers at is a race whose results are on nobody's
+       page. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const results = await loadResource<Result[]>('results')
+    const addresses = new Set(events.map((one) => one.slug))
+
+    expect(results.length).toBeGreaterThan(1000)
+    expect([...new Set(results.map((one) => one.eventSlug))].filter((slug) => !addresses.has(slug))).toEqual([])
+  })
+})
 
 describe('loadResource', () => {
   it('resolves a known resource', async () => {
@@ -359,6 +432,7 @@ describe('commentFrom', () => {
     const waiting: PendingItem = {
       id: 'ver-kom-9',
       queue: 'comments',
+      kind: '',
       date: '2026-08-06',
       memberNumber: '000007',
       who: 'Ime Prezime',

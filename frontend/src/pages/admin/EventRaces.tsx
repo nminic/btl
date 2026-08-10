@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
-import { formatNumber } from '../../i18n/format'
+import { isoDate } from '../../forms/dateField'
+import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useSession } from '../../session/useSession'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { racesOf, type Editing } from './entityForms'
@@ -24,6 +26,7 @@ export function EventRaces({
   races,
   editing,
   setEditing,
+  onEventMoved,
 }: {
   event: BtlEvent
   races: Race[]
@@ -32,8 +35,12 @@ export function EventRaces({
    *  buttons on one screen is two questions asked at once. */
   editing: Editing | null
   setEditing: (editing: Editing | null) => void
+  /** Said when a race has moved the event, so the event's own form is drawn
+   *  again from the day it is on now (AdminEvents). */
+  onEventMoved: () => void
 }) {
   const { locale, t } = useI18n()
+  const { editRecord } = useSession()
   /* Held across renders. Every other screen hands the renderer a definition made
      once at module level; this is the only one that builds its own, since the
      form is the races' form with the event taken out of it and put back as a
@@ -41,10 +48,15 @@ export function EventRaces({
      Nothing depends on that identity today, and the memo is here so that nothing
      has to: a definition rebuilt on every keystroke is the sort of prop a memo
      downstream is one day written against. */
-  const entity = useMemo(() => racesOf(event.id, event.name), [event.id, event.name])
+  const entity = useMemo(
+    () => racesOf(event.id, event.name, event.date),
+    [event.id, event.name, event.date],
+  )
   const mine = races
     .filter((race) => race.eventId === event.id)
-    .sort((left, right) => left.distanceKm - right.distanceKm)
+    /* By the day first and the distance inside it, which is the order they are
+       run in: an event over two mornings reads as two mornings. */
+    .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
 
   if (editing !== null) {
     return (
@@ -53,7 +65,33 @@ export function EventRaces({
           {t('admin.racesOf', { event: event.name })}
         </h2>
 
-        <EntityEditor entity={entity} editing={editing} onDone={() => setEditing(null)} />
+        <EntityEditor
+          entity={entity}
+          editing={editing}
+          /* The event follows its first race (owner, 10.08.2026): its date is
+             the day it begins, so a race entered or moved to an earlier day
+             makes that day the event's. Written here rather than in the race's
+             own form, because it is a fact about the event and the form knows
+             only the race.
+
+             The other way round is not done here: a race moved later leaves the
+             event where it is, because some other race is still the first one,
+             and where it was the only race the event moves with it. */
+          alsoSave={(values) => {
+            const day = isoDate(String(values.date))
+            const others =
+              editing.mode === 'new'
+                ? mine
+                : mine.filter((race) => race.id !== String(editing.record[entity.idField]))
+            const first = [...others.map((race) => race.date), day].sort()[0]
+
+            if (first !== undefined && first !== event.date) {
+              editRecord(event.id, { date: first })
+              onEventMoved()
+            }
+          }}
+          onDone={() => setEditing(null)}
+        />
       </section>
     )
   }
@@ -89,6 +127,10 @@ export function EventRaces({
             <thead>
               <tr>
                 <th scope="col">{t('admin.raceName')}</th>
+                {/* The day, because an event may run over more than one (owner,
+                    10.08.2026). Beside the name rather than at the end: it is
+                    the thing that differs between two races of one weekend. */}
+                <th scope="col">{t('admin.field.raceDate')}</th>
                 <th scope="col">{t('event.distance')}</th>
                 <th scope="col">{t('event.ascent')}</th>
                 <th scope="col">{t('event.descent')}</th>
@@ -100,6 +142,7 @@ export function EventRaces({
               {mine.map((race) => (
                 <tr key={race.id}>
                   <td>{race.name}</td>
+                  <td>{formatShortDate(race.date, locale)}</td>
                   {/* Written the way this language writes a number, like every
                       other table on the portal: read raw, a climb of 7120 metres
                       is printed as four digits and a distance of 42.2 km with a
@@ -114,6 +157,22 @@ export function EventRaces({
                       record={race}
                       name={race.name}
                       onOpen={() => setEditing({ mode: 'one', record: race })}
+                      /* And the event follows what is left, the same way it
+                         follows a race entered or moved: taking the first
+                         morning away moves the event onto the next one, and an
+                         event dated on a morning nothing runs on is the rule
+                         broken from the other end (owner, 10.08.2026). */
+                      alsoRemove={() => {
+                        const left = mine
+                          .filter((each) => each.id !== race.id)
+                          .map((each) => each.date)
+                          .sort()[0]
+
+                        if (left !== undefined && left !== event.date) {
+                          editRecord(event.id, { date: left })
+                          onEventMoved()
+                        }
+                      }}
                     />
                   </td>
                 </tr>

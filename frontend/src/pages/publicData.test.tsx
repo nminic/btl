@@ -62,17 +62,17 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
   ['/sr/kalendar', 'Kalendar', 'Kalendar'],
   ['/sr/kalendar/dan/2027-05-08', 'Trke, 8. maj 2027.', 'Trke, 8. maj 2027.'],
   [
-    '/sr/kalendar/fruskogorski-maraton-2010-05-08',
+    '/sr/kalendar/fruskogorski-maraton-2010',
     'Fruškogorski maraton',
     'Fruškogorski maraton',
   ],
   [
-    '/sr/kalendar/fruskogorski-maraton-2010-05-08/ocena',
+    '/sr/kalendar/fruskogorski-maraton-2010/ocena',
     'Za ovo treba prijava',
     'Fruškogorski maraton',
   ],
   [
-    '/sr/kalendar/fruskogorski-maraton-2010-05-08/prijava',
+    '/sr/kalendar/fruskogorski-maraton-2010/prijava',
     'Za ovo treba prijava',
     'Prijava rezultata',
   ],
@@ -284,7 +284,7 @@ describe('what a browser downloads outside administration', () => {
   it('waits long enough to see what a screen reads second', async () => {
     const asked = watch()
 
-    renderAt('/sr/kalendar/fruskogorski-maraton-2010-05-08')
+    renderAt('/sr/kalendar/fruskogorski-maraton-2010')
 
     await quiet(asked)
 

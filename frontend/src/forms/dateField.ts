@@ -80,3 +80,37 @@ export function maskDate(text: string): string {
 
   return parts.filter((part) => part !== '').join('/')
 }
+
+/**
+ * How many days lie between two stored dates, or nought where either is not one.
+ *
+ * Both ends are built in UTC, which has no change of clocks, so the difference
+ * between them is whole days and the division is exact. Built from local dates
+ * it is not: a week across the last Sunday in March is six days and twenty three
+ * hours. Rounded, that still answers seven, which is why this cannot be held by
+ * a test and is written here instead: what it would cost is the arithmetic that
+ * follows, where a difference of hours is no longer a difference of days.
+ */
+export function daysBetween(from: string, to: string): number {
+  if (!ISO.test(from) || !ISO.test(to)) {
+    return 0
+  }
+
+  const start = Date.UTC(Number(from.slice(0, 4)), Number(from.slice(5, 7)) - 1, Number(from.slice(8)))
+  const end = Date.UTC(Number(to.slice(0, 4)), Number(to.slice(5, 7)) - 1, Number(to.slice(8)))
+
+  return Math.round((end - start) / 86400000)
+}
+
+/** The same date moved by that many days, or unchanged where it is not a date. */
+export function shiftDate(iso: string, days: number): string {
+  if (!ISO.test(iso)) {
+    return iso
+  }
+
+  const at = new Date(
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8)) + days),
+  )
+
+  return at.toISOString().slice(0, 10)
+}

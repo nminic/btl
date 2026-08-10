@@ -65,14 +65,23 @@ const CYRILLIC: Record<string, string> = {
 export function slugify(heading: string): string {
   return heading
     .toLowerCase()
+    /* Cyrillic first, and whole. Every letter of it is spelt out by the table,
+       and some of them carry an accent: normalised first, ѓ comes apart into г
+       and a mark, the mark is dropped and the table then spells it "g" rather
+       than "gj", so Ѓорче and Горче would be one address. */
+    .replace(/[Ѐ-ӿ]/g, (letter) => CYRILLIC[letter] ?? '')
     .replace(/[čć]/g, 'c')
     .replace(/š/g, 's')
     .replace(/ž/g, 'z')
     .replace(/đ/g, 'd')
-    /* Nothing for a letter the table does not carry: it is Cyrillic, since the
-       pattern matched it, and an address it cannot spell is an address without
-       it. */
-    .replace(/[Ѐ-ӿ]/g, (letter) => CYRILLIC[letter] ?? '')
+    /* And the accents off every other Latin letter that has them. The league is
+       run across the region and its calendar carries Hungarian, Slovenian and
+       Romanian names: without this "Bartina Teljesítménytúra" became
+       "bartina-teljes-tm-nyt-ra", because a letter the pattern below does not
+       know becomes a dash. The four above are done by hand, since ž and đ do not
+       come apart into a letter and a mark. */
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }

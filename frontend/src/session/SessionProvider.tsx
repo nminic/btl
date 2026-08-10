@@ -70,6 +70,30 @@ export function SessionProvider({
     ])
   }, [])
 
+  /**
+   * The same result, corrected and sent in again (owner, 06.08.2026).
+   *
+   * The one that was refused, not a second one beside it. A refusal is not the
+   * end of a result: the member is told why, corrects it and sends the same race
+   * again, and it goes back into the queue it came from. Written as one item
+   * because it is one race: two rows, one refused and one waiting, would have
+   * the moderator reading the same morning twice and deciding it twice.
+   *
+   * The reason goes with it. It was the answer to the version that has just been
+   * replaced, and left standing it would sit under a result nobody has looked at
+   * yet, saying it was refused.
+   */
+  const resubmit = useCallback(
+    (id: string, corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber'>) => {
+      setSubmissions((current) =>
+        current.map((one) =>
+          one.id === id ? { ...one, ...corrected, status: 'pending', note: '' } : one,
+        ),
+      )
+    },
+    [],
+  )
+
   /* An id of its own shape, so nothing can collide with the ids in the file the
      rest of the queue is read from, and so a decision written against it is
      plainly a decision about something this visit put there. */
@@ -166,6 +190,7 @@ export function SessionProvider({
       signOut: () => setMemberNumber(null),
       submissions,
       submit,
+      resubmit,
       decide,
       inbox,
       markRead,
@@ -192,6 +217,7 @@ export function SessionProvider({
       memberNumber,
       submissions,
       submit,
+      resubmit,
       decide,
       inbox,
       markRead,

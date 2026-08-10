@@ -11,7 +11,7 @@ import { useMay } from './rights'
  * The same question the door asks, asked the same way (needs.ts), and asked
  * before a screen is named rather than after it is opened. A moderator is not to
  * be aware that there are actions nobody gave him (owner, 30.07.2026): naming
- * eight queues to somebody who may work in one is telling him about seven doors
+ * seven queues to somebody who may work in one is telling him about six doors
  * he cannot open, and every one of them is an invitation to ask what is behind
  * it.
  *

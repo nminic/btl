@@ -33,6 +33,7 @@ const event = (id: string, date: string): BtlEvent => ({
 const race = (id: string, eventId: string, name: string, distanceKm = 10): Race => ({
   id,
   eventId,
+  date: '2027-04-03',
   name,
   distanceKm,
   ascentM: 0,

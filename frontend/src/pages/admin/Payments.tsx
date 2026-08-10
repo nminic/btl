@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { countryName } from '../../data/countryName'
 import { combinePair, useCompetitors } from '../../data/useResource'
-import type { MembershipBasis } from '../../data/types'
+import type { MembershipBasis, PendingItem } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
-import { usePending, waitingIn, settledWith } from './pending'
+import { usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { SendBack } from './SendBack'
@@ -139,11 +139,28 @@ export function Payments() {
       <Resource state={state}>
         {([items, competitors]) => {
           const waiting = waitingIn(items, decisions, queue.id)
-          /* Each settled registration with the decision that settled it, so the
-             row below shows what was decided instead of going back for it
-             (queues.ts). */
-          const settled = settledWith(items, decisions, queue.id)
+          /**
+           * The numbers this visit has handed out, with the names they went to.
+           *
+           * Said because nothing else says it. Recording a fee hands out a member
+           * number, and that number is the first thing the administrator passes
+           * on to whoever paid (PDL P8); it used to stand in the table of settled
+           * items, and that table is gone (owner, 06.08.2026).
+           *
+           * Read off the decisions rather than remembered beside them, so it is
+           * still there after the moderator has been to another queue and come
+           * back: the decision is what the session holds, and a list held in the
+           * screen goes with the screen.
+           */
+          const given: { who: string; memberNumber: string }[] = []
 
+          for (const one of items) {
+            const decision = decisions[one.id]
+
+            if (one.queue === queue.id && decision !== undefined && decision.memberNumber !== '') {
+              given.push({ who: one.who, memberNumber: decision.memberNumber })
+            }
+          }
           /**
            * Activation, and the reason box shut behind it.
            *
@@ -159,14 +176,11 @@ export function Payments() {
            * silently replaced the first and the ground of the membership went with
            * it.
            */
-          const activate = (id: string, basis: MembershipBasis) => {
-            settle(id, {
-              status: 'approved',
-              note: '',
-              basis,
-              memberNumber: handOutMemberNumber(competitors, session),
-            })
-            setOpen((current) => (current?.key === id ? null : current))
+          const activate = (item: PendingItem, basis: MembershipBasis) => {
+            const memberNumber = handOutMemberNumber(competitors, session)
+
+            settle(item.id, { status: 'approved', note: '', basis, memberNumber })
+            setOpen((current) => (current?.key === item.id ? null : current))
           }
 
           /**
@@ -181,13 +195,11 @@ export function Payments() {
            * module that is allowed to do it (memberNumbers.ts, PDL P8), which is
            * where it now is.
            */
-          const activateAll = (ids: string[]) => {
-            for (const { id, memberNumber } of handOutMemberNumbersFor(
-              competitors,
-              session,
-              ids,
-            )) {
-              settle(id, { status: 'approved', note: '', basis: 'payment', memberNumber })
+          const activateAll = (items: PendingItem[]) => {
+            const handed = handOutMemberNumbersFor(competitors, session, items)
+
+            for (const { item, memberNumber } of handed) {
+              settle(item.id, { status: 'approved', note: '', basis: 'payment', memberNumber })
             }
 
             /* Every one of them has been decided, so nothing the box could be
@@ -223,7 +235,7 @@ export function Payments() {
                         return
                       }
 
-                      activateAll(waiting.map((one) => one.id))
+                      activateAll(waiting)
                       setSwept(waiting.length)
                     }}
                   >
@@ -232,6 +244,31 @@ export function Payments() {
                 )}
 
                 <Swept count={swept} />
+              </div>
+
+              {/* Drawn whether or not anything has been given, so the region is
+                  on the page before it has anything to say: one added together
+                  with its text is the kind a screen reader misses (Swept). */}
+              <div
+                className="member__panel"
+                role="status"
+                aria-label={t('verification.numbersGiven')}
+              >
+                <h2 className="profile__section">{t('verification.numbersGiven')}</h2>
+
+                {given.length === 0 ? (
+                  <p className="profile__empty">{t('verification.noNumbersYet')}</p>
+                ) : (
+                  <ul className="pending__given">
+                    {given.map((one) => (
+                      <li key={one.memberNumber}>
+                        {one.who}
+                        {' · '}
+                        <span className="table__member-number">{one.memberNumber}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {waiting.length === 0 ? (
@@ -266,14 +303,14 @@ export function Payments() {
                               <button
                                 type="button"
                                 className="button button--primary"
-                                onClick={() => activate(one.id, 'payment')}
+                                onClick={() => activate(one, 'payment')}
                               >
                                 {t('verification.activatePayment')}
                               </button>
                               <button
                                 type="button"
                                 className="button button--secondary"
-                                onClick={() => activate(one.id, 'honorary')}
+                                onClick={() => activate(one, 'honorary')}
                               >
                                 {t('verification.activateHonorary')}
                               </button>
@@ -315,62 +352,6 @@ export function Payments() {
                 />
               )}
 
-              {settled.length > 0 && (
-                <>
-                  <h2 className="profile__section">{t('review.decided')}</h2>
-                  <div className="table-scroll">
-                    <table className="table">
-                      <caption className="visually-hidden">{t('review.decided')}</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">{t('competitors.columns.member')}</th>
-                          {/* The number the activation handed out. It is the first
-                              thing the administrator passes on to the member, so
-                              it is a column and not a detail. */}
-                          <th scope="col">{t('admin.field.memberNumber')}</th>
-                          <th scope="col">{t('admin.state')}</th>
-                          <th scope="col">{t('admin.basis')}</th>
-                          <th scope="col">{t('review.explanation')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {settled.map(({ item, decision }) => (
-                          <tr key={item.id}>
-                            <td>
-                              {item.who}
-                              <span className="pending__country">{item.email}</span>
-                            </td>
-                            <td>
-                              {decision.memberNumber === '' ? (
-                                ''
-                              ) : (
-                                <span className="table__member-number">
-                                  {decision.memberNumber}
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <span className={`tag tag--${decision.status}`}>
-                                {t(`status.${decision.status}`)}
-                              </span>
-                            </td>
-                            <td>
-                              {decision.basis === '' ? (
-                                ''
-                              ) : (
-                                <span className={`tag tag--${decision.basis}`}>
-                                  {t(`admin.basisValue.${decision.basis}`)}
-                                </span>
-                              )}
-                            </td>
-                            <td>{decision.note}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
             </>
           )
         }}

@@ -33,8 +33,8 @@ vi.mock('../../data/useResource', async (importOriginal) => ({
   useResults: (): ResourceState<Result[]> => results,
 }))
 
-const RAN = 'fruskogorski-maraton-2010-05-08'
-const AHEAD = 'podgoricka-desetka-2027-01-30'
+const RAN = 'fruskogorski-maraton-2010'
+const AHEAD = 'podgoricka-desetka-2027'
 const BEFORE = '2026-12-31'
 
 /** The two parts, by what each says while it waits and what it is called. */

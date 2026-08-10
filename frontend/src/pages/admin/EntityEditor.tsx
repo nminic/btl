@@ -25,11 +25,37 @@ export function EntityEditor({
   options = {},
   taken = [],
   also,
+  alsoSave,
+  seed = 0,
   openAt,
   onDone,
 }: {
   entity: EntityDef
   editing: Editing
+  /**
+   * What else a save changes, run with the values it is being saved with.
+   *
+   * The races of an event: moving an event moves them with it, by the same
+   * number of days (owner, 10.08.2026). Handed in rather than worked out here,
+   * because what belongs to what is a fact about the screen and not about the
+   * editor.
+   */
+  alsoSave?: (values: FormValues) => void
+  /**
+   * A number that changes when the record has been changed by something else,
+   * so the form is drawn again from what it now says.
+   *
+   * The races of an event move the event: a race entered on an earlier morning,
+   * or the first one deleted, makes that day the event's (owner, 10.08.2026).
+   * The form is seeded once, so it went on holding the day the event used to be
+   * on, and saving it moved every race by the difference.
+   *
+   * On the form and not on this whole component, because the confirmation must
+   * survive: a moderator who has just saved and then deletes a race would
+   * otherwise watch "Sačuvano" disappear and the empty form come back, with the
+   * focus falling to the page.
+   */
+  seed?: number
   /** Choices for selects whose list is data: the events a race can belong to,
    *  the members who can run a team. */
   options?: Record<string, FieldOption[]>
@@ -82,7 +108,11 @@ export function EntityEditor({
      * have changed. */
     const text = {
       ...textFrom(form, values),
-      ...Object.fromEntries((entity.derived?.(values) ?? []).map((one) => [one.name, one.value])),
+      ...Object.fromEntries(
+        (
+          entity.derived?.(values, editing.mode === 'one' ? editing.record : undefined) ?? []
+        ).map((one) => [one.name, one.value]),
+      ),
     }
 
     if (editing.mode === 'new') {
@@ -99,6 +129,11 @@ export function EntityEditor({
     } else {
       editRecord(String(editing.record[entity.idField]), text)
     }
+
+    /* On both, because what else a save changes does not depend on whether the
+       record is new: a race entered on an earlier day than its event moves the
+       event exactly as a race changed onto one does (EventRaces). */
+    alsoSave?.(values)
 
     setSaved(values)
   }
@@ -129,8 +164,13 @@ export function EntityEditor({
                 <dd>{t(shownValue(field, value, options))}</dd>
               </div>
             ))}
-            {/* What was saved without being asked for, read off the rest of it. */}
-            {(entity.derived?.(saved) ?? []).map((one) => (
+            {/* What was saved without being asked for, read off the rest of it,
+                and off the record it was saved over where there is one: the
+                address of an event that carried more than the rule builds is
+                the address it still carries. */}
+            {(
+              entity.derived?.(saved, editing.mode === 'one' ? editing.record : undefined) ?? []
+            ).map((one) => (
               <div key={one.name}>
                 <dt>{t(one.labelKey)}</dt>
                 <dd>{t(one.shownKey)}</dd>
@@ -160,13 +200,20 @@ export function EntityEditor({
       </button>
 
       <FormRenderer
+        key={seed}
         form={form}
         title={t(
           editing.mode === 'new'
             ? `admin.form.new.${entity.id}`
             : `admin.form.edit.${entity.id}`,
         )}
-        initial={editing.mode === 'new' ? undefined : valuesFor(form, editing.record)}
+        initial={editing.mode === 'new' ? entity.start : valuesFor(form, editing.record)}
+        /* So the address the form shows is the address the save will leave, and
+           not the one the rule would build out of the fields: an event whose
+           address carries more than the rule can build keeps it, and an
+           administrator reading the form before they save was reading an
+           address that would 404 (entityForms.ts, `addressOfEvent`). */
+        was={editing.mode === 'one' ? editing.record : undefined}
         options={options}
         check={(values) => ({ ...takenIdentity(entity, values, others), ...also?.(values) })}
         derived={entity.derived}

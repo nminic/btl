@@ -142,15 +142,14 @@ const DETAILS: RouteObject[] = [
   { path: 'liga/:slug/rezultati', element: <LeagueDetail part="results" /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
-  /* The eight verification queues (PDL P28a). The addresses live in QUEUES,
+  /* The seven verification queues (PDL P28a). The addresses live in QUEUES,
      which is also what the list of queues links with, so a queue cannot end up
      with a row that points nowhere. */
   { path: QUEUE.results.path, element: <ReviewQueue /> },
   { path: QUEUE.payments.path, element: <Payments /> },
   { path: QUEUE.leagues.path, element: <PendingQueue queue={QUEUE.leagues} /> },
   { path: QUEUE.teams.path, element: <PendingQueue queue={QUEUE.teams} /> },
-  { path: QUEUE.bios.path, element: <PendingQueue queue={QUEUE.bios} /> },
-  { path: QUEUE.photos.path, element: <PendingQueue queue={QUEUE.photos} /> },
+  { path: QUEUE.profiles.path, element: <PendingQueue queue={QUEUE.profiles} /> },
   { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
   { path: QUEUE.schedule.path, element: <PendingQueue queue={QUEUE.schedule} /> },
 ].map((route) => ({ ...route, element: guarded(route.path, route.element) }))

@@ -376,9 +376,9 @@ describe('a proposal a moderator accepts', () => {
       'predlog u redu čekanja',
     )
 
-    await user.click(within(mine).getByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(within(mine).getByRole('button', { name: 'Odbij' }))
     await user.type(screen.getByLabelText(/Razlog/), 'Već postoji tim tog imena u Čačku.')
-    await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
     await router.navigate('/sr/administracija/timovi')
     const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
@@ -701,19 +701,25 @@ describe('what a moderator may do before accepting a proposal', () => {
     expect(within(card(/Zaječar/)).getByRole('status')).toHaveTextContent(/moraju biti popunjeni/)
   })
 
-  it('shows the name it was decided under in the table of settled items', async () => {
+  it('makes the team under the name it was corrected to, not the one that arrived', async () => {
+    /* The queue used to draw a table of what it had settled and this was read
+       there; that table is gone (owner, 06.08.2026). The team itself is the
+       better place in any case: what the moderator corrected is what the league
+       now has, and the table was only a report of it. */
     const user = setupUser()
-    await open()
+    const { router } = await open()
 
     const name = within(card(/Timočka/)).getByLabelText('Naziv tima')
     await user.clear(name)
     await user.type(name, 'Timočka družina')
     await user.click(within(card(/Timočka družina/)).getByRole('button', { name: 'Odobri' }))
 
-    const decided = within(await screen.findByRole('table', { name: 'Rešeno' }))
+    await router.navigate('/sr/administracija/timovi')
 
-    expect(decided.getByText('Timočka družina')).toBeVisible()
-    expect(decided.queryByText('Timočka trkačka družina')).toBeNull()
+    const teams = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(teams.getByText('Timočka družina')).toBeVisible()
+    expect(teams.queryByText('Timočka trkačka družina')).toBeNull()
   })
 
   it('gives two teams approved one after the other two identities', async () => {

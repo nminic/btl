@@ -1456,7 +1456,7 @@ describe('the row a screen opens with', () => {
        anything in it: the event's head became the shared row on 06.08.2026, and
        nothing held that it had (goldBand.test.ts says only that the old grid is
        gone, which stays true whatever replaces it). */
-    ['/sr/kalendar/fruskogorski-maraton-2010-05-08', 'an event'],
+    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event'],
     ['/sr/takmicari', 'the competitors'],
     ['/sr/timovi', 'the teams'],
     ['/sr/top-liste', 'the top boards'],
@@ -1501,10 +1501,10 @@ describe('the row a screen opens with', () => {
  * deleted, so it is held here rather than believed. */
 describe('the head of an event with nothing to offer', () => {
   for (const [name, role, member, address] of [
-    ['a visitor', 'visitor', null, '/sr/kalendar/fruskogorski-maraton-2010-05-08'],
+    ['a visitor', 'visitor', null, '/sr/kalendar/fruskogorski-maraton-2010'],
     /* A member on a race nobody has run: signed in, so the early return cannot
        be reached by being nobody, and nothing to report or rate. */
-    ['a member before the race', 'competitor', '000007', '/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16'],
+    ['a member before the race', 'competitor', '000007', '/sr/kalendar/sidski-novogodisnji-maraton-2027'],
   ] as const) {
     it(`draws no box for ${name}`, async () => {
       /* Read on a fixed day. On the real clock the second case says the
@@ -1571,15 +1571,28 @@ describe('the row of whoever is signed in', () => {
       results.find((one) => one.memberNumber === ME && one.date < '2027-01-01'),
       'a result of his',
     )
+    /* Through the race, because the address of an event is its name and the
+       year since 10.08.2026 and the id of a race is built from the id of its
+       event, which carries the whole day. */
+    const races = await loadResource<{ id: string; eventId: string }[]>('races')
     const events = await loadResource<{ id: string; slug: string }[]>('events')
+    const race = must(
+      races.find((one) => one.id === ran.raceId),
+      'the race it was run at',
+    )
     const event = must(
-      events.find((one) => ran.raceId.startsWith(`evt-${one.slug}`)),
+      events.find((one) => one.id === race.eventId),
       'the event it was run at',
     )
 
     renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME)
 
-    const rows = await screen.findAllByRole('row')
+    /* The table of results by name, not the first table that appears: the races
+       of the event are drawn before the results arrive, and a wait for any row
+       at all was over as soon as they were. */
+    const rows = within(await screen.findByRole('table', { name: 'Rezultati članova' }))
+      .getAllByRole('row')
+      .slice(1)
 
     expect(marked(rows)).not.toHaveLength(0)
   })
@@ -1611,7 +1624,7 @@ describe('the row of whoever is signed in', () => {
     for (const [path, said] of [
       ['/sr/tabela?sezona=2019', 'vaš red'],
       ['/sr/top-liste?sezona=2015', 'vaš red'],
-      ['/sr/kalendar/beogradski-maraton-2019-04-14', 'vaš red'],
+      ['/sr/kalendar/beogradski-maraton-2019', 'vaš red'],
       ['/sr/timovi', 'vaš tim'],
     ] as const) {
       cleanup()

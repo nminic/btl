@@ -134,7 +134,7 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: 'rezultat/novi', seoKey: 'newResult' },
   /* One entry for every queue under verification, because they are all the same
    * kind of screen and the queues themselves are defined in QUEUES, next to the
-   * verification screen. A ninth queue added there gets a name from here on the
+   * verification screen. An eighth queue added there gets a name from here on the
    * day it is added, instead of being called "Ove strane nema" until somebody
    * notices. */
   { path: 'administracija/verifikacija/:queue', seoKey: 'verificationQueue' },

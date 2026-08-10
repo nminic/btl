@@ -182,6 +182,12 @@ export type SessionValue = {
 
   submissions: Submission[]
   submit: (submission: Omit<Submission, 'id' | 'status' | 'note'>) => void
+  /** The same result, corrected and sent in again after a refusal (owner,
+   *  06.08.2026). One item and not a second beside it: it is one race. */
+  resubmit: (
+    id: string,
+    corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber'>,
+  ) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
   /** Everything written to whoever is signed in, plus everything written to the

@@ -19,7 +19,7 @@ import { ReportResult } from './ReportResult'
  * portal knows: they are on the race.
  */
 
-const EVENT = 'maraton-maratona-2015-03-14'
+const EVENT = 'maraton-maratona-2015'
 const REPORT = `/sr/kalendar/${EVENT}/prijava`
 
 describe('the way to report a result', () => {
@@ -105,7 +105,7 @@ describe('an event with no races on it', () => {
     render(
       <ClockProvider simulatedDay="2027-12-28">
         <I18nProvider locale="sr">
-          <MemoryRouter initialEntries={['/sr/kalendar/resolution-run-2027-12-27/prijava']}>
+          <MemoryRouter initialEntries={['/sr/kalendar/resolution-run-2027/prijava']}>
             <SessionProvider initialMemberNumber="000007">
               <Given act={(session) => session.remove('races', 'evt-resolution-run-2027-12-27-550')}>
                 <Routes>
@@ -205,6 +205,7 @@ describe('which race a reported result is scored against', () => {
   const race = (id: string): Race => ({
     id,
     eventId: 'e1',
+    date: '2027-04-03',
     name: id,
     distanceKm: 10,
     ascentM: 0,

@@ -118,7 +118,7 @@
 }
 
 /* Beside the numbers, because a number that is quietly short is worse than an
-   error: eight noughts read as work already done. */
+   error: seven noughts read as work already done. */
 .adminsection__alarm {
   margin: var(--space-10) 0 0;
   padding: var(--space-8) var(--space-10);

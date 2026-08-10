@@ -5,6 +5,7 @@ import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
+import { Decided } from '../test/decided'
 import { at, first, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -48,6 +49,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       note: '',
     })),
     submit: vi.fn(),
+    resubmit: vi.fn(),
     decide: vi.fn(),
     inbox: [],
     markRead: vi.fn(),
@@ -683,10 +685,10 @@ describe('the queue of results', () => {
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
     const { user, session } = openWith(['pending'])
 
-    await user.click(screen.getByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
 
-    const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
-    const reason = screen.getByLabelText('Razlog vraćanja')
+    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
+    const reason = screen.getByLabelText('Razlog odbijanja')
 
     await user.type(reason, '   ')
     expect(confirm).toBeDisabled()
@@ -755,12 +757,12 @@ describe('the queue of results', () => {
     try {
       const { user } = openWith(['pending', 'pending'])
 
-      await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
-      expect(screen.getByLabelText('Razlog vraćanja')).toBeInTheDocument()
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      expect(screen.getByLabelText('Razlog odbijanja')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
     } finally {
       confirm.mockRestore()
     }
@@ -783,15 +785,15 @@ describe('the queue of results', () => {
   it('shuts the reason box when the same result is approved from its row', async () => {
     const { user } = openWith(['pending'])
 
-    await user.click(screen.getByRole('button', { name: 'Vrati na doradu' }))
-    expect(screen.getByLabelText('Razlog vraćanja')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
+    expect(screen.getByLabelText('Razlog odbijanja')).toBeInTheDocument()
 
     /* The box stands below the table, so it used to survive the decision taken by
        the buttons in the row: confirming it afterwards refused a result that had
        just been approved, without a word. */
     await user.click(screen.getByRole('button', { name: 'Odobri' }))
 
-    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
   })
 })
 
@@ -1010,10 +1012,63 @@ describe('verification', () => {
       expect(document.title).toContain('Uplate i aktivacija članova (administracija)'),
     )
 
+    /* Moved to a queue that has something in it: an empty queue is not in the
+       navigation any more (owner, 06.08.2026), and the results are empty until
+       somebody sends one in during the visit. */
     const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
-    await user.click(nav.getByRole('link', { name: /Rezultati/ }))
+    await user.click(nav.getByRole('link', { name: /Komentari/ }))
 
-    await waitFor(() => expect(document.title).toContain('Rezultati (administracija)'))
+    await waitFor(() => expect(document.title).toContain('Komentari (administracija)'))
+  })
+
+  it('leaves an empty queue out of the navigation, and keeps the one being worked in', async () => {
+    /* Owner, 06.08.2026. A name that leads to "nothing is waiting" is a step
+       taken for nothing, and a moderator reads this list to find work rather
+       than to count doors. The results are the empty one until somebody sends a
+       result in during the visit. */
+    renderAt(`/sr/${QUEUE.comments.path}`, 'moderator')
+
+    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+    expect(nav.getByRole('link', { name: /Komentari/ })).toBeVisible()
+    expect(nav.queryByRole('link', { name: /Rezultati/ })).toBeNull()
+  })
+
+  it('draws every queue where the moderator has nothing waiting anywhere', async () => {
+    /* Somebody with no work this morning, not somebody to be shown a section
+       with no way out of it: the landing draws nothing of its own, so an empty
+       navigation beside it is an empty screen. */
+    const served = globalThis.fetch
+    vi.stubGlobal('fetch', async () => new Response('[]', { status: 200 }))
+
+    try {
+      renderAt('/sr/administracija', 'moderator')
+
+      const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+      expect(nav.getAllByRole('link').length).toBeGreaterThan(1)
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
+  it('keeps the queue in view even after the last thing in it is decided', async () => {
+    /* Otherwise the entry disappears from under the moderator at the moment of
+       the last decision, and they are left standing on a screen the navigation
+       beside them says is not there. */
+    const user = setupUser()
+    renderAt(`/sr/${QUEUE.leagues.path}`, 'moderator')
+
+    await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
+
+    const nav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+    while (screen.queryAllByRole('button', { name: 'Odobri' }).length > 0) {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+    }
+
+    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+    expect(nav().getByRole('link', { name: /Predložene lige/ })).toBeVisible()
   })
 
   it('says nothing beside Verification while nothing is waiting', async () => {
@@ -1042,11 +1097,19 @@ describe('verification', () => {
 describe('the queue of memberships waiting to be activated', () => {
   const openPayments = async () => {
     const user = setupUser()
-    renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
+    renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, undefined, null, <Decided />)
     await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
 
     return user
   }
+
+  /* What the session was told, which is where a decision lives now: the queue
+     draws what is waiting and nothing else since 06.08.2026. Every line is one
+     decision, written as id, state, reason, ground, member number. */
+  const decidedLines = () =>
+    within(screen.getByRole('list', { name: 'session decisions' }))
+      .queryAllByRole('listitem')
+      .map((one) => String(one.textContent))
 
   it('holds everyone who opened an account and has not paid yet', async () => {
     await openPayments()
@@ -1083,12 +1146,13 @@ describe('the queue of memberships waiting to be activated', () => {
     /* Both grounds exist because the fortnight before registration opens is
        spent entering earlier competitors, and their 2027 fee is waived (PDL P8).
        The ground is a fact about money and never leaves administration. */
-    const decided = screen.getByRole('table', { name: 'Rešeno' })
-    expect(within(decided).getByText('Uplata')).toBeVisible()
-    expect(within(decided).getByText('Počasno')).toBeVisible()
+    const lines = decidedLines()
+
+    expect(lines.filter((line) => line.includes('| payment |'))).toHaveLength(1)
+    expect(lines.filter((line) => line.includes('| honorary |'))).toHaveLength(1)
   })
 
-  it('shows the number it handed out, first free and one per activation', async () => {
+  it('shows the number it handed out on screen, beside who it went to', async () => {
     const user = await openPayments()
 
     /* The generated members hold 000001 to 000032, so the next free one is
@@ -1099,66 +1163,108 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Počasno članstvo' })))
 
-    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
-    expect(decided.getByText('000033')).toBeVisible()
-    expect(decided.getByText('000034')).toBeVisible()
+    /* On the screen and not only in the session: a member number is the first
+       thing the administrator passes on to whoever paid (PDL P8), and the table
+       of settled items that used to carry it is gone (owner, 06.08.2026). */
+    const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
+    const lines_shown = said.getAllByRole('listitem').map((one) => String(one.textContent))
+
+    /* Each number beside the name it went to: a list of numbers with nobody
+       against them is a list the administrator has to match up from memory. */
+    expect(lines_shown.filter((line) => /000033/.test(line) && /\p{L}/u.test(line))).toHaveLength(1)
+    expect(lines_shown.filter((line) => /000034/.test(line) && /\p{L}/u.test(line))).toHaveLength(1)
+
+    const lines = decidedLines()
+
+    expect(lines.some((line) => line.endsWith('000033'))).toBe(true)
+    expect(lines.some((line) => line.endsWith('000034'))).toBe(true)
+  })
+
+  it('has the region for the numbers before there is a number to put in it', async () => {
+    /* A live region added to the page together with its text is the kind a
+       screen reader misses, which is the rule the sweep line beside it keeps
+       (Swept). So it is drawn empty and says so. */
+    await openPayments()
+
+    const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
+
+    expect(said.getByText('Još nijedan broj nije dodeljen na ovom ekranu.')).toBeVisible()
+    expect(said.queryAllByRole('listitem')).toEqual([])
+  })
+
+  it('still says the numbers after the moderator has been somewhere else', async () => {
+    /* Held in the session and not in the screen: a number given is a number the
+       administrator writes to whoever paid, and a walk to another queue and back
+       used to take it away. */
+    const user = setupUser()
+    const { router } = renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
+
+    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
+
+    await router.navigate(`/sr/${QUEUE.comments.path}`)
+    await screen.findByRole('heading', { level: 1, name: 'Komentari' })
+    await router.navigate(`/sr/${QUEUE.payments.path}`)
+
+    const said = within(
+      await screen.findByRole('status', { name: 'Dodeljeni članski brojevi' }),
+    )
+
+    expect(said.getByText('000033')).toBeVisible()
   })
 
   it('hands out no number to a membership it sends back', async () => {
     const user = await openPayments()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Uplata nije vidljiva na izvodu.')
-    await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije vidljiva na izvodu.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
     /* A refusal leaves the registration waiting for a fee, so a number given
        here would be one nobody could ever use, and the next activation would
        have to skip it for nothing. */
-    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
-    expect(decided.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
+    expect(decidedLines().filter((line) => /\d{6}$/.test(line))).toEqual([])
 
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
+    expect(decidedLines().some((line) => line.endsWith('000033'))).toBe(true)
   })
 
   it('will not send a membership back without a reason', async () => {
     const user = await openPayments()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
-    const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
+    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
     expect(confirm).toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Uplata nije vidljiva na izvodu.')
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije vidljiva na izvodu.')
     await user.click(confirm)
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
-    expect(
-      within(screen.getByRole('table', { name: 'Rešeno' })).getByText(
-        'Uplata nije vidljiva na izvodu.',
-      ),
-    ).toBeVisible()
+    expect(decidedLines().some((line) => line.includes('Uplata nije vidljiva na izvodu.'))).toBe(
+      true,
+    )
   })
 
   it('does not take spaces for a reason', async () => {
     const user = await openPayments()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
-    const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
+    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
     /* Three spaces are not a reason. The rule is one rule on all seven queues,
        and it is the rule the forms already use (src/forms/validate.ts). */
-    await user.type(screen.getByLabelText('Razlog vraćanja'), '   ')
+    await user.type(screen.getByLabelText('Razlog odbijanja'), '   ')
     expect(confirm).toBeDisabled()
 
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Izvod ne pokazuje uplatu.   ')
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Izvod ne pokazuje uplatu.   ')
     await user.click(confirm)
 
     // And what is written down has no spaces hanging off it either.
-    expect(
-      within(screen.getByRole('table', { name: 'Rešeno' })).getByText('Izvod ne pokazuje uplatu.'),
-    ).toBeVisible()
+    expect(decidedLines().some((line) => line.includes('| Izvod ne pokazuje uplatu. |'))).toBe(
+      true,
+    )
   })
 
   it('says whose membership is being refused, and forgets it once it is settled', async () => {
@@ -1175,17 +1281,17 @@ describe('the queue of memberships waiting to be activated', () => {
       }),
     )
 
-    await user.click(row.getByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(row.getByRole('button', { name: 'Odbij' }))
 
     /* The box hangs below the table, so on a list of twenty there is nothing on
        screen that says whose membership it decides unless it says so itself. The
        name is what it says, because a member number is exactly what a row here
        does not have yet (PDL P8, 30.07.2026). */
-    const box = screen.getByRole('group', { name: /Vraćanje na doradu/ })
-    expect(box).toHaveAccessibleName('Vraćanje na doradu: Miodrag Stanković')
+    const box = screen.getByRole('group', { name: /Odbijanje/ })
+    expect(box).toHaveAccessibleName('Odbijanje: Miodrag Stanković')
     expect(within(box).getByText(/Miodrag Stanković/)).toBeVisible()
     // And the field it opens on has the focus, not the document body.
-    expect(screen.getByLabelText('Razlog vraćanja')).toHaveFocus()
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveFocus()
 
     /* The row is decided by the buttons beside it while the box is open. Before,
        the box stayed open over a member who was already active, and confirming it
@@ -1193,20 +1299,21 @@ describe('the queue of memberships waiting to be activated', () => {
        membership went with it. */
     await user.click(row.getByRole('button', { name: 'Evidentiraj uplatu' }))
 
-    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
-    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
-    expect(decided.getByText('Odobreno')).toBeVisible()
-    expect(decided.getByText('Uplata')).toBeVisible()
-    expect(decided.queryByText('Vraćeno')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
+    const lines = decidedLines()
+
+    expect(lines.some((line) => line.includes('| approved |'))).toBe(true)
+    expect(lines.some((line) => line.includes('| payment |'))).toBe(true)
+    expect(lines.filter((line) => line.includes('| rejected |'))).toEqual([])
   })
 
   it('closes the reason without deciding anything', async () => {
     const user = await openPayments()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
-    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
   })
 
@@ -1224,7 +1331,6 @@ describe('the queue of memberships waiting to be activated', () => {
        the check for uniqueness used to catch before the field left the form (PDL
        P8, 30.07.2026; ADL A4d). */
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    expect(within(screen.getByRole('table', { name: 'Rešeno' })).getByText('000033')).toBeVisible()
 
     // The same visit, walked the way an administrator walks it: no reload.
     await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
@@ -1269,16 +1375,14 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
 
     expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
-    expect(
-      within(screen.getByRole('table', { name: 'Rešeno' })).getAllByRole('row'),
-    ).toHaveLength(4)
+    expect(decidedLines()).toHaveLength(3)
   })
 })
 
 describe('the six queues read from the file', () => {
   const open = async (queue: PendingQueueId, title: string) => {
     const user = setupUser()
-    renderAt(`/sr/${QUEUE[queue].path}`, 'moderator')
+    renderAt(`/sr/${QUEUE[queue].path}`, 'moderator', null, undefined, null, <Decided />)
     await screen.findByRole('heading', { level: 1, name: title })
 
     return user
@@ -1295,7 +1399,6 @@ describe('the six queues read from the file', () => {
   it.each([
     ['leagues', 'Predložene lige', 2],
     ['teams', 'Novi timovi', 2],
-    ['photos', 'Profilne slike', 2],
     ['schedule', 'Prijave promene termina', 3],
   ] as [PendingQueueId, string, number][])(
     'has something waiting in %s, and decides it both ways',
@@ -1308,11 +1411,11 @@ describe('the six queues read from the file', () => {
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
       ).toBeVisible()
       expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(waiting)
-      expect(screen.getAllByRole('button', { name: 'Vrati na doradu' })).toHaveLength(waiting)
+      expect(screen.getAllByRole('button', { name: 'Odbij' })).toHaveLength(waiting)
 
       // The rule on these queues: no reason, no sending back.
-      await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
-      expect(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })).toBeDisabled()
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeDisabled()
       expect(
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
       ).toBeVisible()
@@ -1326,42 +1429,334 @@ describe('the six queues read from the file', () => {
     },
   )
 
-  /* Comments go their own way (PDL P22, 30.07.2026): accepted or deleted, in one
-     click, with no reason asked for and nothing at all sent to the member. The
-     word is half the decision. "Odbijeno" reads as a refused comment being kept
-     somewhere it could be brought back from, and there is no such place. */
-  it('deletes a comment in one click, and never asks why', async () => {
+  /* Comments go their own way (PDL P22, 30.07.2026): accepted or deleted, and
+     nothing at all is sent to the member either way. The word is half the
+     decision. "Odbijeno" reads as a refused comment being kept somewhere it
+     could be brought back from, and there is no such place.
+
+     Deleting asks for a note since 06.08.2026, and the note may be left empty:
+     it is a trace for whoever reads the queue next, not a reason given to
+     anybody. A trace nobody is obliged to leave is a trace that gets left; one
+     that is obliged is three dots typed to get past a button. */
+  it('moves the event when a reported change of date is approved', async () => {
+    /* Owner, 06.08.2026. Approving used to do nothing beyond taking the card off
+       the screen: a moderator who agreed that a race had been put off left the
+       calendar saying the old day, and the next visitor read the wrong date from
+       a report the league had already accepted. */
+    const user = setupUser()
+    const { router } = renderAt(`/sr/${QUEUE.schedule.path}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
+
+    const card = within(
+      must(
+        within(screen.getByRole('list', { name: /Čeka proveru/ }))
+          .getAllByRole('listitem')
+          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
+        'a reported change of date',
+      ),
+    )
+
+    expect(card.getByText('10. 4. 2027.')).toBeVisible()
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    /* Where the administration reads it. */
+    await router.navigate('/sr/administracija/dogadjaji')
+    await user.type(await screen.findByLabelText(/Pretraga/), 'Beogradski maraton')
+
+    const rows = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    expect(rows.getByText('10. 4. 2027.')).toBeVisible()
+    expect(rows.queryByText('3. 4. 2027.')).toBeNull()
+
+    /* And the races with it, by the same number of days. This event runs over
+       two mornings, so approving the report used to leave both races a week
+       before the event they belong to, and the page a visitor reads said so. */
+    const listed = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        /* The 2027 one: the name has been run every year since 2010 and the
+           list holds every year of it. */
+        .find(
+          (one) =>
+            /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? ''),
+        ),
+      'the event that was moved',
+    )
+
+    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+
+    expect(races).toEqual(['10. 4. 2027.', '11. 4. 2027.'])
+  })
+
+  it('folds a card open and shut, one at a time', async () => {
+    /* On a telephone a card is a screenful, so five of them mean scrolling
+       through four to reach the third (owner, 06.08.2026). The control is drawn
+       at every width in the markup and hidden by the stylesheet from 820px up,
+       exactly as the sectors of the navigation are, so what is held here is the
+       folding itself. */
+    const user = await open('comments', 'Komentari')
+
+    const cards = within(waitingList()).getAllByRole('listitem')
+    const first_card = within(at(cards, 0))
+    const second = within(at(cards, 1))
+
+    /* The part of the card the control opens, found through the control rather
+       than by a class name: what has to hold is that pressing it marks that part
+       as open, since the stylesheet draws the card off that mark and jsdom lays
+       nothing out. The button's own label proves nothing: it reads off the same
+       state either way. */
+    const bodyOf = (card: ReturnType<typeof within>) => {
+      const opens = card.getByRole('button', { name: /^(Prikaži|Sakrij): / }).getAttribute('aria-controls')
+
+      return must(document.getElementById(String(opens)), 'the part of the card that folds')
+    }
+
+    expect(first_card.getByRole('button', { name: /^Prikaži: / })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(bodyOf(first_card).className).not.toContain('--open')
+
+    await user.click(first_card.getByRole('button', { name: /^Prikaži: / }))
+
+    expect(first_card.getByRole('button', { name: /^Sakrij: / })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(bodyOf(first_card).className).toContain('--open')
+
+    /* One at a time: two open cards on a telephone are the scrolling this was
+       meant to end. */
+    await user.click(second.getByRole('button', { name: /^Prikaži: / }))
+
+    expect(bodyOf(second).className).toContain('--open')
+    expect(bodyOf(first_card).className).not.toContain('--open')
+
+    await user.click(second.getByRole('button', { name: /^Sakrij: / }))
+
+    expect(bodyOf(second).className).not.toContain('--open')
+  })
+
+  it('names the part of the card the control opens', async () => {
+    /* The control says which region it opens, so a screen reader moving by
+       controls knows what is about to appear rather than hearing "Prikaži" four
+       times over. */
+    await open('comments', 'Komentari')
+
+    const card = within(first(within(waitingList()).getAllByRole('listitem')))
+    const opens = card.getByRole('button', { name: /^Prikaži: / }).getAttribute('aria-controls')
+
+    expect(opens).not.toBeNull()
+    expect(document.getElementById(String(opens))).not.toBeNull()
+  })
+
+  it('moves a race entered during the visit, and moves it from the day it now has', async () => {
+    /* Two things the queue reads through the session rather than off the file:
+       a race entered or re-dated during this visit is moved with its event, and
+       the day it is moved from is the day the event is on now. A report written
+       a fortnight ago may name a day the event has since left. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const find2027 = async () => {
+      const search = await screen.findByLabelText(/Pretraga/)
+
+      await user.clear(search)
+      await user.type(search, 'Beogradski maraton')
+
+      return must(
+        within(await screen.findByRole('table', { name: 'Događaji' }))
+          .getAllByRole('row')
+          .find(
+            (one) =>
+              /Beogradski maraton/.test(one.textContent ?? '') &&
+              /2027/.test(one.textContent ?? ''),
+          ),
+        'the event of 2027',
+      )
+    }
+
+    /* A race added to it this visit, on the day the event begins. */
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+    await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Štafeta')
+    await user.type(screen.getByLabelText(/^Dužina/), '5')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* And the event moved a day on before the report is answered, so the day the
+       report names is a day the event has already left. */
+    const date = screen.getByLabelText(/^Datum/)
+
+    await user.clear(date)
+    await user.type(date, '04042027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* And the change of date accepted, onto 10 April: six days from where the
+       event stands now, not seven from where the report says it stood. */
+    await router.navigate(`/sr/${QUEUE.schedule.path}`)
+
+    const card = within(
+      must(
+        within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+          .getAllByRole('listitem')
+          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
+        'the reported change of date',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/dogadjaji')
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const mine = must(
+      races.getAllByRole('row').find((one) => (one.textContent ?? '').includes('Štafeta')),
+      'the race entered during the visit',
+    )
+
+    /* Moved with everything else, rather than left on the day it was entered on,
+       and moved by six days rather than seven. */
+    expect(within(mine).getByText('10. 4. 2027.')).toBeVisible()
+
+    /* And the second report of the same change moves nothing more. Two
+       independent reports are what a reported change is made of (PDL P10), so
+       answering both is the ordinary case, and answering the second from the day
+       the first one named would move the races a second time. */
+    await router.navigate(`/sr/${QUEUE.schedule.path}`)
+
+    const second = within(
+      must(
+        within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+          .getAllByRole('listitem')
+          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
+        'the second report of the same change',
+      ),
+    )
+
+    await user.click(second.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/dogadjaji')
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+
+    expect(after).toEqual(['10. 4. 2027.', '10. 4. 2027.', '11. 4. 2027.'])
+  })
+
+  it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Obriši' })))
+    await user.click(first(screen.getAllByRole('button', { name: /^Obriši: / })))
+
+    /* Not a reason: the words say what it is and what it is for, and so does
+       the name of the box around them. The one word this queue must not use is
+       "Odbij": a deleted comment is not kept anywhere it could be brought back
+       from (queues.ts). */
+    expect(screen.getByRole('group', { name: /^Brisanje komentara: / })).toBeVisible()
+    expect(screen.queryByRole('group', { name: /^Odbijanje: / })).toBeNull()
+
+    const note = screen.getByLabelText('Napomena o brisanju')
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
+
+    const confirm = screen.getByRole('button', { name: 'Obriši komentar' })
+    // Empty is an answer here, unlike everywhere else the box is opened.
+    expect(confirm).toBeEnabled()
+
+    await user.type(note, 'Reklama za prodavnicu opreme.')
+    await user.click(confirm)
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
-    expect(screen.queryByRole('textbox', { name: 'Razlog vraćanja' })).not.toBeInTheDocument()
 
-    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
-    expect(decided.getByText('Obrisano')).toBeVisible()
-    expect(decided.queryByText('Odbijeno')).not.toBeInTheDocument()
-    // Nothing is ever written down about a comment, so the table has no column
-    // for it: a heading over a run of empty cells is a question with no answer.
-    expect(decided.queryByRole('columnheader', { name: 'Obrazloženje' })).not.toBeInTheDocument()
+    const decided = within(screen.getByRole('list', { name: 'session decisions' }))
+    expect(decided.getAllByRole('listitem')).toHaveLength(1)
+    expect(decided.getByText(/Reklama za prodavnicu opreme\./)).toBeVisible()
+  })
+
+  it('takes an empty note for a deletion, which is the whole point of it', async () => {
+    const user = await open('comments', 'Komentari')
+
+    await user.click(first(screen.getAllByRole('button', { name: /^Obriši: / })))
+    await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(
+      within(screen.getByRole('list', { name: 'session decisions' })).getAllByRole('listitem'),
+    ).toHaveLength(1)
   })
 
   /* Biographies go their own way too, and further: there is no second decision at
      all. The moderator adjusts the text as they see fit and publishes what they
      left, and it never goes back to the competitor (PDL P22, 30.07.2026). */
+  it('holds the text and the picture in one queue, decided each its own way', async () => {
+    /* Owner, 06.08.2026: the same member's profile is one thing to look at, so
+       the two used to be two queues and are one. What is done with them is not
+       one thing: a biography is edited and published and never goes back, a
+       picture is accepted or handed back with an instruction to work from. */
+    await open('profiles', 'Trkački profil')
+
+    const cards = within(waitingList()).getAllByRole('listitem')
+    const texts = cards.filter((one) => within(one).queryByText('Tekst biografije') !== null)
+    const pictures = cards.filter((one) => within(one).queryByText('Datoteka') !== null)
+
+    expect(texts).toHaveLength(2)
+    expect(pictures).toHaveLength(2)
+
+    for (const one of texts) {
+      const card = within(one)
+
+      expect(card.getByRole('button', { name: 'Objavi' })).toBeVisible()
+      expect(card.queryByRole('button', { name: 'Odbij' })).toBeNull()
+      expect(card.queryByRole('button', { name: 'Odobri' })).toBeNull()
+    }
+
+    for (const one of pictures) {
+      const card = within(one)
+
+      expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
+      expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
+      expect(card.queryByRole('button', { name: 'Objavi' })).toBeNull()
+    }
+  })
+
   it('edits a biography in place and publishes what the moderator left', async () => {
-    const user = await open('bios', 'Trkačke biografije')
+    const user = await open('profiles', 'Trkački profil')
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
-    // Nothing here goes back, so there is no button for it and no reason to write.
-    expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
+    /* Two biographies and two pictures, in one queue since 06.08.2026: the same
+       member's profile is looked at in one place. */
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
 
-    const card = within(first(within(waitingList()).getAllByRole('listitem')))
+    /* The card of a biography, found by the words that name what is on it. A
+       biography never goes back to the competitor, so its card has no button for
+       it and nothing to write; the pictures beside it do. */
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Tekst biografije') !== null),
+        'a card carrying a biography',
+      ),
+    )
+
+    expect(card.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
+    expect(card.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
 
     await user.click(card.getByRole('button', { name: 'Izmeni' }))
     const box = card.getByRole('textbox', { name: 'Tekst biografije' })
@@ -1375,16 +1770,18 @@ describe('the six queues read from the file', () => {
 
     await user.click(card.getByRole('button', { name: 'Objavi' }))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
-    const decided = within(screen.getByRole('table', { name: 'Rešeno' }))
-    expect(decided.getByText('Objavljeno')).toBeVisible()
-    // And the published version is the edited one, not what came in.
-    expect(decided.getByText('Rekreativac iz Čačka, trči zbog druženja.')).toBeVisible()
+    // And what was published is the edited version, not what came in.
+    expect(
+      within(screen.getByRole('list', { name: 'session decisions' })).getByText(
+        /Rekreativac iz Čačka, trči zbog druženja\./,
+      ),
+    ).toBeVisible()
   })
 
   it('publishes a biography nobody touched exactly as it came in', async () => {
-    const user = await open('bios', 'Trkačke biografije')
+    const user = await open('profiles', 'Trkački profil')
 
     const card = within(first(within(waitingList()).getAllByRole('listitem')))
     // Two paragraphs with an empty line between them, which is what a biography
@@ -1393,8 +1790,11 @@ describe('the six queues read from the file', () => {
 
     await user.click(card.getByRole('button', { name: 'Objavi' }))
 
-    const cells = within(screen.getByRole('table', { name: 'Rešeno' })).getAllByRole('cell')
-    expect(cells.map((cell) => cell.textContent)).toContain(sent)
+    const lines = within(screen.getByRole('list', { name: 'session decisions' }))
+      .getAllByRole('listitem')
+      .map((one) => String(one.textContent))
+
+    expect(lines.some((line) => line.includes(String(sent)))).toBe(true)
   })
 
   /* Pictures are the only one of the three that still goes back to a competitor.
@@ -1403,14 +1803,14 @@ describe('the six queues read from the file', () => {
      asked to write, since that reason is what the member reads and changes the
      picture by (PDL P22, owner, 30.07.2026). */
   it('asks the picture queue for a reason precise enough to work from', async () => {
-    const user = await open('photos', 'Profilne slike')
+    const user = await open('profiles', 'Trkački profil')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
     // The name of the field is the one every queue uses, so a member is never
     // told about two different things.
-    const reason = screen.getByLabelText('Razlog vraćanja')
-    expect(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })).toBeInTheDocument()
+    const reason = screen.getByLabelText('Razlog odbijanja')
+    expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeInTheDocument()
 
     // The empty field is where the queue says what it wants: not "no good" but
     // what has to change for the picture to be accepted.
@@ -1418,7 +1818,7 @@ describe('the six queues read from the file', () => {
       'placeholder',
       'Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.',
     )
-    expect(screen.getAllByRole('button', { name: 'Vrati na doradu' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Odbij' })).toHaveLength(1)
   })
 
   it('leaves the reason for a returned picture in the inbox of the member', async () => {
@@ -1427,8 +1827,8 @@ describe('the six queues read from the file', () => {
        one person at the keyboard and the point of the test is where the message
        lands. A message carries the number it was written to (Message.to), so a
        moderator who is somebody else never sees it. */
-    renderAt(`/sr/${QUEUE.photos.path}`, 'moderator', '000013')
-    await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000013')
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
     const card = within(
       must(
@@ -1439,12 +1839,12 @@ describe('the six queues read from the file', () => {
       ),
     )
 
-    await user.click(card.getByRole('button', { name: 'Vrati na doradu' }))
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
     await user.type(
-      screen.getByLabelText('Razlog vraćanja'),
+      screen.getByLabelText('Razlog odbijanja'),
       'Slika je mutna, pošalji oštriju u kojoj se vidi lice.',
     )
-    await user.click(screen.getByRole('button', { name: 'Vrati uz ovaj razlog' }))
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
     /* A reason the member never reads is a reason to nobody, and this is the one
        queue where the member is expected to act on it. The portal already has an
@@ -1474,15 +1874,19 @@ describe('the six queues read from the file', () => {
     it('is decided by the queue rather than by the screen that draws it', () => {
       // Every other queue hands work back to somebody it can name, or does not
       // hand it back at all, so only the one that instructs is asked.
-      expect(canSendBack(QUEUE.photos, { memberNumber: '000013' })).toBe(true)
-      expect(canSendBack(QUEUE.photos, { memberNumber: '' })).toBe(false)
-      expect(canSendBack(QUEUE.teams, { memberNumber: '' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '000013' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '' })).toBe(false)
+      /* A biography on the same queue is never handed back at all, so the
+         question does not arise and the answer is yes. */
+      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(true)
+      expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(true)
     })
 
     it('offers no way to send it, and says why in the place the button stood', async () => {
       const orphan: PendingItem = {
         id: 'ver-sli-bez-clana',
-        queue: 'photos',
+        queue: 'profiles',
+        kind: 'photo',
         date: '2026-07-27',
         memberNumber: '',
         who: '',
@@ -1507,10 +1911,10 @@ describe('the six queues read from the file', () => {
             )
           : original(input)) as typeof fetch
 
-      renderAt(`/sr/${QUEUE.photos.path}`, 'moderator')
-      await screen.findByRole('heading', { level: 1, name: 'Profilne slike' })
+      renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator')
+      await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
-      expect(screen.queryByRole('button', { name: 'Vrati na doradu' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
       expect(
         screen.getByText(/nema člana kome bi uputstvo stiglo/),
       ).toBeVisible()
@@ -1552,8 +1956,8 @@ describe('the six queues read from the file', () => {
        one would be waiting on the next. */
     const user = await open('leagues', 'Predložene lige')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
-    expect(screen.getByLabelText('Razlog vraćanja')).toBeVisible()
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
 
     // Away without cancelling, then back.
     await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
@@ -1561,12 +1965,12 @@ describe('the six queues read from the file', () => {
 
     // The box must not be standing open on a screen just arrived at, with the
     // focus taken into it (SendBack takes the focus as it appears).
-    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
 
     await user.click(sectionNav().getByRole('link', { name: /Predložene lige/ }))
     await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
 
-    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
   })
 
   it('will not send anything back without a reason', async () => {
@@ -1574,18 +1978,20 @@ describe('the six queues read from the file', () => {
     // (PDL P22, 30.07.2026), so there is nothing to refuse on that queue.
     const user = await open('teams', 'Novi timovi')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
-    const confirm = screen.getByRole('button', { name: 'Vrati uz ovaj razlog' })
+    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
     expect(confirm).toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
-    await user.type(screen.getByLabelText('Razlog vraćanja'), 'Naziv je već zauzet.')
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')
     await user.click(confirm)
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(
-      within(screen.getByRole('table', { name: 'Rešeno' })).getByText('Naziv je već zauzet.'),
+      within(screen.getByRole('list', { name: 'session decisions' })).getByText(
+        /Naziv je već zauzet\./,
+      ),
     ).toBeVisible()
   })
 
@@ -1600,7 +2006,7 @@ describe('the six queues read from the file', () => {
   })
 
   it('shows a biography of three and a half thousand characters whole', async () => {
-    await open('bios', 'Trkačke biografije')
+    await open('profiles', 'Trkački profil')
 
     const cards = within(waitingList()).getAllByRole('listitem')
     const longest = first(
@@ -1641,38 +2047,42 @@ describe('the six queues read from the file', () => {
   })
 
   it('closes the reason without deciding anything', async () => {
-    const user = await open('photos', 'Profilne slike')
+    const user = await open('profiles', 'Trkački profil')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Vrati na doradu' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
     await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
-    expect(screen.queryByLabelText('Razlog vraćanja')).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
   })
 
   it('keeps the focus on the card in both directions', async () => {
-    const user = await open('photos', 'Profilne slike')
-    const cards = within(waitingList()).getAllByRole('listitem')
-    // The second and not the first, because the fault being held is the focus
-    // landing on the top card instead of the one the moderator was working on.
+    const user = await open('profiles', 'Trkački profil')
+    /* The pictures, because a biography is never handed back and has no box to
+       open (queues.ts, `outcomeFor`). The second of them and not the first,
+       because the fault being held is the focus landing on the top card instead
+       of the one the moderator was working on. */
+    const cards = within(waitingList())
+      .getAllByRole('listitem')
+      .filter((one) => within(one).queryByRole('button', { name: 'Odbij' }) !== null)
     const second = within(at(cards, 1))
 
     /* The box takes the place of the buttons of its own card, so both directions
        used to drop the focus onto the document and the next Tab started the page
        from the top, past everything (src/app/Dropdown.tsx has the same problem in
        the header). */
-    await user.click(second.getByRole('button', { name: 'Vrati na doradu' }))
-    expect(second.getByLabelText('Razlog vraćanja')).toHaveFocus()
+    await user.click(second.getByRole('button', { name: 'Odbij' }))
+    expect(second.getByLabelText('Razlog odbijanja')).toHaveFocus()
 
     await user.click(second.getByRole('button', { name: 'Odustani' }))
-    expect(second.getByRole('button', { name: 'Vrati na doradu' })).toHaveFocus()
+    expect(second.getByRole('button', { name: 'Odbij' })).toHaveFocus()
 
     // And the card it came from is the one that has it, not the first on screen.
-    expect(within(first(cards)).getByRole('button', { name: 'Vrati na doradu' })).not.toHaveFocus()
+    expect(within(first(cards)).getByRole('button', { name: 'Odbij' })).not.toHaveFocus()
   })
 
   it('carries no dates on a queue that has none', async () => {
-    await open('photos', 'Profilne slike')
+    await open('profiles', 'Trkački profil')
 
     expect(screen.queryByText('Prijavljen datum')).not.toBeInTheDocument()
     expect(screen.getByText('profilna-sa-maratona.jpg')).toBeVisible()
@@ -1694,8 +2104,8 @@ describe('what is counted beside a queue', () => {
       pendingResults: 3,
       items: [
         item('u', 'payments'),
-        item('a', 'bios'),
-        item('b', 'bios'),
+        item('a', 'profiles'),
+        item('b', 'profiles'),
         item('c', 'comments'),
         item('d', 'schedule'),
       ],
@@ -1704,7 +2114,7 @@ describe('what is counted beside a queue', () => {
 
     expect(counts.results).toBe(3)
     expect(counts.payments).toBe(1)
-    expect(counts.bios).toBe(2)
+    expect(counts.profiles).toBe(2)
     expect(counts.comments).toBe(1)
     expect(counts.schedule).toBe(1)
   })
