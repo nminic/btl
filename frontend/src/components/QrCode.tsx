@@ -12,20 +12,23 @@ import './QrCode.css'
  * a clean print rather than a crumpled page, and M keeps the pattern coarse
  * enough for a phone camera to catch quickly.
  */
-/**
- * The letters of this language, written the way a bank reads them.
- *
- * The encoder writes each character as a single byte by default, which throws
- * away everything above 255: "Sportsko udruženje" went into the code as
- * "Sportsko udru~enje", and the name of the payee is the one field a payer
- * checks before they press send. The slip is specified in UTF-8 (NBS IPS), and
- * that is what this writes.
- *
- * Set once, on the encoder itself, because that is where the library keeps it.
- */
-qrcode.stringToBytes = (text: string) => [...new TextEncoder().encode(text)]
-
 export function QrCode({ text, label, size = 180 }: { text: string; label: string; size?: number }) {
+  /* The letters of this language, written the way a bank reads them.
+   *
+   * The encoder writes each character as a single byte by default, which throws
+   * away everything above 255: "Sportsko udruženje" went into the code as
+   * "Sportsko udru~enje", and the name of the payee is the one field a payer
+   * checks before they press send. The slip is specified in UTF-8 (NBS IPS),
+   * and that is what this writes.
+   *
+   * Written on the encoder itself, because that is where the library keeps it,
+   * and written here rather than beside the import so that it is set by the
+   * one place that draws a code. Set from a module that runs on import, it
+   * would hold only for whoever imported this file first, and a payment slip
+   * is not a thing to leave standing on the order of imports.
+   */
+  qrcode.stringToBytes = (letters: string) => [...new TextEncoder().encode(letters)]
+
   const code = qrcode(0, 'M')
   code.addData(text)
   code.make()
