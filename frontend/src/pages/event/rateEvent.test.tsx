@@ -1066,13 +1066,19 @@ describe('the comments under an event', () => {
     }
   })
 
-  it('draws the overall down to the whole, and says the figure once', async () => {
+  it('draws the overall to the figure itself, and says the figure once', async () => {
     /* The stars beside the figure are hidden from a reader, which is right: the
        figure is the fact and hearing both is hearing one number twice. Hidden
        means no role, so this is the one thing on these screens read out of the
        markup rather than by role, and it is read because the alternative is a
        rounding nobody would notice: 4,7 drawn up is five filled stars saying
-       what nobody gave.
+       what nobody gave, and 4,7 drawn down is four, saying less than the number
+       beside it. The last star is cut across at the remainder (owner,
+       11.08.2026).
+
+       Read off the width of the cut, which is a number in the markup: jsdom
+       computes no layout, so the drawing has to say in figures what it does in
+       ink.
 
        `getByRole('img', { hidden: true })` would find it by role, but it would
        also find it if the `aria-hidden` came off, which is the other half of
@@ -1090,7 +1096,11 @@ describe('the comments under an event', () => {
       ),
       'that comment under the event',
     )
-    const named = { name: `${'Ukupna ocena'}: ${Math.floor(overall(uneven.rating))} od 5` }
+    const mark = overall(uneven.rating)
+    /* Named by the number it draws, written the way the portal writes numbers:
+       the stars used to be drawn to the whole below the figure and said so, and
+       now they say the figure. */
+    const named = { name: `Ukupna ocena: ${mark.toString().replace('.', ',')} od 5` }
 
     /* Out of what is read aloud, and found by that: the figure beside it says
        the number, so a reader hearing the stars as well hears one number twice.
@@ -1108,7 +1118,14 @@ describe('the comments under an event', () => {
       (one) => one.getAttribute('fill') === 'currentColor',
     )
 
-    expect(filled).toHaveLength(Math.floor(overall(uneven.rating)))
+    /* The whole ones, and one more that is cut. */
+    expect(filled).toHaveLength(Math.ceil(mark))
+
+    const cut = must(stars.querySelector('clipPath rect'), 'the cut across the last star')
+    /* 2.6 is where the star begins across the box it is drawn in and 18.8 is
+       how far it runs, so the remainder is measured on the star and not on the
+       box around it. */
+    expect(Number(cut.getAttribute('width'))).toBeCloseTo(2.6 + 18.8 * (mark % 1), 5)
     /* And the figure itself, said once and named. */
     expect(
       within(card).getAllByText(

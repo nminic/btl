@@ -130,9 +130,11 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
           <p className="comments__date">{formatDate(comment.date, locale)}</p>
         </div>
 
-        {/* The figure, and the stars beside it drawn to the whole below it.
-            Rounded to the nearest, 4,7 was five filled stars; drawn down, the
-            stars never overstate what was given and the figure carries the rest.
+        {/* The figure, and the stars beside it drawn to the figure itself.
+            They used to be drawn down to the whole below it, so 4,7 and 4,0
+            were the same five stars and the picture said less than the number
+            beside it; now the fifth star is filled seven tenths of the way
+            across (owner, 11.08.2026).
 
             The stars are the picture and the figure is the fact, so only the
             figure is said: with both named a reader heard "Ukupna ocena: 4 od 5"
@@ -145,10 +147,7 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
               answer is a drawing. */}
           {rated(comment.rating) && (
             <span aria-hidden="true">
-              <Stars
-                label={t('event.rating.overall')}
-                value={Math.floor(overall(comment.rating))}
-              />
+              <Stars label={t('event.rating.overall')} value={overall(comment.rating)} />
             </span>
           )}
           <span className="comments__figure">
