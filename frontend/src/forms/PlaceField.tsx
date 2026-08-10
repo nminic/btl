@@ -156,6 +156,10 @@ export function PlaceField({
              race in Beograd edited into Zagreb would be filed in Serbia. */
           onChange(event.target.value, '')
           setOpen(true)
+          /* And nothing is highlighted any more: the list is about to be a
+             different list, and the third row of it is not the row somebody was
+             standing on. Left where it was, Enter took a town nobody had
+             looked at. */
           setAt(-1)
         }}
         onKeyDown={onKeyDown}
@@ -170,8 +174,6 @@ export function PlaceField({
               className={index === at ? 'place__one place__one--at' : 'place__one'}
               role="option"
               aria-selected={index === at}
-              /* Pointer down rather than click: the box loses focus first, and
-                 the list is gone by the time a click lands. */
               /* Pointer down rather than click, and the press is kept off the
                  box: a click on a row is a press and a release, and anything
                  that closes the list on the press leaves the release landing on

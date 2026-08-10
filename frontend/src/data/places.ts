@@ -129,20 +129,19 @@ export function usePlaces(wanted: boolean): Place[] {
       return
     }
 
-    let active = true
+    /* A codebook that failed to arrive is asked for again on the next second
+       letter, because `loadResource` deliberately does not remember a failure
+       (data/client.ts). That is the retry, not a leak: it only happens on a
+       path that is already broken, where the field has quietly become the plain
+       text box it was before any of this existed. */
 
-    loadResource<Place[]>('places').then(
-      (arrived) => {
-        if (active) {
-          setPlaces(arrived)
-        }
-      },
-      () => {},
-    )
-
-    return () => {
-      active = false
-    }
+    /* No guard against the answer landing after the form is closed. There was
+       one, and it could not be held by any test: React has not complained about
+       a state setter on a gone component since 18, and the update is discarded
+       either way, so the screen and the console say the same thing with the
+       guard and without it. A line nothing can hold is a line the next reader
+       has to take on trust, and this one was buying nothing. */
+    loadResource<Place[]>('places').then(setPlaces, () => {})
   }, [wanted])
 
   return places

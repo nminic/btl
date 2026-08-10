@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { devToolsEnabled } from '../dev/tools'
 import { DatePicker } from '../forms/DatePicker'
 import { fieldDate, isoDate } from '../forms/dateField'
@@ -31,6 +31,17 @@ function DateChooser() {
      box would refuse every keystroke but the last and could not be typed into
      at all. */
   const [typed, setTyped] = useState(() => fieldDate(today))
+
+  /* And it follows the clock while nobody is holding it somewhere: the real day
+     moves under an open tab when midnight passes (ClockProvider), and the box
+     would go on saying yesterday while the portal said today. Only while
+     nothing is simulated, so this can never fight what is being typed: typing a
+     whole date is what puts the portal on a simulated day. */
+  useEffect(() => {
+    if (simulated === null) {
+      setTyped(fieldDate(today))
+    }
+  }, [simulated, today])
 
   return (
     <div className={simulated === null ? 'date-switch' : 'date-switch date-switch--on'}>

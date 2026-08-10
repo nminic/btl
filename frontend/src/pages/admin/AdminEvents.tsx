@@ -303,9 +303,12 @@ export function AdminEvents() {
                             copied here said it had none while its races were in
                             the next screen along. */}
                         <td>{allRaces.filter((race) => race.eventId === one.id).length}</td>
-                        {/* What is being put on, in words. An event with no
-                            kind of its own is a race, which is what all but a
-                            handful of them are (owner, 10.08.2026). */}
+                        {/* What is being put on, in words. Every event has a
+                            kind: the type requires it, the form opens on Trka,
+                            and the copy carries it (owner, 10.08.2026). There
+                            is no fallback here, and the day a backend answers
+                            without the field this cell prints the name of the
+                            key, which is the loudest way to find out. */}
                         <td>{t(`event.kind.${one.kind}`)}</td>
                         <td>
                           <RowActions

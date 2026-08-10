@@ -326,9 +326,17 @@ describe('the generated data', () => {
 
     expect(places.length).toBeGreaterThan(40000)
 
+    /* Both names, not only the first. The English one is what the English
+       portal writes and what a person typing "belgrade" is matched against, and
+       twelve towns in Macedonia shipped it in Cyrillic: the generator filtered
+       the local name and appended the English one raw, and a Cyrillic main-list
+       name is exactly what made the two differ. */
     const unreachable = places
-      .filter(([name]) => /[^a-z0-9 '&.,()/-]/.test(plainly(name)))
-      .map(([name, country]) => `${name} (${country})`)
+      .flatMap(([name, country, english]) =>
+        [name, english ?? name].map((written) => ({ written, country })),
+      )
+      .filter(({ written }) => /[^a-z0-9 '&.,()/-]/.test(plainly(written)))
+      .map(({ written, country }) => `${written} (${country})`)
 
     expect(unreachable).toEqual([])
   })

@@ -212,7 +212,9 @@
     "home": "Naslovna strana",
     "join": "Učlani se",
     "openAccount": "Otvori nalog",
-    "credits": "Spisak mesta: GeoNames, pod licencom CC BY 4.0."
+    "credits": "Spisak mesta:",
+    "creditsSource": "GeoNames",
+    "creditsLicence": "CC BY 4.0"
   },
   "nav": {
     "home": "Naslovna",

@@ -192,44 +192,6 @@ describe('the town on a form', () => {
     expect(box).toHaveAttribute('aria-activedescendant', 'mesto-places-0')
   })
 
-  it('drops a codebook that arrives after the form is gone', async () => {
-    /* The request goes out on the second letter and the answer takes as long as
-       it takes. A form closed in between must not be written into: React says
-       so out loud, and what it is saying is that this component is holding a
-       reference to a screen nobody is looking at.
-
-       The answer is held back by hand rather than raced against, because a
-       codebook served from memory arrives before the form can be closed, and a
-       test that closed it afterwards would prove nothing either way. */
-    stop()
-    let answer = () => {}
-    const held = new Promise<void>((settle) => {
-      answer = settle
-    })
-    const real = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL) => {
-      if (!String(input).endsWith('/places.json')) {
-        return real(input)
-      }
-
-      await held
-
-      return new Response(JSON.stringify(CODEBOOK), { status: 200 })
-    }) as typeof fetch
-
-    const user = setupUser()
-    const onCountry = vi.fn()
-    const { unmount } = render(<Holder onCountry={onCountry} />)
-
-    await user.type(screen.getByRole('combobox'), 'be')
-    unmount()
-    answer()
-    await held
-
-    expect(screen.queryByRole('listbox')).toBeNull()
-    globalThis.fetch = real
-  })
-
   it('closes on Escape and leaves what was typed alone', async () => {
     const user = setupUser()
     const { box } = renderField()
@@ -271,6 +233,40 @@ describe('the town on a form', () => {
     await user.keyboard('{Enter}')
 
     expect(box).toHaveValue('be')
+  })
+
+  it('forgets which row was highlighted when the town is typed over', async () => {
+    /* The list is about to be a different list, and the third row of it is not
+       the row somebody was standing on: left where it was, Enter took a town
+       nobody had looked at. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'be')
+    await offered()
+    await user.keyboard('{ArrowDown}{ArrowDown}')
+    expect(box).toHaveAttribute('aria-activedescendant', 'mesto-places-1')
+
+    await user.type(box, 'o')
+
+    expect(box).not.toHaveAttribute('aria-activedescendant')
+  })
+
+  it('is taken by a press of the mouse, and leaves the cursor in the box', async () => {
+    /* Pointer down and not click, and the press kept off the box: a click is a
+       press and a release, and anything that closes the list on the press
+       leaves the release landing on whatever has moved under it. What holds it
+       is where the cursor is afterwards, which a click would have taken away. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'beo')
+    const first = must((await offered())[0], 'the first town offered')
+
+    await user.pointer({ target: first, keys: '[MouseLeft>]' })
+
+    expect(box).toHaveValue('Beograd')
+    expect(document.activeElement).toBe(box)
   })
 
   it('closes when something outside it is pressed', async () => {
