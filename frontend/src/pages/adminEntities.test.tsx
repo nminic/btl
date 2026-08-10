@@ -7,12 +7,13 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, must } from '../test/at'
+import { Saved } from '../test/saved'
 import { loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
 import { formatNumber, formatShortDate } from '../i18n/format'
 import type { BtlEvent, Race, Result } from '../data/types'
 import { expectFrontPage, renderAt } from '../test/render'
-import { setupUser } from '../test/user'
+import { setupUser, type Pressing } from '../test/user'
 
 /* The screens behind Podaci: the races inside their event, the teams, the
  * leagues and the written pages. Each is checked for what it is there to show,
@@ -692,6 +693,205 @@ describe('the races of an event', () => {
     await user.click(within(made).getByRole('button', { name: /^Otvori:/ }))
 
     expect(await screen.findByText('Ovaj događaj još nema nijednu trku.')).toBeVisible()
+  })
+})
+
+/**
+ * The country an event is in, which no screen shows.
+ *
+ * It stopped being a field on 10.08.2026 and became the second half of the town
+ * beside it (forms/types.ts). Nothing on any screen draws it, so an event
+ * filed in the wrong country looks exactly like one filed in the right country,
+ * and the first version of this went in carrying the word "undefined": the
+ * layer that turns a form into a record walks the fields, and the country is
+ * not one. Read here out of what the session was told to save, through the
+ * screen and the keyboard, because a test that hands the record layer a country
+ * of its own proves only that the record layer can copy a value.
+ */
+/**
+ * The league the portal itself is.
+ *
+ * Every event counts towards it, its standings are the BTL tables, and there is
+ * nothing anybody would ever change about it (owner, 10.08.2026: „Ona se
+ * podrazumeva i ne uređuje se."). The generator stopped writing it on the same
+ * day, so what is left is a guard against a league somebody makes by hand at
+ * that address, and a guard nothing exercises is a line that can be deleted
+ * without a test noticing. Both screens are asked, because both filter and each
+ * would fail on its own.
+ */
+describe('Balkanska trkačka liga among the leagues', () => {
+  /** The file, answered with the main league and one ordinary one. */
+  function servingBoth() {
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/leagues.json')
+        ? new Response(
+            JSON.stringify([
+              {
+                id: 'league-btl-2027',
+                slug: 'btl-2027',
+                name: 'Balkanska trkačka liga 2027',
+                season: 2027,
+                groupsByCategory: true,
+                rules: '',
+                prizes: '',
+                eventIds: [],
+              },
+              {
+                id: 'league-druga-2027',
+                slug: 'druga-2027',
+                name: 'Druga liga 2027',
+                season: 2027,
+                groupsByCategory: false,
+                rules: '',
+                prizes: '',
+                eventIds: [],
+              },
+            ]),
+            { status: 200 },
+          )
+        : real(input)) as typeof fetch
+
+    return () => {
+      globalThis.fetch = real
+    }
+  }
+
+  it('is not offered for editing, and the leagues beside it are', async () => {
+    const stop = servingBoth()
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    const rows = await table('Lige')
+    const words = rows.getAllByRole('row').map((one) => one.textContent ?? '')
+
+    expect(words.some((one) => one.includes('Druga liga 2027'))).toBe(true)
+    expect(words.some((one) => one.includes('Balkanska trkačka liga'))).toBe(false)
+
+    stop()
+  })
+
+  it('is not listed to a visitor either, for the same reason', async () => {
+    const stop = servingBoth()
+
+    renderAt('/sr/lige')
+
+    expect(await screen.findByRole('link', { name: /Druga liga 2027/ })).toBeVisible()
+    expect(screen.queryByRole('link', { name: /Balkanska trkačka liga/ })).toBeNull()
+
+    stop()
+  })
+})
+
+describe('the country an event is filed in', () => {
+  /** One town out of the list the place field offers. Asked for by the name the
+   *  list carries, because the portal has other listboxes open at once (the
+   *  language menu is one) and "the listbox" is not one thing. */
+  async function townOffered(named: string): Promise<HTMLElement> {
+    const list = await screen.findByRole('listbox', { name: 'Ponuđena mesta' })
+
+    return within(list).getByRole('option', { name: new RegExp(`^${named}`) })
+  }
+
+  /** The control that opens one event's record.
+   *
+   * Found by its date as well as its name: a race is run every year under the
+   * same name, so "the row saying Fruškogorski maraton" is a dozen rows, and
+   * the first one is not the one whose country was read. */
+  async function openRow(event: BtlEvent, user: Pressing): Promise<HTMLElement> {
+    /* Searched for first: the screen shows sixty rows of eleven hundred, and
+       an event from 2010 is not among them. */
+    await table('Događaji')
+    await user.type(screen.getByLabelText(/^Pretraga/), event.name)
+
+    const rows = await table('Događaji')
+    const day = formatShortDate(event.date, 'sr-Latn')
+    const mine = must(
+      rows
+        .getAllByRole('row')
+        .slice(1)
+        .find((row) => {
+          const words = row.textContent ?? ''
+
+          return words.includes(event.name) && words.includes(day)
+        }),
+      `the row for ${event.name} on ${day}`,
+    )
+
+    return within(mine).getByRole('button', { name: `Otvori: ${event.name}` })
+  }
+
+  /** What the session was told about one record, by id. */
+  async function told(what: string): Promise<string> {
+    const lines = within(await screen.findByRole('list', { name: 'session records' }))
+
+    return must(
+      lines.getAllByRole('listitem').find((one) => (one.textContent ?? '').includes(what)),
+      `something saved for ${what}`,
+    ).textContent ?? ''
+  }
+
+  it('comes with the town that was picked, on an event being entered', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, <Saved />)
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.type(screen.getByLabelText(/^Naziv događaja/), 'Trka sa mestom')
+    await user.type(screen.getByLabelText(/^Datum/), '01062027')
+    await user.type(screen.getByLabelText(/^Organizator/), 'BTL')
+
+    /* Picked out of the codebook rather than typed whole, because picking is
+       what carries the country. */
+    await user.type(screen.getByLabelText(/^Mesto/), 'Zagre')
+    await user.click(await townOffered('Zagreb'))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(await told('Trka sa mestom')).toContain('country=HR')
+  })
+
+  it('changes with the town, on an event being edited', async () => {
+    /* The fault this guards is written on the field itself: a race in Beograd
+       edited into Zagreb would be filed in Serbia, and no screen would say so. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const serbian = must(
+      events.find((one) => one.country === 'RS' && one.city !== ''),
+      'an event in Serbia',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, <Saved />)
+
+    await user.click(await openRow(serbian, user))
+    await user.clear(screen.getByLabelText(/^Mesto/))
+    await user.type(screen.getByLabelText(/^Mesto/), 'Zagre')
+    await user.click(await townOffered('Zagreb'))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(await told(serbian.id)).toContain('country=HR')
+  })
+
+  it('stays as it was where the town was not touched', async () => {
+    /* The other half, and the one a fix for the first half breaks: saving a
+       form that nobody typed a town into must not blank the country it came
+       with. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const serbian = must(
+      events.find((one) => one.country === 'RS' && one.city !== ''),
+      'an event in Serbia',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, <Saved />)
+
+    await user.click(await openRow(serbian, user))
+    await user.type(screen.getByLabelText(/^Organizator/), ' i prijatelji')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(await told(serbian.id)).toContain('country=RS')
   })
 })
 

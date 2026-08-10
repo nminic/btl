@@ -9,37 +9,33 @@
   gap: var(--space-4);
 }
 
-.date-switch__day {
+/* The portal's own date control inside the header strip, kept to the height of
+   everything else on it. It is the same component the forms use, so what is
+   shaped here is only what the header asks of it: a box the width of a date and
+   not the width of a form field. */
+.date-switch .datepicker {
+  width: 10.5rem;
+}
+
+.date-switch .field__control {
   height: 2.4rem;
   padding: 0 var(--space-8);
   border-radius: var(--radius-12);
-  border: 1px solid var(--control-border);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
   font-size: 0.82rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: border-color var(--fast);
 }
 
-.date-switch__day:hover {
-  border-color: var(--accent);
+.date-switch .datepicker__open {
+  height: 2.4rem;
+  border-radius: var(--radius-12);
 }
 
 /* While the portal is being read as another day, the control says so on its
    own. Nothing else on the screen can: every date on it looks exactly as it
    would if that day had really come, which is the point of it. */
-.date-switch__day--on {
+.date-switch--on .field__control {
   border-color: var(--accent);
   color: var(--accent);
-}
-
-/* The browser's own calendar symbol, which is dark on a dark header and cannot
-   be styled any other way. */
-.date-switch__day::-webkit-calendar-picker-indicator {
-  filter: invert(0.5);
-  cursor: pointer;
 }
 
 .date-switch__reset {
@@ -65,7 +61,11 @@
 /* On a phone the header strip wraps, and a control that reads as one thing must
    not be broken across two lines. */
 @media (max-width: 559.98px) {
-  .date-switch__day {
+  .date-switch .datepicker {
+    width: 9rem;
+  }
+
+  .date-switch .field__control {
     font-size: 0.76rem;
     padding: 0 var(--space-6);
   }

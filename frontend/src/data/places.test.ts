@@ -75,7 +75,11 @@ describe('the town somebody is typing', () => {
   it('stops at eight, because a list longer than the form is not a suggestion', () => {
     const many: Place[] = Array.from({ length: 40 }, (_, at) => [`Nova ${String(at)}`, 'RS'])
 
-    expect(placesLike(many, 'nova')).toHaveLength(SUGGESTIONS)
+    expect(placesLike(many, 'nova')).toHaveLength(8)
+    /* And the constant is that number, said separately: written as
+       `toHaveLength(SUGGESTIONS)` the test measured itself and passed at any
+       number at all. */
+    expect(SUGGESTIONS).toBe(8)
     /* And they are the first eight of the codebook, which is in order of size:
        the largest town of a name comes before the village of the same name. */
     expect(placesLike(many, 'nova')[0]).toEqual(many[0])

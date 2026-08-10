@@ -11241,8 +11241,8 @@
   },
   {
     "id": "e2027-sreda-1",
-    "slug": "btl-sreda-2027-1",
-    "name": "BTL sreda",
+    "slug": "btl-sreda-mart-2027",
+    "name": "BTL sreda, mart",
     "date": "2027-03-03",
     "city": "Beograd",
     "country": "RS",
@@ -11310,16 +11310,6 @@
     "kind": "race"
   },
   {
-    "id": "e2027-sreda-2",
-    "slug": "btl-sreda-2027-2",
-    "name": "BTL sreda",
-    "date": "2027-03-31",
-    "city": "Beograd",
-    "country": "RS",
-    "organizer": "Balkanska trkačka liga",
-    "kind": "gathering"
-  },
-  {
     "id": "evt-beogradski-maraton-2027-04-03",
     "slug": "beogradski-maraton-2027",
     "name": "Beogradski maraton",
@@ -11380,6 +11370,16 @@
     "kind": "race"
   },
   {
+    "id": "e2027-sreda-2",
+    "slug": "btl-sreda-april-2027",
+    "name": "BTL sreda, april",
+    "date": "2027-04-07",
+    "city": "Beograd",
+    "country": "RS",
+    "organizer": "Balkanska trkačka liga",
+    "kind": "gathering"
+  },
+  {
     "id": "evt-paris-marathon-2027-04-10",
     "slug": "paris-marathon-2027",
     "name": "Paris marathon",
@@ -11410,16 +11410,6 @@
     "kind": "race"
   },
   {
-    "id": "e2027-sreda-3",
-    "slug": "btl-sreda-2027-3",
-    "name": "BTL sreda",
-    "date": "2027-04-28",
-    "city": "Beograd",
-    "country": "RS",
-    "organizer": "Balkanska trkačka liga",
-    "kind": "gathering"
-  },
-  {
     "id": "evt-prague-marathon-2027-05-01",
     "slug": "prague-marathon-2027",
     "name": "Prague marathon",
@@ -11428,6 +11418,16 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race"
+  },
+  {
+    "id": "e2027-sreda-3",
+    "slug": "btl-sreda-maj-2027",
+    "name": "BTL sreda, maj",
+    "date": "2027-05-12",
+    "city": "Beograd",
+    "country": "RS",
+    "organizer": "Balkanska trkačka liga",
+    "kind": "gathering"
   },
   {
     "id": "evt-kup-fruske-gore-2027-05-15",

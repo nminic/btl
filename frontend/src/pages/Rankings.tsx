@@ -137,7 +137,10 @@ function Standing({
           Written out here and short in the table (owner, 05.08.2026): a column
           heading is read against the eight beside it and lives on the width of
           a telephone, a label on a control is read on its own. */}
-      <div className="rankings__categories" role="group" aria-label={t('rankings.categoryFilter')}>
+      <div className="rankings__categories" role="group" aria-labelledby="rankings-categories">
+        <span className="rankings__categories-name" id="rankings-categories">
+          {t('rankings.categoryFilter')}
+        </span>
         <button
           type="button"
           className={category === undefined ? 'rankings__category rankings__category--on' : 'rankings__category'}

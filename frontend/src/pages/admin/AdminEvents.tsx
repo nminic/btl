@@ -14,7 +14,6 @@ import {
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { EventRaces } from './EventRaces'
@@ -292,14 +291,12 @@ export function AdminEvents() {
                             right after it. Renamed in a cell, an event kept the
                             address of the name it used to have. */}
                         <td>{one.name}</td>
-                        <td>
-                          <EditableCell
-                            id={one.id}
-                            field="city"
-                            value={one.city}
-                            label={t('event.place')}
-                          />
-                        </td>
+                        {/* Read here and changed on the form, like the name
+                            beside it. A town carries the country it is in and a
+                            cell writes one field, so a town corrected here left
+                            the event in the country of the town it used to be
+                            in, and nothing on any screen shows a country. */}
+                        <td>{one.city}</td>
                         {/* Counted from the races themselves rather than from
                             a list the event carries. The list is filled by the
                             generator and by nothing else, so an event entered or

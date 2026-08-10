@@ -40,7 +40,7 @@
     },
     "calendar": {
       "title": "BTL kalendar",
-      "description": "Sve trke sezone po mesecima, sa datumom, mestom i dužinom."
+      "description": "Sve iz kalendara sezone po mesecima, sa datumom, mestom i dužinom."
     },
     "calendarDay": {
       "title": "Jedan dan u kalendaru",
@@ -211,7 +211,8 @@
     "contact": "Kontakt",
     "home": "Naslovna strana",
     "join": "Učlani se",
-    "openAccount": "Otvori nalog"
+    "openAccount": "Otvori nalog",
+    "credits": "Spisak mesta: GeoNames, pod licencom CC BY 4.0."
   },
   "nav": {
     "home": "Naslovna",
@@ -1014,7 +1015,7 @@
       "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
       "eventSlug": "Portal je pravi sam, od naziva i godine. Ne unosi se i ne menja.",
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja.",
-      "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka, ali se ne boduju.",
+      "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka.",
       "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika, sa državom u zagradi. Mesto koje šifarnik nema unosi se rukom."
     },
     "value": {

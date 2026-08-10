@@ -6,6 +6,7 @@ import { first } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
+import { plainly } from './places'
 import { ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
@@ -307,6 +308,38 @@ describe('the generated data', () => {
     expect(memberships.length).toBeGreaterThan(0)
     expect(memberships.filter((one) => one.memberNumber !== '')).toEqual([])
     expect(memberships.filter((one) => one.email === '')).toEqual([])
+  })
+
+  it('carries a codebook of towns every one of which can be typed', async () => {
+    /* Nine hundred kilobytes nobody in this repository wrote, read by a search
+       that folds a letter with a mark above it onto the letter (`plainly`). A
+       letter that fold does not know is a town that is in the codebook and
+       cannot be reached: seventy eight towns in Poland were, Wrocław among
+       them, because ł is a single letter and not an l with a stroke added, so
+       there was nothing for the fold to take off.
+
+       This is the guard that was missing when that went in. It reads the
+       shipped file rather than a fixture, because the fault is a disagreement
+       between this side and the generator, and a fixture agrees with whoever
+       wrote it. */
+    const places = await loadResource<[string, string, string?][]>('places')
+
+    expect(places.length).toBeGreaterThan(40000)
+
+    const unreachable = places
+      .filter(([name]) => /[^a-z0-9 '&.,()/-]/.test(plainly(name)))
+      .map(([name, country]) => `${name} (${country})`)
+
+    expect(unreachable).toEqual([])
+  })
+
+  it('carries a codebook whose towns each say which country they are in', async () => {
+    /* The country is the whole reason the field was allowed to swallow the one
+       beside it, so a row without one is a town that files an event nowhere. */
+    const places = await loadResource<[string, string, string?][]>('places')
+    const nameless = places.filter(([name, country]) => name === '' || !/^[A-Z]{2}$/.test(country))
+
+    expect(nameless).toEqual([])
   })
 
   it('carries no event of a kind the portal does not have, and no state at all', async () => {

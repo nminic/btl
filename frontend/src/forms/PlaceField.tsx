@@ -82,6 +82,10 @@ export function PlaceField({
 
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === 'Escape') {
+      /* And stops here. Any ancestor listening for Escape would otherwise take
+         it too, so one press both closed these suggestions and shut whatever
+         they were standing inside. */
+      event.stopPropagation()
       setOpen(false)
       setAt(-1)
 
@@ -89,6 +93,15 @@ export function PlaceField({
     }
 
     if (offered.length === 0) {
+      /* Down opens the list again, which is the one way back to it from the
+         keyboard: after Escape, or after a town was picked, there is nothing
+         to walk and nothing but retyping would bring it back (WAI-ARIA 1.2,
+         combobox: Down Arrow opens the listbox). */
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setOpen(true)
+      }
+
       return
     }
 
@@ -159,6 +172,12 @@ export function PlaceField({
               aria-selected={index === at}
               /* Pointer down rather than click: the box loses focus first, and
                  the list is gone by the time a click lands. */
+              /* Pointer down rather than click, and the press is kept off the
+                 box: a click on a row is a press and a release, and anything
+                 that closes the list on the press leaves the release landing on
+                 whatever has moved under it. `preventDefault` keeps the focus
+                 in the box, so the field is still the thing being typed in
+                 after a town is picked with the mouse. */
               onMouseDown={(event) => {
                 event.preventDefault()
                 choose(place)

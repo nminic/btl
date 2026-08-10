@@ -29,15 +29,39 @@ export function placeName(place: Place, locale: string): string {
  * have no such split and are written out; the same two are written out in the
  * generator, so the two sides agree.
  */
+/**
+ * Letters that are single letters rather than a letter and a mark above it, so
+ * splitting them apart (NFD) leaves nothing to drop.
+ *
+ * Written out here and in the generator, and the two must say the same thing:
+ * a letter this list forgets is a town nobody can type. The first pass forgot
+ * ł, and seventy eight towns in Poland were in the codebook and unreachable,
+ * Wrocław among them. A contract test over the shipped file now says so
+ * (data.test.tsx).
+ */
+const ON_THEIR_OWN: [RegExp, string][] = [
+  [/đ/g, 'dj'],
+  [/ł/g, 'l'],
+  [/ø/g, 'o'],
+  [/ı/g, 'i'],
+  [/ß/g, 'ss'],
+  [/æ/g, 'ae'],
+  [/œ/g, 'oe'],
+  [/ð/g, 'd'],
+  [/þ/g, 'th'],
+  [/ħ/g, 'h'],
+  [/ə/g, 'e'],
+  /* And the two a typesetter uses that no keyboard has: the curly apostrophe,
+     which four hundred and twenty one towns carry, and the long dash inside a
+     name like Rosemont–La Petite-Patrie, which a person types as a hyphen. */
+  [/[’‘`]/g, "'"],
+  [/[–—]/g, '-'],
+]
+
 export function plainly(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'dj')
-    .replace(/Đ/g, 'Dj')
-    .replace(/ø/g, 'o')
-    .replace(/Ø/g, 'O')
-    .toLowerCase()
+  const bare = text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+  return ON_THEIR_OWN.reduce((so, [letter, plain]) => so.replace(letter, plain), bare)
 }
 
 /** How many suggestions a list may hold. Enough to make the right town likely

@@ -195,3 +195,26 @@ describe('the limit a field carries in its definition', () => {
     expect(() => limitOf(registracija as FormDef, 'pol')).toThrow(/length limit/)
   })
 })
+
+describe('the country a form opens holding', () => {
+  const withPlace: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [{ name: 'city', type: 'place', labelKey: 'proba.mesto' }],
+  }
+
+  it('is the one on the record, so an untouched town does not blank it', () => {
+    expect(valuesFor(withPlace, { city: 'Beograd', country: 'RS' })).toEqual({
+      city: 'Beograd',
+      country: 'RS',
+    })
+  })
+
+  it('is empty where the record carries none, and not the word for nothing', () => {
+    /* A record written before the field existed, or one the backend answers
+       without a country. `String(undefined)` is "undefined", which is what the
+       first version of this saved (entityForms.ts). */
+    expect(valuesFor(withPlace, { city: 'Beograd' })).toEqual({ city: 'Beograd', country: '' })
+  })
+})

@@ -243,6 +243,24 @@ describe('the town on a form', () => {
     expect(box).toHaveValue('be')
   })
 
+  it('opens the list again with the down arrow, which is the way back from Escape', async () => {
+    /* Closed, there is nothing to walk, and until this the only way back to the
+       suggestions was to retype the town (WAI-ARIA 1.2, combobox: Down Arrow
+       opens the listbox). */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'be')
+    await offered()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).toBeNull()
+
+    await user.keyboard('{ArrowDown}')
+
+    expect(await offered()).toHaveLength(3)
+    expect(box).toHaveValue('be')
+  })
+
   it('does nothing on Enter while no row is highlighted, so the form can be submitted', async () => {
     const user = setupUser()
     const { box } = renderField()

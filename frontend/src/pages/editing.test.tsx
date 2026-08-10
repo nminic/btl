@@ -25,6 +25,25 @@ describe('changing data in administration', () => {
     expect(within(row).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before)
   })
 
+  it('takes Enter as done, without reaching for the mouse', async () => {
+    /* The cell used to be tested through the events screen, whose town stopped
+       being a cell on 11.08.2026 (it carries a country now, and a cell writes
+       one field). Enter went untested with it, which is how a screen losing a
+       caller quietly loses a guard. */
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Članovi' })
+    const row = at(within(table).getAllByRole('row'), 1)
+
+    await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
+    const box = within(row).getByRole('textbox')
+    await user.clear(box)
+    await user.type(box, 'Kikinda{Enter}')
+
+    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Kikinda')
+  })
+
   it('lets an edit be abandoned', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
@@ -43,24 +62,20 @@ describe('changing data in administration', () => {
     expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(before)
   })
 
-  it('changes the place of an event', async () => {
-    const user = setupUser()
+  it('changes the place of an event on its form and nowhere else', async () => {
+    /* The town was a cell until 11.08.2026, and stopped being one when it began
+       carrying the country it is in (forms/types.ts). A cell writes one field
+       of one record, so a town corrected in the row left the event in the
+       country of the town it used to be in, and no screen shows a country.
+       The name beside it went the same way and for the same shape of reason,
+       its address. */
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Događaji' })
     const row = at(within(table).getAllByRole('row'), 1)
 
-    /* Named rather than taken as the first control of the row: the name beside
-       it is no longer one, and a test that counts controls would have gone on
-       passing while typing the new name of an event into its town. */
-    await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
-    const box = within(row).getByRole('textbox')
-    await user.clear(box)
-    await user.type(box, 'Sremski Karlovci{Enter}')
-
-    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent(
-      'Sremski Karlovci',
-    )
+    expect(within(row).queryByRole('button', { name: /^Mesto:/ })).toBeNull()
+    expect(within(row).queryByRole('textbox')).toBeNull()
   })
 
   it('changes the name of an event on its form and nowhere else', async () => {
