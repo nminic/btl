@@ -1009,6 +1009,7 @@
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
+      "leagueSlug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa lige, na primer btl-2027. Ne izvodi se iz naziva, jer bi promena naziva odnela adresu koju je neko već podelio.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
       "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",

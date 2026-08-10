@@ -4,7 +4,14 @@ import { shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { fieldValues, idFor, takenIdentity, type EntityDef, type Editing } from './entityForms'
+import {
+  addressField,
+  fieldValues,
+  idFor,
+  takenIdentity,
+  type EntityDef,
+  type Editing,
+} from './entityForms'
 import './Entity.css'
 
 /* One record of one entity, opened whole.
@@ -186,12 +193,15 @@ export function EntityEditor({
     )
   }
 
-  /* A record being changed is not competing with itself, so its own identity is
-     not in the way of it. */
+  /* A record being changed is not competing with itself, so its own address is
+     not in the way of it. Its address and not its identity: a league is filed
+     under an id it never shows and answers at an address of its own, so
+     comparing identities would leave every league refusing its own address
+     (entityForms.ts, `addressField`). */
   const others =
     editing.mode === 'new'
       ? taken
-      : taken.filter((one) => one !== String(editing.record[entity.idField]))
+      : taken.filter((one) => one !== String(editing.record[addressField(entity)]))
 
   return (
     <div className="entity-editor">

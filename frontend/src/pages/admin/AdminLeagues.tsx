@@ -1,9 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { LEAGUES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
@@ -31,7 +31,17 @@ export function AdminLeagues() {
 
           if (editing !== null) {
             return (
-              <EntityEditor entity={LEAGUES} editing={editing} onDone={() => setEditing(null)} />
+              <EntityEditor
+                entity={LEAGUES}
+                editing={editing}
+                /* The addresses already answered at, so a second league cannot
+                   be saved onto one. A league is filed under an id nobody sees
+                   and answers at an address somebody chose, so the address is a
+                   field like any other and the check is the one written pages
+                   already use (entityForms.ts, `takenIdentity`). */
+                taken={rows.map((league) => league.slug)}
+                onDone={() => setEditing(null)}
+              />
             )
           }
 
@@ -45,6 +55,7 @@ export function AdminLeagues() {
                   <thead>
                     <tr>
                       <th scope="col">{t('leagues.name')}</th>
+                      <th scope="col">{t('admin.address')}</th>
                       <th scope="col">{t('rankings.season')}</th>
                       <th scope="col">{t('event.races')}</th>
                       <th scope="col">{t('admin.byCategory')}</th>
@@ -54,13 +65,17 @@ export function AdminLeagues() {
                   <tbody>
                     {rows.map((league) => (
                       <tr key={league.id}>
+                        {/* Read, not edited in place. The cell was here because
+                            the form did not ask for the address and a name
+                            changed on the form would have left the league
+                            answering where it always did; the form asks now, so
+                            the name and the address are changed together, in one
+                            place, where the address can be refused if it is
+                            taken (owner's rule for teams and events,
+                            03.08.2026). */}
+                        <td>{league.name}</td>
                         <td>
-                          <EditableCell
-                            id={league.id}
-                            field="name"
-                            value={league.name}
-                            label={t('leagues.name')}
-                          />
+                          <Link to={`/${locale}/liga/${league.slug}`}>{league.slug}</Link>
                         </td>
                         <td>{league.season}</td>
                         <td>

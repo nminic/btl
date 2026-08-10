@@ -14,7 +14,9 @@ import {
   PAGES,
   RACES,
   TEAMS,
+  addressField,
   idFor,
+  takenIdentity,
   type EntityDef,
 } from './entityForms'
 
@@ -674,5 +676,30 @@ describe('two teams under one name', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+})
+
+describe('which field of a form carries the address', () => {
+  /* Two shapes, because a record answers at an address in two ways. A written
+     page is filed under it: the address is the identity and the form asks for
+     it. A league is filed under an id nobody sees and answers at an address
+     somebody chose (`btl-2027` is not what the rule would make of "Balkanska
+     trkačka liga 2027"), so the address is a field of its own. An event's is
+     neither: it is worked out from the name and the year and never typed. */
+  it('is the field where there is one, and nothing where the address is not typed', () => {
+    expect(addressField(PAGES)).toBe('slug')
+    expect(addressField(LEAGUES)).toBe('slug')
+    expect(addressField(EVENTS)).toBe('')
+    expect(addressField(MEMBERS)).toBe('')
+  })
+
+  it('is what two records are refused for sharing', () => {
+    expect(takenIdentity(LEAGUES, { slug: 'btl-2027' }, ['btl-2027'])).toEqual({
+      slug: { key: 'form.errors.taken' },
+    })
+    expect(takenIdentity(LEAGUES, { slug: 'btl-2028' }, ['btl-2027'])).toEqual({})
+    /* And an event is refused by its own rule, on the date, not by this one
+       (entityForms.ts, `eventClash`). */
+    expect(takenIdentity(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
   })
 })

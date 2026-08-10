@@ -694,6 +694,71 @@ describe('the races of an event', () => {
   })
 })
 
+describe('the address of a league', () => {
+  /* A league is filed under an id nobody sees and answers at an address somebody
+     chose: `btl-2027` is not what the rule would make of "Balkanska trkačka liga
+     2027". So the form asks for it, like a written page, rather than deriving it
+     from the name, which would take the address away from everyone who has it
+     (PENDING, and the rule for teams and events of 03.08.2026). */
+  it('is asked for on the form, and a league entered by hand answers at it', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+    await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
+    await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
+    await user.type(screen.getByLabelText(/^Sezona/), '2027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const listed = within(await screen.findByRole('table', { name: 'Lige' }))
+
+    /* The address is on the record, and it leads somewhere: a league entered by
+       hand used to get an empty one and stand at /liga/, which is no league at
+       all.
+
+       What the address answers with is not read here. Nothing the administration
+       creates reaches a public screen at all, because those read the file and
+       not what this visit has added to it; that is older and wider than this
+       form and is written down as its own job (PENDING, R7). */
+    expect(listed.getByRole('link', { name: 'vojvodjanska-2027' })).toHaveAttribute(
+      'href',
+      '/sr/liga/vojvodjanska-2027',
+    )
+  })
+
+  it('is refused where another league already answers at it', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+    await user.type(screen.getByLabelText(/^Naziv lige/), 'Druga liga')
+    await user.type(screen.getByLabelText(/^Adresa/), 'btl-2027')
+    await user.type(screen.getByLabelText(/^Sezona/), '2027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(/već zauzeta/)).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+  })
+
+  it('lets a league be saved again without its own address getting in the way', async () => {
+    /* Compared by identity rather than by address, every league refused the
+       address it already answers at. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    const row = at((await table('Lige')).getAllByRole('row'), 1)
+
+    await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+})
+
 describe('teams', () => {
   it('shows each team with its organiser and its head count', async () => {
     renderAt('/sr/administracija/timovi', 'superadmin')

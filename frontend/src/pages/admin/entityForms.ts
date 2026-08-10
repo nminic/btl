@@ -546,11 +546,30 @@ export function takenIdentity(
   values: FormValues,
   taken: string[],
 ): Record<string, FieldError> {
-  const typed = String(values[entity.idField] ?? '').trim()
+  /* The field the address is typed into, which is the identity for a written
+     page and a field of its own for a league: a league is filed under an id it
+     never shows and answers at an address somebody chose (`btl-2027` is not what
+     the rule would make of "Balkanska trkačka liga 2027"). Either way it is the
+     one field two records must not share. */
+  const named = addressField(entity)
+  const typed = String(values[named] ?? '').trim()
 
-  return namesItself(entity) && taken.includes(typed)
-    ? { [entity.idField]: { key: 'form.errors.taken' } }
-    : {}
+  return named !== '' && taken.includes(typed) ? { [named]: { key: 'form.errors.taken' } } : {}
+}
+
+/**
+ * Which field of a form carries the address, or nothing where the form does not
+ * ask for one.
+ *
+ * It is the field called `slug`, wherever it appears, and that is the whole
+ * rule. A written page is filed under its address, so for it the field is the
+ * identity as well; a league is filed under an id nobody sees and answers at an
+ * address somebody chose, so there it is a field like any other. An event is
+ * neither: its address is worked out from the name and the year and never typed,
+ * so its form has no such field and this answers with nothing.
+ */
+export function addressField(entity: EntityDef): string {
+  return entity.form.fields.some((field) => field.name === 'slug') ? 'slug' : ''
 }
 
 /**
