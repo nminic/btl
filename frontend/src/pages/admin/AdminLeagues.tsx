@@ -65,12 +65,11 @@ export function AdminLeagues() {
                   <tbody>
                     {rows.map((league) => (
                       <tr key={league.id}>
-                        {/* Read, not edited in place. The cell was a stopgap
-                            for as long as the form did not ask for the address
-                            (PENDING: "do tada u spisku liga ostaje ćelija za
-                            naziv"); it asks now, so the stopgap goes. A league
-                            is changed where every other record is changed, on
-                            its own form. */}
+                        {/* Read, not edited in place. The cell was a stopgap for
+                            as long as the form did not ask for the address
+                            (PENDING, 10.08.2026); it asks now, so the stopgap
+                            goes and a league is changed where every other record
+                            is changed, on its own form. */}
                         <td>{league.name}</td>
                         <td>
                           {/* The whole address, read as well as clicked. The

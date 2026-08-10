@@ -728,6 +728,23 @@ describe('the address of a league', () => {
     )
   })
 
+  it('is not saved without one, since a league without an address is at /liga/', async () => {
+    /* The whole of what this rule is for. Without it the address saves empty,
+       the list draws a link to /liga/, and the league is the one thing the
+       portal cannot answer with. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+    await user.type(screen.getByLabelText(/^Naziv lige/), 'Liga bez adrese')
+    await user.type(screen.getByLabelText(/^Sezona/), '2027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(screen.getByLabelText(/^Adresa/)).toHaveAccessibleDescription(/obavezno/)
+  })
+
   it('takes only what an address may be made of', async () => {
     /* Lower case, digits and dashes. A capital or a space is not refused for
        tidiness: the address is what the portal answers at, and a value that
@@ -743,7 +760,9 @@ describe('the address of a league', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
+    /* And the complaint is about the address, not about some other field: an
+       error anywhere would pass a count. */
+    expect(screen.getByLabelText(/^Adresa/)).toHaveAccessibleDescription(/mala latinična/)
   })
 
   it('is refused where another league already answers at it', async () => {
