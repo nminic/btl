@@ -59,6 +59,7 @@ const family: DucatFamily = {
   step: 0,
   last: 0,
   tierUpFrom: 0,
+  counted: 'trka',
 }
 
 describe('the quantity a kind names', () => {
@@ -150,5 +151,27 @@ describe('the ducats a competitor has earned', () => {
     const gendered = { ...family, top: 'TRČAO U', topFemale: 'TRČALA U' }
 
     expect(first(earnedDucats(member, races, [gendered], '2027-06-01')).top).toBe('TRČALA U')
+  })
+
+  it('counts a race run on the first day of a period, and on the last', () => {
+    /* Both ends of the range are inside it (ADL A12, 2b). Every other fixture
+       here runs in the middle of a month, so the two comparisons that decide it
+       could both be loosened without a test noticing: a member whose hundred and
+       twenty fifth kilometre falls on the thirty first of July would simply not
+       be given July. */
+    const edges = [race('2027-07-01'), race('2027-07-31')]
+    const monthly = { ...family, period: 'month' as const, value: 2 }
+    const earned = earnedDucats(member, edges, [monthly], '2027-08-01')
+
+    expect(earned).toHaveLength(1)
+    expect(first(earned).from).toBe('2027-07-01')
+  })
+
+  it('leaves out a race one day outside the period on either side', () => {
+    const outside = [race('2027-06-30'), race('2027-08-01')]
+    const monthly = { ...family, period: 'month' as const, value: 1 }
+    const earned = earnedDucats(member, outside, [monthly], '2027-08-01')
+
+    expect(earned.map((one) => one.from)).toEqual(['2027-06-01', '2027-08-01'])
   })
 })

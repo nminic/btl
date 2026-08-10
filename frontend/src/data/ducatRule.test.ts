@@ -29,6 +29,7 @@ const plain: DucatFamily = {
   step: 0,
   last: 0,
   tierUpFrom: 0,
+  counted: 'trka',
 }
 
 const t = (key: string, params?: Record<string, string | number>) =>
@@ -221,10 +222,23 @@ describe('the sentence that says how a ducat is earned', () => {
     )
   })
 
-  it('says a series repeats, and where it stops', () => {
+  it('says a series repeats, in what it is counted, and where it stops', () => {
     const said = ruleSentence({ ...plain, value: 100, step: 100, last: 1000 }, t, 'sr')
 
-    expect(said).toContain('ducats.again{"step":"100","last":"1.000"}')
+    // Serbian counts with the noun: "na svakih 100" alone is half a sentence.
+    expect(said).toContain('ducats.again{"step":"100","last":"1.000","counted":"trka"}')
+  })
+
+  it('says where a series starts being worth one value more', () => {
+    /* The wall draws the first coin of a family, which is the cheap one, so this
+       sentence is the only place the step up is ever said (PDL P16). */
+    const said = ruleSentence({ ...plain, step: 100, last: 1000, tierUpFrom: 500 }, t, 'sr')
+
+    expect(said).toContain('ducats.stepUp{"upFrom":"500","counted":"trka"}')
+  })
+
+  it('says nothing about stepping up where a family never does', () => {
+    expect(ruleSentence(plain, t, 'sr')).not.toContain('ducats.stepUp')
   })
 
   it('says nothing about repeating when the family is one ducat', () => {

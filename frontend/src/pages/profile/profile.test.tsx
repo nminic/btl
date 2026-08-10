@@ -430,8 +430,8 @@ describe('the season, over both parts of the profile', () => {
 
 describe('a ducat that belongs to one month rather than to all of them', () => {
   it('says which month, beside the coin that carries it', async () => {
-    /* The coin is hidden from a screen reader, so a profile holding July and
-       August would otherwise read as one ducat written down twice.
+    /* A profile holding July and August must not read as one ducat written down
+       twice, so the month stands beside the coin as words of the page.
      *
      * Two files are stood in for, because nothing in the generated data can
      * reach this on its own: the season of 2027 has not begun, and every result
@@ -487,6 +487,16 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
       renderAt('/sr/takmicar/000001/priznanja?sezona=sve', 'visitor', null, undefined, '2027-08-01')
 
       expect(await screen.findByText('jul 2027.')).toBeVisible()
+
+      /* The coin is an image with a name since the hint went (11.08.2026), and
+         on a profile that name is the only thing telling one instance of a
+         family from another: two months of the same ducat carry the same two
+         words under them. */
+      expect(screen.getByRole('img', { name: 'Mesečni kilometri, 20 km.' })).toBeVisible()
+
+      /* And what it is worth, in words. The metal says it in colour, and colour
+         is never the only thing that says anything (PDL P16, SC 1.4.1). */
+      expect(screen.getByText('Vrednost 1 od 5, bronzani dukat.')).toBeVisible()
     } finally {
       globalThis.fetch = real
     }

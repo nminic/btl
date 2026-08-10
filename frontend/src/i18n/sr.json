@@ -1031,14 +1031,15 @@
     "sentence": "Dukat se dodeljuje kad {kind} bude najmanje {value}",
     "ever": ", računato kroz sve sezone.",
     "everyMonth": ", računato za svaki mesec, počev od januara {season}.",
-    "everySeason": ", računato za svaku sezonu, počev od {season}.",
-    "again": " Ponavlja se na svakih {step}, do {last}.",
+    "everySeason": ", računato za svaku sezonu, počev od sezone {season}.",
+    "again": " Ponavlja se na svakih {step} {counted}, do {last}.",
+    "stepUp": " Od {upFrom} {counted} vredi jedan stepen više.",
     "tier": {
       "1": "Vrednost 1 od 5, bronzani dukat.",
       "2": "Vrednost 2 od 5, srebrni dukat.",
       "3": "Vrednost 3 od 5, zlatni dukat.",
       "4": "Vrednost 4 od 5, zlatni dukat sa punim pojasom.",
-      "5": "Vrednost 5 od 5, zlatno lice."
+      "5": "Vrednost 5 od 5, zlatan dukat sa zlatnim licem."
     },
     "kind": {
       "raceCount": "broj trka",
@@ -1047,7 +1048,7 @@
       "longCount": "broj dužih trka",
       "shortCount": "broj kraćih trka",
       "ultraCount": "broj ultramaratona",
-      "totalKm": "ukupno kilometara",
+      "totalKm": "ukupan broj kilometara",
       "totalAscent": "ukupan uspon u metrima",
       "totalDescent": "ukupan spust u metrima",
       "totalTime": "ukupan broj sati na stazi",

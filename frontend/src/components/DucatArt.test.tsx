@@ -11,10 +11,10 @@ import { at, must } from '../test/at'
  * browser. What is checked here is that it is still a struck coin and not a
  * picture of one.
  *
- * These read attributes rather than roles, against the usual rule for component
- * tests. A drawing has no role: it is deliberately hidden from a screen reader,
- * because everything it says is said in words beside it. The queries here are
- * the only way to reach it at all. */
+ * Most of these read attributes rather than roles, against the usual rule for
+ * component tests. The coin has one role and one name, and everything else about
+ * it is geometry: there is no accessible surface on which to ask how large a
+ * number is set or which circle a legend hangs from. */
 
 const coin: Ducat = {
   id: 'duk-proba',
@@ -193,11 +193,12 @@ describe('a wall of them', () => {
   it('gives every coin arcs of its own to hang its legends on', () => {
     /* Fifteen coins are drawn on the rulebook. Path names are a document-wide
        namespace, so two coins sharing one would set both legends of the second
-       along the arcs of the first. */
+       along the arcs of the first. The two here are the same ducat on purpose:
+       the names come from the drawing and not from what is drawn. */
     const { container } = render(
       <>
         <DucatArt ducat={coin} label="Proba" />
-        <DucatArt ducat={{ ...coin, id: 'duk-druga' }} label="Proba" />
+        <DucatArt ducat={coin} label="Druga" />
       </>,
     )
 

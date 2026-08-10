@@ -296,6 +296,15 @@
   --ducat-art-size: clamp(7.5rem, 26vw, 8.5rem);
 }
 
+/* The two lines under a held ducat: which period it is for, and what it is
+   worth. Quiet and small, because the coin above them is the thing being
+   looked at and these are what the coin cannot say in colour alone. */
+.awards__ducat .profile__scope {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
 /* Two across from tablet up. */
 @media (min-width: 820px) {
   .profile__row {

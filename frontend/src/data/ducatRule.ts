@@ -107,6 +107,10 @@ export type DucatFamily = {
   last: number
   /** The threshold from which the series is worth one tier more, 0 when never. */
   tierUpFrom: number
+  /** What the step of a series is counted in, in the case a number puts it in:
+   *  "trka", "država". Empty for a family that is one ducat. Serbian counts
+   *  with the noun and "na svakih 100, do 1.000" is half a sentence. */
+  counted: string
 }
 
 /** One ducat a member can hold: a family with its period and its threshold
@@ -139,8 +143,16 @@ const UNITS: Partial<Record<DucatKind, string>> = {
   bestRaceAscent: 'm',
 }
 
+/** What a quantity is measured in, whatever is drawn. */
+export function unitFor(kind: DucatKind): string {
+  return UNITS[kind] ?? ''
+}
+
+/** The same, for the coin: a ducat that carries a drawing instead of a number
+ *  has nothing for a unit to stand under, and a drawing with a unit floating
+ *  below it is a drawing with a caption. */
 export function unitOf(ducat: Pick<Ducat, 'kind' | 'art'>): string {
-  return ducat.art === 'none' ? (UNITS[ducat.kind] ?? '') : ''
+  return ducat.art === 'none' ? unitFor(ducat.kind) : ''
 }
 
 /** The threshold as it is struck into the coin: plain digits, no grouping.
@@ -335,8 +347,20 @@ export function ruleSentence(
       ? t('ducats.again', {
           step: formatNumber(family.step, locale, 0),
           last: formatNumber(family.last, locale, 0),
+          counted: family.counted,
         })
       : ''
 
-  return `${core}${when}${again}`
+  /* A series is not worth the same all the way along: from the threshold the
+     owner set, the rest of it is one value higher (PDL P16). The wall draws the
+     first of the family, so this sentence is the only place that says so. */
+  const higher =
+    family.tierUpFrom > 0
+      ? t('ducats.stepUp', {
+          upFrom: formatNumber(family.tierUpFrom, locale, 0),
+          counted: family.counted,
+        })
+      : ''
+
+  return `${core}${when}${again}${higher}`
 }

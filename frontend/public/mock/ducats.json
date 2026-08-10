@@ -14,7 +14,8 @@
     "tier": 1,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-mesecni-sati",
@@ -31,7 +32,8 @@
     "tier": 1,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-sezonski-km",
@@ -48,7 +50,8 @@
     "tier": 2,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-sezonski-bodovi",
@@ -65,7 +68,8 @@
     "tier": 2,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-sezonski-sati",
@@ -82,7 +86,8 @@
     "tier": 2,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-sezonske-trke",
@@ -99,7 +104,8 @@
     "tier": 2,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-drzave",
@@ -116,7 +122,8 @@
     "tier": 3,
     "step": 10,
     "last": 100,
-    "tierUpFrom": 50
+    "tierUpFrom": 50,
+    "counted": "država"
   },
   {
     "id": "duk-sve-trke",
@@ -133,7 +140,8 @@
     "tier": 3,
     "step": 100,
     "last": 1000,
-    "tierUpFrom": 500
+    "tierUpFrom": 500,
+    "counted": "trka"
   },
   {
     "id": "duk-krace-trke",
@@ -150,7 +158,8 @@
     "tier": 3,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-polumaratoni",
@@ -167,7 +176,8 @@
     "tier": 3,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-duze-trke",
@@ -184,7 +194,8 @@
     "tier": 4,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-maratoni",
@@ -201,7 +212,8 @@
     "tier": 4,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-uspon",
@@ -218,7 +230,8 @@
     "tier": 4,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-ultramaratoni",
@@ -235,7 +248,8 @@
     "tier": 4,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   },
   {
     "id": "duk-obim-planete",
@@ -252,6 +266,7 @@
     "tier": 5,
     "step": 0,
     "last": 0,
-    "tierUpFrom": 0
+    "tierUpFrom": 0,
+    "counted": ""
   }
 ]
