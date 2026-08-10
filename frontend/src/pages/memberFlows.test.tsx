@@ -6,6 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { first, must } from '../test/at'
+import { readQr } from '../test/readQr'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { Membership } from './member/Membership'
@@ -124,6 +125,30 @@ describe('membership', () => {
   /* No code at all abroad (owner, 31.07.2026): the association has one account,
      in dinars, at a Serbian bank, and paying into it from abroad is the slowest
      and dearest way there is. PayPal or a card, and nothing else. */
+  it('draws the slip the member is told to pay, and not some other text', async () => {
+    /* The two ends joined: the payload has its own tests and the drawing has its
+       own, and neither says the square on the screen is a drawing of this
+       member's slip. The screen writes the payload out under "Prikaži sadržaj
+       koda", so the two are read off one render and compared.
+
+       Not opened first: what is inside a `details` is in the page whether it is
+       open or not, and what this is about is the two agreeing, not the
+       disclosure. */
+    renderFor('000001')
+
+    await screen.findByRole('heading', { name: 'Moja članarina' })
+
+    const payload = must(
+      screen.getByText(/^K:PR\|V:01/).textContent,
+      'the payload the screen shows',
+    )
+
+    /* Read off the square itself, by the decoder, rather than compared with a
+       second drawing of the same words: what has to hold is that the code on
+       this member's screen says this member's slip (test/readQr.ts). */
+    expect(readQr(screen.getByRole('img', { name: /QR/ }))).toBe(payload)
+  })
+
   it('offers a member abroad PayPal and a card, and no code at all', async () => {
     // 000009 is in Montenegro in the generated data.
     renderFor('000009')
