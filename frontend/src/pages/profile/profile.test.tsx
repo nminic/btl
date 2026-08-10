@@ -427,3 +427,81 @@ describe('the season, over both parts of the profile', () => {
     expect((await screen.findByLabelText('Sezona')) as HTMLSelectElement).toHaveValue('2019')
   })
 })
+
+describe('a ducat that belongs to one month rather than to all of them', () => {
+  it('says which month, beside the coin that carries it', async () => {
+    /* A profile holding July and August must not read as one ducat written down
+       twice, so the month stands beside the coin as words of the page.
+     *
+     * Two files are stood in for, because nothing in the generated data can
+     * reach this on its own: the season of 2027 has not begun, and every result
+     * there is was run before it. One race in July 2027 and one family that
+     * repeats by the month are the smallest world in which a monthly ducat can
+     * be held at all. */
+    const real = globalThis.fetch
+    const race = {
+      id: 'r-jul',
+      memberNumber: '000001',
+      raceId: 't-jul',
+      eventName: 'Julska trka',
+      eventSlug: 'julska-trka',
+      date: '2027-07-04',
+      distanceKm: 21.1,
+      ascentM: 200,
+      descentM: 200,
+      seconds: 7200,
+      points: 30,
+      category: 'half',
+    }
+    const family = {
+      id: 'duk-mesecni-km',
+      name: 'Mesečni kilometri',
+      kind: 'totalKm',
+      value: 20,
+      period: 'month',
+      top: 'ISTRČANIH',
+      topFemale: '',
+      bottom: '',
+      periodAt: 'bottom',
+      mark: 'distance',
+      art: 'none',
+      tier: 1,
+      step: 0,
+      last: 0,
+      tierUpFrom: 0,
+    }
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const asked = String(input)
+
+      if (asked.endsWith('/results.json')) {
+        return new Response(JSON.stringify([race]), { status: 200 })
+      }
+
+      return asked.endsWith('/ducats.json')
+        ? new Response(JSON.stringify([family]), { status: 200 })
+        : real(input)
+    }) as typeof fetch
+
+    try {
+      /* A season that is not the ducat's, on purpose: a trophy belongs to the
+         season it was won in and the filter narrows those, but a ducat is
+         permanent and the filter must not touch it (PDL P11). */
+      renderAt('/sr/takmicar/000001/priznanja?sezona=2010', 'visitor', null, undefined, '2027-08-01')
+
+      expect(await screen.findByText('jul 2027.')).toBeVisible()
+
+      /* The coin is an image with a name since the hint went (11.08.2026), and
+         on a profile that name is the only thing telling one instance of a
+         family from another: two months of the same ducat carry the same two
+         words under them. */
+      expect(screen.getByRole('img', { name: 'Mesečni kilometri, 20 km.' })).toBeVisible()
+
+      /* And what it is worth, in words. The metal says it in colour, and colour
+         is never the only thing that says anything (PDL P16, SC 1.4.1). */
+      expect(screen.getByText('Vrednost 1 od 5, bronzani dukat.')).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})

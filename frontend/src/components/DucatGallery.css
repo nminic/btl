@@ -1,12 +1,16 @@
-/* The wall of ducats. The mark and the name are all that stands on a card; the
-   kind is a hint that appears on hover, on keyboard focus and on a tap.
+/* The wall of ducats: fifteen coins, three to a row and five rows, in the order
+   the owner ranked them by how hard they are to win (10.08.2026).
+
+   Nothing here is a control. The card carried a hint that opened on hover, on
+   touch and on focus until 11.08.2026, when the owner asked for the coins to
+   stand still and for the words to be said once, above them, in the prose of
+   the section. So there is no button, no hint, no hover and no state.
 
    A shared building block, so the name is bare and this is its one definition
-   (ADL A7). It was scoped to the screen of ducats until 04.08.2026, when that
-   screen became a section of the rulebook. `.ducat` stays inside it: everything
-   in a bundled stylesheet shares one namespace, and a bare `.ducat` is exactly
-   the sort of name a profile showing somebody's ducats would reach for next,
-   which is how this page was broken once already. */
+   (ADL A7). `.ducat` stays scoped inside `.ducats`: everything in a bundled
+   stylesheet shares one namespace, and a bare `.ducat` is exactly the sort of
+   name a profile showing somebody's ducats would reach for next, which is how
+   this page was broken once already. */
 
 .ducats {
   list-style: none;
@@ -15,28 +19,36 @@
   display: grid;
   gap: var(--space-14);
   align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr));
-  /* How large the mark is drawn, and the reason it is set from here rather than
-     defaulted inside the component: the drawing steps down in density as it gets
-     smaller (DucatArt.css), and a size that never changes is a step that never
-     happens. Set nowhere at all, the disc stood at 104px on a 360px telephone
-     and on a 1600px desktop alike, so the whole of that behaviour was code that
-     could not run.
-
-     Tied to the width of the window rather than to the card, because the number
-     of columns follows the window too: on a telephone one card fills the screen
-     and a 104px coin over a name in a single column is a wall of ducats four
-     rows tall. */
-  --ducat-art-size: clamp(4.5rem, 20vw, 6.5rem);
+  /* One to a row on a telephone. Three would be 100px apiece at 360, and a coin
+     with a legend around its edge stops being readable under 120 (ADL A12, 9). */
+  grid-template-columns: 1fr;
+  /* How large the coin is drawn. Never under 7.5rem, which is the 120 pixels the
+     legend needs; never over 11rem, which is where a wall of them starts to look
+     like a poster rather than a section of a rulebook. */
+  --ducat-art-size: clamp(7.5rem, 22vw, 11rem);
 }
 
-/* Scoped to the grid it lives in: a bare .ducat is too common a name to hold
-   globally, and holding it globally is what broke this page once. */
+@media (min-width: 560px) {
+  .ducats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Three to a row, which is the shape the owner asked for. Both widths are ones
+   the portal already changes shape at (styles/scale.test.ts): 560 is where a
+   telephone stops being a telephone, and 780 is where the wide layout begins,
+   which is also the first width at which three coins and their cards fit. */
+@media (min-width: 780px) {
+  .ducats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .ducats .ducat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-8);
   padding: var(--space-16) var(--space-14);
   border: 1px solid var(--border);
   border-radius: var(--radius-10);
@@ -45,80 +57,22 @@
   min-width: 0;
 }
 
-/* The whole mark is the control, so the hint is reachable by tab and by touch
-   and not only by a mouse pointer. It is a button that looks like nothing. */
-.ducat__face {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-8);
-  width: 100%;
-  min-width: 0;
-  padding: var(--space-4);
-  border: 0;
-  border-radius: var(--radius-8);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
+/* Two or three words, on one line. They are written short enough to hold at the
+   narrowest card this grid makes, and the ellipsis is the floor under a
+   translation that one day is not (the owner, 10.08.2026: the description must
+   not break across lines). */
 .ducat__name {
+  max-width: 100%;
   font-weight: 700;
-  font-size: 0.95rem;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-
-/*
- * The hint: the sentence that says how the ducat is earned.
- *
- * Clipped rather than removed. It is the accessible description of the button
- * above it (aria-describedby), and display:none would take it out of the
- * accessibility tree, which would leave the one fact a member came for available
- * to a mouse and to nobody else (WCAG 2.2 AA). There is no transition, so there
- * is no motion to reduce.
- */
-.ducat__hint {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
+  font-size: 0.9rem;
+  line-height: 1.3;
   white-space: nowrap;
-  border: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ducat__face:hover ~ .ducat__hint,
-.ducat__face:focus-visible ~ .ducat__hint,
-.ducat__face[aria-expanded='true'] ~ .ducat__hint {
-  position: static;
-  width: auto;
-  height: auto;
-  margin: var(--space-6) 0 0;
-  padding-top: var(--space-8);
-  border-top: 1px solid var(--border);
-  overflow: visible;
-  clip-path: none;
-  white-space: normal;
-}
-
-.ducat__hint p {
-  margin: 0 0 var(--space-4);
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: var(--text-muted);
-}
-
-.ducat__hint p:last-child {
-  margin-bottom: 0;
-}
-
-/* What stands in place of the wall when the league has defined no ducat at all.
-   Possible: the ducats are records an administrator maintains, and the section
-   of the rulebook is drawn whether or not any exist. */
+/* What stands in place of the wall when the file yields nothing at all. The
+   section of the rulebook is drawn whether or not the list arrives. */
 .ducats__empty {
   margin: var(--space-16) 0 0;
   color: var(--text-muted);

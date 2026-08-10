@@ -1,4 +1,5 @@
-import type { Ducat, DucatKind } from './ducatRule'
+import type { Ducat, DucatFamily, DucatKind } from './ducatRule'
+import { instancesOf } from './ducatRule'
 import { resultsOf, seasonOf } from './derive'
 import type { Competitor, Result } from './types'
 
@@ -10,21 +11,18 @@ import type { Competitor, Result } from './types'
  * the results inside the period, and compares.
  *
  * Counted from the results themselves rather than from a stored tally, because
- * the period is arbitrary: 15 July to 20 August lines up with no month and no
- * season, so buckets by month could only ever be an optimisation and never the
- * source (ADL A12, 2b). What counts is the date of the race, not the date the
- * result was entered (2c).
+ * the period is arbitrary and the families that repeat make a new one every
+ * month. What counts is the date of the race, not the date the result was
+ * entered (ADL A12, 2c).
  *
  * **What this cannot do, and the backend must.** A ducat already won is never
  * taken away and carries a snapshot of the rule that was in force when it was
  * given (ADL A12, 4), and it is awarded when a result is verified rather than
  * whenever a profile is drawn (rule 6). Neither is possible without somewhere to
- * write the award down, so here the answer is worked out again on every draw:
- * an administrator who raises a ducat's threshold takes that ducat off every
- * profile that held it, which is exactly what P16 forbids. Nothing a competitor
- * does can lose them one, because every quantity is a sum or a maximum over
- * races that have happened; only an edit to the rule can. Recorded in the
- * decision log as owed to the database.
+ * write the award down, so here the answer is worked out again on every draw.
+ * Nothing a competitor does can lose them one, because every quantity is a sum
+ * or a maximum over races that have happened. Recorded in the decision log as
+ * owed to the database.
  */
 
 /** Whether a race falls inside the ducat's period. Either end may be empty,
@@ -60,10 +58,11 @@ export function quantityOf(kind: DucatKind, races: Result[]): number {
     totalTime: () => sum((one) => one.seconds) / 3600,
     points: () => sum((one) => one.points),
     /* A result does not carry the country; the event it belongs to does, and
-       the profile does not load the events. Until it does, the ducats of this
-       kind are measured against nothing and nobody earns one, which is the safe
-       way round: a ducat is never taken away once given (ADL A12, 4), so one
-       given wrongly is given for ever. */
+       the profile does not load the events. Until it does, this is nought and
+       nobody earns the ducat of countries, which is the safe way round: a ducat
+       is never taken away once given (ADL A12, 4), so one given wrongly is given
+       for ever. Recorded as owed, because a family of ducats now depends on it
+       (ADL A12, 8). */
     countryCount: () => 0,
     seasonCount: () => new Set(races.map(seasonOf)).size,
     bestRacePoints: () => best((one) => one.points),
@@ -74,18 +73,30 @@ export function quantityOf(kind: DucatKind, races: Result[]): number {
   return answers[kind]()
 }
 
-/** Every ducat this competitor has earned, in the order the ducats are defined,
- *  which is the order the public catalogue lists them in. */
+/**
+ * Every ducat this competitor has earned.
+ *
+ * The families are expanded into the ducats that exist by today first: a family
+ * that gives one a month is a list of months, not a single condition over all of
+ * them. Expanding before comparing is what keeps "125 km in July" from quietly
+ * becoming "125 km ever" (ADL A12, 7).
+ *
+ * The order is the order of the families, which is the order the rulebook lists
+ * them in, and inside a family the order the periods and the thresholds come in.
+ */
 export function earnedDucats(
   competitor: Competitor,
   results: Result[],
-  ducats: Ducat[],
+  families: DucatFamily[],
+  today: string,
 ): Ducat[] {
   const mine = resultsOf(results, competitor.memberNumber)
 
-  return ducats.filter((ducat) => {
-    const inside = mine.filter((one) => inPeriod(one, ducat.from, ducat.to))
+  return families
+    .flatMap((family) => instancesOf(family, today, competitor.gender))
+    .filter((ducat) => {
+      const inside = mine.filter((one) => inPeriod(one, ducat.from, ducat.to))
 
-    return quantityOf(ducat.kind, inside) >= ducat.value
-  })
+      return quantityOf(ducat.kind, inside) >= ducat.value
+    })
 }

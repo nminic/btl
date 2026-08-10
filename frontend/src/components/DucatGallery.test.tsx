@@ -1,38 +1,25 @@
 import { screen, within } from '@testing-library/react'
-import { ruleSentence, thresholdOf, type Ducat } from '../data/ducatRule'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { ruleSentence, type DucatFamily } from '../data/ducatRule'
 import { loadResource } from '../data/client'
 import sr from '../i18n/sr.json'
 import { translate, type Dictionary } from '../i18n/translate'
-import { at, first } from '../test/at'
+import { at, first, must } from '../test/at'
 import { renderAt } from '../test/render'
-import { setupUser } from '../test/user'
 
 const dictionary = sr as Dictionary
 const t = (key: string, params?: Record<string, string | number>) =>
   translate(dictionary, 'sr', key, params)
 
-const ducatsOf = () => loadResource<Ducat[]>('ducats')
+const familiesOf = () => loadResource<DucatFamily[]>('ducats')
+
+const css = readFileSync(join(__dirname, 'DucatGallery.css'), 'utf8')
 
 /** The wall of ducats, once it has arrived. It is drawn inside the rulebook,
  *  near the end of it, since the owner made it a section of that page rather
  *  than a screen of its own (04.08.2026). */
 const wall = () => screen.findByRole('list', { name: 'Dukati' })
-
-/** What the ducat on that card describes itself with, which is the sentence
- *  saying how it is earned. It is the accessible description at all times,
- *  drawn or not, because a fact only a mouse can reach is a fact most people do
- *  not have (WCAG 2.2 AA). */
-function hintOf(item: HTMLElement): HTMLElement {
-  const face = within(item).getByRole('button')
-  const id = face.getAttribute('aria-describedby') ?? ''
-  const hint = document.getElementById(id)
-
-  if (hint === null) {
-    throw new Error('the ducat describes itself with an element that is not there')
-  }
-
-  return hint
-}
 
 describe('the wall of ducats in the rulebook', () => {
   it('stands in a section of its own, near the end and before the closing provisions', async () => {
@@ -49,118 +36,112 @@ describe('the wall of ducats in the rulebook', () => {
     expect(headings.at(-1)).toBe('20. Izmene pravilnika i završne odredbe')
   })
 
-  it('lists every ducat with its threshold and how it is earned', async () => {
-    const ducats = await ducatsOf()
+  it('draws one coin per family, fifteen of them, three to a row and five rows', async () => {
+    /* One per family and not one per ducat. Four families give a ducat every
+       season and two give one every month, so the ducats that exist are
+       fifty-five in the first season and grow by twenty-eight a year
+       (ADL A12, 7). The rulebook describes the rule; the profile holds the
+       ducats. */
+    const families = await familiesOf()
     renderAt('/sr/pravilnik')
 
     const items = within(await wall()).getAllByRole('listitem')
-    expect(items).toHaveLength(ducats.length)
-    expect(ducats.length).toBeGreaterThan(10)
 
-    /* Walked over the ducats rather than the cards, so the ducat each assertion
-       is about is held rather than looked up, and the card facing it is asked
-       for by position because the position is what pairs the two. */
-    ducats.forEach((ducat, index) => {
-      const item = at(items, index)
+    expect(families).toHaveLength(15)
+    expect(items).toHaveLength(15)
+    expect(css).toContain('grid-template-columns: repeat(3, 1fr)')
+  })
 
-      expect(item).toHaveTextContent(ducat.name)
-      // The threshold is on the mark itself, written for this language.
-      expect(item).toHaveTextContent(thresholdOf(ducat, 'sr'))
-      // And the one thing a member came for.
-      expect(hintOf(item)).toHaveTextContent(ruleSentence(ducat, t, 'sr'))
+  it('names each one in a couple of words, and never in a number', async () => {
+    /* The owner asked for two or three words that say what a ducat is about and
+       say nothing about how much (10.08.2026). The threshold is on the coin and
+       in the sentence; a name that repeated it would say one number three
+       times. */
+    const families = await familiesOf()
+
+    families.forEach((family) => {
+      expect(family.name).not.toMatch(/\d/)
+      expect(family.name.split(' ').length).toBeLessThanOrEqual(3)
     })
   })
 
-  it('shows all of them, since nothing here filters any more', async () => {
-    /* The screen this replaced had two filters, by kind and by the period a
-       ducat is valid for. What they answered was "which of these can I still
-       win", which is a question about a member and not about the rules; the
-       section of a rulebook shows the rules, all of them. */
-    const ducats = await ducatsOf()
+  it('keeps a name on one line, however narrow the card is', async () => {
+    /* Also the owner's, the same day: the words under a coin do not wrap. Read
+       through its own selector, because `nowrap` appears elsewhere in this file
+       and a search over the whole of it passes while the name wraps. */
+    expect(css).toMatch(/\.ducat__name\s*\{[^}]*white-space:\s*nowrap/)
+
+    const families = await familiesOf()
     renderAt('/sr/pravilnik')
 
-    await wall()
-
-    expect(screen.queryByLabelText('Vrsta dukata')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Period važenja')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Obriši filtere' })).not.toBeInTheDocument()
-    expect(within(await wall()).getAllByRole('listitem')).toHaveLength(ducats.length)
+    const items = within(await wall()).getAllByRole('listitem')
+    expect(first(items)).toHaveTextContent(first(families).name)
   })
 
-  it('says how a ducat with no description of its own is earned all the same', async () => {
-    const ducats = await ducatsOf()
-    const bare = ducats.findIndex((ducat) => ducat.description === '')
-    renderAt('/sr/pravilnik')
+  it('runs from the one most people will win to the one nobody is expected to', async () => {
+    /* The order is the owner's ranking of how hard they are to win, and it is
+       the order of the file, because a judgement about difficulty is not a
+       property of the data and nothing here can sort it back. */
+    const families = await familiesOf()
+    const values = families.map((family) => family.tier)
 
-    expect(bare).toBeGreaterThan(-1)
-
-    const item = at(within(await wall()).getAllByRole('listitem'), bare)
-    expect(hintOf(item)).toHaveTextContent(ruleSentence(at(ducats, bare), t, 'sr'))
+    expect(values).toEqual([...values].sort((one, other) => one - other))
+    expect(first(families).tier).toBe(1)
+    expect(at(families, families.length - 1).tier).toBe(5)
   })
 
-  it('carries the label of a ducat that has one, and nothing in its place where there is none', async () => {
-    const ducats = await ducatsOf()
-    const withLabel = ducats.findIndex((ducat) => ducat.label !== '')
-    const without = ducats.findIndex((ducat) => ducat.label === '')
+  it('gives every coin a name, since nothing beside it says what it is', async () => {
+    /* The card carried a hint until 11.08.2026, when the owner asked for the
+       coins to stand still and for the words to be said once above them. The
+       hint was what a screen reader was given, so each coin now carries its own
+       name: what it is, how it is earned, and what it is worth. */
+    const families = await familiesOf()
     renderAt('/sr/pravilnik')
 
     const items = within(await wall()).getAllByRole('listitem')
 
-    expect(at(items, withLabel)).toHaveTextContent(at(ducats, withLabel).label)
+    families.forEach((family, index) => {
+      const named = within(at(items, index)).getByRole('img')
 
-    /* And the card with none says nothing where one would have stood. This used
-       to assert that the card contains the name of its ducat, which is true of
-       every card there is and would go on passing while something quietly
-       appeared under the mark: a period worked out from the rule is exactly the
-       sort of thing somebody adds as a kindness (ducatRule.ts). Everything the
-       card is allowed to say is listed, and whatever is left over is the thing
-       that should not be there. */
-    const bare = at(ducats, without)
-    const said = [thresholdOf(bare, 'sr'), bare.name, ruleSentence(bare, t, 'sr'), bare.description]
-    const left = said.reduce(
-      (text, part) => text.replace(part, ''),
-      at(items, without).textContent ?? '',
-    )
-
-    expect(left.trim()).toBe('')
+      expect(named).toHaveAccessibleName(
+        `${family.name}. ${ruleSentence(family, t, 'sr')} ${t(`ducats.tier.${family.tier}`)}`,
+      )
+    })
   })
 
-  it('writes every period the way this language writes one, never as it is stored', async () => {
-    const ducats = await ducatsOf()
+  it('shows the league both halves of itself where the wording has two', async () => {
+    /* Three families read differently for a woman. With no member to read them
+       for, the rulebook alternates the examples, so the wall does not silently
+       address one half of the league (the owner, 10.08.2026: combine the two). */
+    const families = await familiesOf()
     renderAt('/sr/pravilnik')
 
-    const list = await wall()
+    const wallText = must((await wall()).textContent, 'a wall with words on it')
+    const gendered = families.filter((family) => family.topFemale !== '')
 
-    /* The rule of a ducat carries a range of dates, and the sentence used to
-       drop both of them in as they are stored: "računato od 2027-07-01 do
-       2027-07-31" on a public page (PDL P28a, 30.07.2026). Where the two ends
-       are a whole period, the sentence names the period. */
-    expect(list.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/)
-    expect(list).toHaveTextContent('računato za jul 2027.')
-    expect(list).toHaveTextContent('računato za 2027.')
-
-    /* And it ends there. Every Serbian date already carries the full stop that
-       makes it an ordinal, so an ending that adds one of its own reads
-       "računato za jul 2027..", which is the sort of thing a test using
-       toContain never sees and a reader sees at once. */
-    expect(list.textContent).not.toMatch(/\.\./)
-
-    // And the two ducats those sentences belong to are still in the data.
-    expect(ducats.some((ducat) => ducat.from === '2027-07-01' && ducat.to === '2027-07-31')).toBe(
-      true,
-    )
-    expect(ducats.some((ducat) => ducat.from === '2027-01-01' && ducat.to === '2027-12-31')).toBe(
-      true,
-    )
+    expect(gendered.length).toBeGreaterThan(1)
+    /* Alternating from the first, so which family speaks to whom is settled here
+       and not by the order two of them happen to be in. */
+    expect(wallText).toContain(first(gendered).topFemale)
+    expect(wallText).toContain(at(gendered, 1).top)
+    expect(wallText).not.toContain(first(gendered).top)
   })
-})
 
-describe('a league that has defined no ducat at all', () => {
-  it('says so in the section rather than leaving it with a heading and nothing under it', async () => {
-    /* The ducats are records an administrator maintains, and the section of the
-       rulebook is drawn whether or not there are any. Nothing in the generated
-       data is an empty list, so the file is emptied here: without it the branch
-       exists and nothing ever walks it. */
+  it('has nothing to press, and nothing that opens', async () => {
+    /* The owner's instruction of 11.08.2026, in one assertion: the coins stand
+       still. No control, no hover, no state, and no explanation under a coin. */
+    renderAt('/sr/pravilnik')
+
+    const inside = within(await wall())
+
+    expect(inside.queryAllByRole('button')).toEqual([])
+    expect(inside.queryAllByRole('link')).toEqual([])
+  })
+
+  it('says so in the section when the file yields nothing at all', async () => {
+    /* The section of the rulebook is drawn whether or not the list arrives.
+       Nothing in the data is an empty list, so the file is emptied here: without
+       it the branch exists and nothing ever walks it. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/ducats.json')
@@ -176,70 +157,42 @@ describe('a league that has defined no ducat at all', () => {
       globalThis.fetch = real
     }
   })
-})
 
-describe('the ducats the administrator has defined', () => {
-  it('never label a ducat with a year its rule does not cover', async () => {
-    const ducats = await ducatsOf()
+  it('is the fifteen the owner named, each with the rule he gave it', async () => {
+    /* The list is closed and nobody may add to it (PDL P16), so the file is the
+       specification and this is the only thing holding the two together. Without
+       it a threshold, a period or a value could be edited and every other test
+       here would stay green: they count the families, read their order and read
+       their names, and none of them reads a rule. */
+    const families = await familiesOf()
+    const said = families.map((one) => [
+      one.id,
+      one.kind,
+      one.value,
+      one.period,
+      one.tier,
+      one.step,
+      one.last,
+      one.tierUpFrom,
+      one.counted,
+    ])
 
-    /* The label is free text and the rule is data, so nothing but this holds
-       them together. A ducat read "Sezona 2027/2028" over a rule that ran from
-       1 January to 31 December 2027: the coin said one thing and the sentence
-       under it another, and neither said which was right. A BTL season is a
-       calendar year (PDL P8, P12), so a label naming two of them names one the
-       ducat cannot be won in. */
-    const wrong = ducats.filter((ducat) => {
-      const years = [...ducat.label.matchAll(/\d{4}/g)].map((match) => Number(match[0]))
-      const fromYear = ducat.from === '' ? -Infinity : Number(ducat.from.slice(0, 4))
-      const toYear = ducat.to === '' ? Infinity : Number(ducat.to.slice(0, 4))
-
-      return years.some((year) => year < fromYear || year > toYear)
-    })
-
-    expect(wrong.map((ducat) => ducat.id)).toEqual([])
-    // And the labels carrying a year are really in the data, so this cannot pass
-    // by having nothing to check.
-    expect(ducats.filter((ducat) => /\d{4}/.test(ducat.label)).length).toBeGreaterThan(3)
-  })
-})
-
-describe('the hint that says how a ducat is earned', () => {
-  it('opens on a tap and closes on the next one', async () => {
-    const user = setupUser()
-    renderAt('/sr/pravilnik')
-
-    const face = first(within(await wall()).getAllByRole('button'))
-
-    expect(face).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(face)
-    expect(face).toHaveAttribute('aria-expanded', 'true')
-
-    await user.click(face)
-    expect(face).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('closes with the escape key, and stays open under any other', async () => {
-    const user = setupUser()
-    renderAt('/sr/pravilnik')
-
-    const face = first(within(await wall()).getAllByRole('button'))
-
-    await user.click(face)
-    await user.keyboard('{ArrowDown}')
-    expect(face).toHaveAttribute('aria-expanded', 'true')
-
-    await user.keyboard('{Escape}')
-    expect(face).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('sits on a control the keyboard can reach, which a hover alone is not', async () => {
-    renderAt('/sr/pravilnik')
-
-    const face = first(within(await wall()).getAllByRole('button'))
-    face.focus()
-
-    expect(face).toHaveFocus()
-    expect(face.tagName).toBe('BUTTON')
+    expect(said).toEqual([
+      ['duk-mesecni-km', 'totalKm', 125, 'month', 1, 0, 0, 0, ''],
+      ['duk-mesecni-sati', 'totalTime', 20, 'month', 1, 0, 0, 0, ''],
+      ['duk-sezonski-km', 'totalKm', 1000, 'season', 2, 0, 0, 0, ''],
+      ['duk-sezonski-bodovi', 'points', 1000, 'season', 2, 0, 0, 0, ''],
+      ['duk-sezonski-sati', 'totalTime', 200, 'season', 2, 0, 0, 0, ''],
+      ['duk-sezonske-trke', 'raceCount', 50, 'season', 2, 0, 0, 0, ''],
+      ['duk-drzave', 'countryCount', 10, 'always', 3, 10, 100, 50, 'država'],
+      ['duk-sve-trke', 'raceCount', 100, 'always', 3, 100, 1000, 500, 'trka'],
+      ['duk-krace-trke', 'shortCount', 100, 'always', 3, 0, 0, 0, ''],
+      ['duk-polumaratoni', 'halfCount', 100, 'always', 3, 0, 0, 0, ''],
+      ['duk-duze-trke', 'longCount', 100, 'always', 4, 0, 0, 0, ''],
+      ['duk-maratoni', 'marathonCount', 100, 'always', 4, 0, 0, 0, ''],
+      ['duk-uspon', 'totalAscent', 100000, 'always', 4, 0, 0, 0, ''],
+      ['duk-ultramaratoni', 'ultraCount', 100, 'always', 4, 0, 0, 0, ''],
+      ['duk-obim-planete', 'totalKm', 40075, 'always', 5, 0, 0, 0, ''],
+    ])
   })
 })
