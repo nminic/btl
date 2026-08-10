@@ -125,6 +125,10 @@ describe('the seo entry of every address', () => {
 describe('the names the portal composes out of a list', () => {
   const FAMILIES: { of: string; each: readonly string[] }[] = [
     { of: 'ducats.kind', each: DUCAT_KINDS },
+    /* The five values a ducat can be worth. Written out rather than read off a
+       list in the source, because there is no such list: the values are a union
+       of five numbers, and the coin is drawn from the number itself. */
+    { of: 'ducats.tier', each: ['1', '2', '3', '4', '5'] },
     /* Both halves for every entity that has a form, the races included: theirs is
        edited inside its event and is therefore not in ENTITY_FORMS, which is
        exactly how the heading over it came to be uncovered.

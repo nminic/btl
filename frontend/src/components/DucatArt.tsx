@@ -1,167 +1,259 @@
-import type { CSSProperties } from 'react'
-import type { DucatKind } from '../data/ducatRule'
+import { useId } from 'react'
+import type { Ducat, DucatMark } from '../data/ducatRule'
+import { coinNumber, unitOf } from '../data/ducatRule'
 import './DucatArt.css'
 
-/* The mark of a ducat: the drawing, and the two texts that stand on it.
+/* The mark of a ducat: a struck coin, with everything it says written on it.
  *
- * The contract:
+ * A deep blue face in the league's own blue, a milled edge, one legend around
+ * the top and one around the bottom, and the number of the rule cut into the
+ * middle. It is not a Garmin tile, and the differences are the point: no
+ * hexagon, no illustrated scene, no banner across the bottom holding the text.
+ * The number is the hero, because in this league the number is the achievement.
  *
- *   kind       Which kind of ducat this is (PDL P28a). It picks the emblem in
- *              the lower third of the disc and nothing else; every other line
- *              is the same for all kinds, which is what makes a wall of ducats
- *              read as one set.
- *   threshold  The number of the rule, already written for the reader's language
- *              and carrying its unit: "1.000 km", "42,2 km", "25". It is never
- *              empty: the value of a rule is an obligatory field of the ducat
- *              form and has to stay one, because a mark with nothing in the
- *              middle says nothing.
- *   label      A short text under the drawing, which the administrator writes,
- *              typically a period: "Jul 2027". It may be empty, and then nothing
- *              is drawn in its place and the mark keeps exactly the size it has
- *              with one, so a grid of ducats does not step up and down.
+ * Everything is measured in the units of the drawing, where the coin is 200
+ * across, so the whole mark scales with one number and nothing inside it has to
+ * be told the size.
  *
- * What the drawing is, and what it deliberately is not.
+ * ## Why the two legends sit on different circles
  *
- * A struck coin: a deep blue face in the league's own blue, a thin gold rim, one
- * gold emblem, and the number of the rule cut into the middle of it. Gold means
- * achievement on this portal and nothing else (the visual direction, approved),
- * and a ducat is one of the few places allowed to be carried by it.
+ * A legend along the top grows away from its baseline towards the rim; a legend
+ * along the bottom grows from its baseline towards the middle. One radius for
+ * both therefore gives two different gaps, which is what the owner saw on
+ * 10.08.2026 ("rastojanje od ISTRČANIH do vrha novčića je mnogo manje").
  *
- * It is not a Garmin tile, and the differences are the point. No hexagon, no
- * illustrated scene, no picture of a landscape, no gloss, and above all no
- * banner across the bottom holding the text: the label stands under the coin as
- * text of the page, because a coin with a caption is a coin, and a coin with a
- * ribbon printed on it is a sticker. The number is the hero here rather than a
- * detail in a corner, because in this league the number is the achievement.
- *
- * Adding the other kinds: draw one emblem into the same slot, x 27 to 73 and
- * y 64 to 86 of the viewBox, split into the same two groups, and add one branch
- * to the line that chooses it. The outline goes in the outer group and whatever
- * only survives above about ninety pixels goes in the inner one; nothing else in
- * this file or in the stylesheet should have to move. The slot is where it is
- * because the number owns the middle, and the number is the part that has to
- * stay legible at the smallest size the mark is drawn at, which is 72px on a
- * 360px telephone (DucatGallery.css).
+ * So the bottom baseline is the circle both of them touch, and the top baseline
+ * is that circle less the height of a capital. Both legends then stop exactly
+ * seven units short of the milled edge whatever size they are set at. The caron
+ * of Č rides 2.7 above the capitals and is allowed to come closer, as it does on
+ * a struck coin. The figures are measured, not guessed (ADL A12, 9).
  */
+
+/** The circle both legends touch: the baseline of the lower one, and the cap
+ *  line of the upper one. */
+const TOUCH = 82
+
+/** Height of a capital, and width of a figure, as fractions of the type size.
+ *  Measured through `measureText` at ten times the size, because the browser
+ *  answers in whole pixels. */
+const CAP = 0.7154
+const CAP_FIGURE = 0.7187
+const CAP_UNIT = 0.75
+const FIGURE_WIDTH = 0.5605
+
+/** The mark of the kind ends here, and nothing comes closer to it than this, so
+ *  the widest a number may be drawn is what is left between the two. */
+const MARK_END = 31
+const MARK_CLEARANCE = 12
+const WIDEST = 200 - 2 * (MARK_END + MARK_CLEARANCE)
+
+/** A ceiling on the type size that is a matter of the eye rather than of the
+ *  geometry: two figures would fit at 101, and beside a coin carrying four they
+ *  would read as a different drawing. A wall of ducats has to be one set. */
+const LARGEST = 86
+
+/** Between the foot of the number and the top of its unit. */
+const UNIT_GAP = 9
+
+/** A longer legend is set smaller, so that it does not walk half way round the
+ *  coin. The gap to the edge does not move with it: the lower legend is
+ *  measured from its baseline, and the upper one has its radius worked out from
+ *  whatever size it ends up at. */
+function legendSize(text: string): number {
+  if (text.length <= 12) {
+    return 13
+  }
+
+  return text.length <= 15 ? 11.5 : 10.5
+}
+
+/** The largest the number may be set: as wide as the space between the two
+ *  marks allows, and never larger than the ceiling. */
+function figureSize(text: string): number {
+  return Math.min(LARGEST, WIDEST / (Math.max(text.length, 1) * FIGURE_WIDTH))
+}
+
+function arcPath(radius: number, top: boolean): string {
+  const sweep = top ? 1 : 0
+
+  return `M ${100 - radius} 100 A ${radius} ${radius} 0 0 ${sweep} ${100 + radius} 100`
+}
+
+/* The seven marks. Each is drawn at nine o'clock and mirrored to three, so the
+ * two are the same shape and cannot drift apart. They live between the milled
+ * edge and the number, which is where a coin has always put its ornament, and
+ * they say what is counted without saying how much. */
+const MARKS: Record<DucatMark, string[]> = {
+  /* Three lines of a track. */
+  distance: ['M17 92 H29', 'M15 100 H31', 'M17 108 H29'],
+  /* A clock, with the two hands it needs to be one. */
+  time: ['M23 100 V95.4', 'M23 100 H26.6'],
+  /* A four pointed star. */
+  points: ['M23 91 L25.1 97.9 L31 100 L25.1 102.1 L23 109 L20.9 102.1 L15 100 L20.9 97.9 Z'],
+  /* A flag on its pole. */
+  races: ['M19 89 V111', 'M19 90.5 L29 94.5 L19 98.5 Z'],
+  /* Two chevrons, climbing. */
+  vertical: ['M15 104 L23 96.5 L31 104', 'M15 111 L23 103.5 L31 111'],
+  /* One branch of a laurel wreath, for the clubs of a hundred. */
+  club: [
+    'M22 112 C17.6 104 18.6 95.6 24 88.8',
+    'M21.8 106 L16.6 103',
+    'M21.6 99 L16.4 96',
+    'M23.6 92.6 L18.6 90.4',
+  ],
+  /* Two meridians. */
+  countries: [
+    'M20 89.5 C14.6 95.6 14.6 104.4 20 110.5',
+    'M26.4 87.6 C20.2 94.6 20.2 105.4 26.4 112.4',
+  ],
+}
+
+function Mark({ mark }: { mark: DucatMark }) {
+  const strokes = MARKS[mark]
+
+  return (
+    <g className="ducat-art__mark">
+      {strokes.map((d, at) => (
+        <path key={at} d={d} />
+      ))}
+      {mark === 'time' && <circle cx="23" cy="100" r="6.8" />}
+
+      <g transform="translate(200,0) scale(-1,1)">
+        {strokes.map((d, at) => (
+          <path key={at} d={d} />
+        ))}
+        {mark === 'time' && <circle cx="23" cy="100" r="6.8" />}
+      </g>
+    </g>
+  )
+}
+
+/* A spiral galaxy, for the hundred kilometres of climbing that reach the edge of
+ * the atmosphere. Enlarged about the middle until it fills the same width the
+ * widest number is allowed, which is how far anything in the middle may go. */
+function Galaxy() {
+  return (
+    <g
+      className="ducat-art__art"
+      transform="rotate(-18 100 100) translate(100 100) scale(1.4) translate(-100 -100)"
+    >
+      <ellipse cx="100" cy="100" rx="12.5" ry="7" />
+      <path d="M110.5 94.2 C130 87 140 103 128 116 C118.5 126 101.5 127 91.5 122.5" />
+      <path d="M89.5 105.8 C70 113 60 97 72 84 C81.5 74 98.5 73 108.5 77.5" />
+      <circle className="ducat-art__star" cx="131" cy="90" r="2.1" />
+      <circle className="ducat-art__star" cx="84" cy="127" r="1.9" />
+      <circle className="ducat-art__star" cx="69" cy="110" r="2.1" />
+      <circle className="ducat-art__star" cx="116" cy="73" r="1.9" />
+    </g>
+  )
+}
+
+/* The globe, for the one ducat that is the circumference of the Earth. */
+function Globe() {
+  return (
+    <g className="ducat-art__art">
+      <circle cx="100" cy="100" r="57" />
+      <ellipse cx="100" cy="100" rx="20.7" ry="57" />
+      <ellipse cx="100" cy="100" rx="41.5" ry="57" />
+      <path d="M43 100 H157" />
+      <path d="M50.9 71 H149.1" />
+      <path d="M50.9 129 H149.1" />
+    </g>
+  )
+}
+
 export type DucatArtProps = {
-  kind: DucatKind
-  /** Never empty. */
-  threshold: string
-  /** Empty when the ducat has none. */
+  ducat: Ducat
+  /** What the coin is, in one sentence, for a reader who cannot see it.
+   *
+   *  The drawing was decorative while a hint stood beside it carrying the rule.
+   *  The owner took the hint away on 11.08.2026 and asked for the coins to stand
+   *  still and say nothing, so the coin now has to carry its own name. Nothing
+   *  of this shows on the page. */
   label: string
 }
 
-/* How many characters the widest word of the threshold has, which is what
- * decides how large the number can be set.
- *
- * The whole string is the wrong measure: "10.000 km" breaks at its space, so
- * what has to fit across the disc is "10.000" and not the nine characters
- * together. Measuring the string instead would set every ducat carrying a unit
- * two sizes smaller than it needs to be.
- *
- * The floor of one keeps a threshold that somehow arrived empty from dividing
- * the size by nought; the contract says it cannot, and the drawing survives it
- * anyway. */
-function widestWord(threshold: string): number {
-  return Math.max(1, ...threshold.split(' ').map((word) => word.length))
-}
+/* The value of the ducat rides on the element as a fact rather than as five
+ * class names, the way the kind of the ducat already did. It is data: one of
+ * five, chosen by the rule and not by the drawing, and the stylesheet answers it
+ * with the metal it is struck in. */
+export function DucatArt({ ducat, label }: DucatArtProps) {
+  /* The two arcs are referred to by name, and a wall draws fifteen coins on one
+     page, so the names have to be this drawing's own. */
+  const own = useId()
+  const number = coinNumber(ducat)
+  const unit = unitOf(ducat)
 
-/* A running shoe, seen from the side, for the kind counted in kilometres.
- *
- * The one line that has to be right is the top one: it climbs from a low, long
- * toe to a high heel collar a third of the way from the back. That slope is
- * what makes a shoe a shoe at a glance, and it is what a flat outline gets
- * wrong. The rest is a thick midsole and a rounded toe.
- *
- * The outline carries the shape; the second group carries what only exists at
- * the larger sizes: the seam of the sole, the heel counter, the laces and the
- * tread. */
-function Shoe() {
+  const topSize = legendSize(ducat.top)
+  const numberSize = figureSize(number)
+  const unitSize = numberSize >= 68 ? 26 : 22
+
+  const capNumber = CAP_FIGURE * numberSize
+  const capUnit = CAP_UNIT * unitSize
+  /* The block of number and unit is centred on the middle of the coin, which is
+     not the same as putting the number there: with the unit under it, a number
+     centred on its own sits high by half the unit. */
+  const numberY =
+    unit === '' ? 100 + capNumber / 2 : 100 - (UNIT_GAP + capUnit - capNumber) / 2
+
   return (
-    <g className="ducat-art__emblem">
-      <path
-        d="M27.5 85.5 L66 85.5
-           C70.5 85.5 73 84.1 73 81.7
-           C73 79.1 70 77.7 65.5 76.9
-           L55 74.9
-           C50 73.9 46.5 71.9 44.4 68.9
-           C43 66.9 41 64.9 38.6 64.7
-           C35.6 64.5 33.4 66.1 32 69.1
-           C30 73.3 28.4 78.7 27.5 85.5 Z"
-      />
+    <span className="ducat-art" data-tier={ducat.tier}>
+      {/* An image with a name, rather than a decoration. Everything struck on
+          it is struck as text, but text inside a drawing is read out as a heap
+          of fragments: "ISTRČANIH", "125", "km", "JUL 2027". The label is the
+          same coin said as a sentence. */}
+      <svg className="ducat-art__coin" viewBox="0 0 200 200" role="img" aria-label={label}>
+        <defs>
+          <path id={`${own}-top`} d={arcPath(TOUCH - CAP * topSize, true)} />
+          <path id={`${own}-bottom`} d={arcPath(TOUCH, false)} />
+        </defs>
 
-      <g className="ducat-art__fine">
-        <path d="M29.8 79.1 C42 81.1 57 81.9 71.8 81.1" />
-        <path d="M37.6 66.3 C34.6 69.3 32.6 73.1 31.4 78.1" />
-        <path d="M46.7 70 L44.8 73.9" />
-        <path d="M49.4 71.4 L47.5 75.3" />
-        <path d="M52.2 72.7 L50.3 76.7" />
-        <path d="M36 81.4 L36 84.5" />
-        <path d="M44 82 L44 84.7" />
-        <path d="M52 82.4 L52 84.8" />
-        <path d="M60 82.6 L60 84.8" />
-      </g>
-    </g>
-  )
-}
+        {/* The fourth value fills the milled edge in behind the teeth. More
+            metal in the same place, without a second colour. */}
+        {ducat.tier === 4 && <circle className="ducat-art__band" cx="100" cy="100" r="91.5" />}
+        <circle className="ducat-art__reed" cx="100" cy="100" r="91.5" />
+        <circle className="ducat-art__rim" cx="100" cy="100" r="95.5" />
 
-/* The emblem every other kind wears until it is given its own: a wreath, open
- * at the top, which says an award was won and says nothing whatever about what
- * was counted. That is the one honest thing a shared emblem can say, and it
- * keeps a kind with no drawing of its own from looking like a kind whose
- * drawing failed to load.
- *
- * One branch a side, rising almost to vertical where it ends, and the leaves
- * are spurs off it rather than drawn shapes. Leaves at the size this slot
- * allows run together into a single crescent by a hundred pixels; a branch that
- * turns upwards holds its shape all the way down, and the spurs step aside with
- * the rest of the fine detail. */
-function Wreath() {
-  return (
-    <g className="ducat-art__emblem ducat-art__wreath">
-      <path d="M50 86.6 C39.6 86.6 31.4 79.2 29.8 67.3" />
-      <path d="M50 86.6 C60.4 86.6 68.6 79.2 70.2 67.3" />
+        <text className="ducat-art__legend" fontSize={topSize}>
+          <textPath href={`#${own}-top`} startOffset="50%" textAnchor="middle">
+            {ducat.top}
+          </textPath>
+        </text>
+        <text className="ducat-art__legend" fontSize={legendSize(ducat.bottom)}>
+          <textPath href={`#${own}-bottom`} startOffset="50%" textAnchor="middle">
+            {ducat.bottom}
+          </textPath>
+        </text>
 
-      <g className="ducat-art__fine">
-        <path d="M42.7 85.3 L40.5 81.6" />
-        <path d="M37.7 82.4 L34.7 79.2" />
-        <path d="M33.7 78 L30.2 75.8" />
-        <path d="M31 72.3 L27.2 71.2" />
-        <path d="M57.3 85.3 L59.5 81.6" />
-        <path d="M62.3 82.4 L65.3 79.2" />
-        <path d="M66.3 78 L69.8 75.8" />
-        <path d="M69 72.3 L72.8 71.2" />
-      </g>
-    </g>
-  )
-}
+        <Mark mark={ducat.mark} />
 
-export function DucatArt({ kind, threshold, label }: DucatArtProps) {
-  return (
-    <span className="ducat-art" data-kind={kind}>
-      <span className="ducat-art__disc">
-        {/* Decorative on purpose: everything the drawing says is said in words
-            beside it, by the threshold below and by the name and the rule of
-            the ducat on the screen that shows it. Given a name of its own it
-            would be read out twice. */}
-        <svg className="ducat-art__shape" viewBox="0 0 100 100" aria-hidden="true">
-          <circle className="ducat-art__rim" cx="50" cy="50" r="48" />
-          <circle className="ducat-art__rule" cx="50" cy="50" r="43.5" />
+        {ducat.art === 'galaxy' && <Galaxy />}
+        {ducat.art === 'globe' && <Globe />}
 
-          {kind === 'totalKm' ? <Shoe /> : <Wreath />}
-        </svg>
+        {number !== '' && (
+          <text
+            className="ducat-art__number"
+            x="100"
+            y={numberY}
+            fontSize={numberSize}
+            textAnchor="middle"
+          >
+            {number}
+          </text>
+        )}
 
-        {/* The number stays text: selectable, searchable, and read out as the
-            number it is. Drawn as paths it would be a picture of a number. */}
-        <span
-          className="ducat-art__threshold"
-          style={{ '--ducat-art-chars': widestWord(threshold) } as CSSProperties}
-        >
-          {threshold}
-        </span>
-      </span>
-
-      {label !== '' && <span className="ducat-art__label">{label}</span>}
+        {unit !== '' && (
+          <text
+            className="ducat-art__unit"
+            x="100"
+            y={numberY + UNIT_GAP + capUnit}
+            fontSize={unitSize}
+            textAnchor="middle"
+          >
+            {unit}
+          </text>
+        )}
+      </svg>
     </span>
   )
 }

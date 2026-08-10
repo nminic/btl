@@ -5,8 +5,8 @@ import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
 import { Resource } from '../components/Resource'
 import { earnedDucats } from '../data/ducatEarned'
-import { thresholdOf } from '../data/ducatRule'
-import { formatNumber, formatPoints } from '../i18n/format'
+import { unitFor, type Ducat } from '../data/ducatRule'
+import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import {
   combinePair,
@@ -107,10 +107,26 @@ function AwardsFor({
     () => all.filter((one) => season === ALL_SEASONS || String(one.season) === season),
     [all, season],
   )
+  /* Today, because the families that repeat only have the months that have
+     begun: a ducat for August 2027 is not a ducat anybody can be short of in
+     July (ADL A12, 7). */
   const earned = useMemo(
-    () => earnedDucats(competitor, results, ducats),
-    [competitor, results, ducats],
+    () => earnedDucats(competitor, results, ducats, today),
+    [competitor, results, ducats, today],
   )
+
+  /* One held ducat, in a sentence, for a reader who cannot see the coin. The
+     coin is an image with a name rather than a decoration since the hint went
+     (11.08.2026), and the name has to tell the hundredth race from the three
+     hundredth, which on the coin is the only difference there is.
+     
+     The period and the value are not in it, because both stand beside the coin
+     as words of the page and a screen reader reads the whole card. */
+  const labelFor = (ducat: Ducat) => {
+    const unit = unitFor(ducat.kind)
+
+    return `${ducat.name}, ${formatNumber(ducat.value, locale, 0)}${unit === '' ? '' : ` ${unit}`}.`
+  }
 
   const name = `${competitor.firstName} ${competitor.lastName}`
 
@@ -177,13 +193,23 @@ function AwardsFor({
           <ul className="awards__ducats">
             {earned.map((ducat) => (
               <li key={ducat.id} className="awards__ducat">
-                <DucatArt
-                  kind={ducat.kind}
-                  threshold={thresholdOf(ducat, locale)}
-                  label={ducat.label}
-                />
+                <DucatArt ducat={ducat} label={labelFor(ducat)} />
                 <strong>{ducat.name}</strong>
-                <span className="profile__scope">{ducat.description}</span>
+                {/* The name the coin carries leaves the period out on purpose,
+                    so the month stands here as words of the page: without
+                    it a profile holding July and August reads as one ducat
+                    written down twice. Through the same reader of ranges the
+                    rest of the portal uses, so "1. do 31. jul" is never what a
+                    member is shown. */}
+                {ducat.from !== '' && (
+                  <span className="profile__scope">
+                    {wholePeriod(ducat.from, ducat.to, locale)}
+                  </span>
+                )}
+                {/* What it is worth, in words. The metal says it in colour, and
+                    colour is never the only thing that says anything
+                    (PDL P16, WCAG 2.2 SC 1.4.1). */}
+                <span className="profile__scope">{t(`ducats.tier.${ducat.tier}`)}</span>
               </li>
             ))}
           </ul>

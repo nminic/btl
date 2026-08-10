@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Ducat } from './ducatRule'
+import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
 import { arrivedResource, loadResource, type ResourceName } from './client'
 import type {
@@ -210,7 +210,7 @@ function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T)
   }, [state, gone, idField])
 }
 
-export const useDucats = () => useResource<Ducat[]>('ducats')
+export const useDucats = () => useResource<DucatFamily[]>('ducats')
 /**
  * What is published under an event: what the file carries, and what a moderator
  * has let out during this visit.
