@@ -1,12 +1,12 @@
 import type { Decisions } from '../../session/context'
 import { waitingIn } from './pending'
-import { PENDING_QUEUE_IDS, type PendingItem, type PendingQueueId } from '../../data/types'
+import { PENDING_QUEUE_IDS, type ItemKind, type PendingItem, type PendingQueueId } from '../../data/types'
 
 /* "Red za proveru" was one queue for results. It is now one story, because a
  * moderator approves a great deal more than results, and every one of these
  * comes from a decision that was already written down (PDL P28a).
  *
- * All eight have a screen, and every screen asks the same first question: is this
+ * All seven have a screen, and every screen asks the same first question: is this
  * good enough to publish. Saying yes never asks the moderator for anything. What
  * the other answer is differs from queue to queue, and it is stated here rather
  * than on the screens, because it is a fact about the queue and not about the
@@ -21,7 +21,7 @@ import { PENDING_QUEUE_IDS, type PendingItem, type PendingQueueId } from '../../
  * refusing ask why", and the three exceptions the owner settled on 30.07.2026
  * (PDL P22) are three different things rather than degrees of the same one:
  *
- * - `sendBack`: approve, or hand the work back with a reason. Five of the eight.
+ * - `sendBack`: approve, or hand the work back with a reason. Five of the seven.
  *   A member who is refused with no reason writes back to ask, so the reason is
  *   the cheaper of the two paths rather than politeness.
  * - `instruct`: approve, or hand the picture back with a reason. Pictures are the
@@ -43,9 +43,9 @@ import { PENDING_QUEUE_IDS, type PendingItem, type PendingQueueId } from '../../
 export type QueueOutcome = 'sendBack' | 'instruct' | 'delete' | 'editAndPublish'
 
 /**
- * Which eight there are.
+ * Which seven there are.
  *
- * The seven that wait in the file, plus the results a competitor sends in during
+ * The six that wait in the file, plus the results a competitor sends in during
  * the visit and which therefore live in the session rather than in the file
  * (pending.ts). Written as those two and not as a third list of names, so a
  * queue added to the file and forgotten here, or the other way round, is a
@@ -67,7 +67,7 @@ export type Queue = {
 const ADDRESS = 'administracija/verifikacija'
 
 /**
- * The eight, each under its own id, so a screen can be handed the queue it
+ * The seven, each under its own id, so a screen can be handed the queue it
  * serves instead of looking it up and then proving it found something.
  *
  * Written down as the record and not as a list, which is the way round it used
@@ -75,8 +75,8 @@ const ADDRESS = 'administracija/verifikacija'
  * `Object.fromEntries`. That gives a record typed by "any string at all", so
  * `QUEUE.teams` was a queue that might not be there, and fourteen entries in the
  * route table, two screens and the counter each had to answer for a ninth id
- * that has never been written anywhere. This way every one of the eight is there
- * because the type says which eight there are, and nothing is proved twice.
+ * that has never been written anywhere. This way every one of the seven is there
+ * because the type says which seven there are, and nothing is proved twice.
  *
  * The type also ties the key to the id: `Queue & { id: K }` refuses an entry
  * filed under a name other than its own, which is the one mistake a record of
@@ -139,7 +139,7 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
 }
 
 /**
- * The same eight as a list, in the order they are shown in.
+ * The same seven as a list, in the order they are shown in.
  *
  * Built from the list of queues that are read from a file, with the results in
  * front of them, rather than from the order the record above happens to be
@@ -167,7 +167,10 @@ export const QUEUES: Queue[] = [QUEUE.results, ...PENDING_QUEUE_IDS.map((id) => 
  * today, which is exactly the kind of safety that lasts until the backend hands
  * over the first row that does not.
  */
-export function canSendBack(queue: Queue, item: { kind: string; memberNumber: string }): boolean {
+export function canSendBack(
+  queue: Queue,
+  item: { kind: ItemKind; memberNumber: string },
+): boolean {
   return outcomeFor(queue, item) !== 'instruct' || item.memberNumber !== ''
 }
 
@@ -185,7 +188,7 @@ export function canSendBack(queue: Queue, item: { kind: string; memberNumber: st
  * picture is a file name, and telling them apart by looking would be a rule that
  * holds until somebody writes a biography that reads like a file name.
  */
-export function outcomeFor(queue: Queue, item: { kind: string }): QueueOutcome {
+export function outcomeFor(queue: Queue, item: { kind: ItemKind }): QueueOutcome {
   if (queue.id !== 'profiles') {
     return queue.outcome
   }
@@ -194,7 +197,7 @@ export function outcomeFor(queue: Queue, item: { kind: string }): QueueOutcome {
 }
 
 /**
- * Everything the eight numbers are counted from, and nothing else.
+ * Everything the seven numbers are counted from, and nothing else.
  *
  * The list of members used to be in here as well. Memberships waiting to be
  * activated were counted off it, as the members who were not active yet; a member
@@ -217,7 +220,7 @@ export type Waiting = {
  * in the navigation are the same number, and two ways of counting it would
  * eventually be two different numbers.
  *
- * One of the eight is counted from something other than the file of waiting
+ * One of the seven is counted from something other than the file of waiting
  * items, and that is results, which a competitor sends in during the visit.
  * Memberships were the second until the member number became something the system
  * hands out (PDL P8, 30.07.2026): a registration with no number is not a member
@@ -241,7 +244,7 @@ export function countFor({ pendingResults, items, decisions }: Waiting, queue: Q
  * Everything waiting for a moderator as one number, which is what stands beside
  * Verification in the navigation (PDL P28a).
  *
- * Over the queues given, which is not always all eight: a moderator sees only
+ * Over the queues given, which is not always all seven: a moderator sees only
  * the queues he may work in (owner, 30.07.2026), and a total counting the other
  * seven would send him looking for work he cannot reach and cannot see.
  */

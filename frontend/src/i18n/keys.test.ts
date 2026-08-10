@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
 import { CATEGORIES } from '../data/derive'
-import { EVENT_STATUSES, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
+import { EVENT_STATUSES, ITEM_KINDS, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
 import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
 import { LOCALES } from './config'
 import { ROLES } from '../roles/context'
@@ -144,8 +144,9 @@ describe('the names the portal composes out of a list', () => {
       of: 'verification.body',
       each: [
         ...PENDING_QUEUE_IDS.filter((id) => id !== 'payments' && id !== 'profiles'),
-        'bio',
-        'photo',
+        /* And one per sort of thing the racing profile holds, off the same list
+           the screen reads (data/types.ts). */
+        ...ITEM_KINDS.filter((kind) => kind !== ''),
       ],
     },
     { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },
@@ -182,8 +183,8 @@ describe('the names the portal composes out of a list', () => {
 })
 
 describe('the words the search engine is given', () => {
-  it('names each of the eight queues, within the same 160 characters', () => {
-    /* The eight queues share one address pattern, so their words are composed
+  it('names each of the seven queues, within the same 160 characters', () => {
+    /* The seven queues share one address pattern, so their words are composed
        rather than written out (QueueMeta). A search engine cuts a description at
        the same place whether it was composed or not. */
     const composed = QUEUES.map((queue) => ({

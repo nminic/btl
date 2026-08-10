@@ -195,10 +195,10 @@ function usePathname(): string {
  * The queues this moderator may work in, each with what is waiting in it.
  *
  * Only the ones he may open (owner, 30.07.2026). A moderator is not to be aware
- * that there are actions nobody gave him: naming eight queues to somebody who
- * may work in one is telling him about seven doors, and every one of them is an
- * invitation to ask what is behind it. The superadmin sees all eight, because he
- * may open all eight.
+ * that there are actions nobody gave him: naming seven queues to somebody who
+ * may work in one is telling him about six doors, and every one of them is an
+ * invitation to ask what is behind it. The superadmin sees all seven, because he
+ * may open all seven.
  *
  * Counted through countFor, one queue at a time (queues.ts). A decision taken
  * on the right is a decision written into the session, and the number beside the

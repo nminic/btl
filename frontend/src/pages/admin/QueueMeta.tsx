@@ -6,8 +6,8 @@ import type { Queue } from './queues'
  * The name of one queue in the browser tab, in the history and in a shared link.
  *
  * Every address on the portal names itself, administration included (ADL A7),
- * and eight queues share one address pattern: without this all eight were called
- * "Red čekanja (administracija)", so eight tabs, eight history entries and eight
+ * and seven queues share one address pattern: without this all seven were called
+ * "Red čekanja (administracija)", so seven tabs, seven history entries and seven
  * bookmarks were one word. The queue already carries its own name for the list
  * and the heading, so there is nothing to write twice.
  *

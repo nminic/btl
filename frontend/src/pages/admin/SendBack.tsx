@@ -41,12 +41,16 @@ export function SendBack({
    */
   placeholderKey?: string
   /**
-   * What is being sent back, named. Handed in where the box stands away from
-   * the thing it decides, which is any screen that is a table: a reason box
-   * under twenty rows says nothing about whose membership is being refused.
-   * Left out where the box sits inside the card it belongs to.
+   * What is being decided, named.
+   *
+   * On a screen that is a table the box stands away from the row it belongs to,
+   * and a reason box under twenty rows says nothing about whose membership is
+   * being refused. Inside a card it is not needed for that, and it is asked for
+   * all the same: the name of the box is where the decision says which one it
+   * is, and a deletion whose box is called "Odbij" is the one word the queue of
+   * comments must not use (queues.ts).
    */
-  subject?: string
+  subject: string
   /**
    * Whether the box may be confirmed empty.
    *
@@ -80,11 +84,11 @@ export function SendBack({
     field.current?.focus()
   }, [])
 
-  const about = subject === undefined ? undefined : t(aboutKey, { name: subject })
+  const about = t(aboutKey, { name: subject })
 
   return (
-    <div className="review__reason" role="group" aria-label={about ?? t('review.sendBack')}>
-      {about !== undefined && <p className="review__about">{about}</p>}
+    <div className="review__reason" role="group" aria-label={about}>
+      <p className="review__about">{about}</p>
 
       <label className="rankings__field rankings__field--wide">
         <span>{t(labelKey)}</span>

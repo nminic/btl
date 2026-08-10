@@ -4,9 +4,9 @@ import { useResource, type ResourceState } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
-/* What is waiting in the seven queues that are read from a file.
+/* What is waiting in the six queues that are read from a file.
  *
- * Results are the eighth and are not here: a competitor sends those in during
+ * Results are the seventh and are not here: a competitor sends those in during
  * the visit, so they live in the session.
  *
  * Payments were not here either, and are now. A membership waiting to be
@@ -31,7 +31,7 @@ import { useSession } from '../../session/useSession'
  *
  * A competitor may propose a team, and a proposal is not a different kind of
  * thing from the teams already in the queue. Merged here rather than at each of
- * the eight screens, so the counters in the navigation, the queue itself and the
+ * the seven screens, so the counters in the navigation, the queue itself and the
  * door that decides whether a section is empty all count the same items. One of
  * the three forgetting to merge is a moderator who is told there is nothing
  * waiting on a screen that is about to show them something.
@@ -63,4 +63,4 @@ export function waitingIn(
  * number and the id of an item from this file shared one record: 000012 must
  * never have meant two things. A registration now carries an id from the same
  * file as everything else, so there is nothing left to keep apart and the key is
- * the id, on all seven queues alike. */
+ * the id, on all six queues alike. */

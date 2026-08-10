@@ -142,7 +142,7 @@ const DETAILS: RouteObject[] = [
   { path: 'liga/:slug/rezultati', element: <LeagueDetail part="results" /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
-  /* The eight verification queues (PDL P28a). The addresses live in QUEUES,
+  /* The seven verification queues (PDL P28a). The addresses live in QUEUES,
      which is also what the list of queues links with, so a queue cannot end up
      with a row that points nowhere. */
   { path: QUEUE.results.path, element: <ReviewQueue /> },

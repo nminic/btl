@@ -284,6 +284,12 @@ export const NO_RATING = Object.freeze<EventRating>({
   ambience: 0,
 })
 
+/* What sorts of thing a queue may hold. The empty one is every queue that holds
+   only one sort, which is all of them but the racing profile. */
+export const ITEM_KINDS = ['', 'bio', 'photo'] as const
+
+export type ItemKind = (typeof ITEM_KINDS)[number]
+
 export type PendingItem = {
   id: string
   queue: PendingQueueId
@@ -295,8 +301,13 @@ export type PendingItem = {
    * over them is not the same one. The text is edited and published; the
    * picture is accepted or handed back with an instruction. Empty everywhere
    * else, because every other queue holds one sort of thing.
+   *
+   * A closed list and not an open string, exactly as the queues are: a value
+   * outside it would be quietly treated as a picture, so a biography would be
+   * offered the button that hands it back and printed under a name the
+   * dictionary does not have.
    */
-  kind: string
+  kind: ItemKind
   /** The day it arrived in the queue. */
   date: string
   /**

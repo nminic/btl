@@ -28,8 +28,8 @@ import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
-/* One screen for six queues: proposed leagues, new teams, biographies, profile
- * pictures, comments, and reported changes of date.
+/* One screen for five queues: proposed leagues, new teams, racing profiles,
+ * comments, and reported changes of date.
  *
  * One screen rather than six because the work is the same work every time. The
  * moderator reads a piece of text somebody wrote, and then decides what becomes
@@ -565,6 +565,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNamed'
                                 : 'review.sendBackNamed'
                             }
+                            /* Named after what it decides, which is what the box
+                               is for: without it the group around the words for
+                               deleting a comment was called "Odbij", the one
+                               word this queue must not use (queues.ts). */
+                            subject={one.subject}
                             labelKey={
                               outcomeFor(queue, one) === 'delete'
                                 ? 'verification.deleteNote'

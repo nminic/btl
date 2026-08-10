@@ -84,9 +84,11 @@ export function maskDate(text: string): string {
 /**
  * How many days lie between two stored dates, or nought where either is not one.
  *
- * Counted in whole days off the calendar rather than by subtracting timestamps,
- * because a season crosses the change of clocks twice and an hour lost there
- * would round a move of seven days down to six.
+ * Both ends are built in UTC, which has no change of clocks, so the difference
+ * between them is whole days and the division is exact. Built from local dates
+ * instead, a week across the last Sunday in March is six days and twenty three
+ * hours, which rounds to six: an event put off a week would take its races six
+ * days along and the Sunday race would land on the Saturday.
  */
 export function daysBetween(from: string, to: string): number {
   if (!ISO.test(from) || !ISO.test(to)) {

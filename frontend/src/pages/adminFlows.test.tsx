@@ -1503,7 +1503,13 @@ describe('the six queues read from the file', () => {
 
     await user.click(first(screen.getAllByRole('button', { name: /^Brisanje komentara: / })))
 
-    /* Not a reason: the words say what it is and what it is for. */
+    /* Not a reason: the words say what it is and what it is for, and so does
+       the name of the box around them. The one word this queue must not use is
+       "Odbij": a deleted comment is not kept anywhere it could be brought back
+       from (queues.ts). */
+    expect(screen.getByRole('group', { name: /^Brisanje komentara: / })).toBeVisible()
+    expect(screen.queryByRole('group', { name: /^Odbijanje: / })).toBeNull()
+
     const note = screen.getByLabelText('Napomena o brisanju')
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
 
