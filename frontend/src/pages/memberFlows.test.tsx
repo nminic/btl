@@ -150,8 +150,12 @@ describe('membership', () => {
 
     /* Drawn again on its own from the words the screen shows: the same text
        draws the same figure, so a code carrying anything else fails here. */
-    const { container } = render(<QrCode text={payload} label="probni" />)
-    const drawn = must(container.querySelector('path')?.getAttribute('d'), 'the figure')
+    render(<QrCode text={payload} label="probni" />)
+
+    const drawn = must(
+      screen.getByRole('img', { name: 'probni' }).querySelector('path')?.getAttribute('d'),
+      'the figure',
+    )
 
     /* Compared by length and by digest rather than by ten thousand characters of
        path, so a failure reads as two numbers instead of two walls of

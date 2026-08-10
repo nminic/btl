@@ -1,54 +1,39 @@
 import { render, screen } from '@testing-library/react'
 import { must } from '../test/at'
 import { digestOf } from '../test/digest'
+import { readQr } from '../test/readQr'
 import { QrCode } from './QrCode'
 
 /**
  * What the drawing carries.
  *
- * The content of the two payloads has its own tests (data/paymentQr.test.ts);
+ * The content of the payload has its own tests (pages/adminFlows.test.tsx);
  * what those cannot say is whether the square somebody points a telephone at is
  * a drawing of that content. A code that draws beautifully and encodes the wrong
  * text is a payment slip nobody can pay, and it looks exactly like one that
  * works.
  *
- * Read off the drawing itself, in three ways, because no decoder is bundled and
- * a bundled one would be one more thing to keep. The drawing is a function of
- * its text (the same text draws the same figure, a different text another); the
- * figure is a QR code and not merely a stable pattern of squares, which is held
- * by reading the parts of it the standard fixes; and it is the figure it was
- * yesterday, which is what notices the encoder changing under a version bump.
+ * Asked of the drawing three ways. It is read back by a decoder, which is the
+ * question itself and is answered by somebody else's reading of the standard; it
+ * is a function of its text, so one text draws one figure and a text one
+ * character apart draws another; and it is the figure it was yesterday, which is
+ * what notices the encoder changing under an open version range.
  *
- * The middle one is what the first cannot do. A drawing that lost its last row,
- * or drew the matrix transposed, is still one figure per text: every mutation of
- * that kind passed until the parts below were read.
+ * The first catches a figure that carries the wrong text: a payload truncated by
+ * one character, or upper-cased, or a row of the matrix dropped, all read back
+ * as something else or as nothing.
+ *
+ * The last catches what a decoder is content with. A code drawn at another level
+ * of error correction still reads, and so does one drawn transposed, since a
+ * reader that tolerates a mirrored code will tolerate ours; both are deliberate
+ * choices of this component, and the frozen figure is what notices either of
+ * them changing.
  */
 function figureOf(label: string): string {
   return must(
     screen.getByRole('img', { name: label }).querySelector('path')?.getAttribute('d'),
     'the figure the code drew',
   )
-}
-
-/**
- * The dark squares of a drawing, read back out of it as rows and columns.
- *
- * The drawing writes one square per dark module, `M{x} {y}h1v1h-1z`, with a
- * module of quiet zone in front of both. Read here rather than asked of the
- * encoder: a check that asks the encoder what it drew agrees with itself
- * whatever it drew.
- */
-function modulesOf(label: string): { dark: (row: number, column: number) => boolean; size: number } {
-  const drawn = screen.getByRole('img', { name: label })
-  const box = must(drawn.getAttribute('viewBox'), 'the box the figure is drawn in').split(' ')
-  const size = Number(box[2]) - 2
-  const dark = new Set(
-    [...figureOf(label).matchAll(/M(\d+) (\d+)h1v1h-1z/g)].map(
-      (one) => `${Number(one[2]) - 1}:${Number(one[1]) - 1}`,
-    ),
-  )
-
-  return { dark: (row, column) => dark.has(`${row}:${column}`), size }
 }
 
 describe('the drawing of a payment code', () => {
@@ -95,63 +80,36 @@ describe('the drawing of a payment code', () => {
   })
 })
 
-describe('the figure a payment code draws is a QR code', () => {
-  /* The parts the standard fixes, read off the drawing. Every one of these
-     survived a drawing that lost its last row and a drawing that transposed the
-     matrix, which is what a check on "one text, one figure" cannot see. */
+describe('what a telephone reads off the drawing', () => {
   const PAYLOAD = 'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruzenje BTL|I:RSD4800,00'
 
-  beforeEach(() => {
+  it('is the text the code was given, read by a decoder nobody here wrote', () => {
+    /* The whole question, asked plainly. Anything short of this agrees with the
+       encoder about the encoder: the furniture of a code is right by
+       construction even when the bits inside are a payload nobody can pay. It is
+       read here by a decoder nobody in this repository wrote. */
     render(<QrCode text={PAYLOAD} label="uplatnica" />)
+
+    expect(readQr(screen.getByRole('img', { name: 'uplatnica' }))).toBe(PAYLOAD)
   })
 
-  it('is as many modules across as its version says, and square', () => {
-    const { size } = modulesOf('uplatnica')
+  it('is read the same way at the size the slip is printed at', () => {
+    /* The drawing is asked for a size in one place and the figure must not be
+       stretched by it: a code that reads on a screen and not on paper is a code
+       that fails where it matters. */
+    render(<QrCode text={PAYLOAD} label="uplatnica" size={320} />)
 
-    /* Every version is 17 + 4V modules across, so a size that is not one of
-       those is not a QR code of any version. */
-    expect((size - 17) % 4).toBe(0)
-    expect(size).toBe(37)
+    expect(readQr(screen.getByRole('img', { name: 'uplatnica' }))).toBe(PAYLOAD)
   })
 
-  it('carries the three finders, each in its own corner', () => {
-    const { dark, size } = modulesOf('uplatnica')
+  it('reads a long payload as well as a short one', () => {
+    /* The encoder picks its own version, so a longer text is a bigger grid. The
+       one the slip carries abroad is the long one. */
+    const long = `${PAYLOAD}|S:Clanarina za sezonu 2027, clan 000001|RO:97 12345678901234567890`
 
-    for (const [row, column] of [
-      [0, 0],
-      [0, size - 7],
-      [size - 7, 0],
-    ] as [number, number][]) {
-      /* Seven by seven: a dark ring, a light ring inside it, and a dark three by
-         three in the middle. This is what a camera looks for first, and a
-         drawing missing one of them is a drawing no telephone will read. */
-      expect(dark(row, column)).toBe(true)
-      expect(dark(row + 6, column + 6)).toBe(true)
-      expect(dark(row + 1, column + 1)).toBe(false)
-      expect(dark(row + 3, column + 3)).toBe(true)
-    }
-  })
+    render(<QrCode text={long} label="duga" />)
 
-  it('carries the timing lines that say where the modules are', () => {
-    const { dark, size } = modulesOf('uplatnica')
-
-    /* Alternating from the eighth module to the last finder, along the row and
-       down the column: the ruler a reader measures the grid with. */
-    for (let at = 8; at < size - 8; at += 1) {
-      expect(dark(6, at)).toBe(at % 2 === 0)
-      expect(dark(at, 6)).toBe(at % 2 === 0)
-    }
-  })
-
-  it('carries the one module the standard says is always dark', () => {
-    const { dark, size } = modulesOf('uplatnica')
-    const version = (size - 17) / 4
-
-    /* And it is the one part of the figure that is not the same on both
-       diagonals, so a drawing that swapped rows for columns is caught here and
-       nowhere else. */
-    expect(dark(4 * version + 9, 8)).toBe(true)
-    expect(dark(8, 4 * version + 9)).toBe(false)
+    expect(readQr(screen.getByRole('img', { name: 'duga' }))).toBe(long)
   })
 })
 
