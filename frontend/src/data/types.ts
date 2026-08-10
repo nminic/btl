@@ -241,13 +241,18 @@ export type EventComment = {
   body: string
 }
 
-/** The three marks an event is rated on (PDL P6). The names are the owner's,
- *  with "okruženje" renamed to "ambijent" on 07.08.2026. */
-export type EventRating = {
-  organisation: number
-  value: number
-  ambience: number
-}
+/* The three marks an event is rated on (PDL P6). The names are the owner's, with
+   "okruženje" renamed to "ambijent" on 07.08.2026.
+
+   A list with the shape derived from it, rather than the shape alone. Both the
+   form that asks and the card that shows walk them, and both wrote the list out
+   again for want of one to import; the words for them are walked off it too
+   (keys.test). */
+export const RATING_MARKS = ['organisation', 'value', 'ambience'] as const
+
+export type RatingMark = (typeof RATING_MARKS)[number]
+
+export type EventRating = Record<RatingMark, number>
 
 /**
  * A rating nobody has given: the starting state of the form, and what a comment

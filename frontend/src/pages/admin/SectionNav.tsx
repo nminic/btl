@@ -80,6 +80,13 @@ function Section({
         {title}
       </button>
 
+      {/* And the same word where the button is not drawn. From 820px up the
+          button goes away, and until this the two sectors were two runs of links
+          one under the other with nothing saying which was which and nothing
+          between them. Said once either way: the button carries it on a
+          telephone, this carries it above. */}
+      <h2 className="adminsection__title">{title}</h2>
+
       <div
         id={panelId}
         className={open ? 'adminsection__panel adminsection__panel--open' : 'adminsection__panel'}

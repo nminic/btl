@@ -3,8 +3,9 @@ import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import registracija from '../forms/definitions/registracija.form.json'
 import { CATEGORIES } from '../data/derive'
-import { EVENT_STATUSES, PENDING_QUEUE_IDS } from '../data/types'
-import { NOTIFICATION_KEYS } from '../session/context'
+import { EVENT_STATUSES, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
+import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
+import { LOCALES } from './config'
 import { ROLES } from '../roles/context'
 import { DUCAT_KINDS } from '../data/ducatRule'
 import { JUNIOR, PRICES } from '../data/pricing'
@@ -21,10 +22,13 @@ const dictionary = sr as Dictionary
  * nav.nepostoji renders "nav.nepostoji" and nothing fails. This is the test
  * that notices. */
 function resolves(key: string): boolean {
-  /* With a count, because a leaf may be the three forms of a plural rather than
-     a sentence. Without one, translate answers a plural leaf with the key
-     itself, which reads exactly like a name that is not there. */
-  return translate(dictionary, 'sr', key, { count: 1 }) !== key
+  /* All three counts, because a leaf may be the three forms of a plural rather
+     than a sentence. Without a count at all, translate answers a plural leaf
+     with the key itself, which reads exactly like a name that is not there; with
+     one count only, a leaf that has "one" and has lost the other two answers for
+     a single race and prints its own name for every other number. Serbian picks
+     a different form at 1, at 2 and at 5. */
+  return [1, 2, 5].every((count) => translate(dictionary, 'sr', key, { count }) !== key)
 }
 
 describe('translation keys used in code', () => {
@@ -148,6 +152,10 @@ describe('the names the portal composes out of a list', () => {
        portal, and still a select somebody reads. */
     { of: 'role', each: ROLES },
     { of: 'admin.basisValue', each: ['payment', 'honorary'] },
+    { of: 'status', each: SUBMISSION_STATUSES },
+    { of: 'topBoards.byLength', each: CATEGORIES },
+    { of: 'event.rating', each: RATING_MARKS },
+    { of: 'language', each: LOCALES },
   ]
 
   it('has every one of them, for every value on the list it is built from', () => {

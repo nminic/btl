@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { Portrait } from '../../components/Portrait'
 import { Stars } from '../../components/Stars'
+import { RATING_MARKS } from '../../data/types'
 import type { Competitor, EventComment } from '../../data/types'
 import { overall, rated } from './overall'
 import { combinePair, useComments, useCompetitors } from '../../data/useResource'
@@ -11,8 +12,6 @@ import { useI18n } from '../../i18n/useI18n'
 import './EventComments.css'
 
 /** The three marks, in the order they were asked for. */
-const MARKS = ['organisation', 'value', 'ambience'] as const
-
 /**
  * What members thought of an event, under the event.
  *
@@ -167,7 +166,7 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
       </div>
 
       <dl className="comments__marks">
-        {MARKS.map((mark) => (
+        {RATING_MARKS.map((mark) => (
           <div key={mark}>
             <dt>{t(`event.rating.${mark}`)}</dt>
             <dd>

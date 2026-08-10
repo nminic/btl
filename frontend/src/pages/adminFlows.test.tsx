@@ -419,6 +419,22 @@ describe('payment payloads', () => {
     expect(payload).not.toContain('RO:')
   })
 
+  it('says where somebody waiting to be activated is from, in words', async () => {
+    /* The town and the country under it are what a moderator has to go by before
+       the fee is recorded (PDL P8). The country arrives as a code and the card
+       used to ask the dictionary for it, which held the five of the region only;
+       it reads the file the select is filled from now (countryName), and no test
+       touched this cell at all until the ninth review said so. */
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
+    const cells = within(waiting).getAllByRole('cell')
+
+    expect(cells.filter((cell) => cell.textContent?.includes('Srbija')).length).toBeGreaterThan(0)
+    expect(within(waiting).queryByText(/country\./)).toBeNull()
+    expect(within(waiting).queryByText(/^RS$/)).toBeNull()
+  })
+
   /* The statement, as the way a hundred payments are reconciled at once (owner,
      31.07.2026). Turning the file into decisions is the server's work and the
      server does not exist yet, so what it does today is take the file and say

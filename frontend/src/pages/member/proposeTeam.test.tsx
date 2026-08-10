@@ -233,6 +233,32 @@ describe('the queue of new teams', () => {
     expect(within(waiting).getByText(/Čačak, Srbija\. Trčimo zajedno već tri godine\./)).toBeVisible()
   })
 
+  it('names a country from outside the region, not its code', async () => {
+    /* The dictionary held five countries, the ones the league is run in, and the
+       card asked it for whatever code the member picked. The select is filled
+       from countries.json, which holds two hundred and fifty two, so a team from
+       Slovenia reached the moderator as the words `country.SI` (countryName).
+
+       Slovenia rather than Serbia on purpose: every other flow here picks RS,
+       which the five happened to hold, so all of them passed either way. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Kranj')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'SI')
+    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo Julijske Alpe.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const waiting = await screen.findByRole('list', { name: /Čeka/ })
+
+    expect(within(waiting).getByText(/Kranj, Slovenija\./)).toBeVisible()
+    expect(within(waiting).queryByText(/country\./)).toBeNull()
+  })
+
   it('counts the proposal wherever the queue is counted, not only in the queue', async () => {
     /* Counted once, in one place, so the number beside the queue in the
        navigation and the queue itself cannot disagree (pending.ts). A moderator

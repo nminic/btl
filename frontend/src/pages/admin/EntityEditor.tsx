@@ -15,7 +15,8 @@ import './Entity.css'
  * the other half: the whole record, with every field it has, validated by the
  * rules written in its definition rather than by anything on this screen.
  *
- * There is one of these for all seven entities, and for the races inside an event. What differs between them is a
+ * There is one of these for all seven entities, and for the
+ * races inside an event. What differs between them is a
  * JSON file (PDL P30).
  */
 export function EntityEditor({

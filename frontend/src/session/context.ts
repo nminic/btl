@@ -12,7 +12,11 @@ import type { EventComment, MembershipBasis, RaceCategory, PendingItem } from '.
  * session and calls the API; the screens ask the same questions either way.
  */
 
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected'
+/* A list rather than a union, so the words for the three can be walked
+   (keys.test). A union is gone by the time anything runs. */
+export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
+
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
 export type Submission = {
   id: string

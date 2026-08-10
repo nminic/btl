@@ -43,6 +43,13 @@
   border-color: var(--accent);
 }
 
+/* The other half of the button: one of the two is drawn at any width, never
+   both and never neither. Below 820px the button says it and this is not
+   there. */
+.adminsection__title {
+  display: none;
+}
+
 .adminsection__panel {
   display: none;
   padding: var(--space-8) var(--space-4);
@@ -142,6 +149,17 @@
 
   .adminsection__toggle {
     display: none;
+  }
+
+  .adminsection__title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 var(--space-4) var(--space-8);
+    border-bottom: 1px solid var(--line);
   }
 
   .adminsection__panel {
