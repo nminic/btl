@@ -228,7 +228,7 @@ function TeamFields({ item }: { item: PendingItem }) {
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { create, creations, decisions, edits, notify, publish, settle } = useSession()
+  const { create, creations, decisions, editRecord, edits, notify, publish, settle } = useSession()
   const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
@@ -317,6 +317,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          `published`). */
       if (queue.id === 'comments') {
         publish(commentFrom(one))
+      }
+
+      /* And what an approval on the queue of dates does: the event moves. Until
+         06.08.2026 it did nothing at all beyond taking the card off the screen,
+         so a moderator who agreed that a race had been put off left the calendar
+         saying the old day, and the next visitor read the wrong date from a
+         report the league had already accepted (owner).
+
+         Written into the same overlay the administration writes an edited event
+         into, and against the id the report carries rather than the name: two
+         events across two seasons carry one name (PDL P6). */
+      if (queue.id === 'schedule' && one.subjectId !== '' && one.proposedDate !== '') {
+        editRecord(one.subjectId, { date: one.proposedDate })
       }
 
       if (made === null) {

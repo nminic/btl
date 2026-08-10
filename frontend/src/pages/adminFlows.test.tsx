@@ -1376,6 +1376,39 @@ describe('the six queues read from the file', () => {
      it is a trace for whoever reads the queue next, not a reason given to
      anybody. A trace nobody is obliged to leave is a trace that gets left; one
      that is obliged is three dots typed to get past a button. */
+  it('moves the event when a reported change of date is approved', async () => {
+    /* Owner, 06.08.2026. Approving used to do nothing beyond taking the card off
+       the screen: a moderator who agreed that a race had been put off left the
+       calendar saying the old day, and the next visitor read the wrong date from
+       a report the league had already accepted. */
+    const user = setupUser()
+    const { router } = renderAt(`/sr/${QUEUE.schedule.path}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
+
+    const card = within(
+      must(
+        within(screen.getByRole('list', { name: /Čeka proveru/ }))
+          .getAllByRole('listitem')
+          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
+        'a reported change of date',
+      ),
+    )
+
+    expect(card.getByText('10. 4. 2027.')).toBeVisible()
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    /* On the event's own page, which is what a visitor reads. */
+    await router.navigate('/sr/administracija/dogadjaji')
+    await user.type(await screen.findByLabelText(/Pretraga/), 'Beogradski maraton')
+
+    const rows = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    expect(rows.getByText('10. 4. 2027.')).toBeVisible()
+    expect(rows.queryByText('3. 4. 2027.')).toBeNull()
+  })
+
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
 
