@@ -83,7 +83,7 @@
     "id": "evt-10k-belgrade-2027-09-04-1000",
     "eventId": "evt-10k-belgrade-2027-09-04",
     "name": "10.00 km",
-    "date": "2027-09-04",
+    "date": "2027-04-03",
     "distanceKm": 10.0,
     "ascentM": 17,
     "descentM": 17,
@@ -651,7 +651,7 @@
   },
   {
     "id": "evt-balkansko-prvenstvo-veterana-2021-09-18-150",
-    "eventId": "evt-balkansko-prvenstvo-veterana-2021-09-18",
+    "eventId": "evt-balkansko-prvenstvo-veterana-2021-09-17",
     "name": "1.50 km",
     "date": "2021-09-18",
     "distanceKm": 1.5,
@@ -661,7 +661,7 @@
   },
   {
     "id": "evt-balkansko-prvenstvo-veterana-2021-09-18-200",
-    "eventId": "evt-balkansko-prvenstvo-veterana-2021-09-18",
+    "eventId": "evt-balkansko-prvenstvo-veterana-2021-09-17",
     "name": "2.00 km",
     "date": "2021-09-18",
     "distanceKm": 2.0,
@@ -1771,7 +1771,7 @@
   },
   {
     "id": "evt-brodski-dupli-maraton-2022-02-27-4220",
-    "eventId": "evt-brodski-dupli-maraton-2022-02-27",
+    "eventId": "evt-brodski-dupli-maraton-2022-02-26",
     "name": "42.20 km",
     "date": "2022-02-27",
     "distanceKm": 42.2,
@@ -1791,7 +1791,7 @@
   },
   {
     "id": "evt-brodski-dupli-maraton-2022-04-17-4220",
-    "eventId": "evt-brodski-dupli-maraton-2022-04-17",
+    "eventId": "evt-brodski-dupli-maraton-2022-04-16",
     "name": "42.20 km",
     "date": "2022-04-17",
     "distanceKm": 42.2,
@@ -3091,7 +3091,7 @@
   },
   {
     "id": "evt-danube-maraton-2022-01-23-4220",
-    "eventId": "evt-danube-maraton-2022-01-23",
+    "eventId": "evt-danube-maraton-2022-01-22",
     "name": "42.20 km",
     "date": "2022-01-23",
     "distanceKm": 42.2,
@@ -3111,7 +3111,7 @@
   },
   {
     "id": "evt-danube-maraton-2022-02-20-4220",
-    "eventId": "evt-danube-maraton-2022-02-20",
+    "eventId": "evt-danube-maraton-2022-02-19",
     "name": "42.20 km",
     "date": "2022-02-20",
     "distanceKm": 42.2,
@@ -3131,7 +3131,7 @@
   },
   {
     "id": "evt-danube-maraton-2022-03-15-4220",
-    "eventId": "evt-danube-maraton-2022-03-15",
+    "eventId": "evt-danube-maraton-2022-03-14",
     "name": "42.20 km",
     "date": "2022-03-15",
     "distanceKm": 42.2,
@@ -3141,7 +3141,7 @@
   },
   {
     "id": "evt-danube-maraton-2022-03-16-4220",
-    "eventId": "evt-danube-maraton-2022-03-16",
+    "eventId": "evt-danube-maraton-2022-03-14",
     "name": "42.20 km",
     "date": "2022-03-16",
     "distanceKm": 42.2,
@@ -3151,7 +3151,7 @@
   },
   {
     "id": "evt-danube-maraton-2022-03-17-4220",
-    "eventId": "evt-danube-maraton-2022-03-17",
+    "eventId": "evt-danube-maraton-2022-03-14",
     "name": "42.20 km",
     "date": "2022-03-17",
     "distanceKm": 42.2,
@@ -3211,7 +3211,7 @@
   },
   {
     "id": "evt-dayrunners-ultramarathon-2016-03-17-15700",
-    "eventId": "evt-dayrunners-ultramarathon-2016-03-17",
+    "eventId": "evt-dayrunners-ultramarathon-2016-03-16",
     "name": "157.00 km",
     "date": "2016-03-17",
     "distanceKm": 157.0,
@@ -3221,7 +3221,7 @@
   },
   {
     "id": "evt-dayrunners-ultramarathon-2016-03-17-23100",
-    "eventId": "evt-dayrunners-ultramarathon-2016-03-17",
+    "eventId": "evt-dayrunners-ultramarathon-2016-03-16",
     "name": "231.00 km",
     "date": "2016-03-17",
     "distanceKm": 231.0,
@@ -3231,7 +3231,7 @@
   },
   {
     "id": "evt-dayrunners-ultramarathon-2016-03-18-11500",
-    "eventId": "evt-dayrunners-ultramarathon-2016-03-18",
+    "eventId": "evt-dayrunners-ultramarathon-2016-03-16",
     "name": "115.00 km",
     "date": "2016-03-18",
     "distanceKm": 115.0,
@@ -3241,7 +3241,7 @@
   },
   {
     "id": "evt-dayrunners-ultramarathon-2016-03-18-15100",
-    "eventId": "evt-dayrunners-ultramarathon-2016-03-18",
+    "eventId": "evt-dayrunners-ultramarathon-2016-03-16",
     "name": "151.00 km",
     "date": "2016-03-18",
     "distanceKm": 151.0,
@@ -6493,7 +6493,7 @@
     "id": "evt-legionar-ocr-2027-08-28-045",
     "eventId": "evt-legionar-ocr-2027-08-28",
     "name": "0.45 km",
-    "date": "2027-08-28",
+    "date": "2027-04-03",
     "distanceKm": 0.45,
     "ascentM": 0,
     "descentM": 0,
@@ -8423,7 +8423,7 @@
     "id": "evt-novosadski-nocni-maraton-2027-06-26-2110",
     "eventId": "evt-novosadski-nocni-maraton-2027-06-26",
     "name": "21.10 km",
-    "date": "2027-06-26",
+    "date": "2027-04-03",
     "distanceKm": 21.1,
     "ascentM": 37,
     "descentM": 37,
@@ -8891,7 +8891,7 @@
   },
   {
     "id": "evt-ovcar-banja-2019-04-07-1564",
-    "eventId": "evt-ovcar-banja-2019-04-07",
+    "eventId": "evt-ovcar-banja-2019-04-06",
     "name": "15.64 km",
     "date": "2019-04-07",
     "distanceKm": 15.64,
@@ -8901,7 +8901,7 @@
   },
   {
     "id": "evt-ovcar-banja-2019-04-07-2717",
-    "eventId": "evt-ovcar-banja-2019-04-07",
+    "eventId": "evt-ovcar-banja-2019-04-06",
     "name": "27.17 km",
     "date": "2019-04-07",
     "distanceKm": 27.17,
@@ -8911,7 +8911,7 @@
   },
   {
     "id": "evt-ovcar-banja-2019-04-07-2770",
-    "eventId": "evt-ovcar-banja-2019-04-07",
+    "eventId": "evt-ovcar-banja-2019-04-06",
     "name": "27.70 km",
     "date": "2019-04-07",
     "distanceKm": 27.7,
@@ -10051,7 +10051,7 @@
   },
   {
     "id": "evt-rajac-trek-2020-09-30-3590",
-    "eventId": "evt-rajac-trek-2020-09-30",
+    "eventId": "evt-rajac-trek-2020-09-27",
     "name": "35.90 km",
     "date": "2020-09-30",
     "distanceKm": 35.9,
@@ -11051,7 +11051,7 @@
   },
   {
     "id": "evt-siofok-futas-maraton-2017-11-26-2110",
-    "eventId": "evt-siofok-futas-maraton-2017-11-26",
+    "eventId": "evt-siofok-futas-maraton-2017-11-25",
     "name": "21.10 km",
     "date": "2017-11-26",
     "distanceKm": 21.1,
@@ -11071,7 +11071,7 @@
   },
   {
     "id": "evt-siofok-futas-maraton-2018-11-25-2110",
-    "eventId": "evt-siofok-futas-maraton-2018-11-25",
+    "eventId": "evt-siofok-futas-maraton-2018-11-24",
     "name": "21.10 km",
     "date": "2018-11-25",
     "distanceKm": 21.1,
@@ -11091,7 +11091,7 @@
   },
   {
     "id": "evt-siofok-futas-maraton-2019-11-17-2110",
-    "eventId": "evt-siofok-futas-maraton-2019-11-17",
+    "eventId": "evt-siofok-futas-maraton-2019-11-16",
     "name": "21.10 km",
     "date": "2019-11-17",
     "distanceKm": 21.1,
@@ -12341,7 +12341,7 @@
   },
   {
     "id": "evt-stupava-winter-trophy-2018-01-21-1000",
-    "eventId": "evt-stupava-winter-trophy-2018-01-21",
+    "eventId": "evt-stupava-winter-trophy-2018-01-20",
     "name": "10.00 km",
     "date": "2018-01-21",
     "distanceKm": 10.0,
@@ -12641,7 +12641,7 @@
   },
   {
     "id": "evt-tara-ultra-trail-2020-07-05-2500",
-    "eventId": "evt-tara-ultra-trail-2020-07-05",
+    "eventId": "evt-tara-ultra-trail-2020-07-04",
     "name": "25.00 km",
     "date": "2020-07-05",
     "distanceKm": 25.0,
@@ -12661,7 +12661,7 @@
   },
   {
     "id": "evt-tara-ultra-trail-2021-07-04-6207",
-    "eventId": "evt-tara-ultra-trail-2021-07-04",
+    "eventId": "evt-tara-ultra-trail-2021-07-03",
     "name": "62.07 km",
     "date": "2021-07-04",
     "distanceKm": 62.07,
@@ -12803,7 +12803,7 @@
     "id": "evt-the-tron-night-run-2027-08-14-2110",
     "eventId": "evt-the-tron-night-run-2027-08-14",
     "name": "21.10 km",
-    "date": "2027-08-14",
+    "date": "2027-04-03",
     "distanceKm": 21.1,
     "ascentM": 87,
     "descentM": 87,
@@ -13811,7 +13811,7 @@
   },
   {
     "id": "evt-ultra-trail-stara-planina-2019-06-01-5700",
-    "eventId": "evt-ultra-trail-stara-planina-2019-06-01",
+    "eventId": "evt-ultra-trail-stara-planina-2019-05-31",
     "name": "57.00 km",
     "date": "2019-06-01",
     "distanceKm": 57.0,
@@ -14061,7 +14061,7 @@
   },
   {
     "id": "evt-ultramaraton-palic-2018-05-13-7000",
-    "eventId": "evt-ultramaraton-palic-2018-05-13",
+    "eventId": "evt-ultramaraton-palic-2018-05-12",
     "name": "70.00 km",
     "date": "2018-05-13",
     "distanceKm": 70.0,
@@ -14081,7 +14081,7 @@
   },
   {
     "id": "evt-ultramaraton-palic-2019-06-02-8607",
-    "eventId": "evt-ultramaraton-palic-2019-06-02",
+    "eventId": "evt-ultramaraton-palic-2019-06-01",
     "name": "86.07 km",
     "date": "2019-06-02",
     "distanceKm": 86.07,
@@ -14121,7 +14121,7 @@
   },
   {
     "id": "evt-ultramaraton-palic-2020-09-06-5250",
-    "eventId": "evt-ultramaraton-palic-2020-09-06",
+    "eventId": "evt-ultramaraton-palic-2020-09-05",
     "name": "52.50 km",
     "date": "2020-09-06",
     "distanceKm": 52.5,
@@ -14161,7 +14161,7 @@
   },
   {
     "id": "evt-ultramaraton-palic-2021-06-06-5300",
-    "eventId": "evt-ultramaraton-palic-2021-06-06",
+    "eventId": "evt-ultramaraton-palic-2021-06-05",
     "name": "53.00 km",
     "date": "2021-06-06",
     "distanceKm": 53.0,
@@ -14183,7 +14183,7 @@
     "id": "evt-ultramaraton-palic-2027-05-29-10340",
     "eventId": "evt-ultramaraton-palic-2027-05-29",
     "name": "103.40 km",
-    "date": "2027-05-29",
+    "date": "2027-04-03",
     "distanceKm": 103.4,
     "ascentM": 52,
     "descentM": 52,
@@ -14991,7 +14991,7 @@
   },
   {
     "id": "evt-vukovarski-hamburg-maraton-2021-12-19-4220",
-    "eventId": "evt-vukovarski-hamburg-maraton-2021-12-19",
+    "eventId": "evt-vukovarski-hamburg-maraton-2021-12-18",
     "name": "42.20 km",
     "date": "2021-12-19",
     "distanceKm": 42.2,

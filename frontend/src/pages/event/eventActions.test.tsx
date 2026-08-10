@@ -9,7 +9,7 @@ import { setupUser } from '../../test/user'
  */
 
 /** An event with races on it, by the address the calendar links to. */
-const EVENT = '/sr/kalendar/maraton-maratona-2015-03-14'
+const EVENT = '/sr/kalendar/maraton-maratona-2015'
 
 async function openEvent(
   role: Parameters<typeof renderAt>[1],
@@ -283,11 +283,12 @@ describe('copying an event', () => {
     await user.type(date, '14032027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    /* The address follows the day it was moved to, rather than the day it was
-       copied from. */
+    /* The address follows the year it was moved into, rather than the year it
+       was copied from: an address is the name and the year since 10.08.2026, so
+       an event put off a week inside its season keeps it. */
     const saved = await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(saved).toHaveTextContent('maraton-maratona-2027-03-14')
+    expect(saved).toHaveTextContent('maraton-maratona-2027')
 
     /* And the races came across, counted on the copy itself. Counting rows that
        matched "Maraton maratona" on the list of races proved nothing: eight

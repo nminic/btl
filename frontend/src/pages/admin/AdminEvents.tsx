@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
-import { daysBetween, isoDate, shiftDate } from '../../forms/dateField'
+import { isoDate } from '../../forms/dateField'
 import { Resource } from '../../components/Resource'
 import {
   RESULTS,
@@ -18,6 +18,7 @@ import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { EventRaces } from './EventRaces'
+import { moveEvent } from './moveEvent'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 import { useFilterParams } from '../../app/useFilterParams'
@@ -162,16 +163,17 @@ export function AdminEvents() {
                       openEvent === undefined
                         ? undefined
                         : (values) => {
-                            /* Off the list rather than off the form's own record: the
-                         list is what the overlay has since made of it, and the
-                         day being moved from is the day it is on now. */
-                            const days = daysBetween(openEvent.date, isoDate(String(values.date)))
-
-                            for (const race of allRaces.filter(
-                              (each) => each.eventId === openEvent.id,
-                            )) {
-                              editRecord(race.id, { date: shiftDate(race.date, days) })
-                            }
+                            /* Off the list rather than off the form's own
+                               record: the list is what the overlay has since
+                               made of it, and the day being moved from is the
+                               day it is on now. */
+                            moveEvent(
+                              openEvent.id,
+                              openEvent.date,
+                              isoDate(String(values.date)),
+                              allRaces,
+                              editRecord,
+                            )
                           }
                     }
                     onDone={() => {

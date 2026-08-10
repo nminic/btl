@@ -4,7 +4,7 @@ import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { combinePair, useTeams } from '../../data/useResource'
+import { combinePair, dataOr, useRaces, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import { RATING_MARKS } from '../../data/types'
@@ -15,6 +15,7 @@ import countries from '../../data/countries.json'
 import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { moveEvent } from './moveEvent'
 import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { idFor, recordsOf, TEAMS } from './entityForms'
@@ -258,6 +259,16 @@ export function PendingQueue({ queue }: { queue: Queue }) {
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
   const state = combinePair(usePending(), useTeams())
+  /* The races, because accepting a reported change of date moves the event and
+     everything that runs at it (moveEvent). Read for what they are worth: no
+     card here draws a race, and a queue that would not open because the races
+     have not arrived is a queue held up by a file it does not show
+     (resourceScope.test). Where they are missing nothing is moved, and the day
+     of the event alone would be the half-move this is here to prevent. Where
+     they are missing the event moves and its races do not, which is why this is
+     read at all rather than left to the screen that edits events. */
+  const racesState = useRaces()
+  const allRaces = dataOr(racesState, [])
 
   /* Both dates of a reported change, so the difference is the thing on screen
      and not something the reader works out. Empty on the other five queues. */
@@ -332,7 +343,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          into, and against the id the report carries rather than the name: two
          events across two seasons carry one name (PDL P6). */
       if (queue.id === 'schedule' && one.subjectId !== '' && one.proposedDate !== '') {
-        editRecord(one.subjectId, { date: one.proposedDate })
+        moveEvent(one.subjectId, one.currentDate, one.proposedDate, allRaces, editRecord)
       }
 
       if (made === null) {

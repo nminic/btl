@@ -88,7 +88,7 @@ describe('EventDetail, the results of the league members who ran it', () => {
      for this outright and the owner asked for it again on 31.07.2026, from the
      other end: the name of a race on a profile is a link, and this is where it
      leads. */
-  const RAN = '/sr/kalendar/jagodinski-maraton-2017-04-09'
+  const RAN = '/sr/kalendar/jagodinski-maraton-2017'
 
   it('lists everyone who ran, best first', async () => {
     renderAt(RAN)
@@ -135,7 +135,7 @@ describe('EventDetail, the results of the league members who ran it', () => {
        those screens would mean nothing but "not yet". Read on a day before the
        race and not on whatever day the machine happens to hold: left to the real
        clock this test quietly turns into its own opposite on 17.01.2027. */
-    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16', 'visitor', null, undefined, '2026-12-01')
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027', 'visitor', null, undefined, '2026-12-01')
 
     await screen.findByRole('heading', { level: 1 })
 
@@ -158,7 +158,7 @@ describe('EventDetail, the results of the league members who ran it', () => {
        being "not yet" and becomes a fact: the league was not there. Read through
        the simulated clock, which is the only way the portal is allowed to know
        what day it is (ADL A7). */
-    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027-01-16', 'visitor', null, undefined, '2027-06-01')
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027', 'visitor', null, undefined, '2027-06-01')
 
     expect(await screen.findByText('Sa ovog događaja nema unetih rezultata.')).toBeVisible()
     expect(screen.queryByRole('table', { name: 'Rezultati članova' })).not.toBeInTheDocument()

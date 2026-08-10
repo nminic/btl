@@ -262,7 +262,7 @@ function LetOut() {
   const { publish, settle } = useSession()
   const one: EventComment = {
     id: 'ver-kom-1',
-    eventId: 'evt-fruskogorski-maraton-2010-05-08',
+    eventId: 'evt-fruskogorski-maraton-2010',
     memberNumber: '000007',
     who: 'Ime Prezime',
     date: '2026-08-06',
@@ -364,7 +364,7 @@ describe('commentFrom', () => {
       memberNumber: '000007',
       who: 'Ime Prezime',
       subject: 'Fruškogorski maraton',
-      subjectId: 'evt-fruskogorski-maraton-2010-05-08',
+      subjectId: 'evt-fruskogorski-maraton-2010',
       body: 'Reci koje je clan napisao.',
       currentDate: '',
       proposedDate: '',
@@ -376,7 +376,7 @@ describe('commentFrom', () => {
 
     expect(commentFrom(waiting)).toEqual({
       id: 'ver-kom-9',
-      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      eventId: 'evt-fruskogorski-maraton-2010',
       memberNumber: '000007',
       who: 'Ime Prezime',
       date: '2026-08-06',

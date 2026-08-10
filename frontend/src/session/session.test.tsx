@@ -141,7 +141,7 @@ function Published() {
   const { published, publish } = useSession()
   const one: EventComment = {
     id: 'ver-kom-1',
-    eventId: 'evt-fruskogorski-maraton-2010-05-08',
+    eventId: 'evt-fruskogorski-maraton-2010',
     memberNumber: '000007',
     who: 'Ime Prezime',
     date: '2026-08-06',

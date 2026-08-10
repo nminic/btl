@@ -59,7 +59,7 @@ describe('the name of a page', () => {
   })
 
   it('carries the event and its date', async () => {
-    renderAt('/sr/kalendar/podgoricka-desetka-2027-01-30')
+    renderAt('/sr/kalendar/podgoricka-desetka-2027')
 
     await waitFor(() =>
       expect(document.title).toBe(`Podgorička desetka, 30. januar 2027. · ${LEAGUE}`),

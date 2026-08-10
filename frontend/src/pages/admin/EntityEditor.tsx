@@ -108,8 +108,12 @@ export function EntityEditor({
       )
     } else {
       editRecord(String(editing.record[entity.idField]), text)
-      alsoSave?.(values)
     }
+
+    /* On both, because what else a save changes does not depend on whether the
+       record is new: a race entered on an earlier day than its event moves the
+       event exactly as a race changed onto one does (EventRaces). */
+    alsoSave?.(values)
 
     setSaved(values)
   }

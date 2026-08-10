@@ -31,6 +31,6 @@ describe('eventClash', () => {
     /* The form speaks dd/mm/gggg and the record stores gggg-mm-dd. Read without
        that in mind the computed address carried no date at all and no copy ever
        clashed with anything. */
-    expect(eventSlug('Maraton maratona', '14/03/2015')).toBe('maraton-maratona-2015-03-14')
+    expect(eventSlug('Maraton maratona', '14/03/2015')).toBe('maraton-maratona-2015')
   })
 })

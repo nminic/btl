@@ -7,7 +7,7 @@ import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
 import { loadResource } from '../../data/client'
-import type { Competitor, EventComment, PendingItem } from '../../data/types'
+import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
 import { overall, rated } from './overall'
 
 /** The two letters a portrait draws for a name. */
@@ -42,9 +42,9 @@ const whoOf = (card: HTMLElement) => paragraphsIn(card)[0] ?? ''
  * asks about the organisation and the surroundings, which are things somebody
  * saw on the day.
  */
-const EVENT = 'fruskogorski-maraton-2010-05-08'
+const EVENT = 'fruskogorski-maraton-2010'
 /** One nobody has run yet, read on the real day the suite runs on. */
-const AHEAD = 'sidski-novogodisnji-maraton-2027-01-16'
+const AHEAD = 'sidski-novogodisnji-maraton-2027'
 /** The day that event is run, so the boundary itself can be stood on. */
 const AHEAD_DAY = '2027-01-16'
 /** A day before it, so the three cases about a race nobody has run say what
@@ -54,11 +54,32 @@ const BEFORE_AHEAD = '2026-12-31'
 /** One nobody has run and nobody has commented on, which is what makes the
  *  whole section absent rather than empty. AHEAD carries a comment on purpose:
  *  it stands for an event moved onto a later date. */
-const AHEAD_EMPTY = 'podgoricka-desetka-2027-01-30'
+const AHEAD_EMPTY = 'podgoricka-desetka-2027'
 const AHEAD_EMPTY_NAME = 'Podgorička desetka'
 const ME = '000007'
+
+/** The event that answers at an address, since an address is no longer its id
+ *  with a prefix: it is the name and the year (owner, 10.08.2026). */
+async function eventAt(slug: string): Promise<BtlEvent> {
+  const events = await loadResource<BtlEvent[]>('events')
+
+  return must(
+    events.find((one) => one.slug === slug),
+    `an event at /${slug}`,
+  )
+}
+
+/** And the other way round: the address of the event with that id. */
+async function eventAt2(id: string): Promise<BtlEvent> {
+  const events = await loadResource<BtlEvent[]>('events')
+
+  return must(
+    events.find((one) => one.id === id),
+    `an event with the id ${id}`,
+  )
+}
 /** A second event that has been run, for the step from one rating to another. */
-const OTHER = 'ironman-70-3-st-polten-2010-05-30'
+const OTHER = 'ironman-70-3-st-polten-2010'
 const OTHER_NAME = 'Ironman 70.3 - St Polten'
 
 /** All three marks given, which is what the form asks for before it will send
@@ -601,7 +622,7 @@ describe('a comment a moderator lets out', () => {
     /* Its own event, not one picked in advance: what a widened merge would
        publish is a card on the event the item names, so an event chosen
        anywhere else is a screen the mistake never reaches. */
-    const slug = about.subjectId.replace(/^evt-/, '')
+    const slug = (await eventAt2(about.subjectId)).slug
 
     /* Read after that event, so the comments are drawn at all: before the race
        the whole section is absent (EventComments.tsx), and "no card appeared"
@@ -649,7 +670,7 @@ describe('a comment a moderator lets out', () => {
       within(await cardFor(sent.body)).getByRole('button', { name: /^Brisanje komentara: / }),
     )
     await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
-    await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
+    await router.navigate(`/sr/kalendar/${(await eventAt2(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(false)
   })
@@ -672,7 +693,7 @@ describe('a comment a moderator lets out', () => {
        "approved". Read the other way round, or read as "decided", every waiting
        comment publishes itself, including the one in the fixture offering a
        discount for a referral link. */
-    await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
+    await router.navigate(`/sr/kalendar/${(await eventAt2(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(false)
 
@@ -685,7 +706,7 @@ describe('a comment a moderator lets out', () => {
     /* Approving is what publishes it. Until this it wrote a decision into the
        session and the event page went on showing what the file carried, so a
        moderator approved a comment and nothing appeared anywhere. */
-    await router.navigate(`/sr/kalendar/${sent.subjectId.replace(/^evt-/, '')}`)
+    await router.navigate(`/sr/kalendar/${(await eventAt2(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(true)
   })
@@ -765,8 +786,9 @@ describe('what an event nobody has run yet offers', () => {
        a comment somebody wrote: hiding those would take them off the portal
        with nothing anywhere saying why. */
     const comments = await loadResource<EventComment[]>('comments')
+    const ahead = await eventAt(AHEAD)
     const moved = must(
-      comments.find((one) => one.eventId === `evt-${AHEAD}`),
+      comments.find((one) => one.eventId === ahead.id),
       'a comment on an event dated ahead of the day it is read on',
     )
 
@@ -898,10 +920,11 @@ describe('the comments under an event', () => {
     renderAt(`/sr/kalendar/${EVENT}`)
 
     const comments = await loadResource<EventComment[]>('comments')
+    const ran = await eventAt(EVENT)
     const old = must(
       comments.find(
         (one) =>
-          one.eventId === `evt-${EVENT}` &&
+          one.eventId === ran.id &&
           one.rating.organisation === 0 &&
           one.rating.value === 0 &&
           one.rating.ambience === 0,
@@ -932,10 +955,11 @@ describe('the comments under an event', () => {
     renderAt(`/sr/kalendar/${EVENT}`)
 
     const comments = await loadResource<EventComment[]>('comments')
+    const ran = await eventAt(EVENT)
     const partial = must(
       comments.find(
         (one) =>
-          one.eventId === `evt-${EVENT}` &&
+          one.eventId === ran.id &&
           !rated(one.rating) &&
           (one.rating.organisation > 0 || one.rating.value > 0 || one.rating.ambience > 0),
       ),
@@ -969,8 +993,9 @@ describe('the comments under an event', () => {
     renderAt(`/sr/kalendar/${EVENT}`)
 
     const comments = await loadResource<EventComment[]>('comments')
+    const ran = await eventAt(EVENT)
     const wordless = must(
-      comments.find((one) => one.eventId === `evt-${EVENT}` && one.body === ''),
+      comments.find((one) => one.eventId === ran.id && one.body === ''),
       'a rating given with no words',
     )
     const card = must(
@@ -988,7 +1013,7 @@ describe('the comments under an event', () => {
     /* And the other side of it, so the check above is known to be looking at
        the right thing: a comment that does have words draws exactly one. */
     const spoken = must(
-      comments.find((one) => one.eventId === `evt-${EVENT}` && one.body !== ''),
+      comments.find((one) => one.eventId === ran.id && one.body !== ''),
       'a comment with words',
     )
     const said = must(
@@ -1098,8 +1123,12 @@ describe('the comments under an event', () => {
        the unsorted one are the same list and the sort is unheld. */
     renderAt(`/sr/kalendar/${EVENT}`)
 
+    /* By the event the address answers with, not by the address itself: an
+       address is the name and the year since 10.08.2026, and an id carries the
+       whole day. */
+    const ran = await eventAt(EVENT)
     const comments = (await loadResource<EventComment[]>('comments')).filter(
-      (one) => one.eventId.endsWith(EVENT),
+      (one) => one.eventId === ran.id,
     )
 
     expect(comments.length).toBeGreaterThan(1)
@@ -1112,7 +1141,7 @@ describe('the comments under an event', () => {
   })
 
   it('says so where nobody has commented yet', async () => {
-    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     expect(await screen.findByText('Za ovaj događaj još nema odobrenih komentara.')).toBeVisible()
   })

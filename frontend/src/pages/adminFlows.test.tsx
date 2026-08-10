@@ -1399,7 +1399,7 @@ describe('the six queues read from the file', () => {
 
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
-    /* On the event's own page, which is what a visitor reads. */
+    /* Where the administration reads it. */
     await router.navigate('/sr/administracija/dogadjaji')
     await user.type(await screen.findByLabelText(/Pretraga/), 'Beogradski maraton')
 
@@ -1407,6 +1407,30 @@ describe('the six queues read from the file', () => {
 
     expect(rows.getByText('10. 4. 2027.')).toBeVisible()
     expect(rows.queryByText('3. 4. 2027.')).toBeNull()
+
+    /* And the races with it, by the same number of days. This event runs over
+       two mornings, so approving the report used to leave both races a week
+       before the event they belong to, and the page a visitor reads said so. */
+    const listed = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        /* The 2027 one: the name has been run every year since 2010 and the
+           list holds every year of it. */
+        .find(
+          (one) =>
+            /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? ''),
+        ),
+      'the event that was moved',
+    )
+
+    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+
+    expect(races).toEqual(['10. 4. 2027.', '11. 4. 2027.'])
   })
 
   it('folds a card open and shut, one at a time', async () => {
@@ -1421,10 +1445,22 @@ describe('the six queues read from the file', () => {
     const first_card = within(at(cards, 0))
     const second = within(at(cards, 1))
 
+    /* The part of the card the control opens, found through the control rather
+       than by a class name: what has to hold is that pressing it marks that part
+       as open, since the stylesheet draws the card off that mark and jsdom lays
+       nothing out. The button's own label proves nothing: it reads off the same
+       state either way. */
+    const bodyOf = (card: ReturnType<typeof within>) => {
+      const opens = card.getByRole('button', { name: /^(Prikaži|Sakrij)$/ }).getAttribute('aria-controls')
+
+      return must(document.getElementById(String(opens)), 'the part of the card that folds')
+    }
+
     expect(first_card.getByRole('button', { name: 'Prikaži' })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
+    expect(bodyOf(first_card).className).not.toContain('--open')
 
     await user.click(first_card.getByRole('button', { name: 'Prikaži' }))
 
@@ -1432,17 +1468,18 @@ describe('the six queues read from the file', () => {
       'aria-expanded',
       'true',
     )
+    expect(bodyOf(first_card).className).toContain('--open')
 
     /* One at a time: two open cards on a telephone are the scrolling this was
        meant to end. */
     await user.click(second.getByRole('button', { name: 'Prikaži' }))
 
-    expect(second.getByRole('button', { name: 'Sakrij' })).toBeVisible()
-    expect(first_card.getByRole('button', { name: 'Prikaži' })).toBeVisible()
+    expect(bodyOf(second).className).toContain('--open')
+    expect(bodyOf(first_card).className).not.toContain('--open')
 
     await user.click(second.getByRole('button', { name: 'Sakrij' }))
 
-    expect(second.getByRole('button', { name: 'Prikaži' })).toBeVisible()
+    expect(bodyOf(second).className).not.toContain('--open')
   })
 
   it('names the part of the card the control opens', async () => {

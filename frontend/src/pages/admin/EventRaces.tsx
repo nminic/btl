@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
+import { isoDate } from '../../forms/dateField'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useSession } from '../../session/useSession'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { racesOf, type Editing } from './entityForms'
@@ -34,6 +36,7 @@ export function EventRaces({
   setEditing: (editing: Editing | null) => void
 }) {
   const { locale, t } = useI18n()
+  const { editRecord } = useSession()
   /* Held across renders. Every other screen hands the renderer a definition made
      once at module level; this is the only one that builds its own, since the
      form is the races' form with the event taken out of it and put back as a
@@ -58,7 +61,32 @@ export function EventRaces({
           {t('admin.racesOf', { event: event.name })}
         </h2>
 
-        <EntityEditor entity={entity} editing={editing} onDone={() => setEditing(null)} />
+        <EntityEditor
+          entity={entity}
+          editing={editing}
+          /* The event follows its first race (owner, 10.08.2026): its date is
+             the day it begins, so a race entered or moved to an earlier day
+             makes that day the event's. Written here rather than in the race's
+             own form, because it is a fact about the event and the form knows
+             only the race.
+
+             The other way round is not done here: a race moved later leaves the
+             event where it is, because some other race is still the first one,
+             and where it was the only race the event moves with it. */
+          alsoSave={(values) => {
+            const day = isoDate(String(values.date))
+            const others =
+              editing.mode === 'new'
+                ? mine
+                : mine.filter((race) => race.id !== String(editing.record[entity.idField]))
+            const first = [...others.map((race) => race.date), day].sort()[0]
+
+            if (first !== undefined && first !== event.date) {
+              editRecord(event.id, { date: first })
+            }
+          }}
+          onDone={() => setEditing(null)}
+        />
       </section>
     )
   }

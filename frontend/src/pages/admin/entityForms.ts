@@ -183,16 +183,22 @@ export function eventClash(
 }
 
 /**
- * The address an event answers at: its name, then the day it is run.
+ * The address an event answers at: its name, then the year it is run in.
  *
- * The day is part of it because the same race is run every year and the name on
+ * The year is part of it because the same race is run every year and the name on
  * its own would collide with itself: there are three events called Resolution
- * Run in the data and they are three different mornings.
+ * Run in the data and they are three different mornings. The year rather than
+ * the whole day (owner, 10.08.2026), because an address is read and typed by
+ * people: beogradski-maraton-2027 is the Belgrade marathon of that season, and
+ * a day in it is a detail that also changes when the race is put off a week.
+ *
+ * Which is why it is the year and not the day: an event moved inside its season
+ * keeps its address, and everything joined to it by address stays joined.
  */
 export function eventSlug(name: string, date: string): string {
-  const day = isoDate(date)
+  const year = isoDate(date).slice(0, 4)
 
-  return [slugify(name), day].filter((part) => part !== '').join('-')
+  return [slugify(name), year].filter((part) => part !== '').join('-')
 }
 
 /**

@@ -141,6 +141,67 @@ describe('the races of an event', () => {
     ).toBeVisible()
   })
 
+  it('takes the day of its first race, when a race is entered before it', async () => {
+    /* Owner, 10.08.2026: the event's date is the day it begins, and that is the
+       day of its first race. So a race entered on an earlier day is not a race
+       before its event; it is the event starting earlier. */
+    const user = setupUser()
+
+    const { router } = renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const open2027 = async () => {
+      const search = await screen.findByLabelText(/Pretraga/)
+
+      await user.clear(search)
+      await user.type(search, 'Beogradski maraton')
+
+      return must(
+        within(await screen.findByRole('table', { name: 'Događaji' }))
+          .getAllByRole('row')
+          .find(
+            (one) =>
+              /Beogradski maraton/.test(one.textContent ?? '') &&
+              /2027/.test(one.textContent ?? ''),
+          ),
+        'the event of 2027',
+      )
+    }
+
+    await user.click(within(await open2027()).getByRole('button', { name: /^Otvori/ }))
+    await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
+
+    /* The day before the one the form opened on, which is the event's own. */
+    const day = screen.getByLabelText(/^Dan trke/)
+    const was = must(
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+      'the day the form opened on',
+    )
+
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Petak, kratka trka')
+    await user.clear(day)
+    await user.type(
+      day,
+      `${String(Number(was[1]) - 1).padStart(2, '0')}${was[2]}${was[3]}`,
+    )
+    await user.type(screen.getByLabelText(/^Dužina/), '5')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Out of the race and then out of the event, because leaving the race leaves
+       the event's own form standing. Read where the list draws it, which is the
+       whole point: the event now begins a day earlier. */
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await router.navigate('/sr/administracija/dogadjaji')
+
+    const moved = await open2027()
+
+    expect(
+      within(moved).getByText(`${Number(was[1]) - 1}. ${Number(was[2])}. ${was[3]}.`),
+    ).toBeVisible()
+  })
+
   it('moves the races with the event, by the same number of days', async () => {
     /* Owner, 10.08.2026: this is what makes copying last season's event worth
        doing. Two races on the Saturday and one on the Sunday stay two and one
@@ -281,18 +342,21 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(
-      await screen.findByText(/Događaj sa tim nazivom i tim datumom već postoji/),
+      await screen.findByText(/Događaj sa tim nazivom već postoji te godine/),
     ).toBeVisible()
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
-    /* And it goes through on another day, so the refusal is about the address
-       and not about saving. */
+    /* And it goes through in another year, so the refusal is about the address
+       and not about saving. Another day of the same year is the same address
+       since 10.08.2026, which is the whole point: an event put off a week keeps
+       everything that is joined to it. */
     const date = screen.getByLabelText(/^Datum/)
 
     await user.clear(date)
-    await user.type(date, '15062027')
+    await user.type(date, '15062028')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
+    expect(screen.queryByText(/Događaj sa tim nazivom već postoji te godine/)).toBeNull()
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
 

@@ -59,7 +59,7 @@ describe('a part of a screen waits without covering the page', () => {
 
   it('keeps the event readable while its races are still on their way', async () => {
     restore = stallResource('races')
-    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     expect(await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })).toBeVisible()
     // A sheet is a `.loader` that is not the inline one. There must be none.
@@ -68,7 +68,7 @@ describe('a part of a screen waits without covering the page', () => {
 
   it('names each part it is waiting for rather than saying the same thing twice', async () => {
     restore = stallResource('results')
-    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026-07-11')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })
     const said = screen.getAllByRole('status').map((one) => one.textContent)
