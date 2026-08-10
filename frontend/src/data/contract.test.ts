@@ -21,7 +21,7 @@ describe('the list of resources', () => {
        published comment out of it would have to decide all over again what
        counts as decided. */
     expect([...RESOURCE_NAMES]).toEqual([
-      'badges',
+      'ducats',
       'comments',
       'competitors',
       'events',
@@ -113,3 +113,137 @@ describe('the screens that draw a section of a written page', () => {
     expect(straight.map((path) => path.slice(SRC.length + 1))).toEqual([])
   })
 })
+
+/**
+ * One name for one thing, after the rename of 06.08.2026.
+ *
+ * The owner asked for the badges to become Dukati and, asked whether that
+ * reached the code and the addresses too, answered that it did (PDL P11). A
+ * rename of five hundred occurrences across forty-five files is exactly the kind
+ * that half happens: one file keeps the old word, and the portal has two
+ * names for one thing again with nothing saying so.
+ *
+ * Two things keep the old word on purpose and are named here, so that "no
+ * exceptions" does not have to mean "no old address":
+ *
+ * The public page that no longer exists. It was folded into the rulebook on
+ * 04.08.2026, and two tests say so by name; an address that stopped being
+ * served has to go on being written down somewhere or nothing holds that it
+ * stopped.
+ *
+ * And this file, whose own prose is about the rename.
+ */
+describe('what the ducats are called', () => {
+  /**
+   * The three files that keep the old word on purpose.
+   *
+   * Named one by one rather than caught by a pattern: a pattern would let the
+   * next file that keeps the old word in past it. And the list is held to
+   * exactly these three below, because a list nothing bounds is a line anybody
+   * can add to silence a file.
+   */
+  const ALLOWED = ['app/navigation.test.tsx', 'app/routes.test.ts', 'data/contract.test.ts']
+
+  it('is nowhere still the old word, in any language', () => {
+    const said: string[] = []
+
+    for (const { path, code } of everything()) {
+      if (ALLOWED.includes(path)) {
+        continue
+      }
+
+      /* Without regard to case, because the first pass asked for `[Bb]adge` and
+         a constant written `BADGES` walked past it, as did every capitalised
+         `Značke`: a guard that sees two of the three ways a word is written is
+         one that lets the third through. */
+      /* Without regard to case, because the first pass asked for `[Bb]adge` and
+         a constant written `BADGES` walked past it, as did every capitalised
+         `Značke`.
+
+         And with the vowel between, because the genitive plural of the old word
+         is `značaka`: the pattern asked for `k` straight after `č`, so the one
+         inflected form the dictionary actually used was the one form it could
+         not see. */
+      for (const match of code.matchAll(/[A-Za-z]*badge[A-Za-z_]*|zna[čc]a?k[a-zčćšđž]*/gi)) {
+        said.push(`${path}: ${match[0]}`)
+      }
+    }
+
+    expect(said).toEqual([])
+  })
+
+  it('holds the list of exceptions to exactly those three', () => {
+    /* Otherwise the list is a place to put whatever fails: adding a path to it
+       and the old word to that file passed everything, which is a guard that
+       can be switched off from inside. */
+    expect(ALLOWED).toHaveLength(3)
+    expect(ALLOWED.filter((one) => one !== 'data/contract.test.ts')).toEqual([
+      'app/navigation.test.tsx',
+      'app/routes.test.ts',
+    ])
+  })
+
+  it('keeps the dead public address written down, which is what those two hold', () => {
+    const holding = ['app/navigation.test.tsx', 'app/routes.test.ts']
+    const kept = everything().filter((one) => holding.includes(one.path))
+
+    expect(kept.map((one) => one.path).sort()).toEqual([...holding].sort())
+    expect(kept.every((one) => one.code.includes('znacke'))).toBe(true)
+  })
+
+  it('reads the words a visitor sees, and not only the code', () => {
+    /* The dictionary and the generated records were outside the sweep, and that
+       is where the old word actually survived: a heading that said Dukati over a
+       paragraph whose first word was Značka, and a ducat whose own name began
+       with it. Neither is code, and both are on a public page. */
+    const read = everything().map((one) => one.path)
+
+    expect(read).toContain('i18n/sr.json')
+    expect(read).toContain('mock/pages.json')
+    expect(read).toContain('mock/ducats.json')
+    /* And the stylesheets, which were the one kind nothing pinned: dropping
+       '.css' from the list of what is read switched thirty-six files out of the
+       sweep in silence. */
+    expect(read).toContain('components/DucatArt.css')
+    /* And the page the browser is handed, which carries words of its own. */
+    expect(read).toContain('index.html')
+  })
+
+  it('reads every file, so the sweep above is looking at something', () => {
+    expect(everything().length).toBeGreaterThan(150)
+    expect(everything().some((one) => one.path.endsWith('DucatGallery.tsx'))).toBe(true)
+  })
+})
+
+/**
+ * Everything the rename had to reach: the code, the words a visitor reads, and
+ * the records the portal is generated from.
+ *
+ * Two roots rather than one, because the old word survived in neither of the
+ * places `src/**` alone could see it. Paths under `public/mock` are given
+ * without that prefix, so a file reads as `mock/pages.json`.
+ */
+function everything(): { path: string; code: string }[] {
+  return [
+    ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
+    ...under(join(process.cwd(), 'public'), '', ['.json']),
+    /* The page the browser is handed before any of that. It carries a title and
+       a description of its own, which is words a visitor reads. */
+    { path: 'index.html', code: readFileSync(join(process.cwd(), 'index.html'), 'utf-8') },
+  ]
+}
+
+function under(dir: string, prefix: string, kinds: string[]): { path: string; code: string }[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = join(dir, entry.name)
+    const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+
+    if (entry.isDirectory()) {
+      return under(at, name, kinds)
+    }
+
+    return kinds.some((kind) => entry.name.endsWith(kind))
+      ? [{ path: name, code: readFileSync(at, 'utf-8') }]
+      : []
+  })
+}

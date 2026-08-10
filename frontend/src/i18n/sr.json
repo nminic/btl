@@ -96,9 +96,9 @@
       "title": "Verifikacija (administracija)",
       "description": "Redovi čekanja: prijavljeni rezultati, novi članovi i sve što traži odluku moderatora."
     },
-    "adminBadges": {
-      "title": "Značke (administracija)",
-      "description": "Definicije značaka i uslovi po kojima se dodeljuju članovima lige."
+    "adminDucats": {
+      "title": "Dukati (administracija)",
+      "description": "Definicije dukata i uslovi po kojima se dodeljuju članovima lige."
     },
     "adminMembers": {
       "title": "Članovi (administracija)",
@@ -148,7 +148,7 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari i značke osvojene u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi."
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -180,7 +180,7 @@
     },
     "competitorAwards": {
       "title": "Priznanja takmičara",
-      "description": "Pehari i značke koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
+      "description": "Pehari i dukati koje je jedan takmičar osvojio u Balkanskoj trkačkoj ligi."
     },
     "proposeTeam": {
       "title": "Predlog tima",
@@ -908,7 +908,7 @@
     "ranking": "Pravo rangiranja",
     "yes": "Da",
     "no": "Ne",
-    "badges": "Značke",
+    "ducats": "Dukati",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
     "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
@@ -944,7 +944,7 @@
         "races": "Nova trka",
         "teams": "Novi tim",
         "leagues": "Nova liga",
-        "badges": "Nova značka",
+        "ducats": "Novi dukat",
         "pages": "Nova strana",
         "moderators": "Nov moderator"
       },
@@ -954,7 +954,7 @@
         "races": "Izmena trke",
         "teams": "Izmena tima",
         "leagues": "Izmena lige",
-        "badges": "Izmena značke",
+        "ducats": "Izmena dukata",
         "pricing": "Izmena reda cenovnika",
         "pages": "Izmena strane",
         "moderators": "Izmena moderatora"
@@ -987,8 +987,8 @@
       "teamName": "Naziv tima",
       "teamOrganizer": "Organizator tima",
       "leagueName": "Naziv lige",
-      "badgeName": "Naziv značke",
-      "badgeLabel": "Labela na znački",
+      "ducatName": "Naziv dukata",
+      "ducatLabel": "Labela na dukatu",
       "description": "Opis",
       "rule": "Pravilo",
       "priceLabel": "Naziv perioda",
@@ -1021,11 +1021,11 @@
       "season": "Sezona za koju liga važi.",
       "groupsByCategory": "Bez ovoga se poredak lige grupiše samo po polu.",
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
-      "description": "Jedna do dve rečenice koje član vidi uz značku.",
-      "badgeLabel": "Kratak tekst pri dnu znaka, na primer Jul 2027. Sme da ostane prazan; tada znak nosi samo prag.",
+      "description": "Jedna do dve rečenice koje član vidi uz dukat.",
+      "ducatLabel": "Kratak tekst pri dnu dukata, na primer Jul 2027. Sme da ostane prazan; tada dukat nosi samo prag.",
       "kind": "Vrsta se bira sa spiska. Uslov napisan slobodnim tekstom ovde ne postoji.",
-      "badgeValue": "Uslov je uvek najmanje ova vrednost, pa značka koja je osvojena ne može kasnije da se izgubi. Prag stoji na sredini znaka i nikad nije prazan.",
-      "badgePeriod": "Bez datuma značka se računa kroz sve sezone.",
+      "ducatValue": "Uslov je uvek najmanje ova vrednost, pa dukat koji je osvojen ne može kasnije da se izgubi. Prag stoji na sredini dukata i nikad nije prazan.",
+      "ducatPeriod": "Bez datuma dukat se računa kroz sve sezone.",
       "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
       "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
@@ -1043,20 +1043,20 @@
     "everyPayment": "Svaka uplata",
     "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik."
   },
-  "badges": {
-    "title": "Značke",
-    "empty": "Liga još nije uvela nijednu značku.",
+  "ducats": {
+    "title": "Dukati",
+    "empty": "Liga još nije uvela nijedan dukat.",
     "kindLabel": "Vrsta",
     "valueLabel": "Vrednost",
     "from": "Od datuma",
     "to": "Do datuma",
-    "sentence": "Značka se dodeljuje kad {kind} bude najmanje {value}",
+    "sentence": "Dukat se dodeljuje kad {kind} bude najmanje {value}",
     "everSince": ", računato kroz sve sezone.",
     "during": ", računato za {period}",
     "between": ", računato od {from} do {to}, oba dana uključena.",
     "after": ", računato od {from}, bez kraja.",
     "before": ", računato do {to}, oba dana uključena.",
-    "closedList": "Spisak vrsta je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa značka koja je osvojena ne može kasnije da se izgubi.",
+    "closedList": "Spisak vrsta je deo ugovora i menja se samo izmenom portala. Uslov je uvek najmanje, pa dukat koji je osvojen ne može kasnije da se izgubi.",
     "kind": {
       "raceCount": "broj trka",
       "marathonCount": "broj maratona",
@@ -1108,7 +1108,7 @@
         "races": "Trke",
         "teams": "Timovi",
         "leagues": "Lige",
-        "badges": "Značke",
+        "ducats": "Dukati",
         "pricing": "Cenovnik",
         "pages": "Strane"
       },
@@ -1130,7 +1130,7 @@
         "races": "uređivanje trka",
         "teams": "uređivanje timova",
         "leagues": "uređivanje liga",
-        "badges": "uređivanje znački",
+        "ducats": "uređivanje dukata",
         "pricing": "uređivanje cenovnika",
         "pages": "uređivanje statičnih strana"
       },
@@ -1226,7 +1226,7 @@
   },
   "awards": {
     "trophies": "Pehari",
-    "badges": "Značke",
+    "ducats": "Dukati",
     "note": "Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno.",
     "board": "Lista",
     "place": "Mesto",
@@ -1235,7 +1235,7 @@
     "position": "{position}. mesto",
     "empty": "Ovaj takmičar još nema nijedan pehar.",
     "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar.",
-    "noBadges": "Još nijedna značka."
+    "noDucats": "Još nijedan dukat."
   },
   "report": {
     "title": "Prijava rezultata",

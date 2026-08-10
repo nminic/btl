@@ -84,9 +84,9 @@ function useNavSections(): NavSection[] {
 }
 
 /* Administration, with the number of things waiting behind it. The count goes
- * into the name of the link and not only into the badge, because an aria-label
- * replaces everything inside the element: a badge described by nothing is a
- * badge a screen reader never reads out. The inbox in MessagesMenu does the
+ * into the name of the link and not only into the counter, because an aria-label
+ * replaces everything inside the element: a counter described by nothing is a
+ * counter a screen reader never reads out. The inbox in MessagesMenu does the
  * same. Nothing at all is shown while nothing is waiting. */
 function AdminLink({ label, onNavigate }: { label: string; onNavigate: () => void }) {
   const { locale, t } = useI18n()

@@ -72,7 +72,7 @@ describe('what a competitor has won', () => {
        here yet, so "no award at all" would have been a claim the screen cannot
        make. */
     expect(await screen.findByText('Ovaj takmičar još nema nijedan pehar.')).toBeVisible()
-    expect(screen.getByText('Još nijedna značka.')).toBeVisible()
+    expect(screen.getByText('Još nijedan dukat.')).toBeVisible()
   })
 
   it('lists the seasons a place was taken in, newest first', async () => {
@@ -172,7 +172,7 @@ describe('the length, as one row of six', () => {
 
   it('hides one of the two names by moving it, never by removing it', () => {
     /* jsdom computes no media queries, so the rule is read as text, the way the
-       badge art and the ring are tested (ADL A7). `display: none` on either name
+       ducat art and the ring are tested (ADL A7). `display: none` on either name
        is what would take it out of the reading, and it is the one thing this
        stylesheet must not do to them. */
     const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
@@ -193,7 +193,7 @@ describe('the five lengths, as five colours', () => {
     /* Blue, green, yellow, orange, red, shortest to longest (owner,
        31.07.2026). Per theme, because a colour that reads on a white card
        disappears on a dark one. jsdom computes no custom properties, so the
-       tokens are read as text, the way the badge art is tested (ADL A7). */
+       tokens are read as text, the way the ducat art is tested (ADL A7). */
     const css = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
 
     for (const name of ['short', 'half', 'long', 'marathon', 'ultra']) {

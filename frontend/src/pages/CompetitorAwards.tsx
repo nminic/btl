@@ -2,16 +2,16 @@ import { useMemo } from 'react'
 import { useParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { PageMeta } from '../app/PageMeta'
-import { BadgeArt } from '../components/BadgeArt'
+import { DucatArt } from '../components/DucatArt'
 import { Resource } from '../components/Resource'
-import { earnedBadges } from '../data/badgeEarned'
-import { thresholdOf } from '../data/badgeRule'
+import { earnedDucats } from '../data/ducatEarned'
+import { thresholdOf } from '../data/ducatRule'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import {
   combinePair,
   combineResources,
-  useBadges,
+  useDucats,
   useCompetitors,
   useResults,
   useTeams,
@@ -26,12 +26,12 @@ import './Profile.css'
  *
  * Its own address rather than a section at the foot of the overview (the design
  * decision of 30.07.2026). It is the one kind of thing here that is not scoped
- * to a season: a trophy and a badge are permanent by decision, "osvojeno se
+ * to a season: a trophy and a ducat are permanent by decision, "osvojeno se
  * nikad ne skida" (PDL P11), so it has no business inside a page governed by a
  * season filter.
  *
- * The owner calls the badges "BTL novčići", after the coin they are drawn as.
- * The portal calls them badges everywhere, including here: there is already a
+ * The owner calls the ducats "BTL novčići", after the coin they are drawn as.
+ * The portal calls them ducats everywhere, including here: there is already a
  * public page that is the catalogue of all of them and how they are won, and one
  * thing must not have two names. This is the collection rather than the
  * catalogue.
@@ -40,12 +40,12 @@ function AwardsBody({ memberNumber }: { memberNumber: string | undefined }) {
   const { t } = useI18n()
   const state = combinePair(
     combineResources(useCompetitors(), useResults(), useTeams()),
-    useBadges(),
+    useDucats(),
   )
 
   return (
     <Resource state={state}>
-      {([[competitors, results, teams], badges]) => {
+      {([[competitors, results, teams], ducats]) => {
         const competitor = competitors.find(
           (one) => one.memberNumber === memberNumber && one.active,
         )
@@ -59,7 +59,7 @@ function AwardsBody({ memberNumber }: { memberNumber: string | undefined }) {
             competitor={competitor}
             competitors={competitors}
             results={results}
-            badges={badges}
+            ducats={ducats}
             team={teams.find((one) => one.id === competitor.teamId)}
           />
         )
@@ -72,13 +72,13 @@ function AwardsFor({
   competitor,
   competitors,
   results,
-  badges,
+  ducats,
   team,
 }: {
   competitor: Parameters<typeof awardsOf>[0]
   competitors: Parameters<typeof awardsOf>[1]
   results: Parameters<typeof awardsOf>[2]
-  badges: Parameters<typeof earnedBadges>[2]
+  ducats: Parameters<typeof earnedDucats>[2]
   team: Parameters<typeof ProfileHead>[0]['team']
 }) {
   const { locale, t } = useI18n()
@@ -93,7 +93,7 @@ function AwardsFor({
      control stands at the top of the page and governs both parts, so a season
      chosen among the results is still chosen among the trophies.
 
-     The badges below are not narrowed and cannot be: a badge is won over a
+     The ducats below are not narrowed and cannot be: a ducat is won over a
      career and carries no season, which is the same reason the note above the
      two sections says what it says. */
   const seasons = useMemo(
@@ -108,8 +108,8 @@ function AwardsFor({
     [all, season],
   )
   const earned = useMemo(
-    () => earnedBadges(competitor, results, badges),
-    [competitor, results, badges],
+    () => earnedDucats(competitor, results, ducats),
+    [competitor, results, ducats],
   )
 
   const name = `${competitor.firstName} ${competitor.lastName}`
@@ -166,24 +166,24 @@ function AwardsFor({
         )}
       </section>
 
-      <section aria-labelledby="awards-badges">
-        <h2 className="profile__section" id="awards-badges">
-          {t('awards.badges')} <span className="profile__count">{earned.length}</span>
+      <section aria-labelledby="awards-ducats">
+        <h2 className="profile__section" id="awards-ducats">
+          {t('awards.ducats')} <span className="profile__count">{earned.length}</span>
         </h2>
 
         {earned.length === 0 ? (
-          <p className="profile__empty">{t('awards.noBadges')}</p>
+          <p className="profile__empty">{t('awards.noDucats')}</p>
         ) : (
-          <ul className="awards__badges">
-            {earned.map((badge) => (
-              <li key={badge.id} className="awards__badge">
-                <BadgeArt
-                  kind={badge.kind}
-                  threshold={thresholdOf(badge, locale)}
-                  label={badge.label}
+          <ul className="awards__ducats">
+            {earned.map((ducat) => (
+              <li key={ducat.id} className="awards__ducat">
+                <DucatArt
+                  kind={ducat.kind}
+                  threshold={thresholdOf(ducat, locale)}
+                  label={ducat.label}
                 />
-                <strong>{badge.name}</strong>
-                <span className="profile__scope">{badge.description}</span>
+                <strong>{ducat.name}</strong>
+                <span className="profile__scope">{ducat.description}</span>
               </li>
             ))}
           </ul>

@@ -1,6 +1,6 @@
 import { formatNumber, formatShortDate, wholePeriod } from '../i18n/format'
 
-/* A badge is a rule kept as data, never as code (ADL A12).
+/* A ducat is a rule kept as data, never as code (ADL A12).
  *
  * Everything here is a closed list on purpose. A free text box in which the
  * superadmin writes a condition is the shortest path there is to running
@@ -14,10 +14,10 @@ import { formatNumber, formatShortDate, wholePeriod } from '../i18n/format'
  *
  * What that choice existed to protect is protected still, because "at least"
  * over a quantity the portal only ever adds to is monotonic: once it is true it
- * stays true, so a badge that has been earned can never be taken away by a later
+ * stays true, so a ducat that has been earned can never be taken away by a later
  * result. That is what makes a rule fit to award something permanent.
  *
- * The field is the kind of the badge, "vrsta" (PDL P28a, 30.07.2026). It used to
+ * The field is the kind of the ducat, "vrsta" (PDL P28a, 30.07.2026). It used to
  * be "veličina", and the owner asked for "tip" or "kategorija", but both are
  * spoken for in this domain: a category is the length of a race and also the band
  * a competitor runs in, and a type is the type of a race in the data.
@@ -26,7 +26,7 @@ import { formatNumber, formatShortDate, wholePeriod } from '../i18n/format'
 /* The last three read one race rather than a whole season: everything above them
  * is a sum that grows all season long, these are the best single result there is.
  * They are monotonic in the same way, because a best never falls. */
-export const BADGE_KINDS = [
+export const DUCAT_KINDS = [
   'raceCount',
   'marathonCount',
   'halfCount',
@@ -45,20 +45,20 @@ export const BADGE_KINDS = [
   'bestRaceAscent',
 ] as const
 
-export type BadgeKind = (typeof BADGE_KINDS)[number]
+export type DucatKind = (typeof DUCAT_KINDS)[number]
 
-export type BadgeRule = {
-  kind: BadgeKind
+export type DucatRule = {
+  kind: DucatKind
   value: number
   from: string
   to: string
 }
 
-/** A badge as it is stored: what it is called, what it says, the short text its
+/** A ducat as it is stored: what it is called, what it says, the short text its
  *  mark carries, and the rule that awards it. The rule half is the closed set
  *  above. The label is the one of them that may be empty: it is a period or a
- *  word under the drawing, "Jul 2027", and a badge that needs none has none. */
-export type Badge = BadgeRule & {
+ *  word under the drawing, "Jul 2027", and a ducat that needs none has none. */
+export type Ducat = DucatRule & {
   id: string
   name: string
   description: string
@@ -69,7 +69,7 @@ export type Badge = BadgeRule & {
  * read the same in every language, and a kind counted in nothing (races,
  * seasons, countries, points) carries an empty one: the name beside it says what
  * is being counted. */
-const UNITS: Record<BadgeKind, string> = {
+const UNITS: Record<DucatKind, string> = {
   raceCount: '',
   marathonCount: '',
   halfCount: '',
@@ -94,31 +94,31 @@ function reading(value: number, locale: string): string {
   return formatNumber(value, locale, Number.isInteger(value) ? 0 : 1)
 }
 
-/** The threshold, short enough to stand over the mark of a badge: "42,2 km",
+/** The threshold, short enough to stand over the mark of a ducat: "42,2 km",
  *  "1.000 m", "25". */
-export function thresholdOf(rule: BadgeRule, locale: string): string {
+export function thresholdOf(rule: DucatRule, locale: string): string {
   return `${reading(rule.value, locale)}${UNITS[rule.kind]}`
 }
 
 /**
  * The rule as a sentence, so that it can be read back before it is saved, and
- * read by the member who came to find out how a badge is earned. The sentence
+ * read by the member who came to find out how a ducat is earned. The sentence
  * carries the "at least" itself, there being nothing else it could say.
  *
  * Every date in it is written for the reader, and none of them is an ISO string.
- * They used to be dropped in raw, so a badge on the public badges page read
+ * They used to be dropped in raw, so a ducat on the public ducats page read
  * "računato od 2027-07-01 do 2027-07-31", which is both a date nobody in this
  * region writes and the long way of saying "jul 2027" (PDL P28a, 30.07.2026).
  * Where the two ends describe a whole period, the sentence names the period
  * instead of reciting its edges (wholePeriod).
  */
 export function ruleSentence(
-  rule: BadgeRule,
+  rule: DucatRule,
   t: (key: string, params?: Record<string, string | number>) => string,
   locale: string,
 ): string {
-  const core = t('badges.sentence', {
-    kind: t(`badges.kind.${rule.kind}`),
+  const core = t('ducats.sentence', {
+    kind: t(`ducats.kind.${rule.kind}`),
     value: reading(rule.value, locale),
   })
 
@@ -131,21 +131,21 @@ export function ruleSentence(
      already carries the stop that makes it an ordinal ("jul 2027.", "2027.").
      Which is why punctuation lives in the dictionary rather than here. */
   if (rule.from === '' && rule.to === '') {
-    return `${core}${t('badges.everSince')}`
+    return `${core}${t('ducats.everSince')}`
   }
 
   if (rule.from !== '' && rule.to !== '') {
     const period = wholePeriod(rule.from, rule.to, locale)
 
     return period === null
-      ? `${core}${t('badges.between', {
+      ? `${core}${t('ducats.between', {
           from: formatShortDate(rule.from, locale),
           to: formatShortDate(rule.to, locale),
         })}`
-      : `${core}${t('badges.during', { period })}`
+      : `${core}${t('ducats.during', { period })}`
   }
 
   return rule.from !== ''
-    ? `${core}${t('badges.after', { from: formatShortDate(rule.from, locale) })}`
-    : `${core}${t('badges.before', { to: formatShortDate(rule.to, locale) })}`
+    ? `${core}${t('ducats.after', { from: formatShortDate(rule.from, locale) })}`
+    : `${core}${t('ducats.before', { to: formatShortDate(rule.to, locale) })}`
 }

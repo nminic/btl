@@ -13,10 +13,11 @@
   color: var(--text);
 }
 
-/* A gold pill called .badge used to live here with no user anywhere in the
+/* A gold pill, under the name the ducats had until 06.08.2026, used to live
+   here with no user anywhere in the
    portal. Vite bundles every imported stylesheet into one global sheet, so it
-   was not merely dead: it painted every card on the badges page gold and gave
-   each one a 999px radius, because that page names its cards .badge too. Gold
+   was not merely dead: it painted every card on the ducats page gold and gave
+   each one a 999px radius, because that page names its cards .ducat too. Gold
    carries achievement, never a surface (the approved visual direction), and the
    dark pill text was inherited by the card text underneath.
 
@@ -274,7 +275,7 @@
   color: var(--text-muted);
 }
 
-.awards__badges {
+.awards__ducats {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -283,13 +284,13 @@
   gap: var(--space-16);
 }
 
-.awards__badge {
+.awards__ducat {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-6);
   text-align: center;
-  --badge-art-size: clamp(4.5rem, 20vw, 6.5rem);
+  --ducat-art-size: clamp(4.5rem, 20vw, 6.5rem);
 }
 
 /* Two across from tablet up. */

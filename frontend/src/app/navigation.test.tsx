@@ -70,13 +70,13 @@ describe('navigation', () => {
     }
   })
 
-  /* Every address in the navigation has a screen of its own since the badges
+  /* Every address in the navigation has a screen of its own since the ducats
      arrived (PDL P28a, 30.07.2026), so nothing here answers with a placeholder
      any more. What an address answers with before its screen exists is held in
      src/app/screenFor.test.tsx, address by address being pointless there. */
 
   /* The three that went with the group they stood in (owner, 04.08.2026): the
-     story of the league and the page of prices are deleted, and the badges are a
+     story of the league and the page of prices are deleted, and the ducats are a
      section of the rulebook. An address that still answered would be a page
      nothing links to, which is what put those three into a group in the first
      place. */
@@ -171,7 +171,7 @@ describe('navigation', () => {
     renderAt('/sr', 'moderator', '000007')
 
     /* The entry carries the sum of everything waiting in its name, not only in
-       the badge (PDL P28a), and something is always waiting, so the number is
+       the counter (PDL P28a), and something is always waiting, so the number is
        part of what a screen reader hears here. It stood on Verification while
        the header had groups; it is on the word that is left. */
     const entry = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })

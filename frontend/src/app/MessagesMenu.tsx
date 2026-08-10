@@ -19,14 +19,14 @@ export function MessagesMenu() {
       id="messages-menu"
       className="inbox"
       /* The count goes in the name of the button, not next to it: an aria-label
-       * replaces everything inside the button, so a badge described only by a
-       * hidden span is a badge a screen reader never reads out. */
+       * replaces everything inside the button, so a counter described only by a
+       * hidden span is a counter a screen reader never reads out. */
       label={`${t('shell.openMessages')}, ${t('shell.unread', { count: unread })}`}
       trigger={
         <>
           <MailIcon className="inbox__glyph" />
           {unread > 0 && (
-            <span className="inbox__badge" aria-hidden="true">
+            <span className="inbox__count" aria-hidden="true">
               {unread}
             </span>
           )}

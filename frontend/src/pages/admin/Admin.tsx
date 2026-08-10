@@ -36,7 +36,7 @@ export function Admin() {
   /* The same two questions the navigation and the section ask, asked here too.
      This screen was left behind when the rest of administration learned to show
      a moderator only what he holds (owner, 30.07.2026): it counted all eight
-     queues while the header beside it counted his, and it offered the badges to
+     queues while the header beside it counted his, and it offered the ducats to
      somebody with no right to them. */
   const mayOpen = useMayOpen()
   const queues = usePermittedQueues()

@@ -14,7 +14,7 @@ import { join, relative } from 'node:path'
  * It cannot be a lint rule: `new Date(text)` parses a stored date and is used
  * everywhere, so what has to be caught is the argument-less call and Date.now(),
  * which is a question about the shape of the call. Reading the source is the
- * cheapest way to ask it, and the same trick already guards the badge art.
+ * cheapest way to ask it, and the same trick already guards the ducat art.
  */
 
 const ROOT = join(process.cwd(), 'src')

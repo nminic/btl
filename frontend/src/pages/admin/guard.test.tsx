@@ -43,7 +43,7 @@ describe('every administrative address', () => {
 
   it('asks for nothing outside administration, so nothing else is wrapped', () => {
     expect(needFor('kalendar')).toBeUndefined()
-    expect(needFor('znacke')).toBeUndefined()
+    expect(needFor('dukati')).toBeUndefined()
   })
 
   it('leaves no box in the matrix that no screen ever asks for', () => {

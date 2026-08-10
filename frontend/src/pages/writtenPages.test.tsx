@@ -228,10 +228,10 @@ describe('the rulebook', () => {
       [42, /^Rok$/],
       [55, /Top liste/],
       [69, /Posebna priznanja/],
-      /* The section that draws the wall of badges points at the article that
+      /* The section that draws the wall of ducats points at the article that
          awards them (owner, 04.08.2026): the section describes, the article
          rules, and the reader has to be able to get from one to the other. */
-      [72, /Značke/],
+      [72, /Dukati/],
       [79, /Postupak/],
     ]
 
