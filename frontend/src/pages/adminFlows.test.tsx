@@ -947,15 +947,29 @@ describe('verification', () => {
 
     try {
       /* The alarm used to stand on the way into the section, which was the only
-         screen the numbers were on. They are on all nine now: a moderator who
-         opens a queue directly sees eight quiet noughts in the column beside him
-         and reads them as an afternoon's work already done. */
+         screen the numbers were on. The landing draws nothing of its own since
+         06.08.2026 and the numbers are in the navigation beside every screen: a
+         moderator who opens a queue directly sees eight quiet noughts in the
+         column beside him and reads them as an afternoon's work already done. */
       renderAt(`/sr/${QUEUE.leagues.path}`, 'moderator')
 
       const nav = within(
         await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }),
       )
-      expect(nav.getByRole('alert')).toHaveTextContent(/nije dostupan/)
+      const alarm = nav.getByRole('alert')
+
+      expect(alarm).toHaveTextContent(/nije dostupan/)
+      /* Outside the folded list, not inside it. Below 820px the list is
+         `display: none` until it is unfolded, and an alert drawn hidden is never
+         announced: the warning was silent on the screen it matters most on.
+
+         What folds is what the button opens, and the button says which that is,
+         so this is read off the button rather than off a class name. */
+      const opens = nav.getByRole('button', { name: 'Verifikacija' }).getAttribute('aria-controls')
+      const panel = opens === null ? null : document.getElementById(opens)
+
+      expect(panel).not.toBeNull()
+      expect(panel?.contains(alarm)).toBe(false)
     } finally {
       globalThis.fetch = served
     }

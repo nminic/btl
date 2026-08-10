@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { RESULTS, combinePair, dataOr, useEvents, useRaces, useResults } from '../../data/useResource'
+import {
+  RESULTS,
+  combinePair,
+  dataOr,
+  failed,
+  useEvents,
+  useRaces,
+  useResults,
+} from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -44,9 +52,18 @@ export function AdminEvents() {
      it: until the results are here there is nothing to take along, and an event
      deleted in that window leaves its results pointing at an event that is gone,
      each still counting in the standing and linking to a page that says it does
-     not exist. This is the shape the event's own page already uses for the same
-     two buttons (EventDetail.tsx). */
-  const results = dataOr(useResults(), null)
+     not exist. The event's own page holds the same two buttons back altogether
+     until both files are ready (EventDetail.tsx); here the screen is the work
+     itself, so only the deletion waits.
+
+     Three states, because `dataOr` answers the same for a file on its way and a
+     file that failed. Told to wait for something that never arrives, an
+     administrator who holds the right is refused it for good, and the row says
+     it is waiting: the same conflation this whole change is about, one row
+     further in. */
+  const resultsState = useResults()
+  const results = dataOr(resultsState, null)
+  const resultsFailed = failed(resultsState)
   const today = useToday()
   /**
    * The record this screen was sent to open, and the field to open it at.
@@ -248,8 +265,12 @@ export function AdminEvents() {
                             record={one}
                             name={one.name}
                             onOpen={() => setChosen({ mode: 'one', record: one })}
-                            cannotRemove={
-                              results === null ? t('admin.waitingForResults') : undefined
+                            whyNoRemove={
+                              results !== null
+                                ? undefined
+                                : resultsFailed
+                                  ? t('admin.resultsFailed')
+                                  : t('admin.waitingForResults')
                             }
                             /* With its races and its results, which is what the
                                same deletion does from the event's own page

@@ -899,6 +899,7 @@
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
     "waitingForResults": "Brisanje čeka rezultate",
+    "resultsFailed": "Brisanje nije moguće: rezultati se ne mogu učitati",
     "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
     "state": "Stanje",
     "change": "Izmeni",

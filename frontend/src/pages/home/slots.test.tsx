@@ -84,7 +84,7 @@ describe('CalendarExtract', () => {
   it('marks the lengths an event holds, once each', () => {
     const { container } = renderWidget(
       <CalendarExtract
-        events={[{ ...event('d', 'Fruškogorski maraton', '2026-12-05') }]}
+        events={[event('d', 'Fruškogorski maraton', '2026-12-05')]}
         races={races}
         today="2026-11-01"
       />,

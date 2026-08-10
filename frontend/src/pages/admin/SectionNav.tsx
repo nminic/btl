@@ -138,8 +138,15 @@ function Section({
           ))}
         </ul>
 
-        {alarm}
       </div>
+
+      {/* Outside the panel, which is folded on a telephone: an alert that is
+          `display: none` when it is drawn is not announced, and unfolding the
+          list later does not announce it either, because nothing new is
+          inserted. The one warning that the numbers above cannot be trusted was
+          therefore both invisible and silent on the screen where the list is
+          folded. */}
+      {alarm}
     </nav>
   )
 }

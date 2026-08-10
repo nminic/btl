@@ -238,7 +238,7 @@ export function RowActions({
   name,
   onOpen,
   alsoRemove,
-  cannotRemove,
+  whyNoRemove,
 }: {
   entity: EntityDef
   record: object
@@ -256,7 +256,7 @@ export function RowActions({
    */
   alsoRemove?: () => void
   /**
-   * Why this record cannot be deleted just now, where something says so.
+   * Why this record cannot be deleted, where something stops it.
    *
    * The events screen reads the results only so that deleting an event takes
    * them along, and it no longer waits for them: a file of a million and a half
@@ -267,7 +267,7 @@ export function RowActions({
    * to wait for the one thing the deletion needs rather than for the screen, and
    * to say what is being waited for.
    */
-  cannotRemove?: string
+  whyNoRemove?: string
 }) {
   const { remove } = useSession()
   const id = String((record as Record<string, unknown>)[entity.idField])
@@ -291,13 +291,16 @@ export function RowActions({
   return (
     <span className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      {cannotRemove === undefined ? (
+      {whyNoRemove === undefined ? (
         <DeleteRecord name={name} onDelete={deleteRow} />
       ) : (
         /* Said rather than drawn and refused. A button that answers nothing is
-           worse than no button, and this is a state that passes on its own in a
-           second or two. */
-        <span className="entity-row-note">{cannotRemove}</span>
+           worse than no button. Spoken as well, because the words replace a
+           control: a screen reader running the row otherwise finds one button
+           where every other row has two, with nothing saying why. */
+        <span className="entity-row-note" role="status">
+          {whyNoRemove}
+        </span>
       )}
     </span>
   )

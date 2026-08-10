@@ -151,8 +151,19 @@ describe('a screen waits only on the data it shows', () => {
     restore = breakResource('results')
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
-    expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
+    const table = within(await screen.findByRole('table', { name: 'Događaji' }))
+
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
+
+    /* And the deletion says the file failed rather than that it is waiting for
+       it. Held back either way, because deleting an event without its results
+       leaves them counting for an event that is gone; but a row that says it is
+       waiting, for ever, is an administrator refused a right he holds and told
+       something untrue about why. */
+    expect(table.getAllByText(/rezultati se ne mogu učitati/).length).toBeGreaterThan(0)
+    expect(table.queryByText('Brisanje čeka rezultate')).toBeNull()
+    expect(table.queryByRole('button', { name: /^Obriši/ })).toBeNull()
   })
 
   it('does not offer to delete an event while its results are still on their way', async () => {
