@@ -218,18 +218,6 @@ export function countFor({ pendingResults, items, decisions }: Waiting, queue: Q
   return queue.id === 'results' ? pendingResults : waitingIn(items, decisions, queue.id).length
 }
 
-/** The same number for all eight at once, which is what the list of queues and
- *  the section navigation draw beside the names. */
-export function countsFor(waiting: Waiting): Record<string, number> {
-  const counts: Record<string, number> = {}
-
-  for (const queue of QUEUES) {
-    counts[queue.id] = countFor(waiting, queue)
-  }
-
-  return counts
-}
-
 /**
  * Everything waiting for a moderator as one number, which is what stands beside
  * Verification in the navigation (PDL P28a).

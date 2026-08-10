@@ -45,11 +45,10 @@ export const NAV: NavSection[] = [
      the league itself (owner, 04.08.2026). */
   { id: 'leagues', labelKey: 'nav.leagues', path: 'lige', seoKey: 'leagues' },
   { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar', seoKey: 'calendar' },
-  /* The way into administration, and the only entry a visitor never sees. It
-     leads to the panel, which is the list of whatever this person may open; the
-     screens behind it carry their own navigation down the side of each one
-     (SectionNav), so nothing was lost by closing the panel that used to hang
-     off this word. */
+  /* The way into administration, and the only entry a visitor never sees. What
+     it leads to draws nothing of its own since 06.08.2026: the navigation of two
+     sectors stands down the side of every screen behind it (SectionNav), so a
+     landing page listing the same entries was the list said twice. */
   { id: 'admin', labelKey: 'nav.admin', staffOnly: true, path: 'administracija', seoKey: 'admin' },
 ]
 
@@ -79,9 +78,9 @@ const UNLISTED_ROUTES: RouteDef[] = [
   /* Reached from the standing of the teams, by whoever is signed in. Not in the
      navigation: proposing a team is something a member does once, if ever. */
   { path: 'novi-tim', labelKey: 'teams.propose', seoKey: 'proposeTeam' },
-  /* The two sections and the price list. They stood in the header while the
-     navigation had groups; they are reached from the panel and from the
-     navigation beside each screen now (owner, 04.08.2026). */
+  /* The two sectors. They stood in the header while the navigation had groups;
+     they are reached from the navigation beside every administrative screen now
+     (owner, 04.08.2026). */
   { path: 'administracija/entiteti', labelKey: 'nav.entities', seoKey: 'adminEntities' },
   {
     path: 'administracija/verifikacija',

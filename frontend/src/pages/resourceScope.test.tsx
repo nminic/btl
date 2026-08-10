@@ -130,6 +130,19 @@ describe('a screen waits only on the data it shows', () => {
     expect(table.queryByText('leagues.racesUnknown')).toBeNull()
   })
 
+  it('draws the events of administration when the results cannot be loaded', async () => {
+    /* The fourth screen to ship this way, and the first inside administration.
+       No row here shows a result: they are read only so that deleting an event
+       takes its results with it. Waited for, a results file that failed replaced
+       the screen, and with it every way of editing an event or a race, since the
+       races moved inside the event on 06.08.2026. */
+    restore = breakResource('results')
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   /* The other half of the same rule: a screen must still fail on data it does
    * show, so the cases above cannot be satisfied by swallowing every error. */
   it('still says so when the data a screen does show cannot be loaded', async () => {

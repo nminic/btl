@@ -91,6 +91,19 @@ describe('the races of an event', () => {
 
     expect(said).toHaveTextContent('Probna trka')
     expect(said).toHaveTextContent(named)
+
+    /* And it is on the event, not merely named beside it. The confirmation reads
+       the words for the event off `shownKey`, which is a different thing from the
+       `value` written onto the record; the table of races is filtered by that
+       value, so this is the half that holds the attachment (entityForms.ts,
+       `racesOf`). */
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const races = within(
+      await screen.findByRole('table', { name: `Trke na događaju ${named}` }),
+    )
+
+    expect(races.getByText('Probna trka')).toBeVisible()
   })
 
   it('leaves the results alone while two events answer at one address', async () => {
@@ -361,10 +374,6 @@ describe('the written pages', () => {
   })
 })
 
-/** What the session has been told to remove, drawn beside the screen that tells
- *  it. The only way to see a race that is no longer anywhere: nothing on the
- *  portal draws a race outside its event, which is the whole reason the deletion
- *  has to carry them. */
 /** Makes a copy of an event the way the button on its own page does: the same
  *  name and the same day, so the same address (event/EventActions.tsx). */
 function Copy({ of }: { of: BtlEvent }) {
@@ -389,6 +398,10 @@ function Copy({ of }: { of: BtlEvent }) {
   )
 }
 
+/** What the session has been told to remove, drawn beside the screen that tells
+ *  it. The only way to see a race that is no longer anywhere: nothing on the
+ *  portal draws a race outside its event, which is the whole reason the deletion
+ *  has to carry them. */
 function Removed() {
   const { deletions } = useSession()
 

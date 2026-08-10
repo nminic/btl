@@ -12,12 +12,6 @@
   gap: var(--space-16);
 }
 
-/* The races of an event, under the form that names it. Set off from the form
-   above rather than running straight on from it. */
-.entity-races {
-  margin-block-start: var(--space-32);
-}
-
 .adminsection {
   display: grid;
   gap: var(--space-16);

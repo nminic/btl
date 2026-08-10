@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { RESULTS, combineResources, useEvents, useRaces, useResults } from '../../data/useResource'
+import { RESULTS, combinePair, dataOr, useEvents, useRaces, useResults } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -33,7 +33,14 @@ export function AdminEvents() {
   /** Which race of the open event is being edited, if any. Held here because
    *  the event's own form is put away while one is. */
   const [race, setRace] = useState<Editing | null>(null)
-  const state = combineResources(useEvents(), useRaces(), useResults())
+  const state = combinePair(useEvents(), useRaces())
+  /* Read for what it is worth rather than waited for. No row here shows a
+     result: they are read only to take them down with the event they belong to.
+     Waited for, a results file that failed replaced this whole screen with "the
+     data cannot be loaded", and with it every way of editing an event or a race,
+     over a file nothing on it draws. Where they are missing the cascade leaves
+     them, which is the safe direction the `shared` guard below already takes. */
+  const results = dataOr(useResults(), null)
   const today = useToday()
   /**
    * The record this screen was sent to open, and the field to open it at.
@@ -54,7 +61,7 @@ export function AdminEvents() {
       <h1 className="visually-hidden">{t('admin.events')}</h1>
 
       <Resource state={state}>
-        {([events, races, results]) => {
+        {([events, races]) => {
           const all = recordsOf(EVENTS, events, overlay)
           /* Through the overlay, like the events beside them. Read straight from
              the file the count below said an event copied here had no races,
@@ -67,7 +74,7 @@ export function AdminEvents() {
              typed as a whole definition. Written out so the line is not read as
              a claim that a result is an event. */
           const asResults: EntityDef = { ...EVENTS, id: RESULTS, idField: 'id' }
-          const allResults = recordsOf(asResults, results, overlay)
+          const allResults = results === null ? [] : recordsOf(asResults, results, overlay)
           /* Worked out rather than copied into state.
            *
              It was an effect that put the record from the address into state,
@@ -152,11 +159,12 @@ export function AdminEvents() {
           }
 
           const needle = search.trim().toLowerCase()
-          const rows = all
+          const found = all
             .filter((one) => (needle === '' ? one.date >= today : true))
             .filter((one) => `${one.name} ${one.city}`.toLowerCase().includes(needle))
             .sort((left, right) => left.date.localeCompare(right.date))
-            .slice(0, 60)
+          /* Sixty rows and no more, of eleven hundred. */
+          const rows = found.slice(0, 60)
 
           return (
             <>
@@ -174,7 +182,16 @@ export function AdminEvents() {
                 </div>
               </EntityBar>
 
-              <p className="rankings__count">{t('admin.showing', { count: rows.length })}</p>
+              {/* And how many were left out, which used to be said only on the
+                  screen of races. That screen is gone since 06.08.2026 and this
+                  one is the way to every race, so a search that matches five
+                  hundred events drew sixty of them, the earliest sixty, and said
+                  nothing: everything from this season on was behind a cut with
+                  no sign of it. */}
+              <p className="rankings__count">
+                {t('admin.showing', { count: rows.length })}
+                {found.length > rows.length ? ` ${t('admin.ofMany', { count: found.length })}` : ''}
+              </p>
 
               <div className="table-scroll">
                 <table className="table">

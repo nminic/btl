@@ -12,7 +12,7 @@ import { ruleSentence, type DucatRule } from '../data/ducatRule'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
-import { canSendBack, countsFor, QUEUE, QUEUES } from './admin/queues'
+import { canSendBack, countFor, QUEUE, QUEUES } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import {
@@ -417,6 +417,37 @@ describe('payment payloads', () => {
     expect(payload).toContain('I:RSD4800,00')
     // No reference means the tag is left out, not sent empty.
     expect(payload).not.toContain('RO:')
+  })
+
+  it('says the number beside a queue in words, not as a bare digit', async () => {
+    /* The digit beside the name is hidden from a screen reader and the name
+       carries the number instead, because "Rezultati 1" read out is a number with
+       no unit. Nothing read the accessible name until the twelfth review said so:
+       every test matched the link by its visible words and then read the digit. */
+    renderAt('/sr/administracija/verifikacija/rezultati', 'superadmin')
+
+    const sector = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+
+    expect(sector.getByRole('link', { name: /^Rezultati, / })).toHaveAccessibleName(
+      /^Rezultati, \d+ (na čekanju|na čekanja|nema)/,
+    )
+  })
+
+  it('says how many events a search found, not only how many it drew', async () => {
+    /* The list stops at sixty. The screen of races said so and the screen of
+       events never did, and since 06.08.2026 this is the only way to a race: a
+       search matching five hundred events drew the earliest sixty and said
+       "Prikazano: 60", with everything from this season on behind a cut that
+       nothing on the page mentioned. */
+    const user = setupUser()
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.type(await screen.findByLabelText(/Pretraga/), 'a')
+
+    const count = await screen.findByText(/Prikazano: 60/)
+
+    expect(count).toHaveTextContent(/od \d/)
+    expect(count).toHaveTextContent(/Suzi pretragu/)
   })
 
   it('says where somebody waiting to be activated is from, in words', async () => {
@@ -1634,9 +1665,15 @@ describe('the six queues read from the file', () => {
   })
 })
 
-describe('countsFor', () => {
+describe('what is counted beside a queue', () => {
   const item = (id: string, queue: PendingQueueId) => ({ id, queue }) as PendingItem
   const empty = { pendingResults: 0, items: [], decisions: {} }
+  /* Through countFor, one queue at a time, which is how the navigation and the
+     header both read it (SectionNav, Shell). There was a second function here
+     answering for all eight at once; nothing on the portal called it, and these
+     tests were the whole of its life. */
+  const countsFor = (waiting: Parameters<typeof countFor>[0]): Record<string, number> =>
+    Object.fromEntries(QUEUES.map((queue) => [queue.id, countFor(waiting, queue)]))
 
   it('counts every queue from the one place', () => {
     const counts = countsFor({

@@ -15,7 +15,7 @@ import { entityRight, queueRight, type Right } from './rights'
  *
  * A fifteenth screen therefore cannot be added without answering this question,
  * because a route under `administracija` that is not in here has no entry at all
- * and a test says so (needs.test.ts).
+ * and a test says so (guard.test.tsx).
  */
 export type Need =
   /** Administration itself: anything at all inside it, whether a queue or a

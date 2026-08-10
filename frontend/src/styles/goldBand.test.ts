@@ -753,7 +753,7 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'the two sectors are not flush against each other',
     },
     {
-      of: 'src/pages/admin/SectionNav.css',
+      of: 'src/pages/admin/Entity.css',
       rule: '.entity-races',
       holds: /margin-block-start:\s*var\(--space-32\)/,
       why: 'the races of an event are set off from the form that names it',

@@ -100,8 +100,9 @@ function Section({
           {items.map((entry) => (
             <li key={entry.path}>
               <NavLink
-                /* `end` so the section itself is not marked as the screen in
-                   view whenever one of its screens is. */
+                /* `end` so an entry is marked only on its own screen. No entry
+                   is a prefix of another today, and this is what keeps that from
+                   mattering. */
                 end
                 to={`/${locale}/${entry.path}`}
                 className="adminsection__link"
@@ -193,10 +194,9 @@ function usePathname(): string {
  * invitation to ask what is behind it. The superadmin sees all eight, because he
  * may open all eight.
  *
- * Counted through countsFor, which is what the number in the header counts
- * through as well, so the two cannot disagree. A decision taken on the right is
- * a decision written into the session, and the number beside the queue on the
- * left comes down with it.
+ * Counted through countFor, one queue at a time (queues.ts). A decision taken
+ * on the right is a decision written into the session, and the number beside the
+ * queue on the left comes down with it.
  */
 function QueuesSector() {
   const { t } = useI18n()

@@ -898,6 +898,7 @@
     "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
+    "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
     "state": "Stanje",
     "change": "Izmeni",
     "races": "Trke",
