@@ -40,7 +40,7 @@
     },
     "calendar": {
       "title": "BTL kalendar",
-      "description": "Sve trke sezone po mesecima, sa datumom, mestom, dužinom i statusom priprema."
+      "description": "Sve iz kalendara sezone po mesecima, sa datumom, mestom i dužinom."
     },
     "calendarDay": {
       "title": "Jedan dan u kalendaru",
@@ -211,7 +211,10 @@
     "contact": "Kontakt",
     "home": "Naslovna strana",
     "join": "Učlani se",
-    "openAccount": "Otvori nalog"
+    "openAccount": "Otvori nalog",
+    "credits": "Spisak mesta:",
+    "creditsSource": "GeoNames",
+    "creditsLicence": "CC BY 4.0"
   },
   "nav": {
     "home": "Naslovna",
@@ -349,7 +352,8 @@
       "one": "Nalepljeni tekst je bio {count} znak duži nego što staje, pa taj višak nije primljen.",
       "few": "Nalepljeni tekst je bio {count} znaka duži nego što staje, pa taj višak nije primljen.",
       "other": "Nalepljeni tekst je bio {count} znakova duži nego što staje, pa taj višak nije primljen."
-    }
+    },
+    "places": "Ponuđena mesta"
   },
   "registration": {
     "title": "Registracija",
@@ -516,12 +520,6 @@
       "6": "Sub",
       "7": "Ned"
     },
-    "status": {
-      "announced": "Najavljeno",
-      "confirmed": "Potvrđeno",
-      "checking": "U proveri",
-      "cancelled": "Otkazano"
-    },
     "weekend": "Vikend"
   },
   "event": {
@@ -565,6 +563,11 @@
       "one": "Obrisati događaj „{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
       "few": "Obrisati događaj „{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
       "other": "Obrisati događaj „{name}\" i {count} njegovih trka? Ovo se ne može opozvati."
+    },
+    "kind": {
+      "race": "Trka",
+      "training": "Trening",
+      "gathering": "Skup"
     }
   },
   "category": {
@@ -904,7 +907,6 @@
     "waitingForResults": "Brisanje čeka rezultate",
     "resultsFailed": "Brisanje nije moguće: rezultati se ne mogu učitati",
     "ofMany": "od {count} ukupno. Suzi pretragu da vidiš ostale.",
-    "state": "Stanje",
     "change": "Izmeni",
     "races": "Trke",
     "teams": "Timovi",
@@ -960,7 +962,6 @@
       "gender": "Pol",
       "birthYear": "Godina rođenja",
       "city": "Mesto",
-      "country": "Država",
       "firstSeason": "U ligi od sezone",
       "firstSeason2027": "Prva sezona u 2027.",
       "eventName": "Naziv događaja",
@@ -983,7 +984,9 @@
       "sectionBody": "Tekst prve sekcije",
       "email": "Adresa elektronske pošte",
       "eventSlug": "Adresa događaja",
-      "teamSlug": "Adresa tima"
+      "teamSlug": "Adresa tima",
+      "kind": "Vrsta događaja",
+      "country": "Država"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -994,7 +997,6 @@
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
       "organizer": "Organizator nema nalog na portalu; ovde stoji samo kao podatak.",
-      "status": "Samo dva stanja: potvrđeno i u proveri. Trka se unosi tek kad je datum potvrđen, nema statusa najavljena ni odložena, a otkazana se briše iz kalendara. Dok je termin u proveri, datum se ne prikazuje nigde na portalu.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
       "raceDate": "Podrazumevano je dan događaja. Događaj koji traje dva dana ima trke sa različitim danima; dan događaja je dan prve trke.",
       "raceName": "Ime po kome se trka prepoznaje, na primer Polumaraton ili 6 h.",
@@ -1013,8 +1015,10 @@
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
       "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
-      "eventSlug": "Portal je pravi sam, od naziva i datuma. Ne unosi se i ne menja.",
-      "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja."
+      "eventSlug": "Portal je pravi sam, od naziva i godine. Ne unosi se i ne menja.",
+      "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja.",
+      "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka.",
+      "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika, sa državom u zagradi. Mesto koje šifarnik nema unosi se rukom."
     },
     "value": {
       "genderM": "Muški",

@@ -12,6 +12,7 @@ import type {
 } from './types'
 import countries from '../data/countries.json'
 import { DatePicker } from './DatePicker'
+import { PlaceField } from './PlaceField'
 import { optionsFor } from './records'
 import { emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
@@ -87,7 +88,7 @@ const Field = memo(function Field({
   value: string | boolean
   error: FieldError | undefined
   choices: readonly FieldOption[]
-  onChange: (field: FieldDef, value: string | boolean) => void
+  onChange: (field: FieldDef, value: string | boolean, also?: Record<string, string>) => void
   /** Whether the cursor starts here. One field on one form ever does. */
   open?: boolean
 }) {
@@ -221,6 +222,20 @@ const Field = memo(function Field({
         />
       )}
 
+      {field.type === 'place' && (
+        <PlaceField
+          id={inputId}
+          name={field.name}
+          value={String(value)}
+          invalid={error !== undefined}
+          describedBy={describedBy === '' ? undefined : describedBy}
+          openAt={open}
+          onChange={(town, country) => {
+            onChange(field, town, { country })
+          }}
+        />
+      )}
+
       {field.type === 'date' && (
         <DatePicker
           id={inputId}
@@ -312,12 +327,18 @@ export function FormRenderer({
      handed a new handler every time counts as changed and redraws with it, which
      is the one thing the memo above cannot see through. Both setters are stable
      and both updates read the current state, so there is nothing to depend on. */
-  const handleChange = useCallback((field: FieldDef, next: string | boolean) => {
-    setValues((current) => ({ ...current, [field.name]: next }))
-    // The message goes away as soon as the field is touched. Leaving it up
-    // tells a screen reader the field is still wrong after it was fixed.
-    setErrors(({ [field.name]: _fixed, ...rest }) => rest)
-  }, [])
+  const handleChange = useCallback(
+    (field: FieldDef, next: string | boolean, also?: Record<string, string>) => {
+      /* `also` is what a place field writes beside itself: the country the town
+         came with. One field, two values, and the second has no field of its own
+         to be typed into (src/forms/types.ts). */
+      setValues((current) => ({ ...current, [field.name]: next, ...also }))
+      // The message goes away as soon as the field is touched. Leaving it up
+      // tells a screen reader the field is still wrong after it was fixed.
+      setErrors(({ [field.name]: _fixed, ...rest }) => rest)
+    },
+    [],
+  )
 
   /* The form is named after its own heading, so it is a region a screen reader
    * can be taken to and land in, rather than a run of fields in the page. */

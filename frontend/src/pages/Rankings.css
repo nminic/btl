@@ -189,8 +189,79 @@
   padding: var(--space-8);
 }
 
+/* Still used by five other screens, whose search box does take the rest of the
+   row: a list of members is filtered by anything, and the box is the screen's
+   one control. */
 .rankings__field--wide {
   flex: 1 1 14rem;
+}
+
+/* Wide enough for what it suggests typing and no wider (owner, 11.08.2026).
+   It used to take the whole of the rest of the row, which on a desktop is
+   fifty characters of box for a name of twenty: a box that size reads as one
+   that expects a sentence. */
+.rankings__field--search input {
+  inline-size: 24ch;
+  max-inline-size: 100%;
+}
+
+/* The same row of buttons the results on a profile use (Profile.css), and for
+   the same reason: every category worth seeing at once, one of them pressed.
+   Scrolls sideways within itself rather than wrapping, so the row keeps its
+   height when there are ten of them on a telephone. */
+.rankings__categories {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-12);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.rankings__categories::-webkit-scrollbar {
+  display: none;
+}
+
+.rankings__category {
+  flex: 0 0 auto;
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The word beside the row, in the same voice as the labels on the two controls
+   above it. Without it the row was the one thing on the screen a sighted reader
+   had to guess at: the name was on the group for a screen reader and nowhere on
+   the page. */
+.rankings__categories-name {
+  flex: 0 0 auto;
+  margin-right: var(--space-4);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+/* Hover moves the border and the words, and nothing else. The chosen one is the
+   only one with a filled ground, so passing the pointer over a chip never makes
+   it look chosen. */
+.rankings__category:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.rankings__category--on {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .rankings__count,

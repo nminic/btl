@@ -14,7 +14,6 @@ import {
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { EventRaces } from './EventRaces'
@@ -277,7 +276,7 @@ export function AdminEvents() {
                       <th scope="col">{t('profile.columns.event')}</th>
                       <th scope="col">{t('event.place')}</th>
                       <th scope="col">{t('event.races')}</th>
-                      <th scope="col">{t('admin.state')}</th>
+                      <th scope="col">{t('admin.field.kind')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
@@ -292,25 +291,25 @@ export function AdminEvents() {
                             right after it. Renamed in a cell, an event kept the
                             address of the name it used to have. */}
                         <td>{one.name}</td>
-                        <td>
-                          <EditableCell
-                            id={one.id}
-                            field="city"
-                            value={one.city}
-                            label={t('event.place')}
-                          />
-                        </td>
+                        {/* Read here and changed on the form, like the name
+                            beside it. A town carries the country it is in and a
+                            cell writes one field, so a town corrected here left
+                            the event in the country of the town it used to be
+                            in, and nothing on any screen shows a country. */}
+                        <td>{one.city}</td>
                         {/* Counted from the races themselves rather than from
                             a list the event carries. The list is filled by the
                             generator and by nothing else, so an event entered or
                             copied here said it had none while its races were in
                             the next screen along. */}
                         <td>{allRaces.filter((race) => race.eventId === one.id).length}</td>
-                        <td>
-                          <span className={`tag tag--${one.status}`}>
-                            {t(`calendar.status.${one.status}`)}
-                          </span>
-                        </td>
+                        {/* What is being put on, in words. Every event has a
+                            kind: the type requires it, the form opens on Trka,
+                            and the copy carries it (owner, 10.08.2026). There
+                            is no fallback here, and the day a backend answers
+                            without the field this cell prints the name of the
+                            key, which is the loudest way to find out. */}
+                        <td>{t(`event.kind.${one.kind}`)}</td>
                         <td>
                           <RowActions
                             entity={EVENTS}

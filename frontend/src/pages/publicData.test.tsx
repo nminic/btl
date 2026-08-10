@@ -86,18 +86,18 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
   ['/sr/top-liste', 'Top liste', 'Top liste'],
   ['/sr/lige', 'Lige', 'Lige'],
   [
-    '/sr/liga/btl-2027',
-    'Balkanska trkačka liga 2027',
-    'Balkanska trkačka liga 2027',
+    '/sr/liga/runtrace-2027',
+    'RunTrace liga 2027',
+    'RunTrace liga 2027',
     'Propozicije',
   ],
   /* The results carry no heading of their own, so the part is named by what
      the other part has and this one must not: a table of standings instead of
      the terms of the competition. */
   [
-    '/sr/liga/btl-2027/rezultati',
-    'Balkanska trkačka liga 2027',
-    'Balkanska trkačka liga 2027',
+    '/sr/liga/runtrace-2027/rezultati',
+    'RunTrace liga 2027',
+    'RunTrace liga 2027',
     '',
   ],
   ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027', 'Pravilnik takmičenja BTL 2027'],

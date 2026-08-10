@@ -75,7 +75,7 @@ export function EventActions({
       city: event.city,
       country: event.country,
       organizer: event.organizer,
-      status: event.status,
+      kind: event.kind,
     })
 
     for (const race of mine) {

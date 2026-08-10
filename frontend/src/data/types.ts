@@ -11,11 +11,16 @@ export type Gender = 'M' | 'F'
    where the order is decided and where a test holds it. */
 export type RaceCategory = 'short' | 'half' | 'long' | 'marathon' | 'ultra'
 
-/* A list rather than a union, so the guard over the words for these can be
-   walked (keys.test). A union is gone by the time anything runs. */
-export const EVENT_STATUSES = ['announced', 'confirmed', 'checking', 'cancelled'] as const
+/* What is being put on: a race, a training session, or a gathering (owner,
+   10.08.2026). The calendar has always carried things that are not races; this
+   is the first field that says which is which. First in the list is what a new
+   event is, so the order is not cosmetic.
 
-export type EventStatus = (typeof EVENT_STATUSES)[number]
+   A list rather than a union, so the guard over the words for these can be
+   walked (keys.test). A union is gone by the time anything runs. */
+export const EVENT_KINDS = ['race', 'training', 'gathering'] as const
+
+export type EventKind = (typeof EVENT_KINDS)[number]
 
 export type MembershipBasis = 'payment' | 'honorary'
 
@@ -83,7 +88,7 @@ export type BtlEvent = {
   city: string
   country: string
   organizer: string
-  status: EventStatus
+  kind: EventKind
 }
 
 /* An event does not list its races. It did, in `raceIds`, and the same link was

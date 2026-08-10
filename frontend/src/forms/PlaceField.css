@@ -1,0 +1,43 @@
+.place {
+  position: relative;
+}
+
+.place__list {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + var(--space-6));
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: var(--space-6);
+  list-style: none;
+  border-radius: var(--radius-10);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+}
+
+.place__one {
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-8);
+  cursor: pointer;
+  /* One row, one town. A long name is cut rather than wrapped, because a list
+     whose rows are two lines tall moves the row under the pointer while it is
+     being reached for. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place__one:hover,
+.place__one--at {
+  background: var(--surface-hover);
+}
+
+/* The country is the answer to "which Boston", so it is quieter than the name
+   and never so quiet that it cannot be read (contrast is held by --text-muted,
+   which is the same token every other secondary line on the portal uses). */
+.place__country {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

@@ -241,9 +241,9 @@ const eventOf = (events: BtlEvent[], row: HTMLElement) => {
 
 describe('LeagueDetail', () => {
   it('lists the events that count towards the league', async () => {
-    renderAt('/sr/liga/btl-2027')
+    renderAt('/sr/liga/runtrace-2027')
 
-    expect(await screen.findByRole('heading', { level: 1, name: /Balkanska trkačka liga 2027/ }))
+    expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga 2027/ }))
       .toBeVisible()
 
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
@@ -259,9 +259,9 @@ describe('LeagueDetail', () => {
        generator ever filled, so a race entered by hand was one this column never
        saw (ADL A7, 06.08.2026). Read off the races, the two agree by
        construction. */
-    renderAt('/sr/liga/btl-2027')
+    renderAt('/sr/liga/runtrace-2027')
 
-    await screen.findByRole('heading', { level: 1, name: /Balkanska trkačka liga 2027/ })
+    await screen.findByRole('heading', { level: 1, name: /RunTrace liga 2027/ })
 
     const events = await loadResource<BtlEvent[]>('events')
     const races = await loadResource<Race[]>('races')
@@ -280,14 +280,16 @@ describe('LeagueDetail', () => {
 
   it('shows the rules and the prizes that have been written', async () => {
     // Both live under the second part now (owner, 31.07.2026).
-    renderAt('/sr/liga/btl-2027')
+    renderAt('/sr/liga/runtrace-2027')
 
     expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
   })
 
   it('hides both sections while neither has been written', async () => {
-    renderAt('/sr/liga/runtrace-2027')
+    /* The league nobody has written anything about yet. RunTrace carries the
+       written text, so the two cases are two leagues rather than one. */
+    renderAt('/sr/liga/planinska-2027')
 
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
@@ -311,7 +313,7 @@ describe('LeagueDetail', () => {
               {
                 id: 'league-btl-2027',
                 slug: 'btl-2027',
-                name: 'Balkanska trkačka liga 2027',
+                name: 'RunTrace liga 2027',
                 season: 2027,
                 groupsByCategory: true,
                 rules: '',

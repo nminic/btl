@@ -45,6 +45,11 @@ const everyType: FormDef = {
     // as an empty list, not crash the screen.
     { name: 'prazan', type: 'select', labelKey: 'proba.prazan' },
     { name: 'beleska', type: 'textarea', labelKey: 'proba.beleska' },
+    /* A town, with no rule written beside it. The one place field the portal
+       has does carry a rule, so without this the field is only ever drawn the
+       one way and the case where it describes itself by nothing is never
+       walked. */
+    { name: 'mesto', type: 'place', labelKey: 'proba.mesto' },
     { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost', required: true },
   ],
 }
@@ -67,6 +72,11 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/proba.beleska/).tagName).toBe('TEXTAREA')
     expect(screen.getByLabelText(/proba.saglasnost/)).toHaveAttribute('type', 'checkbox')
     expect(screen.getByLabelText(/proba.lozinka/)).toHaveAttribute('type', 'password')
+    expect(screen.getByLabelText(/proba.mesto/)).toHaveAttribute('role', 'combobox')
+    /* And it says it describes itself by nothing, rather than by the empty
+       string: `aria-describedby=""` points a screen reader at an element with
+       no id, which is not the same as pointing it nowhere. */
+    expect(screen.getByLabelText(/proba.mesto/)).not.toHaveAttribute('aria-describedby')
   })
 
   it('puts the rule next to the field it belongs to', () => {

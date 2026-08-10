@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react'
 import { devToolsEnabled } from '../dev/tools'
+import { DatePicker } from '../forms/DatePicker'
+import { fieldDate, isoDate } from '../forms/dateField'
 import { useI18n } from '../i18n/useI18n'
+import { realToday } from './context'
 import { useClock } from './useClock'
 import './DateSwitch.css'
 
@@ -9,30 +13,63 @@ import './DateSwitch.css'
  * registration open, or to December and watch the price change, without waiting
  * for the calendar or editing anything.
  *
- * It is the native date input, which is the one place on the portal where that
- * is right. Everywhere a member types a date the portal refuses it, because it
- * follows the browser's locale and an English browser reads 04/03 as 3 April
- * (PDL P8, src/forms/dateField.ts). Neither reason reaches here: no member ever
- * sees this, it is read rather than typed, and it speaks yyyy-mm-dd, which is
- * the shape the clock keeps.
+ * It is the portal's own date control, dd/mm/gggg, and not the native one.
+ * The native input follows the browser's locale, so on an English Chrome this
+ * header read 12/17/2026 (owner, 11.08.2026): month first, in a portal whose
+ * every other date is day first. That is the same reason no form on the portal
+ * uses it (PDL P8, src/forms/dateField.ts); the argument that this control is
+ * exempt held only as long as nobody had to read it, and it stands in the
+ * header of every screen.
  */
 function DateChooser() {
   const { t } = useI18n()
   const { today, simulated, simulate } = useClock()
+  /* What is in the box, which is not the same thing as the day the portal is
+     on. A date is typed one digit at a time and is not a date until the last
+     one, so the box has to hold "02/10/202" while the clock goes on standing
+     where it was. Held here rather than derived from the clock: derived, the
+     box would refuse every keystroke but the last and could not be typed into
+     at all. */
+  const [typed, setTyped] = useState(() => fieldDate(today))
+
+  /* And it follows the clock while nobody is holding it somewhere: the real day
+     moves under an open tab when midnight passes (ClockProvider), and the box
+     would go on saying yesterday while the portal said today. Only while
+     nothing is simulated, so this can never fight what is being typed: typing a
+     whole date is what puts the portal on a simulated day. */
+  useEffect(() => {
+    if (simulated === null) {
+      setTyped(fieldDate(today))
+    }
+  }, [simulated, today])
 
   return (
-    <div className="date-switch">
-      <input
+    <div className={simulated === null ? 'date-switch' : 'date-switch date-switch--on'}>
+      {/* No visible word beside it: the header carries names, not labels
+          (PDL P28a). A screen reader still gets one, because a bare date in a
+          header says nothing about whose. */}
+      <label className="visually-hidden" htmlFor="date-switch">
+        {t('clock.label')}
+      </label>
+      <DatePicker
         id="date-switch"
-        className={simulated === null ? 'date-switch__day' : 'date-switch__day date-switch__day--on'}
-        type="date"
-        /* No visible word beside it: the header carries names, not labels
-           (PDL P28a). A screen reader still gets one, and so does anyone who
-           hovers, because a bare date in a header says nothing about whose. */
-        aria-label={t('clock.label')}
-        title={t('clock.label')}
-        value={today}
-        onChange={(event) => simulate(event.target.value === '' ? null : event.target.value)}
+        name="date-switch"
+        value={typed}
+        invalid={false}
+        describedBy={undefined}
+        /* A half typed date is not a day to move the portal to, and `isoDate`
+           answers an empty string for one, which is the clock's own word for
+           "back to the real day". So the portal would jump home on the third
+           keystroke of four. Nothing is moved until the date is whole. */
+        onChange={(written) => {
+          setTyped(written)
+
+          const day = isoDate(written)
+
+          if (day !== '') {
+            simulate(day)
+          }
+        }}
       />
 
       {/* Only while the clock is somewhere else. A button that spends its life
@@ -50,7 +87,10 @@ function DateChooser() {
           className="date-switch__reset"
           aria-label={t('clock.reset')}
           title={t('clock.reset')}
-          onClick={() => simulate(null)}
+          onClick={() => {
+            simulate(null)
+            setTyped(fieldDate(realToday()))
+          }}
         >
           {'↺'}
         </button>

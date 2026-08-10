@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { must } from '../test/at'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { ClockProvider } from './ClockProvider'
@@ -156,15 +157,38 @@ describe('the clock', () => {
 })
 
 describe('DateSwitch', () => {
-  it('moves the day the portal is read as', () => {
+  it('moves the day the portal is read as', async () => {
+    /* Typed, day first, because this is the portal's own date control and not
+       the browser's: the native one follows the browser's locale and read
+       12/17/2026 on an English Chrome, in a portal whose every other date is
+       day first (owner, 11.08.2026). */
+    const user = setupUser()
     renderClock()
 
-    // fireEvent rather than typing: a native date input takes a whole date at
-    // once, and typing into one keystroke by keystroke is not what a person
-    // does with it either.
-    fireEvent.change(theDay(), { target: { value: '2026-10-02' } })
+    /* Cleared first, because the box stands on today: the control says which
+       day the portal is on as well as taking another. */
+    await user.clear(theDay())
+    await user.type(theDay(), '02102026')
+
+    expect(theDay()).toHaveValue('02/10/2026')
+    expect(screen.getByTestId('danas')).toHaveTextContent('2026-10-02')
+  })
+
+  it('waits for the whole date before it moves anything', async () => {
+    /* Three of the four digits of a year is not a day to put the portal on, and
+       a control that acted on every keystroke would walk it through the year 2
+       and the year 20 on the way to 2026. */
+    const user = setupUser()
+    renderClock('2026-10-02')
+
+    await user.clear(theDay())
+    await user.type(theDay(), '0210202')
 
     expect(screen.getByTestId('danas')).toHaveTextContent('2026-10-02')
+
+    await user.type(theDay(), '7')
+
+    expect(screen.getByTestId('danas')).toHaveTextContent('2027-10-02')
   })
 
   it('gives the clock back', async () => {
@@ -186,12 +210,17 @@ describe('DateSwitch', () => {
     expect(screen.queryByLabelText('Vrati na stvarni datum')).not.toBeInTheDocument()
   })
 
-  it('gives the clock back when the field is emptied', () => {
+  it('keeps the day while the field is being cleared to type another', async () => {
+    /* An empty field is the clock's own word for "back to the real day", and
+       clearing is the first half of typing a new one. Acted on, the portal
+       jumped home under the fingers of anybody correcting a date; the way back
+       to the real day is the button beside it, which says so. */
+    const user = setupUser()
     renderClock('2026-10-02')
 
-    fireEvent.change(theDay(), { target: { value: '' } })
+    await user.clear(theDay())
 
-    expect(screen.getByTestId('simulirano')).toHaveTextContent('ne')
+    expect(screen.getByTestId('simulirano')).toHaveTextContent('2026-10-02')
   })
 
   it('says on itself that it is not on the real day', () => {
@@ -199,7 +228,9 @@ describe('DateSwitch', () => {
 
     /* Nothing else on the screen can say so: every date on it looks exactly as
        it would if that day had really come, which is the whole point. */
-    expect(theDay().className).toContain('date-switch__day--on')
+    expect(must(theDay().closest('.date-switch'), 'the control').className).toContain(
+      'date-switch--on',
+    )
   })
 
   it('does not exist in a production build', () => {
@@ -235,7 +266,7 @@ describe('a moved clock survives a reload', () => {
   it('is left behind in the tab, and picked up again', () => {
     const { unmount } = renderClock()
 
-    fireEvent.change(theDay(), { target: { value: '2026-12-31' } })
+    fireEvent.change(theDay(), { target: { value: '31/12/2026' } })
     expect(sessionStorage.getItem(KEY)).toBe('2026-12-31')
 
     // The reload: everything goes and comes back, and the tab is what is left.
@@ -285,13 +316,13 @@ describe('a moved clock survives a reload', () => {
 
     try {
       renderClock()
-      fireEvent.change(theDay(), { target: { value: '2026-12-31' } })
+      fireEvent.change(theDay(), { target: { value: '31/12/2026' } })
 
       // The day still moves. It just will not survive a reload, which is the
       // better of the two ways to be wrong.
       expect(screen.getByTestId('danas')).toHaveTextContent('2026-12-31')
 
-      fireEvent.change(theDay(), { target: { value: '' } })
+      fireEvent.click(screen.getByLabelText('Vrati na stvarni datum'))
       expect(screen.getByTestId('simulirano')).toHaveTextContent('ne')
     } finally {
       vi.restoreAllMocks()

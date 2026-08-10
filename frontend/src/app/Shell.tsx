@@ -260,6 +260,26 @@ export function Shell() {
           </a>
         </nav>
         <p className="shell__note">{t('shell.footerNote')}</p>
+        {/* The one thing on the portal that somebody else made and that asks to
+            be named for it: the codebook of the world's towns behind the place
+            field is GeoNames, under CC BY 4.0, which requires attribution
+            wherever the material is shared (ADL A16). It is served on every
+            screen that has a form, so it is credited where every screen ends. */}
+        <p className="shell__note">
+          {t('shell.credits')}{' '}
+          <a href="https://www.geonames.org/" rel="noreferrer noopener" target="_blank">
+            {t('shell.creditsSource')}
+          </a>
+          {', '}
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            rel="license noreferrer noopener"
+            target="_blank"
+          >
+            {t('shell.creditsLicence')}
+          </a>
+          {'.'}
+        </p>
       </footer>
     </div>
   )

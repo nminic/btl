@@ -6,6 +6,7 @@ import { first } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
+import { plainly } from './places'
 import { ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
@@ -309,15 +310,63 @@ describe('the generated data', () => {
     expect(memberships.filter((one) => one.email === '')).toEqual([])
   })
 
-  it('carries no event in a state the portal does not have', async () => {
-    /* A race has no state "announced" and none "postponed" (PDL P10). The
-       generator wrote thirty of them, which is a state no screen and no decision
-       knows what to do with. It lives outside the repo, so this is the only place
-       that can notice. */
-    const events = await loadResource<{ status: string }[]>('events')
+  it('carries a codebook of towns every one of which can be typed', async () => {
+    /* Nine hundred kilobytes nobody in this repository wrote, read by a search
+       that folds a letter with a mark above it onto the letter (`plainly`). A
+       letter that fold does not know is a town that is in the codebook and
+       cannot be reached: seventy eight towns in Poland were, Wrocław among
+       them, because ł is a single letter and not an l with a stroke added, so
+       there was nothing for the fold to take off.
+
+       This is the guard that was missing when that went in. It reads the
+       shipped file rather than a fixture, because the fault is a disagreement
+       between this side and the generator, and a fixture agrees with whoever
+       wrote it. */
+    const places = await loadResource<[string, string, string?][]>('places')
+
+    expect(places.length).toBeGreaterThan(40000)
+
+    /* Both names, not only the first. The English one is what the English
+       portal writes and what a person typing "belgrade" is matched against, and
+       twelve towns in Macedonia shipped it in Cyrillic: the generator filtered
+       the local name and appended the English one raw, and a Cyrillic main-list
+       name is exactly what made the two differ. */
+    const unreachable = places
+      .flatMap(([name, country, english]) =>
+        [name, english ?? name].map((written) => ({ written, country })),
+      )
+      .filter(({ written }) => /[^a-z0-9 '&.,()/-]/.test(plainly(written)))
+      .map(({ written, country }) => `${written} (${country})`)
+
+    expect(unreachable).toEqual([])
+  })
+
+  it('carries a codebook whose towns each say which country they are in', async () => {
+    /* The country is the whole reason the field was allowed to swallow the one
+       beside it, so a row without one is a town that files an event nowhere. */
+    const places = await loadResource<[string, string, string?][]>('places')
+    const nameless = places.filter(([name, country]) => name === '' || !/^[A-Z]{2}$/.test(country))
+
+    expect(nameless).toEqual([])
+  })
+
+  it('carries no event of a kind the portal does not have, and no state at all', async () => {
+    /* An event has a kind and no state (owner, 10.08.2026): what is on the
+       portal is on. The generator lives outside the repo, so this is the only
+       place that can notice it writing a word no screen knows.
+
+       All three kinds are asked for, because the calendar carries training and
+       gatherings as well as races (PDL P10) and a generator that quietly wrote
+       every event as a race would leave both untested on every screen. */
+    const events = await loadResource<{ kind: string; status?: string }[]>('events')
 
     expect(events.length).toBeGreaterThan(0)
-    expect([...new Set(events.map((one) => one.status))].sort()).toEqual(['confirmed'])
+    expect([...new Set(events.map((one) => one.kind))].sort()).toEqual([
+      'gathering',
+      'race',
+      'training',
+    ])
+    expect(events.filter((one) => one.status !== undefined)).toEqual([])
   })
 })
 

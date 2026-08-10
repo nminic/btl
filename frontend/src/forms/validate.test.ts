@@ -188,3 +188,31 @@ describe('date fields', () => {
     expect(validateField(text({ type: 'date' }), '12/04/1985')).toBeNull()
   })
 })
+
+describe('what a form starts out holding', () => {
+  it('holds a country beside a place, which is a value with no field of its own', () => {
+    /* A place writes the town and the country it came with (forms/types.ts).
+       Missing from the values a form is seeded with, the country is a key the
+       form never had, so an event saved without its town being touched carries
+       whatever the record layer makes of a value that was never there. */
+    const withPlace: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [{ name: 'city', type: 'place', labelKey: 'proba.mesto' }],
+    }
+
+    expect(emptyValues(withPlace)).toEqual({ city: '', country: '' })
+  })
+
+  it('holds no country where there is no place to write one', () => {
+    const plain: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [{ name: 'ime', type: 'text', labelKey: 'proba.ime' }],
+    }
+
+    expect(emptyValues(plain)).toEqual({ ime: '' })
+  })
+})

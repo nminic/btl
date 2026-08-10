@@ -24,6 +24,12 @@ export const RESOURCE_NAMES = [
   'leagues',
   'moderators',
   'pages',
+  /* Every town in the region from five hundred people up, and every town in the
+     world from fifteen thousand up, with the country each belongs to (owner,
+     10.08.2026). Nine hundred kilobytes, which is why it is a resource and not
+     an import: it is asked for when somebody starts typing a place, and on no
+     other screen. */
+  'places',
   'races',
   'results',
   'teams',

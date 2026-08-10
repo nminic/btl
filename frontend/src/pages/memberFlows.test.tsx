@@ -607,8 +607,10 @@ describe('screens that depend on the date', () => {
       await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
     ).toBeVisible()
 
+    /* Day first, because the switch is the portal's own date control since
+       11.08.2026 and not the browser's. */
     fireEvent.change(screen.getByLabelText('Današnji datum'), {
-      target: { value: '2026-10-02' },
+      target: { value: '02/10/2026' },
     })
 
     expect(await screen.findByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()

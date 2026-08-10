@@ -2,7 +2,6 @@
   {
     "id": "ver-upl-1",
     "queue": "payments",
-    "kind": "",
     "date": "2026-07-22",
     "memberNumber": "",
     "who": "Miodrag Stanković",
@@ -13,17 +12,17 @@
     "email": "miodrag.stankovic@primer.rs",
     "city": "Kraljevo",
     "country": "RS",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-upl-2",
     "queue": "payments",
-    "kind": "",
     "date": "2026-07-25",
     "memberNumber": "",
     "who": "Đorđe Mitrović",
@@ -34,17 +33,17 @@
     "email": "djordje.mitrovic@primer.rs",
     "city": "Beograd",
     "country": "RS",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-upl-3",
     "queue": "payments",
-    "kind": "",
     "date": "2026-07-28",
     "memberNumber": "",
     "who": "Ivana Čolaković",
@@ -55,17 +54,17 @@
     "email": "ivana.colakovic@primer.ba",
     "city": "Banja Luka",
     "country": "BA",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-lig-1",
     "queue": "leagues",
-    "kind": "",
     "date": "2026-07-21",
     "memberNumber": "000004",
     "who": "Časlav Radenković",
@@ -76,17 +75,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-lig-2",
     "queue": "leagues",
-    "kind": "",
     "date": "2026-07-21",
     "memberNumber": "000005",
     "who": "Bogoljub Nikolajević",
@@ -97,17 +96,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-tim-1",
     "queue": "teams",
-    "kind": "",
     "date": "2026-07-24",
     "memberNumber": "000007",
     "who": "Strahinja Vukićević",
@@ -118,17 +117,17 @@
     "email": "",
     "city": "Zaječar",
     "country": "RS",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-tim-2",
     "queue": "teams",
-    "kind": "",
     "date": "2026-07-24",
     "memberNumber": "000008",
     "who": "Ognjen Perišić",
@@ -139,17 +138,17 @@
     "email": "",
     "city": "Novi Sad",
     "country": "RS",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": ""
   },
   {
     "id": "ver-bio-1",
     "queue": "profiles",
-    "kind": "bio",
     "date": "2026-07-26",
     "memberNumber": "000010",
     "who": "Miloje Stanojlović",
@@ -160,17 +159,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": "bio"
   },
   {
     "id": "ver-bio-2",
     "queue": "profiles",
-    "kind": "bio",
     "date": "2026-07-26",
     "memberNumber": "000011",
     "who": "Vukašin Todorović",
@@ -181,17 +180,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": "bio"
   },
   {
     "id": "ver-sli-1",
     "queue": "profiles",
-    "kind": "photo",
     "date": "2026-07-27",
     "memberNumber": "000013",
     "who": "Damjan Krstić",
@@ -202,17 +201,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": "photo"
   },
   {
     "id": "ver-sli-2",
     "queue": "profiles",
-    "kind": "photo",
     "date": "2026-07-27",
     "memberNumber": "000014",
     "who": "Radoslav Milovanović",
@@ -223,18 +222,18 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": ""
+    "kind": "photo"
   },
   {
     "id": "ver-kom-1",
     "queue": "comments",
-    "kind": "",
-    "date": "2026-07-11",
+    "date": "2026-07-28",
     "memberNumber": "000016",
     "who": "Nemanja Cvetković",
     "subject": "Jadovnički ultramaraton",
@@ -244,18 +243,18 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11",
     "rating": {
       "organisation": 5,
       "value": 4,
       "ambience": 5
     },
-    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11"
+    "kind": ""
   },
   {
     "id": "ver-kom-2",
     "queue": "comments",
-    "kind": "",
-    "date": "2026-06-27",
+    "date": "2026-07-28",
     "memberNumber": "000017",
     "who": "Andrija Pavlović",
     "subject": "Mala Sveta gora",
@@ -265,18 +264,18 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-mala-sveta-gora-2026-06-27",
     "rating": {
       "organisation": 3,
       "value": 2,
       "ambience": 4
     },
-    "subjectId": "evt-mala-sveta-gora-2026-06-27"
+    "kind": ""
   },
   {
     "id": "ver-kom-3",
     "queue": "comments",
-    "kind": "",
-    "date": "2026-05-23",
+    "date": "2026-07-28",
     "memberNumber": "000018",
     "who": "Teodora Mitrović",
     "subject": "Memorijal \"Dragutin Tomašević\"",
@@ -286,38 +285,38 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-memorijal-dragutin-tomasevic-2026-05-23",
     "rating": {
       "organisation": 4,
       "value": 4,
       "ambience": 3
     },
-    "subjectId": "evt-memorijal-dragutin-tomasevic-2026-05-23"
+    "kind": ""
   },
   {
     "id": "ver-kom-4",
     "queue": "comments",
-    "kind": "",
-    "date": "2026-07-11",
+    "date": "2026-07-28",
     "memberNumber": "000019",
     "who": "Borivoje Jovanović",
-    "subject": "Jadovnički ultramaraton",
-    "body": "Komentar poslat pre nego što su ocene postojale, još čeka.",
+    "subject": "Istočni pripravnički FG maraton",
+    "body": "Trčao sam ovo tri godine zaredom i nikad me nije razočaralo.",
     "currentDate": "",
     "proposedDate": "",
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-istocni-pripravnicki-fg-maraton-2026-04-25",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-jadovnicki-ultramaraton-2026-07-11"
+    "kind": ""
   },
   {
     "id": "ver-ter-1",
     "queue": "schedule",
-    "kind": "",
     "date": "2026-07-25",
     "memberNumber": "000019",
     "who": "Borivoje Jovanović",
@@ -328,17 +327,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-beogradski-maraton-2027-04-03",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-beogradski-maraton-2027-04-03"
+    "kind": ""
   },
   {
     "id": "ver-ter-2",
     "queue": "schedule",
-    "kind": "",
     "date": "2026-07-26",
     "memberNumber": "",
     "who": "",
@@ -349,17 +348,17 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-beogradski-maraton-2027-04-03",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-beogradski-maraton-2027-04-03"
+    "kind": ""
   },
   {
     "id": "ver-ter-3",
     "queue": "schedule",
-    "kind": "",
     "date": "2026-07-27",
     "memberNumber": "000022",
     "who": "Dušan Marković",
@@ -370,11 +369,12 @@
     "email": "",
     "city": "",
     "country": "",
+    "subjectId": "evt-podgoricka-desetka-2027-01-30",
     "rating": {
       "organisation": 0,
       "value": 0,
       "ambience": 0
     },
-    "subjectId": "evt-podgoricka-desetka-2027-01-30"
+    "kind": ""
   }
 ]

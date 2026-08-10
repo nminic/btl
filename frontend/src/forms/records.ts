@@ -26,7 +26,14 @@ export function optionsFor(
   return field.options ?? supplied[field.name] ?? NONE
 }
 
-/** What the form opens with, read off the record it is going to change. */
+/**
+ * What the form opens with, read off the record it is going to change.
+ *
+ * And the country beside a town, which is a value with no field of its own
+ * (forms/types.ts): read back here so a form opened on an event already knows
+ * which country it is in. Left out, an event saved without its town being
+ * touched was saved into no country at all.
+ */
 export function valuesFor(form: FormDef, record: Record<string, unknown>): FormValues {
   const values: FormValues = {}
 
@@ -39,6 +46,12 @@ export function valuesFor(form: FormDef, record: Record<string, unknown>): FormV
       values[field.name] = fieldDate(String(value ?? ''))
     } else {
       values[field.name] = value === null || value === undefined ? '' : String(value)
+    }
+
+    if (field.type === 'place') {
+      const country = record.country
+
+      values.country = country === null || country === undefined ? '' : String(country)
     }
   }
 
@@ -59,6 +72,15 @@ export function textFrom(form: FormDef, values: FormValues): Record<string, stri
     const value = values[field.name]
 
     text[field.name] = field.type === 'date' ? isoDate(String(value)) : String(value)
+
+    /* And the country the town came with. It is a value the form holds and not
+       a field it draws, so a loop over the fields cannot see it, and everything
+       downstream is built out of what this returns: an event entered on the
+       screen was saved with the word "undefined" for a country, and one edited
+       from Beograd to Zagreb stayed in Serbia. */
+    if (field.type === 'place') {
+      text.country = String(values.country)
+    }
   }
 
   return text

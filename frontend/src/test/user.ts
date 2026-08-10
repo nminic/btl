@@ -21,6 +21,10 @@ import userEvent from '@testing-library/user-event'
  * means userEvent never advances them, so a test that fakes the clock has to set
  * its own userEvent up rather than use this.
  */
-export function setupUser() {
+export function setupUser(): Pressing {
   return userEvent.setup({ delay: null })
 }
+
+/** What `setupUser` hands back, named so a helper can take one as an argument
+ *  rather than set up a second keyboard of its own. */
+export type Pressing = ReturnType<typeof userEvent.setup>
