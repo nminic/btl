@@ -9,7 +9,6 @@ import { Decided } from '../test/decided'
 import { at, first, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-import { ruleSentence, type DucatRule } from '../data/ducatRule'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
@@ -332,61 +331,6 @@ describe('the price list', () => {
     expect(table.getByText('33')).toBeVisible()
     // And the period it belongs to is where it was.
     expect(table.getByText('1.10. - 5.10.')).toBeVisible()
-  })
-})
-
-describe('ruleSentence', () => {
-  const base: DucatRule = {
-    kind: 'raceCount',
-    value: 5,
-    from: '',
-    to: '',
-  }
-  const t = (key: string, params?: Record<string, string | number>) =>
-    `${key}${params === undefined ? '' : JSON.stringify(params)}`
-
-  it('says a rule with no dates counts every season', () => {
-    expect(ruleSentence(base, t, 'sr')).toContain('ducats.everSince')
-  })
-
-  it('says a rule with both dates counts between them', () => {
-    /* A range that describes no whole period is read out from one end to the
-       other, and both ends are written for the reader. They used to be dropped
-       in as they are stored, so a ducat on the public page said "od 2027-07-01
-       do 2027-07-15" (PDL P28a, 30.07.2026). */
-    const sentence = ruleSentence({ ...base, from: '2027-07-01', to: '2027-07-15' }, t, 'sr')
-
-    expect(sentence).toContain('ducats.between')
-    expect(sentence).toContain('15. 7. 2027.')
-    expect(sentence).not.toContain('2027-07')
-  })
-
-  it('names the period instead of reciting its edges where the two make one', () => {
-    // A whole month, a whole year, and one day, in the order the rule is tried.
-    const during = (from: string, to: string) =>
-      ruleSentence({ ...base, from, to }, t, 'sr')
-
-    expect(during('2027-07-01', '2027-07-31')).toContain('ducats.during{"period":"jul 2027.')
-    expect(during('2027-01-01', '2027-12-31')).toContain('ducats.during{"period":"2027.')
-    expect(during('2027-10-15', '2027-10-15')).toContain('ducats.during{"period":"15. 10. 2027.')
-  })
-
-  it('says a rule with one date counts from it, or up to it', () => {
-    // One end is not a period, so it is a date, and a date is written for the
-    // reader here as everywhere else.
-    expect(ruleSentence({ ...base, from: '2027-01-01' }, t, 'sr')).toContain(
-      'ducats.after{"from":"1. 1. 2027.',
-    )
-    expect(ruleSentence({ ...base, to: '2027-12-31' }, t, 'sr')).toContain(
-      'ducats.before{"to":"31. 12. 2027.',
-    )
-  })
-
-  it('writes the value the way this language writes a number', () => {
-    // A marathon is 42,2 in Serbian and 42.2 in the data. The sentence and the
-    // threshold on the ducat stand on the same card and must agree.
-    expect(ruleSentence({ ...base, kind: 'bestRaceKm', value: 42.2 }, t, 'sr')).toContain('42,2')
-    expect(ruleSentence({ ...base, kind: 'totalKm', value: 1200 }, t, 'sr')).toContain('1.200')
   })
 })
 

@@ -1,182 +1,154 @@
-/* The mark of a ducat. See DucatArt.tsx for the contract and for what the
-   drawing is trying to be.
+/* The mark of a ducat. See DucatArt.tsx for what the drawing is and why the two
+   legends sit on different circles.
 
-   The disc keeps its own colours in both themes, the way the gold medallions of
+   The coin keeps its own colours in both themes, the way the gold medallions of
    the counters on the front page do: it is an object, not a surface, and an
-   object that changes colour with the theme stops being the same object. What
-   does follow the theme is the label under it, because that is text of the
-   page. */
+   object that changes colour with the theme stops being the same object.
+
+   ## The five metals
+
+   The value of a ducat, one to five, is drawn as the metal it is struck in
+   (PDL P16). The owner opened colour himself, and colour is the only signal that
+   still reads at the size a ducat is drawn at: a count of stars or of rings
+   cannot be counted at 120 pixels, and any treatment of the edge would eat the
+   seven units of air between the legend and the rim, which is the one measure
+   this drawing is built on.
+
+   Bronze and silver are two colours this portal did not have. They do not weaken
+   the rule that gold means achievement; they rank it, and the top of the ladder
+   is more gold rather than less.
+
+   One property and not two: the edge is the same metal as the legend, dimmed by
+   the opacity it already carries, and the guard over these names allows the
+   ducats exactly two of them (styles/hooks.test.ts).
+
+   Measured against the face of the coin (#06214a at its darkest):
+   bronze 6.9:1, silver 11.4:1, gold 9.9:1, and the blue of the fifth value on
+   its gold face 5.3:1. All four clear the 4.5:1 of WCAG 2.2 AA, for the legend
+   and for the mark alike. */
 
 .ducat-art {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-6);
-  min-width: 0;
-}
-
-/* One square, and never wider than what it is given, so the grid holds from
-   360px up without a media query of its own.
-
-   It is its own container, which is how one component knows how large it has
-   been drawn. Everything that scales below scales off the disc rather than off
-   the viewport, because the same ducat is meant to be drawn at more than one
-   size on the same screen width. Whoever draws it says how large: the wall of
-   ducats sets --ducat-art-size and shrinks it on a narrow window (DucatGallery.css).
-   The fallback here is the size the wall uses at its widest.
-
-   It carries no padding, and that is load bearing rather than tidy. A container
-   is measured across its content box, so padding here would silently make every
-   cqw and every breakpoint below mean a fraction of what it says: with the 11%
-   a side this began with, the 92px cut below matched a disc of 118px. The
-   number is inset by its own box instead. */
-.ducat-art__disc {
-  container-type: inline-size;
-  container-name: ducat-art;
-  position: relative;
-  width: var(--ducat-art-size, 6.5rem);
+  display: block;
+  width: var(--ducat-art-size, 11rem);
   max-width: 100%;
   aspect-ratio: 1;
+}
+
+.ducat-art[data-tier='1'] {
+  --ducat-metal: #e0a86c;
+}
+
+.ducat-art[data-tier='2'] {
+  --ducat-metal: #d5dde7;
+}
+
+.ducat-art[data-tier='3'],
+.ducat-art[data-tier='4'] {
+  --ducat-metal: var(--gold-300);
+}
+
+/* The fifth turns the coin over: the face is the metal and the legend is the
+   blue. One ducat has it, and it is the one nobody is expected to win. */
+.ducat-art[data-tier='5'] {
+  --ducat-metal: var(--blue-900);
+}
+
+.ducat-art__coin {
+  display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   background: linear-gradient(168deg, var(--blue-800), var(--blue-900) 62%);
   /* The one light line along the top edge, the same detail the counter widget
      carries, bent around a circle. It is what makes the face read as struck
-     metal without a gradient across the whole drawing and without a glow on the
-     text, which is exactly the pair that looks dated. */
+     metal without a gradient across the whole drawing. */
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
 }
 
-.ducat-art__shape {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+.ducat-art[data-tier='5'] .ducat-art__coin {
+  background: linear-gradient(168deg, var(--gold-300), var(--gold-500) 78%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+/* Every circle here is a line and never a surface. A circle with no rule at all
+   is filled black by the standard, and that is once already how black came to
+   cover the gold face of the fifth value. */
+.ducat-art__band,
+.ducat-art__reed,
+.ducat-art__rim {
   fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+}
+
+/* The milled edge, which is how a coin is known by touch as well as by sight.
+   The circumference at radius 91.5 is 574.9, so a period of 7.94 gives the
+   seventy-two teeth of it, in one dashed circle rather than seventy-two lines. */
+.ducat-art__reed {
+  stroke: var(--ducat-metal);
+  stroke-width: 5;
+  stroke-dasharray: 3.95 3.99;
+  opacity: 0.62;
 }
 
 .ducat-art__rim {
-  stroke: var(--gold-400);
-  stroke-width: 1.7;
+  stroke: var(--ducat-metal);
+  stroke-width: 2.2;
 }
 
-.ducat-art__rule {
-  stroke: var(--gold-400);
-  stroke-width: 0.8;
-  opacity: 0.42;
+/* The fourth value: the edge is filled in solid behind the teeth, and the rim
+   thickens outwards. Outwards, because inwards is the seven units of air
+   between the legend and the edge, and that measure is the same on all five. */
+.ducat-art__band {
+  stroke: var(--ducat-metal);
+  stroke-width: 5;
 }
 
-/* The emblem: an outline that carries the shape, filled just enough to keep its
-   mass when the ducat is small. */
-.ducat-art__emblem {
-  stroke: var(--gold-300);
-  stroke-width: 1.6;
-  fill: var(--gold-300);
-  fill-opacity: 0.18;
+.ducat-art[data-tier='4'] .ducat-art__reed {
+  stroke: var(--blue-800);
+  opacity: 0.5;
 }
 
-/* The wreath is line only: it has no inside to fill. Its spurs are heavier than
-   the fine detail of a filled emblem, because they have no mass behind them. */
-.ducat-art__wreath {
-  fill: none;
-  stroke-width: 2;
+.ducat-art[data-tier='4'] .ducat-art__rim {
+  stroke-width: 4;
 }
 
-.ducat-art__wreath .ducat-art__fine {
-  stroke-width: 1.6;
-  opacity: 0.9;
-}
-
-/* The detail that only exists on a ducat above about ninety pixels. Below the
-   size where these strokes stop being lines and start being grey, they are
-   removed rather than left to muddy the emblem. */
-.ducat-art__fine {
-  stroke-width: 1.1;
-  fill: none;
-  opacity: 0.75;
-}
-
-/* The first of the two places for text: the middle of the disc. Never empty.
-
-   It sits in the top 82% of the disc, because the emblem holds the bottom of
-   it, and it is centred in that band by the oldest trick there is: every side
-   pinned and the margins left to work it out. Centred that way, a threshold on
-   two lines grows into the room it has been left rather than down over the
-   emblem.
-
-   The size comes from the width of the disc and from the widest word of the
-   threshold, so that "5" fills the coin and "10.000 km" still fits across it. A
-   fixed size would have to be the size the longest case needs, and then every
-   short threshold would sit in the middle of a coin looking lost.
-
-   The 20cqw cap is exactly the size at which two lines still clear the emblem,
-   and everything up to five characters reaches it. That is deliberate: a wall
-   of ducats then carries one size of type, and only the rare long number steps
-   down. */
-.ducat-art__threshold {
-  position: absolute;
-  inset: 0 0 18%;
-  margin: auto;
-  width: fit-content;
-  height: fit-content;
-  font-size: min(20cqw, calc(112cqw / var(--ducat-art-chars, 4)));
-  /* Wide enough for the widest word and never wide enough for a second one, so
-     a threshold carrying a unit always reads as a number with the unit under
-     it. Left to break where it happened to run out of room, "1.000 km" went
-     onto two lines while the longer "10.000 km", set smaller, stayed on one:
-     the two ducats then looked like two different designs. */
-  max-width: min(78%, calc(var(--ducat-art-chars, 4) * 0.66em));
-  font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.015em;
-  text-align: center;
-  /* 9.9:1 on the face of the coin. The face is dark in both themes, so this is
-     one colour rather than two. */
-  color: var(--gold-300);
-  /* Only at the space, never inside a word. The width above is measured in
-     characters and a letter is wider than a digit, so a unit is allowed to
-     stand a little wider than its box; what it is never allowed to do is come
-     apart, and "5 km" set as "5 k m" is what happens when it is. */
-  overflow-wrap: normal;
-}
-
-/* The second: under the drawing. Absent, rather than empty, when there is none,
-   so a ducat without a label is a coin and not a coin with a gap under it. */
-.ducat-art__label {
-  max-width: 100%;
-  font-size: clamp(0.6rem, calc(var(--ducat-art-size, 6.5rem) * 0.105), 0.85rem);
+.ducat-art__legend {
+  fill: var(--ducat-metal);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  line-height: 1.25;
-  text-align: center;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
+  letter-spacing: 0.09em;
 }
 
-/* One step down in density, and the ducat is the same ducat on either side of
-   it: under about ninety pixels the hairlines go, the fine detail of the emblem
-   and the inner rule. The cut is where a 1.1 unit stroke stops being a whole
-   pixel, which is also where it stops being a line and becomes a paler one. The
-   rim thickens to make up for it, for the same reason.
+/* The number stays text: selectable, searchable, and read out as the number it
+   is. Drawn as paths it would be a picture of a number. */
+.ducat-art__number {
+  fill: var(--ducat-metal);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
 
-   Reached on a telephone, where the wall shrinks the disc to 72px at 360px wide
-   and crosses this line at about 460px (DucatGallery.css).
+.ducat-art__unit {
+  fill: var(--ducat-metal);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.92;
+}
 
-   There was a second step under it, at 64px, which dropped the emblem and gave
-   the number the whole coin. It went, because nothing on this portal draws a
-   ducat that small: it was written for a row of ducats on a profile that does
-   not exist, so it was a rule that could not run and a comment describing a
-   screen nobody could open. It comes back with that row, and with a size that
-   actually reaches it. */
-@container ducat-art (max-width: 92px) {
-  .ducat-art__fine,
-  .ducat-art__rule {
-    display: none;
-  }
+.ducat-art__mark {
+  fill: none;
+  stroke: var(--ducat-metal);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.6;
+}
 
-  .ducat-art__rim {
-    stroke-width: 2.6;
-  }
+.ducat-art__art {
+  fill: none;
+  stroke: var(--ducat-metal);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.ducat-art__star {
+  fill: var(--ducat-metal);
+  stroke: none;
 }

@@ -427,3 +427,68 @@ describe('the season, over both parts of the profile', () => {
     expect((await screen.findByLabelText('Sezona')) as HTMLSelectElement).toHaveValue('2019')
   })
 })
+
+describe('a ducat that belongs to one month rather than to all of them', () => {
+  it('says which month, beside the coin that carries it', async () => {
+    /* The coin is hidden from a screen reader, so a profile holding July and
+       August would otherwise read as one ducat written down twice.
+     *
+     * Two files are stood in for, because nothing in the generated data can
+     * reach this on its own: the season of 2027 has not begun, and every result
+     * there is was run before it. One race in July 2027 and one family that
+     * repeats by the month are the smallest world in which a monthly ducat can
+     * be held at all. */
+    const real = globalThis.fetch
+    const race = {
+      id: 'r-jul',
+      memberNumber: '000001',
+      raceId: 't-jul',
+      eventName: 'Julska trka',
+      eventSlug: 'julska-trka',
+      date: '2027-07-04',
+      distanceKm: 21.1,
+      ascentM: 200,
+      descentM: 200,
+      seconds: 7200,
+      points: 30,
+      category: 'half',
+    }
+    const family = {
+      id: 'duk-mesecni-km',
+      name: 'Mesečni kilometri',
+      kind: 'totalKm',
+      value: 20,
+      period: 'month',
+      top: 'ISTRČANIH',
+      topFemale: '',
+      bottom: '',
+      periodAt: 'bottom',
+      mark: 'distance',
+      art: 'none',
+      tier: 1,
+      step: 0,
+      last: 0,
+      tierUpFrom: 0,
+    }
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const asked = String(input)
+
+      if (asked.endsWith('/results.json')) {
+        return new Response(JSON.stringify([race]), { status: 200 })
+      }
+
+      return asked.endsWith('/ducats.json')
+        ? new Response(JSON.stringify([family]), { status: 200 })
+        : real(input)
+    }) as typeof fetch
+
+    try {
+      renderAt('/sr/takmicar/000001/priznanja?sezona=sve', 'visitor', null, undefined, '2027-08-01')
+
+      expect(await screen.findByText('jul 2027.')).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})
