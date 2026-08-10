@@ -1,4 +1,5 @@
 import jsQR from 'jsqr'
+import { must } from './at'
 
 /**
  * What a telephone would read off a drawn QR code.
@@ -18,16 +19,27 @@ export function readQr(drawn: Element): string | null {
   /* The whole figure including whatever quiet zone the drawing left around it:
      read off the box rather than worked out from the module count, so widening
      that zone is a wider picture here and not a picture read at an offset. */
-  const box = String(drawn.getAttribute('viewBox')).split(' ')
+  const box = must(drawn.getAttribute('viewBox'), 'the box the figure is drawn in').split(' ')
   const span = Number(box[2])
-  const figure = String(drawn.querySelector('path')?.getAttribute('d'))
+  const figure = must(
+    drawn.querySelector('path')?.getAttribute('d'),
+    'the figure the code drew',
+  )
   const dark = new Set(
     [...figure.matchAll(/M(\d+) (\d+)h1v1h-1z/g)].map((one) => `${one[2]}:${one[1]}`),
   )
 
-  /* Four pixels to a module, which is more than a reader needs and cheap: at one
-     pixel a module the decoder has nothing to average over and reads nothing at
-     all. */
+  /* Said here rather than left to the decoder. The squares are read by the
+     grammar the drawing writes them in, so a drawing that merged them into runs
+     or wrote rectangles instead would leave nothing to read and the failure
+     would name the decoder. */
+  if (dark.size === 0) {
+    throw new Error('no squares found in the figure')
+  }
+
+  /* Four pixels to a module: headroom for the decoder's sampling, and cheap. One
+     pixel a module reads too, so this is not what makes the reading work; it is
+     what keeps it from depending on the decoder being generous. */
   const scale = 4
   const side = span * scale
   const pixels = new Uint8ClampedArray(side * side * 4)

@@ -80,8 +80,11 @@ describe('the drawing of a payment code', () => {
   })
 })
 
+/** One slip, used by the reading below and by the frozen figure at the foot of
+ *  the file, so the two cannot drift apart. */
+const PAYLOAD = 'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruzenje BTL|I:RSD4800,00'
+
 describe('what a telephone reads off the drawing', () => {
-  const PAYLOAD = 'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruzenje BTL|I:RSD4800,00'
 
   it('is the text the code was given, read by a decoder nobody here wrote', () => {
     /* The whole question, asked plainly. Anything short of this agrees with the
@@ -122,15 +125,17 @@ describe('the figure this payload has always drawn', () => {
 
        Compared as a digest rather than as ten thousand characters of path, so a
        failure reads as a number rather than as two walls of `M..h1v1h-1z`. */
-    render(
-      <QrCode
-        text="K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruzenje BTL|I:RSD4800,00"
-        label="uplatnica"
-      />,
-    )
+    render(<QrCode text={PAYLOAD} label="uplatnica" />)
 
     const figure = figureOf('uplatnica')
 
     expect([figure.length, digestOf(figure)]).toEqual([9356, 'x2li0b'])
+  })
+
+  it('is named by something that tells two figures apart', () => {
+    /* The digest is the only thing that notices a mirrored matrix, since it is
+       the same length and a decoder reads it, so a digest that answered the same
+       for everything would take that guard away without failing anything. */
+    expect(digestOf('a')).not.toBe(digestOf('b'))
   })
 })
