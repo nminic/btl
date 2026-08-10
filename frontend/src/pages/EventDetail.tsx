@@ -9,7 +9,13 @@ import {
   useRaces,
   useResults,
 } from '../data/useResource'
-import { formatDate, formatDuration, formatNumber, formatPoints } from '../i18n/format'
+import {
+  formatDate,
+  formatDuration,
+  formatNumber,
+  formatPoints,
+  formatShortDate,
+} from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { useSession } from '../session/useSession'
@@ -27,7 +33,18 @@ function RaceTable({ eventId }: { eventId: string }) {
 
   return (
     <Resource state={races} inline label={t('event.races')}>
-      {(all) => (
+      {(all) => {
+        /* In the order they are run, and told whether that is more than one
+           morning. */
+        const mine = all
+          .filter((race) => race.eventId === eventId)
+          .sort(
+            (left, right) =>
+              left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm,
+          )
+        const overDays = new Set(mine.map((race) => race.date)).size > 1
+
+        return (
         <div className="table-scroll">
           <table className="table">
             {/* Named, like every other table on the portal. Two tables stand on
@@ -37,6 +54,11 @@ function RaceTable({ eventId }: { eventId: string }) {
             <thead>
               <tr>
                 <th scope="col">{t('event.raceName')}</th>
+                {/* The day, drawn only where the event runs over more than one
+                    (owner, 10.08.2026). A column of one repeated date under a
+                    heading that already says the day is a column that says
+                    nothing. */}
+                {overDays && <th scope="col">{t('event.raceDay')}</th>}
                 <th scope="col">{t('event.category')}</th>
                 <th scope="col">{t('event.distance')}</th>
                 <th scope="col" className="table__hide-phone">
@@ -48,11 +70,10 @@ function RaceTable({ eventId }: { eventId: string }) {
               </tr>
             </thead>
             <tbody>
-              {all
-                .filter((race) => race.eventId === eventId)
-                .map((race) => (
+              {mine.map((race) => (
                   <tr key={race.id}>
                     <td>{race.name}</td>
+                    {overDays && <td>{formatShortDate(race.date, locale)}</td>}
                     <td>{t(`category.${race.category}`)}</td>
                     <td>{formatNumber(race.distanceKm, locale, 2)}</td>
                     <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
@@ -62,7 +83,8 @@ function RaceTable({ eventId }: { eventId: string }) {
             </tbody>
           </table>
         </div>
-      )}
+        )
+      }}
     </Resource>
   )
 }

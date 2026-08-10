@@ -1048,6 +1048,7 @@ describe('categoriesAt', () => {
   const race = (id: string, eventId: string, category: RaceCategory): Race => ({
     id,
     eventId,
+    date: '2027-04-03',
     name: id,
     distanceKm: 10,
     ascentM: 0,

@@ -19,6 +19,13 @@
       "maxLength": 60
     },
     {
+      "name": "date",
+      "type": "date",
+      "labelKey": "admin.field.raceDate",
+      "hintKey": "admin.hint.raceDate",
+      "required": true
+    },
+    {
       "name": "distanceKm",
       "type": "number",
       "labelKey": "admin.field.distanceKm",

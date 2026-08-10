@@ -59,6 +59,16 @@ export type Race = {
   id: string
   eventId: string
   name: string
+  /**
+   * The day this race is run on, which is not always the day of its event.
+   *
+   * One event may run over more than one morning: two races on the Saturday and
+   * one on the Sunday are one event with three races and not two events (owner,
+   * 10.08.2026). The event's own date is the day it begins, which is the day of
+   * its first race, and that is the date its address is made from; a race that
+   * runs later carries the day it runs on.
+   */
+  date: string
   distanceKm: number
   ascentM: number
   descentM: number

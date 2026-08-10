@@ -1,7 +1,6 @@
 import { Link, useNavigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import type { BtlEvent, Race, Result } from '../../data/types'
-import { fieldDate } from '../../forms/dateField'
 import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -66,12 +65,13 @@ export function EventActions({
       /* The same day, and the form opens on it. Moving it a year forward here
          would be a guess: a race that ran on the last Sunday in April does not
          run on the same date next year, and a date nobody chose looks chosen.
-       *
-         In the shape the form speaks, dd/mm/gggg, because these are form values
-         and everything downstream reads them as such: handing over the stored
-         shape left the day empty and the copy answering at an address with no
-         date in it. */
-      date: fieldDate(event.date),
+
+         In the shape a record keeps, which is what a creation is read as: the
+         list draws it, the address is made from it, and the form turns it into
+         what a member types when it opens (forms/records.ts, `valuesFor`). It
+         was handed over in the form's own shape, which no screen but that form
+         could read. */
+      date: event.date,
       city: event.city,
       country: event.country,
       organizer: event.organizer,
@@ -92,6 +92,12 @@ export function EventActions({
       create(RACES.id, `${race.id}-kopija-${before + 1}`, {
         eventId: id,
         name: race.name,
+        /* The day it was run on, kept as it was. The copy starts on the day the
+           event was on, so the races start on the days they were on, and moving
+           the event's date afterwards moves them all by the same number of days
+           (admin/AdminEvents.tsx): two races on the Saturday and one on the
+           Sunday stay two and one, a year on (owner, 10.08.2026). */
+        date: race.date,
         distanceKm: String(race.distanceKm),
         ascentM: String(race.ascentM),
         descentM: String(race.descentM),

@@ -525,6 +525,7 @@
     "weekend": "Vikend"
   },
   "event": {
+    "raceDay": "Dan",
     "place": "Mesto",
     "addComment": "Dodaj komentar",
     "commentTitle": "Ocena i komentar",
@@ -967,6 +968,7 @@
       "eventName": "Naziv događaja",
       "date": "Datum",
       "event": "Događaj",
+      "raceDate": "Dan trke",
       "distanceKm": "Dužina (km)",
       "ascentM": "Uspon (m)",
       "descentM": "Spust (m)",
@@ -996,6 +998,7 @@
       "organizer": "Organizator nema nalog na portalu; ovde stoji samo kao podatak.",
       "status": "Samo dva stanja: potvrđeno i u proveri. Trka se unosi tek kad je datum potvrđen, nema statusa najavljena ni odložena, a otkazana se briše iz kalendara. Dok je termin u proveri, datum se ne prikazuje nigde na portalu.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
+      "raceDate": "Podrazumevano je dan događaja. Događaj koji traje dva dana ima trke sa različitim danima; dan događaja je dan prve trke.",
       "raceName": "Ime po kome se trka prepoznaje, na primer Polumaraton ili 6 h.",
       "distanceKm": "Unosi se ručno, i kad postoji GPX. GPX sme da predloži vrednost, ali je unos pregazi.",
       "ascentM": "Dok se ne unese, stoji 0. Trka bez podatka o nagibu se i dalje boduje.",

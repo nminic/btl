@@ -80,3 +80,34 @@ export function maskDate(text: string): string {
 
   return parts.filter((part) => part !== '').join('/')
 }
+
+/**
+ * How many days lie between two stored dates, or nought where either is not one.
+ *
+ * Counted in whole days off the calendar rather than by subtracting timestamps,
+ * because a season crosses the change of clocks twice and an hour lost there
+ * would round a move of seven days down to six.
+ */
+export function daysBetween(from: string, to: string): number {
+  if (!ISO.test(from) || !ISO.test(to)) {
+    return 0
+  }
+
+  const start = Date.UTC(Number(from.slice(0, 4)), Number(from.slice(5, 7)) - 1, Number(from.slice(8)))
+  const end = Date.UTC(Number(to.slice(0, 4)), Number(to.slice(5, 7)) - 1, Number(to.slice(8)))
+
+  return Math.round((end - start) / 86400000)
+}
+
+/** The same date moved by that many days, or unchanged where it is not a date. */
+export function shiftDate(iso: string, days: number): string {
+  if (!ISO.test(iso)) {
+    return iso
+  }
+
+  const at = new Date(
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8)) + days),
+  )
+
+  return at.toISOString().slice(0, 10)
+}

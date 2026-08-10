@@ -205,6 +205,7 @@ describe('which race a reported result is scored against', () => {
   const race = (id: string): Race => ({
     id,
     eventId: 'e1',
+    date: '2027-04-03',
     name: id,
     distanceKm: 10,
     ascentM: 0,

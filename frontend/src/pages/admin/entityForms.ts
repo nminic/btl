@@ -1,3 +1,4 @@
+import { fieldDate } from '../../forms/dateField'
 import clan from '../../forms/definitions/admin-clan.form.json'
 import dogadjaj from '../../forms/definitions/admin-dogadjaj.form.json'
 import liga from '../../forms/definitions/admin-liga.form.json'
@@ -75,6 +76,14 @@ export type EntityDef = {
   /** What the record carries that the form leaves alone, so a created record has
    *  the same shape as a generated one and the lists cannot tell them apart. */
   blank: Record<string, unknown>
+  /**
+   * What a new record's form opens on, where an empty field is the wrong answer.
+   *
+   * Different from `blank`, which is what the record carries and the form never
+   * asks about. This is asked about: the day of a race is a field somebody may
+   * change, and it starts on the day of the event it is being entered under.
+   */
+  start?: FormValues
   /** What the record carries that is read off the fields rather than asked for.
    *  Shown on the form as words, and written onto the record on saving. */
   derived?: (values: FormValues) => DerivedValue[]
@@ -242,13 +251,18 @@ export const RACES: EntityDef = {
  * the category of a race). The link lives on the race and nowhere else, so this
  * is the only place it is set.
  */
-export function racesOf(eventId: string, eventName: string): EntityDef {
+export function racesOf(eventId: string, eventName: string, eventDate: string): EntityDef {
   return {
     ...RACES,
     form: {
       ...RACES.form,
       fields: RACES.form.fields.filter((field) => field.name !== 'eventId'),
     },
+    /* The day of the event, in a race being entered rather than changed. One
+       event may run over more than one morning, and most do not: the day that is
+       right nine times in ten is the one already on the screen, and the form
+       says so under the field (owner, 10.08.2026). */
+    start: { date: fieldDate(eventDate) },
     derived: (values) => [
       ...categoryFrom(values),
       {

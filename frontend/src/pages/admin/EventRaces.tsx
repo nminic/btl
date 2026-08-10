@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { formatNumber } from '../../i18n/format'
+import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
@@ -41,10 +41,15 @@ export function EventRaces({
      Nothing depends on that identity today, and the memo is here so that nothing
      has to: a definition rebuilt on every keystroke is the sort of prop a memo
      downstream is one day written against. */
-  const entity = useMemo(() => racesOf(event.id, event.name), [event.id, event.name])
+  const entity = useMemo(
+    () => racesOf(event.id, event.name, event.date),
+    [event.id, event.name, event.date],
+  )
   const mine = races
     .filter((race) => race.eventId === event.id)
-    .sort((left, right) => left.distanceKm - right.distanceKm)
+    /* By the day first and the distance inside it, which is the order they are
+       run in: an event over two mornings reads as two mornings. */
+    .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
 
   if (editing !== null) {
     return (
@@ -89,6 +94,10 @@ export function EventRaces({
             <thead>
               <tr>
                 <th scope="col">{t('admin.raceName')}</th>
+                {/* The day, because an event may run over more than one (owner,
+                    10.08.2026). Beside the name rather than at the end: it is
+                    the thing that differs between two races of one weekend. */}
+                <th scope="col">{t('admin.field.raceDate')}</th>
                 <th scope="col">{t('event.distance')}</th>
                 <th scope="col">{t('event.ascent')}</th>
                 <th scope="col">{t('event.descent')}</th>
@@ -100,6 +109,7 @@ export function EventRaces({
               {mine.map((race) => (
                 <tr key={race.id}>
                   <td>{race.name}</td>
+                  <td>{formatShortDate(race.date, locale)}</td>
                   {/* Written the way this language writes a number, like every
                       other table on the portal: read raw, a climb of 7120 metres
                       is printed as four digits and a distance of 42.2 km with a

@@ -106,6 +106,105 @@ describe('the races of an event', () => {
     expect(races.getByText('Probna trka')).toBeVisible()
   })
 
+  it('gives a race its own day, starting on the day of its event', async () => {
+    /* One event may run over more than one morning: two races on the Saturday
+       and one on the Sunday are one event with three races (owner, 10.08.2026).
+       The day of the event is the day it begins, and a race entered under it
+       starts on that day, because that is the right answer nine times in ten. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    /* Whatever the day of the event on the screen is: the list opens on what is
+       still ahead, so which event is first depends on the day the tests run. */
+    const day = screen.getByLabelText(/^Dan trke/)
+    const startsOn = must(
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+      'the day the form opened on',
+    )
+
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Nedeljna desetka')
+    await user.clear(day)
+    await user.type(day, `${String(Number(startsOn[1]) + 1).padStart(2, '0')}${startsOn[2]}${startsOn[3]}`)
+    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const row = within(must(races.getByText('Nedeljna desetka').closest('tr'), 'the new race'))
+
+    expect(
+      row.getByText(`${Number(startsOn[1]) + 1}. ${Number(startsOn[2])}. ${startsOn[3]}.`),
+    ).toBeVisible()
+  })
+
+  it('moves the races with the event, by the same number of days', async () => {
+    /* Owner, 10.08.2026: this is what makes copying last season's event worth
+       doing. Two races on the Saturday and one on the Sunday stay two and one
+       after the date is moved a year on, and a single race is corrected on its
+       own form afterwards.
+
+       An event that really does run over two mornings, because one whose races
+       are all on the same day passes whatever the move does to them. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.type(await screen.findByLabelText(/Pretraga/), 'Beogradski maraton')
+
+    const listed = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        /* The 2027 one: the name has been run every year since 2010 and the
+           list holds every year of it, oldest first. */
+        .find((one) => /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? '')),
+      'the event that runs over two mornings',
+    )
+
+    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
+
+    const daysOf = async () =>
+      within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+
+    const before = await daysOf()
+
+    expect(new Set(before).size).toBe(2)
+
+    const date = screen.getByLabelText(/^Datum/)
+    const was = must(
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((date as HTMLInputElement).value)),
+      'the day the event is on',
+    )
+
+    await user.clear(date)
+    await user.type(date, `${was[1]}${was[2]}${String(Number(was[3]) + 1)}`)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Opened again, because leaving the form leaves the event: what is being
+       read is the state the list now holds, not what the form remembered. */
+    const moved = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        .find((one) => /Beogradski maraton/.test(one.textContent ?? '') && /2028/.test(one.textContent ?? '')),
+      'the event that was just moved',
+    )
+
+    await user.click(within(moved).getByRole('button', { name: /^Otvori/ }))
+
+    const after = await daysOf()
+
+    // Every day a year on, and the two mornings still two mornings.
+    expect(after).toEqual(before.map((day) => day.replace(String(was[3]), String(Number(was[3]) + 1))))
+    expect(new Set(after).size).toBe(2)
+  })
+
   it('leaves the results alone while two events answer at one address', async () => {
     /* A copy keeps the name and the day it was copied from, so until somebody
        changes the date two events answer where one did. A result names its event

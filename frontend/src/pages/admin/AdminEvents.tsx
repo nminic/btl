@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
+import { daysBetween, isoDate, shiftDate } from '../../forms/dateField'
 import { Resource } from '../../components/Resource'
 import {
   RESULTS,
@@ -15,14 +16,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EditableCell } from './EditableCell'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import {
-  EVENTS,
-  RACES,
-  eventClash,
-  recordsOf,
-  type Editing,
-  type EntityDef,
-} from './entityForms'
+import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { EventRaces } from './EventRaces'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
@@ -33,7 +27,7 @@ import { useFilterParams } from '../../app/useFilterParams'
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { remove } = useSession()
+  const { editRecord, remove } = useSession()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
   /** What was opened by pressing something on this screen. */
@@ -148,10 +142,37 @@ export function AdminEvents() {
                           .filter(
                             (each) =>
                               each.id !==
-                              (editing.mode === 'one' ? String(editing.record[EVENTS.idField]) : ''),
+                              (editing.mode === 'one'
+                                ? String(editing.record[EVENTS.idField])
+                                : ''),
                           )
                           .map((each) => each.slug),
                       )
+                    }
+                    /* The races move with the event, by the same number of days
+                       (owner, 10.08.2026). That is what makes a copy of last
+                       season's event worth making: two races on the Saturday and
+                       one on the Sunday stay two and one after the date is
+                       moved, and a single race is corrected on its own form
+                       afterwards. An ordinary correction of a date moves them
+                       too, which is the same rule and the same expectation. */
+                    /* Nothing to move where the form is entering an event: it
+                       has no races yet, and no day to move them from. */
+                    alsoSave={
+                      openEvent === undefined
+                        ? undefined
+                        : (values) => {
+                            /* Off the list rather than off the form's own record: the
+                         list is what the overlay has since made of it, and the
+                         day being moved from is the day it is on now. */
+                            const days = daysBetween(openEvent.date, isoDate(String(values.date)))
+
+                            for (const race of allRaces.filter(
+                              (each) => each.eventId === openEvent.id,
+                            )) {
+                              editRecord(race.id, { date: shiftDate(race.date, days) })
+                            }
+                          }
                     }
                     onDone={() => {
                       setChosen(null)
@@ -285,7 +306,9 @@ export function AdminEvents() {
                                one thing must not delete two different amounts of
                                it. */
                             alsoRemove={() => {
-                              for (const race of allRaces.filter((each) => each.eventId === one.id)) {
+                              for (const race of allRaces.filter(
+                                (each) => each.eventId === one.id,
+                              )) {
                                 remove(RACES.id, race.id)
                               }
 

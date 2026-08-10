@@ -25,11 +25,21 @@ export function EntityEditor({
   options = {},
   taken = [],
   also,
+  alsoSave,
   openAt,
   onDone,
 }: {
   entity: EntityDef
   editing: Editing
+  /**
+   * What else a save changes, run with the values it is being saved with.
+   *
+   * The races of an event: moving an event moves them with it, by the same
+   * number of days (owner, 10.08.2026). Handed in rather than worked out here,
+   * because what belongs to what is a fact about the screen and not about the
+   * editor.
+   */
+  alsoSave?: (values: FormValues) => void
   /** Choices for selects whose list is data: the events a race can belong to,
    *  the members who can run a team. */
   options?: Record<string, FieldOption[]>
@@ -98,6 +108,7 @@ export function EntityEditor({
       )
     } else {
       editRecord(String(editing.record[entity.idField]), text)
+      alsoSave?.(values)
     }
 
     setSaved(values)
@@ -166,7 +177,7 @@ export function EntityEditor({
             ? `admin.form.new.${entity.id}`
             : `admin.form.edit.${entity.id}`,
         )}
-        initial={editing.mode === 'new' ? undefined : valuesFor(form, editing.record)}
+        initial={editing.mode === 'new' ? entity.start : valuesFor(form, editing.record)}
         options={options}
         check={(values) => ({ ...takenIdentity(entity, values, others), ...also?.(values) })}
         derived={entity.derived}
