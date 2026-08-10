@@ -137,7 +137,6 @@ function Section({
             </li>
           ))}
         </ul>
-
       </div>
 
       {/* Outside the panel, which is folded on a telephone: an alert that is

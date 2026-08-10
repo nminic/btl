@@ -129,9 +129,9 @@
   gap: var(--space-6);
 }
 
-/* And what stands where the delete button is not drawn yet. Quiet, because it
-   is not a control and not a fault: it is the row saying what it is waiting
-   for. */
+/* And what stands where the delete button is held back. Quiet, because it is
+   not a control: it is the row saying why the button is not there, whether the
+   file it needs is on its way or will not come. */
 .entity-row-note {
   color: var(--text-muted);
   font-size: 0.85rem;

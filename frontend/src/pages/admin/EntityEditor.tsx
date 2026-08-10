@@ -295,12 +295,16 @@ export function RowActions({
         <DeleteRecord name={name} onDelete={deleteRow} />
       ) : (
         /* Said rather than drawn and refused. A button that answers nothing is
-           worse than no button. Spoken as well, because the words replace a
-           control: a screen reader running the row otherwise finds one button
-           where every other row has two, with nothing saying why. */
-        <span className="entity-row-note" role="status">
-          {whyNoRemove}
-        </span>
+           worse than no button, and the words are in the row, where anybody
+           running the row meets them in the place the second button would be.
+
+           Not a live region. It was one, and there are forty five rows on the
+           events screen: forty five regions carrying one sentence, all of them
+           changing together the moment the file fails, is forty five identical
+           announcements. What is said once is worth saying; said forty five
+           times it is noise, which is the rule the event page already keeps
+           (resourceScope.test). */
+        <span className="entity-row-note">{whyNoRemove}</span>
       )}
     </span>
   )

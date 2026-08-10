@@ -245,7 +245,6 @@ describe('a record that is entered rather than changed', () => {
     expect(row.getByText(t('admin.basisValue.honorary'))).toBeVisible()
   })
 
-
 })
 
 describe('the identity of a record', () => {
