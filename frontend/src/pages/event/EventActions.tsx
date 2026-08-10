@@ -132,8 +132,13 @@ export function EventActions({
        (admin/AdminEvents.tsx). A copy is a record of this visit, and a public
        screen reads the file minus what has been deleted and nothing else
        (data/useResource.ts, useLive): what is created in a session never reaches
-       it. The two buttons therefore delete the same amount of the same thing;
-       they differ only in what each side can see. */
+       it.
+
+       What each side can see is the whole of the difference between the two
+       buttons. This one waits for the results before it is drawn at all
+       (EventDetail.tsx); the one in administration draws the screen without them
+       and holds back the deletion of the row until they are here
+       (admin/AdminEvents.tsx). Neither deletes an event without its results. */
 
     remove(EVENTS.id, event.id)
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)

@@ -129,6 +129,14 @@
   gap: var(--space-6);
 }
 
+/* And what stands where the delete button is not drawn yet. Quiet, because it
+   is not a control and not a fault: it is the row saying what it is waiting
+   for. */
+.entity-row-note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* Deleting is not the ordinary thing to do in a row, so it does not look like
    the button beside it until it is hovered. The confirmation does, because by
    then it is the thing about to happen. */

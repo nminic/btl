@@ -238,6 +238,7 @@ export function RowActions({
   name,
   onOpen,
   alsoRemove,
+  cannotRemove,
 }: {
   entity: EntityDef
   record: object
@@ -254,6 +255,19 @@ export function RowActions({
    * what belongs to what is a fact about the screen's own data.
    */
   alsoRemove?: () => void
+  /**
+   * Why this record cannot be deleted just now, where something says so.
+   *
+   * The events screen reads the results only so that deleting an event takes
+   * them along, and it no longer waits for them: a file of a million and a half
+   * bytes must not decide whether an event can be edited. While they are on
+   * their way there is nothing to take along, and a deletion in that window
+   * leaves results pointing at an event that is gone, each of them still
+   * counting in the standing and linking to a page that says so. The answer is
+   * to wait for the one thing the deletion needs rather than for the screen, and
+   * to say what is being waited for.
+   */
+  cannotRemove?: string
 }) {
   const { remove } = useSession()
   const id = String((record as Record<string, unknown>)[entity.idField])
@@ -277,7 +291,14 @@ export function RowActions({
   return (
     <span className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      <DeleteRecord name={name} onDelete={deleteRow} />
+      {cannotRemove === undefined ? (
+        <DeleteRecord name={name} onDelete={deleteRow} />
+      ) : (
+        /* Said rather than drawn and refused. A button that answers nothing is
+           worse than no button, and this is a state that passes on its own in a
+           second or two. */
+        <span className="entity-row-note">{cannotRemove}</span>
+      )}
     </span>
   )
 }

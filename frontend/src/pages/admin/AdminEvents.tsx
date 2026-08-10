@@ -38,8 +38,14 @@ export function AdminEvents() {
      result: they are read only to take them down with the event they belong to.
      Waited for, a results file that failed replaced this whole screen with "the
      data cannot be loaded", and with it every way of editing an event or a race,
-     over a file nothing on it draws. Where they are missing the cascade leaves
-     them, which is the safe direction the `shared` guard below already takes. */
+     over a file nothing on it draws.
+
+     What the deletion needs is waited for instead, in the one row that offers
+     it: until the results are here there is nothing to take along, and an event
+     deleted in that window leaves its results pointing at an event that is gone,
+     each still counting in the standing and linking to a page that says it does
+     not exist. This is the shape the event's own page already uses for the same
+     two buttons (EventDetail.tsx). */
   const results = dataOr(useResults(), null)
   const today = useToday()
   /**
@@ -242,6 +248,9 @@ export function AdminEvents() {
                             record={one}
                             name={one.name}
                             onOpen={() => setChosen({ mode: 'one', record: one })}
+                            cannotRemove={
+                              results === null ? t('admin.waitingForResults') : undefined
+                            }
                             /* With its races and its results, which is what the
                                same deletion does from the event's own page
                                (event/EventActions.tsx). The races are defined

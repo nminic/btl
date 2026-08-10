@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n/useI18n'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { racesOf, type Editing } from './entityForms'
+import './Entity.css'
 
 /**
  * The races of one event, on the event's own screen.
