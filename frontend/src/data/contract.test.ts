@@ -119,8 +119,8 @@ describe('the screens that draw a section of a written page', () => {
  *
  * The owner asked for the badges to become Dukati and, asked whether that
  * reached the code and the addresses too, answered that it did (PDL P11). A
- * rename of four hundred occurrences across seventy-five files is exactly the
- * kind that half happens: one file keeps the old word, and the portal has two
+ * rename of five hundred occurrences across forty-five files is exactly the kind
+ * that half happens: one file keeps the old word, and the portal has two
  * names for one thing again with nothing saying so.
  *
  * Two things keep the old word on purpose and are named here, so that "no
@@ -156,7 +156,15 @@ describe('what the ducats are called', () => {
          a constant written `BADGES` walked past it, as did every capitalised
          `Značke`: a guard that sees two of the three ways a word is written is
          one that lets the third through. */
-      for (const match of code.matchAll(/[A-Za-z]*badge[A-Za-z_]*|zna[čc]k[a-zčćšđž]*/gi)) {
+      /* Without regard to case, because the first pass asked for `[Bb]adge` and
+         a constant written `BADGES` walked past it, as did every capitalised
+         `Značke`.
+
+         And with the vowel between, because the genitive plural of the old word
+         is `značaka`: the pattern asked for `k` straight after `č`, so the one
+         inflected form the dictionary actually used was the one form it could
+         not see. */
+      for (const match of code.matchAll(/[A-Za-z]*badge[A-Za-z_]*|zna[čc]a?k[a-zčćšđž]*/gi)) {
         said.push(`${path}: ${match[0]}`)
       }
     }
@@ -193,6 +201,12 @@ describe('what the ducats are called', () => {
     expect(read).toContain('i18n/sr.json')
     expect(read).toContain('mock/pages.json')
     expect(read).toContain('mock/ducats.json')
+    /* And the stylesheets, which were the one kind nothing pinned: dropping
+       '.css' from the list of what is read switched thirty-six files out of the
+       sweep in silence. */
+    expect(read).toContain('components/DucatArt.css')
+    /* And the page the browser is handed, which carries words of its own. */
+    expect(read).toContain('index.html')
   })
 
   it('reads every file, so the sweep above is looking at something', () => {
@@ -213,6 +227,9 @@ function everything(): { path: string; code: string }[] {
   return [
     ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
     ...under(join(process.cwd(), 'public'), '', ['.json']),
+    /* The page the browser is handed before any of that. It carries a title and
+       a description of its own, which is words a visitor reads. */
+    { path: 'index.html', code: readFileSync(join(process.cwd(), 'index.html'), 'utf-8') },
   ]
 }
 

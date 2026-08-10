@@ -13,7 +13,8 @@
   color: var(--text);
 }
 
-/* A gold pill called .ducat used to live here with no user anywhere in the
+/* A gold pill, under the name the ducats had until 06.08.2026, used to live
+   here with no user anywhere in the
    portal. Vite bundles every imported stylesheet into one global sheet, so it
    was not merely dead: it painted every card on the ducats page gold and gave
    each one a 999px radius, because that page names its cards .ducat too. Gold

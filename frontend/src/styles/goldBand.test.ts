@@ -1097,3 +1097,35 @@ describe('the height of a bar on the column chart', () => {
   })
 })
 
+
+/**
+ * A class named on one side and not the other.
+ *
+ * The rename of 06.08.2026 touched five hundred occurrences across markup and
+ * stylesheets, and the guard written for it catches the word that went, not a
+ * name changed in one file and left standing in the other. Half-renaming
+ * `--ducat-art-size` on the profile passed every test on the portal, and the
+ * drawing there would have fallen back to its default at every width with
+ * nothing saying so.
+ *
+ * So every hook the ducats use is read from both ends: the sheet that sets it
+ * and the sheet or the screen that reads it.
+ */
+describe('the hooks the ducats hang on', () => {
+  for (const [name, sets, reads] of [
+    ['--ducat-art-size', 'src/components/DucatGallery.css', 'src/components/DucatArt.css'],
+    ['--ducat-art-size', 'src/pages/Profile.css', 'src/components/DucatArt.css'],
+    ['.awards__ducats', 'src/pages/Profile.css', 'src/pages/CompetitorAwards.tsx'],
+    ['.ducats__sentence', 'src/pages/member/Member.css', 'src/pages/admin/AdminDucats.tsx'],
+    ['.inbox__count', 'src/app/Shell.css', 'src/app/MessagesMenu.tsx'],
+  ] as const) {
+    it(`is spelled the same where ${name} is set and where it is read`, () => {
+      /* Without the dot, because markup writes `className="awards__ducats"` and
+         a stylesheet writes `.awards__ducats`. */
+      const written = name.startsWith('.') ? name.slice(1) : name
+
+      expect(read(sets), `${sets} sets ${name}`).toContain(written)
+      expect(read(reads), `${reads} reads ${name}`).toContain(written)
+    })
+  }
+})
