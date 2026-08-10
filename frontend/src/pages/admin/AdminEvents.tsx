@@ -142,7 +142,7 @@ export function AdminEvents() {
                   <EntityEditor
                     /* Drawn again where the races have moved the event under it,
                        so it is seeded from the day the event is on now. */
-                    key={movedByRaces}
+                    seed={movedByRaces}
                     entity={EVENTS}
                     editing={
                       openEvent === undefined ? editing : { mode: 'one', record: openEvent }
@@ -170,7 +170,12 @@ export function AdminEvents() {
                                 : ''),
                           )
                           .map((each) => each.slug),
-                        editing.mode === 'one' ? editing.record : undefined,
+                        /* The same record the editor was handed, so the address
+                           the clash is tested against is the address the save
+                           will write. Undefined where a new event is being
+                           entered, which is what says there is nothing to
+                           keep. */
+                        openEvent,
                       )
                     }
                     /* The races move with the event, by the same number of days

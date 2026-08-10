@@ -897,7 +897,7 @@
     "no": "Ne",
     "eventTaken": "Događaj sa tim nazivom već postoji te godine. Promenite naziv ili godinu: adresa se pravi od naziva i godine.",
     "racesOf": "Trke na događaju {event}",
-    "racesPutFormAway": "Dok se trka uređuje, forma događaja se sklanja. Sačuvajte izmene na događaju pre nego što otvorite trku.",
+    "racesPutFormAway": "Dok se trka uređuje, forma događaja se sklanja, a brisanje trke je ponovo iscrtava. Sačuvajte izmene na događaju pre nego što otvorite ili obrišete trku.",
     "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",

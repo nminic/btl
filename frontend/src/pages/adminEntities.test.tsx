@@ -203,6 +203,49 @@ describe('the races of an event', () => {
     ).toBeVisible()
   })
 
+  it('keeps the confirmation of a save when a race is deleted after it', async () => {
+    /* The form is drawn again when a race moves the event, so that saving it
+       does not drag the races back. The confirmation must survive that: a
+       moderator who has just saved and then deletes a race would otherwise watch
+       "Sačuvano" disappear, the empty form come back, and the focus fall to the
+       page. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const search = await screen.findByLabelText(/Pretraga/)
+
+    await user.type(search, 'Beogradski maraton')
+
+    const listed = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        .find(
+          (one) =>
+            /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? ''),
+        ),
+      'the event of 2027',
+    )
+
+    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
+    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    const first_race = within(
+      at(
+        within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+          .getAllByRole('row')
+          .slice(1),
+        0,
+      ),
+    )
+
+    await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
+    await user.click(first_race.getByRole('button', { name: /^Potvrdi brisanje/ }))
+
+    expect(screen.getByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+
   it('does not drag the races back when the event is saved after one of them moved it', async () => {
     /* The workflow the screen invites: change something about the races, then
        correct the town on the event and save. The form was seeded when it was
