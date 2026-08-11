@@ -94,7 +94,13 @@ function like(current: unknown, value: string): unknown {
   }
 
   if (typeof current === 'boolean') {
-    return value === 'true'
+    /* „true" is what a checkbox writes and „yes" is what a pair of buttons
+       writes (forms/types.ts, `choice`): the same question asked two ways, and
+       the record keeps one answer. Written without this, „no" is not „true" and
+       so is false, which is right by accident, while „yes" is false as well,
+       which puts a beginner into the wrong category for a whole season and
+       cannot be undone (PDL P7). */
+    return value === 'true' || value === 'yes'
   }
 
   return value
@@ -129,6 +135,14 @@ export function recordValue(field: FieldDef, text: string): unknown {
 
   if (field.type === 'checkbox') {
     return text === 'true'
+  }
+
+  /* Two buttons answering a question a record keeps as a yes or a no, which is
+     the one shape of `choice` that is not a word of its own: „Prva sezona" and
+     „Starosna" are the two faces of `firstSeason2027` (data/types.ts). Every
+     other `choice` writes its own value and falls through. */
+  if (field.type === 'choice' && (text === 'yes' || text === 'no')) {
+    return text === 'yes'
   }
 
   return text

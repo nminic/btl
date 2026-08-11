@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import './FieldHint.css'
 
@@ -18,13 +18,20 @@ import './FieldHint.css'
  * people have (WCAG 2.2 SC 1.3.1), and this one is often the difference between
  * a form that can be filled in and one that cannot.
  *
- * **Whether it is on screen is one piece of state, and nothing else.** It was
- * three: state for the press, `:hover` for the pointer and `:focus-visible` for
- * the keyboard, each able to show it and only the first able to hide it. Escape
- * then closed a tooltip that a hover was still holding open, and SC 1.4.13 asks
- * that content on hover or focus can be dismissed without moving the pointer or
- * the focus away. One piece of state, opened by all three and closed by Escape,
- * is what makes that true.
+ * **Two things hold it open and they are counted apart.** A pointer resting on
+ * it and a keyboard standing on it are two different reasons, and one going away
+ * must not close what the other is still holding: written as one flag, taking
+ * the mouse away closed a box the focus was keeping open. WCAG 2.2 SC 1.4.13
+ * asks for exactly that pair, and for a third thing besides: Escape closes it
+ * without moving either of them, so the answer is a third piece of state that
+ * outranks both and is forgotten the next time either arrives.
+ *
+ * **It opens in the flow, between the label and the field.** Laid over what
+ * comes after it, a rule left open by a finger swallowed the first press on
+ * whatever it covered, and a pointer could never reach the words to read them to
+ * the end: the way down crossed the control, which is outside this and closed it
+ * on the way. Opening in the flow, the pointer moves straight from the letter
+ * into the words, and nothing is covered.
  */
 export function FieldHint({
   id,
@@ -37,19 +44,54 @@ export function FieldHint({
   of: string
 }) {
   const { t } = useI18n()
-  const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  /* Put away by Escape, and only until it is asked for again. */
+  const [dismissed, setDismissed] = useState(false)
+  const open = (hovered || focused) && !dismissed
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    /* On the document, because the press that has to close this is usually
+       nowhere near it: a pointer resting on the letter while the fingers are
+       typing into the field beside it leaves the keyboard somewhere else
+       entirely, and a handler on the button never hears it. The portal's menus
+       answer Escape the same way (app/Dropdown.tsx). */
+    function onKeyDown(pressed: KeyboardEvent) {
+      if (pressed.key === 'Escape') {
+        setDismissed(true)
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  /**
+   * Whether the pointer went somewhere that is still a hint.
+   *
+   * The letter and the words are two elements, so a pointer travelling from one
+   * to the other leaves the first: asked only about the element it left, the box
+   * closed under the pointer on its way into the words, and they could never be
+   * read to the end (WCAG 2.2 SC 1.4.13, hoverable). Asked about the hint they
+   * both stand in, the journey stays inside.
+   *
+   * Any hint and not this one, because a pointer cannot cross from one into
+   * another without passing through something that is neither: each stands in
+   * its own field, with a label and a control between them.
+   */
+  function stillHere(going: EventTarget | null): boolean {
+    return going instanceof Element && going.closest('.hint') !== null
+  }
 
   return (
-    <span
-      className={open ? 'hint hint--open' : 'hint'}
-      /* The pointer opens it and taking the pointer away closes it, which is
-         what a tooltip is. Held on the wrapper rather than on the button, so
-         that reaching for the words does not close them on the way: the wrapper
-         holds both, and SC 1.4.13 asks that hovered content stay long enough to
-         be read. */
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <span className={open ? 'hint hint--open' : 'hint'}>
       <button
         type="button"
         className="hint__ask"
@@ -66,21 +108,31 @@ export function FieldHint({
         aria-describedby={of}
         aria-expanded={open}
         aria-controls={id}
-        /* A press opens it and does not close it, because a press is also an
-           arrival: toggling here fought the focus that the same press brings,
-           and the pair ended where they started. What closes it is Escape, or
-           leaving it. */
-        onClick={() => setOpen(true)}
-        /* The keyboard opens it by arriving, the way the pointer does, and
-           Escape closes it without going anywhere. */
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        /* A press asks for it and does not put it away, because a press is also
+           an arrival: a toggle here fought the focus the same press brings, and
+           the pair ended where they started. */
+        onClick={() => setDismissed(false)}
+        onFocus={() => {
+          setFocused(true)
+          setDismissed(false)
+        }}
+        onBlur={() => setFocused(false)}
+        onMouseOver={() => {
+          setHovered(true)
+          setDismissed(false)
+        }}
+        onMouseOut={(going) => {
+          if (!stillHere(going.relatedTarget)) {
+            setHovered(false)
+          }
+        }}
         onKeyDown={(pressed) => {
           if (pressed.key === 'Escape') {
             /* And no further: a form inside a sheet would otherwise close the
-               sheet with the same press that closed this. */
+               sheet with the same press that closed this. The listener above
+               answers the other case, where the keyboard is elsewhere. */
             pressed.stopPropagation()
-            setOpen(false)
+            setDismissed(true)
           }
         }}
       >
@@ -94,8 +146,20 @@ export function FieldHint({
       {/* Not `role="tooltip"`: this is read through `aria-describedby` on the
           field, which is where a rule belongs, and a second announcement of the
           same words as the button's own description would be the rule said
-          twice. */}
-      <span className="hint__text" id={id}>
+          twice.
+
+          It holds itself open under the pointer, so the words can be read to the
+          end and taken (SC 1.4.13 asks that hovered content be hoverable). */}
+      <span
+        className="hint__text"
+        id={id}
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={(going) => {
+          if (!stillHere(going.relatedTarget)) {
+            setHovered(false)
+          }
+        }}
+      >
         {text}
       </span>
     </span>

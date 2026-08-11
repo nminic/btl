@@ -18,8 +18,18 @@
  *
  * 60rem is four columns of about 13rem, which holds a date, a name and a town
  * with room to spare, and it is still short of the page's own reading width. */
-.form:has(.form__row) {
-  max-width: 60rem;
+@media (min-width: 820px) {
+  .form:has(.form__row) {
+    max-width: 60rem;
+  }
+
+  /* And a field standing on its own inside such a form keeps the width one
+     field should have. „Svojim rečima" stretched to the full sixty rem, and a
+     box whose ends are that far apart is two places to look rather than one. */
+  .form:has(.form__row) > .field,
+  .form:has(.form__row) > .form__submit {
+    max-inline-size: 34rem;
+  }
 }
 
 .form__title {
@@ -32,9 +42,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  /* The anchor the rule hangs from: it opens under the field and as wide as
-     the field, so it cannot run off the side of a telephone (FieldHint.css). */
-  position: relative;
 }
 
 .field__label {
@@ -263,7 +270,10 @@
   user-select: none;
 }
 
-.choice__label:hover {
+/* On the input and not on the label: the input lies over the whole of the label
+   at `opacity: 0` (above), so the pointer is never over the label itself and a
+   rule written there never applied. */
+.choice__input:hover + .choice__label {
   border-color: var(--text-muted);
 }
 
@@ -292,9 +302,13 @@
   border-color: var(--down);
 }
 
-/* The name of a field and the letter that explains it, on one line. */
+/* The name of a field, the letter that explains it, and the rule itself when it
+   is open: two on the first line and the third across the second (FieldHint.css
+   makes the hint `display: contents`, so all three are items here). A grid and
+   not a row, because the third is a row of its own. */
 .field__head {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
   gap: var(--space-4);
 }

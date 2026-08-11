@@ -1,8 +1,12 @@
-/* The rule a field carries, folded into the letter beside its label. */
+/* The rule a field carries, folded into the letter beside its label.
+ *
+ * `display: contents` and not a box of its own: the letter belongs on the line
+ * with the label, and the words belong on the line under it, which makes them
+ * two items of the head's own grid (FormRenderer.css, `.field__head`). The
+ * element stays in the document all the same, which is what the pointer is
+ * measured against when it moves from one to the other (FieldHint.tsx). */
 .hint {
-  display: inline-flex;
-  vertical-align: middle;
-  margin-inline-start: var(--space-6);
+  display: contents;
 }
 
 /* Round, quiet, and big enough to be pressed with a finger: the target is the
@@ -44,36 +48,28 @@
 }
 
 /* Asked for: by the pointer, by the keyboard, or by a finger. All three go
-   through one piece of state, so all three are closed by Escape (FieldHint.tsx).
+   through the same state, so Escape closes what any of them opened.
  *
- * Laid over the field it belongs to and not over the letter that opened it: the
- * letter stands wherever the label ends, so anchored to it the box ran off the
- * side of a telephone and took the page with it. Anchored to the field, its
- * edges are the field's edges, which are the edges of the page's own column.
- * `.field` is the positioned ancestor (FormRenderer.css). */
+ * In the flow and not over it. Laid over what follows, a rule left open by a
+ * finger swallowed the first press on whatever it covered, and a pointer could
+ * never reach the words: the way down to them crossed the control, which closed
+ * it on the way. Standing between the label and the control, it is reached by
+ * moving straight down, and the field it explains moves down with it. */
 .hint--open .hint__text {
-  position: absolute;
-  z-index: 8;
-  inset-block-start: 100%;
-  inset-inline: 0;
+  grid-column: 1 / -1;
+  position: static;
   inline-size: auto;
-  /* Never wider than a line of text is comfortable to read, and never wider
-     than the field it hangs under. */
-  max-inline-size: 32rem;
   block-size: auto;
   overflow: visible;
   clip-path: none;
   white-space: normal;
-  /* No gap to fall into on the way down to it: the pointer would leave the
-     wrapper, the box would close, and the words could never be reached to be
-     read or copied (WCAG 2.2 SC 1.4.13 asks that hovered content be hoverable).
-     The room it needs is inside it. */
-  margin-block-start: 0;
+  /* Never wider than a line of text is comfortable to read. */
+  max-inline-size: 32rem;
+  margin-block-start: var(--space-4);
   padding: var(--space-8) var(--space-10);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   background: var(--surface);
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.45);
   color: var(--text);
   font-size: 0.85rem;
   font-weight: 400;

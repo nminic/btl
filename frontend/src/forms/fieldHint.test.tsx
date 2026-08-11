@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import { render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import registracija from './definitions/registracija.form.json'
@@ -44,6 +44,62 @@ describe('the rule beside a field', () => {
     expect(rule).toHaveClass('hint__text')
   })
 
+  it('is closed by Escape pressed anywhere, while the pointer stays put', async () => {
+    /* The case the whole rule exists for (WCAG 2.2 SC 1.4.13): somebody typing
+       into a field with the pointer resting on the letter beside another one.
+       The press goes to the field, not to the button, so a handler on the button
+       never hears it and the box stayed open under a pointer that had not moved.
+       SC 1.4.13 asks that it can be put away without moving either. */
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    /* The keyboard goes first and stays where it is: pressing anything after
+       this is pressing it into the field, not into the button. */
+    await user.click(screen.getByLabelText(/^Adresa za slanje$/))
+    await user.hover(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByLabelText(/^Adresa za slanje$/)).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+    /* And neither the pointer nor the keyboard was moved to do it, which is the
+       whole of what SC 1.4.13 asks. */
+    expect(screen.getByLabelText(/^Adresa za slanje$/)).toHaveFocus()
+  })
+
+  it('stays open under a pointer that leaves while the keyboard is on it', async () => {
+    /* Two reasons hold it open and they are counted apart: taking the pointer
+       away must not close what the focus is still holding. */
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    await user.click(asked)
+    await user.unhover(asked)
+
+    expect(asked).toHaveFocus()
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+  })
+
   it('opens on the button beside the field, and closes on leaving it', async () => {
     /* A press opens it and so does arriving with the keyboard. It does not
        close on a second press: a press is also an arrival, so a toggle would
@@ -62,7 +118,10 @@ describe('the rule beside a field', () => {
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
 
+    /* Both reasons have to go: the press left the keyboard on it and the press
+       left the pointer on it too. */
     await user.tab()
+    await user.unhover(asked)
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
@@ -119,11 +178,18 @@ describe('the rule beside a field', () => {
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
 
-    await user.hover(hint)
+    await user.hover(asked)
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
 
-    await user.unhover(hint)
+    /* And the words themselves hold it open, so they can be read to the end and
+       taken: the pointer travels from the letter into them without the box
+       closing under it (WCAG 2.2 SC 1.4.13, hoverable). */
+    await user.hover(within(hint).getByText(/Ulica i broj/))
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    await user.unhover(within(hint).getByText(/Ulica i broj/))
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
@@ -139,6 +205,167 @@ describe('the rule beside a field', () => {
 
     expect(asked).toHaveAttribute('aria-describedby', 'field-address-label')
     expect(document.getElementById('field-address-label')).toHaveTextContent('Adresa za slanje')
+  })
+})
+
+describe('the rule of a field, once it is open', () => {
+  it('is put away by Escape even when the keyboard is standing on it', async () => {
+    /* The half of Escape that the button itself answers, so that a form inside
+       a sheet is not closed by the same press. */
+    const user = setupUser()
+    renderForm()
+
+    const asked = within(
+      must(
+        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
+        'the field of the town',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+
+    await user.click(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    await user.keyboard('{Escape}')
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('is asked for again after it was put away', async () => {
+    /* Escape puts it away and nothing more: the next time the pointer or the
+       keyboard arrives, it is a new asking. */
+    const user = setupUser()
+    renderForm()
+
+    const asked = within(
+      must(
+        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
+        'the field of the town',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+
+    await user.click(asked)
+    await user.keyboard('{Escape}')
+    await user.unhover(asked)
+    await user.hover(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+describe('the pointer leaving the rule of a field', () => {
+  it('closes it when the pointer leaves the window entirely', () => {
+    /* Then there is nowhere it went: `relatedTarget` is null, which is not an
+       element and so is not this hint either. Dispatched rather than acted,
+       because leaving a window is not something a person does inside one. */
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    fireEvent.mouseOver(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.mouseOut(asked, { relatedTarget: null })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('closes it when the pointer goes to something that is not a hint', () => {
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    fireEvent.mouseOver(asked)
+    fireEvent.mouseOut(asked, { relatedTarget: screen.getByLabelText(/^Mesto$/) })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('keeps it open while the pointer moves from the words back to the letter', () => {
+    /* The other direction of the same journey: both halves ask about the hint
+       they stand in, not about themselves. */
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+    const words = must(hint.querySelector<HTMLElement>('.hint__text'), 'the words of the rule')
+
+    fireEvent.mouseOver(asked)
+    fireEvent.mouseOut(asked, { relatedTarget: words })
+    fireEvent.mouseOver(words)
+    fireEvent.mouseOut(words, { relatedTarget: asked })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+describe('a link inside the words of a field', () => {
+  it('leads to the rules, in the language the form is being read in', () => {
+    /* The confirmation says what is being agreed to and points at it (owner,
+       11.08.2026). The address carries no language of its own in the definition:
+       it is added here, from the page (ADL A2). */
+    renderForm()
+
+    const toRules = screen.getByRole('link', { name: 'pravilnikom' })
+
+    expect(toRules).toHaveAttribute('href', '/sr/pravilnik')
+    /* In a tab of its own, or following it would throw away a form that is half
+       filled in. */
+    expect(toRules).toHaveAttribute('target', '_blank')
+  })
+
+  it('keeps the sentence whole when a translation drops the mark', () => {
+    /* „{link}" is the sort of thing that goes missing when somebody translates
+       from the Serbian, and the dictionary guard cannot see it: the key resolves
+       either way. What must not happen is the link sliding to the end of a
+       sentence it belongs in the middle of. */
+    render(
+      <ClockProvider simulatedDay={null}>
+        <I18nProvider locale="sr">
+          <FormRenderer
+            form={{
+              id: 'proba',
+              titleKey: 'proba.naslov',
+              submitKey: 'proba.posalji',
+              fields: [
+                {
+                  name: 'saglasnost',
+                  type: 'checkbox',
+                  labelKey: 'proba.bezOznake',
+                  linkKey: 'proba.veza',
+                  linkTo: 'pravilnik',
+                },
+              ],
+            }}
+            onSubmit={() => {}}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByText('proba.bezOznake')).toBeInTheDocument()
   })
 })
 
@@ -187,8 +414,18 @@ describe('an answer chosen from buttons', () => {
 
     const summary = screen.getByRole('alert')
 
-    expect(within(summary).getByRole('link', { name: 'Pol' })).toBeInTheDocument()
+    const toSex = within(summary).getByRole('link', { name: 'Pol' })
+
+    expect(toSex).toBeInTheDocument()
     expect(within(summary).getByRole('link', { name: 'Kategorija' })).toBeInTheDocument()
+
+    /* And it leads somewhere. Every other field is reached through its own
+       control, which carries the id the summary points at; a group has no one
+       control, so without an id of its own the link „Pol" pointed at nothing,
+       and these two are the likeliest errors on this form. */
+    const at = must(toSex.getAttribute('href'), 'the address the summary points at')
+
+    expect(document.getElementById(at.replace('#', ''))).toBeInTheDocument()
   })
 })
 

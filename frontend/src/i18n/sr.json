@@ -416,7 +416,7 @@
     "genderHint": "Liga ima muški i ženski poredak i to je jedina podela po polu.",
     "cityHint": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
     "healthStatementLink": "pravilnikom",
-    "healthStatementHint": "Za sve što se dešava na trci odgovoran je onaj ko je organizuje. Portal te ne prijavljuje na trku i nije organizator."
+    "healthStatementHint": "Za sve što se dešava na trci odgovoran je onaj ko je organizuje."
   },
   "shirt": {
     "XS": "XS",

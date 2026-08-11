@@ -28,21 +28,24 @@ function ruleFor(selector: string): string {
 }
 
 describe('the box the rule of a field opens in', () => {
-  it('hangs from the field and stretches to both of its edges', () => {
-    /* Anchored to the letter beside the label it opened at whatever pixel the
-       label happened to end on, and a box of up to 22rem starting there is off
-       the right edge of a 360 pixel screen: the page then scrolls sideways,
-       which P24 and WCAG 2.2 SC 1.4.10 both forbid. Anchored to the field, its
-       edges are the field's, and the field is inside the page's own column. */
+  it('stands in the flow, between the name of the field and the field', () => {
+    /* Laid over what follows, it covered the field under it: a rule left open by
+       a finger swallowed the first press on whatever it covered, and a pointer
+       could never reach the words to read them to the end, because the way down
+       crossed the control and the control is outside the hint. In the flow it
+       covers nothing and is reached by moving straight down. */
     const open = ruleFor('.hint--open .hint__text')
 
-    expect(open).toContain('inset-inline: 0;')
-    expect(open).toContain('inset-block-start: 100%;')
-    /* And the field is what it is measured against. */
-    const field = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
+    expect(open).toContain('position: static;')
+    expect(open).not.toContain('z-index')
+    /* Across the whole of the head, which is the row the name of the field
+       stands in. */
+    expect(open).toContain('grid-column: 1 / -1;')
 
-    expect(field.slice(field.indexOf('.field {'), field.indexOf('}', field.indexOf('.field {'))))
-      .toContain('position: relative')
+    const head = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
+    const at = head.indexOf('.field__head {')
+
+    expect(head.slice(at, head.indexOf('}', at))).toContain('display: grid')
   })
 
   it('is shown by one thing only, so that one thing can hide it', () => {
@@ -65,13 +68,13 @@ describe('the box the rule of a field opens in', () => {
     expect(shown).toEqual(['.hint--open .hint__text'])
   })
 
-  it('leaves no gap between the letter and the words', () => {
-    /* A gap is a strip the pointer falls into on its way down to the text: the
-       wrapper is left, the box closes, and the words can never be reached to be
-       read to the end or copied. SC 1.4.13 asks that hovered content be
-       hoverable. */
-    const open = ruleFor('.hint--open .hint__text')
-
-    expect(open).toContain('margin-block-start: 0;')
+  it('keeps the letter and the words inside one element', () => {
+    /* Which is what lets the pointer travel from one to the other without the
+       box closing under it (SC 1.4.13 asks that hovered content be hoverable):
+       the hint is a wrapper the two share, and whether the pointer left it is
+       decided against that wrapper rather than against either half
+       (FieldHint.tsx). `display: contents` is what keeps the wrapper out of the
+       layout while leaving it in the document. */
+    expect(ruleFor('.hint')).toContain('display: contents;')
   })
 })

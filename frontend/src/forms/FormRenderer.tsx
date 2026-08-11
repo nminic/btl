@@ -137,6 +137,16 @@ function worded(
 
   const [before, after] = words.split('{link}')
 
+  /* A translation that lost the mark keeps its words rather than gaining a link
+     glued to the end of them. The other language is written by somebody working
+     from the Serbian, and „{link}" is the sort of thing that is dropped; a
+     sentence about the rules with the rules missing is worse than a sentence
+     with no link at all, and the dictionary guard cannot see this one because
+     the key resolves either way. */
+  if (after === undefined) {
+    return words
+  }
+
   return (
     <>
       {before}
@@ -265,7 +275,15 @@ const Field = memo(function Field({
          one control, so the group carries it. Without this the link „Pol" led to
          an element that is not there, and it is the likeliest error on this
          form: sex and category are the two things nothing is chosen for. */
-      <fieldset className="field field--choice" id={inputId}>
+      <fieldset
+        className="field field--choice"
+        id={inputId}
+        /* And it takes the cursor when the summary of errors leads here. A
+           fieldset is not focusable of itself, so following the link only
+           scrolled: the keyboard stayed where it was, which is not what a list
+           of things to fix promises. */
+        tabIndex={-1}
+      >
         {/* A legend names the group, and nothing but the name goes in it: a rule
             written here would be read out before every one of the buttons. */}
         <legend className="field__label" id={labelId}>
@@ -322,7 +340,11 @@ const Field = memo(function Field({
           njega stiže veza za potvrdu, i njime se kasnije prijavljuješ". */}
       <span className="field__head">
         <label className="field__label" htmlFor={inputId} id={labelId}>
-          {t(field.labelKey)}
+          {/* And a link inside the words where the words carry one, the same on
+              every kind of field: it was written only into the confirmation,
+              which is the one field that has one today, so a link put on any
+              other was dropped without a word. */}
+          {worded(t(field.labelKey), field, locale, t)}
           {field.required !== true && (
             <span className="field__optional"> ({t('form.optional')})</span>
           )}
