@@ -557,6 +557,14 @@ describe('TopByCategory', () => {
       expect(block.slice(0, block.indexOf('}'))).toContain(setting)
     }
 
+    /* And they have to come after it, because equal weight is settled by order
+       and these two now weigh the same. Written without this, the rule that sets
+       the motion could be moved to the foot of the file and the faces would slide
+       again for exactly the people who asked them not to, with nothing red. */
+    expect(css.lastIndexOf('@media (prefers-reduced-motion: reduce)')).toBeGreaterThan(
+      css.indexOf(`${setting} {`),
+    )
+
     /* And the rule they have to beat is the one that names all three of the
        face's changes, so the test fails if that one is split up again. */
     const face = css.slice(css.indexOf(`${setting} {`))

@@ -80,6 +80,10 @@ describe('the category code never reaches the screen on its own', () => {
      of the standings, and once onto the row of honours, each time because the
      screen was translated and one call beside it was not. A test per screen
      would have caught the screen it was written for and no other. */
+  /* Screens only. A `.ts` file is where the code is worked out and kept, and
+     that is right: `pages/profile/awards.ts` files an honour under the code and
+     the screen that draws it looks the word up. Widening this to `.ts` flagged
+     four lines that are doing exactly what they should. */
   const drawn = /\.tsx$/
 
   function sourcesUnder(folder: string): string[] {
