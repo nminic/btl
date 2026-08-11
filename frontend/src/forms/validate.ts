@@ -136,7 +136,11 @@ export function validateForm(
 
        Said on the place, because the country is drawn there and there is
        nowhere else to say it. */
-    if (field.type === 'place' && field.required === true && String(values.country ?? '') === '') {
+    /* Compared to the empty string and not through a fallback: a form with a
+       place field always carries a country, because `emptyValues` writes one
+       (below), so „no such key" is a case that cannot happen and a fallback for
+       it is a branch nothing can walk. */
+    if (field.type === 'place' && field.required === true && values.country === '') {
       errors[field.name] = { key: 'form.errors.countryMissing' }
     }
   }

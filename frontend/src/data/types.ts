@@ -51,6 +51,13 @@ export type Competitor = {
   birthYear: number
   /** Whether this member is spending the 2027 season in the first season
    *  category rather than in their age band. */
+  /**
+   * Whether this member runs in the beginners' category rather than in the one
+   * for their age (PDL P7). The registration form asks it as two buttons and
+   * writes „yes" or „no", the same two words an event's `featured` carries: a
+   * record keeps it as the yes or no it is, and the form and the record meet at
+   * the layer that turns one into the other (forms/records.ts).
+   */
   firstSeason2027: boolean
   firstSeason: number
   active: boolean

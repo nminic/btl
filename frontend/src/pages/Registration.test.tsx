@@ -282,6 +282,22 @@ describe('the country a member lives in', () => {
   })
 })
 
+describe('a town the codebook does know', () => {
+  it('carries its country, so nothing more is asked', async () => {
+    /* The other half of the rule above: a town out of the codebook answers the
+       country itself, and the form goes through without anybody choosing one. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  })
+})
+
 describe('the telephone', () => {
   it('is not asked for at all, and no longer exists on the form', async () => {
     /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na

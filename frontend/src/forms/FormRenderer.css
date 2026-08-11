@@ -1,8 +1,25 @@
+/* A column of fields, no wider than a line of a form ought to be. */
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--space-20);
   max-width: 34rem;
+}
+
+/* Unless it is laid out in rows, and then it is as wide as those rows need.
+ *
+ * The rule above is the right width for one field to a line: a box wider than
+ * this is a box whose left and right ends are read as two different places. A
+ * row of four inside it is something else: 34rem is 544 pixels, and four
+ * columns of that with the gaps between them are 124 pixels each, which the
+ * date „12/04/1985" does not fit into once its calendar button has taken its
+ * corner. The owner asked for rows so that a form could be filled in faster,
+ * and four boxes nobody can type in are slower than one.
+ *
+ * 60rem is four columns of about 13rem, which holds a date, a name and a town
+ * with room to spare, and it is still short of the page's own reading width. */
+.form:has(.form__row) {
+  max-width: 60rem;
 }
 
 .form__title {
@@ -15,6 +32,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* The anchor the rule hangs from: it opens under the field and as wide as
+     the field, so it cannot run off the side of a telephone (FieldHint.css). */
+  position: relative;
 }
 
 .field__label {
@@ -206,13 +226,26 @@
 /* The radio itself is not drawn, and is not taken out of the page either: it
    keeps the focus, the keyboard and the announcement, and the label beside it is
    what is seen and pressed. `appearance: none` would leave a control that is
-   still laid out; `display: none` would leave a group nobody can reach. */
+   still laid out; `display: none` would leave a group nobody can reach.
+ *
+   Laid over the whole of its label rather than clipped to a pixel in the corner.
+   What a screen reader's cursor draws, and what a magnifier moves the view to,
+   is the box of the control itself: clipped to 1 by 1, both pointed at a spot
+   beside the button while the button was what a person was looking at. Spread
+   over the label and made invisible, the two are the same box. */
+.choice__one {
+  position: relative;
+  display: inline-flex;
+}
+
 .choice__input {
   position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .choice__label {

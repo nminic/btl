@@ -308,7 +308,7 @@ export function PlaceField({
           for a town it does not have, which is how a race in a hamlet stops
           being filed wherever the last chosen town was. */}
       <label className="place__country-pick">
-        <span>{t('admin.field.country')}</span>
+        <span>{t('form.country')}</span>
         <select
           className={known === undefined ? 'field__control' : 'field__control field__control--held'}
           value={country}

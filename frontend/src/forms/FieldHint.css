@@ -1,6 +1,5 @@
 /* The rule a field carries, folded into the letter beside its label. */
 .hint {
-  position: relative;
   display: inline-flex;
   vertical-align: middle;
   margin-inline-start: var(--space-6);
@@ -44,22 +43,32 @@
   white-space: nowrap;
 }
 
-/* Asked for: by the pointer, by the keyboard, or by a finger on the button. */
-.hint:hover .hint__text,
-.hint__ask:focus-visible + .hint__text,
+/* Asked for: by the pointer, by the keyboard, or by a finger. All three go
+   through one piece of state, so all three are closed by Escape (FieldHint.tsx).
+ *
+ * Laid over the field it belongs to and not over the letter that opened it: the
+ * letter stands wherever the label ends, so anchored to it the box ran off the
+ * side of a telephone and took the page with it. Anchored to the field, its
+ * edges are the field's edges, which are the edges of the page's own column.
+ * `.field` is the positioned ancestor (FormRenderer.css). */
 .hint--open .hint__text {
   position: absolute;
   z-index: 8;
-  inset-block-start: calc(100% + var(--space-6));
-  inset-inline-start: 0;
-  inline-size: max-content;
-  /* Never wider than the column it stands in, and never wider than a line of
-     text is comfortable to read. */
-  max-inline-size: min(22rem, 80vw);
+  inset-block-start: 100%;
+  inset-inline: 0;
+  inline-size: auto;
+  /* Never wider than a line of text is comfortable to read, and never wider
+     than the field it hangs under. */
+  max-inline-size: 32rem;
   block-size: auto;
   overflow: visible;
   clip-path: none;
   white-space: normal;
+  /* No gap to fall into on the way down to it: the pointer would leave the
+     wrapper, the box would close, and the words could never be reached to be
+     read or copied (WCAG 2.2 SC 1.4.13 asks that hovered content be hoverable).
+     The room it needs is inside it. */
+  margin-block-start: 0;
   padding: var(--space-8) var(--space-10);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
@@ -71,12 +80,4 @@
   line-height: 1.5;
   text-transform: none;
   letter-spacing: normal;
-}
-
-/* Against the right edge of the page it opens leftwards, or the page grows a
-   sideways scrollbar on a telephone. */
-.field:last-child .hint:hover .hint__text,
-.field:last-child .hint--open .hint__text {
-  inset-inline-start: auto;
-  inset-inline-end: 0;
 }

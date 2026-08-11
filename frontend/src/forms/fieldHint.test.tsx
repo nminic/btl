@@ -44,7 +44,11 @@ describe('the rule beside a field', () => {
     expect(rule).toHaveClass('hint__text')
   })
 
-  it('opens on the button beside the field, and closes again', async () => {
+  it('opens on the button beside the field, and closes on leaving it', async () => {
+    /* A press opens it and so does arriving with the keyboard. It does not
+       close on a second press: a press is also an arrival, so a toggle would
+       fight the focus the same press brings and the two would end where they
+       started. */
     const user = setupUser()
     renderForm()
 
@@ -58,7 +62,7 @@ describe('the rule beside a field', () => {
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
 
-    await user.click(asked)
+    await user.tab()
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
@@ -85,10 +89,6 @@ describe('the rule beside a field', () => {
 
     await user.click(asked)
 
-    /* Typed at rather than typed into: `user.type` presses the element first,
-       and a press on this button is what opens and closes it. */
-    asked.focus()
-
     /* Another key first: it is not this button's business and goes on its way,
        so whatever the form is standing in still hears it. */
     await user.keyboard('a')
@@ -101,6 +101,28 @@ describe('the rule beside a field', () => {
     expect(asked).toHaveAttribute('aria-expanded', 'false')
     /* And Escape got no further than this. */
     expect(outside).toBe(1)
+  })
+
+  it('opens under the pointer and closes when it leaves', async () => {
+    /* A tooltip is a thing a pointer asks for by resting on it. Held on the
+       wrapper rather than on the letter, so that reaching down for the words
+       does not close them on the way (WCAG 2.2 SC 1.4.13). */
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen.getByLabelText(/^Adresa za slanje$/).closest('.field')?.querySelector('.hint'),
+      'the rule beside the address',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    await user.hover(hint)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    await user.unhover(hint)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('says which field it is about without taking that field its name', () => {

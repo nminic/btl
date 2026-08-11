@@ -101,7 +101,7 @@
       "row": 3
     },
     {
-      "name": "firstSeason",
+      "name": "firstSeason2027",
       "type": "choice",
       "labelKey": "registration.category",
       "hintKey": "registration.categoryHint",
@@ -109,11 +109,11 @@
       "row": 4,
       "options": [
         {
-          "value": "first",
+          "value": "yes",
           "labelKey": "registration.categoryFirstSeason"
         },
         {
-          "value": "age",
+          "value": "no",
           "labelKey": "registration.categoryByAge"
         }
       ]
@@ -170,7 +170,8 @@
       "labelKey": "registration.healthStatement",
       "linkKey": "registration.healthStatementLink",
       "linkTo": "pravilnik",
-      "required": true
+      "required": true,
+      "hintKey": "registration.healthStatementHint"
     }
   ]
 }

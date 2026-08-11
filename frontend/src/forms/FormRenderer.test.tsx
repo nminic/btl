@@ -80,7 +80,10 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'number')
     expect(screen.getByLabelText(/proba.pol/).tagName).toBe('SELECT')
     expect(screen.getByLabelText(/proba.prazan/).children).toHaveLength(1)
-    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(2)
+    /* Three of them: the two selects with nothing chosen, and the country
+       beside the town, which also opens unanswered on a form that does not say
+       which country it starts in (forms/CountryOptions.tsx). */
+    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(3)
     expect(screen.getByLabelText(/proba.beleska/).tagName).toBe('TEXTAREA')
     expect(screen.getByLabelText(/proba.saglasnost/)).toHaveAttribute('type', 'checkbox')
     expect(screen.getByLabelText(/proba.lozinka/)).toHaveAttribute('type', 'password')

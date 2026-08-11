@@ -1,4 +1,5 @@
 import {
+  Fragment,
   memo,
   useCallback,
   useState,
@@ -94,8 +95,8 @@ function columnsOf(fields: Drawn[]): number {
   return fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0)
 }
 
-function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[] }[] {
-  const rows: { row: number | undefined; fields: Drawn[] }[] = []
+function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[]; key: string }[] {
+  const rows: { row: number | undefined; fields: Drawn[]; key: string }[] = []
 
   for (const one of drawn) {
     const last = rows.at(-1)
@@ -103,7 +104,13 @@ function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[] }[] 
     if (last !== undefined && last.row !== undefined && last.row === one.field.row) {
       last.fields.push(one)
     } else {
-      rows.push({ row: one.field.row, fields: [one] })
+      /* Named after the field it begins with, and not after the number of the
+         row. Two groups may carry one number, since a row is a run of
+         neighbours: moving a field between two that share a number splits them
+         into two rows, and two rows keyed alike are two siblings React cannot
+         tell apart. A field appears once on a form, so the field it begins with
+         names it once. */
+      rows.push({ row: one.field.row, fields: [one], key: one.field.name })
     }
   }
 
@@ -253,10 +260,13 @@ const Field = memo(function Field({
 
   if (field.type === 'choice') {
     return (
-      <fieldset className="field field--choice">
-        {/* A legend and not a label: the words name a group of controls, and a
-            label names one. */}
-        {/* A legend names the group, so nothing but the name goes in it: a rule
+      /* Named by the id the summary of errors links to. Every other field is
+         reached through its own control, which carries that id; a group has no
+         one control, so the group carries it. Without this the link „Pol" led to
+         an element that is not there, and it is the likeliest error on this
+         form: sex and category are the two things nothing is chosen for. */
+      <fieldset className="field field--choice" id={inputId}>
+        {/* A legend names the group, and nothing but the name goes in it: a rule
             written here would be read out before every one of the buttons. */}
         <legend className="field__label" id={labelId}>
           {t(field.labelKey)}
@@ -517,7 +527,7 @@ export function FormRenderer({
         </div>
       )}
 
-      {rowsOf(drawn).map(({ row, fields }) => {
+      {rowsOf(drawn).map(({ row, fields, key }) => {
         const drawnRow = fields.map(({ field, value }) => (
           <Field
             key={field.name}
@@ -534,13 +544,18 @@ export function FormRenderer({
         /* A field on no row stands on its own, as every field on every form did
            before rows existed and as every field still does on a telephone. */
         if (row === undefined) {
-          return drawnRow
+          /* Wrapped rather than handed back bare, so this group has a key of its
+             own. Returned as an array it had none, and React then paired these
+             groups by position: a field that appears and disappears with a date
+             of birth shifted every one below it by one, and „Svojim rečima" was
+             mounted onto the fiber that had been holding the confirmation. */
+          return <Fragment key={key}>{drawnRow}</Fragment>
         }
 
         return (
           <div
             className="form__row"
-            key={`row-${String(row)}`}
+            key={key}
             /* How many columns this row has is counted here rather than written
                in the definition, so moving a field between rows is one number in
                one place (forms/types.ts, `row`). A town counts as two of
