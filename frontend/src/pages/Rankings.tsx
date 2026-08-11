@@ -1,3 +1,4 @@
+import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
@@ -245,7 +246,7 @@ function Standing({
                     <CompetitorName competitor={row.competitor} />{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
-                  <td>{categoryOfMember(row.competitor, season)}</td>
+                  <td>{categoryLabel(categoryOfMember(row.competitor, season), t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
                   <td className="table__hide-phone">{formatNumber(row.kilometers, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(row.ascent, locale)}</td>

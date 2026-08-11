@@ -546,8 +546,8 @@ describe('the transfer window and renewal', () => {
     await screen.findByRole('heading', { name: /Obnova članarine/ })
 
     // 000001 has raced for years and is far past twelve points.
-    expect(screen.getByLabelText('U kategoriji Prva sezona')).toBeDisabled()
-    expect(screen.getByText(/Prva sezona ti je zatvorena/)).toBeVisible()
+    expect(screen.getByLabelText('U početničkoj kategoriji')).toBeDisabled()
+    expect(screen.getByText(/Početnička kategorija ti je zatvorena/)).toBeVisible()
   })
 
   it('shuts both outside the window, and says when they open', async () => {
@@ -568,8 +568,8 @@ describe('the transfer window and renewal', () => {
     // 000031 has never raced, so nothing bars them.
     renderMembershipOn('2026-11-01', '000031')
 
-    expect(await screen.findByLabelText('U kategoriji Prva sezona')).toBeEnabled()
-    expect(screen.getByText(/Prva sezona ti je još otvorena/)).toBeVisible()
+    expect(await screen.findByLabelText('U početničkoj kategoriji')).toBeEnabled()
+    expect(screen.getByText(/Početnička kategorija ti je još otvorena/)).toBeVisible()
   })
 })
 

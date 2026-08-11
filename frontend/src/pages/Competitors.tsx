@@ -1,3 +1,4 @@
+import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { monogramFor } from '../app/monogram'
@@ -84,7 +85,7 @@ function CompetitorCards({
                 <span className="card__number">{competitor.memberNumber}</span>
 
                 <span className="card__meta">
-                  <span className="card__chip">{categoryOfMember(competitor, SEASON)}</span>
+                  <span className="card__chip">{categoryLabel(categoryOfMember(competitor, SEASON), t)}</span>
                   <span className="card__city">{competitor.city}</span>
                 </span>
 

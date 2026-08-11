@@ -1,3 +1,4 @@
+import { categoryLabel } from '../data/categories'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
@@ -171,7 +172,7 @@ export function TeamDetail() {
                               {row.competitor.memberNumber}
                             </span>
                           </td>
-                          <td>{categoryOfMember(row.competitor, Number(season))}</td>
+                          <td>{categoryLabel(categoryOfMember(row.competitor, Number(season)), t)}</td>
                           <td className="table__hide-phone">{formatNumber(row.races, locale)}</td>
                           <td className="table__points">{formatPoints(row.points, locale)}</td>
                         </tr>

@@ -306,7 +306,7 @@ const Field = memo(function Field({
                    summary of errors leads to the group itself. Said in only one
                    of the two, whoever came the other way heard „Pol, Muški, nije
                    izabrano" and nothing about the rule or about what is wrong,
-                   and „Prva sezona" against „Starosna" carries a decision that
+                   and „Početnička" against „Starosna" carries a decision that
                    cannot be undone mid-season (PDL P7). Said in both, it is read
                    on both roads. The price is that a reader which speaks the
                    name and description of a group on entering it may say the

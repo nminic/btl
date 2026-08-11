@@ -30,7 +30,7 @@ export type FieldType =
    * One answer out of two or three, drawn as buttons rather than as a list.
    *
    * For the questions whose answers are short, few, and worth seeing at once:
-   * „Muški / Ženski", „Prva sezona / Starosna" (owner, 11.08.2026).
+   * „Muški / Ženski", „Početnička / Starosna" (owner, 11.08.2026).
    * Nothing is chosen to begin with and exactly one must be, which is what a
    * group of radio buttons is; the buttons are what it looks like, and the radio
    * is what it is, so the keyboard behaves the way every other one does.
