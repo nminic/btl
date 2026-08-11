@@ -1562,7 +1562,16 @@ describe('the head of an event with nothing to offer', () => {
       const heading = await screen.findByRole('heading', { level: 1 })
       const row = must(heading.parentElement, 'the row around the heading')
 
-      expect([...row.children].map((one) => one.className)).toEqual([heading.className])
+      /* The mark of the race is not a box of controls: it stands beside the
+         name from 11.08.2026, it is a fact rather than something to press, and
+         a race rated in an earlier edition carries one before this year's
+         running (event/OverallMark.tsx). What this holds is that there is no
+         second track holding nothing. */
+      const boxes = [...row.children]
+        .map((one) => one.className)
+        .filter((one) => one !== 'comments__mark')
+
+      expect(boxes).toEqual([heading.className])
     })
   }
 })

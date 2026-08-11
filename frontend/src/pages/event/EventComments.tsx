@@ -145,8 +145,6 @@ function CommentList({
 
   return (
     <>
-      <OverallMark comments={written.map((one) => one.comment)} />
-
       {/* Named by the heading over it, so a reader moving by landmarks knows
           what the list is and does not have to have read the heading on the way
           past. */}
@@ -172,38 +170,6 @@ function CommentList({
         }}
       />
     </>
-  )
-}
-
-/**
- * What everybody thought, over what one person wrote (owner, 11.08.2026).
- *
- * Out of the comments that carry a rating. A comment written before the ratings
- * existed has none (types.ts), and counting it as nought would drag the average
- * of a race down for a reason nobody chose; a race whose every comment is like
- * that has no mark to show rather than a mark of nought.
- *
- * The count beside the figure is what turns a mark into something a reader can
- * judge: 5,0 from one person and 4,2 from forty are not the same claim.
- */
-function OverallMark({ comments }: { comments: EventComment[] }) {
-  const { locale, t } = useI18n()
-  const marked = comments.filter((one) => rated(one.rating))
-
-  if (marked.length === 0) {
-    return null
-  }
-
-  const mark = marked.reduce((so, one) => so + overall(one.rating), 0) / marked.length
-
-  return (
-    <p className="comments__mark">
-      <span aria-hidden="true">
-        <Stars label={t('event.rating.overall')} value={mark} />
-      </span>
-      <span className="comments__mark-figure">{formatNumber(mark, locale, 1)}</span>
-      <span className="comments__mark-count">{t('event.ratedBy', { count: marked.length })}</span>
-    </p>
   )
 }
 

@@ -581,7 +581,9 @@
       "few": "iz {count} ocene",
       "other": "iz {count} ocena"
     },
-    "fromEdition": "Izdanje {year}."
+    "fromEdition": "Izdanje {year}.",
+    "notRanIt": "Ovaj događaj ocenjuju oni koji su ga istrčali.",
+    "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa je daje član koji na ovom događaju ima upisan rezultat. Kad tvoj rezultat bude upisan, ocena se otvara sama."
   },
   "category": {
     "short": "Kraća trka",

@@ -112,7 +112,7 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
     'Registracija još nije otvorena',
   ],
   ['/sr/prijava', 'Prijava', 'Prijava'],
-  ['/sr/moj-profil', 'Za ovo treba prijava', 'Strahinja Vukićević'],
+  ['/sr/moj-profil', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
   ['/sr/moji-rezultati', 'Za ovo treba prijava', 'Moji rezultati'],
   ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],
   ['/sr/podesavanja', 'Za ovo treba prijava', 'Podešavanja'],
@@ -122,7 +122,11 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
 ]
 
 /** The member the signed-in half of the sweep reads as. */
-const ME = '000007'
+/* Somebody with a result on the event whose rating screen is among the
+   addresses below: since 11.08.2026 the rating opens only for a member who ran
+   the race, and an address that answers with a refusal is not the screen this
+   file means to read. */
+const ME = '000021'
 
 /**
  * The day every row is read on.

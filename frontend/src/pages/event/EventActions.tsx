@@ -5,6 +5,7 @@ import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
+import { ran } from './ran'
 import { useMay } from '../admin/rights'
 
 /**
@@ -155,12 +156,14 @@ export function EventActions({
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }
 
-  /* What a member may do here, which is the same condition twice below and is
-     also half of whether there is a row at all. PDL P9 refuses a date in the
-     future, and the date here is the event's own: nothing to report and nothing
-     to rate on a race nobody has run. The day of the race itself counts, which
-     is where a rating is given. */
+  /* What a member may do here, and half of whether there is a row at all. PDL P9
+     refuses a date in the future, and the date here is the event's own: nothing
+     to report on a race nobody has run. The day of the race itself counts. */
   const mayAct = memberNumber !== null && event.date <= today
+
+  /* And rating asks for one thing more: a result of their own on this event
+     (owner, 11.08.2026), which the form asks again for itself (ran.ts). */
+  const mayRate = mayAct && memberNumber !== null && ran(results, races, event.id, memberNumber)
 
   if (!mayEdit && !mayAct) {
     return null
@@ -208,11 +211,11 @@ export function EventActions({
         </Link>
       )}
 
-      {/* And what they thought of it (owner, 06.08.2026). The same rule about
-          the date: an event nobody has run yet is not one anybody can rate, and
+      {/* And what they thought of it (owner, 06.08.2026), where they were there:
           the rating asks about the organisation and the surroundings, which are
-          things a member saw on the day. */}
-      {mayAct && (
+          things a member saw on the day, and only somebody with a result on the
+          event saw them (owner, 11.08.2026). */}
+      {mayRate && (
         <Link className="button button--secondary" to={`/${locale}/kalendar/${event.slug}/ocena`}>
           {t('event.addComment')}
         </Link>

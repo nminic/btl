@@ -56,7 +56,11 @@ const BEFORE_AHEAD = '2026-12-31'
  *  it stands for an event moved onto a later date. */
 const AHEAD_EMPTY = 'podgoricka-desetka-2027'
 const AHEAD_EMPTY_NAME = 'Podgorička desetka'
-const ME = '000007'
+/* Somebody with a result on EVENT, because a rating belongs to whoever ran the
+   race (owner, 11.08.2026): they are the only member the rating form opens
+   for. Read off the data rather than picked: 000021 is the one competitor with
+   a result on the Fruškogorski maraton of 2010. */
+const ME = '000021'
 
 /** The event that answers at an address, since an address is no longer its id
  *  with a prefix: it is the name and the year (owner, 10.08.2026). */
@@ -216,21 +220,57 @@ describe('rating an event', () => {
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
   })
 
-  it('sends a rating from somebody the list of members has never heard of', async () => {
-    /* A member number that is not in the file. It happens while a registration
-       is still going through: the number is handed out when the fee is recorded
-       (PDL P8) and the member list is read separately, so for a moment there is
-       a signed-in number with no record behind it. The rating still goes, with
-       no name on it, rather than the screen falling over. */
-    const user = setupUser()
+  it('takes a rating from a member the list of members has not caught up with', async () => {
+    /* The number is handed out when the fee is recorded (PDL P8) and the member
+       list is read separately, so for a moment there is a signed-in number with
+       a result and no record behind it. The rating goes with no name on it
+       rather than the screen falling over.
+
+       Stood up by taking the record away rather than by finding a member
+       without one: since 11.08.2026 the rating opens only for somebody with a
+       result, and every result in the data belongs to somebody the list has. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/competitors.json')
+        ? new Response('[]', { status: 200 })
+        : real(input)) as typeof fetch
+
+    try {
+      const user = setupUser()
+      renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+      await screen.findByRole('group', { name: 'Organizacija' })
+      await rateAll(user, 3)
+      await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+
+      expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    } finally {
+      /* Put back whatever happens: a stub left standing is every later test in
+         the file reading an empty list of members. */
+      globalThis.fetch = real
+    }
+  })
+
+  it('turns away somebody with no result on the event, however they got here', async () => {
+    /* The address can be typed, and a rule kept by hiding a link is not kept
+       (owner, 11.08.2026). A member number that is not in the file at all is
+       the sharpest case: it happens while a registration is going through, and
+       what it must not do is fall over on the way to saying no. */
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
 
-    await screen.findByRole('group', { name: 'Organizacija' })
+    expect(
+      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali.' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Organizacija' })).toBeNull()
+  })
 
-    await rateAll(user, 3)
-    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+  it('leads back to the event from that refusal, which is what they wanted anyway', async () => {
+    renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
 
-    expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Nazad na događaj' })).toHaveAttribute(
+      'href',
+      `/sr/kalendar/${EVENT}`,
+    )
   })
 
   it('starts empty on the next event, rather than carrying the last one over', async () => {
@@ -579,6 +619,51 @@ describe('a comment a moderator lets out', () => {
     globalThis.fetch = real
   })
 
+  it('stands the overall mark beside the name of the race, and nowhere else', async () => {
+    /* One place, by the owner's word (11.08.2026). It used to stand over the
+       list of comments; asked of the head of the page, a mark that stayed down
+       there would be missing here, and asked of the whole document a mark drawn
+       twice would pass. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const head = must(
+      (await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })).closest(
+        'header',
+      ),
+      'the head of the page',
+    )
+
+    await waitFor(() => {
+      expect(head.querySelectorAll('.comments__mark')).toHaveLength(1)
+    })
+
+    /* And nowhere else on the page: it used to stand over the list of comments
+       as well, and asked of the whole document a mark drawn twice would pass. */
+    expect(document.querySelectorAll('.comments__mark')).toHaveLength(1)
+  })
+
+  it('counts every running of the race into that mark, not only this one', async () => {
+    /* The same reason the comments underneath do: a race rated for fifteen
+       years does not start from nothing because this year is a copy with an id
+       of its own. Read as a count of ratings, which is the part of the line
+       that says how many went into it. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const comments = await loadResource<EventComment[]>('comments')
+    const inherited = must(
+      comments.find((one) => events.some((event) => event.copiedFrom === one.eventId)),
+      'a comment on an event some later edition was copied from',
+    )
+    const later = must(
+      events.find((event) => event.copiedFrom === inherited.eventId),
+      'the later edition',
+    )
+
+    renderAt(`/sr/kalendar/${later.slug}`)
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(await screen.findByText(/iz \d+ ocen/)).toBeVisible()
+  })
+
   it('shows no overall mark for an event whose only comment carries none', async () => {
     /* The mark over the list is an average of the comments that carry one. A
        comment written before the ratings existed carries none (types.ts), and
@@ -871,11 +956,16 @@ describe('what an event nobody has run yet offers', () => {
      against the day of the race, and a rating is given on the way home from it:
      that is the whole difference between `>` and `>=` here, and it is a
      difference no test would otherwise see. */
-  it('offers both on the day the race is run', async () => {
+  it('offers the result on the day the race is run, and the rating only after it', async () => {
+    /* The boundary the date draws is open on the day itself: a result is
+       reported on the way home. The rating is not offered beside it, because a
+       rating belongs to somebody with a result on the event and on the day of
+       the race nobody has one yet (owner, 11.08.2026). It opens when the result
+       is in. */
     renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
 
-    expect(await screen.findByRole('link', { name: 'Dodaj komentar' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
   })
 
   it('says nothing about comments at all, not even that there are none', async () => {
@@ -923,10 +1013,16 @@ describe('what an event nobody has run yet offers', () => {
     expect(screen.getByText(moved.body)).toBeVisible()
   })
 
-  it('takes a rating on the day the race is run', async () => {
+  it('stops saying the race has not been run, from the day it is', async () => {
+    /* The boundary between `>` and `>=`, which is a difference no other test
+       would see. What stands in the way from that day on is the other rule and
+       not this one: the rating belongs to whoever has a result on the event
+       (owner, 11.08.2026), and on the day of the race nobody has one. */
     renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME, undefined, AHEAD_DAY)
 
-    expect(await screen.findByRole('group', { name: 'Organizacija' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali.' }),
+    ).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
   })
 
