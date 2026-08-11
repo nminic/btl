@@ -370,9 +370,13 @@ describe('the generated data', () => {
     expect(strangers).toEqual([])
     expect(places.filter(([, country]) => country === 'XK')).toEqual([])
     expect(named.has('XK')).toBe(false)
-    /* And Priština is where the towns of Serbia are. */
-    expect(places.filter(([name]) => name === 'Pristina').map(([, country]) => country))
-      .toEqual(['RS'])
+    /* And Priština is in Serbia, under its own name: the codebook of the world
+       writes those towns in Albanian, and they are the only towns of Serbia that
+       would then stand on a Serbian portal in another language (ADL A16 asks for
+       the local name everywhere in the region). The foreign form stays as the
+       English one, which is what the third place in a row is for. */
+    expect(places.filter(([name]) => name === 'Priština')).toEqual([['Priština', 'RS', 'Pristina']])
+    expect(places.filter(([name]) => name === 'Peć')).toEqual([['Peć', 'RS', 'Pejë']])
   })
 
   it('carries no event of a kind the portal does not have, and no state at all', async () => {

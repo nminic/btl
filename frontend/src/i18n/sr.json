@@ -356,7 +356,8 @@
     "places": "Ponuđena mesta",
     "yes": "Da",
     "no": "Ne",
-    "close": "Zatvori"
+    "close": "Zatvori",
+    "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom."
   },
   "registration": {
     "title": "Registracija",

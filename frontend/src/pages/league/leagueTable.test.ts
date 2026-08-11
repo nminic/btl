@@ -29,10 +29,10 @@ const event = (id: string, date: string): BtlEvent => ({
   kind: 'race', copiedFrom: '', featured: 'no',
 })
 
-const race = (id: string, eventId: string, distanceKm = 10): Race => ({
+const race = (id: string, eventId: string, distanceKm = 10, date = '2027-04-03'): Race => ({
   id,
   eventId,
-  date: '2027-04-03',
+  date,
   distanceKm,
   ascentM: 0,
   descentM: 0,
@@ -66,11 +66,14 @@ const league: League = {
 }
 
 const events = [event('e1', '2019-05-01'), event('e2', '2019-03-01'), event('e3', '2019-04-01')]
+/* Each race on the day of its own event, which is the ordinary case: an event
+   that runs over more than one morning is the exception and has a test of its
+   own below. The day is on the race and not read off the event (PDL P10). */
 const races = [
-  race('r1', 'e1'),
-  race('r2', 'e2', 21),
-  race('r3', 'e3', 5),
-  race('r4', 'e1', 5.5),
+  race('r1', 'e1', 10, '2019-05-01'),
+  race('r2', 'e2', 21, '2019-03-01'),
+  race('r3', 'e3', 5, '2019-04-01'),
+  race('r4', 'e1', 5.5, '2019-05-01'),
 ]
 
 describe('the grid of a competition', () => {
@@ -170,7 +173,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1', 'e2'] },
       [event('e1', '2019-05-01'), event('e2', '2019-05-01')],
-      [race('r1', 'e1'), race('r2', 'e2')],
+      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e2', 10, '2019-05-01')],
       [],
       [],
     )
@@ -192,7 +195,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1'] },
       [event('e1', '2019-05-01')],
-      [race('r1', 'e1', 10), race('r2', 'e1', 21.1)],
+      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 21.1, '2019-05-01')],
       [],
       [],
     )
@@ -207,7 +210,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1'] },
       [event('e1', '2019-05-01')],
-      [race('r1', 'e1', 10), race('r2', 'e1', 10)],
+      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 10, '2019-05-01')],
       [],
       [],
     )

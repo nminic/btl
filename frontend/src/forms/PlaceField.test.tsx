@@ -317,7 +317,28 @@ describe('the town on a form', () => {
     const country = screen.getByRole('combobox', { name: /Država/i })
 
     expect(country).toHaveValue('CH')
-    expect(country).toBeDisabled()
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('takes no answer while it is held, however it is reached', async () => {
+    /* Held rather than switched off, so it is still reachable: the keyboard can
+       land on it and the words that say why can be read. What it must not do is
+       take an answer, by either road. A select left reachable still opens on a
+       press and still walks with the arrows, so both are stopped. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+
+    const country = screen.getByRole('combobox', { name: /Država/i })
+
+    onCountry.mockClear()
+    await user.selectOptions(country, 'US')
+    await user.type(country, '{ArrowDown}')
+
+    expect(country).toHaveValue('CH')
+    expect(onCountry).not.toHaveBeenCalled()
   })
 
   it('opens it again for a town typed over the one it knew', async () => {
@@ -325,13 +346,22 @@ describe('the town on a form', () => {
        is entered by hand, and then the country is the only way to say where the
        race is run. */
     const user = setupUser()
-    const { box } = renderField()
+    const { onCountry, box } = renderField()
 
     await user.type(box, 'ber')
     await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
     await user.type(box, 'ovce')
 
-    expect(screen.getByRole('combobox', { name: /Država/i })).toBeEnabled()
+    const country = screen.getByRole('combobox', { name: /Država/i })
+
+    expect(country).not.toHaveAttribute('aria-disabled', 'true')
+
+    /* And it answers, by the keyboard as well as by the pointer: what stops the
+       keys while it is held must not stop them once it is not. */
+    await user.selectOptions(country, 'HR')
+    await user.type(country, '{ArrowDown}')
+
+    expect(onCountry).toHaveBeenLastCalledWith('HR')
   })
 
   it('recognises a town spelt out in full, without the list being touched', async () => {
@@ -351,7 +381,7 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(country).toHaveValue('CH')
     })
-    expect(country).toBeDisabled()
+    expect(country).toHaveAttribute('aria-disabled', 'true')
     expect(onCountry).toHaveBeenLastCalledWith('CH')
   })
 
@@ -363,7 +393,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'London')
 
-    expect(screen.getByRole('combobox', { name: /Država/i })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: /Država/i })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('holds the country of the London that was pressed', async () => {
@@ -382,7 +412,7 @@ describe('the town on a form', () => {
     const country = screen.getByRole('combobox', { name: /Država/i })
 
     expect(country).toHaveValue('US')
-    expect(country).toBeDisabled()
+    expect(country).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('shows the country it holds even where the list has no name for it', async () => {

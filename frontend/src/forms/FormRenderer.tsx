@@ -10,7 +10,7 @@ import type {
   FormDef,
   FormValues,
 } from './types'
-import countries from '../data/countries.json'
+import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
 import { optionsFor } from './records'
@@ -184,22 +184,10 @@ const Field = memo(function Field({
 
       {field.type === 'country' && (
         <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
-          <option value="">{t('form.choose')}</option>
-          {/* The region first, because nine members in ten pick one of these. */}
-          <optgroup label={t('form.region')}>
-            {countries.region.map((one) => (
-              <option key={one.code} value={one.code}>
-                {one.name}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={t('form.restOfWorld')}>
-            {countries.rest.map((one) => (
-              <option key={one.code} value={one.code}>
-                {one.name}
-              </option>
-            ))}
-          </optgroup>
+          {/* Only while there is no answer, the way every other select on the
+              portal does it. */}
+          {String(value) === '' && <option value="">{t('form.choose')}</option>}
+          <CountryOptions holding={String(value)} />
         </select>
       )}
 

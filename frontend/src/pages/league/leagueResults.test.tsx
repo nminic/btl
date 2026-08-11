@@ -5,7 +5,7 @@ import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
-import { formatDistance } from '../../i18n/format'
+import { formatDistance, formatShortDate } from '../../i18n/format'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
  *
@@ -231,12 +231,12 @@ describe('a competition everybody in it fits on one page', () => {
   })
 })
 
-describe('a competition holding a race nobody gave a name', () => {
-  /** The real files, with one race of this competition stripped of its name.
-   *
-   *  Which is a thing a moderator may now do (PDL P6, 11.08.2026), and the grid
-   *  is one of the five screens that write a race down. */
-  async function withNamelessRace() {
+describe('a competition whose event runs over more than one morning', () => {
+  /* A race carries no name of its own (data/types.ts), so a column is headed by
+     a length and a day. Two races of one length on two mornings therefore have
+     to differ by the day, and the day of a race is not the day of its event
+     (PDL P10). */
+  async function overTwoMornings() {
     const real = globalThis.fetch
     const races = (await (await real('/mock/races.json')).json()) as Race[]
     const events = (await (await real('/mock/events.json')).json()) as BtlEvent[]
@@ -250,34 +250,36 @@ describe('a competition holding a race nobody gave a name', () => {
       races.find((race) => held.has(race.eventId)),
       'trka ovog takmičenja',
     )
+    /* The same length as it already is, one day later: two columns that only the
+       day can tell apart. */
+    const second: Race = {
+      ...mine,
+      id: `${mine.id}-drugo-jutro`,
+      date: `${mine.date.slice(0, 8)}${String(Number(mine.date.slice(8, 10)) + 1).padStart(2, '0')}`,
+    }
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/races.json')
-        ? new Response(
-            JSON.stringify(races.map((race) => (race.id === mine.id ? { ...race, name: '' } : race))),
-            { status: 200 },
-          )
+        ? new Response(JSON.stringify([...races, second]), { status: 200 })
         : real(input)) as typeof fetch
 
-    return { race: mine, undo: () => { globalThis.fetch = real } }
+    return { first: mine, second, undo: () => { globalThis.fetch = real } }
   }
 
-  it('heads its column with the length, and not with a comma', async () => {
-    const { race, undo } = await withNamelessRace()
+  it('heads the two columns with two different days', async () => {
+    const { first, second, undo } = await overTwoMornings()
 
     try {
       renderAt(RUN)
 
       const heads = (await grid()).getAllByRole('columnheader').map((one) => one.textContent ?? '')
-      /* The length as this language writes it, which is what the race is known
-         by when it has nothing else (data/raceName.ts). */
-      const said = must(
-        heads.find((one) => one.startsWith(`${formatDistance(race.distanceKm, 'sr')},`)),
-        'zaglavlje trke bez naziva',
-      )
+      const length = formatDistance(first.distanceKm, 'sr')
+      const mine = heads.filter((one) => one.startsWith(`${length},`))
 
-      expect(said).not.toMatch(/^,/)
-      expect(heads.filter((one) => one.startsWith(','))).toEqual([])
+      expect(mine.length).toBeGreaterThanOrEqual(2)
+      /* Each morning said once, rather than one morning said twice. */
+      expect(mine.filter((one) => one.includes(formatShortDate(second.date, 'sr')))).toHaveLength(1)
+      expect(new Set(mine).size).toBe(mine.length)
     } finally {
       undo()
     }

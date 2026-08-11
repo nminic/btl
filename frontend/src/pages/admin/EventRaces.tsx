@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { isoDate } from '../../forms/dateField'
-import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
+import { raceLabel } from '../../data/raceLabel'
+import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import type { BtlEvent, Race } from '../../data/types'
@@ -153,11 +154,12 @@ export function EventRaces({
                     <RowActions
                       entity={entity}
                       record={race}
-                      /* Its length, because that is what the row is read by
-                         since a race has no name of its own (types.ts). Twenty
-                         rows are then twenty different controls, which is what
-                         a button that deletes results has to be. */
-                      name={formatDistance(race.distanceKm, locale)}
+                      /* Its measurements, and its day where the event holds
+                         another race of the same length (data/raceLabel.ts):
+                         four races of 42,2 km over four mornings gave four
+                         buttons called „Obriši: 42,2 km", and one of them
+                         deletes results. */
+                      name={raceLabel(race, mine, locale)}
                       onOpen={() => setEditing({ mode: 'one', record: race })}
                       /* And the event follows what is left, the same way it
                          follows a race entered or moved: taking the first

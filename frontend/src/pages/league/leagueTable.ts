@@ -82,7 +82,12 @@ export function leagueTable(
             {
               raceId: race.id,
               event: event.name,
-              date: event.date,
+              /* The day this race is run on, which is not always the day of its
+                 event: one event may run over several mornings (PDL P10). Read
+                 off the event, two races of one length on two mornings shared a
+                 date as well as a length, so both columns read the same and
+                 neither said which morning it was. */
+              date: race.date,
               distanceKm: race.distanceKm,
               ambiguous: false,
             },

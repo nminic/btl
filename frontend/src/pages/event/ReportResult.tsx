@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
+import { raceLabel } from '../../data/raceLabel'
 import { btlPoints } from '../../data/scoring'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
 import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
 import type { FormDef, FormValues } from '../../forms/types'
-import { formatDistance, formatPoints } from '../../i18n/format'
+import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
@@ -179,13 +180,12 @@ export function ReportResult() {
                 options={{
                   raceId: mineHere.map((race) => ({
                     value: race.id,
-                    /* Its length, which is what tells two races of one event
-                       apart: a race has no name of its own (data/types.ts), and
-                       the event is already the page this form was opened from.
-                       `labelKey` takes a key and falls back to what it is given
-                       when there is no such key, which is what puts a value into
-                       a list of choices (src/i18n/translate.ts). */
-                    labelKey: formatDistance(race.distanceKm, locale),
+                    /* Its measurements, and its day where two of them are the
+                       same length (data/raceLabel.ts). `labelKey` takes a key
+                       and falls back to what it is given when there is no such
+                       key, which is what puts a value into a list of choices
+                       (src/i18n/translate.ts). */
+                    labelKey: raceLabel(race, mineHere, locale),
                   })),
                 }}
                 onSubmit={onSubmit}
