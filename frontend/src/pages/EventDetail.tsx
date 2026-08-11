@@ -20,6 +20,7 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
+import { GoingToEvent } from './event/GoingToEvent'
 import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
 import './Profile.css'
@@ -297,6 +298,11 @@ export function EventDetail() {
               <RaceTable eventId={event.id} />
 
               <EventResults slug={event.slug} date={event.date} />
+
+              {/* Who is going, ahead of the race and for members only (owner,
+                  11.08.2026). Under the results and over the comments: what is
+                  still to come, then what was said about what has been. */}
+              <GoingToEvent event={event} />
 
               {/* At the foot of the event, which is where the owner put it
                   (06.08.2026): a reader looks at the races and the results

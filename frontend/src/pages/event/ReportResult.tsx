@@ -96,7 +96,18 @@ export function ReportResult() {
             return <NotRunYet slug={event.slug} />
           }
 
-          const mineHere = races.filter((race) => race.eventId === event.id)
+          /* The races of this event that have been run, which is not the same as
+             the races of an event that has begun (owner, 11.08.2026): a race
+             carries its own day, and an event may run over two mornings. On the
+             Saturday of a weekend the form offers the two Saturday races; on the
+             Sunday it offers all three.
+
+             A race has no time of day, so the day it is on counts from its own
+             morning: „rezultat na trku moguće uneti na kalendarski dan te trke
+             ili kasnije". */
+          const mineHere = races.filter(
+            (race) => race.eventId === event.id && race.date <= today,
+          )
           /* The first of them is the one the form opens on, which is what the
              owner asked for: most events hold one race, and where they hold five
              the member changes it in one press. Taken apart rather than indexed,
@@ -104,9 +115,11 @@ export function ReportResult() {
           const [first, ...rest] = mineHere
 
           if (first === undefined) {
-            /* An event with no races is not a thing to report a result on, and
-               a form whose one choice is empty is a form that cannot be
-               submitted and does not say why. */
+            /* An event with no races run yet is not a thing to report a result
+               on, and a form whose one choice is empty is a form that cannot be
+               submitted and does not say why. Two ways to get here: an event
+               whose distances are not entered yet, and one whose first morning
+               has not come. */
             return (
               <>
                 <h1>{event.name}</h1>

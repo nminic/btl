@@ -283,6 +283,8 @@ function renderInbox(inbox: Message[]) {
     resubmit: vi.fn(),
     decide: vi.fn(),
     inbox,
+    going: {},
+    setGoing: vi.fn(),
     markRead: vi.fn(),
     notify: vi.fn(),
     notifications: {

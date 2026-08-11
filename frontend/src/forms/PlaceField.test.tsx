@@ -40,6 +40,7 @@ function servingTheCodebook() {
  *  cannot be typed into. */
 function Holder({ onCountry }: { onCountry: (code: string) => void }) {
   const [town, setTown] = useState('')
+  const [country, setCountry] = useState('RS')
 
   return (
     <I18nProvider locale="sr">
@@ -47,11 +48,13 @@ function Holder({ onCountry }: { onCountry: (code: string) => void }) {
         id="mesto"
         name="city"
         value={town}
+        country={country}
         invalid={false}
         describedBy={undefined}
-        onChange={(next, country) => {
+        onChange={(next, chosen) => {
           setTown(next)
-          onCountry(country)
+          setCountry(chosen)
+          onCountry(chosen)
         }}
       />
     </I18nProvider>
@@ -62,7 +65,13 @@ function renderField() {
   const onCountry = vi.fn()
   render(<Holder onCountry={onCountry} />)
 
-  return { onCountry, box: screen.getByRole('combobox') }
+  /* Two comboboxes stand in this field since 11.08.2026, the town and the
+     country beside it, so the town is asked for by name. */
+  return {
+    onCountry,
+    box: screen.getByRole('combobox', { name: '' }),
+    country: screen.getByRole('combobox', { name: 'Država' }),
+  }
 }
 
 /** The offered towns, once they have arrived. The codebook is fetched on the
@@ -118,18 +127,21 @@ describe('the town on a form', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('clears the country the moment the town is typed over', async () => {
-    /* Left standing, an event in Beograd edited into Zagreb would be filed in
-       Serbia, and nothing on the form would say so, because the country is no
-       longer a field anybody looks at. */
+  it('leaves the country standing when the town is typed over, since it is on screen', async () => {
+    /* It used to be cleared here, back when the country was written and never
+       shown and the danger was an event edited from Beograd into Zagreb and
+       filed in Serbia with nothing saying so. The country is a control beside
+       the town since 11.08.2026, so what stands there is what will be saved and
+       whoever is typing can see it. */
     const user = setupUser()
-    const { box, onCountry } = renderField()
+    const { box, onCountry, country } = renderField()
 
     await user.type(box, 'beo')
     await user.click(must((await offered())[0], 'the first town offered'))
     await user.type(box, 'x')
 
-    expect(onCountry).toHaveBeenLastCalledWith('')
+    expect(onCountry).toHaveBeenLastCalledWith('RS')
+    expect(country).toHaveValue('RS')
   })
 
   it('takes a town the codebook has never heard of', async () => {

@@ -15,7 +15,7 @@
       "type": "text",
       "labelKey": "admin.raceName",
       "hintKey": "admin.hint.raceName",
-      "required": true,
+      "required": false,
       "maxLength": 60
     },
     {

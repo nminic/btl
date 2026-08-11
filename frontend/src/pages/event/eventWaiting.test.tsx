@@ -57,7 +57,7 @@ describe('a part of an event that has not arrived', () => {
   for (const [name, said] of PARTS) {
     it(`holds a box open for ${name} where the race has been run`, async () => {
       waiting()
-      renderAt(`/sr/kalendar/${RAN}`, 'visitor', null, undefined, BEFORE)
+      renderAt(`/sr/kalendar/${RAN}`, 'competitor', '000007', undefined, BEFORE)
 
       expect(await screen.findByText(said)).toBeVisible()
     })
@@ -65,7 +65,7 @@ describe('a part of an event that has not arrived', () => {
 
   it('holds none where the race has not been run', async () => {
     waiting()
-    renderAt(`/sr/kalendar/${AHEAD}`, 'visitor', null, undefined, BEFORE)
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', '000007', undefined, BEFORE)
 
     /* Waited for by something else on the screen, so the check is made after the
        event itself has arrived and the sections would have been drawn. */
@@ -81,14 +81,14 @@ describe('a part of an event that has not arrived', () => {
 describe('a part of an event that will not arrive', () => {
   it('says so where the race has been run', async () => {
     broken()
-    renderAt(`/sr/kalendar/${RAN}`, 'visitor', null, undefined, BEFORE)
+    renderAt(`/sr/kalendar/${RAN}`, 'competitor', '000007', undefined, BEFORE)
 
     expect(await screen.findAllByRole('alert')).toHaveLength(PARTS.length)
   })
 
   it('says nothing where the race has not been run', async () => {
     broken()
-    renderAt(`/sr/kalendar/${AHEAD}`, 'visitor', null, undefined, BEFORE)
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', '000007', undefined, BEFORE)
 
     await screen.findByRole('heading', { level: 2, name: 'Trke' })
 

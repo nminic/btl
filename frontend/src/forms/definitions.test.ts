@@ -81,13 +81,14 @@ describe('every form definition in the portal', () => {
       )
       .map(({ path }) => path)
 
-    /* The three, so the sweep is known to have found the boxes rather than an
-       empty list, and so a fourth has to be looked at rather than merely
+    /* The four, so the sweep is known to have found the boxes rather than an
+       empty list, and so a fifth has to be looked at rather than merely
        counted. */
     expect(drawn.map(({ path }) => path).sort()).toEqual([
       'forms/LongBox.tsx',
       'pages/LeagueDetail.tsx',
       'pages/admin/PendingQueue.tsx',
+      'pages/event/GoingToEvent.tsx',
     ])
     expect(loose).toEqual([])
 

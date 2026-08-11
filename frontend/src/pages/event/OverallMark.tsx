@@ -3,6 +3,7 @@ import { editionsOf } from '../../data/editions'
 import type { EventComment } from '../../data/types'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useReadsComments } from './readsComments'
 import { combinePair, useComments, useEvents } from '../../data/useResource'
 import { overall, rated } from './overall'
 import './EventComments.css'
@@ -33,7 +34,14 @@ import './EventComments.css'
  */
 export function OverallMark({ eventId }: { eventId: string }) {
   const { locale, t } = useI18n()
+  const reads = useReadsComments()
   const state = combinePair(useComments(), useEvents())
+
+  /* Read out of the comments, so it goes where they go: only members see them
+     (owner, 11.08.2026), and a mark is what the comments add up to. */
+  if (!reads) {
+    return null
+  }
 
   /* Nothing is drawn while it is on its way, and nothing is said if it never
      arrives. This stands in the head of the page: a box that resolves into

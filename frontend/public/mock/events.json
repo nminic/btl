@@ -8,6 +8,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -19,6 +20,7 @@
     "country": "RS",
     "organizer": "Triathlon",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -30,6 +32,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -41,6 +44,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -52,6 +56,7 @@
     "country": "ME",
     "organizer": "Triathlon",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -63,6 +68,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -74,6 +80,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -85,6 +92,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -96,6 +104,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -107,6 +116,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -118,6 +128,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -129,6 +140,7 @@
     "country": "MK",
     "organizer": "Triathlon",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -140,6 +152,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -151,6 +164,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -162,6 +176,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -173,6 +188,7 @@
     "country": "RS",
     "organizer": "Triathlon",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -184,6 +200,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -195,6 +212,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -206,6 +224,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -217,6 +236,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -228,6 +248,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -239,6 +260,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -250,6 +272,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -261,6 +284,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -272,6 +296,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -283,6 +308,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -294,6 +320,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -305,6 +332,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -316,6 +344,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -327,6 +356,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -338,6 +368,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -349,6 +380,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -360,6 +392,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -371,6 +404,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -382,6 +416,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -393,6 +428,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -404,6 +440,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -415,6 +452,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -426,6 +464,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -437,6 +476,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -448,6 +488,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -459,6 +500,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -470,6 +512,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -481,6 +524,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -492,6 +536,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -503,6 +548,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -514,6 +560,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -525,6 +572,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -536,6 +584,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -547,6 +596,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -558,6 +608,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -569,6 +620,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -580,6 +632,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -591,6 +644,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -602,6 +656,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -613,6 +668,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -624,6 +680,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -635,6 +692,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -646,6 +704,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -657,6 +716,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -668,6 +728,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -679,6 +740,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -690,6 +752,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -701,6 +764,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -712,6 +776,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -723,6 +788,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -734,6 +800,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -745,6 +812,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -756,6 +824,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -767,6 +836,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -778,6 +848,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -789,6 +860,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -800,6 +872,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -811,6 +884,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -822,6 +896,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -833,6 +908,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -844,6 +920,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -855,6 +932,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -866,6 +944,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -877,6 +956,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -888,6 +968,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -899,6 +980,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -910,6 +992,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -921,6 +1004,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -932,6 +1016,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -943,6 +1028,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -954,6 +1040,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -965,6 +1052,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -976,6 +1064,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -987,6 +1076,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -998,6 +1088,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1009,6 +1100,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1020,6 +1112,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1031,6 +1124,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1042,6 +1136,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1053,6 +1148,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1064,6 +1160,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1075,6 +1172,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1086,6 +1184,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1097,6 +1196,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1108,6 +1208,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1119,6 +1220,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1130,6 +1232,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1141,6 +1244,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1152,6 +1256,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1163,6 +1268,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1174,6 +1280,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1185,6 +1292,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1196,6 +1304,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1207,6 +1316,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1218,6 +1328,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1229,6 +1340,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1240,6 +1352,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1251,6 +1364,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1262,6 +1376,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1273,6 +1388,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1284,6 +1400,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1295,6 +1412,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1306,6 +1424,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1317,6 +1436,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1328,6 +1448,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1339,6 +1460,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1350,6 +1472,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1361,6 +1484,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1372,6 +1496,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1383,6 +1508,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1394,6 +1520,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1405,6 +1532,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1416,6 +1544,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1427,6 +1556,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1438,6 +1568,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1449,6 +1580,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1460,6 +1592,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1471,6 +1604,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1482,6 +1616,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1493,6 +1628,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1504,6 +1640,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1515,6 +1652,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1526,6 +1664,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1537,6 +1676,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1548,6 +1688,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1559,6 +1700,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1570,6 +1712,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1581,6 +1724,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1592,6 +1736,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1603,6 +1748,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1614,6 +1760,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1625,6 +1772,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1636,6 +1784,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1647,6 +1796,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1658,6 +1808,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1669,6 +1820,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1680,6 +1832,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1691,6 +1844,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1702,6 +1856,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1713,6 +1868,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1724,6 +1880,7 @@
     "country": "RS",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1735,6 +1892,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1746,6 +1904,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1757,6 +1916,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1768,6 +1928,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1779,6 +1940,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1790,6 +1952,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1801,6 +1964,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1812,6 +1976,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1823,6 +1988,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1834,6 +2000,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1845,6 +2012,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1856,6 +2024,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1867,6 +2036,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1878,6 +2048,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1889,6 +2060,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1900,6 +2072,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1911,6 +2084,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1922,6 +2096,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1933,6 +2108,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1944,6 +2120,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1955,6 +2132,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1966,6 +2144,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1977,6 +2156,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1988,6 +2168,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -1999,6 +2180,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2010,6 +2192,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2021,6 +2204,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2032,6 +2216,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2043,6 +2228,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2054,6 +2240,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2065,6 +2252,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2076,6 +2264,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2087,6 +2276,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2098,6 +2288,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2109,6 +2300,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2120,6 +2312,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2131,6 +2324,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2142,6 +2336,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2153,6 +2348,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2164,6 +2360,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2175,6 +2372,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2186,6 +2384,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2197,6 +2396,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2208,6 +2408,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2219,6 +2420,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2230,6 +2432,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2241,6 +2444,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2252,6 +2456,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2263,6 +2468,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2274,6 +2480,7 @@
     "country": "RS",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2285,6 +2492,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2296,6 +2504,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2307,6 +2516,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2318,6 +2528,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2329,6 +2540,7 @@
     "country": "BA",
     "organizer": "Stairs",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2340,6 +2552,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2351,6 +2564,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2362,6 +2576,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2373,6 +2588,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2384,6 +2600,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2395,6 +2612,7 @@
     "country": "RS",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2406,6 +2624,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2417,6 +2636,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2428,6 +2648,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2439,6 +2660,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2450,6 +2672,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2461,6 +2684,7 @@
     "country": "MK",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2472,6 +2696,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2483,6 +2708,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2494,6 +2720,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2505,6 +2732,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2516,6 +2744,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2527,6 +2756,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2538,6 +2768,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2549,6 +2780,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2560,6 +2792,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2571,6 +2804,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2582,6 +2816,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2593,6 +2828,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2604,6 +2840,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2615,6 +2852,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2626,6 +2864,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2637,6 +2876,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2648,6 +2888,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2659,6 +2900,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2670,6 +2912,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2681,6 +2924,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2692,6 +2936,7 @@
     "country": "ME",
     "organizer": "Stairs",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2703,6 +2948,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2714,6 +2960,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2725,6 +2972,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2736,6 +2984,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2747,6 +2996,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2758,6 +3008,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2769,6 +3020,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2780,6 +3032,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2791,6 +3044,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2802,6 +3056,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2813,6 +3068,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2824,6 +3080,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2835,6 +3092,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2846,6 +3104,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2857,6 +3116,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2868,6 +3128,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2879,6 +3140,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2890,6 +3152,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2901,6 +3164,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2912,6 +3176,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2923,6 +3188,7 @@
     "country": "RS",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2934,6 +3200,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2945,6 +3212,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2956,6 +3224,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2967,6 +3236,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2978,6 +3248,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -2989,6 +3260,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3000,6 +3272,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3011,6 +3284,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3022,6 +3296,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3033,6 +3308,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3044,6 +3320,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3055,6 +3332,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3066,6 +3344,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3077,6 +3356,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3088,6 +3368,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3099,6 +3380,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3110,6 +3392,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3121,6 +3404,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3132,6 +3416,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3143,6 +3428,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3154,6 +3440,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3165,6 +3452,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3176,6 +3464,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3187,6 +3476,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3198,6 +3488,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3209,6 +3500,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3220,6 +3512,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3231,6 +3524,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3242,6 +3536,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3253,6 +3548,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3264,6 +3560,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3275,6 +3572,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3286,6 +3584,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3297,6 +3596,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3308,6 +3608,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3319,6 +3620,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3330,6 +3632,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3341,6 +3644,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3352,6 +3656,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3363,6 +3668,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3374,6 +3680,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3385,6 +3692,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3396,6 +3704,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3407,6 +3716,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3418,6 +3728,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3429,6 +3740,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3440,6 +3752,7 @@
     "country": "RS",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3451,6 +3764,7 @@
     "country": "RS",
     "organizer": "Stairs",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3462,6 +3776,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3473,6 +3788,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3484,6 +3800,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3495,6 +3812,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3506,6 +3824,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3517,6 +3836,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3528,6 +3848,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3539,6 +3860,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3550,6 +3872,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3561,6 +3884,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3572,6 +3896,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3583,6 +3908,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3594,6 +3920,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3605,6 +3932,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3616,6 +3944,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3627,6 +3956,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3638,6 +3968,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3649,6 +3980,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3660,6 +3992,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3671,6 +4004,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3682,6 +4016,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3693,6 +4028,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3704,6 +4040,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3715,6 +4052,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3726,6 +4064,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3737,6 +4076,7 @@
     "country": "RS",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3748,6 +4088,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3759,6 +4100,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3770,6 +4112,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3781,6 +4124,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3792,6 +4136,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3803,6 +4148,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3814,6 +4160,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3825,6 +4172,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3836,6 +4184,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3847,6 +4196,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3858,6 +4208,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3869,6 +4220,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3880,6 +4232,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3891,6 +4244,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3902,6 +4256,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3913,6 +4268,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3924,6 +4280,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3935,6 +4292,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3946,6 +4304,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3957,6 +4316,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3968,6 +4328,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3979,6 +4340,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -3990,6 +4352,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4001,6 +4364,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4012,6 +4376,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4023,6 +4388,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4034,6 +4400,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4045,6 +4412,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4056,6 +4424,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4067,6 +4436,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4078,6 +4448,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4089,6 +4460,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4100,6 +4472,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4111,6 +4484,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4122,6 +4496,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4133,6 +4508,7 @@
     "country": "BA",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4144,6 +4520,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4155,6 +4532,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4166,6 +4544,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4177,6 +4556,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4188,6 +4568,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4199,6 +4580,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4210,6 +4592,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4221,6 +4604,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4232,6 +4616,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4243,6 +4628,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4254,6 +4640,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4265,6 +4652,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4276,6 +4664,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4287,6 +4676,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4298,6 +4688,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4309,6 +4700,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4320,6 +4712,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4331,6 +4724,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4342,6 +4736,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4353,6 +4748,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4364,6 +4760,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4375,6 +4772,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4386,6 +4784,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4397,6 +4796,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4408,6 +4808,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4419,6 +4820,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4430,6 +4832,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4441,6 +4844,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4452,6 +4856,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4463,6 +4868,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4474,6 +4880,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4485,6 +4892,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4496,6 +4904,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4507,6 +4916,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4518,6 +4928,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4529,6 +4940,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4540,6 +4952,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4551,6 +4964,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4562,6 +4976,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4573,6 +4988,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4584,6 +5000,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4595,6 +5012,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4606,6 +5024,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4617,6 +5036,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4628,6 +5048,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4639,6 +5060,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4650,6 +5072,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4661,6 +5084,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4672,6 +5096,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4683,6 +5108,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4694,6 +5120,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4705,6 +5132,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4716,6 +5144,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4727,6 +5156,7 @@
     "country": "BA",
     "organizer": "Trejl",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4738,6 +5168,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4749,6 +5180,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4760,6 +5192,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4771,6 +5204,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4782,6 +5216,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4793,6 +5228,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4804,6 +5240,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4815,6 +5252,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4826,6 +5264,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4837,6 +5276,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4848,6 +5288,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4859,6 +5300,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4870,6 +5312,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4881,6 +5324,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4892,6 +5336,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4903,6 +5348,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4914,6 +5360,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4925,6 +5372,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4936,6 +5384,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4947,6 +5396,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4958,6 +5408,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4969,6 +5420,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4980,6 +5432,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -4991,6 +5444,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5002,6 +5456,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5013,6 +5468,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5024,6 +5480,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5035,6 +5492,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5046,6 +5504,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5057,6 +5516,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5068,6 +5528,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5079,6 +5540,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5090,6 +5552,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5101,6 +5564,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5112,6 +5576,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5123,6 +5588,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5134,6 +5600,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5145,6 +5612,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5156,6 +5624,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5167,6 +5636,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5178,6 +5648,7 @@
     "country": "RS",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5189,6 +5660,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5200,6 +5672,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5211,6 +5684,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5222,6 +5696,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5233,6 +5708,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5244,6 +5720,7 @@
     "country": "ME",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5255,6 +5732,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5266,6 +5744,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5277,6 +5756,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5288,6 +5768,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5299,6 +5780,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5310,6 +5792,7 @@
     "country": "RS",
     "organizer": "Stairs",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5321,6 +5804,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5332,6 +5816,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5343,6 +5828,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5354,6 +5840,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5365,6 +5852,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5376,6 +5864,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5387,6 +5876,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5398,6 +5888,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5409,6 +5900,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5420,6 +5912,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5431,6 +5924,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5442,6 +5936,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5453,6 +5948,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5464,6 +5960,7 @@
     "country": "RS",
     "organizer": "Prepreke",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5475,6 +5972,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5486,6 +5984,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5497,6 +5996,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5508,6 +6008,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5519,6 +6020,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5530,6 +6032,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5541,6 +6044,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5552,6 +6056,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5563,6 +6068,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5574,6 +6080,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5585,6 +6092,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5596,6 +6104,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5607,6 +6116,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5618,6 +6128,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5629,6 +6140,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5640,6 +6152,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5651,6 +6164,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5662,6 +6176,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5673,6 +6188,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5684,6 +6200,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5695,6 +6212,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5706,6 +6224,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5717,6 +6236,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5728,6 +6248,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5739,6 +6260,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5750,6 +6272,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5761,6 +6284,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5772,6 +6296,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5783,6 +6308,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5794,6 +6320,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5805,6 +6332,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5816,6 +6344,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5827,6 +6356,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5838,6 +6368,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5849,6 +6380,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5860,6 +6392,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5871,6 +6404,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5882,6 +6416,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5893,6 +6428,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5904,6 +6440,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5915,6 +6452,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5926,6 +6464,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5937,6 +6476,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5948,6 +6488,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5959,6 +6500,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5970,6 +6512,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5981,6 +6524,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -5992,6 +6536,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6003,6 +6548,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6014,6 +6560,7 @@
     "country": "RS",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6025,6 +6572,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6036,6 +6584,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6047,6 +6596,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6058,6 +6608,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6069,6 +6620,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6080,6 +6632,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6091,6 +6644,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6102,6 +6656,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6113,6 +6668,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6124,6 +6680,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6135,6 +6692,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6146,6 +6704,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6157,6 +6716,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6168,6 +6728,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6179,6 +6740,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6190,6 +6752,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6201,6 +6764,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6212,6 +6776,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6223,6 +6788,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6234,6 +6800,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6245,6 +6812,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6256,6 +6824,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6267,6 +6836,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6278,6 +6848,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6289,6 +6860,7 @@
     "country": "BA",
     "organizer": "Trejl",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6300,6 +6872,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6311,6 +6884,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6322,6 +6896,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6333,6 +6908,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6344,6 +6920,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6355,6 +6932,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6366,6 +6944,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6377,6 +6956,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6388,6 +6968,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6399,6 +6980,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6410,6 +6992,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6421,6 +7004,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6432,6 +7016,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6443,6 +7028,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6454,6 +7040,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6465,6 +7052,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6476,6 +7064,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6487,6 +7076,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6498,6 +7088,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6509,6 +7100,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6520,6 +7112,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6531,6 +7124,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6542,6 +7136,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6553,6 +7148,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6564,6 +7160,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6575,6 +7172,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6586,6 +7184,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6597,6 +7196,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "training",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6608,6 +7208,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6619,6 +7220,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6630,6 +7232,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6641,6 +7244,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6652,6 +7256,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6663,6 +7268,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6674,6 +7280,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6685,6 +7292,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6696,6 +7304,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6707,6 +7316,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6718,6 +7328,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6729,6 +7340,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6740,6 +7352,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6751,6 +7364,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6762,6 +7376,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6773,6 +7388,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6784,6 +7400,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6795,6 +7412,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6806,6 +7424,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6817,6 +7436,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6828,6 +7448,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6839,6 +7460,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6850,6 +7472,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6861,6 +7484,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6872,6 +7496,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6883,6 +7508,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6894,6 +7520,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6905,6 +7532,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6916,6 +7544,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6927,6 +7556,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6938,6 +7568,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6949,6 +7580,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6960,6 +7592,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6971,6 +7604,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6982,6 +7616,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -6993,6 +7628,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7004,6 +7640,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7015,6 +7652,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7026,6 +7664,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7037,6 +7676,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7048,6 +7688,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7059,6 +7700,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7070,6 +7712,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7081,6 +7724,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7092,6 +7736,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7103,6 +7748,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7114,6 +7760,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7125,6 +7772,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7136,6 +7784,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7147,6 +7796,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7158,6 +7808,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7169,6 +7820,7 @@
     "country": "RS",
     "organizer": "Stairs",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7180,6 +7832,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7191,6 +7844,7 @@
     "country": "RS",
     "organizer": "Trejl",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7202,6 +7856,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7213,6 +7868,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7224,6 +7880,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7235,6 +7892,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7246,6 +7904,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7257,6 +7916,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7268,6 +7928,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7279,6 +7940,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7290,6 +7952,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7301,6 +7964,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7312,6 +7976,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7323,6 +7988,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7334,6 +8000,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7345,6 +8012,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7356,6 +8024,7 @@
     "country": "BA",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7367,6 +8036,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7378,6 +8048,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7389,6 +8060,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7400,6 +8072,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7411,6 +8084,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7422,6 +8096,7 @@
     "country": "ME",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7433,6 +8108,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7444,6 +8120,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7455,6 +8132,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7466,6 +8144,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7477,6 +8156,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7488,6 +8168,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7499,6 +8180,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7510,6 +8192,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7521,6 +8204,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7532,6 +8216,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7543,6 +8228,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7554,6 +8240,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7565,6 +8252,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7576,6 +8264,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7587,6 +8276,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7598,6 +8288,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7609,6 +8300,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7620,6 +8312,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7631,6 +8324,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7642,6 +8336,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7653,6 +8348,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7664,6 +8360,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7675,6 +8372,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7686,6 +8384,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7697,6 +8396,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7708,6 +8408,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7719,6 +8420,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7730,6 +8432,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7741,6 +8444,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7752,6 +8456,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7763,6 +8468,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7774,6 +8480,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7785,6 +8492,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7796,6 +8504,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7807,6 +8516,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7818,6 +8528,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7829,6 +8540,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7840,6 +8552,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7851,6 +8564,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7862,6 +8576,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7873,6 +8588,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7884,6 +8600,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7895,6 +8612,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7906,6 +8624,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7917,6 +8636,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7928,6 +8648,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7939,6 +8660,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7950,6 +8672,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7961,6 +8684,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7972,6 +8696,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7983,6 +8708,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -7994,6 +8720,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8005,6 +8732,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8016,6 +8744,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8027,6 +8756,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8038,6 +8768,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8049,6 +8780,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8060,6 +8792,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8071,6 +8804,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8082,6 +8816,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8093,6 +8828,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8104,6 +8840,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8115,6 +8852,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8126,6 +8864,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8137,6 +8876,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8148,6 +8888,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8159,6 +8900,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8170,6 +8912,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8181,6 +8924,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8192,6 +8936,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8203,6 +8948,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8214,6 +8960,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8225,6 +8972,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8236,6 +8984,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8247,6 +8996,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8258,6 +9008,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8269,6 +9020,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8280,6 +9032,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8291,6 +9044,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8302,6 +9056,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8313,6 +9068,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8324,6 +9080,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8335,6 +9092,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8346,6 +9104,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8357,6 +9116,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8368,6 +9128,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8379,6 +9140,7 @@
     "country": "RS",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8390,6 +9152,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8401,6 +9164,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8412,6 +9176,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8423,6 +9188,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8434,6 +9200,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8445,6 +9212,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8456,6 +9224,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8467,6 +9236,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8478,6 +9248,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8489,6 +9260,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8500,6 +9272,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8511,6 +9284,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8522,6 +9296,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8533,6 +9308,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8544,6 +9320,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8555,6 +9332,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8566,6 +9344,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8577,6 +9356,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8588,6 +9368,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8599,6 +9380,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8610,6 +9392,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8621,6 +9404,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8632,6 +9416,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8643,6 +9428,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8654,6 +9440,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8665,6 +9452,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8676,6 +9464,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8687,6 +9476,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8698,6 +9488,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8709,6 +9500,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8720,6 +9512,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8731,6 +9524,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8742,6 +9536,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8753,6 +9548,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8764,6 +9560,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8775,6 +9572,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8786,6 +9584,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8797,6 +9596,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8808,6 +9608,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8819,6 +9620,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8830,6 +9632,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8841,6 +9644,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8852,6 +9656,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8863,6 +9668,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8874,6 +9680,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8885,6 +9692,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8896,6 +9704,7 @@
     "country": "BA",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8907,6 +9716,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8918,6 +9728,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8929,6 +9740,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8940,6 +9752,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8951,6 +9764,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8962,6 +9776,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8973,6 +9788,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8984,6 +9800,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -8995,6 +9812,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9006,6 +9824,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9017,6 +9836,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9028,6 +9848,7 @@
     "country": "RS",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9039,6 +9860,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9050,6 +9872,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9061,6 +9884,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9072,6 +9896,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9083,6 +9908,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9094,6 +9920,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9105,6 +9932,7 @@
     "country": "RS",
     "organizer": "Stairs",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9116,6 +9944,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9127,6 +9956,7 @@
     "country": "BA",
     "organizer": "Stepenište",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9138,6 +9968,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9149,6 +9980,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9160,6 +9992,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9171,6 +10004,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9182,6 +10016,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9193,6 +10028,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9204,6 +10040,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9215,6 +10052,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9226,6 +10064,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9237,6 +10076,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9248,6 +10088,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9259,6 +10100,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9270,6 +10112,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9281,6 +10124,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9292,6 +10136,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9303,6 +10148,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9314,6 +10160,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9325,6 +10172,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9336,6 +10184,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9347,6 +10196,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9358,6 +10208,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9369,6 +10220,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9380,6 +10232,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9391,6 +10244,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9402,6 +10256,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9413,6 +10268,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9424,6 +10280,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9435,6 +10292,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9446,6 +10304,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9457,6 +10316,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9468,6 +10328,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9479,6 +10340,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9490,6 +10352,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9501,6 +10364,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9512,6 +10376,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9523,6 +10388,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9534,6 +10400,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9545,6 +10412,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9556,6 +10424,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9567,6 +10436,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9578,6 +10448,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9589,6 +10460,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9600,6 +10472,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9611,6 +10484,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9622,6 +10496,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9633,6 +10508,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9644,6 +10520,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9655,6 +10532,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9666,6 +10544,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9677,6 +10556,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9688,6 +10568,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9699,6 +10580,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9710,6 +10592,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9721,6 +10604,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9732,6 +10616,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9743,6 +10628,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9754,6 +10640,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9765,6 +10652,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9776,6 +10664,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9787,6 +10676,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9798,6 +10688,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9809,6 +10700,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9820,6 +10712,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9831,6 +10724,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9842,6 +10736,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9853,6 +10748,7 @@
     "country": "RS",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9864,6 +10760,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9875,6 +10772,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9886,6 +10784,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9897,6 +10796,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9908,6 +10808,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9919,6 +10820,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9930,6 +10832,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9941,6 +10844,7 @@
     "country": "RS",
     "organizer": "Put",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9952,6 +10856,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9963,6 +10868,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9974,6 +10880,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9985,6 +10892,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -9996,6 +10904,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10007,6 +10916,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10018,6 +10928,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10029,6 +10940,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10040,6 +10952,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10051,6 +10964,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10062,6 +10976,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10073,6 +10988,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10084,6 +11000,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10095,6 +11012,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10106,6 +11024,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10117,6 +11036,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10128,6 +11048,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10139,6 +11060,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10150,6 +11072,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10161,6 +11084,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10172,6 +11096,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10183,6 +11108,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10194,6 +11120,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10205,6 +11132,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10216,6 +11144,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10227,6 +11156,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10238,6 +11168,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10249,6 +11180,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10260,6 +11192,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10271,6 +11204,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10282,6 +11216,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10293,6 +11228,7 @@
     "country": "ME",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10304,6 +11240,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10315,6 +11252,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10326,6 +11264,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10337,6 +11276,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10348,6 +11288,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10359,6 +11300,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10370,6 +11312,7 @@
     "country": "ME",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10381,6 +11324,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10392,6 +11336,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10403,6 +11348,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10414,6 +11360,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10425,6 +11372,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10436,6 +11384,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10447,6 +11396,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10458,6 +11408,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10469,6 +11420,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10480,6 +11432,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10491,6 +11444,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10502,6 +11456,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10513,6 +11468,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10524,6 +11480,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10535,6 +11492,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10546,6 +11504,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10557,6 +11516,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10568,6 +11528,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10579,6 +11540,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10590,6 +11552,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10601,6 +11564,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10612,6 +11576,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10623,6 +11588,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10634,6 +11600,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10645,6 +11612,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10656,6 +11624,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10667,6 +11636,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10678,6 +11648,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10689,6 +11660,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10700,6 +11672,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10711,6 +11684,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10722,6 +11696,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10733,6 +11708,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10744,6 +11720,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10755,6 +11732,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10766,6 +11744,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10777,6 +11756,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10788,6 +11768,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10799,6 +11780,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10810,6 +11792,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10821,6 +11804,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10832,6 +11816,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10843,6 +11828,7 @@
     "country": "RS",
     "organizer": "Stadium",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10854,6 +11840,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10865,6 +11852,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10876,6 +11864,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10887,6 +11876,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10898,6 +11888,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10909,6 +11900,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10920,6 +11912,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10931,6 +11924,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10942,6 +11936,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10953,6 +11948,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10964,6 +11960,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10975,6 +11972,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10986,6 +11984,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -10997,6 +11996,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11008,6 +12008,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11019,6 +12020,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11030,6 +12032,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11041,6 +12044,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11052,6 +12056,7 @@
     "country": "MK",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11063,6 +12068,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11074,6 +12080,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11085,6 +12092,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11096,6 +12104,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11107,6 +12116,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11118,6 +12128,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11129,6 +12140,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11140,6 +12152,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11151,6 +12164,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11162,6 +12176,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11173,6 +12188,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11184,6 +12200,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11195,6 +12212,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11206,6 +12224,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11217,6 +12236,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11228,6 +12248,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11239,6 +12260,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11250,6 +12272,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11261,6 +12284,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11272,6 +12296,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11283,6 +12308,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11294,6 +12320,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11305,6 +12332,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11316,6 +12344,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11327,6 +12356,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11338,6 +12368,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11349,6 +12380,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11360,6 +12392,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11371,6 +12404,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11382,6 +12416,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11393,6 +12428,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11404,6 +12440,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11415,6 +12452,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11426,6 +12464,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11437,6 +12476,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11448,6 +12488,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11459,6 +12500,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11470,6 +12512,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11481,6 +12524,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11492,6 +12536,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11503,6 +12548,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11514,6 +12560,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11525,6 +12572,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11536,6 +12584,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11547,6 +12596,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11558,6 +12608,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11569,6 +12620,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11580,6 +12632,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11591,6 +12644,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11602,6 +12656,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11613,6 +12668,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11624,6 +12680,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11635,6 +12692,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11646,6 +12704,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11657,6 +12716,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11668,6 +12728,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11679,6 +12740,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11690,6 +12752,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11701,6 +12764,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11712,6 +12776,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11723,6 +12788,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11734,6 +12800,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11745,6 +12812,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11756,6 +12824,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11767,6 +12836,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11778,6 +12848,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11789,6 +12860,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11800,6 +12872,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11811,6 +12884,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11822,6 +12896,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11833,6 +12908,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11844,6 +12920,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11855,6 +12932,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11866,6 +12944,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11877,6 +12956,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11888,6 +12968,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11899,6 +12980,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11910,6 +12992,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11921,6 +13004,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11932,6 +13016,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11943,6 +13028,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11954,6 +13040,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11965,6 +13052,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11976,6 +13064,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11987,6 +13076,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -11998,6 +13088,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12009,6 +13100,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12020,6 +13112,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12031,6 +13124,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12042,6 +13136,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12053,6 +13148,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12064,6 +13160,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12075,6 +13172,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12086,6 +13184,7 @@
     "country": "RS",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12097,6 +13196,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12108,6 +13208,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12119,6 +13220,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12130,6 +13232,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12141,6 +13244,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12152,6 +13256,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12163,6 +13268,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12174,6 +13280,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12185,6 +13292,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12196,6 +13304,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12207,6 +13316,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12218,6 +13328,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12229,6 +13340,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12240,6 +13352,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12251,6 +13364,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12262,6 +13376,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12273,6 +13388,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12284,6 +13400,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12295,6 +13412,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12306,6 +13424,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-sidski-novogodisnji-maraton-2024-01-14"
   },
   {
@@ -12317,6 +13436,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "yes",
     "copiedFrom": "evt-podgoricka-desetka-2023-01-29"
   },
   {
@@ -12328,6 +13448,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-zimski-nocni-polumaraton-2025-02-08"
   },
   {
@@ -12339,6 +13460,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-splitski-maraton-2025-02-16"
   },
   {
@@ -12350,6 +13472,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "yes",
     "copiedFrom": "evt-avala-trail-2023-2023-02-25"
   },
   {
@@ -12361,6 +13484,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-niski-zimski-maraton-2024-03-03"
   },
   {
@@ -12372,6 +13496,7 @@
     "country": "RS",
     "organizer": "Balkanska trkačka liga",
     "kind": "gathering",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12383,6 +13508,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-srebrno-jezero-polumaraton-2026-03-07"
   },
   {
@@ -12394,6 +13520,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-barcelona-marathon-2025-03-16"
   },
   {
@@ -12405,6 +13532,7 @@
     "country": "MK",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-rome-marathon-2024-03-17"
   },
   {
@@ -12416,6 +13544,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-novosadski-polumaraton-2024-03-24"
   },
   {
@@ -12427,6 +13556,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-vrnjacka-banja-polumaraton-2024-03-30"
   },
   {
@@ -12438,6 +13568,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-vrnjacka-banja-maraton-2024-03-31"
   },
   {
@@ -12449,6 +13580,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "yes",
     "copiedFrom": "evt-beogradski-maraton-2025-04-06"
   },
   {
@@ -12460,6 +13592,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-ultramaraton-palic-2025-05-31"
   },
   {
@@ -12471,6 +13604,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-novosadski-nocni-maraton-2025-06-28"
   },
   {
@@ -12482,6 +13616,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-the-tron-night-run-2025-08-16"
   },
   {
@@ -12493,6 +13628,7 @@
     "country": "RS",
     "organizer": "Obstacles",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-legionar-ocr-2025-08-30"
   },
   {
@@ -12504,6 +13640,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-10k-belgrade-2025-09-06"
   },
   {
@@ -12515,6 +13652,7 @@
     "country": "RS",
     "organizer": "Balkanska trkačka liga",
     "kind": "gathering",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12526,6 +13664,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-paris-marathon-2025-04-13"
   },
   {
@@ -12537,6 +13676,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-fruskogorski-maraton-2024-04-27"
   },
   {
@@ -12548,6 +13688,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-juzni-pripravnicki-fg-maraton-2026-04-25"
   },
   {
@@ -12559,6 +13700,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-prague-marathon-2024-05-05"
   },
   {
@@ -12570,6 +13712,7 @@
     "country": "RS",
     "organizer": "Balkanska trkačka liga",
     "kind": "gathering",
+    "featured": "no",
     "copiedFrom": ""
   },
   {
@@ -12581,6 +13724,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-kup-fruske-gore-2025-05-18"
   },
   {
@@ -12592,6 +13736,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-onerun-2024-05-19"
   },
   {
@@ -12603,6 +13748,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-5k-ada-virtual-challenge-2025-05-22"
   },
   {
@@ -12614,6 +13760,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-zrenjaninski-maraton-2025-05-25"
   },
   {
@@ -12625,6 +13772,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-ivanjica-trail-2025-05-24"
   },
   {
@@ -12636,6 +13784,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-stazama-branka-copica-2024-05-26"
   },
   {
@@ -12647,6 +13796,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-oplenac-open-trail-2024-06-02"
   },
   {
@@ -12658,6 +13808,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "yes",
     "copiedFrom": "evt-tara-ultra-trail-2024-07-06"
   },
   {
@@ -12669,6 +13820,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "yes",
     "copiedFrom": "evt-topla-voda-trail-2023-08-19"
   },
   {
@@ -12680,6 +13832,7 @@
     "country": "RS",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-dunavske-carolije-2024-08-31"
   },
   {
@@ -12691,6 +13844,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-beljanica-trail-2023-09-03"
   },
   {
@@ -12702,6 +13856,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-zemunski-polumaraton-2025-09-14"
   },
   {
@@ -12713,6 +13868,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-trka-samoprevazilazenja-2024-09-22"
   },
   {
@@ -12724,6 +13880,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-cacanski-polumaraton-2024-09-29"
   },
   {
@@ -12735,6 +13892,7 @@
     "country": "BA",
     "organizer": "Trail",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-radmilovac-trail-2023-10-08"
   },
   {
@@ -12746,6 +13904,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-svilajnacki-polumaraton-2024-10-13"
   },
   {
@@ -12757,6 +13916,7 @@
     "country": "ME",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-kostolacki-polumaraton-2024-10-26"
   },
   {
@@ -12768,6 +13928,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-zajedno-za-vasilija-2023-11-04"
   },
   {
@@ -12779,6 +13940,7 @@
     "country": "BA",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-plavi-krug-oko-ade-2023-11-12"
   },
   {
@@ -12790,6 +13952,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-beogradski-polumaraton-2024-11-24"
   },
   {
@@ -12801,6 +13964,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-bokeski-maraton-2025-12-14"
   },
   {
@@ -12812,6 +13976,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-mrazaton-2025-12-28"
   },
   {
@@ -12823,6 +13988,7 @@
     "country": "RS",
     "organizer": "Road",
     "kind": "race",
+    "featured": "no",
     "copiedFrom": "evt-resolution-run-2025-12-27"
   }
 ]

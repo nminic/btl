@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import countries from '../data/countries.json'
 import { countryName } from '../data/countryName'
 import { placeName, placesLike, usePlaces, TYPED_BEFORE_GUESSING, type Place } from '../data/places'
 import { useI18n } from '../i18n/useI18n'
@@ -32,16 +33,17 @@ export function PlaceField({
   value,
   invalid,
   describedBy,
+  country,
   onChange,
   openAt = false,
 }: {
   id: string
   name: string
   value: string
+  /** The country beside it, which this field writes as well as reads. */
+  country: string
   invalid: boolean
   describedBy: string | undefined
-  /** The town, and the country it came with. An empty country means the town
-   *  was typed rather than chosen. */
   onChange: (place: string, country: string) => void
   openAt?: boolean
 }) {
@@ -136,6 +138,7 @@ export function PlaceField({
 
   return (
     <div className="place" ref={box}>
+      <div className="place__town">
       <input
         id={id}
         name={name}
@@ -152,9 +155,13 @@ export function PlaceField({
         autoFocus={openAt}
         value={value}
         onChange={(event) => {
-          /* The country goes with the town it belonged to. Left standing, a
-             race in Beograd edited into Zagreb would be filed in Serbia. */
-          onChange(event.target.value, '')
+          /* The country stays as it is, and is now on the screen to be changed
+             (owner, 11.08.2026): a town the codebook does not have is entered by
+             hand and its country chosen beside it. It used to be cleared here,
+             because the country was written and never shown and the danger was a
+             race in Beograd edited into Zagreb and filed in Serbia with nothing
+             saying so. There is something saying so now. */
+          onChange(event.target.value, country)
           setOpen(true)
           /* And nothing is highlighted any more: the list is about to be a
              different list, and the third row of it is not the row somebody was
@@ -191,6 +198,40 @@ export function PlaceField({
           ))}
         </ul>
       )}
+      </div>
+
+      {/* The country, beside the town and not under it (owner, 11.08.2026).
+          Filled by whoever picks a town out of the codebook and chosen by hand
+          for a town it does not have, which is how a race in a hamlet stops
+          being filed wherever the last chosen town was. */}
+      <label className="place__country-pick">
+        <span>{t('admin.field.countryOfPlace')}</span>
+        <select
+          className="field__control"
+          value={country}
+          onChange={(event) => {
+            onChange(value, event.target.value)
+          }}
+        >
+          {/* The region first, because all but a handful of these races are run
+              in it. No empty option: a race is run in some country, and the one
+              this starts on is the one most of them are run in. */}
+          <optgroup label={t('form.region')}>
+            {countries.region.map((one) => (
+              <option key={one.code} value={one.code}>
+                {one.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={t('form.restOfWorld')}>
+            {countries.rest.map((one) => (
+              <option key={one.code} value={one.code}>
+                {one.name}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+      </label>
     </div>
   )
 }

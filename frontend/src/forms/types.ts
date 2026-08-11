@@ -88,6 +88,15 @@ export type FieldError = {
  * whole point of these is that nobody can, so they carry no rules and no state.
  */
 export type DerivedField = {
+  /**
+   * Worked out and saved, but not drawn.
+   *
+   * The address of an event is made from its name and its year and there is
+   * nothing anybody can do about it on the form, so the owner took the row off
+   * (11.08.2026). It is still written into the record on every save
+   * (admin/EntityEditor.tsx), which is the half that matters.
+   */
+  hidden?: boolean
   /** The field on the record it fills. */
   name: string
   labelKey: string

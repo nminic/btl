@@ -12,6 +12,7 @@ import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
 import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
+import { useReadsComments } from './readsComments'
 import './EventComments.css'
 
 /**
@@ -44,8 +45,24 @@ const AT_FIRST = 10
 
 export function EventComments({ eventId, date }: { eventId: string; date: string }) {
   const { t } = useI18n()
+  const reads = useReadsComments()
   const today = useToday()
   const state = combineResources(useComments(), useCompetitors(), useEvents())
+
+  /* Only members read them (owner, 11.08.2026). A visitor sees the races and the
+     results and is told, in one line, that there is something here for members;
+     the alternative is a section that silently is not there, which reads as an
+     event nobody has said anything about. */
+  if (!reads) {
+    return (
+      <>
+        <h2 className="profile__section" id="comments">
+          {t('event.comments')}
+        </h2>
+        <p className="profile__empty">{t('event.commentsForMembers')}</p>
+      </>
+    )
+  }
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a

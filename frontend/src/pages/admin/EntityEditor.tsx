@@ -36,6 +36,7 @@ export function EntityEditor({
   seed = 0,
   openAt,
   onDone,
+  onCreated,
 }: {
   entity: EntityDef
   editing: Editing
@@ -90,6 +91,15 @@ export function EntityEditor({
    *  event uses it (src/pages/event/EventActions.tsx). */
   openAt?: string
   onDone: () => void
+  /**
+   * Said with the identity of a record that has just been made.
+   *
+   * One screen listens: the events, where a race is entered inside the event it
+   * belongs to and a new event has no identity to hang one on until it is saved
+   * (owner, 11.08.2026). Without this the moderator had to save, go back to the
+   * list, find the event they had just made, and open it again.
+   */
+  onCreated?: (id: string) => void
 }) {
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
@@ -125,16 +135,15 @@ export function EntityEditor({
     }
 
     if (editing.mode === 'new') {
-      create(
-        entity.id,
-        idFor(
-          entity,
-          values,
-          (creations[entity.id] ?? []).map((one) => one.id),
-          taken,
-        ),
-        text,
+      const made = idFor(
+        entity,
+        values,
+        (creations[entity.id] ?? []).map((one) => one.id),
+        taken,
       )
+
+      create(entity.id, made, text)
+      onCreated?.(made)
     } else {
       editRecord(String(editing.record[entity.idField]), text)
     }

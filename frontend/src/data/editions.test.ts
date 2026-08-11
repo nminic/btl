@@ -20,6 +20,7 @@ function edition(id: string, copiedFrom = ''): BtlEvent {
     country: 'RS',
     organizer: 'x',
     kind: 'race',
+    featured: 'no',
     copiedFrom,
   }
 }

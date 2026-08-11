@@ -6,11 +6,16 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import type { Race } from '../../data/types'
+import { loadResource } from '../../data/client'
+import type { BtlEvent, Race } from '../../data/types'
+import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { raceFor } from './raceFor'
 import { ReportResult } from './ReportResult'
+
+/** Somebody signed in, since the form is only for members. */
+const ME = '000007'
 
 /* A result reported from the event it was run at (owner, 03.08.2026).
  *
@@ -223,5 +228,68 @@ describe('which race a reported result is scored against', () => {
   it('is the one the form opened on when the choice names no race it holds', () => {
     expect(raceFor([opened, other], 'nepostoji', opened)).toBe(opened)
     expect(raceFor([], 'a', opened)).toBe(opened)
+  })
+})
+
+describe('an event that runs over two mornings', () => {
+  /* A race carries its own day, and the form offers what has been run rather
+     than what belongs to an event that has begun (owner, 11.08.2026): on the
+     Saturday of a weekend the two Saturday races, on the Sunday all three.
+
+     Read off the record rather than named here, so the day this fixture changes
+     the test says what the screen says. */
+  const WEEKEND = 'balkansko-prvenstvo-veterana-2021'
+
+  async function racesOffered(): Promise<string[]> {
+    const chooser = await screen.findByLabelText(/^Trka/)
+
+    return [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
+  }
+
+  it('offers only the races of the first morning, on the first morning', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const event = must(
+      events.find((one) => one.slug === WEEKEND),
+      'the event of that weekend',
+    )
+    const mine = races.filter((one) => one.eventId === event.id)
+    const days = [...new Set(mine.map((one) => one.date))].sort()
+    const first = must(days[0], 'its first morning')
+
+    expect(days.length).toBeGreaterThan(1)
+
+    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, first)
+
+    expect(await racesOffered()).toHaveLength(mine.filter((one) => one.date === first).length)
+  })
+
+  it('offers all of them once the last morning has come', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const event = must(
+      events.find((one) => one.slug === WEEKEND),
+      'the event of that weekend',
+    )
+    const mine = races.filter((one) => one.eventId === event.id)
+    const last = must([...new Set(mine.map((one) => one.date))].sort().at(-1), 'its last morning')
+
+    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, last)
+
+    expect(await racesOffered()).toHaveLength(mine.length)
+  })
+
+  it('says there is nothing to report before the first morning', async () => {
+    /* The event has begun in the calendar sense on its own date, so the older
+       guard lets the form through; what stops it is that no race has been run. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const event = must(
+      events.find((one) => one.slug === WEEKEND),
+      'the event of that weekend',
+    )
+
+    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, event.date)
+
+    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
   })
 })

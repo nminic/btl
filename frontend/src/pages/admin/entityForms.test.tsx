@@ -580,7 +580,7 @@ describe('the words the seven forms need', () => {
     /* And a new one opens on a race before anybody answers (owner,
        10.08.2026). Written as what the form starts holding rather than as what
        a created record carries, because it is a press saved on the form. */
-    expect(EVENTS.start).toEqual({ kind: 'race' })
+    expect(EVENTS.start).toEqual({ kind: 'race', featured: 'no', country: 'RS' })
   })
 
   it('file an event in the country its town came with, which is not a field', () => {

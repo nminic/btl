@@ -75,8 +75,11 @@ export function EventActions({
       date: event.date,
       city: event.city,
       country: event.country,
-      organizer: event.organizer,
       kind: event.kind,
+      /* Not featured, whatever the one it was copied from was: being singled
+         out is a choice about this running of the race and not a property the
+         race carries (owner, 11.08.2026). */
+      featured: 'no',
       /* Which edition this one came out of. The one place it is ever written,
          and the reason the chain can be walked at all: an id nobody typed and
          nobody can mistype, rather than a name that changes with a sponsor

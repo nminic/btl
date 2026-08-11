@@ -22,6 +22,22 @@ export const EVENT_KINDS = ['race', 'training', 'gathering'] as const
 
 export type EventKind = (typeof EVENT_KINDS)[number]
 
+/* No first, because that is what an event is until somebody says otherwise. */
+export const FEATURED = ['no', 'yes'] as const
+
+export type Featured = (typeof FEATURED)[number]
+
+/**
+ * One member saying they are going to one event (owner, 11.08.2026).
+ *
+ * A stated intention and nothing more: PDL P10 has said since the beginning that
+ * signing up through the portal is „samo iskazana namera, ne obaveza".
+ */
+export type Attending = {
+  eventId: string
+  memberNumber: string
+}
+
 export type MembershipBasis = 'payment' | 'honorary'
 
 export type Competitor = {
@@ -89,6 +105,16 @@ export type BtlEvent = {
   country: string
   organizer: string
   kind: EventKind
+  /**
+   * Whether the event is singled out in the calendar and on the front page
+   * (owner, 11.08.2026).
+   *
+   * Yes or no, and not true or false, because the owner asked for a list with
+   * two entries rather than a box to tick: a list says what both answers are
+   * before either is chosen, and a box says only one of them. What the record
+   * keeps is what the list holds.
+   */
+  featured: Featured
   /**
    * The event this one was copied from, or an empty string.
    *
