@@ -140,3 +140,134 @@
 .field__confirm .field__label {
   font-weight: 400;
 }
+
+/* A row of fields, on a screen with room for one (owner, 11.08.2026).
+ *
+ * How many columns is counted by the renderer and handed in as `--columns`, so
+ * the definition names a row and nothing names a width. Fields keep their own
+ * order inside it, which is the order of the definition.
+ *
+ * Equal columns rather than columns sized to their contents: a row whose boxes
+ * are as wide as what they hold is a row that changes shape as it is typed into,
+ * and the eye follows the movement instead of the form. `minmax(0, 1fr)` and not
+ * `1fr`, because a grid column's floor is the width of its content, and a select
+ * of two hundred and forty six countries would push the row past the page. */
+.form__row {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  gap: var(--space-16);
+  align-items: start;
+}
+
+/* Under the wide layout every field stands on its own line, whatever row it
+   names (owner, 11.08.2026: „na mobilnom ostaje svako polje jedno ispod
+   drugog"). Four boxes across a 360 pixel screen are four boxes nobody can type
+   in, and the same is true of a window half that wide again.
+ *
+   820 is where the portal already becomes its wide self (styles/scale.test.ts
+   holds the list of widths at which it changes shape), so the form changes with
+   it rather than at a width of its own. */
+@media (max-width: 819px) {
+  .form__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The town and the country beside it are one answer in two controls, so where
+   they stand in a row of three they take the room of two of them. */
+.form__row .field--place {
+  grid-column: span 2;
+}
+
+@media (max-width: 819px) {
+  .form__row .field--place {
+    grid-column: auto;
+  }
+}
+
+/* One answer out of two or three, drawn as buttons (forms/FormRenderer.tsx). */
+.field--choice {
+  /* A fieldset carries a border and padding of its own in every browser. */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-inline-size: 0;
+}
+
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* The radio itself is not drawn, and is not taken out of the page either: it
+   keeps the focus, the keyboard and the announcement, and the label beside it is
+   what is seen and pressed. `appearance: none` would leave a control that is
+   still laid out; `display: none` would leave a group nobody can reach. */
+.choice__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.choice__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 2.75rem;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.choice__label:hover {
+  border-color: var(--text-muted);
+}
+
+/* The one that is taken, said twice over: filled, and with a mark on it. Colour
+   alone would leave it unsaid for anybody who cannot tell these two apart
+   (WCAG 2.2 SC 1.4.1). */
+.choice__input:checked + .choice__label {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.choice__input:checked + .choice__label::before {
+  content: '✓';
+  margin-inline-end: var(--space-6);
+  font-weight: 700;
+}
+
+/* The focus ring belongs on what is seen, since the control itself is not. */
+.choice__input:focus-visible + .choice__label {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.choice__input[aria-invalid='true'] + .choice__label {
+  border-color: var(--down);
+}
+
+/* The name of a field and the letter that explains it, on one line. */
+.field__head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Inside a fieldset the two are separated by the legend, which is a block of its
+   own in every browser, so the letter is pulled back up beside it. */
+.field--choice > .hint {
+  margin-block-start: calc(-1 * var(--space-6));
+}

@@ -34,17 +34,19 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
   await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
   await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
-  await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
+  /* Buttons since 11.08.2026, not a list: two answers worth seeing at once. */
+  await user.click(screen.getByRole('radio', { name: 'Muški' }))
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
      together once a member reaches twelve points, and a parcel needs an
-     address. */
-  /* Optional again since 03.08.2026 (PDL P8), and filled here because most
-     members will fill it: the form has to go through with it as well as
-     without. Never shown on the portal. */
-  await user.type(screen.getByLabelText(/Broj telefona/), '+381601234567')
+     address. The telephone is gone entirely (owner, 11.08.2026): the portal does
+     not ask for it, not even as something optional. */
   await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+  /* The town carries the country: picked out of the codebook, which is what
+     fills the one beside it (forms/PlaceField.tsx). */
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
-  await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
+  /* Either the beginners' category or the one for their age, and the portal
+     asks rather than assumes (PDL P7). */
+  await user.click(screen.getByRole('radio', { name: 'Starosna' }))
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
   await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
@@ -242,36 +244,20 @@ describe('the biography, at the moment of joining', () => {
 })
 
 describe('the telephone', () => {
-  it('is not asked for, and the form goes through without it', async () => {
-    /* Optional again (owner, 03.08.2026, PDL P8), and that is what lets it
-       stand on consent: consent has to be freely given, and it is not free if
-       membership is impossible without it. The privacy policy says "optional,
-       on your consent", so a form that refused to submit without it would make
-       that sentence untrue.
-
-       Written as a walk through the form rather than as a look at the JSON,
-       because the JSON is what would be changed back. */
+  it('is not asked for at all, and no longer exists on the form', async () => {
+    /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na
+       portalu čak ni neobavezno." It was obligatory on 01.08, optional again on
+       03.08, and now it is gone: there is no field, no rule beside one, and no
+       word for it in the dictionary. Written as a walk through the form rather
+       than as a look at the JSON, because the JSON is what would be changed
+       back. */
     const user = setupUser()
     renderForm()
 
-    /* Read off the words beside the field. `not.toBeRequired()` was true of
-       every field on the portal, because the renderer marks a required field
-       with neither `required` nor `aria-required`: what it does is write
-       "(neobavezno)" beside the ones that are not. */
-    expect(screen.getByLabelText('Broj telefona (neobavezno)')).toBeVisible()
+    expect(screen.queryByLabelText(/[Tt]elefon/)).toBeNull()
+    expect(screen.queryByText(/[Tt]elefon/)).toBeNull()
 
-    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
-    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
-    await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
-    await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
-    await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
-    await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
-    await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
-    await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
-    await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
-    await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
-    await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
-    await user.click(screen.getByLabelText(/zdravstveno sposoban/))
+    await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 

@@ -51,6 +51,18 @@ const everyType: FormDef = {
        walked. */
     { name: 'mesto', type: 'place', labelKey: 'proba.mesto' },
     { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost', required: true },
+    /* Buttons with no rule beside them. The two the portal has both carry one,
+       so without this the case where a choice describes itself by nothing is
+       never walked. */
+    {
+      name: 'izbor',
+      type: 'choice',
+      labelKey: 'proba.izbor',
+      options: [
+        { value: 'da', labelKey: 'proba.da' },
+        { value: 'ne', labelKey: 'proba.ne' },
+      ],
+    },
   ],
 }
 
@@ -217,7 +229,14 @@ describe('FormRenderer', () => {
 
     expect(screen.getByRole('heading', { name: 'Registracija' })).toBeVisible()
     expect(screen.getByLabelText(/Veličina majice/)).toBeInTheDocument()
-    expect(screen.getByText('Od države zavisi koji načini plaćanja ti se nude.')).toBeVisible()
+    /* The town, which carries the country beside it: the form used to ask for
+       the two separately (owner, 11.08.2026). */
+    expect(screen.getByRole('combobox', { name: /Država/i })).toBeInTheDocument()
+    /* And the rule the address carries, in the document and out of sight until
+       it is asked for (FieldHint.tsx). */
+    expect(
+      screen.getByText(/Ulica i broj, na koje ti stižu majica i finišerska medalja/),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeInTheDocument()
   })
 })

@@ -1,0 +1,82 @@
+/* The rule a field carries, folded into the letter beside its label. */
+.hint {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-inline-start: var(--space-6);
+}
+
+/* Round, quiet, and big enough to be pressed with a finger: the target is the
+   button and its padding together, which WCAG 2.2 SC 2.5.8 measures at 24 by 24
+   and this holds at 24 exactly. */
+.hint__ask {
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hint__ask:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* Out of sight and not out of the document: the field names this in
+   `aria-describedby`, so it is read on focus whether or not it is on screen.
+   `clip-path` rather than `display: none`, which would take it out of the
+   accessibility tree and with it the rule (FieldHint.tsx). */
+.hint__text {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Asked for: by the pointer, by the keyboard, or by a finger on the button. */
+.hint:hover .hint__text,
+.hint__ask:focus-visible + .hint__text,
+.hint--open .hint__text {
+  position: absolute;
+  z-index: 8;
+  inset-block-start: calc(100% + var(--space-6));
+  inset-inline-start: 0;
+  inline-size: max-content;
+  /* Never wider than the column it stands in, and never wider than a line of
+     text is comfortable to read. */
+  max-inline-size: min(22rem, 80vw);
+  block-size: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  padding: var(--space-8) var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Against the right edge of the page it opens leftwards, or the page grows a
+   sideways scrollbar on a telephone. */
+.field:last-child .hint:hover .hint__text,
+.field:last-child .hint--open .hint__text {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}

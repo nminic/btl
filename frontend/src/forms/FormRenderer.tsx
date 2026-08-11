@@ -1,6 +1,14 @@
-import { memo, useCallback, useState, type FormEvent } from 'react'
+import {
+  memo,
+  useCallback,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
+import { FieldHint } from './FieldHint'
 import { LongBox } from './LongBox'
 import type {
   DerivedField,
@@ -63,6 +71,82 @@ type Props = {
   openAt?: string
 }
 
+/** A field beside the value it is holding, which is what the form draws. */
+type Drawn = { field: FieldDef; value: string | boolean }
+
+/**
+ * The fields grouped into the rows the definition puts them on.
+ *
+ * Fields that name the same row stand together on a screen wide enough for it
+ * (owner, 11.08.2026, for the registration form); everything else keeps a row of
+ * its own. Grouped by walking the list in order rather than by collecting every
+ * field that carries the same number, so a row is a run of neighbours: two
+ * fields far apart in the definition that happen to share a number are two rows,
+ * and what is on screen is always in the order of the file.
+ */
+/**
+ * How wide a row is, counted in columns rather than in fields.
+ *
+ * A town counts as two, because it carries the country beside it and the two are
+ * two controls: „Adresa, Mesto, Država" is three columns and two fields.
+ */
+function columnsOf(fields: Drawn[]): number {
+  return fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0)
+}
+
+function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[] }[] {
+  const rows: { row: number | undefined; fields: Drawn[] }[] = []
+
+  for (const one of drawn) {
+    const last = rows.at(-1)
+
+    if (last !== undefined && last.row !== undefined && last.row === one.field.row) {
+      last.fields.push(one)
+    } else {
+      rows.push({ row: one.field.row, fields: [one] })
+    }
+  }
+
+  return rows
+}
+
+/**
+ * The words of a field, with the link they carry where they carry one.
+ *
+ * One case: the confirmation that the rules have been read leads to them (owner,
+ * 11.08.2026). The label holds `{link}`, so the sentence and the words of the
+ * link are both translated and neither is glued together out of pieces, which is
+ * how a sentence ends up in the wrong order in the other language.
+ */
+function worded(
+  words: string,
+  field: FieldDef,
+  locale: string,
+  t: (key: string) => string,
+): ReactNode {
+  if (field.linkKey === undefined || field.linkTo === undefined) {
+    return words
+  }
+
+  const [before, after] = words.split('{link}')
+
+  return (
+    <>
+      {before}
+      {/* A new tab, because following it in the middle of a form that is being
+          filled in would otherwise throw away everything typed so far.
+       *
+          The address is written without the language and gets it here, from the
+          page it is being read on (ADL A2): a definition that wrote „/sr/" would
+          send an English reader to the Serbian rulebook. */}
+      <a href={`/${locale}/${field.linkTo}`} target="_blank" rel="noreferrer">
+        {t(field.linkKey)}
+      </a>
+      {after}
+    </>
+  )
+}
+
 /* One field, drawn again only when something about that field changed.
  *
  * A form keeps all its values in one place, so without this every keystroke
@@ -103,7 +187,7 @@ const Field = memo(function Field({
   /** Whether the cursor starts here. One field on one form ever does. */
   open?: boolean
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const change = useCallback(
     (next: string | boolean) => {
       onChange(field, next)
@@ -112,6 +196,7 @@ const Field = memo(function Field({
   )
   const inputId = `field-${field.name}`
   const hintId = `${inputId}-hint`
+  const labelId = `${inputId}-label`
   const errorId = `${inputId}-error`
   const leftId = `${inputId}-left`
   /* The room left is described by the field rather than merely printed under it.
@@ -148,15 +233,13 @@ const Field = memo(function Field({
             checked={value === true}
             onChange={(e) => change(e.target.checked)}
           />
-          <label className="field__label" htmlFor={inputId}>
-            {t(field.labelKey)}
+          <label className="field__label" htmlFor={inputId} id={labelId}>
+            {worded(t(field.labelKey), field, locale, t)}
           </label>
         </div>
 
         {field.hintKey !== undefined && (
-          <p className="field__hint" id={hintId}>
-            {t(field.hintKey)}
-          </p>
+          <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
         )}
 
         {error !== undefined && (
@@ -168,19 +251,77 @@ const Field = memo(function Field({
     )
   }
 
-  return (
-    <div className="field">
-      <label className="field__label" htmlFor={inputId}>
-        {t(field.labelKey)}
-        {field.required !== true && <span className="field__optional"> ({t('form.optional')})</span>}
-      </label>
+  if (field.type === 'choice') {
+    return (
+      <fieldset className="field field--choice">
+        {/* A legend and not a label: the words name a group of controls, and a
+            label names one. */}
+        {/* A legend names the group, so nothing but the name goes in it: a rule
+            written here would be read out before every one of the buttons. */}
+        <legend className="field__label" id={labelId}>
+          {t(field.labelKey)}
+        </legend>
 
-      {/* The rule sits next to the field, never in a separate help page. */}
-      {field.hintKey !== undefined && (
-        <p className="field__hint" id={hintId}>
-          {t(field.hintKey)}
-        </p>
-      )}
+        {field.hintKey !== undefined && (
+          <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+        )}
+
+        {/* Buttons to look at and radio buttons to work: nothing is chosen to
+            begin with, exactly one can be, and the arrow keys walk the group the
+            way they walk every other one on the web. Inputs with labels rather
+            than `<button aria-pressed>`, because a pressed button is a switch
+            and this is a choice: a reader is told „2 of 2" and which one it is
+            standing on. */}
+        <div className="choice">
+          {choices.map((option) => (
+            <span className="choice__one" key={option.value}>
+              <input
+                type="radio"
+                id={`${inputId}-${option.value}`}
+                name={field.name}
+                className="choice__input"
+                value={option.value}
+                checked={String(value) === option.value}
+                aria-invalid={error !== undefined}
+                aria-describedby={describedBy === '' ? undefined : describedBy}
+                onChange={() => change(option.value)}
+              />
+              <label className="choice__label" htmlFor={`${inputId}-${option.value}`}>
+                {t(option.labelKey)}
+              </label>
+            </span>
+          ))}
+        </div>
+
+        {error !== undefined && (
+          <p className="field__error" id={errorId}>
+            {t(error.key, error.params)}
+          </p>
+        )}
+      </fieldset>
+    )
+  }
+
+  return (
+    /* The town carries the country beside it, so where a row has three columns
+       this field is two of them (FormRenderer.css). */
+    <div className={field.type === 'place' ? 'field field--place' : 'field'}>
+      {/* The name of the field and, beside it, the rule it carries. Beside and
+          not inside: everything inside a label is the name of the field, so a
+          rule put there is read out as part of it, and „Mejl" becomes „Mejl, na
+          njega stiže veza za potvrdu, i njime se kasnije prijavljuješ". */}
+      <span className="field__head">
+        <label className="field__label" htmlFor={inputId} id={labelId}>
+          {t(field.labelKey)}
+          {field.required !== true && (
+            <span className="field__optional"> ({t('form.optional')})</span>
+          )}
+        </label>
+
+        {field.hintKey !== undefined && (
+          <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+        )}
+      </span>
 
       {field.type === 'country' && (
         <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
@@ -259,7 +400,6 @@ const Field = memo(function Field({
       {(field.type === 'text' ||
         field.type === 'email' ||
         field.type === 'password' ||
-        field.type === 'tel' ||
         field.type === 'number') && (
         <input
           {...shared}
@@ -377,18 +517,44 @@ export function FormRenderer({
         </div>
       )}
 
-      {drawn.map(({ field, value }) => (
-        <Field
-          key={field.name}
-          field={field}
-          value={value}
-          beside={String(filled.country ?? '')}
-          error={errors[field.name]}
-          choices={optionsFor(field, options)}
-          onChange={handleChange}
-          open={field.name === openAt}
-        />
-      ))}
+      {rowsOf(drawn).map(({ row, fields }) => {
+        const drawnRow = fields.map(({ field, value }) => (
+          <Field
+            key={field.name}
+            field={field}
+            value={value}
+            beside={String(filled.country ?? '')}
+            error={errors[field.name]}
+            choices={optionsFor(field, options)}
+            onChange={handleChange}
+            open={field.name === openAt}
+          />
+        ))
+
+        /* A field on no row stands on its own, as every field on every form did
+           before rows existed and as every field still does on a telephone. */
+        if (row === undefined) {
+          return drawnRow
+        }
+
+        return (
+          <div
+            className="form__row"
+            key={`row-${String(row)}`}
+            /* How many columns this row has is counted here rather than written
+               in the definition, so moving a field between rows is one number in
+               one place (forms/types.ts, `row`). A town counts as two of
+               them, because it carries the country beside it. */
+            /* The one cast the portal makes, and the same one every other CSS
+               variable on it makes (components/ColumnChart.tsx): TypeScript's
+               `CSSProperties` has no room for a custom property, and there is no
+               other way to hand a number to a stylesheet. */
+            style={{ '--columns': columnsOf(fields) } as CSSProperties}
+          >
+            {drawnRow}
+          </div>
+        )
+      })}
 
       {/* What the record carries without being asked: shown, so nobody wonders
           where it went, and read only, so it cannot contradict what it is read

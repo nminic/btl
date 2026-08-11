@@ -357,7 +357,8 @@
     "yes": "Da",
     "no": "Ne",
     "close": "Zatvori",
-    "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom."
+    "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom.",
+    "explain": "Objašnjenje"
   },
   "registration": {
     "title": "Registracija",
@@ -371,13 +372,9 @@
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
-    "phone": "Broj telefona",
-    "phoneHint": "Za dogovor oko uplate, nagrade ili nejasnog rezultata. Nikad se ne prikazuje javno. Sa pozivnim brojem zemlje, na primer +381 60 1234567.",
     "address": "Adresa za slanje",
     "addressHint": "Ulica i broj, na koje ti stižu majica i finišerska medalja. Nikad se ne prikazuje javno.",
     "city": "Mesto",
-    "country": "Država",
-    "countryHint": "Od države zavisi koji načini plaćanja ti se nude.",
     "bioLeft": {
       "one": "Još {count} znak",
       "few": "Još {count} znaka",
@@ -391,8 +388,7 @@
     "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda pre nego što se pojave na tvom profilu.",
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
-    "healthStatement": "Potvrđujem da sam zdravstveno sposoban za trčanje.",
-    "healthStatementHint": "Za sve na trci odgovoran je onaj ko je organizuje.",
+    "healthStatement": "Potvrđujem da sam upoznat sa {link} i da sam zdravstveno sposoban za rekreativan sport.",
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",
@@ -406,13 +402,18 @@
     "closed": "Registracija još nije otvorena",
     "closedText": "Od 15. do 30. septembra portal je otvoren samo za razgledanje. Kalendar i rang liste rade, ali se članstvo tada ne prodaje.",
     "opensOn": "Otvara se {date}.",
-    "firstSeason": "Takmičim se u kategoriji Prva sezona",
-    "firstSeasonHint": "Za one koji su nov u ligi. U toj kategoriji se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan. Ako je ne izabereš, takmičiš se u svojoj starosnoj kategoriji.",
     "opensIn": {
       "one": "Učlanjenje se otvara {date}, za {count} dan.",
       "few": "Učlanjenje se otvara {date}, za {count} dana.",
       "other": "Učlanjenje se otvara {date}, za {count} dana."
-    }
+    },
+    "category": "Kategorija",
+    "categoryFirstSeason": "Prva sezona",
+    "categoryByAge": "Starosna",
+    "categoryHint": "Prva sezona je kategorija za one koji su nov član lige: u njoj se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan i važi od naredne sezone. Ko je ne izabere, takmiči se u svojoj starosnoj kategoriji. Paralelno u obe se ne može.",
+    "genderHint": "Liga ima muški i ženski poredak i to je jedina podela po polu.",
+    "cityHint": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
+    "healthStatementLink": "pravilnikom"
   },
   "shirt": {
     "XS": "XS",
