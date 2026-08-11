@@ -341,7 +341,8 @@
       "number": "Unesi broj.",
       "date": "Unesi datum u obliku dd/mm/gggg.",
       "matches": "Ne poklapa se sa prethodnim poljem.",
-      "taken": "Ova vrednost je već zauzeta. Svaki zapis mora imati svoju."
+      "taken": "Ova vrednost je već zauzeta. Svaki zapis mora imati svoju.",
+      "countryMissing": "Izaberi državu uz mesto."
     },
     "choose": "Izaberi",
     "errorSummary": "Prijava nije poslata. Popravi ova polja:",

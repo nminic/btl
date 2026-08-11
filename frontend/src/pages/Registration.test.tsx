@@ -243,6 +243,45 @@ describe('the biography, at the moment of joining', () => {
   })
 })
 
+describe('the country a member lives in', () => {
+  it('is refused when the town was typed by hand and no country was picked', async () => {
+    /* The country has no field of its own: the town carries it (PDL P6). What
+       that cost was the rule that used to stand on the country field: a town the
+       codebook does not know leaves the country as the form opened it, which is
+       empty, and the registration went through with no country at all. The price
+       and the way of paying it hang on it (PDL P8), and a member with no country
+       is offered PayPal, which must never be offered to a member from Serbia. */
+    const user = setupUser()
+    renderForm()
+
+    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
+    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+    await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
+    await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
+    await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
+    await user.click(screen.getByRole('radio', { name: 'Muški' }))
+    await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+    /* A hamlet of two hundred people that no codebook of the world has heard
+       of, which is exactly what the field is allowed to take. */
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
+    await user.click(screen.getByRole('radio', { name: 'Starosna' }))
+    await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
+    await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
+    await user.click(screen.getByLabelText(/zdravstveno sposoban/))
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+
+    /* And it goes through once the country is answered. */
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Država' }), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  })
+})
+
 describe('the telephone', () => {
   it('is not asked for at all, and no longer exists on the form', async () => {
     /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na

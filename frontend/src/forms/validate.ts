@@ -122,6 +122,23 @@ export function validateForm(
     if (error !== null) {
       errors[field.name] = error
     }
+
+    /* And the country the town carries, which is a value with no field of its
+       own (forms/types.ts) and so was walked past by the loop above: the form
+       validates `form.fields`, and `country` is not one of them.
+     *
+       It was written down as required, and then it stopped being asked: a town
+       typed by hand that the codebook does not know leaves the country as it
+       started, which is empty, and the registration went through with no
+       country at all. What hangs on it is the price and the way of paying it
+       (PDL P8): a member with no country is offered PayPal, which is the one
+       thing that must not be offered to a member from Serbia.
+
+       Said on the place, because the country is drawn there and there is
+       nowhere else to say it. */
+    if (field.type === 'place' && field.required === true && String(values.country ?? '') === '') {
+      errors[field.name] = { key: 'form.errors.countryMissing' }
+    }
   }
 
   return errors
