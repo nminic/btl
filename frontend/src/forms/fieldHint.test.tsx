@@ -126,9 +126,12 @@ describe('the rule beside a field', () => {
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('closes on Escape, and lets nothing else have that press', async () => {
-    /* A form inside a sheet would otherwise close the sheet with the same press
-       that closes this. */
+  it('closes on Escape, and lets everything else have that press too', async () => {
+    /* The press is not stopped. Stopped, it never reached the listeners waiting
+       on the same document on the way back up, which is where the calendar, the
+       menus in the header and the list of towns all sit: a tooltip open anywhere
+       on the page meant none of them closed. What the stopping was for was a
+       form inside a sheet, and the portal has none. */
     const user = setupUser()
     let outside = 0
 
@@ -143,22 +146,19 @@ describe('the rule beside a field', () => {
     )
 
     const asked = within(
-      screen.getByLabelText(/^Adresa za slanje$/).closest('.field') ?? document.body,
+      must(
+        screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.field'),
+        'the field of the address',
+      ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
     await user.click(asked)
 
-    /* Another key first: it is not this button's business and goes on its way,
-       so whatever the form is standing in still hears it. */
-    await user.keyboard('a')
-
     expect(asked).toHaveAttribute('aria-expanded', 'true')
-    expect(outside).toBe(1)
 
     await user.keyboard('{Escape}')
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
-    /* And Escape got no further than this. */
     expect(outside).toBe(1)
   })
 
@@ -322,34 +322,6 @@ describe('Escape while a rule is open', () => {
     })
   })
 
-  it('goes no further when the keyboard is standing on the letter itself', () => {
-    /* The one case the stopping is for: a form inside a sheet must not lose the
-       sheet to the press that closed a tooltip. */
-    let outside = 0
-
-    render(
-      <ClockProvider simulatedDay={null}>
-        <I18nProvider locale="sr">
-          <div onKeyDown={() => (outside += 1)}>
-            <FormRenderer form={registracija as FormDef} onSubmit={() => {}} />
-          </div>
-        </I18nProvider>
-      </ClockProvider>,
-    )
-
-    const letter = within(
-      must(
-        screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.field'),
-        'the field of the address',
-      ),
-    ).getByRole('button', { name: 'Objašnjenje' })
-
-    fireEvent.focus(letter)
-    fireEvent.keyDown(letter, { key: 'Escape' })
-
-    expect(letter).toHaveAttribute('aria-expanded', 'false')
-    expect(outside).toBe(0)
-  })
 })
 
 describe('what nothing else was holding', () => {
@@ -639,21 +611,26 @@ describe('an answer chosen from buttons', () => {
   it('is a group with a name of its own, and its rule stands beside that name', () => {
     /* Not a `<fieldset>`: a `<legend>` is laid out by rules no grid can touch,
        so the letter that explains the group fell to a line of its own and three
-       of the eleven fields were built unlike the other eight. What holds the
-       change is where the letter sits, since `getByRole('radiogroup')` alone
-       would pass over a fieldset too. */
+       of the eleven fields were built unlike the other eight. Two things are
+       held here, because the role alone would not have said which: a fieldset is
+       a plain `group` and would fail the query, and where the letter sits is
+       what the change was for. */
     renderForm()
 
     const group = screen.getByRole('radiogroup', { name: 'Pol' })
-    const head = must(group.querySelector<HTMLElement>('.field__head'), 'the head of the group')
+    const field = must(group.closest<HTMLElement>('.field'), 'the field it stands in')
+    const head = must(field.querySelector<HTMLElement>('.field__head'), 'the head of the field')
 
     expect(within(head).getByRole('button', { name: 'Objašnjenje' })).toBeInTheDocument()
     expect(within(head).getByText('Pol')).toBeInTheDocument()
+    /* And the group itself holds the buttons and nothing else: a radiogroup may
+       hold radios, and around the whole field it held the letter and the line of
+       the error too. */
     expect(within(group).getAllByRole('radio')).toHaveLength(2)
-    expect(screen.getByRole('radio', { name: 'Muški' })).toHaveAttribute(
-      'aria-describedby',
-      'field-gender-hint',
-    )
+    expect(within(group).queryByRole('button')).toBeNull()
+    /* The rule is described on the group, or it is read out again after each of
+       the two buttons. */
+    expect(group).toHaveAttribute('aria-describedby', 'field-gender-hint')
   })
 
   it('refuses to go through with neither taken, and says which group is missing', async () => {

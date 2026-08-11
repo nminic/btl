@@ -311,3 +311,12 @@
   gap: var(--space-4);
 }
 
+
+/* The words of a confirmation and the letter that explains them. Unlike the
+   head of an ordinary field, the words come first and may run to several lines,
+   so the two columns are the sentence and the letter, and the rule opens under
+   both. */
+.field__head--confirm {
+  grid-template-columns: auto auto;
+  align-items: start;
+}

@@ -140,7 +140,11 @@ function worded(
     return words
   }
 
-  const [before, after] = words.split('{link}')
+  const [before, ...rest] = words.split('{link}')
+  /* Everything after the first mark, joined back as it was written. Taken as two
+     halves, a sentence carrying the mark twice lost everything past the second
+     one without a word; the link is drawn once, where it is first asked for. */
+  const after = rest.length === 0 ? undefined : rest.join('{link}')
 
   /* A translation that lost the mark keeps its words rather than gaining a link
      glued to the end of them. The other language is written by somebody working
@@ -255,14 +259,22 @@ const Field = memo(function Field({
             checked={value === true}
             onChange={(e) => change(e.target.checked)}
           />
-          <label className="field__label" htmlFor={inputId} id={labelId}>
-            {worded(t(field.labelKey), field, locale, t)}
-          </label>
-        </div>
+          {/* The words, and the letter that explains them beside the last of
+              them: the hint is `display: contents`, so left outside this it
+              became an item of the field's own column and the circle fell to a
+              line of its own under the sentence. Ten fields carry it beside
+              their name and this one carried it below, which is the difference
+              the group of buttons was rebuilt to be rid of. */}
+          <span className="field__head field__head--confirm">
+            <label className="field__label" htmlFor={inputId} id={labelId}>
+              {worded(t(field.labelKey), field, locale, t)}
+            </label>
 
-        {field.hintKey !== undefined && (
-          <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
-        )}
+            {field.hintKey !== undefined && (
+              <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+            )}
+          </span>
+        </div>
 
         {error !== undefined && (
           <p className="field__error" id={errorId}>
@@ -280,26 +292,7 @@ const Field = memo(function Field({
          one control, so the group carries it. Without this the link „Pol" led to
          an element that is not there, and it is the likeliest error on this
          form: sex and category are the two things nothing is chosen for. */
-      <div
-        className="field field--choice"
-        /* A group rather than a fieldset, and its name is the words above it.
-         *
-           A `<legend>` is laid out by rules of its own that no browser lets a
-           grid touch, so the letter that explains the group could never stand
-           beside its name the way it does on every other field: it fell to a
-           line below, and three of the eleven fields on the registration form
-           were built differently from the other eight. `role="group"` with
-           `aria-labelledby` says the same thing to a screen reader and leaves
-           the layout to the stylesheet. */
-        role="radiogroup"
-        aria-labelledby={labelId}
-        id={inputId}
-        /* And it takes the cursor when the summary of errors leads here. A
-           group is not focusable of itself, so following the link only
-           scrolled: the keyboard stayed where it was, which is not what a list
-           of things to fix promises. */
-        tabIndex={-1}
-      >
+      <div className="field field--choice">
         <span className="field__head">
           {/* The name of the group, and nothing but the name: a rule written
               into it would be read out before every one of the buttons. */}
@@ -321,7 +314,30 @@ const Field = memo(function Field({
             than `<button aria-pressed>`, because a pressed button is a switch
             and this is a choice: a reader is told „2 of 2" and which one it is
             standing on. */}
-        <div className="choice">
+        {/* The group is the buttons and nothing else.
+         *
+           Not a `<fieldset>`: a `<legend>` is laid out by rules of its own that
+           no browser lets a grid touch, so the letter that explains the group
+           could never stand beside its name the way it does on every other
+           field. `role="radiogroup"` with `aria-labelledby` says the same thing
+           to a screen reader, and more exactly than a fieldset does, which is a
+           plain group.
+
+           Around the buttons alone, because a radiogroup may hold radios and
+           nothing else: around the whole field it held the letter and the line
+           of the error as well. The rule is described here rather than on each
+           button, or it is read out again after every one of the two.
+
+           And it takes the cursor when the summary of errors leads here, which
+           is what a list of things to fix promises. */}
+        <div
+          className="choice"
+          role="radiogroup"
+          aria-labelledby={labelId}
+          aria-describedby={describedBy === '' ? undefined : describedBy}
+          id={inputId}
+          tabIndex={-1}
+        >
           {choices.map((option) => (
             <span className="choice__one" key={option.value}>
               <input
@@ -332,7 +348,6 @@ const Field = memo(function Field({
                 value={option.value}
                 checked={String(value) === option.value}
                 aria-invalid={error !== undefined}
-                aria-describedby={describedBy === '' ? undefined : describedBy}
                 onChange={() => change(option.value)}
               />
               <label className="choice__label" htmlFor={`${inputId}-${option.value}`}>
@@ -378,9 +393,10 @@ const Field = memo(function Field({
 
       {field.type === 'country' && (
         <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
-          {/* Only while there is no answer, the way every other select on the
-              portal does it. */}
-          {String(value) === '' && <option value="">{t('form.choose')}</option>}
+          {/* „Izaberi" comes with the list, since the list is the one that knows
+              whether the code it was handed is one it can name
+              (forms/CountryOptions.tsx). Written here as well, every country
+              select that opened unanswered began with the same word twice. */}
           <CountryOptions holding={String(value)} />
         </select>
       )}
@@ -521,11 +537,10 @@ export function FormRenderer({
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
-       empty is empty before it is anything else. */
-    /* The rules in the definition win over the handed in check, except where the
-       definition's is the one about the country beside a town: that one is the
-       last resort, and a caller that has something to say about the same field
-       has said something more particular. */
+       empty is empty before it is anything else. The one exception is the rule
+       about the country beside a town, which is the last resort: a caller with
+       something to say about the same field has said something more
+       particular. */
     const handed = check?.(values) ?? {}
     const own = validateForm(form, values, today)
     const found = { ...handed, ...own }

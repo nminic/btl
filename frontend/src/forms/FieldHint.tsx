@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import './FieldHint.css'
 
@@ -44,8 +44,6 @@ export function FieldHint({
   of: string
 }) {
   const { t } = useI18n()
-  /* The whole of this hint, for deciding whether a press belongs to it. */
-  const holding = useRef<HTMLSpanElement>(null)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   /* Put away by Escape, and only until it is asked for again. */
@@ -63,33 +61,21 @@ export function FieldHint({
        entirely, and a handler on the button never hears it. The portal's menus
        answer Escape the same way (app/Dropdown.tsx).
      *
-       On the way down and not on the way back up. Two things follow from that,
-       and both are the point. Every hint that is open hears the press, so one
-       Escape puts away all of them rather than whichever one happens to hold the
-       keyboard; and the press is stopped before it reaches anything the form is
-       standing in, so a sheet is not closed by the same press that closed a
-       tooltip, which was the reason the button used to answer this itself. */
+       On the way down so that every hint that is open hears it: one Escape puts
+       them all away rather than whichever one happens to hold the keyboard.
+     *
+       And it is not stopped there. Stopped, it never reached the listeners that
+       sit on this same document on the way back up, which is where the calendar,
+       the menus in the header and the list of towns all wait for it: a tooltip
+       open anywhere on the page meant none of them closed (ADL A7 asks that each
+       of them does). What the stopping was for was a form inside a sheet, and
+       the portal has no such thing: there is no dialog, no `showModal`, nothing
+       with `aria-modal`, and none of the seven screens that draw a form stands
+       inside anything that answers Escape. A guard against a case that does not
+       exist, breaking three that do. */
     function onKeyDown(pressed: KeyboardEvent) {
-      if (pressed.key !== 'Escape') {
-        return
-      }
-
-      setDismissed(true)
-
-      /* And the press goes on its way unless it was meant for this.
-       *
-         Stopped every time, an open tooltip swallowed Escape for the whole
-         portal: the calendar would not close, nor the menus in the header, nor
-         the list of towns being typed into, because the pointer happened to be
-         resting on a letter somewhere on the same page. All of those answer
-         Escape themselves, and this is the only listener that runs before
-         them (ADL A7 asks that each of them close on it).
-
-         What it is meant for is the case where the keyboard is standing on the
-         letter itself. Then the sheet the form is in must not be closed by the
-         same press, which is what a hint of its own inside a sheet is for. */
-      if (pressed.target instanceof Node && holding.current?.contains(pressed.target) === true) {
-        pressed.stopPropagation()
+      if (pressed.key === 'Escape') {
+        setDismissed(true)
       }
     }
 
@@ -120,7 +106,7 @@ export function FieldHint({
   }
 
   return (
-    <span className={open ? 'hint hint--open' : 'hint'} ref={holding}>
+    <span className={open ? 'hint hint--open' : 'hint'}>
       <button
         type="button"
         className="hint__ask"
