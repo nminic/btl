@@ -741,7 +741,7 @@ describe('a form laid out in rows', () => {
     /* And in that order: the picture first, the words after it. Held on the
        boxes themselves rather than on the labels, because the label of a field
        carries the letter of its explanation as well. */
-    const inFifth = fifth.querySelectorAll('.field')
+    const inFifth = fifth.querySelectorAll<HTMLElement>('.field')
 
     expect(within(must(inFifth[0], 'the first field of the row')).getByLabelText(/Profilna slika/))
       .toBeInTheDocument()

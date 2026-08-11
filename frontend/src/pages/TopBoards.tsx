@@ -309,7 +309,6 @@ function Boards({
       title: t(`topBoards.byLength.${category}`),
       empty: noResults,
       columns: topByCategory(field, results, season, category, PLACES).map((column) => ({
-        key: column.competitor.memberNumber,
         competitor: column.competitor,
         value: column.races,
         label: formatNumber(column.races, locale),
@@ -341,7 +340,6 @@ function Boards({
       title: t('topBoards.progress'),
       empty: t('topBoards.progressEmpty'),
       columns: topByProgress(field, results, season, PROGRESS_PLACES).map((row) => ({
-        key: row.competitor.memberNumber,
         competitor: row.competitor,
         value: row.points,
         /* In points as the portal writes them everywhere else, to two decimals

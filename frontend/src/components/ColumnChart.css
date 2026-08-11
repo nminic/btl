@@ -223,7 +223,14 @@
   border-radius: 2px 2px 0 0;
   background: #1f7ad6;
   text-decoration: none;
-  transition: background var(--fast);
+  /* And the height slides when the chart turns to another length (owner,
+     11.08.2026): the first column does not vanish and come back shorter, it
+     travels to its new height while the face rides down with it. Only the
+     turning chart on the front page ever changes these numbers; everywhere else
+     they are set once and the transition never runs. */
+  transition:
+    background var(--fast),
+    block-size var(--turn);
 }
 
 /* Two levels in one bar (owner, 04.08.2026), for the board of best progress:
@@ -409,4 +416,47 @@
 .colchart__turn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+
+/* The turning chart, told apart from the ten that stand still.
+ *
+ * A bar has a height to travel between, so it travels. Initials, numbers and the
+ * gold band have nothing between „MS" and „SR", so they are taken out and
+ * brought back: `swapping` is on while the words are gone, and the widget swaps
+ * what it draws at the bottom of the fade (ColumnChart.tsx, TopByCategory.tsx).
+ * The bars keep their own timing all the way through, so nothing waits for the
+ * words. */
+.colchart {
+  --turn: 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  --fade: 170ms ease;
+}
+
+.colchart .portrait,
+.colchart__count,
+.colchart__caption {
+  transition: opacity var(--fade);
+}
+
+.colchart--swapping .portrait,
+.colchart--swapping .colchart__count,
+.colchart--swapping .colchart__caption {
+  opacity: 0;
+}
+
+/* Whoever asked for less movement gets none of this: the chart still turns and
+   still says what it counts, it simply arrives there at once. */
+@media (prefers-reduced-motion: reduce) {
+  .colchart__bar,
+  .colchart .portrait,
+  .colchart__count,
+  .colchart__caption {
+    transition: none;
+  }
+
+  .colchart--swapping .portrait,
+  .colchart--swapping .colchart__count,
+  .colchart--swapping .colchart__caption {
+    opacity: 1;
+  }
 }

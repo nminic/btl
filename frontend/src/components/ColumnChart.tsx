@@ -18,9 +18,6 @@ import './ColumnChart.css'
  */
 
 export type ChartColumn = {
-  /** Unique within one chart, which a member number is not everywhere: the same
-   *  runner can hold two places on a board of single races. */
-  key: string
   competitor: Competitor
   /** How tall the bar stands, against the tallest column in the chart. */
   value: number
@@ -188,6 +185,7 @@ export function ColumnChart({
   empty,
   label,
   control,
+  swapping,
 }: {
   columns: ChartColumn[]
   /** The gold band under the bars. */
@@ -207,6 +205,17 @@ export function ColumnChart({
   /** What the whole chart is called, for anybody who cannot see the band. */
   label: string
   control?: ReactNode
+  /**
+   * Halfway through a change of what the chart counts, when the words are out
+   * and the new ones are not in yet.
+   *
+   * Only the turning chart on the front page passes it. The bars slide on their
+   * own, because their height is a style and a style transitions; the initials,
+   * the numbers and the band are text, and text has nothing to slide between,
+   * so it is taken out and brought back (owner, 11.08.2026: „nazivi i kružići
+   * takmičara fadeuju u nove").
+   */
+  swapping?: boolean
 }) {
   const highest = Math.max(1, ...columns.map((one) => one.value))
   /* How wide the circle in a bar has to be, in characters, which is the longest
@@ -230,7 +239,13 @@ export function ColumnChart({
          share it out between them: measured on "Najviše dužih trka" at 360px,
          the tallest bar gains that whole 27,6px and the shortest 6,1px, because
          a bar is a share of the track and not a length of its own. */
-      className={control === undefined ? 'colchart' : 'colchart colchart--control'}
+      className={[
+        'colchart',
+        control === undefined ? '' : 'colchart--control',
+        swapping === true ? 'colchart--swapping' : '',
+      ]
+        .filter((one) => one !== '')
+        .join(' ')}
       style={{ '--count-chars': digits } as CSSProperties}
       aria-label={captionId === undefined ? label : undefined}
       aria-labelledby={captionId}
@@ -255,8 +270,19 @@ export function ColumnChart({
         <p className="card__empty">{empty}</p>
       ) : (
         <ol className="colchart__columns">
-          {columns.map((column) => (
-            <li key={column.key} className="colchart__column">
+          {columns.map((column, place) => (
+            /* By the place and not by who holds it. The chart on the front
+               page changes what it counts every few seconds, and a column
+               keyed by member number is a different element every time: React
+               would take the old one out and put a new one in, and there is
+               nothing left to slide from the old height to the new one. Keyed
+               by the place, the first column stays the first column and only
+               its contents change, which is what the owner asked for on
+               11.08.2026: „stupci prelaze iz jednog prikaza u stupce novog".
+
+               Nothing else needed the other key. A board is a list of places,
+               and two rows of one board are never the same place. */
+            <li key={place} className="colchart__column">
               <Bar column={column} highest={highest} />
             </li>
           ))}

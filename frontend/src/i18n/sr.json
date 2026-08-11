@@ -211,10 +211,7 @@
     "contact": "Kontakt",
     "home": "Naslovna strana",
     "join": "Učlani se",
-    "openAccount": "Otvori nalog",
-    "credits": "Spisak mesta:",
-    "creditsSource": "GeoNames",
-    "creditsLicence": "CC BY 4.0"
+    "openAccount": "Otvori nalog"
   },
   "nav": {
     "home": "Naslovna",

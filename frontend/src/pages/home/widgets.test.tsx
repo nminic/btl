@@ -292,7 +292,6 @@ describe('the circle in a bar', () => {
       <ColumnChart
         columns={[
           {
-            key: 'a',
             competitor: competitor('000001'),
             value: 10,
             label: '1,50',
@@ -452,6 +451,90 @@ describe('TopByCategory', () => {
     const shown = screen.getByText(/^Najviše/).textContent
 
     await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(shown))
+  })
+
+  it('keeps its columns across a turn, so a bar has a height to travel from', async () => {
+    /* The whole of the smooth turn hangs on this. A column keyed by whoever
+       stands in it is a different element after every turn: the old one is taken
+       out, the new one comes in at its final height, and there is nothing to
+       slide. Keyed by the place, the first column stays the first column and
+       only what is in it changes, which is what the bar's own transition then
+       has something to work with (owner, 11.08.2026).
+
+       Held on the element itself rather than on a class name, because the
+       element being the same one is exactly the claim. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    /* One of each length, so the chart has a column to draw whichever of the
+       two it is showing and there is something to keep across the turn. */
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={30} />,
+    )
+
+    const first = screen.getAllByRole('listitem')[0]
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
+
+    expect(screen.getAllByRole('listitem')[0]).toBe(first)
+  })
+
+  it('takes the words out while it turns, and brings them back', async () => {
+    /* Initials, numbers and the gold band have nothing to slide between, so they
+       fade (owner, 11.08.2026: „nazivi i kružići takmičara fadeuju u nove"). The
+       widget says so with a class, and the stylesheet does the fading; what is
+       held here is that the class is on while the two are apart and off once the
+       new words are in. */
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={60} />)
+
+    const chart = must(
+      screen.getByText(/^Najviše/).closest<HTMLElement>('.colchart'),
+      'the chart the band belongs to',
+    )
+
+    expect(chart).not.toHaveClass('colchart--swapping')
+
+    await waitFor(() => {
+      expect(chart).toHaveClass('colchart--swapping')
+    })
+
+    await waitFor(() => {
+      expect(chart).not.toHaveClass('colchart--swapping')
+    })
+  })
+
+  it('slides the bars and fades the words, and does neither for anybody who asked for less motion', () => {
+    /* jsdom draws nothing and computes no layout, so what is held here is the
+       stylesheet as text. The behaviour above proves the widget asks for the
+       change; this proves the sheet answers it. */
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    /* Anchored to the start of a line: the same name ends the hover and focus
+       rules above it, and a plain search finds one of those first. */
+    const bar = css.slice(css.indexOf('\n.colchart__bar {'))
+
+    // The height travels, which is the whole of the sliding bar.
+    expect(bar.slice(0, bar.indexOf('}'))).toMatch(/transition:[^;]*block-size var\(--turn\)/)
+
+    // And the words go out of sight while the two are apart.
+    const swapping = css.slice(css.indexOf('.colchart--swapping .portrait,'))
+
+    expect(swapping.slice(0, swapping.indexOf('}'))).toMatch(/opacity:\s*0/)
+
+    /* Turned off in full for anybody who asked for less motion, and turned off
+       last, so it wins over the rules above it (WCAG 2.2 SC 2.3.3). */
+    const quiet = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce)'))
+
+    expect(quiet).toMatch(/\.colchart__bar,/)
+    expect(quiet).toMatch(/opacity:\s*1/)
+    expect(css.lastIndexOf('@media (prefers-reduced-motion: reduce)')).toBeGreaterThan(
+      css.indexOf('.colchart--swapping .portrait,'),
+    )
   })
 
   it('can be stopped, and stays stopped', async () => {
