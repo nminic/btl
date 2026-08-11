@@ -136,10 +136,11 @@ export function validateForm(
 
        Said on the place, because the country is drawn there and there is
        nowhere else to say it. */
-    /* Compared to the empty string and not through a fallback: a form with a
-       place field always carries a country, because `emptyValues` writes one
-       (below), so „no such key" is a case that cannot happen and a fallback for
-       it is a branch nothing can walk. */
+    /* Compared to the empty string and not through a fallback: what is handed
+       in is the form's values filled out of its own definition
+       (FormRenderer.tsx), and `emptyValues` writes a country for every place
+       field (below), so „no such key" is a case that cannot happen and a
+       fallback for it is a branch nothing can walk. */
     if (
       field.type === 'place' &&
       field.required === true &&

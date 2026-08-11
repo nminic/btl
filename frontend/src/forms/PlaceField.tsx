@@ -248,7 +248,11 @@ export function PlaceField({
         aria-autocomplete="list"
         aria-activedescendant={highlighted === undefined ? undefined : `${listId}-${at}`}
         aria-invalid={invalid}
-        aria-describedby={describedBy}
+        /* And not the sentence about the country: it is written where the town
+           is asked for, so the town described by it was a box read out as „Mesto,
+           Izaberi državu uz mesto." while it held a perfectly good town. The
+           country carries it instead (below). */
+        aria-describedby={countryInvalid ? undefined : describedBy}
         autoFocus={openAt}
         value={value}
         onChange={(event) => {

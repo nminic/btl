@@ -91,6 +91,15 @@ describe('the box the rule of a field opens in', () => {
 describe('the rows of a form', () => {
   const form = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
 
+  /** The body of a rule, by its selector, with the spaces taken out. */
+  function bodyOf(selector: string): string {
+    const at = form.indexOf(`${selector} {`)
+
+    expect(at, `${selector} is not in FormRenderer.css`).toBeGreaterThan(-1)
+
+    return form.slice(at, form.indexOf('}', at)).replace(/\s+/g, ' ')
+  }
+
   /**
    * What is inside one query and nothing after it.
    *
@@ -126,16 +135,40 @@ describe('the rows of a form', () => {
     throw new Error(`${query} is never closed`)
   }
 
-  it('come apart under the wide layout, and the town gives back its second column', () => {
+  it('is one field to a line until there is room for columns', () => {
     /* „Na mobilnom ostaje svako polje jedno ispod drugog" (owner, PDL P8). Four
-       boxes across a 360 pixel screen are four boxes nobody can type into, and a
-       town still spanning two columns of a grid that has one makes a second
-       column the page is not wide enough for: the page then scrolls sideways,
-       which P24 forbids. */
-    const narrow = inside('@media (max-width: 819px)')
+       boxes across a 360 pixel screen are four boxes nobody can type into.
+     *
+       Written the other way round, as columns undone by a query, the two rules
+       met at 819,5 pixels and neither applied: the row stayed four wide inside a
+       form still 34rem across. So one column is what a row is, and the columns
+       are what a wide enough window adds. */
+    const wide = inside('@media (min-width: 820px)')
+    /* The rule outside the query, which is what a row is before anything widens
+       it: the same selector stands inside the query too, so it is looked for in
+       what is left once the query is taken out. */
+    const plain = form.replace(wide, '')
+    const at = plain.indexOf('.form__row {')
 
-    expect(narrow).toContain('grid-template-columns: minmax(0, 1fr);')
-    expect(narrow).toContain('grid-column: auto;')
+    expect(at).toBeGreaterThan(-1)
+    expect(plain.slice(at, plain.indexOf('}', at)).replace(/\s+/g, ' '))
+      .toContain('grid-template-columns: minmax(0, 1fr);')
+
+    expect(wide).toContain('grid-template-columns: repeat(var(--columns), minmax(0, 1fr));')
+    /* And the town takes its second column only there, or it makes a column the
+       page has no room for and the page scrolls sideways (P24). */
+    expect(wide).toContain('grid-column: span 2;')
+    expect(plain.includes('span 2')).toBe(false)
+  })
+
+  it('puts the letter beside the words of a confirmation, not under them', () => {
+    /* The one field with no head of its own: the hint is `display: contents`, so
+       left outside it the circle became an item of the field's own column and
+       fell to a line below the sentence. Ten fields carried it beside their name
+       and this one carried it under. */
+    const confirm = bodyOf('.field__head--confirm')
+
+    expect(confirm).toContain('grid-template-columns: 1fr auto;')
   })
 
   it('let a form that has them be wider, and only where they are drawn', () => {

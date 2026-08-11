@@ -1,10 +1,12 @@
+import { renderToStaticMarkup } from 'react-dom/server'
 import { must } from '../test/at'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
+import { worded } from './worded'
 import type { FormDef, FormValues } from './types'
 
 /* A caller may hand the renderer a different definition without remounting it.
@@ -45,6 +47,10 @@ const everyType: FormDef = {
     // as an empty list, not crash the screen.
     { name: 'prazan', type: 'select', labelKey: 'proba.prazan' },
     { name: 'beleska', type: 'textarea', labelKey: 'proba.beleska' },
+    /* The whole world in one select, which three forms ask for and none of them
+       is the registration: it opens unanswered, so „Izaberi" has to be there
+       once and only once. */
+    { name: 'drzava', type: 'country', labelKey: 'proba.drzava' },
     /* A town, with no rule written beside it. The one place field the portal
        has does carry a rule, so without this the field is only ever drawn the
        one way and the case where it describes itself by nothing is never
@@ -66,6 +72,38 @@ const everyType: FormDef = {
   ],
 }
 
+describe('the words of a field with a link in them', () => {
+  /* Read on their own, because the one sentence the portal has carries a single
+     mark and the shapes that go wrong carry none or two. */
+  const veza = { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost' } as const
+  const withLink = { ...veza, linkKey: 'proba.veza', linkTo: 'pravilnik' }
+  const words = (one: ReactNode) =>
+    renderToStaticMarkup(<>{one}</>)
+
+  it('leaves them alone when the field carries no link', () => {
+    expect(words(worded('Pročitao sam pravila.', veza, 'sr', (key) => key)))
+      .toBe('Pročitao sam pravila.')
+  })
+
+  it('puts the link where the mark is', () => {
+    expect(words(worded('Upoznat sam sa {link} i pristajem.', withLink, 'sr', (key) => key)))
+      .toBe('Upoznat sam sa <a href="/sr/pravilnik" target="_blank" rel="noreferrer">proba.veza</a> i pristajem.')
+  })
+
+  it('keeps the sentence whole when a translation drops the mark', () => {
+    expect(words(worded('Upoznat sam sa pravilima.', withLink, 'sr', (key) => key)))
+      .toBe('Upoznat sam sa pravilima.')
+  })
+
+  it('keeps everything after a second mark, rather than losing it', () => {
+    /* Taken as two halves, a sentence carrying the mark twice lost everything
+       past the second one without a word. The link is drawn once, where it is
+       first asked for, and the rest is the sentence as it was written. */
+    expect(words(worded('Prvo {link} pa {link} i kraj.', withLink, 'sr', (key) => key)))
+      .toBe('Prvo <a href="/sr/pravilnik" target="_blank" rel="noreferrer">proba.veza</a> pa {link} i kraj.')
+  })
+})
+
 describe('FormRenderer', () => {
   it('renders every supported field type', () => {
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
@@ -80,10 +118,11 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'number')
     expect(screen.getByLabelText(/proba.pol/).tagName).toBe('SELECT')
     expect(screen.getByLabelText(/proba.prazan/).children).toHaveLength(1)
-    /* Three of them: the two selects with nothing chosen, and the country
-       beside the town, which also opens unanswered on a form that does not say
-       which country it starts in (forms/CountryOptions.tsx). */
-    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(3)
+    /* Four of them: the two selects with nothing chosen, the country beside the
+       town, and the country asked for on its own. All four open unanswered on a
+       form that does not say which country it starts in
+       (forms/CountryOptions.tsx). */
+    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(4)
     expect(screen.getByLabelText(/proba.beleska/).tagName).toBe('TEXTAREA')
     expect(screen.getByLabelText(/proba.saglasnost/)).toHaveAttribute('type', 'checkbox')
     expect(screen.getByLabelText(/proba.lozinka/)).toHaveAttribute('type', 'password')
@@ -104,6 +143,18 @@ describe('FormRenderer', () => {
     expect(
       document.getElementById(must(hintId, 'an id joining the field to its hint')),
     ).toHaveTextContent('proba.mejlPravilo')
+  })
+
+  it('offers one way of saying nothing at all in a list of countries', () => {
+    /* „Izaberi" comes with the list, since the list is the one that knows
+       whether the code it was handed is one it can name. Written in the renderer
+       as well, every country select that opened unanswered began with the same
+       word twice, and three forms open one that way. */
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    const land = screen.getByLabelText(/proba.drzava/)
+
+    expect(within(land).getAllByRole('option', { name: 'Izaberi' })).toHaveLength(1)
   })
 
   it('marks the fields that are not obligatory', () => {

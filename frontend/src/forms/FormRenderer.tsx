@@ -5,11 +5,11 @@ import {
   useState,
   type CSSProperties,
   type FormEvent,
-  type ReactNode,
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import { FieldHint } from './FieldHint'
+import { worded } from './worded'
 import { LongBox } from './LongBox'
 import type {
   DerivedField,
@@ -120,57 +120,6 @@ function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[]; key
   }
 
   return rows
-}
-
-/**
- * The words of a field, with the link they carry where they carry one.
- *
- * One case: the confirmation that the rules have been read leads to them (owner,
- * 11.08.2026). The label holds `{link}`, so the sentence and the words of the
- * link are both translated and neither is glued together out of pieces, which is
- * how a sentence ends up in the wrong order in the other language.
- */
-function worded(
-  words: string,
-  field: FieldDef,
-  locale: string,
-  t: (key: string) => string,
-): ReactNode {
-  if (field.linkKey === undefined || field.linkTo === undefined) {
-    return words
-  }
-
-  const [before, ...rest] = words.split('{link}')
-  /* Everything after the first mark, joined back as it was written. Taken as two
-     halves, a sentence carrying the mark twice lost everything past the second
-     one without a word; the link is drawn once, where it is first asked for. */
-  const after = rest.length === 0 ? undefined : rest.join('{link}')
-
-  /* A translation that lost the mark keeps its words rather than gaining a link
-     glued to the end of them. The other language is written by somebody working
-     from the Serbian, and „{link}" is the sort of thing that is dropped; a
-     sentence about the rules with the rules missing is worse than a sentence
-     with no link at all, and the dictionary guard cannot see this one because
-     the key resolves either way. */
-  if (after === undefined) {
-    return words
-  }
-
-  return (
-    <>
-      {before}
-      {/* A new tab, because following it in the middle of a form that is being
-          filled in would otherwise throw away everything typed so far.
-       *
-          The address is written without the language and gets it here, from the
-          page it is being read on (ADL A2): a definition that wrote „/sr/" would
-          send an English reader to the Serbian rulebook. */}
-      <a href={`/${locale}/${field.linkTo}`} target="_blank" rel="noreferrer">
-        {t(field.linkKey)}
-      </a>
-      {after}
-    </>
-  )
 }
 
 /* One field, drawn again only when something about that field changed.
@@ -287,11 +236,6 @@ const Field = memo(function Field({
 
   if (field.type === 'choice') {
     return (
-      /* Named by the id the summary of errors links to. Every other field is
-         reached through its own control, which carries that id; a group has no
-         one control, so the group carries it. Without this the link „Pol" led to
-         an element that is not there, and it is the likeliest error on this
-         form: sex and category are the two things nothing is chosen for. */
       <div className="field field--choice">
         <span className="field__head">
           {/* The name of the group, and nothing but the name: a rule written
@@ -325,19 +269,14 @@ const Field = memo(function Field({
 
            Around the buttons alone, because a radiogroup may hold radios and
            nothing else: around the whole field it held the letter and the line
-           of the error as well. The rule is described here rather than on each
-           button, or it is read out again after every one of the two.
+           of the error as well.
 
-           And it takes the cursor when the summary of errors leads here, which
-           is what a list of things to fix promises. */}
-        <div
-          className="choice"
-          role="radiogroup"
-          aria-labelledby={labelId}
-          aria-describedby={describedBy === '' ? undefined : describedBy}
-          id={inputId}
-          tabIndex={-1}
-        >
+           And it carries the id the summary of errors links to, and takes the
+           cursor when that link is followed: every other field is reached
+           through its own control, a group has no one control, so the group is
+           what the link leads to. Sex and category are the two things nothing is
+           chosen for, so they are the likeliest errors on this form. */}
+        <div className="choice" role="radiogroup" aria-labelledby={labelId} id={inputId} tabIndex={-1}>
           {choices.map((option) => (
             <span className="choice__one" key={option.value}>
               <input
@@ -348,6 +287,17 @@ const Field = memo(function Field({
                 value={option.value}
                 checked={String(value) === option.value}
                 aria-invalid={error !== undefined}
+                /* The rule on every button and not on the group around them.
+                 *
+                   A description is read for whatever holds the focus, and what
+                   holds it here is a button: put on the group, the rule was said
+                   only to somebody who arrived at the group itself, which
+                   happens when the summary of errors leads there and at no other
+                   time. Then „Prva sezona" and „Starosna" carry a decision that
+                   cannot be undone mid-season (PDL P7) and nothing says which is
+                   which. Twice is the price, and it is the price the pattern
+                   pays everywhere (WAI-ARIA APG, radio group). */
+                aria-describedby={describedBy === '' ? undefined : describedBy}
                 onChange={() => change(option.value)}
               />
               <label className="choice__label" htmlFor={`${inputId}-${option.value}`}>
@@ -542,7 +492,13 @@ export function FormRenderer({
        something to say about the same field has said something more
        particular. */
     const handed = check?.(values) ?? {}
-    const own = validateForm(form, values, today)
+    /* Over what is going to be sent, not over what has been typed. The two are
+       the same until a caller hands the form a second definition without
+       remounting it, and then `values` is missing whatever the new definition
+       added while `filled` has it (see `filled` above): the rule about the
+       country then said nothing in the one case where there is certainly no
+       country. */
+    const own = validateForm(form, filled, today)
     const found = { ...handed, ...own }
 
     for (const [name, error] of Object.entries(handed)) {

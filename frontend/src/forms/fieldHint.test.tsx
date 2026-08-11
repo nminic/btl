@@ -131,7 +131,7 @@ describe('the rule beside a field', () => {
        on the same document on the way back up, which is where the calendar, the
        menus in the header and the list of towns all sit: a tooltip open anywhere
        on the page meant none of them closed. What the stopping was for was a
-       form inside a sheet, and the portal has none. */
+       form inside a sheet, and the portal has none, so nothing is stopped. */
     const user = setupUser()
     let outside = 0
 
@@ -210,8 +210,8 @@ describe('the rule beside a field', () => {
 
 describe('the rule of a field, once it is open', () => {
   it('is put away by Escape even when the keyboard is standing on it', async () => {
-    /* The half of Escape that the button itself answers, so that a form inside
-       a sheet is not closed by the same press. */
+    /* Answered on the document while it is open (FieldHint.tsx), so the press
+       reaches it wherever the keyboard happens to be. */
     const user = setupUser()
     renderForm()
 
@@ -628,9 +628,12 @@ describe('an answer chosen from buttons', () => {
        the error too. */
     expect(within(group).getAllByRole('radio')).toHaveLength(2)
     expect(within(group).queryByRole('button')).toBeNull()
-    /* The rule is described on the group, or it is read out again after each of
-       the two buttons. */
-    expect(group).toHaveAttribute('aria-describedby', 'field-gender-hint')
+    /* The rule is described on each button, because a description is read for
+       whatever holds the focus and what holds it is a button: on the group it
+       was said only to somebody who arrived at the group itself. */
+    for (const one of within(group).getAllByRole('radio')) {
+      expect(one).toHaveAttribute('aria-describedby', 'field-gender-hint')
+    }
   })
 
   it('refuses to go through with neither taken, and says which group is missing', async () => {

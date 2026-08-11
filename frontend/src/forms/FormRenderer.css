@@ -23,6 +23,19 @@
     max-width: 60rem;
   }
 
+  /* And the columns themselves, where there is room for them (owner,
+     11.08.2026: „na mobilnom ostaje svako polje jedno ispod drugog"). The town
+     takes two of them, because it carries the country beside it and the two are
+     two controls. One query for both, so a width can never be wide enough for
+     columns and too narrow for the form that holds them. */
+  .form__row {
+    grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  }
+
+  .form__row .field--place {
+    grid-column: span 2;
+  }
+
   /* And a field standing on its own inside such a form keeps the width one
      field should have. „Svojim rečima" stretched to the full sixty rem, and a
      box whose ends are that far apart is two places to look rather than one. */
@@ -179,9 +192,13 @@
  * and the eye follows the movement instead of the form. `minmax(0, 1fr)` and not
  * `1fr`, because a grid column's floor is the width of its content, and a select
  * of two hundred and forty six countries would push the row past the page. */
+/* One field to a line until there is room for more, and not the other way
+   round: written as columns undone by a query, the two rules met at 819,5
+   pixels and neither applied, which is a width a page really has when text is
+   made larger (WCAG 2.2 SC 1.4.4). One breakpoint, one direction, no gap. */
 .form__row {
   display: grid;
-  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-16);
   align-items: start;
 }
@@ -194,26 +211,6 @@
    820 is where the portal already becomes its wide self (styles/scale.test.ts
    holds the list of widths at which it changes shape), so the form changes with
    it rather than at a width of its own. */
-/* The town and the country beside it are one answer in two controls, so where
-   they stand in a row of three they take the room of two of them. */
-.form__row .field--place {
-  grid-column: span 2;
-}
-
-/* Under the wide layout every row comes apart, and the town gives back the
-   second column with it: left spanning two of a grid that has one, it makes a
-   column the page has no room for and the page scrolls sideways. Both halves in
-   one query, because they are one rule and are read as one. */
-@media (max-width: 819px) {
-  .form__row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .form__row .field--place {
-    grid-column: auto;
-  }
-}
-
 /* One answer out of two or three, drawn as buttons (forms/FormRenderer.tsx). */
 .field--choice {
   display: flex;
@@ -312,11 +309,15 @@
 }
 
 
-/* The words of a confirmation and the letter that explains them. Unlike the
-   head of an ordinary field, the words come first and may run to several lines,
-   so the two columns are the sentence and the letter, and the rule opens under
-   both. */
+/* The words of a confirmation and the letter that explains them.
+ *
+   The sentence runs to several lines at every width the portal has, so it takes
+   whatever room there is and the letter sits at the end of the room rather than
+   at the end of the words: a grid gives the spare width to the track that can
+   still grow, and the letter's track is a fixed 1.5rem. What matters is that it
+   is on the first line beside the sentence rather than on a line of its own
+   under it, which is where it fell while this field had no head at all. */
 .field__head--confirm {
-  grid-template-columns: auto auto;
+  grid-template-columns: 1fr auto;
   align-items: start;
 }

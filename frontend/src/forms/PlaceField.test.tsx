@@ -485,9 +485,15 @@ describe('the town on a form', () => {
 
     const country = screen.getByRole('combobox', { name: 'Država' })
 
+    /* Waited for by something that says the codebook has arrived, and not by the
+       value itself: „AT" is what the field opens on, so a test that waits for it
+       is answered before the first request goes out and would pass with no rule
+       here at all. Recognising Beograd is what the arrival changes. */
     await waitFor(() => {
-      expect(country).toHaveValue('AT')
+      expect(country).toHaveAttribute('aria-disabled', 'true')
     })
+
+    expect(country).toHaveValue('AT')
     expect(onCountry).not.toHaveBeenCalled()
   })
 
