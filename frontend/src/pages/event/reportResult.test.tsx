@@ -8,8 +8,8 @@ import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
-import { must } from '../../test/at'
-import { formatDistance } from '../../i18n/format'
+import { first, must } from '../../test/at'
+import { formatDistance, formatNumber } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { raceFor } from './raceFor'
@@ -54,22 +54,18 @@ describe('the way to report a result', () => {
     }
   })
 
-  it('writes a named race and a nameless one the same way in one list', async () => {
-    /* A race may be entered without a name and is then known by its length
-       (PDL P6, 11.08.2026), so this list holds both kinds at once. The length
-       beside a name was written raw: „Polumaraton · 5 km" with a full stop in
-       front of the decimal, under a nameless one reading „5,0 km" with a comma,
-       which is two languages in one select. */
-    renderAt('/sr/kalendar/5k-ada-virtual-challenge-2027/prijava', 'competitor', ME, undefined,
-      '2027-06-01')
+  it('writes every race in it as a length, in this language', async () => {
+    /* A race is offered by its length and by nothing else (data/types.ts): the
+       event is the page this form was opened from, so the length is the whole of
+       what tells two of them apart. Written raw it read „5.0 km" with a full
+       stop, which is not how a number is written in Serbian. */
+    renderAt(REPORT, 'competitor', ME)
 
     const race = await screen.findByLabelText(/^Trka/)
     const said = within(race).getAllByRole('option').map((one) => one.textContent ?? '')
 
-    expect(said.some((one) => one.startsWith('Polumaraton · '))).toBe(true)
-    /* No raw number anywhere in it: every length in this list is written the way
-       this language writes one. */
-    expect(said.filter((one) => /\d\.\d/.test(one))).toEqual([])
+    expect(said.length).toBeGreaterThan(0)
+    expect(said.every((one) => /^\d+,\d km$/.test(one))).toBe(true)
   })
 
   it('offers only the races of the event it was opened from', async () => {
@@ -230,7 +226,6 @@ describe('which race a reported result is scored against', () => {
     id,
     eventId: 'e1',
     date: '2027-04-03',
-    name: id,
     distanceKm: 10,
     ascentM: 0,
     descentM: 0,
@@ -313,18 +308,15 @@ describe('an event that runs over two mornings', () => {
   })
 })
 
-describe('a race with no name of its own', () => {
-  /* The name became optional on 11.08.2026 (owner), and what names such a race
-     is its length: „tada je trka poznata po svojoj dužini". An empty cell would
-     be a race nobody can tell from the one beside it, which is the whole reason
-     PDL P10 says the name is what a person recognises a race by. */
-  async function nameless() {
+describe('a race, which has no name of its own', () => {
+  /* There is no such field any more (owner, 11.08.2026): what a runner is shown
+     is the event and the measurements of the race they ran, „Beogradski maraton,
+     21,1 km". So every screen that writes a race writes its length, and a race
+     is told from the one beside it by that. */
+  async function anyRace() {
     const races = await loadResource<Race[]>('races')
     const events = await loadResource<BtlEvent[]>('events')
-    const race = must(
-      races.find((one) => one.name.trim() === ''),
-      'a race entered without a name',
-    )
+    const race = first(races)
 
     return {
       race,
@@ -335,27 +327,29 @@ describe('a race with no name of its own', () => {
     }
   }
 
-  it('is listed under the event by its length', async () => {
-    const { race, event } = await nameless()
+  it('is listed under the event by its measurements', async () => {
+    /* And by no name, because there is none: the table of races under an event
+       carries the day, the category and the numbers. */
+    const { race, event } = await anyRace()
 
     renderAt(`/sr/kalendar/${event.slug}`)
 
     const table = await screen.findByRole('table')
 
-    expect(within(table).getAllByText(formatDistance(race.distanceKm, 'sr-Latn')).length)
+    expect(within(table).getAllByText(formatNumber(race.distanceKm, 'sr-Latn', 2)).length)
       .toBeGreaterThan(0)
   })
 
   it('is offered by its length on the form that reports a result', async () => {
-    const { race, event } = await nameless()
+    const { race, event } = await anyRace()
 
     renderAt(`/sr/kalendar/${event.slug}/prijava`, 'competitor', ME)
 
     const chooser = await screen.findByLabelText(/^Trka/)
     const said = [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
 
-    /* By the length alone, with nothing dangling in front of it: written as
-       name and length, a race with no name read " · 3,3 km". */
+    /* By the length alone, which is the whole of what tells two races of one
+       event apart. */
     expect(said).toContain(formatDistance(race.distanceKm, 'sr-Latn'))
   })
 })

@@ -3,6 +3,7 @@ import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
+import { formatNumber } from '../../i18n/format'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import {
@@ -399,13 +400,31 @@ async function newRaceOnFirstEvent(user: ReturnType<typeof setupUser>) {
 }
 
 /** The row of a race under the event that is open. */
-async function raceRow(named: string) {
+/**
+ * The row of the race that is this long and climbs this much.
+ *
+ * A race carries no name of its own (data/types.ts), so it is found by its
+ * measurements. Both of them, because an event may already hold a race of the
+ * same length: the one entered here climbs a number no other one does.
+ */
+async function raceRow(distanceKm: number, ascentM: number) {
+  const rows = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    .getAllByRole('row')
+    .slice(1)
+
   return within(
     must(
-      within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-        .getByText(named)
-        .closest('tr'),
-      `the row of the race called ${named}`,
+      rows.find((row) => {
+        const cells = within(row)
+          .getAllByRole('cell')
+          .map((one) => one.textContent ?? '')
+
+        return (
+          cells.includes(formatNumber(distanceKm, 'sr-Latn', 2)) &&
+          cells.includes(formatNumber(ascentM, 'sr-Latn'))
+        )
+      }),
+      `the row of the ${distanceKm} km race climbing ${ascentM} m`,
     ),
   )
 }
@@ -425,7 +444,6 @@ describe('the category of a race', () => {
     /* Nor which event it is. The screen it is entered on already answers that. */
     expect(form.queryByLabelText(labelled(t('admin.field.event')))).not.toBeInTheDocument()
 
-    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera kategorije')
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
     await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
@@ -441,7 +459,7 @@ describe('the category of a race', () => {
 
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    expect((await raceRow('Provera kategorije')).getByText(t('category.marathon'))).toBeVisible()
+    expect((await raceRow(42.2, 120)).getByText(t('category.marathon'))).toBeVisible()
   })
 
   it('is written again when the record is changed, and not only when it is made', async () => {
@@ -457,18 +475,17 @@ describe('the category of a race', () => {
     const user = setupUser()
     const form = await newRaceOnFirstEvent(user)
 
-    /* Entered rather than picked out of the file, so the race this is about has
-       a name no other race shares. */
-    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera izmene')
+    /* A length no other race of this event has, so the row this is about is the
+       only one that answers to it. */
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
     await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
     await user.click(form.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    expect((await raceRow('Provera izmene')).getByText(t('category.marathon'))).toBeVisible()
+    expect((await raceRow(42.2, 120)).getByText(t('category.marathon'))).toBeVisible()
 
-    await user.click((await raceRow('Provera izmene')).getByRole('button', { name: /^Otvori:/ }))
+    await user.click((await raceRow(42.2, 120)).getByRole('button', { name: /^Otvori:/ }))
 
     const distance = await screen.findByLabelText(labelled(t('admin.field.distanceKm')))
     await user.clear(distance)
@@ -476,7 +493,7 @@ describe('the category of a race', () => {
     await user.click(screen.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    const changed = await raceRow('Provera izmene')
+    const changed = await raceRow(10, 120)
 
     expect(changed.getByText(t('category.short'))).toBeVisible()
     expect(changed.queryByText(t('category.marathon'))).toBeNull()

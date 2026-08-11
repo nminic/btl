@@ -29,11 +29,10 @@ const event = (id: string, date: string): BtlEvent => ({
   kind: 'race', copiedFrom: '', featured: 'no',
 })
 
-const race = (id: string, eventId: string, name: string, distanceKm = 10): Race => ({
+const race = (id: string, eventId: string, distanceKm = 10): Race => ({
   id,
   eventId,
   date: '2027-04-03',
-  name,
   distanceKm,
   ascentM: 0,
   descentM: 0,
@@ -68,10 +67,10 @@ const league: League = {
 
 const events = [event('e1', '2019-05-01'), event('e2', '2019-03-01'), event('e3', '2019-04-01')]
 const races = [
-  race('r1', 'e1', '10 km'),
-  race('r2', 'e2', '21 km'),
-  race('r3', 'e3', '5 km'),
-  race('r4', 'e1', '5 km', 5),
+  race('r1', 'e1'),
+  race('r2', 'e2', 21),
+  race('r3', 'e3', 5),
+  race('r4', 'e1', 5.5),
 ]
 
 describe('the grid of a competition', () => {
@@ -171,7 +170,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1', 'e2'] },
       [event('e1', '2019-05-01'), event('e2', '2019-05-01')],
-      [race('r1', 'e1', '10 km'), race('r2', 'e2', '10 km')],
+      [race('r1', 'e1'), race('r2', 'e2')],
       [],
       [],
     )
@@ -193,7 +192,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1'] },
       [event('e1', '2019-05-01')],
-      [race('r1', 'e1', '', 10), race('r2', 'e1', '', 21.1)],
+      [race('r1', 'e1', 10), race('r2', 'e1', 21.1)],
       [],
       [],
     )
@@ -208,7 +207,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1'] },
       [event('e1', '2019-05-01')],
-      [race('r1', 'e1', '', 10), race('r2', 'e1', '', 10)],
+      [race('r1', 'e1', 10), race('r2', 'e1', 10)],
       [],
       [],
     )

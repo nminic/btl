@@ -11,14 +11,6 @@
       "required": true
     },
     {
-      "name": "name",
-      "type": "text",
-      "labelKey": "admin.raceName",
-      "hintKey": "admin.hint.raceName",
-      "required": false,
-      "maxLength": 60
-    },
-    {
       "name": "date",
       "type": "date",
       "labelKey": "admin.field.raceDate",

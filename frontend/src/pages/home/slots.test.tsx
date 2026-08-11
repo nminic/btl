@@ -36,19 +36,19 @@ describe('CalendarExtract', () => {
       id: 'r1',
       eventId: 'd',
       date: '2027-04-03',
-      name: 'Maraton', distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
+      distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
     },
     {
       id: 'r2',
       eventId: 'd',
       date: '2027-04-03',
-      name: 'Ultra', distanceKm: 100, ascentM: 0, descentM: 0, category: 'ultra',
+      distanceKm: 100, ascentM: 0, descentM: 0, category: 'ultra',
     },
     {
       id: 'r3',
       eventId: 'd',
       date: '2027-04-03',
-      name: 'Drugi maraton', distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
+      distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
     },
   ]
 

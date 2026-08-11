@@ -1,4 +1,3 @@
-import { raceName } from '../../data/raceName'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
@@ -180,20 +179,13 @@ export function ReportResult() {
                 options={{
                   raceId: mineHere.map((race) => ({
                     value: race.id,
-                    /* The name and the length, because two races at one event
-                       are told apart by the length more often than by the name.
+                    /* Its length, which is what tells two races of one event
+                       apart: a race has no name of its own (data/types.ts), and
+                       the event is already the page this form was opened from.
                        `labelKey` takes a key and falls back to what it is given
                        when there is no such key, which is what puts a value into
-                       a list of choices (src/i18n/translate.ts).
-                     *
-                       The length written the one way the portal writes a length,
-                       so „Polumaraton · 21,1 km" and the nameless „21,1 km" do
-                       not stand in one list with the decimal mark of two
-                       different languages between them. */
-                    labelKey:
-                      race.name.trim() === ''
-                        ? raceName(race, locale)
-                        : `${race.name} · ${formatDistance(race.distanceKm, locale)}`,
+                       a list of choices (src/i18n/translate.ts). */
+                    labelKey: formatDistance(race.distanceKm, locale),
                   })),
                 }}
                 onSubmit={onSubmit}

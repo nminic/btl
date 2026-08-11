@@ -76,10 +76,16 @@ export type Competitor = {
   bio: string
 }
 
+/* A race has no name of its own (owner, 11.08.2026): „ipak ne treba da postoji
+   naziv trke ni kao obavezno ni kao neobavezno polje... trkačima će biti
+   evidentiran naziv događaja uz mere te određene trke koje su istrčali".
+ *
+   So what tells one race from another is its event and its measurements, and
+   those are what every screen writes: „Beogradski maraton, 21,1 km". The field
+   existed until then, was optional for one day, and is gone. */
 export type Race = {
   id: string
   eventId: string
-  name: string
   /**
    * The day this race is run on, which is not always the day of its event.
    *

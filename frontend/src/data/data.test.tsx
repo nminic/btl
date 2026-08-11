@@ -6,6 +6,7 @@ import { first } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
+import countries from './countries.json'
 import { plainly } from './places'
 import { FEATURED, ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
@@ -348,6 +349,30 @@ describe('the generated data', () => {
     const nameless = places.filter(([name, country]) => name === '' || !/^[A-Z]{2}$/.test(country))
 
     expect(nameless).toEqual([])
+  })
+
+  it('names every country its towns stand in, and puts Kosovo in Serbia', async () => {
+    /* Two things one guard can say, because they are the same failure. A select
+       handed a country it has no option for draws an empty box, so a town whose
+       country the list cannot name files a race nowhere.
+     *
+       Kosovo is one such: GeoNames writes it XK and holds twenty one towns
+       there. The owner reads it as part of Serbia (11.08.2026): „ukoliko je
+       mesto sa Kosova, automatski podrazumevana država postaje Srbija. Kosovo ne
+       sme uopšte postojati u listi država." So the codebook writes those towns
+       RS, and XK appears nowhere. */
+    const places = await loadResource<[string, string, string?][]>('places')
+    const named = new Set([...countries.region, ...countries.rest].map((one) => one.code))
+    const strangers = [...new Set(places.map(([, country]) => country))].filter(
+      (country) => !named.has(country),
+    )
+
+    expect(strangers).toEqual([])
+    expect(places.filter(([, country]) => country === 'XK')).toEqual([])
+    expect(named.has('XK')).toBe(false)
+    /* And Priština is where the towns of Serbia are. */
+    expect(places.filter(([name]) => name === 'Pristina').map(([, country]) => country))
+      .toEqual(['RS'])
   })
 
   it('carries no event of a kind the portal does not have, and no state at all', async () => {

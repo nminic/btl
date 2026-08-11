@@ -5,10 +5,9 @@ import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { fieldFor } from '../../data/derive'
-import { raceName } from '../../data/raceName'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
-import { formatPoints, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueTable } from './leagueTable'
 import './League.css'
@@ -95,12 +94,10 @@ function Grid({
                       trek" with the length and the date beyond the edge, which is
                       the one thing that told them apart. The whole of it is in the
                       title for anyone who wants it. */}
-                  {/* The race by whatever it is known by, which is its length
-                      where it has no name (data/raceName.ts). Read straight off
-                      the field it was „, 12. 4. 2027., Beogradski maraton", a
-                      heading opening on a comma. */}
+                  {/* The race by what it is known by, which is its length: it
+                      has no name of its own (data/types.ts). */}
                   {(() => {
-                    const name = raceName({ name: column.race, distanceKm: column.distanceKm }, locale)
+                    const name = formatDistance(column.distanceKm, locale)
                     const day = formatShortDate(column.date, locale)
 
                     return (

@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import countries from '../data/countries.json'
 import { countryName } from '../data/countryName'
-import { placeName, placesLike, usePlaces, TYPED_BEFORE_GUESSING, type Place } from '../data/places'
+import {
+  placeName,
+  placesLike,
+  plainly,
+  usePlaces,
+  TYPED_BEFORE_GUESSING,
+  type Place,
+} from '../data/places'
 import { useI18n } from '../i18n/useI18n'
 import './PlaceField.css'
 
@@ -53,12 +60,49 @@ export function PlaceField({
   const places = usePlaces(value.trim().length >= TYPED_BEFORE_GUESSING)
   const [open, setOpen] = useState(false)
   const [at, setAt] = useState(-1)
+  /* The town picked off the list during this visit, if the box still holds it.
+     A record opened for editing starts with nothing here, and is recognised by
+     its name alone or not at all. */
+  const [picked, setPicked] = useState<Place | null>(null)
   const box = useRef<HTMLDivElement>(null)
 
   const offered = open ? placesLike(places, value) : []
   const listId = `${id}-places`
   /* Whether the list of countries has a name for the one this record holds. */
   const unnamed = ![...countries.region, ...countries.rest].some((one) => one.code === country)
+  /**
+   * Which country this town is in, where the codebook answers that on its own.
+   *
+   * A recognised town cannot have its country changed (owner, 11.08.2026): the
+   * country is then not an answer somebody gives but a fact about the town, and
+   * a control that lets it be contradicted is a control that files a race in the
+   * wrong country. Only a town entered by hand leaves the choice open.
+   *
+   * Recognised means the codebook holds this name **and holds it once**. Seven
+   * hundred and thirty eight names in it stand in more than one country: London
+   * is British and American, Lagos is Nigerian and Portuguese. For those the
+   * name recognises nothing by itself, so the choice stays where it was.
+   */
+  const spelt = plainly(value.trim())
+  const sameName = spelt === '' ? [] : places.filter(
+    (one) => plainly(one[0]) === spelt || (one[2] !== undefined && plainly(one[2]) === spelt),
+  )
+  const only = [...new Set(sameName.map((one) => one[1]))]
+  /* Picked off the list, or spelt out so that the codebook can only mean one
+     place. Picking counts even for a name two countries share, because then the
+     row that was pressed said which of them it was; typing „London" says
+     nothing, and the choice stays open. */
+  const known = picked?.[1] ?? (only.length === 1 ? only[0] : undefined)
+
+  useEffect(() => {
+    /* And a town typed out in full, letter by letter, ends in the same place as
+       one picked off the list. Otherwise „Beograd" typed by somebody who never
+       looked at the suggestions kept whatever country the field opened on, and
+       the box beside it was locked on it. */
+    if (known !== undefined && known !== country) {
+      onChange(value, known)
+    }
+  }, [known, country, value, onChange])
 
   useEffect(() => {
     if (!open) {
@@ -80,6 +124,7 @@ export function PlaceField({
 
   function choose(place: Place) {
     onChange(placeName(place, locale), place[1])
+    setPicked(place)
     setOpen(false)
     setAt(-1)
   }
@@ -164,6 +209,9 @@ export function PlaceField({
              race in Beograd edited into Zagreb and filed in Serbia with nothing
              saying so. There is something saying so now. */
           onChange(event.target.value, country)
+          /* Typed over, so what was picked is no longer what stands here: the
+             country goes back to being a question. */
+          setPicked(null)
           setOpen(true)
           /* And nothing is highlighted any more: the list is about to be a
              different list, and the third row of it is not the row somebody was
@@ -220,6 +268,11 @@ export function PlaceField({
         <select
           className="field__control"
           value={country}
+          /* Locked on a town the codebook knows, for the reason written where
+             `known` is worked out. Disabled rather than hidden: the country is
+             still the answer, and an answer that disappears reads as a question
+             nobody asked. */
+          disabled={known !== undefined}
           onChange={(event) => {
             onChange(value, event.target.value)
           }}

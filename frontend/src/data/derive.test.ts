@@ -1029,7 +1029,6 @@ describe('categoriesAt', () => {
     id,
     eventId,
     date: '2027-04-03',
-    name: id,
     distanceKm: 10,
     ascentM: 0,
     descentM: 0,

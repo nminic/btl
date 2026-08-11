@@ -1,4 +1,3 @@
-import { raceName } from '../data/raceName'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
@@ -56,7 +55,6 @@ function RaceTable({ eventId }: { eventId: string }) {
               <caption className="visually-hidden">{t('event.races')}</caption>
               <thead>
                 <tr>
-                  <th scope="col">{t('event.raceName')}</th>
                   {/* The day, drawn only where the event runs over more than one
                       (owner, 10.08.2026). A column of one repeated date under a
                       heading that already says the day is a column that says
@@ -75,7 +73,6 @@ function RaceTable({ eventId }: { eventId: string }) {
               <tbody>
                 {mine.map((race) => (
                     <tr key={race.id}>
-                      <td>{raceName(race, locale)}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
                       <td>{t(`category.${race.category}`)}</td>
                       <td>{formatNumber(race.distanceKm, locale, 2)}</td>

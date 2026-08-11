@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { must } from '../test/at'
+import { at, must } from '../test/at'
 import { setupUser } from '../test/user'
 import { PlaceField } from './PlaceField'
 
@@ -20,10 +20,12 @@ const CODEBOOK: Place[] = [
   ['Beočin', 'RS'],
   ['Bern', 'CH'],
   ['Boston', 'US'],
-  /* A town in a code the list of countries has no name for. The world's
-     codebook carries eleven such (ADL A16), and one of them is a question for
-     the owner rather than for this file (PDL P6). */
+  /* A town in a code the list of countries has no name for. */
   ['Bardejov', 'ZZ'],
+  /* And a name two countries share, which is the ordinary case rather than the
+     odd one: seven hundred and thirty eight of them stand in the codebook. */
+  ['London', 'GB'],
+  ['London', 'US'],
 ]
 
 /** The codebook as the portal fetches it. The list is a resource rather than an
@@ -297,6 +299,90 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(screen.queryByRole('listbox')).toBeNull()
     })
+  })
+
+  it('will not let the country of a town it recognises be changed', async () => {
+    /* Owner, 11.08.2026: „ukoliko se mesto prepozna, država se ne može
+       promeniti. Dropdown države je aktivan samo ukoliko je slobodan unos
+       mesta." The country of a known town is then not an answer somebody gives
+       but a fact about the town, and a control that lets it be contradicted is
+       one that files a race in the wrong country. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'ber')
+    const list = await screen.findByRole('listbox')
+    await user.click(within(list).getByText(/Bern/))
+
+    const country = screen.getByRole('combobox', { name: /Država/i })
+
+    expect(country).toHaveValue('CH')
+    expect(country).toBeDisabled()
+  })
+
+  it('opens it again for a town typed over the one it knew', async () => {
+    /* A hamlet of two hundred people that no codebook of the world has heard of
+       is entered by hand, and then the country is the only way to say where the
+       race is run. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+    await user.type(box, 'ovce')
+
+    expect(screen.getByRole('combobox', { name: /Država/i })).toBeEnabled()
+  })
+
+  it('recognises a town spelt out in full, without the list being touched', async () => {
+    /* Somebody who knows how a town is spelt types it and never looks down. The
+       codebook holds one Bern, so the country is not a question, and the field
+       has to reach the same answer it would have reached had the row been
+       pressed. Bern rather than a Serbian town because the field starts on
+       Serbia: a town whose country is the one already standing there would let
+       this pass while nothing moved. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Bern')
+
+    const country = screen.getByRole('combobox', { name: /Država/i })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+    expect(country).toBeDisabled()
+    expect(onCountry).toHaveBeenLastCalledWith('CH')
+  })
+
+  it('leaves the choice open for a name two countries share', async () => {
+    /* „London" typed out says nothing about which London: the name recognises
+       no one place, so nothing here may answer for the person. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'London')
+
+    expect(screen.getByRole('combobox', { name: /Država/i })).toBeEnabled()
+  })
+
+  it('holds the country of the London that was pressed', async () => {
+    /* Picking is not typing: the row that was pressed said which of the two it
+       was, so it is recognised even though the name is shared. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'lond')
+
+    const list = await screen.findByRole('listbox')
+    const rows = within(list).getAllByRole('option')
+
+    await user.click(at(rows, 1))
+
+    const country = screen.getByRole('combobox', { name: /Država/i })
+
+    expect(country).toHaveValue('US')
+    expect(country).toBeDisabled()
   })
 
   it('shows the country it holds even where the list has no name for it', async () => {

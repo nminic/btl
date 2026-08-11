@@ -1,7 +1,6 @@
-import { raceName } from '../../data/raceName'
 import { useMemo } from 'react'
 import { isoDate } from '../../forms/dateField'
-import { formatNumber, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import type { BtlEvent, Race } from '../../data/types'
@@ -127,7 +126,6 @@ export function EventRaces({
             </caption>
             <thead>
               <tr>
-                <th scope="col">{t('admin.raceName')}</th>
                 {/* The day, because an event may run over more than one (owner,
                     10.08.2026). Beside the name rather than at the end: it is
                     the thing that differs between two races of one weekend. */}
@@ -142,7 +140,6 @@ export function EventRaces({
             <tbody>
               {mine.map((race) => (
                 <tr key={race.id}>
-                  <td>{raceName(race, locale)}</td>
                   <td>{formatShortDate(race.date, locale)}</td>
                   {/* Written the way this language writes a number, like every
                       other table on the portal: read raw, a climb of 7120 metres
@@ -156,12 +153,11 @@ export function EventRaces({
                     <RowActions
                       entity={entity}
                       record={race}
-                      /* The same words the row is read by, and not the raw
-                         field: a race with no name gave „Otvori: " and
-                         „Obriši: " on every row of an event whose races are
-                         told apart by their length, which is one control
-                         written out five times. */
-                      name={raceName(race, locale)}
+                      /* Its length, because that is what the row is read by
+                         since a race has no name of its own (types.ts). Twenty
+                         rows are then twenty different controls, which is what
+                         a button that deletes results has to be. */
+                      name={formatDistance(race.distanceKm, locale)}
                       onOpen={() => setEditing({ mode: 'one', record: race })}
                       /* And the event follows what is left, the same way it
                          follows a race entered or moved: taking the first

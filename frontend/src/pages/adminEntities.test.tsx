@@ -102,8 +102,7 @@ describe('the races of an event', () => {
     ).replace('Trke na događaju ', '')
 
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Dužina/), '13')
     await user.type(screen.getByLabelText(/^Uspon/), '0')
     await user.type(screen.getByLabelText(/^Spust/), '0')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -114,7 +113,8 @@ describe('the races of an event', () => {
        filled in. */
     const said = await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(said).toHaveTextContent('Probna trka')
+    /* By its length, which is what a race is written by (data/types.ts). */
+    expect(said).toHaveTextContent('13')
     expect(said).toHaveTextContent(named)
 
     /* And it is on the event, not merely named beside it. The confirmation reads
@@ -128,7 +128,7 @@ describe('the races of an event', () => {
       await screen.findByRole('table', { name: `Trke na događaju ${named}` }),
     )
 
-    expect(races.getByText('Probna trka')).toBeVisible()
+    expect(races.getByText(formatNumber(13, 'sr-Latn', 2))).toBeVisible()
   })
 
   it('gives a race its own day, starting on the day of its event', async () => {
@@ -149,17 +149,19 @@ describe('the races of an event', () => {
       'the day the form opened on',
     )
 
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Nedeljna desetka')
     await user.clear(day)
     await user.type(day, `${String(Number(startsOn[1]) + 1).padStart(2, '0')}${startsOn[2]}${startsOn[3]}`)
-    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Dužina/), '12')
     await user.type(screen.getByLabelText(/^Uspon/), '0')
     await user.type(screen.getByLabelText(/^Spust/), '0')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-    const row = within(must(races.getByText('Nedeljna desetka').closest('tr'), 'the new race'))
+    /* Found by its length: a race carries no name of its own (data/types.ts). */
+    const row = within(
+      must(races.getByText(formatNumber(12, 'sr-Latn', 2)).closest('tr'), 'the new race'),
+    )
 
     expect(
       row.getByText(`${Number(startsOn[1]) + 1}. ${Number(startsOn[2])}. ${startsOn[3]}.`),
@@ -202,7 +204,6 @@ describe('the races of an event', () => {
       'the day the form opened on',
     )
 
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Petak, kratka trka')
     await user.clear(day)
     await user.type(
       day,
@@ -304,7 +305,7 @@ describe('the races of an event', () => {
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
       .getAllByRole('row')
       .slice(1)
-    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 1).textContent)
+    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 0).textContent)
     const first_race = within(at(races, 0))
 
     await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
@@ -322,7 +323,7 @@ describe('the races of an event', () => {
     const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
       .getAllByRole('row')
       .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
 
     expect(after).toEqual([second_day])
   })
@@ -357,9 +358,9 @@ describe('the races of an event', () => {
       .slice(1)
 
     /* Two mornings, which is what makes either end of the rule sayable. */
-    expect(new Set(races.map((row) => at(within(row).getAllByRole('cell'), 1).textContent)).size).toBe(2)
+    expect(new Set(races.map((row) => at(within(row).getAllByRole('cell'), 0).textContent)).size).toBe(2)
 
-    const first_day = String(at(within(at(races, 0)).getAllByRole('cell'), 1).textContent)
+    const first_day = String(at(within(at(races, 0)).getAllByRole('cell'), 0).textContent)
 
     /* The last one first, which must move nothing: the event begins when it
        began, whatever is taken off the end of it. */
@@ -402,7 +403,7 @@ describe('the races of an event', () => {
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
       .getAllByRole('row')
       .slice(1)
-    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 1).textContent)
+    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 0).textContent)
     const first_race = within(at(races, 0))
 
     await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
@@ -441,7 +442,7 @@ describe('the races of an event', () => {
       within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
         .getAllByRole('row')
         .slice(1)
-        .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+        .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
 
     const before = await daysOf()
 
@@ -673,7 +674,9 @@ describe('the races of an event', () => {
       under
         .getAllByRole('row')
         .slice(1)
-        .find((each) => (each.textContent ?? '').includes(steep.name)),
+        /* Found by its climb, since a race has no name to look for it by
+           (data/types.ts) and the climb is what this test is about. */
+        .find((each) => (each.textContent ?? '').includes(formatNumber(steep.ascentM, 'sr-Latn'))),
       'that race under its event',
     )
 

@@ -100,7 +100,6 @@ export function EventActions({
 
       create(RACES.id, `${race.id}-kopija-${before + 1}`, {
         eventId: id,
-        name: race.name,
         /* The day it was run on, kept as it was. The copy starts on the day the
            event was on, so the races start on the days they were on, and moving
            the event's date afterwards moves them all by the same number of days
