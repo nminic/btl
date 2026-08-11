@@ -419,16 +419,16 @@ describe('TopBoards', () => {
   })
 
   it('says which place every column stands in, since an ol cannot', async () => {
-    /* A list of ten numbers itself 1 to 10, and that is wrong wherever the whole
-       ladder ties: a place nothing separates is shared, so a board reads 1, 1, 3
-       (Član 57, PDL P12). The tables carry it in a column and the charts had
-       nowhere to put it, so it is said rather than drawn.
+    /* The place is said in words rather than left to the reading order, because
+       a chart is not a table and has no column to carry it. The tables carry it
+       in a column; here it goes into the text of the column.
 
-       Read on the longer races of 2016, and that is the whole of why this test
-       can fail: those ten end 9, 9. On most boards the ladder separates everybody
-       and the place is the row number, so a chart that had thrown the places away
-       and numbered its rows would pass; here it would say ten where the rule says
-       nine.
+       Read on the longer races of 2016, where the last two are level on every
+       rung of the ladder but the member number. Until 11.08.2026 that made them
+       a shared ninth place and this test read 9, 9; the owner settled that day
+       that there is no shared place (PDL P12), so the lower member number takes
+       the ninth and the other the tenth. What the test still holds is that the
+       chart says the place it was given rather than counting its own rows.
 
        The day is handed to the screen and used here as well, so both sides work
        the field out for the same one (PDL P11). On this season it changes
@@ -447,7 +447,7 @@ describe('TopBoards', () => {
       10,
     )
 
-    expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 9])
+    expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 10])
 
     renderAt('/sr/top-liste?sezona=2016', 'visitor', null, undefined, TODAY)
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })

@@ -186,9 +186,10 @@ describe('rankingFor', () => {
     expect(rankingFor(competitors, results, { season: 2027, gender: 'M', search: '  ' })).toHaveLength(3)
   })
 
-  it('shares a place when the ladder leaves two rows level, and skips the next number', () => {
+  it('settles a tie the whole ladder leaves standing by the member number', () => {
     // Identical in points, kilometres, races and vertical, so nothing in PDL P12
-    // separates them and the place is shared: 1, 1, 3.
+    // separates them until the last rung: the lower member number goes ahead and
+    // the places run 1, 2, 3 with nothing skipped and nothing shared.
     const level = [competitor('000005'), competitor('000002'), competitor('000004')]
     const ran = [
       result('000005', '2027-01-01', 10),
@@ -202,10 +203,9 @@ describe('rankingFor', () => {
         row.position,
       ]),
     ).toEqual([
-      // Inside the shared place the smaller member number comes first, although
-      // 000005 was listed first.
+      // The smaller member number goes ahead, although 000005 was listed first.
       ['000002', 1],
-      ['000005', 1],
+      ['000005', 2],
       ['000004', 3],
     ])
   })
@@ -221,17 +221,27 @@ describe('withPlaces', () => {
   const byPoints = (left: Row, right: Row) => right.points - left.points
   const numberOf = (one: Row) => one.competitor.memberNumber
 
-  it('gives three level rows one number and carries on at the fourth', () => {
+  it('numbers three level rows one, two, three, by member number', () => {
     const rows = [row('000004', 9), row('000002', 9), row('000005', 9), row('000001', 4)]
 
     expect(withPlaces(rows, byPoints, numberOf).map((one) => [numberOf(one), one.position])).toEqual(
       [
         ['000002', 1],
-        ['000004', 1],
-        ['000005', 1],
+        ['000004', 2],
+        ['000005', 3],
         ['000001', 4],
       ],
     )
+  })
+
+  it('leaves the list it was handed in the order it was handed in', () => {
+    // The copy inside matters: a caller that draws the same array again would
+    // otherwise find it reordered underneath it.
+    const rows = [row('000004', 9), row('000002', 9)]
+
+    withPlaces(rows, byPoints, numberOf)
+
+    expect(rows.map(numberOf)).toEqual(['000004', '000002'])
   })
 
   it('numbers a list nothing ties in one by one', () => {
@@ -499,7 +509,7 @@ describe('rankTeams', () => {
     ])
   })
 
-  it('shows a tie the whole ladder leaves standing as a shared place', () => {
+  it('settles a tie the whole ladder leaves standing, and shares no place', () => {
     const teams = [team('b'), team('a'), team('c')]
     const competitors = [
       competitor('000001', { teamId: 'a', teamSince: 2027 }),
@@ -514,9 +524,10 @@ describe('rankTeams', () => {
 
     const ranked = rankTeams(teams, competitors, results, 2027)
 
-    // 1, 1, 3, and inside the shared place the smaller id first, so the board
-    // does not shuffle between two recounts of the same data (PDL P12).
-    expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
+    // No shared place: the team's own id is the last rung, so two teams the
+    // ladder leaves level are still 1 and 2, and the board does not shuffle
+    // between two recounts of the same data (PDL P12).
+    expect(ranked.map((row) => row.position)).toEqual([1, 2, 3])
     expect(ranked.map((row) => row.team.id)).toEqual(['a', 'b', 'c'])
   })
 
@@ -629,7 +640,7 @@ describe('topByProgress', () => {
       .toEqual(['000002', '000001'])
   })
 
-  it('shows a tie the whole ladder leaves standing as a shared place', () => {
+  it('settles a tie the whole ladder leaves standing, and shares no place', () => {
     const competitors = [competitor('000002'), competitor('000001'), competitor('000003')]
     const results = [
       result('000001', '2026-01-01', 10),
@@ -642,7 +653,7 @@ describe('topByProgress', () => {
 
     const ranked = topByProgress(competitors, results, 2027, 10)
 
-    expect(ranked.map((row) => row.position)).toEqual([1, 1, 3])
+    expect(ranked.map((row) => row.position)).toEqual([1, 2, 3])
     expect(ranked.map((row) => row.competitor.memberNumber)).toEqual([
       '000001',
       '000002',
@@ -754,10 +765,10 @@ describe('topByCategory, when the count ties', () => {
       ['000005', 3],
       ['000007', 4],
       ['000008', 5],
-      // Nothing separates these two, so they share the place, smaller member
-      // number first.
+      // Nothing separates these two until the last rung, so the smaller member
+      // number takes the sixth place and the other the seventh.
       ['000009', 6],
-      ['000011', 6],
+      ['000011', 7],
     ])
   })
 
@@ -807,12 +818,12 @@ describe('topByKilometers', () => {
       '000005',
       // Vertical level too, so the points settle it.
       '000007',
-      // Level down to the last rung, so the place is shared and the smaller
-      // member number goes first.
+      // Level down to the last rung, which is the member number: the smaller
+      // one takes the fifth place and the other the sixth.
       '000002',
       '000008',
     ])
-    expect(rows.map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 5])
+    expect(rows.map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 6])
     expect(first(rows).kilometers).toBe(30)
   })
 
@@ -853,7 +864,7 @@ describe('rankMembers', () => {
      given 1 and 2 by the order they happened to be in (PDL P12). */
   const members = [competitor('000002'), competitor('000008'), competitor('000004')]
 
-  it('shares a place nothing separates, and keeps everybody who is in the team', () => {
+  it('settles a place nothing separates by member number, and keeps everybody who is in the team', () => {
     const results = [
       result('000002', '2027-01-01', 10),
       result('000008', '2027-01-01', 10),
@@ -865,7 +876,7 @@ describe('rankMembers', () => {
     ).toEqual([
       ['000004', 1],
       ['000002', 2],
-      ['000008', 2],
+      ['000008', 3],
     ])
   })
 
@@ -873,7 +884,7 @@ describe('rankMembers', () => {
     const rows = rankMembers(members, [result('000002', '2027-01-01', 10)])
 
     expect(rows).toHaveLength(3)
-    expect(rows.map((row) => row.position)).toEqual([1, 2, 2])
+    expect(rows.map((row) => row.position)).toEqual([1, 2, 3])
     expect(first(rows).competitor.memberNumber).toBe('000002')
   })
 })
@@ -896,7 +907,7 @@ describe('topByTimeOnCourse', () => {
     result('000007', '2027-01-01', 1, { seconds: 5000 }),
   ]
 
-  it('ranks by time, settles a level time by volume, and shares what is left', () => {
+  it('ranks by time, settles a level time by volume, and the rest by member number', () => {
     const rows = topByTimeOnCourse(competitors, results, 2027, 10)
 
     expect(rows.map((row) => [row.competitor.memberNumber, row.position])).toEqual([
@@ -906,9 +917,9 @@ describe('topByTimeOnCourse', () => {
       ['000005', 2],
       // Level on time, kilometres and races, so the vertical decides.
       ['000004', 3],
-      // Nothing left to separate these two, so they hold the place together.
+      // Nothing left but the member number, so the smaller one goes ahead.
       ['000002', 4],
-      ['000007', 4],
+      ['000007', 5],
     ])
   })
 })

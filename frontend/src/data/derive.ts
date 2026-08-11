@@ -103,8 +103,8 @@ export function resultsOf(results: Result[], memberNumber: string, season?: numb
 
 /* How every list is ordered, and what happens when the order runs out of
  * measures. Both come from PDL P12: volume decides first, efficiency may only
- * settle a complete tie, and a tie that survives the whole ladder is shown as a
- * shared place instead of being broken by accident.
+ * settle a complete tie, and a tie that survives the whole ladder is broken by
+ * the member number, because there is no shared place (owner, 31.07.2026).
  */
 
 /** One rung of a ladder: the number a list compares two rows by. */
@@ -135,63 +135,43 @@ const VERTICAL: Measure<TotalsRow> = (row) => row.ascent + row.descent
 export type Placed<T> = T & { position: number }
 
 /**
- * Numbers an ordered list. Rows the ladder leaves level share one number and
- * the number after them is skipped, so a shared first place reads 1, 1, 3, and
- * inside a shared place the smaller member number comes first (PDL P12).
+ * Numbers an ordered list: 1, 2, 3. No number is skipped and none is given
+ * twice.
  *
- * That inner order is there so the table does not shuffle on every recount.
+ * **There is no shared place** (PDL P12, owner 31.07.2026, confirmed
+ * 11.08.2026). Every ladder ends in the member number, which no two members
+ * share, so two rows can never be level all the way down: the one who joined
+ * the league first goes ahead. Written this way the trophy for second place is
+ * always handed to somebody, and the table and the award list can never
+ * disagree in public.
  *
- * It is about to become more than that: the owner decided on 31.07.2026 that
- * there is no shared place at all, and that the lower member number is the last
- * measure that separates two people, so that the trophy for second is always
- * given to somebody. Until that is carried through here the places are still
- * shared, and the two have to move together, because a table that shares places
- * and an award list that does not would disagree in public.
+ * Until 11.08.2026 rows the ladder left level shared one number and the numbers
+ * after them were skipped, so a shared first place read 1, 1, 3 and the award
+ * was doubled. The owner's answer of that day settled which of the two records
+ * was current, and this is the other half of it.
  *
- * `compare` is the ladder the list was sorted by, so two rows count as level
- * only when every rung of it leaves them equal.
+ * The member number is added **under** the given ladder rather than left to the
+ * order the rows happened to arrive in, so the table does not shuffle on every
+ * recount. `compare` is that ladder, and two rows reach the last rung only when
+ * every rung above it leaves them equal.
+ *
+ * What identifies the row is passed in, because not every list is a list of
+ * people: the team standing hands in the team's own id, which is the same
+ * promise (one row, one value, assigned in the order they joined).
  */
 export function withPlaces<T extends object>(
   rows: T[],
   compare: (left: T, right: T) => number,
   memberNumberOf: (row: T) => string,
 ): Placed<T>[] {
-  /* The rows gathered into the places they share, in one pass over them. Every
-   * row is compared with the row that opened the place it might join rather
-   * than with the one before it, so a ladder that leaves three rows level gives
-   * all three the same number.
-   *
-   * By row rather than by index: walking two indices over the list means asking
-   * for rows the list is only known to hold because the arithmetic says so. */
-  const places: { head: T; tied: T[] }[] = []
-
-  for (const row of rows) {
-    const open = places[places.length - 1]
-
-    if (open === undefined || compare(open.head, row) !== 0) {
-      places.push({ head: row, tied: [row] })
-    } else {
-      open.tied.push(row)
-    }
-  }
-
-  const placed: Placed<T>[] = []
-
-  for (const place of places) {
-    /* Everybody sharing a place takes the number of the first of them, and the
-     * numbers the rest would have had are skipped, so a shared first place
-     * reads 1, 1, 3. */
-    const position = placed.length + 1
-    const tied = place.tied.sort((left, right) =>
-      memberNumberOf(left).localeCompare(memberNumberOf(right)),
+  /* A copy, because a caller that hands in a list it still uses would find it
+   * reordered under it. */
+  return [...rows]
+    .sort(
+      (left, right) =>
+        compare(left, right) || memberNumberOf(left).localeCompare(memberNumberOf(right)),
     )
-
-    for (const row of tied) {
-      placed.push({ ...row, position })
-    }
-  }
-
-  return placed
+    .map((row, index) => ({ ...row, position: index + 1 }))
 }
 
 export type RankingRow = Placed<TotalsRow>
@@ -204,7 +184,7 @@ export type RankingFilter = {
 }
 
 /** The ladder of the general standing (PDL P12): points, kilometres, more
- *  races, vertical, and then a shared place. */
+ *  races, vertical, and then the member number, which `withPlaces` adds. */
 const STANDING = byLadder<TotalsRow>([
   (row) => row.points,
   (row) => row.kilometers,
@@ -214,7 +194,8 @@ const STANDING = byLadder<TotalsRow>([
 
 /**
  * The standing for one season and one gender, ordered down the ladder above:
- * volume wins, never efficiency, and a tie nothing separates is shared.
+ * volume wins, never efficiency, and a tie nothing separates goes to the lower
+ * member number.
  */
 export function rankingFor(
   competitors: Competitor[],
@@ -258,8 +239,8 @@ export function rankingFor(
 
 /**
  * The members of one team, ordered by what each of them brought to it, down the
- * ladder of the general standing and with a tie nothing separates shared, like
- * every other list on the portal (PDL P12).
+ * ladder of the general standing and with a tie nothing separates settled by the
+ * member number, like every other list on the portal (PDL P12).
  *
  * Everybody in the list is in it, results or none: a team page is the team, and
  * leaving out the member who has not raced yet would read as them not belonging.
@@ -298,8 +279,8 @@ export type TeamRow = {
 }
 
 /** The ladder of the team board (PDL P12): points, more members of the team,
- *  the kilometres of every member, the races of every member, then a shared
- *  place. It stopped at the member count before, so two teams level on points
+ *  the kilometres of every member, the races of every member, then the team's
+ *  own id. It stopped at the member count before, so two teams level on points
  *  and on size were left in whatever order the team list happened to be in. */
 const BY_TEAM = byLadder<TeamRow>([
   (row) => row.totals.points,
@@ -313,9 +294,10 @@ const BY_TEAM = byLadder<TeamRow>([
  * meant to be an advantage, and a tie goes to the bigger team (PDL P12). A
  * rule that rewarded the smaller team is explicitly excluded.
  *
- * A tie the whole ladder leaves standing is a shared place, like everywhere
- * else. Inside one, the order is by team id rather than by member number: a
- * team has no member number, and what the rule is for is that the table does
+ * A tie the whole ladder leaves standing is broken by the team's own id rather
+ * than by a member number: a team has no member number, and the id is handed
+ * out in the order teams joined, which is the same promise the member number
+ * makes for people. So here too there is no shared place, and the table does
  * not shuffle between two recounts of the same data.
  *
  * The results are taken as given, so the caller decides whether the board is
@@ -782,7 +764,7 @@ export function topByCategory(
 
 /**
  * Most kilometres in a season. Ladder: kilometres, more races, vertical, points,
- * then reached earlier, then a shared place.
+ * then reached earlier, then the member number.
  *
  * The fifth rung is in P12 and in Article 57 of the rulebook, and it was missing
  * here while the board of races by length already had it: two members level on
@@ -843,7 +825,7 @@ export type ProgressRow = TotalsRow & { previousPoints: number; gain: number }
 
 /*
  * The ladder of the best progress: the gain, then the points of the season, then
- * more races, then a shared place.
+ * more races, then the member number.
  *
  * NOT FROM P12. The table of ladders in P12 has no row for this board, because
  * the board had no measure until 30.07.2026 and the measure was decided without
