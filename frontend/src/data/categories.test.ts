@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ageBandFor, categoryCodeFor, categoryLabel, firstSeasonAllowed } from './categories'
 
 describe('ageBandFor', () => {
@@ -64,5 +66,51 @@ describe('firstSeasonAllowed', () => {
     expect(firstSeasonAllowed(11.99)).toBe(true)
     expect(firstSeasonAllowed(12)).toBe(false)
     expect(firstSeasonAllowed(40)).toBe(false)
+  })
+})
+
+describe('the category code never reaches the screen on its own', () => {
+  /* Read over the source, because the alternative is a test per screen and the
+     screens are six. The rule is one and the same everywhere: what the league
+     keeps the category under (`M R`) is not what a visitor is shown
+     („Početnici"), so every place that asks for the code has to put it through
+     the dictionary (PDL P7, 11.08.2026).
+   *
+     Written this way after the code leaked twice: once onto the filter buttons
+     of the standings, and once onto the row of honours, each time because the
+     screen was translated and one call beside it was not. A test per screen
+     would have caught the screen it was written for and no other. */
+  const drawn = /\.tsx$/
+
+  function sourcesUnder(folder: string): string[] {
+    return readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+      const full = join(folder, entry.name)
+
+      return entry.isDirectory() ? sourcesUnder(full) : drawn.test(entry.name) ? [full] : []
+    })
+  }
+
+  it('puts every drawn category through the dictionary', () => {
+    const loose: string[] = []
+
+    for (const file of sourcesUnder(join(process.cwd(), 'src'))) {
+      if (file.includes('.test.')) {
+        continue
+      }
+
+      const source = readFileSync(file, 'utf-8')
+
+      for (const line of source.split('\n')) {
+        /* The code is asked for either straight from the member or out of a
+           record that already holds it; both have to be wrapped. */
+        const asked = line.includes('categoryOfMember(') || line.includes('award.category')
+
+        if (asked && !line.includes('categoryLabel(')) {
+          loose.push(`${file.slice(file.indexOf('src'))}: ${line.trim()}`)
+        }
+      }
+    }
+
+    expect(loose).toEqual([])
   })
 })

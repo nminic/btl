@@ -193,8 +193,11 @@
   opacity: 1;
 }
 
+/* Isto tri imena duboko kao i pravilo koje licu zadaje prelaze, jer medijski
+   upit ne dodaje specificnost: napisano krace, ovo je gubilo od njega i nikoga
+   nije usporilo. */
 @media (prefers-reduced-motion: reduce) {
-  .colchart__column .portrait,
+  .colchart .colchart__column .portrait,
   .colchart__who {
     transition: none;
   }
@@ -466,7 +469,7 @@
    still says what it counts, it simply arrives there at once. */
 @media (prefers-reduced-motion: reduce) {
   .colchart__bar,
-  .colchart .portrait,
+  .colchart .colchart__column .portrait,
   .colchart__count,
   .colchart__caption {
     transition: none;

@@ -537,6 +537,53 @@ describe('TopByCategory', () => {
     )
   })
 
+  it('lets the request for less motion win over the rule that sets the motion', () => {
+    /* A media query adds no specificity of its own, so a rule that turns motion
+       off has to be written at least as deep as the rule that turned it on. Both
+       reduced-motion blocks lost to `.colchart .colchart__column .portrait`
+       while they were written shorter, and the faces went on sliding for exactly
+       the people who asked them not to.
+     *
+       Held on the selectors and not on the order in the file, because order only
+       decides between rules of equal weight, which was the very thing that was
+       not true here. */
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    const setting = '.colchart .colchart__column .portrait'
+    const quiet = css.split('@media (prefers-reduced-motion: reduce)').slice(1)
+
+    expect(quiet).toHaveLength(2)
+
+    for (const block of quiet) {
+      expect(block.slice(0, block.indexOf('}'))).toContain(setting)
+    }
+
+    /* And the rule they have to beat is the one that names all three of the
+       face's changes, so the test fails if that one is split up again. */
+    const face = css.slice(css.indexOf(`${setting} {`))
+
+    expect(face.slice(0, face.indexOf('}'))).toMatch(
+      /transition:[^;]*opacity[^;]*inset-block-end/s,
+    )
+  })
+
+  it('gives the sliding only to the chart that turns', () => {
+    /* Nought by default and a real duration on the turning chart alone. Written
+       the other way round, picking a season on Top liste set six boards sliding
+       for a change nobody asked to see move. */
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    /* Every rule that names the duration, and which rule names it. Two of them
+       and no more, so a third one written anywhere else would show up here
+       rather than quietly setting six boards in motion. */
+    const naming = [...css.matchAll(/([^{}]+)\{[^{}]*--turn:\s*([^;]+);/g)].map(
+      (rule) => `${must(rule[1], 'a selector').trim().split('\n').pop()?.trim()} = ${must(rule[2], 'a duration').trim()}`,
+    )
+
+    expect(naming).toEqual([
+      '.colchart = 0s',
+      '.colchart--turns = 420ms cubic-bezier(0.4, 0, 0.2, 1)',
+    ])
+  })
+
   it('can be stopped, and stays stopped', async () => {
     /* WCAG 2.2 SC 2.2.2, level A: anything that moves by itself for more than
        five seconds beside other content has to be stoppable. This turned every

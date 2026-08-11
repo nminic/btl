@@ -477,6 +477,31 @@ describe('rankTeams', () => {
     expect(winner.members).toBe(1)
   })
 
+  it('puts the races above the kilometres, and not the other way round', () => {
+    /* The owner named the four in order on 11.08.2026: „BTL bodovi (što više),
+       broj trka (što više), kilometri (što više), vreme na stazi (što više)".
+       The two middle rungs were never told apart until this test: every other
+       case had the same team ahead on both, so swapping them changed nothing. */
+    const teams = [team('many-short'), team('one-long')]
+    const competitors = [
+      competitor('000001', { teamId: 'many-short', teamSince: 2027 }),
+      competitor('000002', { teamId: 'one-long', teamSince: 2027 }),
+    ]
+    const results = [
+      // Three races, ten points, thirty kilometres in all.
+      result('000001', '2027-01-01', 4, { distanceKm: 10 }),
+      result('000001', '2027-02-01', 3, { distanceKm: 10 }),
+      result('000001', '2027-03-01', 3, { distanceKm: 10 }),
+      // One race, the same ten points, and twice the distance.
+      result('000002', '2027-01-01', 10, { distanceKm: 60 }),
+    ]
+
+    expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
+      'many-short',
+      'one-long',
+    ])
+  })
+
   it('goes on to the kilometres when the points and the races are level too', () => {
     const teams = [team('fewer'), team('more')]
     const competitors = [
