@@ -268,15 +268,15 @@ describe('categoriesOf', () => {
 describe('calendar helpers', () => {
   const sixthOfMarch: BtlEvent = {
     id: 'a', slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
-    organizer: 'x', kind: 'race',
+    organizer: 'x', kind: 'race', copiedFrom: '',
   }
   const secondOfMarch: BtlEvent = {
     id: 'b', slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
-    organizer: 'x', kind: 'race',
+    organizer: 'x', kind: 'race', copiedFrom: '',
   }
   const tenthOfApril: BtlEvent = {
     id: 'c', slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
-    organizer: 'x', kind: 'gathering',
+    organizer: 'x', kind: 'gathering', copiedFrom: '',
   }
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
@@ -303,8 +303,8 @@ describe('calendar helpers', () => {
 
 describe('defaultMonth', () => {
   const events: BtlEvent[] = [
-    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', kind: 'race' },
-    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', kind: 'race' },
+    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', organizer: 'x', kind: 'race', copiedFrom: '' },
+    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', organizer: 'x', kind: 'race', copiedFrom: '' },
   ]
 
   it('opens on the first month from today onwards that holds something', () => {
@@ -1023,7 +1023,7 @@ describe('categoriesAt', () => {
     city: 'Niš',
     country: 'RS',
     organizer: 'BTL',
-    kind: 'race',
+    kind: 'race', copiedFrom: '',
   })
 
   const race = (id: string, eventId: string, category: RaceCategory): Race => ({

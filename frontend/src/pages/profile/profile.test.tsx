@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { loadResource } from '../../data/client'
+import type { Competitor } from '../../data/types'
 import { awardsOf } from './awards'
 import { shortBio } from './bio'
 
@@ -92,7 +94,7 @@ describe('what a competitor has won', () => {
     renderAt('/sr/takmicar/000032/priznanja')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog takmičara nema.' }),
+      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
     ).toBeVisible()
   })
 })
@@ -331,7 +333,7 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
     renderAt('/sr/takmicar/000031?sezona=sve&duzina=ultra')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.getByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
+    expect(screen.getByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
   })
 
   it('names the length for somebody who has raced, but never that far', async () => {
@@ -494,14 +496,120 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
       /* The coin is an image with a name since the hint went (11.08.2026), and
          on a profile that name is the only thing telling one instance of a
          family from another: two months of the same ducat carry the same two
-         words under them. */
-      expect(screen.getByRole('img', { name: 'Mesečni kilometri, 20 km.' })).toBeVisible()
+         words under them.
 
-      /* And what it is worth, in words. The metal says it in colour, and colour
-         is never the only thing that says anything (PDL P16, SC 1.4.1). */
-      expect(screen.getByText('Vrednost 1 od 5, bronzani dukat.')).toBeVisible()
+         It carries what the coin is worth as well, since the line that used to
+         say so under the coin was taken off the page the same day: on screen
+         the metal is the only thing left telling a bronze from a gold, and
+         colour is never the only thing that says anything. */
+      expect(
+        screen.getByRole('img', {
+          name: 'Mesečni kilometri, 20 km. Vrednost 1 od 5, bronzani dukat.',
+        }),
+      ).toBeVisible()
+
+      /* And it is not written under the coin as well: the wall is coins, not
+         coins and a grey sentence under each (owner, 11.08.2026). */
+      expect(screen.queryByText('Vrednost 1 od 5, bronzani dukat.')).toBeNull()
     } finally {
       globalThis.fetch = real
     }
+  })
+})
+
+describe('what the portal calls the person whose page it is', () => {
+  /* A portal that calls every woman on it a takmičar is one written for half
+     its members (owner, 11.08.2026). Said where the sentence is about the
+     person: the empty biography and the empty list of results. */
+
+  it('says takmičarka on a woman page, and takmičar on a man page', async () => {
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const silent = (gender: string) =>
+      must(
+        competitors.find((one) => one.gender === gender && one.active && one.bio === ''),
+        `an active ${gender} with no biography`,
+      )
+    renderAt(`/sr/takmicar/${silent('F').memberNumber}`)
+    expect(await screen.findByText('Ova takmičarka još nije napisala ništa o sebi.')).toBeVisible()
+
+    cleanup()
+
+    renderAt(`/sr/takmicar/${silent('M').memberNumber}`)
+    expect(await screen.findByText('Ovaj takmičar još nije napisao ništa o sebi.')).toBeVisible()
+  })
+
+  it('asks no gender at all for a profile that is not there', async () => {
+    /* There is no record to read one off, so the sentence is written not to
+       need one rather than guessed at. */
+    renderAt('/sr/takmicar/999999')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' })).toBeVisible()
+  })
+})
+
+describe('a wall of ducats that grows as it is read', () => {
+  /* Five rows before the first refill (owner, 11.08.2026), and a row is however
+     many stand across at this width. jsdom lays nothing out, so it counts one
+     across and a row is one ducat: five before the button, which is the
+     arrangement a telephone comes closest to.
+
+     Stood up rather than found: the most decorated member of the generated data
+     holds three ducats, so nothing in it is long enough to be cut. What is
+     under test is the cutting. */
+  function servingMany(howMany: number) {
+    const real = globalThis.fetch
+    const many = Array.from({ length: howMany }, (_, at) => ({
+      id: `duk-proba-${String(at)}`,
+      name: `Proba ${String(at + 1)}`,
+      kind: 'raceCount',
+      value: at + 1,
+      period: 'always',
+      top: 'ISTRČANIH',
+      topFemale: '',
+      bottom: 'TRKA',
+      periodAt: 'none',
+      mark: 'races',
+      art: 'none',
+      tier: 1,
+      step: 0,
+      last: 0,
+      tierUpFrom: 0,
+      counted: '',
+    }))
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/ducats.json')
+        ? new Response(JSON.stringify(many), { status: 200 })
+        : real(input)) as typeof fetch
+
+    return () => {
+      globalThis.fetch = real
+    }
+  }
+
+  it('shows five of them and grows, rather than the whole wall at once', async () => {
+    const stop = servingMany(12)
+    const user = setupUser()
+
+    /* 000021 has run more races than anybody else in the data, so every one of
+       the twelve thresholds above is behind them. */
+    renderAt('/sr/takmicar/000021/priznanja')
+
+    const wall = await screen.findByRole('list', { name: '' })
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Učitaj još dukata' })).toHaveLength(1)
+    })
+
+    const count = () => within(wall).getAllByRole('listitem').length
+    expect(count()).toBe(5)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još dukata' }))
+    expect(count()).toBe(10)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još dukata' }))
+    expect(count()).toBe(12)
+    expect(screen.getByText('To je sve, 12 dukata')).toBeVisible()
+
+    stop()
   })
 })

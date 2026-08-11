@@ -102,5 +102,18 @@
       "ambience": 5
     },
     "body": "Komentar sa ranijeg izdanja, događaj je pomeren na nov datum."
+  },
+  {
+    "id": "kom-9",
+    "eventId": "evt-sidski-novogodisnji-maraton-2024-01-14",
+    "memberNumber": "000001",
+    "who": "Vladan Đurišić",
+    "date": "2024-01-15",
+    "rating": {
+      "organisation": 5,
+      "value": 3,
+      "ambience": 4
+    },
+    "body": "Staza uz Savu, ravna i brza, i okrepa na svakih pet kilometara. Startni paket je skroman, ali je sve ostalo bilo na nivou."
   }
 ]

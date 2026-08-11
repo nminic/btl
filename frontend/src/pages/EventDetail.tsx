@@ -20,6 +20,7 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
+import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
 import './Profile.css'
 
@@ -281,6 +282,11 @@ export function EventDetail() {
                   left every race behind and the copy came across empty. */}
               <header className="profile__head rankings--tooled">
                 <h1>{event.name}</h1>
+                {/* What everybody thought of this race, in one place and only
+                    here (owner, 11.08.2026). It draws nothing until it has
+                    something to say, so it never moves the name under the
+                    reader's eye. */}
+                <OverallMark eventId={event.id} />
                 {races.status === 'ready' && results.status === 'ready' && (
                   <EventActions event={event} races={races.data} results={results.data} />
                 )}

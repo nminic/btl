@@ -1,3 +1,5 @@
+import { useId } from 'react'
+import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Stars.css'
 
@@ -6,26 +8,71 @@ import './Stars.css'
  *  nobody is a number two files can start disagreeing about. */
 const STARS = 5
 
+/** The star itself, and where it begins and ends across the box it is drawn in.
+ *  Measured off the path rather than assumed: the box is 24 wide and the star
+ *  inside it is not, so a third of the box is not a third of the star. */
+const STAR = 'M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9z'
+const LEFT = 2.6
+const ACROSS = 18.8
+
 /**
- * A five pointed star, empty or filled.
+ * A five pointed star, filled as far across as it is worth.
  *
  * Drawn rather than written as a character: the star in a font is a different
  * shape on every system, and half of them draw it in colour whatever the page
- * asks for. Two paths of the same outline, so the filled one and the empty one
- * are the same star and only the ink differs.
+ * asks for. Two paths of the same outline, so the outline and the ink are the
+ * same star and only the ink is cut.
+ *
+ * Cut with a straight upright edge, at a fraction of the star's own width
+ * (owner, 11.08.2026): an average of 3,33 is three whole stars and a fourth
+ * filled a third of the way across. Not half a star and not rounded, because
+ * both of those say something the number does not.
  */
-function Star({ filled }: { filled: boolean }) {
+function Star({ fill }: { fill: number }) {
+  const cut = useId()
+  const outline = (
+    <path d={STAR} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+  )
+
   return (
     <svg className="stars__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path
-        d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9z"
-        fill={filled ? 'currentColor' : 'none'}
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
+      {fill < 1 && outline}
+      {fill > 0 && (
+        <>
+          {/* No clip at all where the star is whole: a clip that cuts nothing
+              is an id in the document for nothing, and there are five of these
+              on every rating on the screen. */}
+          {fill < 1 && (
+            <clipPath id={cut}>
+              <rect x="0" y="0" width={LEFT + ACROSS * fill} height="24" />
+            </clipPath>
+          )}
+          <path
+            d={STAR}
+            fill="currentColor"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+            clipPath={fill < 1 ? `url(#${cut})` : undefined}
+          />
+        </>
+      )}
     </svg>
   )
+}
+
+/**
+ * How much of one star is worth filling, for a rating of `value` out of five.
+ *
+ * Nought below it, and the remainder on the star the number falls inside.
+ * Anything above one is left as it is rather than capped: everything from one
+ * upwards is drawn as a whole star, so a cap would be a branch nothing could
+ * ever take (`fill < 1` answers the same either way).
+ *
+ * Not exported: nothing outside asks, and this file exports components.
+ */
+function fillOf(value: number, mark: number): number {
+  return Math.max(0, value - mark + 1)
 }
 
 /**
@@ -67,14 +114,14 @@ type Asking = {
 }
 
 export function Stars({ name, label, value, onChange }: Reading | Asking) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const marks = Array.from({ length: STARS }, (_, index) => index + 1)
 
   if (onChange === undefined) {
     return (
-      <span className="stars" role="img" aria-label={`${label}: ${said(t, value)}`}>
+      <span className="stars" role="img" aria-label={`${label}: ${said(t, locale, value)}`}>
         {marks.map((mark) => (
-          <Star key={mark} filled={mark <= value} />
+          <Star key={mark} fill={fillOf(value, mark)} />
         ))}
       </span>
     )
@@ -99,14 +146,32 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
             onChange={() => onChange(mark)}
           />
           <span className="visually-hidden">{t('event.rating.stars', { count: mark, of: STARS })}</span>
-          <Star filled={mark <= value} />
+          {/* Whole stars, because this is a choice of one of five and not a
+              measurement: nobody gives three and a third. */}
+          <Star fill={mark <= value ? 1 : 0} />
         </label>
       ))}
     </fieldset>
   )
 }
 
-/** What a rating reads as when there is nobody to hear the stars. */
-function said(t: (key: string, values?: Record<string, string | number>) => string, value: number) {
-  return value === 0 ? t('event.rating.unrated') : t('event.rating.stars', { count: value, of: STARS })
+/**
+ * What a rating reads as when there is nobody to hear the stars.
+ *
+ * The number as it is written everywhere else on the portal, to one decimal:
+ * an average is 4,7 and not 4.7, and it stopped being a whole number the day
+ * the last star began to be cut across (owner, 11.08.2026).
+ */
+function said(
+  t: (key: string, values?: Record<string, string | number>) => string,
+  locale: string,
+  value: number,
+) {
+  if (value === 0) {
+    return t('event.rating.unrated')
+  }
+
+  const written = Number.isInteger(value) ? String(value) : formatNumber(value, locale, 1)
+
+  return t('event.rating.stars', { count: written, of: STARS })
 }

@@ -153,3 +153,68 @@ describe('a rating that is read rather than given', () => {
     expect(screen.getByRole('img', { name: 'Ambijent: Bez ocene' })).toBeInTheDocument()
   })
 })
+
+describe('a star filled part of the way across', () => {
+  /** How wide the cut is on each star of a rating, or null where the star is
+   *  whole or empty. jsdom computes no layout, so the drawing has to say in
+   *  figures what it does in ink. */
+  function cuts(): (number | null)[] {
+    return [...document.querySelectorAll('.stars__mark')].map((one) => {
+      const rect = one.querySelector('clipPath rect')
+
+      return rect === null ? null : Number(rect.getAttribute('width'))
+    })
+  }
+
+  it('is cut at the remainder, on the one star the number falls inside', () => {
+    /* Owner, 11.08.2026: an average of 3,33 is three whole stars and a fourth
+       filled a third of the way across. Measured on the star's own width, 2.6
+       to 21.4 across a box of 24: a third of the box would be a different
+       place, and the star is what a reader sees. */
+    draw(<Stars label="Ocena" value={3.33} />)
+
+    const [first, second, third, fourth, fifth] = cuts()
+
+    expect([first, second, third, fifth]).toEqual([null, null, null, null])
+    /* Close to, because 3.33 minus 3 is not 0.33 in binary and the width in the
+       markup carries the difference. */
+    expect(fourth).toBeCloseTo(2.6 + 18.8 * 0.33, 5)
+  })
+
+  it('draws whole stars with no cut at all, and empty ones with no ink', () => {
+    /* A clip that cuts nothing is an id in the document for nothing, and there
+       are five of these on every rating on the screen.
+
+       And the whole star must not point at one either: a `clip-path` naming an
+       id that is not in the document is an invalid reference, and by CSS
+       Masking an element with one is not rendered at all. jsdom draws nothing,
+       so the only way to see that is to read the attribute. */
+    draw(<Stars label="Ocena" value={4} />)
+
+    expect(cuts()).toEqual([null, null, null, null, null])
+    expect(inked()).toBe(4)
+    expect(document.querySelectorAll('.stars__mark path[clip-path]')).toHaveLength(0)
+  })
+
+  it('says the number the way the portal writes numbers', () => {
+    draw(<Stars label="Ocena" value={3.33} />)
+
+    expect(screen.getByRole('img', { name: 'Ocena: 3,3 od 5' })).toBeVisible()
+  })
+
+  it('rounds nothing: 4,7 is not five stars and not four', () => {
+    /* Both of the ways this was wrong before. Drawn up it said what nobody
+       gave; drawn down it said less than the figure beside it. */
+    draw(<Stars label="Ocena" value={4.7} />)
+
+    expect(inked()).toBe(5)
+    expect(cuts()[4]).toBeCloseTo(2.6 + 18.8 * 0.7, 5)
+  })
+})
+
+/** How many of the five carry ink, whole or cut. */
+function inked(): number {
+  return [...document.querySelectorAll('.stars__mark')].filter(
+    (one) => one.querySelector('path[fill="currentColor"]') !== null,
+  ).length
+}

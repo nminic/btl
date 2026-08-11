@@ -4,7 +4,14 @@ import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
-import { combinePair, useCompetitors, useEvents } from '../../data/useResource'
+import {
+  combineFour,
+  useCompetitors,
+  useEvents,
+  useRaces,
+  useResults,
+} from '../../data/useResource'
+import { ran } from './ran'
 import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
 import { LongBox } from '../../forms/LongBox'
 import { limitOf } from '../../forms/records'
@@ -55,7 +62,7 @@ function RateOne() {
   const { slug } = useParams()
   const today = useToday()
   const { memberNumber, propose } = useSession()
-  const state = combinePair(useEvents(), useCompetitors())
+  const state = combineFour(useEvents(), useCompetitors(), useResults(), useRaces())
   const [rating, setRating] = useState<EventRating>(NO_RATING)
   const [comment, setComment] = useState('')
   const [sent, setSent] = useState(false)
@@ -83,7 +90,7 @@ function RateOne() {
   return (
     <div className="member">
       <Resource state={state}>
-        {([events, competitors]) => {
+        {([events, competitors, results, races]) => {
           const found = events.find((one) => one.slug === slug)
 
           if (found === undefined) {
@@ -96,6 +103,14 @@ function RateOne() {
              typed, and a rule kept by hiding a link is not kept. */
           if (event.date > today) {
             return <NotRunYet slug={event.slug} />
+          }
+
+          /* And a rating belongs to somebody who was there (owner, 11.08.2026).
+             Checked here as well as where the button is, for the same reason
+             the date is: the address can be typed, and a rule kept by hiding a
+             link is not kept. */
+          if (!ran(results, races, event.id, mine)) {
+            return <NotRunYet slug={event.slug} why="notRanIt" />
           }
 
           const me = competitors.find((one) => one.memberNumber === mine)

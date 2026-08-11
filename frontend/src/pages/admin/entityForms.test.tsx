@@ -603,6 +603,10 @@ describe('the words the seven forms need', () => {
 
     expect(made.city).toBe('Beograd')
     expect(made.country).toBe('RS')
+    /* And it came out of nothing, said rather than left missing: the type
+       promises a string, and the walk of editions read the field of every event
+       entered by hand as undefined (data/editions.ts). */
+    expect(made.copiedFrom).toBe('')
   })
 
   it('offer no choice at all where the value is read off another one', () => {

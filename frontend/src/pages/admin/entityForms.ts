@@ -137,7 +137,11 @@ export const EVENTS: EntityDef = {
   path: 'administracija/dogadjaji',
   form: dogadjaj as FormDef,
   idField: 'id',
-  blank: {},
+  /* An event entered by hand came out of nothing, and says so. Without this the
+     field was simply missing from the record while the type promised a string,
+     and the walk of editions stopped on the second of its two guards rather
+     than the first (data/editions.ts). */
+  blank: { copiedFrom: '' },
   /* A new event opens on Trka (owner, 10.08.2026). Nearly every one of them is
      a race, and a required field whose answer is the same ninety nine times in
      a hundred is a press taken from whoever is entering a whole calendar. */
@@ -602,20 +606,29 @@ export function fieldValues<T extends string | boolean>(
   )
 }
 
-/** A created record in the shape the lists read. */
+/**
+ * A created record in the shape the lists read.
+ *
+ * Everything that was written, and not only what a field asked for. A record is
+ * what was made; a form is one way of filling it, and there are values that
+ * reach here without a field of their own: the country a place field writes
+ * beside the town (forms/types.ts), and the event a copy says it came out of
+ * (event/EventActions.tsx). A loop over the fields drops both in silence, which
+ * is how an event once went in filed in no country at all while the form had
+ * been holding one the whole time.
+ *
+ * Written before the fields rather than after, so a value that is a field is
+ * converted by `recordValue` and a value that is not stays the text it was.
+ */
 export function recordFrom(entity: EntityDef, created: Created): Record<string, unknown> {
   const record: Record<string, unknown> = { ...entity.blank }
 
+  for (const [name, value] of Object.entries(created.values)) {
+    record[name] = value
+  }
+
   for (const { field, value } of fieldValues(entity.form, created.values)) {
     record[field.name] = recordValue(field, value)
-
-    /* And the country the town came with, which the loop cannot see: a place
-       writes two values and only one of them is a field (forms/types.ts). Left
-       out, an event entered on this screen was filed in no country at all,
-       while the form had been holding one the whole time. */
-    if (field.type === 'place') {
-      record.country = String(created.values.country)
-    }
   }
 
   /* What the form did not ask for but the record carries all the same, read off

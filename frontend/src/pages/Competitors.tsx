@@ -36,7 +36,7 @@ function CompetitorCards({
 
     /* Members, not everybody who ever was one: a card leads to a profile, and an
        inactive member has none (PDL P11). It put the newest inactive member on
-       this list and on the front page, both linking to "Ovog takmičara nema." */
+       this list and on the front page, both linking to "Ovog profila nema." */
     return activeOnly(competitors)
       .filter((competitor) =>
         `${competitor.firstName} ${competitor.lastName} ${competitor.memberNumber} ${competitor.city}`

@@ -59,9 +59,19 @@
     margin-block-end: var(--head-end);
   }
 
-  /* Everything else in the screen takes the whole width under the two of them. */
-  .rankings--tooled > *:not(h1):not(.rankings__head-tool) {
+  /* Everything else in the screen takes the whole width under the two of them.
+     Except the mark of the race, which belongs to the head itself: taking the
+     whole width it filled the second row, and the buttons fell to a third with
+     the second track collapsed to nothing, which is the very arrangement this
+     block was written to prevent. */
+  .rankings--tooled > *:not(h1):not(.rankings__head-tool):not(.comments__mark) {
     grid-column: 1 / -1;
+  }
+
+  .rankings--tooled > .comments__mark {
+    grid-column: 1;
+    grid-row: 2;
+    margin-block-end: 0;
   }
 }
 
@@ -133,11 +143,82 @@
   min-inline-size: 0;
 }
 
+/* On a telephone the gender goes beside the season, in one row under the name
+   of the screen (owner, 11.08.2026). Above 560px they are on two different
+   rows by design: the gender belongs with the name of the screen, because it
+   says which table is being read rather than narrowing it, and the season
+   belongs with the two filters beside it.
+
+   Under that width there is no room for either arrangement, and what was there
+   was a row with two buttons pushed to the right and a lonely select under it,
+   with a band of nothing beside each. `display: contents` on the row of filters
+   is what lets a grandchild stand in the grid: the season is inside that row
+   and the gender is outside it, and this is the one place they meet.
+
+   Scoped to this screen. `rankings--tooled` is shared by eight, and none of
+   the others has a select to bring up. */
+@media (max-width: 559.98px) {
+  .rankings--tooled:has(> .rankings__filters) {
+    display: grid;
+    /* `minmax(0, …)` on both, because a track is otherwise at least as wide as
+       its content asks for: at 200% text the two gender buttons stopped fitting
+       and the page itself scrolled sideways (WCAG 2.2 SC 1.4.4 and 1.4.10). */
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: end;
+    /* Both, and not only the column: `display: contents` throws away the row's
+       own gap along with its box, so without this the three rows of filters
+       touched at nought pixels. */
+    column-gap: var(--space-12);
+    row-gap: var(--space-12);
+  }
+
+  /* Only the row of filters. The heading keeps its own box, because a heading
+     is a box: it holds its line and spans the row. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters {
+    display: contents;
+  }
+
+  .rankings--tooled:has(> .rankings__filters) > h1 {
+    grid-column: 1 / -1;
+  }
+
+  .rankings--tooled:has(> .rankings__filters) > .rankings__head-tool {
+    grid-column: 2;
+    grid-row: 2;
+    margin-block-end: 0;
+  }
+
+  /* Scoped like the four above it: these three are children of the row of
+     filters, and that row exists on the admin screens too, under a different
+     parent. Placing them in a grid they are not in would be inert, and inert is
+     not the same as written down. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field:first-child {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories,
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
+    grid-column: 1 / -1;
+  }
+
+  /* The row of filters gives its own spacing away with its box, so what stood
+     between it and the table has to be put back on the last field in it. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
+    margin-block-end: var(--space-12);
+  }
+}
+
+/* One row: season, categories, search (owner, 11.08.2026). `align-items:
+   start` and not `end`, because each field is a name over a control and the
+   three names have to sit on one line: aligned at the foot, a field whose
+   control is taller pushes its own name up and the three read as three
+   heights. */
 .rankings__filters {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-12);
-  align-items: end;
+  align-items: start;
   margin-bottom: var(--space-12);
 }
 
@@ -196,13 +277,18 @@
   flex: 1 1 14rem;
 }
 
-/* Wide enough for what it suggests typing and no wider (owner, 11.08.2026).
-   It used to take the whole of the rest of the row, which on a desktop is
-   fifty characters of box for a name of twenty: a box that size reads as one
-   that expects a sentence. */
+/* Everything left of the row, so what the box asks for fits inside it: "Ime,
+   prezime ili članski broj" is twenty nine characters and a box narrower than
+   that reads as one that takes a word (owner, 11.08.2026). `min-inline-size: 0`
+   because a flex item will not shrink below the width its content asks for
+   without it, and an input's content width is its `size` attribute. */
+.rankings__field--search {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
 .rankings__field--search input {
-  inline-size: 24ch;
-  max-inline-size: 100%;
+  inline-size: 100%;
 }
 
 /* The same row of buttons the results on a profile use (Profile.css), and for
@@ -213,7 +299,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-bottom: var(--space-12);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -236,18 +321,28 @@
   cursor: pointer;
 }
 
-/* The word beside the row, in the same voice as the labels on the two controls
-   above it. Without it the row was the one thing on the screen a sighted reader
-   had to guess at: the name was on the group for a screen reader and nowhere on
-   the page. */
-.rankings__categories-name {
-  flex: 0 0 auto;
-  margin-right: var(--space-4);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
+/* The categories are a field like the two beside them: a name over a control.
+   The name comes from `.rankings__field`, which is why this carries that class
+   as well, and what is left here is only the height, so the buttons line up
+   with the select and the box rather than floating between them. */
+/* It gives way before the row does. `flex: 0 0 auto` made it unshrinkable, so
+   ten chips pushed the page itself sideways and the row's own `overflow-x`
+   never engaged: measured at 560px with ten of them, the page scrolled to 735
+   and the chips did not. `min-inline-size: 0` is what lets a flex item go
+   below the width its content asks for, which is the whole of why the internal
+   scroll exists. */
+.rankings__field--categories {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+/* As tall as the select and the box beside it, with the chips centred inside
+   that band: the three controls share a top and a bottom, which is what being
+   in one row means to somebody looking at it. 2.5rem is what the select and the
+   input come to from their own padding and border. */
+.rankings__field--categories .rankings__categories {
+  min-height: 2.5rem;
+  align-items: center;
 }
 
 /* Hover moves the border and the words, and nothing else. The chosen one is the

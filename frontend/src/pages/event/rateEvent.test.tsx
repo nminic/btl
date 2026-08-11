@@ -56,7 +56,11 @@ const BEFORE_AHEAD = '2026-12-31'
  *  it stands for an event moved onto a later date. */
 const AHEAD_EMPTY = 'podgoricka-desetka-2027'
 const AHEAD_EMPTY_NAME = 'Podgorička desetka'
-const ME = '000007'
+/* Somebody with a result on EVENT, because a rating belongs to whoever ran the
+   race (owner, 11.08.2026): they are the only member the rating form opens
+   for. Read off the data rather than picked: 000021 is the one competitor with
+   a result on the Fruškogorski maraton of 2010. */
+const ME = '000021'
 
 /** The event that answers at an address, since an address is no longer its id
  *  with a prefix: it is the name and the year (owner, 10.08.2026). */
@@ -216,21 +220,57 @@ describe('rating an event', () => {
     expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
   })
 
-  it('sends a rating from somebody the list of members has never heard of', async () => {
-    /* A member number that is not in the file. It happens while a registration
-       is still going through: the number is handed out when the fee is recorded
-       (PDL P8) and the member list is read separately, so for a moment there is
-       a signed-in number with no record behind it. The rating still goes, with
-       no name on it, rather than the screen falling over. */
-    const user = setupUser()
+  it('takes a rating from a member the list of members has not caught up with', async () => {
+    /* The number is handed out when the fee is recorded (PDL P8) and the member
+       list is read separately, so for a moment there is a signed-in number with
+       a result and no record behind it. The rating goes with no name on it
+       rather than the screen falling over.
+
+       Stood up by taking the record away rather than by finding a member
+       without one: since 11.08.2026 the rating opens only for somebody with a
+       result, and every result in the data belongs to somebody the list has. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/competitors.json')
+        ? new Response('[]', { status: 200 })
+        : real(input)) as typeof fetch
+
+    try {
+      const user = setupUser()
+      renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+      await screen.findByRole('group', { name: 'Organizacija' })
+      await rateAll(user, 3)
+      await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+
+      expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    } finally {
+      /* Put back whatever happens: a stub left standing is every later test in
+         the file reading an empty list of members. */
+      globalThis.fetch = real
+    }
+  })
+
+  it('turns away somebody with no result on the event, however they got here', async () => {
+    /* The address can be typed, and a rule kept by hiding a link is not kept
+       (owner, 11.08.2026). A member number that is not in the file at all is
+       the sharpest case: it happens while a registration is going through, and
+       what it must not do is fall over on the way to saying no. */
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
 
-    await screen.findByRole('group', { name: 'Organizacija' })
+    expect(
+      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Organizacija' })).toBeNull()
+  })
 
-    await rateAll(user, 3)
-    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+  it('leads back to the event from that refusal, which is what they wanted anyway', async () => {
+    renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
 
-    expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Nazad na događaj' })).toHaveAttribute(
+      'href',
+      `/sr/kalendar/${EVENT}`,
+    )
   })
 
   it('starts empty on the next event, rather than carrying the last one over', async () => {
@@ -484,6 +524,272 @@ describe('a comment a moderator lets out', () => {
 
     expect(within(card).getByText('Bez ocene')).toBeInTheDocument()
     expect(card.textContent).not.toContain('0,0')
+  })
+
+  it('carries what was said about an earlier running of the same race', async () => {
+    /* The whole of the editions feature, asked of the screen (owner,
+       11.08.2026). Until this the screen read one event's comments, and nothing
+       failed when the walk of editions was taken back out: `editionsOf` had its
+       own tests and the page that uses it had none.
+
+       Read out of the record rather than named here, so what is looked for is a
+       comment that really is on the parent of the edition being opened. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const comments = await loadResource<EventComment[]>('comments')
+    const inherited = must(
+      comments.find((one) =>
+        events.some((event) => event.copiedFrom === one.eventId),
+      ),
+      'a comment on an event some later edition was copied from',
+    )
+    const later = must(
+      events.find((event) => event.copiedFrom === inherited.eventId),
+      'the later edition',
+    )
+
+    renderAt(`/sr/kalendar/${later.slug}`)
+
+    expect(await underEvent(inherited.body)).toBe(true)
+  })
+
+  it('says which running an inherited comment was written about', async () => {
+    /* Otherwise the page of the 2027 race carries a paragraph about the 2024
+       one with nothing to say so, and a reader takes last year's startni paket
+       for this year's promise. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const comments = await loadResource<EventComment[]>('comments')
+    const inherited = must(
+      comments.find((one) => events.some((event) => event.copiedFrom === one.eventId)),
+      'a comment on an event some later edition was copied from',
+    )
+    const later = must(
+      events.find((event) => event.copiedFrom === inherited.eventId),
+      'the later edition',
+    )
+    const from = must(
+      events.find((event) => event.id === inherited.eventId),
+      'the edition it was written under',
+    )
+
+    renderAt(`/sr/kalendar/${later.slug}`)
+
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(inherited.body),
+      ),
+      'the inherited comment',
+    )
+
+    expect(card).toHaveTextContent(`Izdanje ${from.date.slice(0, 4)}.`)
+  })
+
+  it('shows ten of them and grows by ten, rather than the whole of a long list', async () => {
+    /* Ten before the first refill (owner, 11.08.2026). The generated data has
+       six comments on its busiest event, so a longer list is stood up here: it
+       is the length that is under test and not the data. */
+    const real = globalThis.fetch
+    const many = Array.from({ length: 23 }, (_, at) => ({
+      id: `kom-mnogo-${String(at)}`,
+      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      memberNumber: '000007',
+      who: 'Neko Nekić',
+      date: `2010-05-${String(10 + (at % 20)).padStart(2, '0')}`,
+      rating: { organisation: 4, value: 4, ambience: 4 },
+      body: `Komentar broj ${String(at + 1)}.`,
+    }))
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/comments.json')
+        ? new Response(JSON.stringify(many), { status: 200 })
+        : real(input)) as typeof fetch
+
+    const user = setupUser()
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const list = await screen.findByRole('list', { name: 'Komentari' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(10)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
+    expect(within(list).getAllByRole('listitem')).toHaveLength(20)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
+    expect(within(list).getAllByRole('listitem')).toHaveLength(23)
+    expect(screen.getByText('To je sav sadržaj, 23 komentara')).toBeVisible()
+
+    globalThis.fetch = real
+  })
+
+  it('stands the overall mark beside the name of the race, and nowhere else', async () => {
+    /* One place, by the owner's word (11.08.2026). It used to stand over the
+       list of comments; asked of the head of the page, a mark that stayed down
+       there would be missing here, and asked of the whole document a mark drawn
+       twice would pass. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const head = must(
+      (await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })).closest(
+        'header',
+      ),
+      'the head of the page',
+    )
+
+    await waitFor(() => {
+      expect(head.querySelectorAll('.comments__mark')).toHaveLength(1)
+    })
+
+    /* And nowhere else on the page: it used to stand over the list of comments
+       as well, and asked of the whole document a mark drawn twice would pass. */
+    expect(document.querySelectorAll('.comments__mark')).toHaveLength(1)
+  })
+
+  it('is the average of every running of the race, not of this one and not the best of them', async () => {
+    /* Three claims in one number, and the figure is the only place any of them
+       can be read: that it counts the earlier editions (a race rated for
+       fifteen years does not start from nothing because this year is a copy
+       with an id of its own), that it is a mean and not a maximum, and that the
+       count beside it says how many went into it.
+
+       Worked out here from the record rather than written down, so the day a
+       comment is added to the fixture this says what the screen says. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const comments = await loadResource<EventComment[]>('comments')
+    const inherited = must(
+      comments.find((one) => events.some((event) => event.copiedFrom === one.eventId)),
+      'a comment on an event some later edition was copied from',
+    )
+    const later = must(
+      events.find((event) => event.copiedFrom === inherited.eventId),
+      'the later edition',
+    )
+
+    const counted = comments.filter(
+      (one) => (one.eventId === later.id || one.eventId === inherited.eventId) && rated(one.rating),
+    )
+    const mean = counted.reduce((so, one) => so + overall(one.rating), 0) / counted.length
+    const highest = Math.max(...counted.map((one) => overall(one.rating)))
+
+    /* The two must differ, or the mean and the maximum are the same number and
+       this proves nothing about which of them is drawn. */
+    expect(counted.length).toBeGreaterThan(1)
+    expect(mean).not.toBeCloseTo(highest, 2)
+
+    renderAt(`/sr/kalendar/${later.slug}`)
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const said = (value: number) => value.toFixed(1).replace('.', ',')
+
+    expect(await screen.findByText(said(mean))).toBeVisible()
+    expect(screen.queryByText(said(highest))).toBeNull()
+    expect(screen.getByText(`iz ${String(counted.length)} ocene`)).toBeVisible()
+
+    /* And the stars beside it, drawn to that number: they are the picture of
+       it, and a figure with no picture is half of what was asked for. */
+    const mark = must(document.querySelector<HTMLElement>('.comments__mark'), 'the mark')
+
+    expect(within(mark).getByRole('img', { hidden: true })).toBeVisible()
+  })
+
+  it('starts the list again when the reader walks to another race', async () => {
+    /* How far a list has grown belongs to the list, and a different race is a
+       different list. React keeps a component across a change of address, so
+       without a key the next race opened grown to wherever the last one was
+       left: twenty six shown, no button, and the foot claiming that was all of
+       them. */
+    const real = globalThis.fetch
+    const many = (eventId: string, howMany: number, from: number) =>
+      Array.from({ length: howMany }, (_, at) => ({
+        id: `kom-${eventId}-${String(at)}`,
+        eventId,
+        memberNumber: '000007',
+        who: 'Neko Nekić',
+        date: `2010-05-${String(10 + (at % 20)).padStart(2, '0')}`,
+        rating: { organisation: 4, value: 4, ambience: 4 },
+        body: `Komentar ${String(from + at)}.`,
+      }))
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/comments.json')
+        ? new Response(
+            JSON.stringify([
+              ...many('evt-fruskogorski-maraton-2010-05-08', 23, 1),
+              ...many('evt-ironman-70-3-st-polten-2010-05-30', 14, 100),
+            ]),
+            { status: 200 },
+          )
+        : real(input)) as typeof fetch
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt(`/sr/kalendar/${EVENT}`)
+
+      const list = await screen.findByRole('list', { name: 'Komentari' })
+      await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
+      expect(within(list).getAllByRole('listitem')).toHaveLength(20)
+
+      await router.navigate('/sr/kalendar/ironman-70-3-st-polten-2010')
+
+      /* Waited for a comment that belongs to the other race: the list of the one
+         being left is still on screen for a beat, and asked too early this
+         counts the old one and passes whatever the key does. Its own words and
+         not its heading, because the heading arrives before the comments do,
+         and any of them rather than the first: the list is newest first and the
+         first written is the last shown. */
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'Ironman 70.3 - St Polten' },
+        /* Longer than the default, because this waits for a second screen and
+           its data behind a suite that is measuring its own coverage. */
+        { timeout: 5000 },
+      )
+
+      /* Counted once the list belongs to the other race, which is what the
+         second half of the count says: fourteen there, ten of them shown. */
+      await waitFor(() => {
+        const drawn = within(screen.getByRole('list', { name: 'Komentari' })).getAllByRole(
+          'listitem',
+        )
+
+        expect(drawn).toHaveLength(10)
+        expect(must(drawn[0], 'the newest of them').textContent).toContain('Komentar 1')
+      })
+
+      expect(screen.getByRole('button', { name: 'Učitaj još komentara' })).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('shows no overall mark for an event whose only comment carries none', async () => {
+    /* The mark over the list is an average of the comments that carry one. A
+       comment written before the ratings existed carries none (types.ts), and
+       an event holding only that one has nothing to average: what it shows is
+       no mark at all rather than a mark of nought, which would be a claim
+       nobody made (owner, 11.08.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    const queue = await loadResource<PendingItem[]>('verification')
+    const bare = must(
+      queue.find(
+        (one) =>
+          one.queue === 'comments' &&
+          one.subjectId !== '' &&
+          one.rating.organisation === 0 &&
+          one.rating.value === 0 &&
+          one.rating.ambience === 0,
+      ),
+      'a waiting comment with no marks',
+    )
+
+    await user.click(within(await cardFor(bare.body)).getByRole('button', { name: 'Odobri' }))
+
+    const event = await eventWithId(bare.subjectId)
+    await router.navigate(`/sr/kalendar/${event.slug}`)
+
+    /* The comment is under the event, and there is no figure over it. */
+    expect(await underEvent(bare.body)).toBe(true)
+    expect(document.querySelector('.comments__mark')).toBeNull()
   })
 
   it('draws each of the three marks under its own name, not one under all three', async () => {
@@ -746,11 +1052,16 @@ describe('what an event nobody has run yet offers', () => {
      against the day of the race, and a rating is given on the way home from it:
      that is the whole difference between `>` and `>=` here, and it is a
      difference no test would otherwise see. */
-  it('offers both on the day the race is run', async () => {
+  it('offers the result on the day the race is run, and the rating only after it', async () => {
+    /* The boundary the date draws is open on the day itself: a result is
+       reported on the way home. The rating is not offered beside it, because a
+       rating belongs to somebody with a result on the event and on the day of
+       the race nobody has one yet (owner, 11.08.2026). It opens when the result
+       is in. */
     renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
 
-    expect(await screen.findByRole('link', { name: 'Dodaj komentar' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
   })
 
   it('says nothing about comments at all, not even that there are none', async () => {
@@ -798,10 +1109,16 @@ describe('what an event nobody has run yet offers', () => {
     expect(screen.getByText(moved.body)).toBeVisible()
   })
 
-  it('takes a rating on the day the race is run', async () => {
+  it('stops saying the race has not been run, from the day it is', async () => {
+    /* The boundary between `>` and `>=`, which is a difference no other test
+       would see. What stands in the way from that day on is the other rule and
+       not this one: the rating belongs to whoever has a result on the event
+       (owner, 11.08.2026), and on the day of the race nobody has one. */
     renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME, undefined, AHEAD_DAY)
 
-    expect(await screen.findByRole('group', { name: 'Organizacija' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali' }),
+    ).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
   })
 
@@ -1066,13 +1383,19 @@ describe('the comments under an event', () => {
     }
   })
 
-  it('draws the overall down to the whole, and says the figure once', async () => {
+  it('draws the overall to the figure itself, and says the figure once', async () => {
     /* The stars beside the figure are hidden from a reader, which is right: the
        figure is the fact and hearing both is hearing one number twice. Hidden
        means no role, so this is the one thing on these screens read out of the
        markup rather than by role, and it is read because the alternative is a
        rounding nobody would notice: 4,7 drawn up is five filled stars saying
-       what nobody gave.
+       what nobody gave, and 4,7 drawn down is four, saying less than the number
+       beside it. The last star is cut across at the remainder (owner,
+       11.08.2026).
+
+       Read off the width of the cut, which is a number in the markup: jsdom
+       computes no layout, so the drawing has to say in figures what it does in
+       ink.
 
        `getByRole('img', { hidden: true })` would find it by role, but it would
        also find it if the `aria-hidden` came off, which is the other half of
@@ -1090,7 +1413,11 @@ describe('the comments under an event', () => {
       ),
       'that comment under the event',
     )
-    const named = { name: `${'Ukupna ocena'}: ${Math.floor(overall(uneven.rating))} od 5` }
+    const mark = overall(uneven.rating)
+    /* Named by the number it draws, written the way the portal writes numbers:
+       the stars used to be drawn to the whole below the figure and said so, and
+       now they say the figure. */
+    const named = { name: `Ukupna ocena: ${mark.toString().replace('.', ',')} od 5` }
 
     /* Out of what is read aloud, and found by that: the figure beside it says
        the number, so a reader hearing the stars as well hears one number twice.
@@ -1108,7 +1435,14 @@ describe('the comments under an event', () => {
       (one) => one.getAttribute('fill') === 'currentColor',
     )
 
-    expect(filled).toHaveLength(Math.floor(overall(uneven.rating)))
+    /* The whole ones, and one more that is cut. */
+    expect(filled).toHaveLength(Math.ceil(mark))
+
+    const cut = must(stars.querySelector('clipPath rect'), 'the cut across the last star')
+    /* 2.6 is where the star begins across the box it is drawn in and 18.8 is
+       how far it runs, so the remainder is measured on the star and not on the
+       box around it. */
+    expect(Number(cut.getAttribute('width'))).toBeCloseTo(2.6 + 18.8 * (mark % 1), 5)
     /* And the figure itself, said once and named. */
     expect(
       within(card).getAllByText(

@@ -12,7 +12,7 @@ import {
   seasonsWithResults,
   totalsOf,
 } from '../data/derive'
-import type { Competitor, Result, Team } from '../data/types'
+import type { Competitor, Gender, Result, Team } from '../data/types'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -37,7 +37,7 @@ import { useFilterParams } from '../app/useFilterParams'
  * three that is sometimes a row of two changes shape from person to person for
  * no reason the reader can see.
  */
-function Biography({ text }: { text: string }) {
+function Biography({ text, gender }: { text: string; gender: Gender }) {
   const { t } = useI18n()
 
   return (
@@ -45,8 +45,13 @@ function Biography({ text }: { text: string }) {
       <h2 className="profile__card-title" id="profile-bio">
         {t('profile.bio')}
       </h2>
+      {/* Said of the person whose page it is, in the gender they are: a portal
+          that calls every woman on it a takmičar is one written for half its
+          members (owner, 11.08.2026). */}
       {text === '' ? (
-        <p className="profile__bio-text profile__bio-text--none">{t('profile.bioEmpty')}</p>
+        <p className="profile__bio-text profile__bio-text--none">
+          {t(gender === 'F' ? 'profile.bioEmptyFemale' : 'profile.bioEmpty')}
+        </p>
       ) : (
         shortBio(text)
           .split(/\n{2,}/)
@@ -191,7 +196,7 @@ function ProfileBody({
       <ProfileParts memberNumber={competitor.memberNumber} />
 
       <div className="profile__row profile__row--bio">
-        <Biography text={competitor.bio} />
+        <Biography text={competitor.bio} gender={competitor.gender} />
 
         <section className="profile__card profile__card--donut">
           <CategoryDonut counts={countsByCategory(inSeason)} caption={t('profile.byCategory')} />
@@ -295,6 +300,10 @@ function emptyText(
   length: string,
 ): string {
   if (raced === 0) {
+    /* Written without a gender, unlike the biography above it. The portal has
+       exactly one member who has never raced, so one of the two forms of this
+       sentence would be a form nothing could ever show, and a sentence nobody
+       can see is a sentence nobody can check. */
     return t('profile.noResults')
   }
 

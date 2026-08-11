@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
 import { Resource } from '../components/Resource'
+import { useColumns, useGrowing } from '../components/growing'
+import { LoadMore } from '../components/LoadMore'
 import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
@@ -68,6 +70,10 @@ function AwardsBody({ memberNumber }: { memberNumber: string | undefined }) {
   )
 }
 
+/** How many rows of ducats stand on the page before the first refill (owner,
+ *  11.08.2026). */
+const ROWS_AT_FIRST = 5
+
 function AwardsFor({
   competitor,
   competitors,
@@ -124,9 +130,29 @@ function AwardsFor({
      as words of the page and a screen reader reads the whole card. */
   const labelFor = (ducat: Ducat) => {
     const unit = unitFor(ducat.kind)
+    const what = `${formatNumber(ducat.value, locale, 0)}${unit === '' ? '' : ` ${unit}`}`
 
-    return `${ducat.name}, ${formatNumber(ducat.value, locale, 0)}${unit === '' ? '' : ` ${unit}`}.`
+    /* And what it is worth, which used to stand under the coin as a line of its
+       own and was taken off the page (owner, 11.08.2026): a wall of coins with
+       a grey sentence under each is a wall of sentences. It stays in the name
+       the coin carries, because on the page the only thing left saying a
+       bronze from a gold is the colour, and colour is never the only thing that
+       says anything (PDL P16, WCAG 2.2 SC 1.4.1). */
+    return `${ducat.name}, ${what}. ${t(`ducats.tier.${ducat.tier}`)}`
   }
+
+  /* Five rows of them before the first refill (owner, 11.08.2026), and a row is
+     however many stand across the wall at this width: six on a desktop, two on
+     a telephone. Newest first is the order `earnedDucats` already hands them
+     back in. */
+  const wall = useRef<HTMLUListElement>(null)
+  const across = useColumns(wall)
+  const {
+    shown,
+    whole,
+    asked: askedForMore,
+    more,
+  } = useGrowing(earned.length, across * ROWS_AT_FIRST)
 
   const name = `${competitor.firstName} ${competitor.lastName}`
 
@@ -190,11 +216,24 @@ function AwardsFor({
         {earned.length === 0 ? (
           <p className="profile__empty">{t('awards.noDucats')}</p>
         ) : (
-          <ul className="awards__ducats">
-            {earned.map((ducat) => (
+          <ul className="awards__ducats" ref={wall}>
+            {earned.slice(0, shown).map((ducat) => (
               <li key={ducat.id} className="awards__ducat">
                 <DucatArt ducat={ducat} label={labelFor(ducat)} />
-                <strong>{ducat.name}</strong>
+                <strong>
+                  {ducat.name}{' '}
+                  {/* What it is worth, in two characters rather than in the
+                      sentence that used to stand under every coin (owner,
+                      11.08.2026: no grey lines of explanation). It has to be
+                      seen and not only heard: tiers one to three differ by the
+                      colour of the metal and by nothing else, and colour is
+                      never the only thing that says anything (PDL P16, WCAG 2.2
+                      SC 1.4.1). Four adds a band and five a gold face, so those
+                      two would carry without it; these do not. */}
+                  <span className="awards__tier">
+                    {t('ducats.tierShort', { tier: ducat.tier })}
+                  </span>
+                </strong>
                 {/* The name the coin carries leaves the period out on purpose,
                     so the month stands here as words of the page: without
                     it a profile holding July and August reads as one ducat
@@ -206,13 +245,22 @@ function AwardsFor({
                     {wholePeriod(ducat.from, ducat.to, locale)}
                   </span>
                 )}
-                {/* What it is worth, in words. The metal says it in colour, and
-                    colour is never the only thing that says anything
-                    (PDL P16, WCAG 2.2 SC 1.4.1). */}
-                <span className="profile__scope">{t(`ducats.tier.${ducat.tier}`)}</span>
               </li>
             ))}
           </ul>
+        )}
+
+        {earned.length > 0 && (
+          <LoadMore
+            whole={whole}
+            asked={askedForMore}
+            onMore={more}
+            words={{
+              more: t('profile.moreDucats'),
+              showing: t('profile.showingDucats', { shown, total: earned.length }),
+              whole: t('profile.allDucats', { count: earned.length }),
+            }}
+          />
         )}
       </section>
     </div>
