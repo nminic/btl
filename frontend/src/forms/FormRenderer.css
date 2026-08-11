@@ -36,8 +36,9 @@
      corner. The owner asked for rows so a form could be filled in faster, and
      four boxes nobody can type in are slower than one.
    *
-     60rem is four columns of about 13rem, which holds a date, a name and a town
-     with room to spare, and is still short of the page's own reading width. */
+     60rem is 960 pixels, so four columns with three gaps between them are 228
+     each, which holds a date, a name and a town with room to spare and is still
+     short of the page's own reading width. */
   .form:has(.form__row) {
     max-width: 60rem;
   }

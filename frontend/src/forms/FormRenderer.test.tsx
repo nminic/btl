@@ -112,6 +112,20 @@ describe('the words of a field with a link in them', () => {
       .toBe('Upoznat sam sa pravilima.')
   })
 
+  it('draws nothing at all when a field says what a link reads but not where it goes', () => {
+    /* Both halves are needed and both functions ask for both: asked for one of
+       them, one would draw the words of a link and the other would leave
+       „{link}" standing on the screen. A definition like this is refused before
+       it gets here (forms/definitions.test.ts), and these two are what makes the
+       refusal safe rather than necessary. */
+    const half = { ...veza, linkKey: 'proba.veza' }
+
+    expect(words(worded('Upoznat sam sa {link} i pristajem.', half, 'sr', (key) => key)))
+      .toBe('Upoznat sam sa {link} i pristajem.')
+    expect(plainWords('Upoznat sam sa {link} i pristajem.', half, (key) => key))
+      .toBe('Upoznat sam sa {link} i pristajem.')
+  })
+
   it('keeps everything after a second mark, rather than losing it', () => {
     /* Taken as two halves, a sentence carrying the mark twice lost everything
        past the second one without a word. The link is drawn once, where it is

@@ -81,16 +81,6 @@ function aboutCountry(error: FieldError | undefined): boolean {
 type Drawn = { field: FieldDef; value: string | boolean }
 
 /**
- * The fields grouped into the rows the definition puts them on.
- *
- * Fields that name the same row stand together on a screen wide enough for it
- * (owner, 11.08.2026, for the registration form); everything else keeps a row of
- * its own. Grouped by walking the list in order rather than by collecting every
- * field that carries the same number, so a row is a run of neighbours: two
- * fields far apart in the definition that happen to share a number are two rows,
- * and what is on screen is always in the order of the file.
- */
-/**
  * How wide a row is, counted in columns rather than in fields.
  *
  * A town counts as two, because it carries the country beside it and the two are
@@ -100,6 +90,16 @@ function columnsOf(fields: Drawn[]): number {
   return fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0)
 }
 
+/**
+ * The fields grouped into the rows the definition puts them on.
+ *
+ * Fields that name the same row stand together on a screen wide enough for it
+ * (owner, 11.08.2026, for the registration form); everything else keeps a row of
+ * its own. Grouped by walking the list in order rather than by collecting every
+ * field that carries the same number, so a row is a run of neighbours: two
+ * fields far apart in the definition that happen to share a number are two rows,
+ * and what is on screen is always in the order of the file.
+ */
 function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[]; key: string }[] {
   const rows: { row: number | undefined; fields: Drawn[]; key: string }[] = []
 
@@ -308,8 +308,11 @@ const Field = memo(function Field({
                    izabrano" and nothing about the rule or about what is wrong,
                    and „Prva sezona" against „Starosna" carries a decision that
                    cannot be undone mid-season (PDL P7). Said in both, it is read
-                   once either way: the description of a parent is not read with
-                   the description of the child that holds the focus. */
+                   on both roads. The price is that a reader which speaks the
+                   name and description of a group on entering it may say the
+                   error twice, once for the group and once for the button; the
+                   alternative was that somebody walking the form never heard it
+                   at all, and that is the worse of the two. */
                 aria-describedby={describedBy === '' ? undefined : describedBy}
                 onChange={() => change(option.value)}
               />

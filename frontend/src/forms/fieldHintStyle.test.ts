@@ -184,8 +184,17 @@ describe('the rows of a form', () => {
        laid out one field to a line. */
     const wide = inside('@media (min-width: 820px)')
 
+    /* The selector as well as the width. Held by the width alone, `.form:has(
+       .form__row)` could become a plain `.form` and every form on the portal
+       would be sixty rem across on a wide screen, which is the width one field
+       to a line must never have: „only where they are drawn" is the selector,
+       not the number. */
+    expect(wide).toContain('.form:has(.form__row) {')
     expect(wide).toContain('max-width: 60rem;')
-    /* And a field on no row keeps the width one field should have. */
+    /* And a field on no row keeps the width one field should have, the submit
+       button with it. */
+    expect(wide).toContain('.form:has(.form__row) > .field,')
+    expect(wide).toContain('.form:has(.form__row) > .form__submit {')
     expect(wide).toContain('max-inline-size: 34rem;')
     /* And it is written nowhere else, which is what „only where they are drawn"
        means: standing on its own, a telephone got a form of sixty rem laid out
