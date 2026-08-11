@@ -51,3 +51,20 @@ export function worded(
     </>
   )
 }
+
+/**
+ * The same words with no link in them, for the places a link cannot go.
+ *
+ * A summary of errors is a list of links to fields, and a link inside a link is
+ * not a thing: the browser drops one of them and a keyboard walks into whichever
+ * survived. A definition list of what was saved is not a place to follow
+ * anything either. So the mark is replaced by the words it would have led with,
+ * and the sentence reads whole.
+ *
+ * Left out, the mark itself reached the screen: „Potvrđujem da sam upoznat sa
+ * {link} i da sam zdravstveno sposoban" is what the summary said the day the
+ * first sentence carried one.
+ */
+export function plainWords(words: string, field: FieldDef, t: (key: string) => string): string {
+  return field.linkKey === undefined ? words : words.replace('{link}', t(field.linkKey))
+}

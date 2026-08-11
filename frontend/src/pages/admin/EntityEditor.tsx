@@ -3,6 +3,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
+import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
 import {
   addressField,
@@ -178,7 +179,7 @@ export function EntityEditor({
                 (entityForms.ts, fieldValues). */}
             {fieldValues(form, saved).map(({ field, value }) => (
               <div key={field.name}>
-                <dt>{t(field.labelKey)}</dt>
+                <dt>{plainWords(t(field.labelKey), field, t)}</dt>
                 <dd>{t(shownValue(field, value, options))}</dd>
               </div>
             ))}

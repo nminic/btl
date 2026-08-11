@@ -43,6 +43,7 @@ export function PlaceField({
   country,
   countryInvalid = false,
   withoutError,
+  errorOnly,
   onChange,
   openAt = false,
 }: {
@@ -57,6 +58,8 @@ export function PlaceField({
   /** What describes the town when the error belongs to the country: everything
    *  the field says about itself, minus the error. */
   withoutError?: string
+  /** The error alone, for the country to carry when the error is about it. */
+  errorOnly?: string
   describedBy: string | undefined
   onChange: (place: string, country: string) => void
   openAt?: boolean
@@ -344,8 +347,12 @@ export function PlaceField({
              nobody asked. */
           aria-disabled={known !== undefined}
           aria-invalid={countryInvalid}
+          /* What is wrong with it, or why it is held, and never the rule that
+             belongs to the town beside it: given the whole of that, the country
+             was read out as „Država, od drugog slova portal nudi mesta iz
+             svetskog šifarnika...", which is a rule about the other control. */
           aria-describedby={
-            countryInvalid ? describedBy : known === undefined ? undefined : heldId
+            countryInvalid ? errorOnly : known === undefined ? undefined : heldId
           }
           onChange={(event) => {
             /* And it does not take one, since it says it cannot. */

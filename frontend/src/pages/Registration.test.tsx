@@ -306,6 +306,29 @@ describe('an empty form', () => {
     expect(screen.getByRole('combobox', { name: 'Država' })).toHaveAttribute('aria-invalid', 'false')
   })
 
+  it('names the confirmation in the summary of errors without the mark in it', async () => {
+    /* The sentence carries `{link}` where the link to the rulebook goes, and the
+       summary writes the name of the field on its own: „Potvrđujem da sam
+       upoznat sa {link} i da sam zdravstveno sposoban" is what a visitor read
+       the day the first sentence carried one. A link inside a link is not a
+       thing, so what the summary carries is the words the link would have led
+       with (forms/worded.tsx). */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const summary = within(screen.getByRole('alert'))
+    const toConfirm = summary.getByRole('link', { name: /zdravstveno sposoban/ })
+
+    expect(toConfirm).toHaveTextContent(
+      'Potvrđujem da sam upoznat sa pravilnikom i da sam zdravstveno sposoban za rekreativan sport.',
+    )
+    expect(summary.queryByText(/\{link\}/)).toBeNull()
+    /* And it is one link, not a link inside a link. */
+    expect(within(toConfirm).queryByRole('link')).toBeNull()
+  })
+
   it('points at the country once the town is one the codebook does not know', async () => {
     const user = setupUser()
     renderForm()
@@ -338,6 +361,17 @@ describe('an empty form', () => {
 
     expect(said).toContain('field-city-hint')
     expect(said).not.toContain('field-city-error')
+
+    /* And the country carries what is wrong with it, and not the rule that
+       belongs to the town: given the whole of that, it was read out as „Država,
+       od drugog slova portal nudi mesta iz svetskog šifarnika...", which is a
+       rule about the other control. */
+    const saidCountry = must(
+      country.getAttribute('aria-describedby'),
+      'what describes the country',
+    )
+
+    expect(saidCountry).toBe('field-city-error')
   })
 })
 

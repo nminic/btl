@@ -43,10 +43,19 @@
   }
 
   /* And the columns themselves, where there is room for them (owner,
-     11.08.2026: „na mobilnom ostaje svako polje jedno ispod drugog"). The town
-     takes two of them, because it carries the country beside it and the two are
-     two controls. One query for both, so a width can never be wide enough for
-     columns and too narrow for the form that holds them. */
+     11.08.2026: „na mobilnom ostaje svako polje jedno ispod drugog").
+   *
+     How many there are is counted by the renderer and handed in as `--columns`,
+     so the definition names a row and nothing names a width; the town takes two
+     of them, because it carries the country beside it and the two are two
+     controls. Equal columns rather than columns sized to what they hold, or the
+     row changes shape as it is typed into and the eye follows the movement
+     instead of the form. `minmax(0, 1fr)` and not `1fr`, because a column's
+     floor is the width of its content and a select of two hundred and forty six
+     countries would push the row past the page.
+   *
+     One query for both this and the width of the form, so a window can never be
+     wide enough for columns and too narrow for the form that holds them. */
   .form__row {
     grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
   }
@@ -200,17 +209,6 @@
   font-weight: 400;
 }
 
-/* A row of fields, on a screen with room for one (owner, 11.08.2026).
- *
- * How many columns is counted by the renderer and handed in as `--columns`, so
- * the definition names a row and nothing names a width. Fields keep their own
- * order inside it, which is the order of the definition.
- *
- * Equal columns rather than columns sized to their contents: a row whose boxes
- * are as wide as what they hold is a row that changes shape as it is typed into,
- * and the eye follows the movement instead of the form. `minmax(0, 1fr)` and not
- * `1fr`, because a grid column's floor is the width of its content, and a select
- * of two hundred and forty six countries would push the row past the page. */
 /* One answer out of two or three, drawn as buttons (forms/FormRenderer.tsx). */
 .field--choice {
   display: flex;

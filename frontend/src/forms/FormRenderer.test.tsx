@@ -54,8 +54,12 @@ const everyType: FormDef = {
     {
       name: 'saVezom',
       type: 'text',
-      labelKey: 'proba.saVezom',
-      linkKey: 'proba.veza',
+      /* A key the dictionary really has, and one that carries the mark: an
+         unknown key falls back to itself, and „proba.saVezom" holds no mark, so
+         nothing would ever have been drawn and the guard below would have held
+         nothing. */
+      labelKey: 'registration.healthStatement',
+      linkKey: 'registration.healthStatementLink',
       linkTo: 'pravilnik',
     },
     /* The whole world in one select, which three forms ask for and none of them
@@ -159,12 +163,20 @@ describe('FormRenderer', () => {
   it('draws a link in the words of a field that is not a confirmation', () => {
     /* `worded` is called from both branches that write a label, and only one of
        them had a field to prove it: the words of an ordinary field carrying a
-       link went through the same function and nothing said so. The mark itself
-       is missing from a key that does not resolve, which is what the fallback
-       does, so what is held here is that the sentence survives whole. */
+       link went through the same function and nothing said so. */
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
 
-    expect(screen.getByText('proba.saVezom')).toBeInTheDocument()
+    const field = must(
+      screen.getByText(/zdravstveno sposoban/).closest<HTMLElement>('.field'),
+      'the field whose words carry a link',
+    )
+
+    expect(within(field).getByRole('link', { name: 'pravilnikom' })).toHaveAttribute(
+      'href',
+      '/sr/pravilnik',
+    )
+    /* And the mark itself never reaches the screen. */
+    expect(within(field).queryByText(/\{link\}/)).toBeNull()
   })
 
   it('offers one way of saying nothing at all in a list of countries', () => {

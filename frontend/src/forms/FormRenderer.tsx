@@ -9,7 +9,7 @@ import {
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import { FieldHint } from './FieldHint'
-import { worded } from './worded'
+import { plainWords, worded } from './worded'
 import { LongBox } from './LongBox'
 import type {
   DerivedField,
@@ -307,7 +307,7 @@ const Field = memo(function Field({
                    cannot be undone mid-season (PDL P7) and nothing says which is
                    which. Twice is the price, and it is the price the pattern
                    pays everywhere (WAI-ARIA APG, radio group). */
-                aria-describedby={describedBy === '' ? undefined : describedBy}
+                aria-describedby={field.hintKey === undefined ? undefined : hintId}
                 onChange={() => change(option.value)}
               />
               <label className="choice__label" htmlFor={`${inputId}-${option.value}`}>
@@ -422,6 +422,7 @@ const Field = memo(function Field({
               .filter((one) => one !== errorId)
               .join(' ') || undefined
           }
+          errorOnly={error === undefined ? undefined : errorId}
           openAt={open}
           onChange={(town, country) => {
             onChange(field, town, { country })
@@ -583,7 +584,11 @@ export function FormRenderer({
                     one marked wrong could not be reached from here at all
                     (WCAG 2.2 SC 2.4.3). */}
                 <a href={`#field-${field.name}${aboutCountry(errors[field.name]) ? '-country' : ''}`}>
-                  {t(aboutCountry(errors[field.name]) ? 'form.country' : field.labelKey)}
+                  {aboutCountry(errors[field.name])
+                    ? t('form.country')
+                    : /* Without the mark, and without a link inside this link
+                         (forms/worded.tsx). */
+                      plainWords(t(field.labelKey), field, t)}
                 </a>
               </li>
             ))}
@@ -639,7 +644,7 @@ export function FormRenderer({
           where it went, and read only, so it cannot contradict what it is read
           off. It says where it comes from, or a value nobody can change reads
           as a fault rather than as a rule. */}
-      {(derived?.(values, was) ?? [])
+      {(derived?.(filled, was) ?? [])
         .filter((one) => one.hidden !== true)
         .map((one) => (
         <p className="field field--derived" key={one.name}>
