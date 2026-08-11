@@ -17,6 +17,13 @@ export function CountryOptions({ holding }: { holding: string }) {
 
   return (
     <>
+      {/* Only while there is no answer, and then it is the answer standing
+          there: a select handed the empty string with no option for it draws a
+          blank box that reads as a country nobody can make out. On the form of
+          an event this never shows, because an event starts on Serbia; on the
+          registration form it is what the field opens on. */}
+      {holding === '' && <option value="">{t('form.choose')}</option>}
+
       {/* The region first, because all but a handful of these races are run in
           it, and nine members in ten live there. */}
       <optgroup label={t('form.region')}>

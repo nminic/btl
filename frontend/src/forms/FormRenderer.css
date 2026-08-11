@@ -1,8 +1,77 @@
+/* A column of fields, no wider than a line of a form ought to be. */
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--space-20);
   max-width: 34rem;
+}
+
+/* A row of fields, and one field to a line until there is room for more.
+ *
+ * Written the other way round, as columns undone by a query, the two rules met
+ * at 819,5 pixels and neither applied, which is a width a page really has once
+ * text is made larger (WCAG 2.2 SC 1.4.4). One breakpoint and one direction.
+ *
+ * Above the query and not below it: a media query adds no specificity, so of two
+ * rules for one selector the later one wins, and written below this one took the
+ * columns away at every width there is. 820 is where the portal already becomes
+ * its wide self (styles/scale.test.ts holds the list of widths at which it
+ * changes shape), so the form changes with it rather than at a width of its
+ * own. */
+.form__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+@media (min-width: 820px) {
+  /* A form laid out in rows is as wide as those rows need.
+   *
+     The plain width above is right for one field to a line: a box wider than it
+     is a box whose left and right ends are read as two different places. A row
+     of four inside it is something else: 34rem is 544 pixels, and four columns
+     of that with the gaps between them are 124 pixels each, which the date
+     „12/04/1985" does not fit into once its calendar button has taken its
+     corner. The owner asked for rows so a form could be filled in faster, and
+     four boxes nobody can type in are slower than one.
+   *
+     60rem is 960 pixels, so four columns with three gaps between them are 228
+     each, which holds a date, a name and a town with room to spare and is still
+     short of the page's own reading width. */
+  .form:has(.form__row) {
+    max-width: 60rem;
+  }
+
+  /* And the columns themselves, where there is room for them (owner,
+     11.08.2026: „na mobilnom ostaje svako polje jedno ispod drugog").
+   *
+     How many there are is counted by the renderer and handed in as `--columns`,
+     so the definition names a row and nothing names a width; the town takes two
+     of them, because it carries the country beside it and the two are two
+     controls. Equal columns rather than columns sized to what they hold, or the
+     row changes shape as it is typed into and the eye follows the movement
+     instead of the form. `minmax(0, 1fr)` and not `1fr`, because a column's
+     floor is the width of its content and a select of two hundred and forty six
+     countries would push the row past the page.
+   *
+     One query for both this and the width of the form, so a window can never be
+     wide enough for columns and too narrow for the form that holds them. */
+  .form__row {
+    grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  }
+
+  .form__row .field--place {
+    grid-column: span 2;
+  }
+
+  /* And a field standing on its own inside such a form keeps the width one
+     field should have. „Svojim rečima" stretched to the full sixty rem, and a
+     box whose ends are that far apart is two places to look rather than one. */
+  .form:has(.form__row) > .field,
+  .form:has(.form__row) > .form__submit {
+    max-inline-size: 34rem;
+  }
 }
 
 .form__title {
@@ -139,4 +208,115 @@
 
 .field__confirm .field__label {
   font-weight: 400;
+}
+
+/* One answer out of two or three, drawn as buttons (forms/FormRenderer.tsx). */
+.field--choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-inline-size: 0;
+}
+
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* The radio itself is not drawn, and is not taken out of the page either: it
+   keeps the focus, the keyboard and the announcement, and the label beside it is
+   what is seen and pressed. `appearance: none` would leave a control that is
+   still laid out; `display: none` would leave a group nobody can reach.
+ *
+   Laid over the whole of its label rather than clipped to a pixel in the corner.
+   What a screen reader's cursor draws, and what a magnifier moves the view to,
+   is the box of the control itself: clipped to 1 by 1, both pointed at a spot
+   beside the button while the button was what a person was looking at. Spread
+   over the label and made invisible, the two are the same box. */
+.choice__one {
+  position: relative;
+  display: inline-flex;
+}
+
+.choice__input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.choice__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 2.75rem;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* On the input and not on the label: the input lies over the whole of the label
+   at `opacity: 0` (above), so the pointer is never over the label itself and a
+   rule written there never applied. */
+.choice__input:hover + .choice__label {
+  border-color: var(--text-muted);
+}
+
+/* The one that is taken, said twice over: filled, and with a mark on it. Colour
+   alone would leave it unsaid for anybody who cannot tell these two apart
+   (WCAG 2.2 SC 1.4.1). */
+.choice__input:checked + .choice__label {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.choice__input:checked + .choice__label::before {
+  content: '✓';
+  margin-inline-end: var(--space-6);
+  font-weight: 700;
+}
+
+/* The focus ring belongs on what is seen, since the control itself is not. */
+.choice__input:focus-visible + .choice__label {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.choice__input[aria-invalid='true'] + .choice__label {
+  border-color: var(--down);
+}
+
+/* The name of a field, the letter that explains it, and the rule itself when it
+   is open: two on the first line and the third across the second (FieldHint.css
+   makes the hint `display: contents`, so all three are items here). A grid and
+   not a row, because the third is a row of its own. */
+.field__head {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* The words of a confirmation and the letter that explains them.
+ *
+   The sentence runs to several lines at every width the portal has, so it takes
+   whatever room there is and the letter sits at the end of the room rather than
+   at the end of the words: a grid gives the spare width to the track that can
+   still grow, and the letter cannot, being a circle of a fixed 1.5rem
+   (FieldHint.css). What matters is that it
+   is on the first line beside the sentence rather than on a line of its own
+   under it, which is where it fell while this field had no head at all. */
+.field__head--confirm {
+  grid-template-columns: 1fr auto;
+  align-items: start;
 }

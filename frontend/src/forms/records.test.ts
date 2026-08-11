@@ -31,6 +31,27 @@ const form: FormDef = {
     /* A choice whose list is data rather than a fixed set, so the definition
      * carries no options and the screen hands them in. */
     { name: 'open', type: 'select', labelKey: 'proba.otvoren' },
+    /* Two buttons for a question the record keeps as a yes or a no
+     * (data/types.ts, `firstSeason2027`). */
+    {
+      name: 'beginner',
+      type: 'choice',
+      labelKey: 'proba.kategorija',
+      options: [
+        { value: 'yes', labelKey: 'proba.prva' },
+        { value: 'no', labelKey: 'proba.starosna' },
+      ],
+    },
+    /* And one that answers with a word of its own, which must stay a word. */
+    {
+      name: 'sex',
+      type: 'choice',
+      labelKey: 'proba.pol',
+      options: [
+        { value: 'M', labelKey: 'proba.m' },
+        { value: 'F', labelKey: 'proba.z' },
+      ],
+    },
   ],
 }
 
@@ -65,6 +86,8 @@ describe('the values a form opens with', () => {
       land: 'RS',
       pick: 'a',
       open: 'evt-1',
+      beginner: false,
+      sex: 'M',
     })
 
     expect(values).toEqual({
@@ -75,7 +98,17 @@ describe('the values a form opens with', () => {
       land: 'RS',
       pick: 'a',
       open: 'evt-1',
+      /* A record's no read back as the word the buttons answer with, so the
+         right one of the two opens taken. */
+      beginner: 'no',
+      sex: 'M',
     })
+  })
+
+  it('reads a yes back as the word the buttons answer with', () => {
+    /* The other half of the pair above, so both ways round are walked: a record
+       that says yes opens with the „Prva sezona" button taken. */
+    expect(valuesFor(form, { beginner: true }).beginner).toBe('yes')
   })
 
   it('leaves a field the record has nothing for empty', () => {
@@ -89,6 +122,8 @@ describe('the values a form opens with', () => {
       land: '',
       pick: '',
       open: '',
+      beginner: '',
+      sex: '',
     })
   })
 })
@@ -104,6 +139,8 @@ describe('what the session remembers', () => {
         land: 'RS',
         pick: 'a',
         open: 'evt-1',
+        beginner: 'yes',
+        sex: 'F',
       }),
     ).toEqual({
       name: 'Jadovnik',
@@ -113,6 +150,8 @@ describe('what the session remembers', () => {
       land: 'RS',
       pick: 'a',
       open: 'evt-1',
+      beginner: 'yes',
+      sex: 'F',
     })
   })
 })
@@ -142,6 +181,27 @@ describe('a value out of a form for a record that is being created', () => {
     expect(recordValue(field('on'), 'true')).toBe(true)
     expect(recordValue(field('on'), 'false')).toBe(false)
     expect(recordValue(field('name'), 'Jadovnik')).toBe('Jadovnik')
+  })
+
+  it('turns the two words of a yes or no question into a yes or a no', () => {
+    /* A pair of buttons writes „yes" or „no", and the record holding the answer
+       holds a boolean (data/types.ts, `firstSeason2027`). Left as words, „no"
+       was not „true" and so was false by accident, and „yes" was false as well:
+       a beginner in the wrong category for a whole season, which PDL P7 says
+       cannot be undone mid-season. */
+    expect(recordValue(field('beginner'), 'yes')).toBe(true)
+    expect(recordValue(field('beginner'), 'no')).toBe(false)
+    /* And a choice whose answers are words of their own stays words. */
+    expect(recordValue(field('sex'), 'M')).toBe('M')
+    /* Decided by what the field offers, so a definition that offers nothing is
+       not a yes or no question either: „yes" typed into it is the word „yes". */
+    expect(recordValue({ name: 'prazan', type: 'choice', labelKey: 'proba.prazan' }, 'yes'))
+      .toBe('yes')
+  })
+
+  it('reads the same two words back onto a record that already holds one', () => {
+    expect(applyChanges({ beginner: false }, { beginner: 'yes' })).toEqual({ beginner: true })
+    expect(applyChanges({ beginner: true }, { beginner: 'no' })).toEqual({ beginner: false })
   })
 })
 

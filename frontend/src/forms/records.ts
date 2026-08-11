@@ -42,6 +42,13 @@ export function valuesFor(form: FormDef, record: Record<string, unknown>): FormV
 
     if (field.type === 'checkbox') {
       values[field.name] = value === true
+    } else if (field.type === 'choice' && typeof value === 'boolean') {
+      /* The way back for a question a record keeps as a yes or a no and a pair
+         of buttons answers in words (`recordValue` is the way out). Written as
+         `String(true)` it came back as „true", which is neither of the two
+         values the buttons carry, so a record that says yes opened a form with
+         neither button taken. */
+      values[field.name] = value ? 'yes' : 'no'
     } else if (field.type === 'date') {
       values[field.name] = fieldDate(String(value ?? ''))
     } else {
@@ -94,7 +101,13 @@ function like(current: unknown, value: string): unknown {
   }
 
   if (typeof current === 'boolean') {
-    return value === 'true'
+    /* „true" is what a checkbox writes and „yes" is what a pair of buttons
+       writes (forms/types.ts, `choice`): the same question asked two ways, and
+       the record keeps one answer. Written without this, „no" is not „true" and
+       so is false, which is right by accident, while „yes" is false as well,
+       which puts a beginner into the wrong category for a whole season and
+       cannot be undone (PDL P7). */
+    return value === 'true' || value === 'yes'
   }
 
   return value
@@ -119,6 +132,13 @@ export function applyChanges<T extends object>(
   return next as T
 }
 
+/** Whether a field's two answers are the words a yes or no question carries. */
+function yesOrNo(field: FieldDef): boolean {
+  const answers = (field.options ?? []).map((one) => one.value)
+
+  return answers.length === 2 && answers.includes('yes') && answers.includes('no')
+}
+
 /** One value out of a form, in the shape a record keeps it in. Used for a record
  *  that is being created, where there is nothing underneath to take the shape
  *  from, so the field type is what decides. */
@@ -129,6 +149,16 @@ export function recordValue(field: FieldDef, text: string): unknown {
 
   if (field.type === 'checkbox') {
     return text === 'true'
+  }
+
+  /* Two buttons answering a question a record keeps as a yes or a no: „Prva
+     sezona" and „Starosna" are the two faces of `firstSeason2027`
+     (data/types.ts). Which choice that is is decided by what the field offers
+     rather than by what was typed into it: a choice offering „yes" and „no" is
+     the shape of a question a record keeps as a boolean, and one that happens to
+     receive the word „yes" among other answers is not. Every other `choice` writes its own value and falls through. */
+  if (field.type === 'choice' && yesOrNo(field)) {
+    return text === 'yes'
   }
 
   return text

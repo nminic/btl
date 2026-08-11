@@ -1,6 +1,15 @@
-import { memo, useCallback, useState, type FormEvent } from 'react'
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
+import { FieldHint } from './FieldHint'
+import { plainWords, worded } from './worded'
 import { LongBox } from './LongBox'
 import type {
   DerivedField,
@@ -63,6 +72,56 @@ type Props = {
   openAt?: string
 }
 
+/** Whether what is wrong about a place is the country rather than the town. */
+function aboutCountry(error: FieldError | undefined): boolean {
+  return error?.key === 'form.errors.countryMissing'
+}
+
+/** A field beside the value it is holding, which is what the form draws. */
+type Drawn = { field: FieldDef; value: string | boolean }
+
+/**
+ * How wide a row is, counted in columns rather than in fields.
+ *
+ * A town counts as two, because it carries the country beside it and the two are
+ * two controls: „Adresa, Mesto, Država" is three columns and two fields.
+ */
+function columnsOf(fields: Drawn[]): number {
+  return fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0)
+}
+
+/**
+ * The fields grouped into the rows the definition puts them on.
+ *
+ * Fields that name the same row stand together on a screen wide enough for it
+ * (owner, 11.08.2026, for the registration form); everything else keeps a row of
+ * its own. Grouped by walking the list in order rather than by collecting every
+ * field that carries the same number, so a row is a run of neighbours: two
+ * fields far apart in the definition that happen to share a number are two rows,
+ * and what is on screen is always in the order of the file.
+ */
+function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[]; key: string }[] {
+  const rows: { row: number | undefined; fields: Drawn[]; key: string }[] = []
+
+  for (const one of drawn) {
+    const last = rows.at(-1)
+
+    if (last !== undefined && last.row !== undefined && last.row === one.field.row) {
+      last.fields.push(one)
+    } else {
+      /* Named after the field it begins with, and not after the number of the
+         row. Two groups may carry one number, since a row is a run of
+         neighbours: moving a field between two that share a number splits them
+         into two rows, and two rows keyed alike are two siblings React cannot
+         tell apart. A field appears once on a form, so the field it begins with
+         names it once. */
+      rows.push({ row: one.field.row, fields: [one], key: one.field.name })
+    }
+  }
+
+  return rows
+}
+
 /* One field, drawn again only when something about that field changed.
  *
  * A form keeps all its values in one place, so without this every keystroke
@@ -103,7 +162,7 @@ const Field = memo(function Field({
   /** Whether the cursor starts here. One field on one form ever does. */
   open?: boolean
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const change = useCallback(
     (next: string | boolean) => {
       onChange(field, next)
@@ -112,6 +171,7 @@ const Field = memo(function Field({
   )
   const inputId = `field-${field.name}`
   const hintId = `${inputId}-hint`
+  const labelId = `${inputId}-label`
   const errorId = `${inputId}-error`
   const leftId = `${inputId}-left`
   /* The room left is described by the field rather than merely printed under it.
@@ -148,16 +208,120 @@ const Field = memo(function Field({
             checked={value === true}
             onChange={(e) => change(e.target.checked)}
           />
-          <label className="field__label" htmlFor={inputId}>
-            {t(field.labelKey)}
-          </label>
+          {/* The words, and the letter that explains them beside the last of
+              them: the hint is `display: contents`, so left outside this it
+              became an item of the field's own column and the circle fell to a
+              line of its own under the sentence. Ten fields carry it beside
+              their name and this one carried it below, which is the difference
+              the group of buttons was rebuilt to be rid of. */}
+          <span className="field__head field__head--confirm">
+            <label className="field__label" htmlFor={inputId} id={labelId}>
+              {worded(t(field.labelKey), field, locale, t)}
+            </label>
+
+            {field.hintKey !== undefined && (
+              <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+            )}
+          </span>
         </div>
 
-        {field.hintKey !== undefined && (
-          <p className="field__hint" id={hintId}>
-            {t(field.hintKey)}
+        {error !== undefined && (
+          <p className="field__error" id={errorId}>
+            {t(error.key, error.params)}
           </p>
         )}
+      </div>
+    )
+  }
+
+  if (field.type === 'choice') {
+    return (
+      <div className="field field--choice">
+        <span className="field__head">
+          {/* The name of the group, and nothing but the name: a rule written
+              into it would be read out before every one of the buttons. */}
+          <span className="field__label" id={labelId}>
+            {worded(t(field.labelKey), field, locale, t)}
+            {field.required !== true && (
+              <span className="field__optional"> ({t('form.optional')})</span>
+            )}
+          </span>
+
+          {field.hintKey !== undefined && (
+            <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+          )}
+        </span>
+
+        {/* Buttons to look at and radio buttons to work: nothing is chosen to
+            begin with, exactly one can be, and the arrow keys walk the group the
+            way they walk every other one on the web. Inputs with labels rather
+            than `<button aria-pressed>`, because a pressed button is a switch
+            and this is a choice: a reader is told „2 of 2" and which one it is
+            standing on. */}
+        {/* The group is the buttons and nothing else.
+         *
+           Not a `<fieldset>`: a `<legend>` is laid out by rules of its own that
+           no browser lets a grid touch, so the letter that explains the group
+           could never stand beside its name the way it does on every other
+           field. `role="radiogroup"` with `aria-labelledby` says the same thing
+           to a screen reader, and more exactly than a fieldset does, which is a
+           plain group.
+
+           Around the buttons alone, because a radiogroup may hold radios and
+           nothing else: around the whole field it held the letter and the line
+           of the error as well.
+
+           And it carries the id the summary of errors links to, and takes the
+           cursor when that link is followed: every other field is reached
+           through its own control, a group has no one control, so the group is
+           what the link leads to. Sex and category are the two things nothing is
+           chosen for, so they are the likeliest errors on this form. */}
+        <div
+          className="choice"
+          role="radiogroup"
+          aria-labelledby={labelId}
+          /* The error, on the group as well as on the buttons: the summary of
+             errors leads here and puts the cursor on the group itself, and
+             a group that says only „Pol" does not say what is wrong with it. */
+          aria-describedby={error === undefined ? undefined : errorId}
+          id={inputId}
+          tabIndex={-1}
+        >
+          {choices.map((option) => (
+            <span className="choice__one" key={option.value}>
+              <input
+                type="radio"
+                id={`${inputId}-${option.value}`}
+                name={field.name}
+                className="choice__input"
+                value={option.value}
+                checked={String(value) === option.value}
+                aria-invalid={error !== undefined}
+                /* The rule and the error on every button, and both on the
+                   group around them as well.
+                 *
+                   `aria-describedby` is not inherited, and a description is read
+                   for whatever holds the focus. There are two ways to arrive:
+                   the keyboard walks the form and lands on a button, and the
+                   summary of errors leads to the group itself. Said in only one
+                   of the two, whoever came the other way heard „Pol, Muški, nije
+                   izabrano" and nothing about the rule or about what is wrong,
+                   and „Prva sezona" against „Starosna" carries a decision that
+                   cannot be undone mid-season (PDL P7). Said in both, it is read
+                   on both roads. The price is that a reader which speaks the
+                   name and description of a group on entering it may say the
+                   error twice, once for the group and once for the button; the
+                   alternative was that somebody walking the form never heard it
+                   at all, and that is the worse of the two. */
+                aria-describedby={describedBy === '' ? undefined : describedBy}
+                onChange={() => change(option.value)}
+              />
+              <label className="choice__label" htmlFor={`${inputId}-${option.value}`}>
+                {t(option.labelKey)}
+              </label>
+            </span>
+          ))}
+        </div>
 
         {error !== undefined && (
           <p className="field__error" id={errorId}>
@@ -169,24 +333,36 @@ const Field = memo(function Field({
   }
 
   return (
-    <div className="field">
-      <label className="field__label" htmlFor={inputId}>
-        {t(field.labelKey)}
-        {field.required !== true && <span className="field__optional"> ({t('form.optional')})</span>}
-      </label>
+    /* The town carries the country beside it, so where a row has three columns
+       this field is two of them (FormRenderer.css). */
+    <div className={field.type === 'place' ? 'field field--place' : 'field'}>
+      {/* The name of the field and, beside it, the rule it carries. Beside and
+          not inside: everything inside a label is the name of the field, so a
+          rule put there is read out as part of it, and „Mejl" becomes „Mejl, na
+          njega stiže veza za potvrdu, i njime se kasnije prijavljuješ". */}
+      <span className="field__head">
+        <label className="field__label" htmlFor={inputId} id={labelId}>
+          {/* And a link inside the words where the words carry one, the same on
+              every kind of field: it was written only into the confirmation,
+              which is the one field that has one today, so a link put on any
+              other was dropped without a word. */}
+          {worded(t(field.labelKey), field, locale, t)}
+          {field.required !== true && (
+            <span className="field__optional"> ({t('form.optional')})</span>
+          )}
+        </label>
 
-      {/* The rule sits next to the field, never in a separate help page. */}
-      {field.hintKey !== undefined && (
-        <p className="field__hint" id={hintId}>
-          {t(field.hintKey)}
-        </p>
-      )}
+        {field.hintKey !== undefined && (
+          <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+        )}
+      </span>
 
       {field.type === 'country' && (
         <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
-          {/* Only while there is no answer, the way every other select on the
-              portal does it. */}
-          {String(value) === '' && <option value="">{t('form.choose')}</option>}
+          {/* „Izaberi" comes with the list, since the list is the one that knows
+              whether the code it was handed is one it can name
+              (forms/CountryOptions.tsx). Written here as well, every country
+              select that opened unanswered began with the same word twice. */}
           <CountryOptions holding={String(value)} />
         </select>
       )}
@@ -235,8 +411,24 @@ const Field = memo(function Field({
              its own: the country is the second half of the place and has no
              field on any definition (forms/types.ts). */
           country={beside}
-          invalid={error !== undefined}
+          /* Which of the two is wrong, since the field is two controls and the
+             error may be about either: the town when it is empty, the country
+             when the town is one the codebook does not know. Marked on the town
+             either way, a screen reader was sent to the box that was already
+             filled in (WCAG 2.2 SC 3.3.1). */
+          invalid={error !== undefined && !aboutCountry(error)}
+          countryInvalid={aboutCountry(error)}
           describedBy={describedBy === '' ? undefined : describedBy}
+          /* What is left of that when the error belongs to the country: the
+             town keeps saying how it works, and stops carrying somebody else's
+             error. */
+          withoutError={
+            describedBy
+              .split(' ')
+              .filter((one) => one !== errorId)
+              .join(' ') || undefined
+          }
+          errorOnly={error === undefined ? undefined : errorId}
           openAt={open}
           onChange={(town, country) => {
             onChange(field, town, { country })
@@ -259,7 +451,6 @@ const Field = memo(function Field({
       {(field.type === 'text' ||
         field.type === 'email' ||
         field.type === 'password' ||
-        field.type === 'tel' ||
         field.type === 'number') && (
         <input
           {...shared}
@@ -307,7 +498,11 @@ export function FormRenderer({
   // A field that is not on screen is neither shown nor validated. The parent
   // signature appears the moment the date of birth says it is needed, which is
   // why visibility is derived from the values rather than from a blur event.
-  const visible = form.fields.filter((field) => isVisible(field, values, today))
+  /* Over what is going to be sent, the same as everything else on this form:
+     `values` is what has been typed and `filled` is that read through the
+     definition, and the two differ only for a caller that hands the form another
+     definition without remounting it. */
+  const visible = form.fields.filter((field) => isVisible(field, filled, today))
   /* Each visible field beside its own value, rather than each field looking its
      value up by name. `filled` is built from the definition, so the pairing is
      total and the value that comes out is a value: no fallback, and so no branch
@@ -322,8 +517,25 @@ export function FormRenderer({
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
-       empty is empty before it is anything else. */
-    const found = { ...check?.(values), ...validateForm(form, values, today) }
+       empty is empty before it is anything else. The one exception is the rule
+       about the country beside a town, which is the last resort: a caller with
+       something to say about the same field has said something more
+       particular. */
+    const handed = check?.(filled) ?? {}
+    /* Over what is going to be sent, not over what has been typed. The two are
+       the same until a caller hands the form a second definition without
+       remounting it, and then `values` is missing whatever the new definition
+       added while `filled` has it (see `filled` above): the rule about the
+       country then said nothing in the one case where there is certainly no
+       country. */
+    const own = validateForm(form, filled, today)
+    const found = { ...handed, ...own }
+
+    for (const [name, error] of Object.entries(handed)) {
+      if (aboutCountry(found[name])) {
+        found[name] = error
+      }
+    }
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
@@ -370,31 +582,75 @@ export function FormRenderer({
           <ul>
             {broken.map((field) => (
               <li key={field.name}>
-                <a href={`#field-${field.name}`}>{t(field.labelKey)}</a>
+                {/* To the control that is unanswered, which for a town is not
+                    always the town: the country beside it is the other half of
+                    the same field and has an id of its own (PlaceField.tsx).
+                    Written as one address for the field, the list said „Mesto"
+                    and led to a box that had already been filled in, while the
+                    one marked wrong could not be reached from here at all
+                    (WCAG 2.2 SC 2.4.3). */}
+                <a href={`#field-${field.name}${aboutCountry(errors[field.name]) ? '-country' : ''}`}>
+                  {aboutCountry(errors[field.name])
+                    ? t('form.country')
+                    : /* Without the mark, and without a link inside this link
+                         (forms/worded.tsx). */
+                      plainWords(t(field.labelKey), field, t)}
+                </a>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {drawn.map(({ field, value }) => (
-        <Field
-          key={field.name}
-          field={field}
-          value={value}
-          beside={String(filled.country ?? '')}
-          error={errors[field.name]}
-          choices={optionsFor(field, options)}
-          onChange={handleChange}
-          open={field.name === openAt}
-        />
-      ))}
+      {rowsOf(drawn).map(({ row, fields, key }) => {
+        const drawnRow = fields.map(({ field, value }) => (
+          <Field
+            key={field.name}
+            field={field}
+            value={value}
+            beside={String(filled.country ?? '')}
+            error={errors[field.name]}
+            choices={optionsFor(field, options)}
+            onChange={handleChange}
+            open={field.name === openAt}
+          />
+        ))
+
+        /* A field on no row stands on its own, as every field on every form did
+           before rows existed and as every field still does on a telephone. */
+        if (row === undefined) {
+          /* Wrapped rather than handed back bare, so this group has a key of its
+             own. Returned as an array it had none, and React then paired these
+             groups by position: a field that appears and disappears with a date
+             of birth shifted every one below it by one, and „Svojim rečima" was
+             mounted onto the fiber that had been holding the confirmation. */
+          return <Fragment key={key}>{drawnRow}</Fragment>
+        }
+
+        return (
+          <div
+            className="form__row"
+            key={key}
+            /* How many columns this row has is counted here rather than written
+               in the definition, so moving a field between rows is one number in
+               one place (forms/types.ts, `row`). A town counts as two of
+               them, because it carries the country beside it. */
+            /* The one cast the portal makes, and the same one every other CSS
+               variable on it makes (components/ColumnChart.tsx): TypeScript's
+               `CSSProperties` has no room for a custom property, and there is no
+               other way to hand a number to a stylesheet. */
+            style={{ '--columns': columnsOf(fields) } as CSSProperties}
+          >
+            {drawnRow}
+          </div>
+        )
+      })}
 
       {/* What the record carries without being asked: shown, so nobody wonders
           where it went, and read only, so it cannot contradict what it is read
           off. It says where it comes from, or a value nobody can change reads
           as a fault rather than as a rule. */}
-      {(derived?.(values, was) ?? [])
+      {(derived?.(filled, was) ?? [])
         .filter((one) => one.hidden !== true)
         .map((one) => (
         <p className="field field--derived" key={one.name}>

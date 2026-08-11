@@ -122,6 +122,38 @@ export function validateForm(
     if (error !== null) {
       errors[field.name] = error
     }
+
+    /* And the country the town carries, which is a value with no field of its
+       own (forms/types.ts) and so was walked past by the loop above: the form
+       validates `form.fields`, and `country` is not one of them.
+     *
+       It was written down as required, and then it stopped being asked: a town
+       typed by hand that the codebook does not know leaves the country as it
+       started, which is empty, and the registration went through with no
+       country at all. What hangs on it is the price and the way of paying it
+       (PDL P8): a member with no country is offered PayPal, which is the one
+       thing that must not be offered to a member from Serbia.
+
+       Said on the place, because the country is drawn there and there is
+       nowhere else to say it. */
+    /* Compared to the empty string and not through a fallback: what is handed
+       in is the form's values filled out of its own definition
+       (FormRenderer.tsx), and `emptyValues` writes a country for every place
+       field (below), so „no such key" is a case that cannot happen and a
+       fallback for it is a branch nothing can walk. */
+    if (
+      field.type === 'place' &&
+      field.required === true &&
+      values.country === '' &&
+      /* And not over the top of what the field itself is already saying. An
+         empty form said „Izaberi državu uz mesto." under a town nobody had
+         typed: the answer to that is to type the town, and the sentence sent
+         whoever read it to the wrong control (WCAG 2.2 SC 3.3.1 asks that what
+         is wrong be identified, and this identified the other half). */
+      errors[field.name] === undefined
+    ) {
+      errors[field.name] = { key: 'form.errors.countryMissing' }
+    }
   }
 
   return errors

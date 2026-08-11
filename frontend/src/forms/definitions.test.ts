@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FormDef } from './types'
+import sr from '../i18n/sr.json'
+import { translate, type Dictionary } from '../i18n/translate'
 
 /* What every form definition has to be true of, checked over all of them at
  * once rather than one form at a time.
@@ -96,6 +98,27 @@ describe('every form definition in the portal', () => {
     for (const { path, code } of drawn) {
       expect(code, path).toMatch(/maxLength=\{(limitOf\(|maxLength\})/)
     }
+  })
+
+  it('says where a link goes wherever its words carry one, and the other way', () => {
+    /* Three things have to agree: the words carry `{link}`, the field says what
+       the link reads (`linkKey`) and where it leads (`linkTo`). Two of the three
+       and the sentence goes wrong in one direction or the other: without the
+       pair, „{link}" itself is drawn on the screen; without the mark, the link
+       is dropped and nobody is told. The dictionary guard sees only that the key
+       resolves (i18n/keys.test.ts), so this is where the three meet. */
+    const wrong = FORMS.flatMap(({ name, form }) =>
+      form.fields
+        .filter((field) => {
+          const marked = translate(sr as Dictionary, 'sr', field.labelKey).includes('{link}')
+          const led = field.linkKey !== undefined && field.linkTo !== undefined
+
+          return marked !== led
+        })
+        .map((field) => `${name}: ${field.name}`),
+    )
+
+    expect(wrong).toEqual([])
   })
 
   it('gives every field a name of its own', () => {

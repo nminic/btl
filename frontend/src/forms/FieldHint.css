@@ -1,0 +1,79 @@
+/* The rule a field carries, folded into the letter beside its label.
+ *
+ * `display: contents` and not a box of its own: the letter belongs on the line
+ * with the label, and the words belong on the line under it, which makes them
+ * two items of the head's own grid (FormRenderer.css, `.field__head`). The
+ * element stays in the document all the same, which is what the pointer is
+ * measured against when it moves from one to the other (FieldHint.tsx). */
+.hint {
+  display: contents;
+}
+
+/* Round, quiet, and big enough to be pressed with a finger: the target is the
+   button and its padding together, which WCAG 2.2 SC 2.5.8 measures at 24 by 24
+   and this holds at 24 exactly. */
+.hint__ask {
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hint__ask:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* Out of sight and not out of the document: the field names this in
+   `aria-describedby`, so it is read on focus whether or not it is on screen.
+   `clip-path` rather than `display: none`, which would take it out of the
+   accessibility tree and with it the rule (FieldHint.tsx). */
+.hint__text {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Asked for: by the pointer, by the keyboard, or by a finger. All three go
+   through the same state, so Escape closes what any of them opened.
+ *
+ * In the flow and not over it. Laid over what follows, a rule left open by a
+ * finger swallowed the first press on whatever it covered, and a pointer could
+ * never reach the words: the way down to them crossed the control, which closed
+ * it on the way. Standing between the label and the control, it is reached by
+ * moving straight down, and the field it explains moves down with it. */
+.hint--open .hint__text {
+  grid-column: 1 / -1;
+  position: static;
+  inline-size: auto;
+  block-size: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  /* Never wider than a line of text is comfortable to read. */
+  max-inline-size: 32rem;
+  margin-block-start: var(--space-4);
+  padding: var(--space-8) var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}

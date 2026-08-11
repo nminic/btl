@@ -41,6 +41,9 @@ export function PlaceField({
   invalid,
   describedBy,
   country,
+  countryInvalid = false,
+  withoutError,
+  errorOnly,
   onChange,
   openAt = false,
 }: {
@@ -50,6 +53,13 @@ export function PlaceField({
   /** The country beside it, which this field writes as well as reads. */
   country: string
   invalid: boolean
+  /** Whether it is the country that is unanswered, rather than the town. */
+  countryInvalid?: boolean
+  /** What describes the town when the error belongs to the country: everything
+   *  the field says about itself, minus the error. */
+  withoutError?: string
+  /** The error alone, for the country to carry when the error is about it. */
+  errorOnly?: string
   describedBy: string | undefined
   onChange: (place: string, country: string) => void
   openAt?: boolean
@@ -137,7 +147,11 @@ export function PlaceField({
        country, since it is not a field (admin/EntityEditor.tsx). Where the
        codebook disagrees with what was saved, what was saved stands, and it is a
        question for whoever is looking at the record, not for this field. */
-    if (!touched.current) {
+    /* A record that carries no country at all is a hole rather than an answer,
+       and filling a hole from the codebook is not rewriting anything: left
+       alone, such a record opened with the country held shut on nothing, marked
+       as the thing to fix, and refusing every press. */
+    if (!touched.current && country !== '') {
       return
     }
 
@@ -241,7 +255,14 @@ export function PlaceField({
         aria-autocomplete="list"
         aria-activedescendant={highlighted === undefined ? undefined : `${listId}-${at}`}
         aria-invalid={invalid}
-        aria-describedby={describedBy}
+        /* Its own rule always, and the error only where the error is about it.
+         *
+           The two arrive as one string, so dropping the error dropped the rule
+           with it and the town stopped saying how it works; keeping both, the
+           town was read out as „Mesto, Izaberi državu uz mesto." while holding
+           a perfectly good town. The country carries the error instead
+           (below). */
+        aria-describedby={countryInvalid ? withoutError : describedBy}
         autoFocus={openAt}
         value={value}
         onChange={(event) => {
@@ -308,8 +329,11 @@ export function PlaceField({
           for a town it does not have, which is how a race in a hamlet stops
           being filed wherever the last chosen town was. */}
       <label className="place__country-pick">
-        <span>{t('admin.field.country')}</span>
+        <span>{t('form.country')}</span>
         <select
+          /* An id of its own, because it is a control of its own: the summary of
+             errors leads here when the country is what is unanswered. */
+          id={`${id}-country`}
           className={known === undefined ? 'field__control' : 'field__control field__control--held'}
           value={country}
           /* Locked on a town the codebook knows, for the reason written where
@@ -322,7 +346,14 @@ export function PlaceField({
              still the answer, and an answer that disappears reads as a question
              nobody asked. */
           aria-disabled={known !== undefined}
-          aria-describedby={known === undefined ? undefined : heldId}
+          aria-invalid={countryInvalid}
+          /* What is wrong with it, or why it is held, and never the rule that
+             belongs to the town beside it: given the whole of that, the country
+             was read out as „Država, od drugog slova portal nudi mesta iz
+             svetskog šifarnika...", which is a rule about the other control. */
+          aria-describedby={
+            countryInvalid ? errorOnly : known === undefined ? undefined : heldId
+          }
           onChange={(event) => {
             /* And it does not take one, since it says it cannot. */
             if (known !== undefined) {

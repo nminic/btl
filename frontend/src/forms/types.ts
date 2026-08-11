@@ -8,10 +8,6 @@ export type FieldType =
   | 'text'
   | 'email'
   | 'password'
-  /* A telephone number, which is not a number: it carries a plus, spaces and a
-     leading nought, and every one of those is lost the moment a browser treats
-     it as arithmetic. */
-  | 'tel'
   | 'date'
   | 'number'
   | 'select'
@@ -30,6 +26,16 @@ export type FieldType =
    * `emptyValues` puts `country` in the values itself (src/forms/validate.ts).
    */
   | 'place'
+  /**
+   * One answer out of two or three, drawn as buttons rather than as a list.
+   *
+   * For the questions whose answers are short, few, and worth seeing at once:
+   * „Muški / Ženski", „Prva sezona / Starosna" (owner, 11.08.2026).
+   * Nothing is chosen to begin with and exactly one must be, which is what a
+   * group of radio buttons is; the buttons are what it looks like, and the radio
+   * is what it is, so the keyboard behaves the way every other one does.
+   */
+  | 'choice'
   | 'checkbox'
   | 'textarea'
   /** A picture attached as proof. Optional, and deleted once the result has
@@ -57,6 +63,27 @@ export type FieldDef = {
   options?: FieldOption[]
   /** Must hold the same value as this field. Used by the password repeat. */
   matches?: string
+  /**
+   * Which row of the form this field stands in, on a screen wide enough for
+   * rows (owner, 11.08.2026, for the registration form).
+   *
+   * A number and not a width: fields that name the same row share it, and how
+   * many columns that makes is counted rather than declared, so moving a field
+   * from one row to another is one number in one place. Fields without it stand
+   * on a row of their own, which is what every form did before this and what
+   * every form still does on a telephone.
+   */
+  row?: number
+  /**
+   * A link inside the words of the field, where the words point somewhere.
+   *
+   * One case, and it is the one that matters: the confirmation that the rules
+   * have been read carries a link to them (owner, 11.08.2026). The label holds
+   * `{link}` where the link goes, and these two say what it reads and where it
+   * leads.
+   */
+  linkKey?: string
+  linkTo?: string
   /**
    * Shown only when the date in `field` says the person is younger than
    * `years`. The one rule of its kind, and named rather than general on

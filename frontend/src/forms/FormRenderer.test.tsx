@@ -1,11 +1,15 @@
+import { renderToStaticMarkup } from 'react-dom/server'
+import sr from '../i18n/sr.json'
+import { translate, type Dictionary } from '../i18n/translate'
 import { must } from '../test/at'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
-import type { FormDef, FormValues } from './types'
+import { plainWords, worded } from './worded'
+import type { FieldDef, FormDef, FormValues } from './types'
 
 /* A caller may hand the renderer a different definition without remounting it.
  * No screen does today, and every one of the seven admin screens passes a
@@ -45,14 +49,91 @@ const everyType: FormDef = {
     // as an empty list, not crash the screen.
     { name: 'prazan', type: 'select', labelKey: 'proba.prazan' },
     { name: 'beleska', type: 'textarea', labelKey: 'proba.beleska' },
+    /* A field of another kind carrying a link in its words. The one the portal
+       has today is a confirmation, so without this the other branch that draws
+       words was never asked to draw a link, and losing it there would have gone
+       unsaid (forms/worded.tsx). */
+    {
+      name: 'saVezom',
+      type: 'text',
+      /* A key the dictionary really has, and one that carries the mark: an
+         unknown key falls back to itself, and „proba.saVezom" holds no mark, so
+         nothing would ever have been drawn and the guard below would have held
+         nothing. */
+      labelKey: 'registration.healthStatement',
+      linkKey: 'registration.healthStatementLink',
+      linkTo: 'pravilnik',
+    },
+    /* The whole world in one select, which three forms ask for and none of them
+       is the registration: it opens unanswered, so „Izaberi" has to be there
+       once and only once. */
+    { name: 'drzava', type: 'country', labelKey: 'proba.drzava' },
     /* A town, with no rule written beside it. The one place field the portal
        has does carry a rule, so without this the field is only ever drawn the
        one way and the case where it describes itself by nothing is never
        walked. */
     { name: 'mesto', type: 'place', labelKey: 'proba.mesto' },
     { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost', required: true },
+    /* Buttons with no rule beside them. The two the portal has both carry one,
+       so without this the case where a choice describes itself by nothing is
+       never walked. */
+    {
+      name: 'izbor',
+      type: 'choice',
+      labelKey: 'proba.izbor',
+      options: [
+        { value: 'da', labelKey: 'proba.da' },
+        { value: 'ne', labelKey: 'proba.ne' },
+      ],
+    },
   ],
 }
+
+describe('the words of a field with a link in them', () => {
+  /* Read on their own, because the one sentence the portal has carries a single
+     mark and the shapes that go wrong carry none or two. */
+  const veza = { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost' } as const
+  const withLink = { ...veza, linkKey: 'proba.veza', linkTo: 'pravilnik' }
+  const words = (one: ReactNode) =>
+    renderToStaticMarkup(<>{one}</>)
+
+  it('leaves them alone when the field carries no link', () => {
+    expect(words(worded('Pročitao sam pravila.', veza, 'sr', (key) => key)))
+      .toBe('Pročitao sam pravila.')
+  })
+
+  it('puts the link where the mark is', () => {
+    expect(words(worded('Upoznat sam sa {link} i pristajem.', withLink, 'sr', (key) => key)))
+      .toBe('Upoznat sam sa <a href="/sr/pravilnik" target="_blank" rel="noreferrer">proba.veza</a> i pristajem.')
+  })
+
+  it('keeps the sentence whole when a translation drops the mark', () => {
+    expect(words(worded('Upoznat sam sa pravilima.', withLink, 'sr', (key) => key)))
+      .toBe('Upoznat sam sa pravilima.')
+  })
+
+  it('draws nothing at all when a field says what a link reads but not where it goes', () => {
+    /* Both halves are needed and both functions ask for both: asked for one of
+       them, one would draw the words of a link and the other would leave
+       „{link}" standing on the screen. A definition like this is refused before
+       it gets here (forms/definitions.test.ts), and these two are what makes the
+       refusal safe rather than necessary. */
+    const half = { ...veza, linkKey: 'proba.veza' }
+
+    expect(words(worded('Upoznat sam sa {link} i pristajem.', half, 'sr', (key) => key)))
+      .toBe('Upoznat sam sa {link} i pristajem.')
+    expect(plainWords('Upoznat sam sa {link} i pristajem.', half, (key) => key))
+      .toBe('Upoznat sam sa {link} i pristajem.')
+  })
+
+  it('keeps everything after a second mark, rather than losing it', () => {
+    /* Taken as two halves, a sentence carrying the mark twice lost everything
+       past the second one without a word. The link is drawn once, where it is
+       first asked for, and the rest is the sentence as it was written. */
+    expect(words(worded('Prvo {link} pa {link} i kraj.', withLink, 'sr', (key) => key)))
+      .toBe('Prvo <a href="/sr/pravilnik" target="_blank" rel="noreferrer">proba.veza</a> pa {link} i kraj.')
+  })
+})
 
 describe('FormRenderer', () => {
   it('renders every supported field type', () => {
@@ -68,7 +149,11 @@ describe('FormRenderer', () => {
     expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'number')
     expect(screen.getByLabelText(/proba.pol/).tagName).toBe('SELECT')
     expect(screen.getByLabelText(/proba.prazan/).children).toHaveLength(1)
-    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(2)
+    /* Four of them: the two selects with nothing chosen, the country beside the
+       town, and the country asked for on its own. All four open unanswered on a
+       form that does not say which country it starts in
+       (forms/CountryOptions.tsx). */
+    expect(screen.getAllByRole('option', { name: 'Izaberi' })).toHaveLength(4)
     expect(screen.getByLabelText(/proba.beleska/).tagName).toBe('TEXTAREA')
     expect(screen.getByLabelText(/proba.saglasnost/)).toHaveAttribute('type', 'checkbox')
     expect(screen.getByLabelText(/proba.lozinka/)).toHaveAttribute('type', 'password')
@@ -89,6 +174,90 @@ describe('FormRenderer', () => {
     expect(
       document.getElementById(must(hintId, 'an id joining the field to its hint')),
     ).toHaveTextContent('proba.mejlPravilo')
+  })
+
+  it('draws a link in the words of a field that is not a confirmation', () => {
+    /* `worded` is called from both branches that write a label, and only one of
+       them had a field to prove it: the words of an ordinary field carrying a
+       link went through the same function and nothing said so. */
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    const field = must(
+      screen.getByText(/zdravstveno sposoban/).closest<HTMLElement>('.field'),
+      'the field whose words carry a link',
+    )
+
+    expect(within(field).getByRole('link', { name: 'pravilnikom' })).toHaveAttribute(
+      'href',
+      '/sr/pravilnik',
+    )
+    /* And the mark itself never reaches the screen. */
+    expect(within(field).queryByText(/\{link\}/)).toBeNull()
+  })
+
+  it("hands a derived value every field of the form, and the town country", () => {
+    /* What a derived value is worked out of, which is the whole of what a save
+       will write down and not only what somebody typed.
+     *
+       This holds the contract and not the choice behind it: the form reads
+       `filled` rather than the bare state everywhere, and the two are the same
+       set of keys until a caller hands the form another definition without
+       remounting it. No caller does, so nothing here can tell the two apart, and
+       saying so is more useful than a test that pretends to. */
+    const seen: string[] = []
+
+    renderWithI18n(
+      <FormRenderer
+        form={everyType}
+        onSubmit={vi.fn()}
+        derived={(values) => {
+          seen.push(Object.keys(values).sort().join(','))
+
+          return []
+        }}
+      />,
+    )
+
+    /* Every field of the definition, and the country the town carries. */
+    expect(seen[0]).toContain('country')
+    expect(seen[0]).toContain('mesto')
+  })
+
+  it('writes the words of a link, and not the mark, wherever a link cannot go', () => {
+    /* A summary of errors is a list of links to fields, and a link inside a link
+       is not a thing; a definition list of what was saved is not a place to
+       follow anything either. Both write the name of the field on its own, and
+       the mark itself reached the screen the day the first sentence carried one
+       (forms/worded.tsx, `plainWords`). */
+    const field: FieldDef = {
+      name: 'saglasnost',
+      type: 'checkbox',
+      labelKey: 'registration.healthStatement',
+      linkKey: 'registration.healthStatementLink',
+      linkTo: 'pravilnik',
+    }
+    const said = plainWords(
+      translate(sr as Dictionary, 'sr', field.labelKey),
+      field,
+      (key) => translate(sr as Dictionary, 'sr', key),
+    )
+
+    expect(said).toBe(
+      'Potvrđujem da sam upoznat sa pravilnikom i da sam zdravstveno sposoban za rekreativan sport.',
+    )
+    expect(said).not.toContain('{link}')
+  })
+
+  it('offers one way of saying nothing at all in a list of countries', () => {
+    /* „Izaberi" comes with the list, since the list is the one that knows
+       whether the code it was handed is one it can name. Written in the renderer
+       as well, every country select that opened unanswered began with the same
+       word twice, and three forms open one that way. */
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    const land = screen.getByLabelText(/proba.drzava/)
+
+    expect(within(land).getAllByRole('option', { name: 'Izaberi' })).toHaveLength(1)
   })
 
   it('marks the fields that are not obligatory', () => {
@@ -217,7 +386,14 @@ describe('FormRenderer', () => {
 
     expect(screen.getByRole('heading', { name: 'Registracija' })).toBeVisible()
     expect(screen.getByLabelText(/Veličina majice/)).toBeInTheDocument()
-    expect(screen.getByText('Od države zavisi koji načini plaćanja ti se nude.')).toBeVisible()
+    /* The town, which carries the country beside it: the form used to ask for
+       the two separately (owner, 11.08.2026). */
+    expect(screen.getByRole('combobox', { name: /Država/i })).toBeInTheDocument()
+    /* And the rule the address carries, in the document and out of sight until
+       it is asked for (FieldHint.tsx). */
+    expect(
+      screen.getByText(/Ulica i broj, na koje ti stižu majica i finišerska medalja/),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeInTheDocument()
   })
 })

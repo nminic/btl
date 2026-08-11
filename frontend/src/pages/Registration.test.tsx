@@ -34,17 +34,19 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
   await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
   await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
-  await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
+  /* Buttons since 11.08.2026, not a list: two answers worth seeing at once. */
+  await user.click(screen.getByRole('radio', { name: 'Muški' }))
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
      together once a member reaches twelve points, and a parcel needs an
-     address. */
-  /* Optional again since 03.08.2026 (PDL P8), and filled here because most
-     members will fill it: the form has to go through with it as well as
-     without. Never shown on the portal. */
-  await user.type(screen.getByLabelText(/Broj telefona/), '+381601234567')
+     address. The telephone is gone entirely (owner, 11.08.2026): the portal does
+     not ask for it, not even as something optional. */
   await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+  /* The town carries the country: picked out of the codebook, which is what
+     fills the one beside it (forms/PlaceField.tsx). */
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
-  await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
+  /* Either the beginners' category or the one for their age, and the portal
+     asks rather than assumes (PDL P7). */
+  await user.click(screen.getByRole('radio', { name: 'Starosna' }))
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
   await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
@@ -241,37 +243,169 @@ describe('the biography, at the moment of joining', () => {
   })
 })
 
-describe('the telephone', () => {
-  it('is not asked for, and the form goes through without it', async () => {
-    /* Optional again (owner, 03.08.2026, PDL P8), and that is what lets it
-       stand on consent: consent has to be freely given, and it is not free if
-       membership is impossible without it. The privacy policy says "optional,
-       on your consent", so a form that refused to submit without it would make
-       that sentence untrue.
-
-       Written as a walk through the form rather than as a look at the JSON,
-       because the JSON is what would be changed back. */
+describe('the country a member lives in', () => {
+  it('is refused when the town was typed by hand and no country was picked', async () => {
+    /* The country has no field of its own: the town carries it (PDL P6). What
+       that cost was the rule that used to stand on the country field: a town the
+       codebook does not know leaves the country as the form opened it, which is
+       empty, and the registration went through with no country at all. The price
+       and the way of paying it hang on it (PDL P8), and a member with no country
+       is offered PayPal, which must never be offered to a member from Serbia. */
     const user = setupUser()
     renderForm()
-
-    /* Read off the words beside the field. `not.toBeRequired()` was true of
-       every field on the portal, because the renderer marks a required field
-       with neither `required` nor `aria-required`: what it does is write
-       "(neobavezno)" beside the ones that are not. */
-    expect(screen.getByLabelText('Broj telefona (neobavezno)')).toBeVisible()
 
     await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
     await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
     await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
     await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
     await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
-    await user.selectOptions(screen.getByLabelText(/Pol/), 'M')
+    await user.click(screen.getByRole('radio', { name: 'Muški' }))
     await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
-    await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
-    await user.selectOptions(screen.getByLabelText(/Država/), 'RS')
+    /* A hamlet of two hundred people that no codebook of the world has heard
+       of, which is exactly what the field is allowed to take. */
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
+    await user.click(screen.getByRole('radio', { name: 'Starosna' }))
     await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
     await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
     await user.click(screen.getByLabelText(/zdravstveno sposoban/))
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+
+    /* And it goes through once the country is answered. */
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Država' }), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  })
+})
+
+describe('an empty form', () => {
+  it('says the town is missing, and not that a country was not chosen', async () => {
+    /* The town and the country are one field and two controls, so the rule about
+       the country was written beside the rule about the town and then over the
+       top of it: an empty form said „Izaberi državu uz mesto." under a box
+       nobody had typed into. The answer to that is to type the town, and the
+       sentence sent whoever read it to the other control (WCAG 2.2 SC 3.3.1). */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
+
+    const town = screen.getByLabelText(/^Mesto$/)
+    const said = must(town.getAttribute('aria-describedby'), 'what the town is described by')
+
+    expect(town).toHaveAttribute('aria-invalid', 'true')
+    expect(document.getElementById(said.split(' ').filter((one) => one.endsWith('-error'))[0] ?? ''))
+      .toHaveTextContent('Ovo polje je obavezno.')
+    /* And the country is not the one being pointed at. */
+    expect(screen.getByRole('combobox', { name: 'Država' })).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('names the confirmation in the summary of errors without the mark in it', async () => {
+    /* The sentence carries `{link}` where the link to the rulebook goes, and the
+       summary writes the name of the field on its own: „Potvrđujem da sam
+       upoznat sa {link} i da sam zdravstveno sposoban" is what a visitor read
+       the day the first sentence carried one. A link inside a link is not a
+       thing, so what the summary carries is the words the link would have led
+       with (forms/worded.tsx). */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const summary = within(screen.getByRole('alert'))
+    const toConfirm = summary.getByRole('link', { name: /zdravstveno sposoban/ })
+
+    expect(toConfirm).toHaveTextContent(
+      'Potvrđujem da sam upoznat sa pravilnikom i da sam zdravstveno sposoban za rekreativan sport.',
+    )
+    expect(summary.queryByText(/\{link\}/)).toBeNull()
+    /* And it is one link, not a link inside a link. */
+    expect(within(toConfirm).queryByRole('link')).toBeNull()
+  })
+
+  it('points at the country once the town is one the codebook does not know', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).toHaveAttribute('aria-invalid', 'true')
+    /* And the town is no longer the one being blamed for it. */
+    expect(screen.getByLabelText(/^Mesto$/)).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+
+    /* And the list of things to fix leads to the country, not to the town: it
+       said „Mesto" and led to a box that was already filled in, while the one
+       marked wrong could not be reached from the list at all. */
+    const summary = within(screen.getByRole('alert'))
+    const toFix = summary.getByRole('link', { name: 'Država' })
+    const at = must(toFix.getAttribute('href'), 'the address the summary points at')
+
+    expect(document.getElementById(at.replace('#', ''))).toBe(country)
+    expect(summary.queryByRole('link', { name: 'Mesto' })).toBeNull()
+
+    /* And the town keeps saying how it works while somebody else's error is
+       being shown: the rule and the error arrive as one string, so dropping the
+       error dropped the rule with it. */
+    const town = screen.getByLabelText(/^Mesto$/)
+    const said = must(town.getAttribute('aria-describedby'), 'what describes the town')
+
+    expect(said).toContain('field-city-hint')
+    expect(said).not.toContain('field-city-error')
+
+    /* And the country carries what is wrong with it, and not the rule that
+       belongs to the town: given the whole of that, it was read out as „Država,
+       od drugog slova portal nudi mesta iz svetskog šifarnika...", which is a
+       rule about the other control. */
+    const saidCountry = must(
+      country.getAttribute('aria-describedby'),
+      'what describes the country',
+    )
+
+    expect(saidCountry).toBe('field-city-error')
+  })
+})
+
+describe('a town the codebook does know', () => {
+  it('carries its country, so nothing more is asked', async () => {
+    /* The other half of the rule above: a town out of the codebook answers the
+       country itself, and the form goes through without anybody choosing one. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  })
+})
+
+describe('the telephone', () => {
+  it('is not asked for at all, and no longer exists on the form', async () => {
+    /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na
+       portalu čak ni neobavezno." It was obligatory on 01.08, optional again on
+       03.08, and now it is gone: there is no field, no rule beside one, and no
+       word for it in the dictionary. Written as a walk through the form rather
+       than as a look at the JSON, because the JSON is what would be changed
+       back. */
+    const user = setupUser()
+    renderForm()
+
+    expect(screen.queryByLabelText(/[Tt]elefon/)).toBeNull()
+    expect(screen.queryByText(/[Tt]elefon/)).toBeNull()
+
+    await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 

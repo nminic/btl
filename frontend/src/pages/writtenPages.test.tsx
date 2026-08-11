@@ -576,12 +576,14 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
-  it('carries the telephone as optional, on consent', () => {
-    /* Back to optional on 03.08.2026, which is what lets it stand on consent:
-       consent has to be free, and it is not free if membership is impossible
-       without it. */
-    expect(sectionOf('politika-privatnosti', /Broj telefona/)).toMatch(
-      /Broj telefona \(neobavezno\).*Vaš pristanak/,
-    )
+  it('does not ask for a telephone anywhere, and says nothing about one', () => {
+    /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na
+       portalu čak ni neobavezno." A privacy policy that describes the handling
+       of a number nobody is asked for is a policy that describes somebody
+       else's portal, and the consent it names is a consent nothing collects.
+       It was obligatory on 01.08, optional again on 03.08, and is now gone. */
+    for (const slug of ['politika-privatnosti', 'uslovi-koriscenja', 'pravilnik'] as const) {
+      expect(whole(slug)).not.toMatch(/telefon/i)
+    }
   })
 })

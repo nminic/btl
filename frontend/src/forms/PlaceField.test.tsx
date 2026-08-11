@@ -44,9 +44,16 @@ function servingTheCodebook() {
 
 /** The field, kept by something, because a field that cannot hold what was typed
  *  cannot be typed into. */
-function Holder({ onCountry }: { onCountry: (code: string) => void }) {
-  const [town, setTown] = useState('')
-  const [country, setCountry] = useState('RS')
+function Holder({
+  onCountry,
+  opensOn = { town: '', country: 'RS' },
+}: {
+  onCountry: (code: string) => void
+  /** What the field opens holding, for the record already written down. */
+  opensOn?: { town: string; country: string }
+}) {
+  const [town, setTown] = useState(opensOn.town)
+  const [country, setCountry] = useState(opensOn.country)
 
   return (
     <I18nProvider locale="sr">
@@ -67,9 +74,9 @@ function Holder({ onCountry }: { onCountry: (code: string) => void }) {
   )
 }
 
-function renderField() {
+function renderField(opensOn?: { town: string; country: string }) {
   const onCountry = vi.fn()
-  render(<Holder onCountry={onCountry} />)
+  render(<Holder onCountry={onCountry} opensOn={opensOn} />)
 
   /* Two comboboxes stand in this field since 11.08.2026, the town and the
      country beside it, so the town is asked for by name. */
@@ -452,6 +459,42 @@ describe('the town on a form', () => {
 
     expect(country).toHaveValue('US')
     expect(country).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('fills a country the record has none of, without being touched', async () => {
+    /* A record with a recognised town and no country at all is a hole rather
+       than an answer, and filling a hole from the codebook is not rewriting
+       anything. Left alone it was a dead end: the country was held shut on
+       nothing, marked as the thing to fix, and refusing every press, so the form
+       could not be sent and nothing on it could be changed to help. */
+    const { onCountry } = renderField({ town: 'Bern', country: '' })
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+    expect(onCountry).toHaveBeenLastCalledWith('CH')
+  })
+
+  it('leaves alone a country the record already carries', async () => {
+    /* And a record that says something is not corrected by the codebook behind
+       whoever opened it: what was saved stands until somebody touches the town.
+       Beograd is in the codebook as Serbian, and this record says Austria. */
+    const { onCountry } = renderField({ town: 'Beograd', country: 'AT' })
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    /* Waited for by something that says the codebook has arrived, and not by the
+       value itself: „AT" is what the field opens on, so a test that waits for it
+       is answered before the first request goes out and would pass with no rule
+       here at all. Recognising Beograd is what the arrival changes. */
+    await waitFor(() => {
+      expect(country).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    expect(country).toHaveValue('AT')
+    expect(onCountry).not.toHaveBeenCalled()
   })
 
   it('shows the country it holds even where the list has no name for it', async () => {
