@@ -6,18 +6,6 @@
   max-width: 34rem;
 }
 
-/* Unless it is laid out in rows, and then it is as wide as those rows need.
- *
- * The rule above is the right width for one field to a line: a box wider than
- * this is a box whose left and right ends are read as two different places. A
- * row of four inside it is something else: 34rem is 544 pixels, and four
- * columns of that with the gaps between them are 124 pixels each, which the
- * date „12/04/1985" does not fit into once its calendar button has taken its
- * corner. The owner asked for rows so that a form could be filled in faster,
- * and four boxes nobody can type in are slower than one.
- *
- * 60rem is four columns of about 13rem, which holds a date, a name and a town
- * with room to spare, and it is still short of the page's own reading width. */
 /* A row of fields, and one field to a line until there is room for more.
  *
  * Written the other way round, as columns undone by a query, the two rules met
@@ -38,6 +26,18 @@
 }
 
 @media (min-width: 820px) {
+  /* A form laid out in rows is as wide as those rows need.
+   *
+     The plain width above is right for one field to a line: a box wider than it
+     is a box whose left and right ends are read as two different places. A row
+     of four inside it is something else: 34rem is 544 pixels, and four columns
+     of that with the gaps between them are 124 pixels each, which the date
+     „12/04/1985" does not fit into once its calendar button has taken its
+     corner. The owner asked for rows so a form could be filled in faster, and
+     four boxes nobody can type in are slower than one.
+   *
+     60rem is four columns of about 13rem, which holds a date, a name and a town
+     with room to spare, and is still short of the page's own reading width. */
   .form:has(.form__row) {
     max-width: 60rem;
   }
@@ -305,7 +305,6 @@
   align-items: center;
   gap: var(--space-4);
 }
-
 
 /* The words of a confirmation and the letter that explains them.
  *

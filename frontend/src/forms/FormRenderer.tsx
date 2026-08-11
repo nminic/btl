@@ -297,17 +297,20 @@ const Field = memo(function Field({
                 value={option.value}
                 checked={String(value) === option.value}
                 aria-invalid={error !== undefined}
-                /* The rule on every button and not on the group around them.
+                /* The rule and the error on every button, and both on the
+                   group around them as well.
                  *
-                   A description is read for whatever holds the focus, and what
-                   holds it here is a button: put on the group, the rule was said
-                   only to somebody who arrived at the group itself, which
-                   happens when the summary of errors leads there and at no other
-                   time. Then „Prva sezona" and „Starosna" carry a decision that
-                   cannot be undone mid-season (PDL P7) and nothing says which is
-                   which. Twice is the price, and it is the price the pattern
-                   pays everywhere (WAI-ARIA APG, radio group). */
-                aria-describedby={field.hintKey === undefined ? undefined : hintId}
+                   `aria-describedby` is not inherited, and a description is read
+                   for whatever holds the focus. There are two ways to arrive:
+                   the keyboard walks the form and lands on a button, and the
+                   summary of errors leads to the group itself. Said in only one
+                   of the two, whoever came the other way heard „Pol, Muški, nije
+                   izabrano" and nothing about the rule or about what is wrong,
+                   and „Prva sezona" against „Starosna" carries a decision that
+                   cannot be undone mid-season (PDL P7). Said in both, it is read
+                   once either way: the description of a parent is not read with
+                   the description of the child that holds the focus. */
+                aria-describedby={describedBy === '' ? undefined : describedBy}
                 onChange={() => change(option.value)}
               />
               <label className="choice__label" htmlFor={`${inputId}-${option.value}`}>

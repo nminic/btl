@@ -1,4 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import sr from '../i18n/sr.json'
+import { translate, type Dictionary } from '../i18n/translate'
 import { must } from '../test/at'
 import { useState, type ReactNode } from 'react'
 import { fireEvent, screen, within } from '@testing-library/react'
@@ -6,8 +8,8 @@ import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import registracija from './definitions/registracija.form.json'
 import { FormRenderer } from './FormRenderer'
-import { worded } from './worded'
-import type { FormDef, FormValues } from './types'
+import { plainWords, worded } from './worded'
+import type { FieldDef, FormDef, FormValues } from './types'
 
 /* A caller may hand the renderer a different definition without remounting it.
  * No screen does today, and every one of the seven admin screens passes a
@@ -177,6 +179,59 @@ describe('FormRenderer', () => {
     )
     /* And the mark itself never reaches the screen. */
     expect(within(field).queryByText(/\{link\}/)).toBeNull()
+  })
+
+  it("hands a derived value every field of the form, and the town country", () => {
+    /* What a derived value is worked out of, which is the whole of what a save
+       will write down and not only what somebody typed.
+     *
+       This holds the contract and not the choice behind it: the form reads
+       `filled` rather than the bare state everywhere, and the two are the same
+       set of keys until a caller hands the form another definition without
+       remounting it. No caller does, so nothing here can tell the two apart, and
+       saying so is more useful than a test that pretends to. */
+    const seen: string[] = []
+
+    renderWithI18n(
+      <FormRenderer
+        form={everyType}
+        onSubmit={vi.fn()}
+        derived={(values) => {
+          seen.push(Object.keys(values).sort().join(','))
+
+          return []
+        }}
+      />,
+    )
+
+    /* Every field of the definition, and the country the town carries. */
+    expect(seen[0]).toContain('country')
+    expect(seen[0]).toContain('mesto')
+  })
+
+  it('writes the words of a link, and not the mark, wherever a link cannot go', () => {
+    /* A summary of errors is a list of links to fields, and a link inside a link
+       is not a thing; a definition list of what was saved is not a place to
+       follow anything either. Both write the name of the field on its own, and
+       the mark itself reached the screen the day the first sentence carried one
+       (forms/worded.tsx, `plainWords`). */
+    const field: FieldDef = {
+      name: 'saglasnost',
+      type: 'checkbox',
+      labelKey: 'registration.healthStatement',
+      linkKey: 'registration.healthStatementLink',
+      linkTo: 'pravilnik',
+    }
+    const said = plainWords(
+      translate(sr as Dictionary, 'sr', field.labelKey),
+      field,
+      (key) => translate(sr as Dictionary, 'sr', key),
+    )
+
+    expect(said).toBe(
+      'Potvrđujem da sam upoznat sa pravilnikom i da sam zdravstveno sposoban za rekreativan sport.',
+    )
+    expect(said).not.toContain('{link}')
   })
 
   it('offers one way of saying nothing at all in a list of countries', () => {

@@ -154,9 +154,9 @@ export function recordValue(field: FieldDef, text: string): unknown {
   /* Two buttons answering a question a record keeps as a yes or a no: „Prva
      sezona" and „Starosna" are the two faces of `firstSeason2027`
      (data/types.ts). Which choice that is is decided by what the field offers
-     rather than by what was typed into it, or any future one that happened to
-     use those two words would be turned into a boolean without anybody meaning
-     it. Every other `choice` writes its own value and falls through. */
+     rather than by what was typed into it: a choice offering „yes" and „no" is
+     the shape of a question a record keeps as a boolean, and one that happens to
+     receive the word „yes" among other answers is not. Every other `choice` writes its own value and falls through. */
   if (field.type === 'choice' && yesOrNo(field)) {
     return text === 'yes'
   }

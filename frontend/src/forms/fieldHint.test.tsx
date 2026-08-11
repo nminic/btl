@@ -636,11 +636,11 @@ describe('an answer chosen from buttons', () => {
     }
   })
 
-  it('says what is wrong with it to whoever the summary of errors sends here', async () => {
-    /* The link puts the cursor on the group itself, and a group that says only
-       „Pol" does not say what is wrong with it: the error is heard when the
-       cursor moves on to a button, which is one step later than the list of
-       things to fix promises. */
+  it('says what is wrong with it, on the group and on the buttons alike', async () => {
+    /* `aria-describedby` is not inherited, and the two are two places somebody
+       can be: the summary of errors puts the cursor on the group, and walking
+       the form with the keyboard puts it on a button. Said in only one of them,
+       whoever arrived the other way never heard what was wrong. */
     const user = setupUser()
     renderForm()
 
@@ -650,6 +650,14 @@ describe('an answer chosen from buttons', () => {
     const said = must(group.getAttribute('aria-describedby'), 'what describes the group')
 
     expect(document.getElementById(said)).toHaveTextContent('Ovo polje je obavezno.')
+
+    /* And each button says it too, since that is where the keyboard lands. */
+    for (const one of within(group).getAllByRole('radio')) {
+      const byButton = must(one.getAttribute('aria-describedby'), 'what describes a button')
+
+      expect(byButton.split(' ')).toContain('field-gender-error')
+      expect(byButton.split(' ')).toContain('field-gender-hint')
+    }
   })
 
   it('carries the words of a confirmation and its letter in one head', () => {

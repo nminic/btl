@@ -66,5 +66,10 @@ export function worded(
  * first sentence carried one.
  */
 export function plainWords(words: string, field: FieldDef, t: (key: string) => string): string {
-  return field.linkKey === undefined ? words : words.replace('{link}', t(field.linkKey))
+  /* The same pair `worded` asks for, so the two never disagree about whether a
+     field carries a link: asked for one of the two, one of them would draw the
+     words of the link and the other would leave „{link}" standing. */
+  return field.linkKey === undefined || field.linkTo === undefined
+    ? words
+    : words.replace('{link}', t(field.linkKey))
 }
