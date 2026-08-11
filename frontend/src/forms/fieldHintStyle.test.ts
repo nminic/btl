@@ -78,3 +78,51 @@ describe('the box the rule of a field opens in', () => {
     expect(ruleFor('.hint')).toContain('display: contents;')
   })
 })
+
+/**
+ * The rows a form is laid out in, and the widths at which they hold.
+ *
+ * jsdom computes no layout, so nothing rendered can see a column. What can be
+ * seen is the stylesheet, and these three rules are the whole of the owner's
+ * decision from 11.08.2026: rows on a wide screen, one field to a line
+ * everywhere else, and a form wide enough that a row of four is four fields
+ * somebody can type into.
+ */
+describe('the rows of a form', () => {
+  const form = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
+
+  /** The body of a rule, by its selector, with the spaces taken out. */
+  function bodyOf(selector: string): string {
+    const at = form.indexOf(`${selector} {`)
+
+    expect(at, `${selector} is not in FormRenderer.css`).toBeGreaterThan(-1)
+
+    return form.slice(at, form.indexOf('}', at)).replace(/\s+/g, ' ')
+  }
+
+  it('come apart under the wide layout, and the town gives back its second column', () => {
+    /* „Na mobilnom ostaje svako polje jedno ispod drugog" (owner, PDL P8). Four
+       boxes across a 360 pixel screen are four boxes nobody can type into, and a
+       town still spanning two columns of a grid that has one makes a second
+       column the page is not wide enough for: the page then scrolls sideways,
+       which P24 forbids. */
+    expect(bodyOf('@media (max-width: 819px)')).toBeDefined()
+
+    const narrow = form.slice(form.indexOf('@media (max-width: 819px)'))
+
+    expect(narrow).toContain('grid-template-columns: minmax(0, 1fr);')
+    expect(narrow).toContain('grid-column: auto;')
+  })
+
+  it('let a form that has them be wider, and only where they are drawn', () => {
+    /* 34rem is the width of one field to a line and is right for that. Four
+       columns of it are 124 pixels each, which a date does not fit into. The
+       wider rule is inside the query that draws rows at all, or a telephone got
+       a form of sixty rem laid out one field to a line. */
+    const wide = form.slice(form.indexOf('@media (min-width: 820px)'))
+
+    expect(wide).toContain('max-width: 60rem;')
+    /* And a field on no row keeps the width one field should have. */
+    expect(wide).toContain('max-inline-size: 34rem;')
+  })
+})

@@ -86,7 +86,7 @@ describe('the values a form opens with', () => {
       land: 'RS',
       pick: 'a',
       open: 'evt-1',
-      beginner: true,
+      beginner: false,
       sex: 'M',
     })
 
@@ -98,10 +98,17 @@ describe('the values a form opens with', () => {
       land: 'RS',
       pick: 'a',
       open: 'evt-1',
-      /* A record's yes read back as the word the buttons answer with. */
-      beginner: 'true',
+      /* A record's no read back as the word the buttons answer with, so the
+         right one of the two opens taken. */
+      beginner: 'no',
       sex: 'M',
     })
+  })
+
+  it('reads a yes back as the word the buttons answer with', () => {
+    /* The other half of the pair above, so both ways round are walked: a record
+       that says yes opens with the „Prva sezona" button taken. */
+    expect(valuesFor(form, { beginner: true }).beginner).toBe('yes')
   })
 
   it('leaves a field the record has nothing for empty', () => {

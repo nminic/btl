@@ -214,10 +214,6 @@
 
 /* One answer out of two or three, drawn as buttons (forms/FormRenderer.tsx). */
 .field--choice {
-  /* A fieldset carries a border and padding of its own in every browser. */
-  margin: 0;
-  padding: 0;
-  border: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
@@ -313,8 +309,3 @@
   gap: var(--space-4);
 }
 
-/* Inside a fieldset the two are separated by the legend, which is a block of its
-   own in every browser, so the letter is pulled back up beside it. */
-.field--choice > .hint {
-  margin-block-start: calc(-1 * var(--space-6));
-}

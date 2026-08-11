@@ -140,7 +140,17 @@ export function validateForm(
        place field always carries a country, because `emptyValues` writes one
        (below), so „no such key" is a case that cannot happen and a fallback for
        it is a branch nothing can walk. */
-    if (field.type === 'place' && field.required === true && values.country === '') {
+    if (
+      field.type === 'place' &&
+      field.required === true &&
+      values.country === '' &&
+      /* And not over the top of what the field itself is already saying. An
+         empty form said „Izaberi državu uz mesto." under a town nobody had
+         typed: the answer to that is to type the town, and the sentence sent
+         whoever read it to the wrong control (WCAG 2.2 SC 3.3.1 asks that what
+         is wrong be identified, and this identified the other half). */
+      errors[field.name] === undefined
+    ) {
       errors[field.name] = { key: 'form.errors.countryMissing' }
     }
   }

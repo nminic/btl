@@ -253,6 +253,149 @@ describe('the rule of a field, once it is open', () => {
   })
 })
 
+describe('what nothing else was holding', () => {
+  it('lets the summary of errors put the cursor inside the group', () => {
+    /* A group is not focusable of itself, so following the link only scrolled:
+       the keyboard stayed where it was, which is not what a list of things to
+       fix promises. */
+    renderForm()
+
+    const group = screen.getByRole('group', { name: 'Pol' })
+
+    expect(group).toHaveAttribute('tabindex', '-1')
+
+    group.focus()
+
+    expect(group).toHaveFocus()
+  })
+
+  it('keeps the letter out of what is read aloud', () => {
+    /* The button is named „Objašnjenje" and shows „i". A control whose visible
+       words are not in its name cannot be spoken to (WCAG 2.2 SC 2.5.3), so the
+       letter is a drawing as far as a screen reader is concerned. */
+    renderForm()
+
+    const asked = within(
+      must(
+        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
+        'the field of the town',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+
+    expect(asked).toHaveAccessibleName('Objašnjenje')
+    expect(must(asked.querySelector('span'), 'the letter drawn in it')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+  })
+
+  it('asks for the rule again when the keyboard arrives after Escape', () => {
+    renderForm()
+
+    const asked = within(
+      must(
+        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
+        'the field of the town',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+
+    fireEvent.focus(asked)
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.blur(asked)
+    fireEvent.focus(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+describe('two rules standing side by side', () => {
+  it('does not leave one open when the pointer sweeps into the other', () => {
+    /* Two fields do stand next to each other in a row: „Adresa elektronske
+       pošte" and „Lozinka" are sixteen pixels apart, and a pointer sweeping from
+       the open words of one into the letter of the other is one sample of
+       movement. Asked whether it was still in „a hint" rather than in this one,
+       the first stayed open with nothing holding it. */
+    renderForm()
+
+    const letterOf = (label: RegExp) =>
+      within(
+        must(
+          screen.getByLabelText(label).closest<HTMLElement>('.field'),
+          'the field of that name',
+        ),
+      ).getByRole('button', { name: 'Objašnjenje' })
+
+    const mail = letterOf(/^Adresa elektronske pošte$/)
+    const password = letterOf(/^Lozinka$/)
+
+    fireEvent.mouseOver(mail)
+
+    expect(mail).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.mouseOut(mail, { relatedTarget: password })
+    fireEvent.mouseOver(password, { relatedTarget: mail })
+
+    expect(mail).toHaveAttribute('aria-expanded', 'false')
+    expect(password).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('is put away by one Escape, however many are open', () => {
+    /* The press is heard on the way down, so every hint that is open hears it,
+       and it is stopped before it reaches whatever the form is standing in. */
+    renderForm()
+
+    const letterOf = (label: RegExp) =>
+      within(
+        must(
+          screen.getByLabelText(label).closest<HTMLElement>('.field'),
+          'the field of that name',
+        ),
+      ).getByRole('button', { name: 'Objašnjenje' })
+
+    const mail = letterOf(/^Adresa elektronske pošte$/)
+    const password = letterOf(/^Lozinka$/)
+
+    fireEvent.mouseOver(mail)
+    fireEvent.focus(password)
+
+    expect(mail).toHaveAttribute('aria-expanded', 'true')
+    expect(password).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(mail).toHaveAttribute('aria-expanded', 'false')
+    expect(password).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('stays put away while the pointer only stirs inside the same letter', () => {
+    /* Escape leaves the pointer where it is, and `mouseover` bubbles out of the
+       letter drawn inside the button: a hair of movement over twenty four pixels
+       brought back what had just been put away. */
+    renderForm()
+
+    const asked = within(
+      must(
+        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
+        'the field of the town',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+    const drawn = must(asked.querySelector('span'), 'the letter drawn in it')
+
+    fireEvent.mouseOver(asked)
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.mouseOut(asked, { relatedTarget: drawn })
+    fireEvent.mouseOver(asked, { relatedTarget: drawn })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+})
+
 describe('the pointer leaving the rule of a field', () => {
   it('closes it when the pointer leaves the window entirely', () => {
     /* Then there is nowhere it went: `relatedTarget` is null, which is not an

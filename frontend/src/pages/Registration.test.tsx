@@ -282,6 +282,46 @@ describe('the country a member lives in', () => {
   })
 })
 
+describe('an empty form', () => {
+  it('says the town is missing, and not that a country was not chosen', async () => {
+    /* The town and the country are one field and two controls, so the rule about
+       the country was written beside the rule about the town and then over the
+       top of it: an empty form said „Izaberi državu uz mesto." under a box
+       nobody had typed into. The answer to that is to type the town, and the
+       sentence sent whoever read it to the other control (WCAG 2.2 SC 3.3.1). */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
+
+    const town = screen.getByLabelText(/^Mesto$/)
+    const said = must(town.getAttribute('aria-describedby'), 'what the town is described by')
+
+    expect(town).toHaveAttribute('aria-invalid', 'true')
+    expect(document.getElementById(said.split(' ').filter((one) => one.endsWith('-error'))[0] ?? ''))
+      .toHaveTextContent('Ovo polje je obavezno.')
+    /* And the country is not the one being pointed at. */
+    expect(screen.getByRole('combobox', { name: 'Država' })).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('points at the country once the town is one the codebook does not know', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).toHaveAttribute('aria-invalid', 'true')
+    /* And the town is no longer the one being blamed for it. */
+    expect(screen.getByLabelText(/^Mesto$/)).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+  })
+})
+
 describe('a town the codebook does know', () => {
   it('carries its country, so nothing more is asked', async () => {
     /* The other half of the rule above: a town out of the codebook answers the

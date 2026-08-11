@@ -59,22 +59,30 @@ export function FieldHint({
        nowhere near it: a pointer resting on the letter while the fingers are
        typing into the field beside it leaves the keyboard somewhere else
        entirely, and a handler on the button never hears it. The portal's menus
-       answer Escape the same way (app/Dropdown.tsx). */
+       answer Escape the same way (app/Dropdown.tsx).
+     *
+       On the way down and not on the way back up. Two things follow from that,
+       and both are the point. Every hint that is open hears the press, so one
+       Escape puts away all of them rather than whichever one happens to hold the
+       keyboard; and the press is stopped before it reaches anything the form is
+       standing in, so a sheet is not closed by the same press that closed a
+       tooltip, which was the reason the button used to answer this itself. */
     function onKeyDown(pressed: KeyboardEvent) {
       if (pressed.key === 'Escape') {
+        pressed.stopPropagation()
         setDismissed(true)
       }
     }
 
-    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown, true)
 
     return () => {
-      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keydown', onKeyDown, true)
     }
   }, [open])
 
   /**
-   * Whether the pointer went somewhere that is still a hint.
+   * Whether the pointer went somewhere that is still **this** hint.
    *
    * The letter and the words are two elements, so a pointer travelling from one
    * to the other leaves the first: asked only about the element it left, the box
@@ -82,12 +90,14 @@ export function FieldHint({
    * read to the end (WCAG 2.2 SC 1.4.13, hoverable). Asked about the hint they
    * both stand in, the journey stays inside.
    *
-   * Any hint and not this one, because a pointer cannot cross from one into
-   * another without passing through something that is neither: each stands in
-   * its own field, with a label and a control between them.
+   * This one and not any one. Asked about hints in general it was true of the
+   * neighbour's as well, and two fields do stand side by side in a row: the
+   * pointer swept from the open words of one straight into the letter of the
+   * other, sixteen pixels away, and the first stayed open with nothing left
+   * holding it.
    */
-  function stillHere(going: EventTarget | null): boolean {
-    return going instanceof Element && going.closest('.hint') !== null
+  function stillHere(leaving: Element, going: EventTarget | null): boolean {
+    return going instanceof Element && going.closest('.hint') === leaving.closest('.hint')
   }
 
   return (
@@ -117,30 +127,32 @@ export function FieldHint({
           setDismissed(false)
         }}
         onBlur={() => setFocused(false)}
-        onMouseOver={() => {
+        onMouseOver={(coming) => {
           setHovered(true)
-          setDismissed(false)
-        }}
-        onMouseOut={(going) => {
-          if (!stillHere(going.relatedTarget)) {
-            setHovered(false)
+
+          /* And what Escape put away comes back only on a new arrival. The
+             press leaves the pointer where it is, and the pointer moving inside
+             the button it is already on is not an arrival: `mouseover` bubbles
+             out of the letter drawn inside it, so a hair of movement over
+             twenty four pixels brought back what had just been put away. */
+          if (!stillHere(coming.currentTarget, coming.relatedTarget)) {
+            setDismissed(false)
           }
         }}
-        onKeyDown={(pressed) => {
-          if (pressed.key === 'Escape') {
-            /* And no further: a form inside a sheet would otherwise close the
-               sheet with the same press that closed this. The listener above
-               answers the other case, where the keyboard is elsewhere. */
-            pressed.stopPropagation()
-            setDismissed(true)
+        onMouseOut={(going) => {
+          if (!stillHere(going.currentTarget, going.relatedTarget)) {
+            setHovered(false)
           }
         }}
       >
         {/* A letter to look at and not a word to read: what a screen reader is
             given is the name above, and a control whose visible text is „i"
             while its name is „Objašnjenje" cannot be spoken to (WCAG 2.2
-            SC 2.5.3). Hidden from the tree, the two no longer disagree. */}
-        <span aria-hidden="true">{'i'}</span>
+            SC 2.5.3). Hidden from the tree, the two no longer disagree.
+         *
+            Out of the dictionary all the same, short as it is: it is a letter
+            somebody reads, and the other language may not spell it „i". */}
+        <span aria-hidden="true">{t('form.explainMark')}</span>
       </button>
 
       {/* Not `role="tooltip"`: this is read through `aria-describedby` on the
@@ -155,7 +167,7 @@ export function FieldHint({
         id={id}
         onMouseOver={() => setHovered(true)}
         onMouseOut={(going) => {
-          if (!stillHere(going.relatedTarget)) {
+          if (!stillHere(going.currentTarget, going.relatedTarget)) {
             setHovered(false)
           }
         }}

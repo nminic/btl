@@ -42,6 +42,13 @@ export function valuesFor(form: FormDef, record: Record<string, unknown>): FormV
 
     if (field.type === 'checkbox') {
       values[field.name] = value === true
+    } else if (field.type === 'choice' && typeof value === 'boolean') {
+      /* The way back for a question a record keeps as a yes or a no and a pair
+         of buttons answers in words (`recordValue` is the way out). Written as
+         `String(true)` it came back as „true", which is neither of the two
+         values the buttons carry, so a record that says yes opened a form with
+         neither button taken. */
+      values[field.name] = value ? 'yes' : 'no'
     } else if (field.type === 'date') {
       values[field.name] = fieldDate(String(value ?? ''))
     } else {

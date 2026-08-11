@@ -41,6 +41,7 @@ export function PlaceField({
   invalid,
   describedBy,
   country,
+  countryInvalid = false,
   onChange,
   openAt = false,
 }: {
@@ -50,6 +51,8 @@ export function PlaceField({
   /** The country beside it, which this field writes as well as reads. */
   country: string
   invalid: boolean
+  /** Whether it is the country that is unanswered, rather than the town. */
+  countryInvalid?: boolean
   describedBy: string | undefined
   onChange: (place: string, country: string) => void
   openAt?: boolean
@@ -322,7 +325,10 @@ export function PlaceField({
              still the answer, and an answer that disappears reads as a question
              nobody asked. */
           aria-disabled={known !== undefined}
-          aria-describedby={known === undefined ? undefined : heldId}
+          aria-invalid={countryInvalid}
+          aria-describedby={
+            countryInvalid ? describedBy : known === undefined ? undefined : heldId
+          }
           onChange={(event) => {
             /* And it does not take one, since it says it cannot. */
             if (known !== undefined) {

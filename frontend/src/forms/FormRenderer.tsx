@@ -275,24 +275,40 @@ const Field = memo(function Field({
          one control, so the group carries it. Without this the link „Pol" led to
          an element that is not there, and it is the likeliest error on this
          form: sex and category are the two things nothing is chosen for. */
-      <fieldset
+      <div
         className="field field--choice"
+        /* A group rather than a fieldset, and its name is the words above it.
+         *
+           A `<legend>` is laid out by rules of its own that no browser lets a
+           grid touch, so the letter that explains the group could never stand
+           beside its name the way it does on every other field: it fell to a
+           line below, and three of the eleven fields on the registration form
+           were built differently from the other eight. `role="group"` with
+           `aria-labelledby` says the same thing to a screen reader and leaves
+           the layout to the stylesheet. */
+        role="group"
+        aria-labelledby={labelId}
         id={inputId}
         /* And it takes the cursor when the summary of errors leads here. A
-           fieldset is not focusable of itself, so following the link only
+           group is not focusable of itself, so following the link only
            scrolled: the keyboard stayed where it was, which is not what a list
            of things to fix promises. */
         tabIndex={-1}
       >
-        {/* A legend names the group, and nothing but the name goes in it: a rule
-            written here would be read out before every one of the buttons. */}
-        <legend className="field__label" id={labelId}>
-          {t(field.labelKey)}
-        </legend>
+        <span className="field__head">
+          {/* The name of the group, and nothing but the name: a rule written
+              into it would be read out before every one of the buttons. */}
+          <span className="field__label" id={labelId}>
+            {worded(t(field.labelKey), field, locale, t)}
+            {field.required !== true && (
+              <span className="field__optional"> ({t('form.optional')})</span>
+            )}
+          </span>
 
-        {field.hintKey !== undefined && (
-          <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
-        )}
+          {field.hintKey !== undefined && (
+            <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
+          )}
+        </span>
 
         {/* Buttons to look at and radio buttons to work: nothing is chosen to
             begin with, exactly one can be, and the arrow keys walk the group the
@@ -326,7 +342,7 @@ const Field = memo(function Field({
             {t(error.key, error.params)}
           </p>
         )}
-      </fieldset>
+      </div>
     )
   }
 
@@ -408,7 +424,13 @@ const Field = memo(function Field({
              its own: the country is the second half of the place and has no
              field on any definition (forms/types.ts). */
           country={beside}
-          invalid={error !== undefined}
+          /* Which of the two is wrong, since the field is two controls and the
+             error may be about either: the town when it is empty, the country
+             when the town is one the codebook does not know. Marked on the town
+             either way, a screen reader was sent to the box that was already
+             filled in (WCAG 2.2 SC 3.3.1). */
+          invalid={error !== undefined && error.key !== 'form.errors.countryMissing'}
+          countryInvalid={error?.key === 'form.errors.countryMissing'}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
           onChange={(town, country) => {
