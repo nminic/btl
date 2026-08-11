@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
@@ -87,15 +87,21 @@ function Going({
     ...fromFile.filter((one) => one !== me || said !== false),
     ...(said === true && !fromFile.includes(me) ? [me] : []),
   ]
-  const iAmGoing = numbers.includes(me)
-
-  /* Named, and in the order the league lists people. Somebody with no record
-     left is not drawn: the name on a list of who is coming is a link to a
-     profile, and a profile that is not there is not a link (PDL P11). */
+  /* Named, and in the order the league lists people.
+   *
+   * Everybody is drawn, including whoever has no record left and whoever is no
+   * longer active: the switch and the list are one answer to one question, and
+   * a switch saying „you are going" over a list saying „nobody is" is the
+   * screen contradicting itself. What a missing record costs is the link and
+   * the name, not the row: a profile that is not there is not a link (PDL P11),
+   * so such a row is plain words. */
   const named = numbers
-    .map((number) => competitors.find((one) => one.memberNumber === number))
-    .filter((one): one is Competitor => one !== undefined && one.active)
-    .sort((left, right) => left.lastName.localeCompare(right.lastName, locale))
+    .map((number) => ({
+      number,
+      who: competitors.find((one) => one.memberNumber === number && one.active),
+    }))
+    .sort((left, right) => (left.who?.lastName ?? '').localeCompare(right.who?.lastName ?? '', locale))
+  const iAmGoing = named.some((one) => one.number === me)
 
   return (
     <>
@@ -109,22 +115,31 @@ function Going({
         aria-pressed={iAmGoing}
         onClick={() => setGoing(event.id, !iAmGoing)}
       >
-        {t(iAmGoing ? 'event.goingOff' : 'event.goingOn')}
+        {/* One name whichever way it is switched, because `aria-pressed` is
+            already saying which: a label that changes as well is the state read
+            out twice, once in words and once in the role. */}
+        {t('event.goingOn')}
       </button>
 
       {named.length === 0 ? (
         <p className="profile__empty">{t('event.goingNobody')}</p>
       ) : (
         <ul className="going__list" aria-labelledby="going-title">
-          {named.map((who) => (
-            <li key={who.memberNumber} className="going__one">
-              <Link to={`/${locale}/takmicar/${who.memberNumber}`}>
-                {who.firstName} {who.lastName}
-              </Link>
+          {named.map(({ number, who }) => (
+            <li key={number} className="going__one">
+              {who === undefined ? (
+                /* No record to lead to, so no link: the words stand alone. */
+                <span>{t('event.someMember')}</span>
+              ) : (
+                <Link to={`/${locale}/takmicar/${number}`}>
+                  {who.firstName} {who.lastName}
+                </Link>
+              )}
 
-              {/* Not to oneself: a member writing to their own inbox about a
-                  race they are both going to is the portal talking to itself. */}
-              {who.memberNumber !== me && (
+              {/* Not to oneself, and not to somebody there is no record of: a
+                  member writing to their own inbox about a race they are both
+                  going to is the portal talking to itself. */}
+              {number !== me && who !== undefined && (
                 <button
                   type="button"
                   className="going__write"
@@ -200,14 +215,32 @@ function WriteTo({
   const { notify } = useSession()
   const [words, setWords] = useState('')
   const [sent, setSent] = useState(false)
+  const said = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    /* The confirmation takes the focus the submit button was holding, and it is
+       what the button was replaced by. Without it the focus falls to the page
+       and a keyboard reader is put back at the top of the document; the same
+       three lines answer the same thing where a record is saved
+       (admin/EntityEditor.tsx). */
+    if (sent) {
+      said.current?.focus()
+    }
+  }, [sent])
   /* Out of everybody rather than out of the list: a member who has not said they
      are going may still write to somebody who has. */
   const mine = competitors.find((one) => one.memberNumber === me)
 
   if (sent) {
     return (
-      <p className="going__sent" role="status">
-        {t('event.written', { name: `${them.firstName} ${them.lastName}` })}
+      <p className="going__sent" role="status" tabIndex={-1} ref={said}>
+        {t('event.written', { name: `${them.firstName} ${them.lastName}` })}{' '}
+        {/* And a way out of it. Without one the line stood under the list until
+            somebody pressed a different envelope, and pressing the same one
+            again did nothing at all. */}
+        <button type="button" className="going__done" onClick={onDone}>
+          {t('form.close')}
+        </button>
       </p>
     )
   }
@@ -254,7 +287,7 @@ function WriteTo({
           {t('event.writeSend')}
         </button>
         <button type="button" className="button button--secondary" onClick={onDone}>
-          {t('form.cancel')}
+          {t('form.close')}
         </button>
       </p>
     </form>

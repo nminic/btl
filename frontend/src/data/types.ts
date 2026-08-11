@@ -103,7 +103,6 @@ export type BtlEvent = {
   date: string
   city: string
   country: string
-  organizer: string
   kind: EventKind
   /**
    * Whether the event is singled out in the calendar and on the front page

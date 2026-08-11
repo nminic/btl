@@ -92,8 +92,9 @@ const Field = memo(function Field({
    *
    * Handed in rather than read here, because a field is drawn again only when
    * something about that field changed and this is the one value that belongs
-   * to a field without being its own. Empty for every other kind of field, and
-   * unread by them.
+   * to a field without being its own. Every field on the form is given it and
+   * only a place field reads it; on a form with no place there is nothing to
+   * give and it is empty.
    */
   beside: string
   error: FieldError | undefined

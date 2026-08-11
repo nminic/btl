@@ -1219,7 +1219,6 @@ function Copy({ of }: { of: BtlEvent }) {
           date: `${of.date.slice(8, 10)}/${of.date.slice(5, 7)}/${of.date.slice(0, 4)}`,
           city: of.city,
           country: of.country,
-          organizer: of.organizer,
           kind: of.kind,
         })
       }

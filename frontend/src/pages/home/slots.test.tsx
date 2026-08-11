@@ -28,7 +28,6 @@ describe('CalendarExtract', () => {
     date,
     city: 'Beograd',
     country: 'RS',
-    organizer: 'x',
     kind: 'race', copiedFrom: '', featured: 'no',
   })
 

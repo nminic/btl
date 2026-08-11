@@ -9,6 +9,7 @@ import { useSession } from '../../session/useSession'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { must } from '../../test/at'
+import { formatDistance } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { raceFor } from './raceFor'
@@ -291,5 +292,52 @@ describe('an event that runs over two mornings', () => {
     renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, event.date)
 
     expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+  })
+})
+
+describe('a race with no name of its own', () => {
+  /* The name became optional on 11.08.2026 (owner), and what names such a race
+     is its length: „tada je trka poznata po svojoj dužini". An empty cell would
+     be a race nobody can tell from the one beside it, which is the whole reason
+     PDL P10 says the name is what a person recognises a race by. */
+  async function nameless() {
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const race = must(
+      races.find((one) => one.name.trim() === ''),
+      'a race entered without a name',
+    )
+
+    return {
+      race,
+      event: must(
+        events.find((one) => one.id === race.eventId),
+        'the event it belongs to',
+      ),
+    }
+  }
+
+  it('is listed under the event by its length', async () => {
+    const { race, event } = await nameless()
+
+    renderAt(`/sr/kalendar/${event.slug}`)
+
+    const table = await screen.findByRole('table')
+
+    expect(within(table).getAllByText(formatDistance(race.distanceKm, 'sr-Latn')).length)
+      .toBeGreaterThan(0)
+  })
+
+  it('is offered by its length on the form that reports a result', async () => {
+    const { race, event } = await nameless()
+
+    renderAt(`/sr/kalendar/${event.slug}/prijava`, 'competitor', ME)
+
+    const chooser = await screen.findByLabelText(/^Trka/)
+    const said = [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
+
+    /* By the length alone, with nothing dangling in front of it: written as
+       name and length, a race with no name read " · 3,3 km". */
+    expect(said).toContain(formatDistance(race.distanceKm, 'sr-Latn'))
   })
 })

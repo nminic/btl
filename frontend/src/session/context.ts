@@ -196,7 +196,7 @@ export type SessionValue = {
    * A switch and not a one-way press (owner, 11.08.2026): pressing it again
    * takes them off the list. What the file carries is who said so before this
    * visit; this is what has been said during it, and the two are read together
-   * (data/useResource.ts, `useGoing`).
+   * (data/useResource.ts, `useAttendance`).
    *
    * Held as a map of id to whether, rather than as a list, so that turning it
    * off is a value and not an absence: a member who takes their name off has

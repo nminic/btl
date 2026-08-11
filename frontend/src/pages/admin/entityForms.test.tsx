@@ -596,7 +596,6 @@ describe('the words the seven forms need', () => {
         date: '2027-05-01',
         city: 'Beograd',
         country: 'RS',
-        organizer: 'BTL',
         kind: 'race',
       },
     })

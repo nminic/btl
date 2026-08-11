@@ -38,7 +38,10 @@ export function OverallMark({ eventId }: { eventId: string }) {
   const state = combinePair(useComments(), useEvents())
 
   /* Read out of the comments, so it goes where they go: only members see them
-     (owner, 11.08.2026), and a mark is what the comments add up to. */
+     (owner, 11.08.2026), and a mark is what the comments add up to. A screen
+     and not a lock, for the reason written out under the comments themselves
+     (EventComments.tsx): the file is already in the browser, and the endpoint
+     that replaces it has to be the one that refuses. */
   if (!reads) {
     return null
   }

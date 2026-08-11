@@ -1,3 +1,4 @@
+import { raceName } from '../data/raceName'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
@@ -74,7 +75,7 @@ function RaceTable({ eventId }: { eventId: string }) {
               <tbody>
                 {mine.map((race) => (
                     <tr key={race.id}>
-                      <td>{race.name}</td>
+                      <td>{raceName(race, locale)}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
                       <td>{t(`category.${race.category}`)}</td>
                       <td>{formatNumber(race.distanceKm, locale, 2)}</td>

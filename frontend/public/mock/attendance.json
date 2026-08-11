@@ -102,5 +102,13 @@
   {
     "eventId": "evt-bokeski-maraton-2027-12-11",
     "memberNumber": "000005"
+  },
+  {
+    "eventId": "evt-beogradski-maraton-2027-04-03",
+    "memberNumber": "000032"
+  },
+  {
+    "eventId": "evt-beogradski-maraton-2027-04-03",
+    "memberNumber": "999999"
   }
 ]

@@ -1,3 +1,4 @@
+import { raceName } from '../../data/raceName'
 import { useMemo } from 'react'
 import { isoDate } from '../../forms/dateField'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -141,7 +142,7 @@ export function EventRaces({
             <tbody>
               {mine.map((race) => (
                 <tr key={race.id}>
-                  <td>{race.name}</td>
+                  <td>{raceName(race, locale)}</td>
                   <td>{formatShortDate(race.date, locale)}</td>
                   {/* Written the way this language writes a number, like every
                       other table on the portal: read raw, a climb of 7120 metres

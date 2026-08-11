@@ -99,16 +99,17 @@ describe('the switch that says you are going', () => {
 
     renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, day)
 
-    const button = await screen.findByRole('button', { name: 'Prijavi da ideš' })
-    /* Not by the words alone: they change, and a reader who cannot see the
-       button hears only the words. */
+    const button = await screen.findByRole('button', { name: 'Idem na ovaj događaj' })
+    /* The words do not change: `aria-pressed` is what says which of the two it
+       is in, and a label that said so as well would be the state read out
+       twice. */
     expect(button).toHaveAttribute('aria-pressed', 'false')
 
     const before = within(screen.getByRole('list', { name: 'Ko ide' })).getAllByRole('listitem')
 
     await user.click(button)
 
-    expect(screen.getByRole('button', { name: 'Ideš. Otkaži prijavu' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Idem na ovaj događaj' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -125,16 +126,19 @@ describe('the switch that says you are going', () => {
 
     renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, day)
 
-    await user.click(await screen.findByRole('button', { name: 'Prijavi da ideš' }))
+    await user.click(await screen.findByRole('button', { name: 'Idem na ovaj događaj' }))
 
     const withMe = within(screen.getByRole('list', { name: 'Ko ide' })).getAllByRole('listitem')
 
-    await user.click(screen.getByRole('button', { name: 'Ideš. Otkaži prijavu' }))
+    await user.click(screen.getByRole('button', { name: 'Idem na ovaj događaj' }))
 
     expect(
       within(screen.getByRole('list', { name: 'Ko ide' })).getAllByRole('listitem'),
     ).toHaveLength(withMe.length - 1)
-    expect(screen.getByRole('button', { name: 'Prijavi da ideš' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Idem na ovaj događaj' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 
   it('takes a member off a list the file has them on', async () => {
@@ -155,7 +159,7 @@ describe('the switch that says you are going', () => {
 
     expect(within(list).getByText(`${who.firstName} ${who.lastName}`)).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Ideš. Otkaži prijavu' }))
+    await user.click(screen.getByRole('button', { name: 'Idem na ovaj događaj' }))
 
     /* Out of the list and not out of the page: the header carries the name of
        whoever is signed in, and they are still signed in. */
@@ -197,6 +201,106 @@ describe('writing to somebody else who is going', () => {
     expect(within(list).getAllByRole('button')).toHaveLength(rows.length - 1)
   })
 
+  it('opens a fresh note when another envelope is pressed', async () => {
+    /* Keyed by whoever is being written to, so the second envelope is a new
+       note and not the first one's confirmation standing under the list. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const two = going
+      .map((one) => competitors.find((each) => each.memberNumber === one.memberNumber))
+      .filter((one): one is Competitor => one !== undefined && one.active)
+      .slice(0, 2)
+    const first = must(two[0], 'the first of them')
+    const second = must(two[1], 'the second of them')
+
+    /* Signed in as somebody not on the list, so every name carries an
+       envelope. */
+    const outsider = must(
+      competitors.find(
+        (one) => one.active && !going.some((each) => each.memberNumber === one.memberNumber),
+      ),
+      'a member not going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', outsider.memberNumber, undefined, day)
+
+    const write = async (who: Competitor) => {
+      await user.click(
+        await screen.findByRole('button', { name: `Piši članu ${who.firstName} ${who.lastName}` }),
+      )
+    }
+
+    await write(first)
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${first.firstName} ${first.lastName}` }),
+      'Prvo pismo.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+    await screen.findByText(new RegExp(`^Poruka je poslata članu ${first.firstName}`))
+
+    await write(second)
+
+    /* A box again, and for the other person. */
+    expect(
+      screen.getByRole('textbox', { name: `Piši članu ${second.firstName} ${second.lastName}` }),
+    ).toHaveValue('')
+    expect(screen.queryByText(new RegExp(`^Poruka je poslata članu ${first.firstName}`))).toBeNull()
+  })
+
+  it('closes the confirmation, so the same envelope can be pressed again', async () => {
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const them = must(
+      competitors.find(
+        (one) => one.active && going.some((each) => each.memberNumber === one.memberNumber),
+      ),
+      'somebody going to it',
+    )
+
+    const outsider = must(
+      competitors.find(
+        (one) => one.active && !going.some((each) => each.memberNumber === one.memberNumber),
+      ),
+      'a member not going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', outsider.memberNumber, undefined, day)
+
+    const envelope = await screen.findByRole('button', {
+      name: `Piši članu ${them.firstName} ${them.lastName}`,
+    })
+
+    const box = () =>
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` })
+
+    await user.click(envelope)
+    await user.type(box(), 'Prvo pismo.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    /* By its words, because the page carries other live regions: the list that
+       grows as it is read keeps one open from its first render (LoadMore). */
+    const said = await screen.findByText(
+      new RegExp(`^Poruka je poslata članu ${them.firstName}`),
+    )
+
+    /* And it is a live region, so a reader who cannot see it is told: it
+       appears in the same breath as the form it replaced, and a line that only
+       appears says nothing to anybody not looking at it (WCAG 2.2 SC 4.1.3). */
+    expect(said).toHaveAttribute('role', 'status')
+
+    /* And it holds the focus the submit button was holding, since it is what
+       replaced it: without that the focus falls to the page and a keyboard
+       reader is put back at the top of the document. */
+    expect(said).toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'Zatvori' }))
+    await user.click(envelope)
+
+    expect(box()).toHaveValue('')
+  })
+
   it('lets the note be abandoned, which is the way out of a box nobody wanted', async () => {
     const user = setupUser()
     const { event, going, day } = await upcoming()
@@ -224,7 +328,7 @@ describe('writing to somebody else who is going', () => {
       screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
     ).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Odustani' }))
+    await user.click(screen.getByRole('button', { name: 'Zatvori' }))
 
     expect(
       screen.queryByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
@@ -261,7 +365,7 @@ describe('writing to somebody else who is going', () => {
 
     expect(
       await screen.findByText(
-        `Poruka je poslata članu ${them.firstName} ${them.lastName}, u portalski inboks.`,
+        `Poruka je poslata članu ${them.firstName} ${them.lastName}, u Poruke na portalu.`,
       ),
     ).toBeVisible()
   })
@@ -307,7 +411,7 @@ describe('writing to somebody else who is going', () => {
        grows as it is read keeps one open from its first render (LoadMore). */
     expect(
       await screen.findByText(
-        `Poruka je poslata članu ${them.firstName} ${them.lastName}, u portalski inboks.`,
+        `Poruka je poslata članu ${them.firstName} ${them.lastName}, u Poruke na portalu.`,
       ),
     ).toBeVisible()
 
@@ -321,5 +425,109 @@ describe('writing to somebody else who is going', () => {
 
     await screen.findByRole('heading', { level: 1, name: 'Poruke' })
     expect(screen.queryByText('Imam mesta u kolima, javi se.')).toBeNull()
+  })
+})
+
+describe('a name the list cannot lead to', () => {
+  /* Two rows the record cannot fully answer, and both are on the same event in
+     the data on purpose: a member who is no longer active (their profile is not
+     shown at all, PDL P11) and a number with nothing behind it, which happens
+     while a registration is going through. Neither may vanish from the list:
+     the switch and the list are one answer to one question, and a switch
+     saying „you are going" over a list saying „nobody is" is the screen
+     contradicting itself. */
+  async function withStrangers() {
+    const events = await loadResource<BtlEvent[]>('events')
+    const attendance = await loadResource<Attending[]>('attendance')
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const known = new Set(competitors.filter((one) => one.active).map((one) => one.memberNumber))
+    const stranger = must(
+      attendance.find((one) => !known.has(one.memberNumber)),
+      'somebody going who has no visible record',
+    )
+
+    return {
+      event: must(
+        events.find((one) => one.id === stranger.eventId),
+        'the event they are going to',
+      ),
+      strangers: attendance.filter(
+        (one) => one.eventId === stranger.eventId && !known.has(one.memberNumber),
+      ),
+    }
+  }
+
+  it('draws them as plain words rather than dropping them', async () => {
+    const { event, strangers } = await withStrangers()
+
+    expect(strangers.length).toBeGreaterThan(1)
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, '2026-08-01')
+
+    const list = await screen.findByRole('list', { name: 'Ko ide' })
+
+    expect(within(list).getAllByText('Član lige')).toHaveLength(strangers.length)
+  })
+
+  it('offers no envelope to somebody there is no record of', async () => {
+    /* There is nowhere to write to and nobody to name in the note. */
+    const { event, strangers } = await withStrangers()
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, '2026-08-01')
+
+    const list = await screen.findByRole('list', { name: 'Ko ide' })
+    const rows = within(list).getAllByRole('listitem')
+
+    expect(within(list).getAllByRole('button')).toHaveLength(rows.length - strangers.length)
+  })
+
+  it('says the member is going even where their own row cannot be named', async () => {
+    /* Signed in as the number with nothing behind it: the switch and the list
+       have to agree about them as much as about anybody else. */
+    const { event, strangers } = await withStrangers()
+    const stranger = must(strangers[0], 'one of them')
+
+    renderAt(
+      `/sr/kalendar/${event.slug}`,
+      'competitor',
+      stranger.memberNumber,
+      undefined,
+      '2026-08-01',
+    )
+
+    expect(await screen.findByRole('button', { name: 'Idem na ovaj događaj' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('agrees with the list about a member the list cannot name', async () => {
+    /* The half that was wrong and that nothing could see: the switch was
+       counted over the raw numbers and the list was drawn over the records, so
+       a member with no record read „you are going" over „nobody is". */
+    const user = setupUser()
+    const { event, strangers } = await withStrangers()
+    const stranger = must(strangers[0], 'one of them')
+
+    renderAt(
+      `/sr/kalendar/${event.slug}`,
+      'competitor',
+      stranger.memberNumber,
+      undefined,
+      '2026-08-01',
+    )
+
+    const rows = () =>
+      within(screen.getByRole('list', { name: 'Ko ide' })).getAllByRole('listitem').length
+    const before = rows()
+
+    await user.click(screen.getByRole('button', { name: 'Idem na ovaj događaj' }))
+
+    /* Off the list and off the switch, together. */
+    expect(screen.getByRole('button', { name: 'Idem na ovaj događaj' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(rows()).toBe(before - 1)
   })
 })

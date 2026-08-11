@@ -49,21 +49,6 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
   const today = useToday()
   const state = combineResources(useComments(), useCompetitors(), useEvents())
 
-  /* Only members read them (owner, 11.08.2026). A visitor sees the races and the
-     results and is told, in one line, that there is something here for members;
-     the alternative is a section that silently is not there, which reads as an
-     event nobody has said anything about. */
-  if (!reads) {
-    return (
-      <>
-        <h2 className="profile__section" id="comments">
-          {t('event.comments')}
-        </h2>
-        <p className="profile__empty">{t('event.commentsForMembers')}</p>
-      </>
-    )
-  }
-
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
      space that resolves into nothing, and on a broken connection an alert about
@@ -118,6 +103,33 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
            `subjectId`). */
         if (mine.length === 0 && date > today) {
           return null
+        }
+
+        /* Only members read them (owner, 11.08.2026). Asked here and not before
+           the two guards above, because those decide whether there is a section
+           at all: asked first, a visitor was told there is something hidden on
+           a race nobody has said anything about, and got more of a page than
+           the member standing beside them.
+
+           **This is a screen and not a lock, and it must not be mistaken for
+           one.** The comments have already been fetched by the time this line
+           is reached, so a visitor's browser holds the whole file and anybody
+           who opens it reads every comment on the portal. That is tolerable
+           only while there is no server: the mock layer serves one static file
+           to everybody. When the API arrives (plan F5), the endpoint that
+           serves comments must refuse an unauthenticated caller, and this
+           guard stays as what it is, the thing that keeps the page from
+           promising what it will not deliver. The same is true of the marks
+           beside them (OverallMark.tsx). */
+        if (!reads) {
+          return (
+            <>
+              <h2 className="profile__section" id="comments">
+                {t('event.comments')}
+              </h2>
+              <p className="profile__empty">{t('event.commentsForMembers')}</p>
+            </>
+          )
         }
 
         return (

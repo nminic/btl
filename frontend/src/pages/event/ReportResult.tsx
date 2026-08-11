@@ -1,3 +1,4 @@
+import { raceName } from '../../data/raceName'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
@@ -184,7 +185,10 @@ export function ReportResult() {
                        name. `labelKey` takes a key and falls back to what it is
                        given when there is no such key, which is what puts a
                        value into a list of choices (src/i18n/translate.ts). */
-                    labelKey: `${race.name} · ${race.distanceKm} km`,
+                    labelKey:
+                      race.name.trim() === ''
+                        ? raceName(race, locale)
+                        : `${race.name} · ${race.distanceKm} km`,
                   })),
                 }}
                 onSubmit={onSubmit}

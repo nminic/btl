@@ -356,7 +356,7 @@
     "places": "Ponuđena mesta",
     "yes": "Da",
     "no": "Ne",
-    "cancel": "Odustani"
+    "close": "Zatvori"
   },
   "registration": {
     "title": "Registracija",
@@ -588,13 +588,12 @@
     "notRanIt": "Ovaj događaj ocenjuju oni koji su ga istrčali",
     "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa se daje uz upisan rezultat na ovom događaju. Prijavi rezultat; kad ga moderator odobri, ocena se otvara.",
     "going": "Ko ide",
-    "goingOn": "Prijavi da ideš",
-    "goingOff": "Ideš. Otkaži prijavu",
+    "goingOn": "Idem na ovaj događaj",
     "goingNobody": "Još se niko nije prijavio.",
     "writeTo": "Piši članu {name}",
     "writeSubject": "Dogovor za {event}",
     "writeSend": "Pošalji poruku",
-    "written": "Poruka je poslata članu {name}, u portalski inboks.",
+    "written": "Poruka je poslata članu {name}, u Poruke na portalu.",
     "someMember": "Član lige",
     "commentsForMembers": "Komentare vide prijavljeni članovi."
   },
@@ -1023,8 +1022,7 @@
       "teamSlug": "Adresa tima",
       "kind": "Vrsta događaja",
       "country": "Država",
-      "featured": "Istaknuto",
-      "countryOfPlace": "Država"
+      "featured": "Istaknuto"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -1034,7 +1032,6 @@
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
-      "organizer": "Organizator nema nalog na portalu; ovde stoji samo kao podatak.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
       "raceDate": "Podrazumevano je dan događaja. Događaj koji traje dva dana ima trke sa različitim danima; dan događaja je dan prve trke.",
       "raceName": "Ime po kome se trka prepoznaje, na primer Polumaraton ili 6 h. Može da ostane prazno; tada je trka poznata po svojoj dužini.",
@@ -1056,8 +1053,8 @@
       "eventSlug": "Portal je pravi sam, od naziva i godine. Ne unosi se i ne menja.",
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja.",
       "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka.",
-      "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popuni državu. Mesto koje šifarnik nema unosi se rukom, a država se bira pored.",
-      "featured": "Istaknut događaj se izdvaja u kalendaru i na naslovnoj strani."
+      "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Mesto koje šifarnik nema unosi se rukom, a država se bira pored.",
+      "featured": "Beleži se uz događaj, za izdvajanje u kalendaru i na naslovnoj. Ta dva prikaza se prave sa sezonom 2027."
     },
     "value": {
       "genderM": "Muški",

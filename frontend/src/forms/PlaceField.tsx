@@ -170,6 +170,15 @@ export function PlaceField({
           setAt(-1)
         }}
         onKeyDown={onKeyDown}
+        /* Closed when the cursor leaves the town, which is what the pointer
+           rule cannot answer: the country select is inside this field, so a
+           press on it is a press inside the box and the list stayed open over
+           it. On a telephone the two stack, and the list covered the country
+           entirely. */
+        onBlur={() => {
+          setOpen(false)
+          setAt(-1)
+        }}
       />
 
       {offered.length > 0 && (
@@ -205,7 +214,7 @@ export function PlaceField({
           for a town it does not have, which is how a race in a hamlet stops
           being filed wherever the last chosen town was. */}
       <label className="place__country-pick">
-        <span>{t('admin.field.countryOfPlace')}</span>
+        <span>{t('admin.field.country')}</span>
         <select
           className="field__control"
           value={country}
