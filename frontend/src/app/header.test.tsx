@@ -290,7 +290,6 @@ function renderInbox(inbox: Message[]) {
     notifications: {
       resultApproved: true,
       resultChanged: true,
-      upcomingEvent: true,
       newsletter: false,
     },
     setNotification: vi.fn(),

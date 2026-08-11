@@ -450,7 +450,10 @@ describe('rankTeams', () => {
     expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual(['b', 'a'])
   })
 
-  it('breaks a tie in favour of the bigger team', () => {
+  /* The ladder from PDL P12 as the owner gave it on 11.08.2026: points, races,
+     kilometres, time on the course. The size of the team was the second rung
+     until that day, and these three tests are what tells the two apart. */
+  it('breaks a tie on points by the races, not by the size of the team', () => {
     const teams = [team('small'), team('big')]
     const competitors = [
       competitor('000001', { teamId: 'small', teamSince: 2027 }),
@@ -458,22 +461,23 @@ describe('rankTeams', () => {
       competitor('000004', { teamId: 'big', teamSince: 2027 }),
     ]
     const results = [
-      result('000001', '2027-01-01', 20),
+      // One member, twenty points, three races.
+      result('000001', '2027-01-01', 10),
+      result('000001', '2027-02-01', 5),
+      result('000001', '2027-03-01', 5),
+      // Two members, twenty points between them, two races.
       result('000002', '2027-01-01', 10),
       result('000004', '2027-01-01', 10),
     ]
 
     const winner = first(rankTeams(teams, competitors, results, 2027))
 
-    expect(winner.team.id).toBe('big')
-    expect(winner.members).toBe(2)
+    // The bigger team held this place until 11.08.2026, on the same numbers.
+    expect(winner.team.id).toBe('small')
+    expect(winner.members).toBe(1)
   })
 
-  /* The rest of the ladder from PDL P12, below the member count: the kilometres
-     of every member, then the races of every member. The order stopped at the
-     member count before, so two teams level on points and on size were left in
-     whatever order the team list happened to be in. */
-  it('goes on to the kilometres of every member when the size is level too', () => {
+  it('goes on to the kilometres when the points and the races are level too', () => {
     const teams = [team('fewer'), team('more')]
     const competitors = [
       competitor('000001', { teamId: 'fewer', teamSince: 2027 }),
@@ -490,22 +494,22 @@ describe('rankTeams', () => {
     ])
   })
 
-  it('goes on to the races of every member when the kilometres are level too', () => {
-    const teams = [team('one-race'), team('two-races')]
+  it('goes on to the time on the course when the kilometres are level too', () => {
+    const teams = [team('quick'), team('long')]
     const competitors = [
-      competitor('000001', { teamId: 'one-race', teamSince: 2027 }),
-      competitor('000002', { teamId: 'two-races', teamSince: 2027 }),
+      competitor('000001', { teamId: 'quick', teamSince: 2027 }),
+      competitor('000002', { teamId: 'long', teamSince: 2027 }),
     ]
     const results = [
-      result('000001', '2027-01-01', 20, { distanceKm: 20 }),
-      result('000002', '2027-01-01', 10, { distanceKm: 10 }),
-      result('000002', '2027-02-02', 10, { distanceKm: 10 }),
+      result('000001', '2027-01-01', 10, { distanceKm: 10, seconds: 3000 }),
+      result('000002', '2027-01-01', 10, { distanceKm: 10, seconds: 4000 }),
     ]
 
-    // Same points and same kilometres, and the bigger volume of races wins.
+    // Everything above is level, and the last rung is volume like all the
+    // others: more time on the course, not less.
     expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
-      'two-races',
-      'one-race',
+      'long',
+      'quick',
     ])
   })
 

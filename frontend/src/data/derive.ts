@@ -278,15 +278,24 @@ export type TeamRow = {
   totals: Totals
 }
 
-/** The ladder of the team board (PDL P12): points, more members of the team,
- *  the kilometres of every member, the races of every member, then the team's
- *  own id. It stopped at the member count before, so two teams level on points
- *  and on size were left in whatever order the team list happened to be in. */
+/**
+ * The ladder of the team board (PDL P12, owner 11.08.2026): points, more races,
+ * kilometres, time on the course, and then the team's own id, which `withPlaces`
+ * adds. The pair board is given the same one, measured over the races the two
+ * ran together.
+ *
+ * The size of the team was a rung until 11.08.2026, put there because the
+ * standing is a plain sum and a rule that rewarded the smaller team was
+ * excluded. That is still true of the first rung, which is the sum itself: a
+ * bigger team wins when it is stronger. It no longer wins for being bigger while
+ * being level, because the owner named the four measures and the head count is
+ * not among them.
+ */
 const BY_TEAM = byLadder<TeamRow>([
   (row) => row.totals.points,
-  (row) => row.members,
-  (row) => row.totals.kilometers,
   (row) => row.totals.races,
+  (row) => row.totals.kilometers,
+  (row) => row.totals.seconds,
 ])
 
 /**

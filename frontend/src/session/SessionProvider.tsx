@@ -60,7 +60,6 @@ export function SessionProvider({
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
-    upcomingEvent: true,
     newsletter: false,
   })
 

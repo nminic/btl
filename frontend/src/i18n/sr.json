@@ -796,11 +796,10 @@
     "actions": "Moje stvari",
     "signOut": "Odjavi se",
     "notifications": "Obaveštenja",
-    "notificationsNote": "Sedam obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru, krupna izmena na portalu i najava događaja. Ispod je sve ostalo.",
+    "notificationsNote": "Šest obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru i krupna izmena na portalu. Ispod je sve ostalo.",
     "notify": {
       "resultApproved": "Kad mi rezultat bude odobren",
       "resultChanged": "Kad mi neko izmeni rezultat",
-      "upcomingEvent": "Podsetnik pred događaj na koji sam se prijavio",
       "newsletter": "Povremene vesti iz lige"
     }
   },
