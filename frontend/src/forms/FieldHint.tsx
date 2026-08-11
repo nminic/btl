@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import './FieldHint.css'
 
@@ -44,6 +44,8 @@ export function FieldHint({
   of: string
 }) {
   const { t } = useI18n()
+  /* The whole of this hint, for deciding whether a press belongs to it. */
+  const holding = useRef<HTMLSpanElement>(null)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   /* Put away by Escape, and only until it is asked for again. */
@@ -68,9 +70,26 @@ export function FieldHint({
        standing in, so a sheet is not closed by the same press that closed a
        tooltip, which was the reason the button used to answer this itself. */
     function onKeyDown(pressed: KeyboardEvent) {
-      if (pressed.key === 'Escape') {
+      if (pressed.key !== 'Escape') {
+        return
+      }
+
+      setDismissed(true)
+
+      /* And the press goes on its way unless it was meant for this.
+       *
+         Stopped every time, an open tooltip swallowed Escape for the whole
+         portal: the calendar would not close, nor the menus in the header, nor
+         the list of towns being typed into, because the pointer happened to be
+         resting on a letter somewhere on the same page. All of those answer
+         Escape themselves, and this is the only listener that runs before
+         them (ADL A7 asks that each of them close on it).
+
+         What it is meant for is the case where the keyboard is standing on the
+         letter itself. Then the sheet the form is in must not be closed by the
+         same press, which is what a hint of its own inside a sheet is for. */
+      if (pressed.target instanceof Node && holding.current?.contains(pressed.target) === true) {
         pressed.stopPropagation()
-        setDismissed(true)
       }
     }
 
@@ -101,7 +120,7 @@ export function FieldHint({
   }
 
   return (
-    <span className={open ? 'hint hint--open' : 'hint'}>
+    <span className={open ? 'hint hint--open' : 'hint'} ref={holding}>
       <button
         type="button"
         className="hint__ask"

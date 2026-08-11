@@ -72,6 +72,11 @@ type Props = {
   openAt?: string
 }
 
+/** Whether what is wrong about a place is the country rather than the town. */
+function aboutCountry(error: FieldError | undefined): boolean {
+  return error?.key === 'form.errors.countryMissing'
+}
+
 /** A field beside the value it is holding, which is what the form draws. */
 type Drawn = { field: FieldDef; value: string | boolean }
 
@@ -286,7 +291,7 @@ const Field = memo(function Field({
            were built differently from the other eight. `role="group"` with
            `aria-labelledby` says the same thing to a screen reader and leaves
            the layout to the stylesheet. */
-        role="group"
+        role="radiogroup"
         aria-labelledby={labelId}
         id={inputId}
         /* And it takes the cursor when the summary of errors leads here. A
@@ -429,8 +434,8 @@ const Field = memo(function Field({
              when the town is one the codebook does not know. Marked on the town
              either way, a screen reader was sent to the box that was already
              filled in (WCAG 2.2 SC 3.3.1). */
-          invalid={error !== undefined && error.key !== 'form.errors.countryMissing'}
-          countryInvalid={error?.key === 'form.errors.countryMissing'}
+          invalid={error !== undefined && !aboutCountry(error)}
+          countryInvalid={aboutCountry(error)}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
           onChange={(town, country) => {
@@ -517,7 +522,19 @@ export function FormRenderer({
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
        empty is empty before it is anything else. */
-    const found = { ...check?.(values), ...validateForm(form, values, today) }
+    /* The rules in the definition win over the handed in check, except where the
+       definition's is the one about the country beside a town: that one is the
+       last resort, and a caller that has something to say about the same field
+       has said something more particular. */
+    const handed = check?.(values) ?? {}
+    const own = validateForm(form, values, today)
+    const found = { ...handed, ...own }
+
+    for (const [name, error] of Object.entries(handed)) {
+      if (aboutCountry(found[name])) {
+        found[name] = error
+      }
+    }
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
@@ -564,7 +581,16 @@ export function FormRenderer({
           <ul>
             {broken.map((field) => (
               <li key={field.name}>
-                <a href={`#field-${field.name}`}>{t(field.labelKey)}</a>
+                {/* To the control that is unanswered, which for a town is not
+                    always the town: the country beside it is the other half of
+                    the same field and has an id of its own (PlaceField.tsx).
+                    Written as one address for the field, the list said „Mesto"
+                    and led to a box that had already been filled in, while the
+                    one marked wrong could not be reached from here at all
+                    (WCAG 2.2 SC 2.4.3). */}
+                <a href={`#field-${field.name}${aboutCountry(errors[field.name]) ? '-country' : ''}`}>
+                  {t(aboutCountry(errors[field.name]) ? 'form.country' : field.labelKey)}
+                </a>
               </li>
             ))}
           </ul>

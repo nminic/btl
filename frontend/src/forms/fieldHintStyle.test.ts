@@ -91,13 +91,39 @@ describe('the box the rule of a field opens in', () => {
 describe('the rows of a form', () => {
   const form = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
 
-  /** The body of a rule, by its selector, with the spaces taken out. */
-  function bodyOf(selector: string): string {
-    const at = form.indexOf(`${selector} {`)
+  /**
+   * What is inside one query and nothing after it.
+   *
+   * Cut to the end of the file instead, the two tests below proved only that a
+   * string appears somewhere below a marker: `max-width: 60rem` lifted out of
+   * its query and left standing on its own would have passed, and that is the
+   * whole of what the query is for. Counted braces, so the block ends where it
+   * really ends.
+   */
+  function inside(query: string): string {
+    const at = form.indexOf(query)
 
-    expect(at, `${selector} is not in FormRenderer.css`).toBeGreaterThan(-1)
+    expect(at, `${query} is not in FormRenderer.css`).toBeGreaterThan(-1)
 
-    return form.slice(at, form.indexOf('}', at)).replace(/\s+/g, ' ')
+    let depth = 0
+
+    for (let end = form.indexOf('{', at); end < form.length; end += 1) {
+      const letter = form[end]
+
+      if (letter === '{') {
+        depth += 1
+      }
+
+      if (letter === '}') {
+        depth -= 1
+
+        if (depth === 0) {
+          return form.slice(at, end + 1)
+        }
+      }
+    }
+
+    throw new Error(`${query} is never closed`)
   }
 
   it('come apart under the wide layout, and the town gives back its second column', () => {
@@ -106,9 +132,7 @@ describe('the rows of a form', () => {
        town still spanning two columns of a grid that has one makes a second
        column the page is not wide enough for: the page then scrolls sideways,
        which P24 forbids. */
-    expect(bodyOf('@media (max-width: 819px)')).toBeDefined()
-
-    const narrow = form.slice(form.indexOf('@media (max-width: 819px)'))
+    const narrow = inside('@media (max-width: 819px)')
 
     expect(narrow).toContain('grid-template-columns: minmax(0, 1fr);')
     expect(narrow).toContain('grid-column: auto;')
@@ -116,13 +140,19 @@ describe('the rows of a form', () => {
 
   it('let a form that has them be wider, and only where they are drawn', () => {
     /* 34rem is the width of one field to a line and is right for that. Four
-       columns of it are 124 pixels each, which a date does not fit into. The
-       wider rule is inside the query that draws rows at all, or a telephone got
-       a form of sixty rem laid out one field to a line. */
-    const wide = form.slice(form.indexOf('@media (min-width: 820px)'))
+       columns of it are 124 pixels each, which a date does not fit into. Inside
+       the query that draws rows at all, or a telephone got a form of sixty rem
+       laid out one field to a line. */
+    const wide = inside('@media (min-width: 820px)')
 
     expect(wide).toContain('max-width: 60rem;')
     /* And a field on no row keeps the width one field should have. */
     expect(wide).toContain('max-inline-size: 34rem;')
+    /* And it is written nowhere else, which is what „only where they are drawn"
+       means: standing on its own, a telephone got a form of sixty rem laid out
+       one field to a line. */
+    const elsewhere = form.replace(wide, '').replace(/\/\*[\s\S]*?\*\//g, '')
+
+    expect(elsewhere.includes('60rem')).toBe(false)
   })
 })

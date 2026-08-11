@@ -132,6 +132,13 @@ export function applyChanges<T extends object>(
   return next as T
 }
 
+/** Whether a field's two answers are the words a yes or no question carries. */
+function yesOrNo(field: FieldDef): boolean {
+  const answers = (field.options ?? []).map((one) => one.value)
+
+  return answers.length === 2 && answers.includes('yes') && answers.includes('no')
+}
+
 /** One value out of a form, in the shape a record keeps it in. Used for a record
  *  that is being created, where there is nothing underneath to take the shape
  *  from, so the field type is what decides. */
@@ -148,7 +155,12 @@ export function recordValue(field: FieldDef, text: string): unknown {
      the one shape of `choice` that is not a word of its own: „Prva sezona" and
      „Starosna" are the two faces of `firstSeason2027` (data/types.ts). Every
      other `choice` writes its own value and falls through. */
-  if (field.type === 'choice' && (text === 'yes' || text === 'no')) {
+  /* Decided by what the field offers rather than by what was typed into it: a
+     `choice` whose two answers are „yes" and „no" is the shape of a question a
+     record keeps as a boolean. Asked of the text alone, any future choice that
+     happened to use those two words would be turned into a boolean without
+     anybody meaning it. */
+  if (field.type === 'choice' && yesOrNo(field)) {
     return text === 'yes'
   }
 

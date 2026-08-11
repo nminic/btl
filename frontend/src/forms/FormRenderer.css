@@ -194,19 +194,21 @@
    820 is where the portal already becomes its wide self (styles/scale.test.ts
    holds the list of widths at which it changes shape), so the form changes with
    it rather than at a width of its own. */
-@media (max-width: 819px) {
-  .form__row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* The town and the country beside it are one answer in two controls, so where
    they stand in a row of three they take the room of two of them. */
 .form__row .field--place {
   grid-column: span 2;
 }
 
+/* Under the wide layout every row comes apart, and the town gives back the
+   second column with it: left spanning two of a grid that has one, it makes a
+   column the page has no room for and the page scrolls sideways. Both halves in
+   one query, because they are one rule and are read as one. */
 @media (max-width: 819px) {
+  .form__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .form__row .field--place {
     grid-column: auto;
   }

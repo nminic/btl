@@ -140,7 +140,11 @@ export function PlaceField({
        country, since it is not a field (admin/EntityEditor.tsx). Where the
        codebook disagrees with what was saved, what was saved stands, and it is a
        question for whoever is looking at the record, not for this field. */
-    if (!touched.current) {
+    /* A record that carries no country at all is a hole rather than an answer,
+       and filling a hole from the codebook is not rewriting anything: left
+       alone, such a record opened with the country held shut on nothing, marked
+       as the thing to fix, and refusing every press. */
+    if (!touched.current && country !== '') {
       return
     }
 
@@ -313,6 +317,9 @@ export function PlaceField({
       <label className="place__country-pick">
         <span>{t('form.country')}</span>
         <select
+          /* An id of its own, because it is a control of its own: the summary of
+             errors leads here when the country is what is unanswered. */
+          id={`${id}-country`}
           className={known === undefined ? 'field__control' : 'field__control field__control--held'}
           value={country}
           /* Locked on a town the codebook knows, for the reason written where

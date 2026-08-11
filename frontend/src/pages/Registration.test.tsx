@@ -319,6 +319,16 @@ describe('an empty form', () => {
     /* And the town is no longer the one being blamed for it. */
     expect(screen.getByLabelText(/^Mesto$/)).toHaveAttribute('aria-invalid', 'false')
     expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+
+    /* And the list of things to fix leads to the country, not to the town: it
+       said „Mesto" and led to a box that was already filled in, while the one
+       marked wrong could not be reached from the list at all. */
+    const summary = within(screen.getByRole('alert'))
+    const toFix = summary.getByRole('link', { name: 'Država' })
+    const at = must(toFix.getAttribute('href'), 'the address the summary points at')
+
+    expect(document.getElementById(at.replace('#', ''))).toBe(country)
+    expect(summary.queryByRole('link', { name: 'Mesto' })).toBeNull()
   })
 })
 

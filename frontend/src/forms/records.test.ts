@@ -193,6 +193,10 @@ describe('a value out of a form for a record that is being created', () => {
     expect(recordValue(field('beginner'), 'no')).toBe(false)
     /* And a choice whose answers are words of their own stays words. */
     expect(recordValue(field('sex'), 'M')).toBe('M')
+    /* Decided by what the field offers, so a definition that offers nothing is
+       not a yes or no question either: „yes" typed into it is the word „yes". */
+    expect(recordValue({ name: 'prazan', type: 'choice', labelKey: 'proba.prazan' }, 'yes'))
+      .toBe('yes')
   })
 
   it('reads the same two words back onto a record that already holds one', () => {

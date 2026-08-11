@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -253,6 +253,105 @@ describe('the rule of a field, once it is open', () => {
   })
 })
 
+describe('a rule the screen hands in about a town', () => {
+  it('is what the field says, rather than the one about the country', () => {
+    /* The rule about the country is the last resort: it is written where a town
+       is asked for and nothing else is wrong with it. A screen that has
+       something more particular to say about the same field has said it, and
+       that is what belongs on the screen. */
+    const user = setupUser()
+
+    render(
+      <ClockProvider simulatedDay={null}>
+        <I18nProvider locale="sr">
+          <FormRenderer
+            form={{
+              id: 'proba',
+              titleKey: 'proba.naslov',
+              submitKey: 'proba.posalji',
+              fields: [{ name: 'city', type: 'place', labelKey: 'proba.mesto', required: true }],
+            }}
+            onSubmit={() => {}}
+            check={() => ({ city: { key: 'proba.vecPostoji' } })}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    return user
+      .type(screen.getByRole('combobox', { name: /proba.mesto/ }), 'Zaseok pod brdom')
+      .then(() => user.click(screen.getByRole('button', { name: 'proba.posalji' })))
+      .then(() => {
+        expect(screen.getByText('proba.vecPostoji')).toBeInTheDocument()
+        expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
+      })
+  })
+})
+
+describe('Escape while a rule is open', () => {
+  it('lets the press through to whatever else was waiting for it', async () => {
+    /* Stopped every time, an open tooltip swallowed Escape for the whole
+       portal: the list of towns, the calendar, and the menus in the header all
+       answer Escape themselves, and this listener runs before every one of
+       them. The pointer resting on a letter is not a reason for any of them to
+       stop working. */
+    const user = setupUser()
+    renderForm()
+
+    const letter = within(
+      must(
+        screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.field'),
+        'the field of the address',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+
+    fireEvent.mouseOver(letter)
+
+    expect(letter).toHaveAttribute('aria-expanded', 'true')
+
+    /* A list of towns, open, with the keyboard in it. */
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Beo')
+    await screen.findByRole('listbox')
+
+    await user.keyboard('{Escape}')
+
+    /* Both answer the same press: the rule is put away and the list closes. */
+    expect(letter).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).toBeNull()
+    })
+  })
+
+  it('goes no further when the keyboard is standing on the letter itself', () => {
+    /* The one case the stopping is for: a form inside a sheet must not lose the
+       sheet to the press that closed a tooltip. */
+    let outside = 0
+
+    render(
+      <ClockProvider simulatedDay={null}>
+        <I18nProvider locale="sr">
+          <div onKeyDown={() => (outside += 1)}>
+            <FormRenderer form={registracija as FormDef} onSubmit={() => {}} />
+          </div>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    const letter = within(
+      must(
+        screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.field'),
+        'the field of the address',
+      ),
+    ).getByRole('button', { name: 'Objašnjenje' })
+
+    fireEvent.focus(letter)
+    fireEvent.keyDown(letter, { key: 'Escape' })
+
+    expect(letter).toHaveAttribute('aria-expanded', 'false')
+    expect(outside).toBe(0)
+  })
+})
+
 describe('what nothing else was holding', () => {
   it('lets the summary of errors put the cursor inside the group', () => {
     /* A group is not focusable of itself, so following the link only scrolled:
@@ -260,7 +359,7 @@ describe('what nothing else was holding', () => {
        fix promises. */
     renderForm()
 
-    const group = screen.getByRole('group', { name: 'Pol' })
+    const group = screen.getByRole('radiogroup', { name: 'Pol' })
 
     expect(group).toHaveAttribute('tabindex', '-1')
 
@@ -537,11 +636,19 @@ describe('an answer chosen from buttons', () => {
     expect(female).not.toBeChecked()
   })
 
-  it('is a group with a name of its own, and its rule is on the group', () => {
+  it('is a group with a name of its own, and its rule stands beside that name', () => {
+    /* Not a `<fieldset>`: a `<legend>` is laid out by rules no grid can touch,
+       so the letter that explains the group fell to a line of its own and three
+       of the eleven fields were built unlike the other eight. What holds the
+       change is where the letter sits, since `getByRole('radiogroup')` alone
+       would pass over a fieldset too. */
     renderForm()
 
-    const group = screen.getByRole('group', { name: 'Pol' })
+    const group = screen.getByRole('radiogroup', { name: 'Pol' })
+    const head = must(group.querySelector<HTMLElement>('.field__head'), 'the head of the group')
 
+    expect(within(head).getByRole('button', { name: 'Objašnjenje' })).toBeInTheDocument()
+    expect(within(head).getByText('Pol')).toBeInTheDocument()
     expect(within(group).getAllByRole('radio')).toHaveLength(2)
     expect(screen.getByRole('radio', { name: 'Muški' })).toHaveAttribute(
       'aria-describedby',
@@ -589,7 +696,7 @@ describe('a form laid out in rows', () => {
        category and the shirt. */
     expect(document.querySelectorAll('.form__row')).toHaveLength(4)
     expect(within(first).getByLabelText(/^Ime$/)).toBeInTheDocument()
-    expect(within(first).getByRole('group', { name: 'Pol' })).toBeInTheDocument()
+    expect(within(first).getByRole('radiogroup', { name: 'Pol' })).toBeInTheDocument()
     /* And what a row of four is, said to the stylesheet rather than written into
        it: the renderer counts the columns. */
     expect(first).toHaveStyle({ '--columns': '4' })
