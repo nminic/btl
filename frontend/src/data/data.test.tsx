@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { setupUser } from '../test/user'
-import { first } from '../test/at'
+import { first, must } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
@@ -549,5 +549,35 @@ describe('commentFrom', () => {
       rating: { organisation: 5, value: 4, ambience: 3 },
       body: 'Reci koje je clan napisao.',
     })
+  })
+})
+
+describe('the credit the codebook of towns asks for', () => {
+  it('names GeoNames, links the source and links the licence, in the terms and nowhere else', async () => {
+    /* CC BY 4.0 is a condition, not a courtesy: the source has to be named
+       wherever the material is shared. The owner asked on 11.08.2026 for it to
+       be as quiet as it can be while still being that, so it left the footer for
+       the last paragraph of the last section of the terms of use, and the terms
+       are linked from the footer of every screen.
+
+       Held here because it is one sentence in a file of content and nothing else
+       would notice it going: all three parts have to survive, and it has to
+       survive in exactly one place. */
+    const pages = await loadResource<Record<string, { sections: { body: string }[] }>>('pages')
+    const carrying = Object.entries(pages).filter(([, page]) =>
+      page.sections.some((section) => section.body.includes('GeoNames')),
+    )
+
+    expect(carrying.map(([name]) => name)).toEqual(['uslovi-koriscenja'])
+
+    const terms = must(pages['uslovi-koriscenja'], 'the terms of use').sections
+    const credit = must(
+      terms[terms.length - 1],
+      'the last section of the terms',
+    ).body
+
+    expect(credit).toContain('GeoNames')
+    expect(credit).toContain('https://www.geonames.org/')
+    expect(credit).toContain('https://creativecommons.org/licenses/by/4.0/')
   })
 })

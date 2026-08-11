@@ -1031,7 +1031,7 @@
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
       "birthYear": "Nikad se ne prikazuje javno. Iz nje se izvodi kategorija, koja jedina ide na profil.",
-      "firstSeason": "Prva sezona u kojoj je član nastupao.",
+      "firstSeason": "Sezona u kojoj je član prvi put nastupao.",
       "firstSeason2027": "Član sezonu 2027. provodi u početničkoj kategoriji, a ne u svojoj starosnoj.",
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",

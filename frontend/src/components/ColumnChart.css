@@ -118,7 +118,17 @@
      colour, so it neither shifts the face nor shows as a smudge. */
   outline: 2px solid transparent;
   outline-offset: 2px;
-  transition: outline-color var(--fast);
+  /* All three of the face's changes stand here and not in a rule of their own.
+     Written apart, the fade lost to this one on specificity alone, whatever the
+     order, and the faces jumped while everything around them faded.
+   *
+     `inset-block-end` is here for the same reason the height is on the bar: the
+     face rides on top of its bar, so it has to travel with it rather than
+     arrive first (owner, 11.08.2026). */
+  transition:
+    outline-color var(--fast),
+    opacity var(--fade),
+    inset-block-end var(--turn);
 }
 
 .colchart__link:hover .portrait,
@@ -427,12 +437,20 @@
  * what it draws at the bottom of the fade (ColumnChart.tsx, TopByCategory.tsx).
  * The bars keep their own timing all the way through, so nothing waits for the
  * words. */
+/* Nought by default, so a chart that does not turn does not animate: the boards
+   on Top liste change what they draw when the season is picked, and their bars
+   are keyed by place like everybody's, so a transition set for all of them would
+   set six charts sliding at once for a change nobody asked to see move. The
+   turning chart is the one that says otherwise. */
 .colchart {
-  --turn: 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  --turn: 0s;
   --fade: 170ms ease;
 }
 
-.colchart .portrait,
+.colchart--turns {
+  --turn: 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .colchart__count,
 .colchart__caption {
   transition: opacity var(--fade);

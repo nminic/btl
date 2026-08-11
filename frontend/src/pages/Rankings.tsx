@@ -164,7 +164,7 @@ function Standing({
                 aria-pressed={category === code}
                 onClick={() => onChange({ kategorija: code })}
               >
-                {code}
+                {categoryLabel(code, t)}
               </button>
             ))}
           </div>

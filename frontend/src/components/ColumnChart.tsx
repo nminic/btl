@@ -242,6 +242,12 @@ export function ColumnChart({
       className={[
         'colchart',
         control === undefined ? '' : 'colchart--control',
+        /* Whether this chart turns at all, which is a different question from
+           whether it is turning right now: the bars are told to slide by the
+           first and the words are taken out by the second. Asked of the prop
+           being there rather than of its value, because only the chart that
+           turns passes it. */
+        swapping === undefined ? '' : 'colchart--turns',
         swapping === true ? 'colchart--swapping' : '',
       ]
         .filter((one) => one !== '')

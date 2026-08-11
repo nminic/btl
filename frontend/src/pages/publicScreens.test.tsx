@@ -270,6 +270,33 @@ describe('Rankings', () => {
     )
   })
 
+  it('names the beginners by their word, on the buttons and in the table alike', async () => {
+    /* The category the league keeps as `M R` is read as „Početnici" wherever a
+       visitor meets it (owner, 11.08.2026: „Tako neka se zovu od sada svuda").
+       The code is what the filter and the address are written with, and it never
+       reaches the screen.
+
+       Both places are held here, because they were not the same for a while: the
+       table was translated and the row of buttons above it was not, so one screen
+       called one category two things. */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2020')
+
+    const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
+
+    expect(categories.getByRole('button', { name: 'Početnici' })).toBeVisible()
+    expect(categories.queryByRole('button', { name: 'M R' })).toBeNull()
+
+    /* And pressing it filters, so the word on the button and the code behind it
+       are the same category and not two. */
+    await user.click(categories.getByRole('button', { name: 'Početnici' }))
+
+    expect(categories.getByRole('button', { name: 'Početnici' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
   it('says which category is being read, and says it in the buttons themselves', async () => {
     /* Chosen by pressing one rather than out of a list that opens (owner,
        11.08.2026). Which one is on is said by `aria-pressed` and not by colour

@@ -15,7 +15,9 @@ export type AgeBand = (typeof AGE_BANDS)[number]
  * Marks a member who has not yet left the beginners' category.
  *
  * `R` for rookie, which is what the category is called in English: `M R` and
- * `F R` (owner, 11.08.2026). In Serbian the word carries the gender on its own,
+ * `F R` (owner, 11.08.2026). The letter in front is the one the language uses,
+ * so the code itself reads `M R` and `Ž R` while there is only Serbian; the
+ * English `F` arrives with the English dictionary, the same way `Ž25-39` will. In Serbian the word carries the gender on its own,
  * so there the two are `Početnici` and `Početnice` with no letter in front of
  * them, and the code here is what the dictionary looks them up by
  * (`categoryLabel`). It was `PS`, for „Prva sezona", a name the owner dropped
