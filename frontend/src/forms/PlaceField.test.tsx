@@ -18,7 +18,7 @@ import { PlaceField } from './PlaceField'
 const CODEBOOK: Place[] = [
   ['Beograd', 'RS', 'Belgrade'],
   ['Beočin', 'RS'],
-  ['Bern', 'CH'],
+  ['Bern', 'CH', 'Berne'],
   ['Boston', 'US'],
   /* A town in a code the list of countries has no name for. */
   ['Bardejov', 'ZZ'],
@@ -394,6 +394,26 @@ describe('the town on a form', () => {
     const { onCountry, box } = renderField()
 
     await user.type(box, 'Bern')
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(onCountry).toHaveBeenLastCalledWith('CH')
+  })
+
+  it('recognises a town by its English name as well', async () => {
+    /* The codebook carries both spellings and the portal searches both, because
+       the keyboard does not change with the language of the page (data/places.ts).
+       Recognition has to read the same list, or „Belgrade" typed out in full on
+       the Serbian portal is a town the field has never heard of. Bern is Swiss,
+       and the field opens on Serbia, so the country has somewhere to move to. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Berne')
 
     const country = screen.getByRole('combobox', { name: 'Država' })
 

@@ -81,10 +81,12 @@ export function PlaceField({
    * a control that lets it be contradicted is a control that files a race in the
    * wrong country. Only a town entered by hand leaves the choice open.
    *
-   * Recognised means the codebook holds this name **and holds it once**. Seven
-   * hundred and thirty eight names in it stand in more than one country: London
-   * is British and American, Lagos is Nigerian and Portuguese. For those the
-   * name recognises nothing by itself, so the choice stays where it was.
+   * Recognised means the codebook holds this name **and holds it once**. Eight
+   * hundred and fifty four names in it stand in more than one country, counted
+   * the way this counts them, which is folded (`plainly`) rather than letter for
+   * letter: London is British and American, Lagos is Nigerian and Portuguese.
+   * For those the name recognises nothing by itself, so the choice stays where
+   * it was.
    */
   const spelt = plainly(value.trim())
   /* The codebook folded once, into a name and the countries that answer to it.

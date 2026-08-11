@@ -114,6 +114,28 @@ describe('the races of an event', () => {
     expect(screen.getByLabelText(/^Dužina/)).toHaveValue(17)
   })
 
+  it('takes a race saved again with nothing changed', async () => {
+    /* The other side of the rule above, and the one nothing was holding: a race
+       is refused when another one of its event shares its day and its length,
+       and it must not be refused for sharing them with itself. Every other test
+       that saves an existing race changes the day or the length first, so the
+       moment a race is left exactly as it was went untried. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const rows = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('row')
+      .slice(1)
+    const first = within(at(rows, 0))
+
+    await user.click(first.getByRole('button', { name: /^Otvori:/ }))
+    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+    expect(screen.queryByText(/već ima trku te dužine tog dana/)).toBeNull()
+  })
+
   it('says that opening a race puts the event form away', async () => {
     /* The form is unmounted while a race is open, so what was typed into it and
        not saved is gone. Said before the button rather than discovered after

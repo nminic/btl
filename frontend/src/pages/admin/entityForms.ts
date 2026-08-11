@@ -168,8 +168,8 @@ export const EVENTS: EntityDef = {
    * because nobody looks for an event they have just typed in. Copying an event
    * is what made it impossible to miss (owner, 03.08.2026).
    *
-   * Shown on the form, because an administrator who is about to send somebody a
-   * link should be able to read it before they save.
+   * Off the form since 11.08.2026 and still in the confirmation of the save,
+   * which is where an administrator about to send somebody a link reads it.
    */
   derived: (values, was) => {
     const address = addressOfEvent(values, was)

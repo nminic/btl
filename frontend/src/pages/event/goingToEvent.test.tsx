@@ -537,7 +537,7 @@ describe('a name the list cannot lead to', () => {
     )
   })
 
-  it('is read by a moderator, who has nothing to say about going', async () => {
+  it('is read by the superadmin, who has nothing to say about going', async () => {
     /* The same question decides who reads this as decides who reads the comments
        (event/readsComments.ts), and a moderator has no member number of their
        own: written as „has a number", the rule hid the list from the very people
@@ -549,6 +549,11 @@ describe('a name the list cannot lead to', () => {
 
     expect(await screen.findByRole('list', { name: 'Ko ide' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
+    /* And no envelope either: writing to a member about sharing a car is a
+       thing members do with each other, and the moderation has its own way of
+       writing to somebody (PDL P22). Offered, it would be a button that opens
+       nothing, since the note itself is written as whoever is sending it. */
+    expect(screen.queryByRole('button', { name: /^Piši članu/ })).toBeNull()
   })
 
   it('agrees with the list about a member the list cannot name', async () => {

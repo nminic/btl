@@ -6,7 +6,7 @@ import { countryName } from './countryName'
  *
  * Two screens asked the dictionary for these, and the dictionary held five: the
  * countries the league is run in. The select they are chosen from is filled from
- * countries.json, which holds two hundred and thirty six, so anything picked
+ * countries.json, which holds two hundred and forty six, so anything picked
  * outside those five reached a moderator as the words `country.SI` (owner's
  * screens: the queue of new teams and the queue of payments). The five are gone
  * and this is the one answer.
@@ -20,7 +20,7 @@ describe('what a country code is called', () => {
   it('names one from outside it, which is where the five ran out', () => {
     expect(countryName('SI')).toBe('Slovenija')
     /* Off the rest of the world rather than the top of the list, since that is
-       two hundred and twenty five of the two hundred and thirty six. */
+       two hundred and thirty five of the two hundred and forty six. */
     expect(countryName('SE')).toBe('Švedska')
   })
 
