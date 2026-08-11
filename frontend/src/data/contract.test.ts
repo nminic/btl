@@ -9,7 +9,7 @@ import { RESOURCE_NAMES } from './client'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the twelve names the backend has to answer for', () => {
+  it('is the thirteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -24,8 +24,13 @@ describe('the list of resources', () => {
        Eleven until 10.08.2026, when the codebook of the world's towns arrived:
        the event form offers a town from the second letter typed, and the list it
        offers from is nine hundred kilobytes that no screen but that one asks
-       for (owner, 10.08.2026). */
+       for (owner, 10.08.2026).
+
+       Thirteen since 11.08.2026, when a member could say they are going to a
+       race: who is going is written by members and read by members, and an
+       event is written by administration, so it is not a list on the event. */
     expect([...RESOURCE_NAMES]).toEqual([
+      'attendance',
       'ducats',
       'comments',
       'competitors',

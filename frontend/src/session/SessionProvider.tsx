@@ -55,6 +55,7 @@ export function SessionProvider({
   const [decisions, setDecisions] = useState<Decisions>({})
   const [deletions, setDeletions] = useState<Deletions>({})
   const [proposals, setProposals] = useState<PendingItem[]>([])
+  const [going, setGoingAll] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState<EventComment[]>([])
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
@@ -118,6 +119,10 @@ export function SessionProvider({
 
   const markRead = useCallback((id: string) => {
     setMessages((current) => current.map((one) => (one.id === id ? { ...one, read: true } : one)))
+  }, [])
+
+  const setGoing = useCallback((eventId: string, going: boolean) => {
+    setGoingAll((current) => ({ ...current, [eventId]: going }))
   }, [])
 
   const notify = useCallback((message: Omit<Message, 'id' | 'read'>) => {
@@ -193,6 +198,8 @@ export function SessionProvider({
       resubmit,
       decide,
       inbox,
+      going,
+      setGoing,
       markRead,
       notify,
       notifications,
@@ -215,6 +222,8 @@ export function SessionProvider({
     }),
     [
       memberNumber,
+      going,
+      setGoing,
       submissions,
       submit,
       resubmit,

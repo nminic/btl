@@ -230,6 +230,22 @@ describe('copying an event', () => {
     expect(under.getAllByRole('row').slice(1)).toHaveLength(races)
   })
 
+  it('never carries being featured across to the copy', async () => {
+    /* Being singled out is a choice about this running of the race and not
+       something the race carries (owner, 11.08.2026): next season's calendar is
+       made by copying, and a copy that arrived already featured would put five
+       events on the front page of a season nobody has planned yet. Copied off a
+       featured event, which is the only way to tell the rule from the default. */
+    const user = setupUser()
+
+    renderAt('/sr/kalendar/beogradski-maraton-2027', 'superadmin')
+    await screen.findByRole('heading', { level: 1 })
+    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+    await screen.findByLabelText(/Datum/)
+
+    expect(screen.getByLabelText(/^Istaknuto/)).toHaveValue('no')
+  })
+
   it('gives a second copy an identity of its own', async () => {
     /* The suffix counted the races and not the copies, and the number of races
        does not change when a copy is made, so pressing the button twice wrote

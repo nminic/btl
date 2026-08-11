@@ -142,10 +142,17 @@ export const EVENTS: EntityDef = {
      and the walk of editions stopped on the second of its two guards rather
      than the first (data/editions.ts). */
   blank: { copiedFrom: '' },
-  /* A new event opens on Trka (owner, 10.08.2026). Nearly every one of them is
-     a race, and a required field whose answer is the same ninety nine times in
-     a hundred is a press taken from whoever is entering a whole calendar. */
-  start: { kind: 'race' },
+  /* What a new event opens holding, and every one of the three is the answer
+     nearly every event gives (owner, 10. and 11.08.2026): it is a race, it is
+     not featured, and it is run in Serbia. A required field whose answer is the
+     same ninety nine times in a hundred is a press taken from whoever is
+     entering a whole calendar.
+
+     The country is here rather than on a field of its own, because it is the
+     second half of the town and has no field (forms/types.ts): the place field
+     fills it from the codebook when the town is one the codebook has, and this
+     is where it starts for a town it does not. */
+  start: { kind: 'race', featured: 'no', country: 'RS' },
   /**
    * The address the event answers at, from its name and its year.
    *
@@ -161,8 +168,8 @@ export const EVENTS: EntityDef = {
    * because nobody looks for an event they have just typed in. Copying an event
    * is what made it impossible to miss (owner, 03.08.2026).
    *
-   * Shown on the form, because an administrator who is about to send somebody a
-   * link should be able to read it before they save.
+   * Off the form since 11.08.2026 and still in the confirmation of the save,
+   * which is where an administrator about to send somebody a link reads it.
    */
   derived: (values, was) => {
     const address = addressOfEvent(values, was)
@@ -174,6 +181,10 @@ export const EVENTS: EntityDef = {
         hintKey: 'admin.hint.eventSlug',
         value: address,
         shownKey: address,
+        /* Not on the form any more (owner, 11.08.2026). It is made from the
+           name and the year, so there was nothing to do about it there; it is
+           still written on every save, which is what it is for. */
+        hidden: true,
       },
     ]
   },
@@ -236,6 +247,34 @@ export function eventClash(
   const address = addressOfEvent(values, was)
 
   return taken.includes(address) ? { date: { key: 'admin.eventTaken' } } : {}
+}
+
+/**
+ * Two races of one event on one morning and of one length.
+ *
+ * A race has no name (PDL P6), so it is known by its event, its day and its
+ * length, and two that share all three are two records nothing can tell apart:
+ * the row of one and the row of the other carry the same words, and one of the
+ * two buttons deletes results. The same pair stands twice in the list a member
+ * reports a result from, and whichever is picked is picked blindly.
+ *
+ * Refused where it is made rather than drawn around afterwards. A duplicate like
+ * this is a mistake in the entering, not a shape the calendar has: an event that
+ * really runs two races of one length on one morning gives them different
+ * lengths, because they are different races.
+ *
+ * Said on the length, which is the field somebody would change to fix it.
+ */
+export function raceClash(
+  values: FormValues,
+  others: { date: string; distanceKm: number }[],
+): Record<string, FieldError> {
+  const day = isoDate(String(values.date))
+  const length = Number(values.distanceKm)
+
+  const same = others.some((one) => one.date === day && one.distanceKm === length)
+
+  return same ? { distanceKm: { key: 'admin.raceTaken' } } : {}
 }
 
 /**

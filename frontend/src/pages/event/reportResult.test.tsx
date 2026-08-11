@@ -6,11 +6,17 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import type { Race } from '../../data/types'
+import { loadResource } from '../../data/client'
+import type { BtlEvent, Race } from '../../data/types'
+import { first, must } from '../../test/at'
+import { formatDistance, formatNumber } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { raceFor } from './raceFor'
 import { ReportResult } from './ReportResult'
+
+/** Somebody signed in, since the form is only for members. */
+const ME = '000007'
 
 /* A result reported from the event it was run at (owner, 03.08.2026).
  *
@@ -46,6 +52,20 @@ describe('the way to report a result', () => {
     for (const known of [/Naziv događaja/, /Datum/, /Dužina/, /Uspon/, /Spust/]) {
       expect(screen.queryByLabelText(known)).toBeNull()
     }
+  })
+
+  it('writes every race in it as a length, in this language', async () => {
+    /* A race is offered by its length and by nothing else (data/types.ts): the
+       event is the page this form was opened from, so the length is the whole of
+       what tells two of them apart. Written raw it read „5.0 km" with a full
+       stop, which is not how a number is written in Serbian. */
+    renderAt(REPORT, 'competitor', ME)
+
+    const race = await screen.findByLabelText(/^Trka/)
+    const said = within(race).getAllByRole('option').map((one) => one.textContent ?? '')
+
+    expect(said.length).toBeGreaterThan(0)
+    expect(said.every((one) => /^\d+,\d km$/.test(one))).toBe(true)
   })
 
   it('offers only the races of the event it was opened from', async () => {
@@ -206,7 +226,6 @@ describe('which race a reported result is scored against', () => {
     id,
     eventId: 'e1',
     date: '2027-04-03',
-    name: id,
     distanceKm: 10,
     ascentM: 0,
     descentM: 0,
@@ -223,5 +242,129 @@ describe('which race a reported result is scored against', () => {
   it('is the one the form opened on when the choice names no race it holds', () => {
     expect(raceFor([opened, other], 'nepostoji', opened)).toBe(opened)
     expect(raceFor([], 'a', opened)).toBe(opened)
+  })
+})
+
+describe('an event that runs over two mornings', () => {
+  /* A race carries its own day, and the form offers what has been run rather
+     than what belongs to an event that has begun (owner, 11.08.2026): on the
+     Saturday of a weekend the two Saturday races, on the Sunday all three.
+
+     Read off the record rather than named here, so the day this fixture changes
+     the test says what the screen says. */
+  const WEEKEND = 'balkansko-prvenstvo-veterana-2021'
+
+  async function racesOffered(): Promise<string[]> {
+    const chooser = await screen.findByLabelText(/^Trka/)
+
+    return [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
+  }
+
+  it('offers only the races of the first morning, on the first morning', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const event = must(
+      events.find((one) => one.slug === WEEKEND),
+      'the event of that weekend',
+    )
+    const mine = races.filter((one) => one.eventId === event.id)
+    const days = [...new Set(mine.map((one) => one.date))].sort()
+    const first = must(days[0], 'its first morning')
+
+    expect(days.length).toBeGreaterThan(1)
+
+    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, first)
+
+    expect(await racesOffered()).toHaveLength(mine.filter((one) => one.date === first).length)
+  })
+
+  it('offers all of them once the last morning has come', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const event = must(
+      events.find((one) => one.slug === WEEKEND),
+      'the event of that weekend',
+    )
+    const mine = races.filter((one) => one.eventId === event.id)
+    const last = must([...new Set(mine.map((one) => one.date))].sort().at(-1), 'its last morning')
+
+    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, last)
+
+    expect(await racesOffered()).toHaveLength(mine.length)
+  })
+
+  it('offers the first morning on the day of the event itself', async () => {
+    /* The day of an event is the day of its first race (PDL P10), so on that
+       day there is something to report and the form is there. What it holds is
+       only that morning's races, which is what the test above this one says.
+
+       It used to be called „says there is nothing to report before the first
+       morning" and to assert that the form is drawn, which is the opposite of
+       what its name promised: the day before the first morning is a day the
+       event does not have. Where an event really has no race to report on, the
+       screen says so and offers no list at all, and that is held higher up in
+       this file. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const event = must(
+      events.find((one) => one.slug === WEEKEND),
+      'the event of that weekend',
+    )
+    const races = await loadResource<Race[]>('races')
+    const firstMorning = races.filter(
+      (one) => one.eventId === event.id && one.date === event.date,
+    )
+
+    expect(firstMorning.length).toBeGreaterThan(0)
+
+    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, event.date)
+
+    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+    expect(await racesOffered()).toHaveLength(firstMorning.length)
+  })
+})
+
+describe('a race, which has no name of its own', () => {
+  /* There is no such field any more (owner, 11.08.2026): what a runner is shown
+     is the event and the measurements of the race they ran, „Beogradski maraton,
+     21,1 km". So every screen that writes a race writes its length, and a race
+     is told from the one beside it by that. */
+  async function anyRace() {
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const race = first(races)
+
+    return {
+      race,
+      event: must(
+        events.find((one) => one.id === race.eventId),
+        'the event it belongs to',
+      ),
+    }
+  }
+
+  it('is listed under the event by its measurements', async () => {
+    /* And by no name, because there is none: the table of races under an event
+       carries the day, the category and the numbers. */
+    const { race, event } = await anyRace()
+
+    renderAt(`/sr/kalendar/${event.slug}`)
+
+    const table = await screen.findByRole('table')
+
+    expect(within(table).getAllByText(formatNumber(race.distanceKm, 'sr-Latn', 2)).length)
+      .toBeGreaterThan(0)
+  })
+
+  it('is offered by its length on the form that reports a result', async () => {
+    const { race, event } = await anyRace()
+
+    renderAt(`/sr/kalendar/${event.slug}/prijava`, 'competitor', ME)
+
+    const chooser = await screen.findByLabelText(/^Trka/)
+    const said = [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
+
+    /* By the length alone, which is the whole of what tells two races of one
+       event apart. */
+    expect(said).toContain(formatDistance(race.distanceKm, 'sr-Latn'))
   })
 })

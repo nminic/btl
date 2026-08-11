@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CountryOptions } from './CountryOptions'
 import { countryName } from '../data/countryName'
-import { placeName, placesLike, usePlaces, TYPED_BEFORE_GUESSING, type Place } from '../data/places'
+import {
+  placeName,
+  placesLike,
+  plainly,
+  usePlaces,
+  TYPED_BEFORE_GUESSING,
+  type Place,
+} from '../data/places'
 import { useI18n } from '../i18n/useI18n'
 import './PlaceField.css'
 
@@ -32,16 +40,17 @@ export function PlaceField({
   value,
   invalid,
   describedBy,
+  country,
   onChange,
   openAt = false,
 }: {
   id: string
   name: string
   value: string
+  /** The country beside it, which this field writes as well as reads. */
+  country: string
   invalid: boolean
   describedBy: string | undefined
-  /** The town, and the country it came with. An empty country means the town
-   *  was typed rather than chosen. */
   onChange: (place: string, country: string) => void
   openAt?: boolean
 }) {
@@ -51,10 +60,91 @@ export function PlaceField({
   const places = usePlaces(value.trim().length >= TYPED_BEFORE_GUESSING)
   const [open, setOpen] = useState(false)
   const [at, setAt] = useState(-1)
+  /* The town picked off the list during this visit, if the box still holds it.
+     A record opened for editing starts with nothing here, and is recognised by
+     its name alone or not at all. */
+  const [picked, setPicked] = useState<Place | null>(null)
+  /* Whether the town has been typed into or picked at during this visit. A ref
+     and not state: nothing on the screen changes with it, and it must not cause
+     a redraw of its own. */
+  const touched = useRef(false)
   const box = useRef<HTMLDivElement>(null)
 
   const offered = open ? placesLike(places, value) : []
   const listId = `${id}-places`
+  const heldId = `${id}-held`
+  /**
+   * Which country this town is in, where the codebook answers that on its own.
+   *
+   * A recognised town cannot have its country changed (owner, 11.08.2026): the
+   * country is then not an answer somebody gives but a fact about the town, and
+   * a control that lets it be contradicted is a control that files a race in the
+   * wrong country. Only a town entered by hand leaves the choice open.
+   *
+   * Recognised means the codebook holds this name **and holds it once**. Eight
+   * hundred and fifty four names in it stand in more than one country, counted
+   * the way this counts them, which is folded (`plainly`) rather than letter for
+   * letter: London is British and American, Lagos is Nigerian and Portuguese.
+   * For those the name recognises nothing by itself, so the choice stays where
+   * it was.
+   */
+  const spelt = plainly(value.trim())
+  /* The codebook folded once, into a name and the countries that answer to it.
+   *
+     Recognising a town by walking the whole codebook and folding two names for
+     each was 24 milliseconds a pass over forty seven thousand towns, and it ran
+     on every keystroke: 170 milliseconds to type „beograd". Memoising the walk
+     kept it off the redraws but not off the keys, since what is typed is what
+     changes. Folded once per codebook, recognising is a lookup.
+   *
+     A map of names to countries and not to towns, because that is the whole
+     question here: whether the codebook can mean only one place by this name. */
+  const byName = useMemo(() => {
+    const found = new Map<string, Set<string>>()
+
+    for (const one of places) {
+      for (const written of one[2] === undefined ? [one[0]] : [one[0], one[2]]) {
+        const folded = plainly(written)
+        const already = found.get(folded)
+
+        if (already === undefined) {
+          found.set(folded, new Set([one[1]]))
+        } else {
+          already.add(one[1])
+        }
+      }
+    }
+
+    return found
+  }, [places])
+  const only = [...(byName.get(spelt) ?? [])]
+  /* Picked off the list, or spelt out so that the codebook can only mean one
+     place. Picking counts even for a name two countries share, because then the
+     row that was pressed said which of them it was; typing „London" says
+     nothing, and the choice stays open. */
+  const known = picked?.[1] ?? (only.length === 1 ? only[0] : undefined)
+
+  useEffect(() => {
+    /* And a town typed out in full, letter by letter, ends in the same place as
+       one picked off the list. Otherwise „Beograd" typed by somebody who never
+       looked at the suggestions kept whatever country the field opened on, and
+       the box beside it was locked on it.
+     *
+       Only once the town has been touched during this visit. A record opened for
+       editing is left exactly as it was written: a form that quietly rewrites a
+       field nobody has been near is a form that saves something other than what
+       it was opened on, and the confirmation of the save does not even list the
+       country, since it is not a field (admin/EntityEditor.tsx). Where the
+       codebook disagrees with what was saved, what was saved stands, and it is a
+       question for whoever is looking at the record, not for this field. */
+    if (!touched.current) {
+      return
+    }
+
+    if (known !== undefined && known !== country) {
+      onChange(value, known)
+    }
+  }, [known, country, value, onChange])
 
   useEffect(() => {
     if (!open) {
@@ -75,7 +165,9 @@ export function PlaceField({
   }, [open])
 
   function choose(place: Place) {
+    touched.current = true
     onChange(placeName(place, locale), place[1])
+    setPicked(place)
     setOpen(false)
     setAt(-1)
   }
@@ -136,6 +228,7 @@ export function PlaceField({
 
   return (
     <div className="place" ref={box}>
+      <div className="place__town">
       <input
         id={id}
         name={name}
@@ -152,9 +245,17 @@ export function PlaceField({
         autoFocus={openAt}
         value={value}
         onChange={(event) => {
-          /* The country goes with the town it belonged to. Left standing, a
-             race in Beograd edited into Zagreb would be filed in Serbia. */
-          onChange(event.target.value, '')
+          /* The country stays as it is, and is now on the screen to be changed
+             (owner, 11.08.2026): a town the codebook does not have is entered by
+             hand and its country chosen beside it. It used to be cleared here,
+             because the country was written and never shown and the danger was a
+             race in Beograd edited into Zagreb and filed in Serbia with nothing
+             saying so. There is something saying so now. */
+          touched.current = true
+          onChange(event.target.value, country)
+          /* Typed over, so what was picked is no longer what stands here: the
+             country goes back to being a question. */
+          setPicked(null)
           setOpen(true)
           /* And nothing is highlighted any more: the list is about to be a
              different list, and the third row of it is not the row somebody was
@@ -163,6 +264,15 @@ export function PlaceField({
           setAt(-1)
         }}
         onKeyDown={onKeyDown}
+        /* Closed when the cursor leaves the town, which is what the pointer
+           rule cannot answer: the country select is inside this field, so a
+           press on it is a press inside the box and the list stayed open over
+           it. On a telephone the two stack, and the list covered the country
+           entirely. */
+        onBlur={() => {
+          setOpen(false)
+          setAt(-1)
+        }}
       />
 
       {offered.length > 0 && (
@@ -190,6 +300,59 @@ export function PlaceField({
             </li>
           ))}
         </ul>
+      )}
+      </div>
+
+      {/* The country, beside the town and not under it (owner, 11.08.2026).
+          Filled by whoever picks a town out of the codebook and chosen by hand
+          for a town it does not have, which is how a race in a hamlet stops
+          being filed wherever the last chosen town was. */}
+      <label className="place__country-pick">
+        <span>{t('admin.field.country')}</span>
+        <select
+          className={known === undefined ? 'field__control' : 'field__control field__control--held'}
+          value={country}
+          /* Locked on a town the codebook knows, for the reason written where
+             `known` is worked out. Held rather than switched off: `disabled`
+             takes the control out of the keyboard's path, so whoever is reading
+             by keyboard never reaches it and is never told why it cannot be
+             answered. `aria-disabled` leaves it reachable and says the same
+             thing, which is the shape the portal uses wherever a control is held
+             back (admin/PendingQueue.tsx). Hidden it is not: the country is
+             still the answer, and an answer that disappears reads as a question
+             nobody asked. */
+          aria-disabled={known !== undefined}
+          aria-describedby={known === undefined ? undefined : heldId}
+          onChange={(event) => {
+            /* And it does not take one, since it says it cannot. */
+            if (known !== undefined) {
+              return
+            }
+
+            onChange(value, event.target.value)
+          }}
+          onKeyDown={(pressed) => {
+            /* A held select still opens on a keypress and would change with the
+               arrows, which is the one way round the guard above. */
+            if (known !== undefined) {
+              pressed.preventDefault()
+            }
+          }}
+        >
+          <CountryOptions holding={country} />
+        </select>
+
+      </label>
+
+      {/* Why it cannot be answered, where it cannot be answered. Outside the
+          label and not inside it: everything inside a label is the name of the
+          control, so put there this sentence became part of the name, the name
+          changed with the state, and a screen reader said the same words twice,
+          once as the name and once as the description. */}
+      {known !== undefined && (
+        <p className="place__held" id={heldId}>
+          {t('form.countryFromPlace')}
+        </p>
       )}
     </div>
   )

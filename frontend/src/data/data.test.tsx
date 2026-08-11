@@ -6,8 +6,9 @@ import { first } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
+import countries from './countries.json'
 import { plainly } from './places'
-import { ITEM_KINDS } from './types'
+import { FEATURED, ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
@@ -350,6 +351,34 @@ describe('the generated data', () => {
     expect(nameless).toEqual([])
   })
 
+  it('names every country its towns stand in, and puts Kosovo in Serbia', async () => {
+    /* Two things one guard can say, because they are the same failure. A select
+       handed a country it has no option for draws an empty box, so a town whose
+       country the list cannot name files a race nowhere.
+     *
+       Kosovo is one such: GeoNames writes it XK and holds twenty one towns
+       there. The owner reads it as part of Serbia (11.08.2026): „ukoliko je
+       mesto sa Kosova, automatski podrazumevana država postaje Srbija. Kosovo ne
+       sme uopšte postojati u listi država." So the codebook writes those towns
+       RS, and XK appears nowhere. */
+    const places = await loadResource<[string, string, string?][]>('places')
+    const named = new Set([...countries.region, ...countries.rest].map((one) => one.code))
+    const strangers = [...new Set(places.map(([, country]) => country))].filter(
+      (country) => !named.has(country),
+    )
+
+    expect(strangers).toEqual([])
+    expect(places.filter(([, country]) => country === 'XK')).toEqual([])
+    expect(named.has('XK')).toBe(false)
+    /* And Priština is in Serbia, under its own name: the codebook of the world
+       writes those towns in Albanian, and they are the only towns of Serbia that
+       would then stand on a Serbian portal in another language (ADL A16 asks for
+       the local name everywhere in the region). The foreign form stays as the
+       English one, which is what the third place in a row is for. */
+    expect(places.filter(([name]) => name === 'Priština')).toEqual([['Priština', 'RS', 'Pristina']])
+    expect(places.filter(([name]) => name === 'Peć')).toEqual([['Peć', 'RS', 'Pejë']])
+  })
+
   it('carries no event of a kind the portal does not have, and no state at all', async () => {
     /* An event has a kind and no state (owner, 10.08.2026): what is on the
        portal is on. The generator lives outside the repo, so this is the only
@@ -367,6 +396,21 @@ describe('the generated data', () => {
       'training',
     ])
     expect(events.filter((one) => one.status !== undefined)).toEqual([])
+  })
+
+  it('writes whether an event is featured as one of the two words the form offers', async () => {
+    /* The same guard the kind has, and for the same reason: the generator lives
+       outside the repo and writes this field by hand in three places. „Yes"
+       instead of „yes" reaches the form as a value with no option behind it, and
+       a select handed a value it has no option for draws an empty box
+       (forms/PlaceField.tsx carries the rest of that story). Nothing else on the
+       portal would notice. */
+    const events = await loadResource<{ featured: string }[]>('events')
+    const featured = events.map((one) => one.featured)
+
+    expect(featured.filter((one) => !FEATURED.some((word) => word === one))).toEqual([])
+    /* And both words stand in the fixture, so neither goes untried on a screen. */
+    expect([...new Set(featured)].sort()).toEqual(['no', 'yes'])
   })
 })
 

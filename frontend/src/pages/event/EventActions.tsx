@@ -75,8 +75,11 @@ export function EventActions({
       date: event.date,
       city: event.city,
       country: event.country,
-      organizer: event.organizer,
       kind: event.kind,
+      /* Not featured, whatever the one it was copied from was: being singled
+         out is a choice about this running of the race and not a property the
+         race carries (owner, 11.08.2026). */
+      featured: 'no',
       /* Which edition this one came out of. The one place it is ever written,
          and the reason the chain can be walked at all: an id nobody typed and
          nobody can mistype, rather than a name that changes with a sponsor
@@ -97,7 +100,6 @@ export function EventActions({
 
       create(RACES.id, `${race.id}-kopija-${before + 1}`, {
         eventId: id,
-        name: race.name,
         /* The day it was run on, kept as it was. The copy starts on the day the
            event was on, so the races start on the days they were on, and moving
            the event's date afterwards moves them all by the same number of days

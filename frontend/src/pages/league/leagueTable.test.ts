@@ -26,15 +26,13 @@ const event = (id: string, date: string): BtlEvent => ({
   date,
   city: 'Beograd',
   country: 'RS',
-  organizer: 'Road',
-  kind: 'race', copiedFrom: '',
+  kind: 'race', copiedFrom: '', featured: 'no',
 })
 
-const race = (id: string, eventId: string, name: string, distanceKm = 10): Race => ({
+const race = (id: string, eventId: string, distanceKm = 10, date = '2027-04-03'): Race => ({
   id,
   eventId,
-  date: '2027-04-03',
-  name,
+  date,
   distanceKm,
   ascentM: 0,
   descentM: 0,
@@ -68,11 +66,14 @@ const league: League = {
 }
 
 const events = [event('e1', '2019-05-01'), event('e2', '2019-03-01'), event('e3', '2019-04-01')]
+/* Each race on the day of its own event, which is the ordinary case: an event
+   that runs over more than one morning is the exception and has a test of its
+   own below. The day is on the race and not read off the event (PDL P10). */
 const races = [
-  race('r1', 'e1', '10 km'),
-  race('r2', 'e2', '21 km'),
-  race('r3', 'e3', '5 km'),
-  race('r4', 'e1', '5 km', 5),
+  race('r1', 'e1', 10, '2019-05-01'),
+  race('r2', 'e2', 21, '2019-03-01'),
+  race('r3', 'e3', 5, '2019-04-01'),
+  race('r4', 'e1', 5.5, '2019-05-01'),
 ]
 
 describe('the grid of a competition', () => {
@@ -172,7 +173,7 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(
       { ...league, eventIds: ['e1', 'e2'] },
       [event('e1', '2019-05-01'), event('e2', '2019-05-01')],
-      [race('r1', 'e1', '10 km'), race('r2', 'e2', '10 km')],
+      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e2', 10, '2019-05-01')],
       [],
       [],
     )
@@ -184,5 +185,36 @@ describe('a heading that has to be cut somewhere', () => {
     const table = leagueTable(league, events, races, [], [])
 
     expect(table.columns.every((one) => one.ambiguous)).toBe(false)
+  })
+
+  it('tells two nameless races of one event apart by their lengths', () => {
+    /* Which is the whole of what a nameless race has (PDL P6, 11.08.2026). Told
+       apart by name alone the two shared one empty key, both were marked as not
+       telling themselves apart, and the reader was given two columns headed
+       „Događaj e1, , 1. 5. 2019." over two different races. */
+    const table = leagueTable(
+      { ...league, eventIds: ['e1'] },
+      [event('e1', '2019-05-01')],
+      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 21.1, '2019-05-01')],
+      [],
+      [],
+    )
+
+    expect(table.columns.map((one) => one.ambiguous)).toEqual([false, false])
+  })
+
+  it('still says so when two nameless races are the same length on the same day', () => {
+    /* Then there is nothing left to tell them apart with, and the heading says
+       as much by carrying the event too. Better a heading that repeats than one
+       that claims a difference it cannot show. */
+    const table = leagueTable(
+      { ...league, eventIds: ['e1'] },
+      [event('e1', '2019-05-01')],
+      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 10, '2019-05-01')],
+      [],
+      [],
+    )
+
+    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
   })
 })

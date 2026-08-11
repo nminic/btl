@@ -32,6 +32,9 @@ export function AdminEvents() {
   const [search, setSearch] = useState('')
   /** What was opened by pressing something on this screen. */
   const [chosen, setChosen] = useState<Editing | null>(null)
+  /* The event entered a moment ago, so its races can be added under it while
+     the confirmation of the save is still on screen. */
+  const [justMade, setJustMade] = useState<string | null>(null)
   /** Which race of the open event is being edited, if any. Held here because
    *  the event's own form is put away while one is. */
   const [race, setRace] = useState<Editing | null>(null)
@@ -131,7 +134,12 @@ export function AdminEvents() {
              what the overlay has since made of it. */
           const openEvent =
             editing === null || editing.mode === 'new'
-              ? undefined
+              ? /* And the one that has just been entered, which is a record with
+                   an identity even though the form is still the form that made
+                   it: its races are entered under it right away, one by one,
+                   rather than after going back to a list of eleven hundred to
+                   find it again (owner, 11.08.2026). */
+                all.find((one) => one.id === justMade)
               : all.find((one) => one.id === String(editing.record[EVENTS.idField]))
 
           if (editing !== null) {
@@ -203,9 +211,11 @@ export function AdminEvents() {
                             )
                           }
                     }
+                    onCreated={setJustMade}
                     onDone={() => {
                       setChosen(null)
                       setRace(null)
+                      setJustMade(null)
                       /* And the address forgets it, so leaving the form and coming
                          back to this screen does not open it again. */
                       setParams({}, { replace: true })

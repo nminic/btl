@@ -1,5 +1,61 @@
+/* The town and the country it is in, side by side (owner, 11.08.2026): they are
+   one answer, so they stand on one line. The town takes what is left, because it
+   is typed and the country is chosen. */
 .place {
+  display: flex;
+  align-items: end;
+  gap: var(--space-8);
+}
+
+.place__town {
   position: relative;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* Its own small name over it, since the field's own label names the town. */
+.place__country-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 0 0 auto;
+  inline-size: 12rem;
+  max-inline-size: 45%;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+/* The wrapper is set in the small uppercase of its own label, so the select has
+   to name a size or it inherits that one.
+ *
+ * The two boxes are aligned along their feet and not their heads, and that is
+ * deliberate. A select is two pixels shorter than a text box of the same font
+ * in Chrome, because `line-height` has no effect on a select there: the browser
+ * decides its height and an author cannot say otherwise without naming a number
+ * in pixels. Measured, not assumed. So the row lines up where the eye reads it,
+ * at the bottom edge, and nothing here pretends to a height it does not have. */
+.place__country-pick select {
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+/* On a telephone the two do not fit beside each other: the country falls under
+   the town rather than squeezing it to nothing. */
+@media (max-width: 559.98px) {
+  .place {
+    display: block;
+  }
+
+  .place__country-pick {
+    inline-size: 100%;
+    max-inline-size: none;
+    margin-block-start: var(--space-8);
+  }
 }
 
 .place__list {
@@ -40,4 +96,36 @@
 .place__country {
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+/* A country the town brought with it. Held rather than switched off
+   (PlaceField.tsx), so it looks answered and unavailable at once: the words are
+   as legible as any other answer, and the ground says it is not being asked. */
+.field__control--held {
+  background: var(--surface-hover);
+  cursor: default;
+}
+
+/* Why it is held. Under the control, in the size of the small print it is. */
+.place__held {
+  display: block;
+  margin-block-start: var(--space-4);
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
+/* On a telephone the list of towns stands in the flow rather than over it.
+ *
+ * The two stack there, so a list floating out of the town covered the country
+ * entirely: eight rows are some three hundred pixels, and the control underneath
+ * could not be reached while the list was open. Pushed down instead, it is only
+ * ever hidden by what it is being chosen from. */
+@media (max-width: 559.98px) {
+  .place__list {
+    position: static;
+    margin-block-start: var(--space-6);
+  }
 }

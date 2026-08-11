@@ -3,6 +3,7 @@ import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
 import { arrivedResource, loadResource, type ResourceName } from './client'
 import type {
+  Attending,
   BtlEvent,
   Competitor,
   EventComment,
@@ -257,6 +258,7 @@ export function useComments(): ResourceState<EventComment[]> {
 
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
+export const useAttendance = () => useResource<Attending[]>('attendance')
 export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
 export const usePages = () => useResource<Record<string, StaticPage>>('pages')

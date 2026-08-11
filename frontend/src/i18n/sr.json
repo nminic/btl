@@ -353,7 +353,11 @@
       "few": "Nalepljeni tekst je bio {count} znaka duži nego što staje, pa taj višak nije primljen.",
       "other": "Nalepljeni tekst je bio {count} znakova duži nego što staje, pa taj višak nije primljen."
     },
-    "places": "Ponuđena mesta"
+    "places": "Ponuđena mesta",
+    "yes": "Da",
+    "no": "Ne",
+    "close": "Zatvori",
+    "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom."
   },
   "registration": {
     "title": "Registracija",
@@ -546,7 +550,6 @@
     "noComments": "Za ovaj događaj još nema odobrenih komentara.",
     "races": "Trke",
     "competitor": "Takmičar",
-    "raceName": "Trka",
     "distance": "Dužina",
     "ascent": "Uspon",
     "descent": "Spust",
@@ -583,7 +586,16 @@
     },
     "fromEdition": "Izdanje {year}.",
     "notRanIt": "Ovaj događaj ocenjuju oni koji su ga istrčali",
-    "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa se daje uz upisan rezultat na ovom događaju. Prijavi rezultat; kad ga moderator odobri, ocena se otvara."
+    "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa se daje uz upisan rezultat na ovom događaju. Prijavi rezultat; kad ga moderator odobri, ocena se otvara.",
+    "going": "Ko ide",
+    "goingOn": "Idem na ovaj događaj",
+    "goingNobody": "Još se niko nije prijavio.",
+    "writeTo": "Piši članu {name}",
+    "writeSubject": "Dogovor za {event}",
+    "writeSend": "Pošalji poruku",
+    "written": "Poruka je poslata članu {name}, u Poruke na portalu.",
+    "someMember": "Član lige",
+    "commentsForMembers": "Komentare vide prijavljeni članovi."
   },
   "category": {
     "short": "Kraća trka",
@@ -935,7 +947,6 @@
     "teams": "Timovi",
     "leagues": "Lige",
     "pages": "Statične strane",
-    "raceName": "Naziv trke",
     "organizer": "Organizator",
     "noOrganizer": "Nema organizatora",
     "byCategory": "Po kategorijama",
@@ -1009,7 +1020,8 @@
       "eventSlug": "Adresa događaja",
       "teamSlug": "Adresa tima",
       "kind": "Vrsta događaja",
-      "country": "Država"
+      "country": "Država",
+      "featured": "Istaknuto"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -1019,10 +1031,8 @@
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
-      "organizer": "Organizator nema nalog na portalu; ovde stoji samo kao podatak.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
       "raceDate": "Podrazumevano je dan događaja. Događaj koji traje dva dana ima trke sa različitim danima; dan događaja je dan prve trke.",
-      "raceName": "Ime po kome se trka prepoznaje, na primer Polumaraton ili 6 h.",
       "distanceKm": "Unosi se ručno, i kad postoji GPX. GPX sme da predloži vrednost, ali je unos pregazi.",
       "ascentM": "Dok se ne unese, stoji 0. Trka bez podatka o nagibu se i dalje boduje.",
       "category": "Ne unosi se nego se izvodi iz dužine, tačno u vrednosti: 21,1 km je polumaraton, 42,2 km maraton, a svaka druga vrednost pada u jednu od preostale tri kategorije.",
@@ -1041,7 +1051,8 @@
       "eventSlug": "Portal je pravi sam, od naziva i godine. Ne unosi se i ne menja.",
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja.",
       "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka.",
-      "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika, sa državom u zagradi. Mesto koje šifarnik nema unosi se rukom."
+      "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
+      "featured": "Beleži se uz događaj, za izdvajanje u kalendaru i na naslovnoj. Ta dva prikaza se prave sa sezonom 2027."
     },
     "value": {
       "genderM": "Muški",
@@ -1050,7 +1061,8 @@
     "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
     "period": "Period u godini",
     "everyPayment": "Svaka uplata",
-    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik."
+    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik.",
+    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna."
   },
   "ducats": {
     "title": "Dukati",

@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { isoDate } from '../../forms/dateField'
+import { raceLabel } from '../../data/raceLabel'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { racesOf, type Editing } from './entityForms'
+import { raceClash, racesOf, type Editing } from './entityForms'
 import './Entity.css'
 
 /**
@@ -68,6 +69,18 @@ export function EventRaces({
         <EntityEditor
           entity={entity}
           editing={editing}
+          /* Not a second race of this event on the same morning and of the same
+             length: there is nothing left to tell the two apart by
+             (entityForms.ts, `raceClash`). */
+          also={(values) =>
+            raceClash(
+              values,
+              (editing.mode === 'new'
+                ? mine
+                : mine.filter((race) => race.id !== String(editing.record[entity.idField]))
+              ).map((race) => ({ date: race.date, distanceKm: race.distanceKm })),
+            )
+          }
           /* The event follows its first race (owner, 10.08.2026): its date is
              the day it begins, so a race entered or moved to an earlier day
              makes that day the event's. Written here rather than in the race's
@@ -126,7 +139,6 @@ export function EventRaces({
             </caption>
             <thead>
               <tr>
-                <th scope="col">{t('admin.raceName')}</th>
                 {/* The day, because an event may run over more than one (owner,
                     10.08.2026). Beside the name rather than at the end: it is
                     the thing that differs between two races of one weekend. */}
@@ -141,7 +153,6 @@ export function EventRaces({
             <tbody>
               {mine.map((race) => (
                 <tr key={race.id}>
-                  <td>{race.name}</td>
                   <td>{formatShortDate(race.date, locale)}</td>
                   {/* Written the way this language writes a number, like every
                       other table on the portal: read raw, a climb of 7120 metres
@@ -155,7 +166,12 @@ export function EventRaces({
                     <RowActions
                       entity={entity}
                       record={race}
-                      name={race.name}
+                      /* Its measurements, and its day where the event holds
+                         another race of the same length (data/raceLabel.ts):
+                         four races of 42,2 km over four mornings gave four
+                         buttons called „Obriši: 42,2 km", and one of them
+                         deletes results. */
+                      name={raceLabel(race, mine, locale)}
                       onOpen={() => setEditing({ mode: 'one', record: race })}
                       /* And the event follows what is left, the same way it
                          follows a race entered or moved: taking the first

@@ -14,7 +14,6 @@ export type LeagueColumn = {
   /** The event the race belonged to. Two events can both hold a "10 km", so the
    *  heading has to say which one, however narrow the column wants to be. */
   event: string
-  race: string
   date: string
   /**
    * Whether this race and this date belong to more than one event in the
@@ -83,8 +82,12 @@ export function leagueTable(
             {
               raceId: race.id,
               event: event.name,
-              race: race.name,
-              date: event.date,
+              /* The day this race is run on, which is not always the day of its
+                 event: one event may run over several mornings (PDL P10). Read
+                 off the event, two races of one length on two mornings shared a
+                 date as well as a length, so both columns read the same and
+                 neither said which morning it was. */
+              date: race.date,
               distanceKm: race.distanceKm,
               ambiguous: false,
             },
@@ -94,8 +97,12 @@ export function leagueTable(
 
   const seen = new Map<string, number>()
 
+  /* What two columns have to share before the reader cannot tell them apart. A
+     race has no name of its own (types.ts), so it is its length and its day, and
+     two races of one length on one day are two columns nothing but the event
+     tells apart. */
   for (const column of columns) {
-    const key = `${column.race}|${column.date}`
+    const key = `${column.distanceKm}|${column.date}`
     seen.set(key, (seen.get(key) ?? 0) + 1)
   }
 
@@ -107,7 +114,7 @@ export function leagueTable(
   )
 
   for (const column of columns) {
-    column.ambiguous = shared.has(`${column.race}|${column.date}`)
+    column.ambiguous = shared.has(`${column.distanceKm}|${column.date}`)
   }
 
   const counts = new Set(columns.map((one) => one.raceId))

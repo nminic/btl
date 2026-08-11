@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { must } from '../test/at'
+import { at, must } from '../test/at'
 import { setupUser } from '../test/user'
 import { PlaceField } from './PlaceField'
 
@@ -18,8 +18,14 @@ import { PlaceField } from './PlaceField'
 const CODEBOOK: Place[] = [
   ['Beograd', 'RS', 'Belgrade'],
   ['Beočin', 'RS'],
-  ['Bern', 'CH'],
+  ['Bern', 'CH', 'Berne'],
   ['Boston', 'US'],
+  /* A town in a code the list of countries has no name for. */
+  ['Bardejov', 'ZZ'],
+  /* And a name two countries share, which is the ordinary case rather than the
+     odd one: seven hundred and thirty eight of them stand in the codebook. */
+  ['London', 'GB'],
+  ['London', 'US'],
 ]
 
 /** The codebook as the portal fetches it. The list is a resource rather than an
@@ -40,6 +46,7 @@ function servingTheCodebook() {
  *  cannot be typed into. */
 function Holder({ onCountry }: { onCountry: (code: string) => void }) {
   const [town, setTown] = useState('')
+  const [country, setCountry] = useState('RS')
 
   return (
     <I18nProvider locale="sr">
@@ -47,11 +54,13 @@ function Holder({ onCountry }: { onCountry: (code: string) => void }) {
         id="mesto"
         name="city"
         value={town}
+        country={country}
         invalid={false}
         describedBy={undefined}
-        onChange={(next, country) => {
+        onChange={(next, chosen) => {
           setTown(next)
-          onCountry(country)
+          setCountry(chosen)
+          onCountry(chosen)
         }}
       />
     </I18nProvider>
@@ -62,7 +71,13 @@ function renderField() {
   const onCountry = vi.fn()
   render(<Holder onCountry={onCountry} />)
 
-  return { onCountry, box: screen.getByRole('combobox') }
+  /* Two comboboxes stand in this field since 11.08.2026, the town and the
+     country beside it, so the town is asked for by name. */
+  return {
+    onCountry,
+    box: screen.getByRole('combobox', { name: '' }),
+    country: screen.getByRole('combobox', { name: 'Država' }),
+  }
 }
 
 /** The offered towns, once they have arrived. The codebook is fetched on the
@@ -118,18 +133,21 @@ describe('the town on a form', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('clears the country the moment the town is typed over', async () => {
-    /* Left standing, an event in Beograd edited into Zagreb would be filed in
-       Serbia, and nothing on the form would say so, because the country is no
-       longer a field anybody looks at. */
+  it('leaves the country standing when the town is typed over, since it is on screen', async () => {
+    /* It used to be cleared here, back when the country was written and never
+       shown and the danger was an event edited from Beograd into Zagreb and
+       filed in Serbia with nothing saying so. The country is a control beside
+       the town since 11.08.2026, so what stands there is what will be saved and
+       whoever is typing can see it. */
     const user = setupUser()
-    const { box, onCountry } = renderField()
+    const { box, onCountry, country } = renderField()
 
     await user.type(box, 'beo')
     await user.click(must((await offered())[0], 'the first town offered'))
     await user.type(box, 'x')
 
-    expect(onCountry).toHaveBeenLastCalledWith('')
+    expect(onCountry).toHaveBeenLastCalledWith('RS')
+    expect(country).toHaveValue('RS')
   })
 
   it('takes a town the codebook has never heard of', async () => {
@@ -281,6 +299,180 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(screen.queryByRole('listbox')).toBeNull()
     })
+  })
+
+  it('keeps the name of the country control the same, held or not', async () => {
+    /* The sentence saying why it is held stands outside the label. Inside it,
+       everything in a label is the name of the control: the name changed with
+       the state, and a reader was told the same words twice, once as the name
+       and once as the description. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    expect(screen.getByRole('combobox', { name: 'Država' })).toBeInTheDocument()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toHaveAccessibleDescription('Mesto je iz šifarnika, pa državu nosi sa sobom.')
+  })
+
+  it('will not let the country of a town it recognises be changed', async () => {
+    /* Owner, 11.08.2026: „ukoliko se mesto prepozna, država se ne može
+       promeniti. Dropdown države je aktivan samo ukoliko je slobodan unos
+       mesta." The country of a known town is then not an answer somebody gives
+       but a fact about the town, and a control that lets it be contradicted is
+       one that files a race in the wrong country. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'ber')
+    const list = await screen.findByRole('listbox')
+    await user.click(within(list).getByText(/Bern/))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).toHaveValue('CH')
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('takes no answer while it is held, however it is reached', async () => {
+    /* Held rather than switched off, so it is still reachable: the keyboard can
+       land on it and the words that say why can be read. What it must not do is
+       take an answer, by either road. A select left reachable still opens on a
+       press and still walks with the arrows, so both are stopped. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    onCountry.mockClear()
+    await user.selectOptions(country, 'US')
+    await user.type(country, '{ArrowDown}')
+
+    expect(country).toHaveValue('CH')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('opens it again for a town typed over the one it knew', async () => {
+    /* A hamlet of two hundred people that no codebook of the world has heard of
+       is entered by hand, and then the country is the only way to say where the
+       race is run. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+    await user.type(box, 'ovce')
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).not.toHaveAttribute('aria-disabled', 'true')
+
+    /* And it answers, by the keyboard as well as by the pointer: what stops the
+       keys while it is held must not stop them once it is not. */
+    await user.selectOptions(country, 'HR')
+    await user.type(country, '{ArrowDown}')
+
+    expect(onCountry).toHaveBeenLastCalledWith('HR')
+  })
+
+  it('recognises a town spelt out in full, without the list being touched', async () => {
+    /* Somebody who knows how a town is spelt types it and never looks down. The
+       codebook holds one Bern, so the country is not a question, and the field
+       has to reach the same answer it would have reached had the row been
+       pressed. Bern rather than a Serbian town because the field starts on
+       Serbia: a town whose country is the one already standing there would let
+       this pass while nothing moved. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Bern')
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(onCountry).toHaveBeenLastCalledWith('CH')
+  })
+
+  it('recognises a town by its English name as well', async () => {
+    /* The codebook carries both spellings and the portal searches both, because
+       the keyboard does not change with the language of the page (data/places.ts).
+       Recognition has to read the same list, or „Belgrade" typed out in full on
+       the Serbian portal is a town the field has never heard of. Bern is Swiss,
+       and the field opens on Serbia, so the country has somewhere to move to. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Berne')
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(onCountry).toHaveBeenLastCalledWith('CH')
+  })
+
+  it('leaves the choice open for a name two countries share', async () => {
+    /* „London" typed out says nothing about which London: the name recognises
+       no one place, so nothing here may answer for the person. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'London')
+
+    expect(screen.getByRole('combobox', { name: 'Država' })).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('holds the country of the London that was pressed', async () => {
+    /* Picking is not typing: the row that was pressed said which of the two it
+       was, so it is recognised even though the name is shared. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    await user.type(box, 'lond')
+
+    const list = await screen.findByRole('listbox')
+    const rows = within(list).getAllByRole('option')
+
+    await user.click(at(rows, 1))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).toHaveValue('US')
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('shows the country it holds even where the list has no name for it', async () => {
+    /* A select handed a value it has no option for draws nothing: the box goes
+       blank while the record still says ZZ. Whoever is looking sees a filled
+       town beside an empty country, answers what looks unanswered, and the race
+       has quietly moved to another country. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'bar')
+    const list = await screen.findByRole('listbox')
+    await user.click(within(list).getByText(/Bardejov/))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(onCountry).toHaveBeenLastCalledWith('ZZ')
+    expect(country).toHaveValue('ZZ')
+    /* The code itself, because there is no name for it and a code is not a
+       country: what is unanswered is the list, not the record. */
+    expect(country).toHaveTextContent('ZZ')
   })
 
   it('leaves the field a plain box when the codebook cannot be fetched', async () => {

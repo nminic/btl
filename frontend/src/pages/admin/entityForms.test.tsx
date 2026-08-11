@@ -3,6 +3,7 @@ import sr from '../../i18n/sr.json'
 import { translate, type Dictionary } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
+import { formatNumber } from '../../i18n/format'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import {
@@ -395,17 +396,51 @@ async function newRaceOnFirstEvent(user: ReturnType<typeof setupUser>) {
   await user.click(within(first).getByRole('button', { name: /^Otvori:/ }))
   await user.click(await screen.findByRole('button', { name: t('admin.form.new.races') }))
 
-  return open(t('admin.form.new.races'))
+  const form = open(t('admin.form.new.races'))
+  /* Onto the morning after the one the form opens on, which is the day the event
+     begins. The event may already hold a race of the length these tests enter,
+     and two races of one event on one morning and of one length are refused
+     (entityForms.ts, `raceClash`): there would be nothing left to tell them
+     apart by. A later morning is a different race and is what is being tested
+     here anyway, which is the category the length is read as. */
+  const day = form.getByLabelText(labelled(t('admin.field.raceDate')))
+  const opened = must(
+    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+    'the day the form opened on',
+  )
+
+  await user.clear(day)
+  await user.type(day, `${String(Number(opened[1]) + 1).padStart(2, '0')}${opened[2]}${opened[3]}`)
+
+  return form
 }
 
 /** The row of a race under the event that is open. */
-async function raceRow(named: string) {
+/**
+ * The row of the race that is this long and climbs this much.
+ *
+ * A race carries no name of its own (data/types.ts), so it is found by its
+ * measurements. Both of them, because an event may already hold a race of the
+ * same length: the one entered here climbs a number no other one does.
+ */
+async function raceRow(distanceKm: number, ascentM: number) {
+  const rows = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    .getAllByRole('row')
+    .slice(1)
+
   return within(
     must(
-      within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-        .getByText(named)
-        .closest('tr'),
-      `the row of the race called ${named}`,
+      rows.find((row) => {
+        const cells = within(row)
+          .getAllByRole('cell')
+          .map((one) => one.textContent ?? '')
+
+        return (
+          cells.includes(formatNumber(distanceKm, 'sr-Latn', 2)) &&
+          cells.includes(formatNumber(ascentM, 'sr-Latn'))
+        )
+      }),
+      `the row of the ${distanceKm} km race climbing ${ascentM} m`,
     ),
   )
 }
@@ -425,7 +460,6 @@ describe('the category of a race', () => {
     /* Nor which event it is. The screen it is entered on already answers that. */
     expect(form.queryByLabelText(labelled(t('admin.field.event')))).not.toBeInTheDocument()
 
-    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera kategorije')
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
     await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
@@ -441,7 +475,7 @@ describe('the category of a race', () => {
 
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    expect((await raceRow('Provera kategorije')).getByText(t('category.marathon'))).toBeVisible()
+    expect((await raceRow(42.2, 120)).getByText(t('category.marathon'))).toBeVisible()
   })
 
   it('is written again when the record is changed, and not only when it is made', async () => {
@@ -457,18 +491,17 @@ describe('the category of a race', () => {
     const user = setupUser()
     const form = await newRaceOnFirstEvent(user)
 
-    /* Entered rather than picked out of the file, so the race this is about has
-       a name no other race shares. */
-    await user.type(form.getByLabelText(labelled(t('admin.raceName'))), 'Provera izmene')
+    /* A length no other race of this event has, so the row this is about is the
+       only one that answers to it. */
     await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
     await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
     await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
     await user.click(form.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    expect((await raceRow('Provera izmene')).getByText(t('category.marathon'))).toBeVisible()
+    expect((await raceRow(42.2, 120)).getByText(t('category.marathon'))).toBeVisible()
 
-    await user.click((await raceRow('Provera izmene')).getByRole('button', { name: /^Otvori:/ }))
+    await user.click((await raceRow(42.2, 120)).getByRole('button', { name: /^Otvori:/ }))
 
     const distance = await screen.findByLabelText(labelled(t('admin.field.distanceKm')))
     await user.clear(distance)
@@ -476,7 +509,7 @@ describe('the category of a race', () => {
     await user.click(screen.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    const changed = await raceRow('Provera izmene')
+    const changed = await raceRow(10, 120)
 
     expect(changed.getByText(t('category.short'))).toBeVisible()
     expect(changed.queryByText(t('category.marathon'))).toBeNull()
@@ -580,7 +613,7 @@ describe('the words the seven forms need', () => {
     /* And a new one opens on a race before anybody answers (owner,
        10.08.2026). Written as what the form starts holding rather than as what
        a created record carries, because it is a press saved on the form. */
-    expect(EVENTS.start).toEqual({ kind: 'race' })
+    expect(EVENTS.start).toEqual({ kind: 'race', featured: 'no', country: 'RS' })
   })
 
   it('file an event in the country its town came with, which is not a field', () => {
@@ -596,7 +629,6 @@ describe('the words the seven forms need', () => {
         date: '2027-05-01',
         city: 'Beograd',
         country: 'RS',
-        organizer: 'BTL',
         kind: 'race',
       },
     })

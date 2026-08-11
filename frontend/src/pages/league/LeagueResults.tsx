@@ -7,7 +7,7 @@ import { useToday } from '../../clock/useClock'
 import { fieldFor } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
-import { formatPoints, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueTable } from './leagueTable'
 import './League.css'
@@ -94,14 +94,20 @@ function Grid({
                       trek" with the length and the date beyond the edge, which is
                       the one thing that told them apart. The whole of it is in the
                       title for anyone who wants it. */}
-                  <span
-                    className="league__race-name"
-                    title={`${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`}
-                  >
-                    {column.ambiguous
-                      ? `${column.event}, ${column.race}, ${formatShortDate(column.date, locale)}`
-                      : `${column.race}, ${formatShortDate(column.date, locale)}, ${column.event}`}
-                  </span>
+                  {/* The race by what it is known by, which is its length: it
+                      has no name of its own (data/types.ts). */}
+                  {(() => {
+                    const name = formatDistance(column.distanceKm, locale)
+                    const day = formatShortDate(column.date, locale)
+
+                    return (
+                      <span className="league__race-name" title={`${column.event}, ${name}, ${day}`}>
+                        {column.ambiguous
+                          ? `${column.event}, ${name}, ${day}`
+                          : `${name}, ${day}, ${column.event}`}
+                      </span>
+                    )
+                  })()}
                 </th>
               ))}
             </tr>

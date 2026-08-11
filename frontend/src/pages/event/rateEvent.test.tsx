@@ -547,7 +547,7 @@ describe('a comment a moderator lets out', () => {
       'the later edition',
     )
 
-    renderAt(`/sr/kalendar/${later.slug}`)
+    renderAt(`/sr/kalendar/${later.slug}`, 'competitor', ME)
 
     expect(await underEvent(inherited.body)).toBe(true)
   })
@@ -571,7 +571,7 @@ describe('a comment a moderator lets out', () => {
       'the edition it was written under',
     )
 
-    renderAt(`/sr/kalendar/${later.slug}`)
+    renderAt(`/sr/kalendar/${later.slug}`, 'competitor', ME)
 
     const card = must(
       (await screen.findAllByRole('listitem')).find((one) =>
@@ -604,7 +604,7 @@ describe('a comment a moderator lets out', () => {
         : real(input)) as typeof fetch
 
     const user = setupUser()
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const list = await screen.findByRole('list', { name: 'Komentari' })
     expect(within(list).getAllByRole('listitem')).toHaveLength(10)
@@ -624,7 +624,7 @@ describe('a comment a moderator lets out', () => {
        list of comments; asked of the head of the page, a mark that stayed down
        there would be missing here, and asked of the whole document a mark drawn
        twice would pass. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const head = must(
       (await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })).closest(
@@ -673,7 +673,7 @@ describe('a comment a moderator lets out', () => {
     expect(counted.length).toBeGreaterThan(1)
     expect(mean).not.toBeCloseTo(highest, 2)
 
-    renderAt(`/sr/kalendar/${later.slug}`)
+    renderAt(`/sr/kalendar/${later.slug}`, 'competitor', ME)
 
     await screen.findByRole('heading', { level: 1 })
 
@@ -721,7 +721,7 @@ describe('a comment a moderator lets out', () => {
 
     try {
       const user = setupUser()
-      const { router } = renderAt(`/sr/kalendar/${EVENT}`)
+      const { router } = renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
       const list = await screen.findByRole('list', { name: 'Komentari' })
       await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
@@ -1158,7 +1158,7 @@ describe('what an event nobody has run yet offers', () => {
 
 describe('the comments under an event', () => {
   it('draws each one with its author, the day, and the marks it carries', async () => {
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     /* Awaited by the first comment and not by the heading over it: the heading
        is drawn while the comments are still on their way, so waiting for it
@@ -1189,7 +1189,7 @@ describe('the comments under an event', () => {
     /* The number on the comment answers to nobody. It is not the case below and
        was standing in for it: there the member is in the record and is not to
        be linked to, which is a different question and was the one going wrong. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const gone = must(
       (await screen.findAllByRole('listitem')).find((one) =>
@@ -1217,7 +1217,7 @@ describe('the comments under an event', () => {
       'a comment by that member',
     )
 
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const card = must(
       (await screen.findAllByRole('listitem')).find((one) =>
@@ -1234,7 +1234,7 @@ describe('the comments under an event', () => {
     /* Nought on all three is not a rating of nought (types.ts). The three marks
        already said "Bez ocene" and the overall beside them read "Ukupna ocena:
        0,0", which is the same card answering one question two ways. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const comments = await loadResource<EventComment[]>('comments')
     const ran = await eventAt(EVENT)
@@ -1269,7 +1269,7 @@ describe('the comments under an event', () => {
     /* Two marks and a gap is not an average of three. Read as a rating it drew
        "Ukupna ocena: 3,0" beside a mark reading "Bez ocene", which is the card
        the form exists to refuse. What was given is still drawn. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const comments = await loadResource<EventComment[]>('comments')
     const ran = await eventAt(EVENT)
@@ -1307,7 +1307,7 @@ describe('the comments under an event', () => {
     /* The comment is optional, so a rating with no words is a card of marks and
        nothing else. Drawn unconditionally it is an empty paragraph: a gap under
        the marks that reads as something that failed to load. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const comments = await loadResource<EventComment[]>('comments')
     const ran = await eventAt(EVENT)
@@ -1352,7 +1352,7 @@ describe('the comments under an event', () => {
        markup and any one of them can go quietly: the portrait is a drawing with
        no text, the marks are pictures, and the body is a paragraph that is
        allowed to be empty. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const comments = await loadResource<EventComment[]>('comments')
     const here = must(
@@ -1400,7 +1400,7 @@ describe('the comments under an event', () => {
        `getByRole('img', { hidden: true })` would find it by role, but it would
        also find it if the `aria-hidden` came off, which is the other half of
        what this holds. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     const comments = await loadResource<EventComment[]>('comments')
     const uneven = must(
@@ -1455,7 +1455,7 @@ describe('the comments under an event', () => {
     /* The record carries three comments on this event on three days, which it
        has to for this to say anything: written on one day, the sorted list and
        the unsorted one are the same list and the sort is unheld. */
-    renderAt(`/sr/kalendar/${EVENT}`)
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
 
     /* By the event the address answers with, not by the address itself: an
        address is the name and the year since 10.08.2026, and an id carries the
@@ -1474,8 +1474,67 @@ describe('the comments under an event', () => {
     expect([...drawn].sort((left, right) => right.localeCompare(left))).toEqual(drawn)
   })
 
+  it('is not read by a visitor at all, and says as much', async () => {
+    /* Owner, 11.08.2026: „komentare vide samo prijavljeni članovi BTL. Drugim
+       (posetiocima) se ne prikazuju." Said rather than silently absent: a
+       section that is simply not there reads as an event nobody has said
+       anything about. */
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(await screen.findByText('Komentare vide prijavljeni članovi.')).toBeVisible()
+    expect(screen.queryByRole('list', { name: 'Komentari' })).toBeNull()
+    /* And neither is the mark they add up to, which is read out of them. */
+    expect(document.querySelector('.comments__mark')).toBeNull()
+  })
+
+  it('says nothing at all to a visitor on a race still to be run', async () => {
+    /* Not even that the comments are for members. Said on a future event, the
+       line appeared on exactly those whose earlier editions carry something and
+       was missing from the rest, so the sentence meant to keep what was said
+       from a visitor told them which race there is something to read about.
+       Šidski novogodišnji maraton 2027 is a copy of the 2024 running, and that
+       one has been commented on. */
+    const AHEAD = '/sr/kalendar/sidski-novogodisnji-maraton-2027'
+
+    /* First from a member's side, for two reasons: it proves this event really
+       does carry what an earlier edition of it was told, so the absence below is
+       an absence of something; and it leaves the three files in the cache
+       (data/client.ts), so the visitor's page is whole at its first paint and
+       „not there yet" cannot pass for „not shown". */
+    const { unmount } = renderAt(AHEAD, 'competitor', ME)
+    await screen.findByRole('list', { name: 'Komentari' })
+    unmount()
+
+    renderAt(AHEAD)
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByText('Komentare vide prijavljeni članovi.')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
+  })
+
+  it('still shows a member what the earlier editions said about it', async () => {
+    /* The other half of the same event: what the visitor is not shown is shown
+       to whoever is signed in, or the guard above would have quietly undone the
+       chain of editions. */
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027', 'competitor', ME)
+
+    expect(await screen.findByRole('list', { name: 'Komentari' })).toBeVisible()
+  })
+
+  it('is read by a moderator, who has no member number of their own', async () => {
+    /* The rule is about visitors and not about member numbers: a queue that
+       publishes a comment leads straight to the event to look at it, and the
+       moderator who approved it has no number. */
+    renderAt(`/sr/kalendar/${EVENT}`, 'superadmin')
+
+    expect(await screen.findByRole('list', { name: 'Komentari' })).toBeVisible()
+  })
+
   it('says so where nobody has commented yet', async () => {
-    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
+    renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026', 'competitor', ME)
 
     expect(await screen.findByText('Za ovaj događaj još nema odobrenih komentara.')).toBeVisible()
   })

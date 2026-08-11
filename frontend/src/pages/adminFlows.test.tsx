@@ -51,6 +51,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     resubmit: vi.fn(),
     decide: vi.fn(),
     inbox: [],
+    going: {},
+    setGoing: vi.fn(),
     markRead: vi.fn(),
     notify: vi.fn(),
     notifications: {
@@ -1434,7 +1436,7 @@ describe('the six queues read from the file', () => {
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
       .getAllByRole('row')
       .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
 
     expect(races).toEqual(['10. 4. 2027.', '11. 4. 2027.'])
   })
@@ -1530,7 +1532,6 @@ describe('the six queues read from the file', () => {
     /* A race added to it this visit, on the day the event begins. */
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
     await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Štafeta')
     await user.type(screen.getByLabelText(/^Dužina/), '5')
     await user.type(screen.getByLabelText(/^Uspon/), '0')
     await user.type(screen.getByLabelText(/^Spust/), '0')
@@ -1565,8 +1566,11 @@ describe('the six queues read from the file', () => {
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
 
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    /* Found by its length, since a race carries no name of its own
+       (data/types.ts). Five kilometres is a length no other race of this event
+       has, which is why it was the one entered. */
     const mine = must(
-      races.getAllByRole('row').find((one) => (one.textContent ?? '').includes('Štafeta')),
+      races.getAllByRole('row').find((one) => (one.textContent ?? '').includes('5,00')),
       'the race entered during the visit',
     )
 
@@ -1597,7 +1601,7 @@ describe('the six queues read from the file', () => {
     const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
       .getAllByRole('row')
       .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 1).textContent))
+      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
 
     expect(after).toEqual(['10. 4. 2027.', '10. 4. 2027.', '11. 4. 2027.'])
   })

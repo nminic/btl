@@ -27,14 +27,6 @@
       "maxLength": 80
     },
     {
-      "name": "organizer",
-      "type": "text",
-      "labelKey": "admin.organizer",
-      "hintKey": "admin.hint.organizer",
-      "required": true,
-      "maxLength": 80
-    },
-    {
       "name": "kind",
       "type": "select",
       "labelKey": "admin.field.kind",
@@ -52,6 +44,23 @@
         {
           "value": "gathering",
           "labelKey": "event.kind.gathering"
+        }
+      ]
+    },
+    {
+      "name": "featured",
+      "type": "select",
+      "labelKey": "admin.field.featured",
+      "hintKey": "admin.hint.featured",
+      "required": true,
+      "options": [
+        {
+          "value": "no",
+          "labelKey": "form.no"
+        },
+        {
+          "value": "yes",
+          "labelKey": "form.yes"
         }
       ]
     }

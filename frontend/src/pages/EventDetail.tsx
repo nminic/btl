@@ -20,6 +20,7 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
+import { GoingToEvent } from './event/GoingToEvent'
 import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
 import './Profile.css'
@@ -54,7 +55,6 @@ function RaceTable({ eventId }: { eventId: string }) {
               <caption className="visually-hidden">{t('event.races')}</caption>
               <thead>
                 <tr>
-                  <th scope="col">{t('event.raceName')}</th>
                   {/* The day, drawn only where the event runs over more than one
                       (owner, 10.08.2026). A column of one repeated date under a
                       heading that already says the day is a column that says
@@ -73,7 +73,6 @@ function RaceTable({ eventId }: { eventId: string }) {
               <tbody>
                 {mine.map((race) => (
                     <tr key={race.id}>
-                      <td>{race.name}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
                       <td>{t(`category.${race.category}`)}</td>
                       <td>{formatNumber(race.distanceKm, locale, 2)}</td>
@@ -297,6 +296,11 @@ export function EventDetail() {
               <RaceTable eventId={event.id} />
 
               <EventResults slug={event.slug} date={event.date} />
+
+              {/* Who is going, ahead of the race and for members only (owner,
+                  11.08.2026). Under the results and over the comments: what is
+                  still to come, then what was said about what has been. */}
+              <GoingToEvent event={event} />
 
               {/* At the foot of the event, which is where the owner put it
                   (06.08.2026): a reader looks at the races and the results

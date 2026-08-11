@@ -10,7 +10,7 @@ import type {
   FormDef,
   FormValues,
 } from './types'
-import countries from '../data/countries.json'
+import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
 import { optionsFor } from './records'
@@ -79,6 +79,7 @@ type Props = {
 const Field = memo(function Field({
   field,
   value,
+  beside,
   error,
   choices,
   onChange,
@@ -86,6 +87,16 @@ const Field = memo(function Field({
 }: {
   field: FieldDef
   value: string | boolean
+  /**
+   * The country a place field writes beside itself.
+   *
+   * Handed in rather than read here, because a field is drawn again only when
+   * something about that field changed and this is the one value that belongs
+   * to a field without being its own. Every field on the form is given it and
+   * only a place field reads it; on a form with no place there is nothing to
+   * give and it is empty.
+   */
+  beside: string
   error: FieldError | undefined
   choices: readonly FieldOption[]
   onChange: (field: FieldDef, value: string | boolean, also?: Record<string, string>) => void
@@ -173,22 +184,10 @@ const Field = memo(function Field({
 
       {field.type === 'country' && (
         <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
-          <option value="">{t('form.choose')}</option>
-          {/* The region first, because nine members in ten pick one of these. */}
-          <optgroup label={t('form.region')}>
-            {countries.region.map((one) => (
-              <option key={one.code} value={one.code}>
-                {one.name}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={t('form.restOfWorld')}>
-            {countries.rest.map((one) => (
-              <option key={one.code} value={one.code}>
-                {one.name}
-              </option>
-            ))}
-          </optgroup>
+          {/* Only while there is no answer, the way every other select on the
+              portal does it. */}
+          {String(value) === '' && <option value="">{t('form.choose')}</option>}
+          <CountryOptions holding={String(value)} />
         </select>
       )}
 
@@ -203,7 +202,12 @@ const Field = memo(function Field({
 
       {field.type === 'select' && (
         <select {...shared} value={String(value)} onChange={(e) => change(e.target.value)}>
-          <option value="">{t('form.choose')}</option>
+          {/* Only while there is no answer. It is there so a required select
+              cannot be left unanswered by accident; on a field the form opens
+              already holding one (`EVENTS.start`), it is a first entry nobody
+              can ever want, standing above the two that are the whole question:
+              „Izaberi", „Ne", „Da". */}
+          {String(value) === '' && <option value="">{t('form.choose')}</option>}
           {choices.map((option) => (
             <option key={option.value} value={option.value}>
               {t(option.labelKey)}
@@ -227,6 +231,10 @@ const Field = memo(function Field({
           id={inputId}
           name={field.name}
           value={String(value)}
+          /* Read out of the values the form holds rather than out of a field of
+             its own: the country is the second half of the place and has no
+             field on any definition (forms/types.ts). */
+          country={beside}
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
@@ -374,6 +382,7 @@ export function FormRenderer({
           key={field.name}
           field={field}
           value={value}
+          beside={String(filled.country ?? '')}
           error={errors[field.name]}
           choices={optionsFor(field, options)}
           onChange={handleChange}
@@ -385,7 +394,9 @@ export function FormRenderer({
           where it went, and read only, so it cannot contradict what it is read
           off. It says where it comes from, or a value nobody can change reads
           as a fault rather than as a rule. */}
-      {(derived?.(values, was) ?? []).map((one) => (
+      {(derived?.(values, was) ?? [])
+        .filter((one) => one.hidden !== true)
+        .map((one) => (
         <p className="field field--derived" key={one.name}>
           <span className="field__label">{t(one.labelKey)}</span>
           <strong className="field__derived">{t(one.shownKey)}</strong>

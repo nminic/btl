@@ -12,6 +12,7 @@ import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
 import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
+import { useReadsComments } from './readsComments'
 import './EventComments.css'
 
 /**
@@ -44,6 +45,7 @@ const AT_FIRST = 10
 
 export function EventComments({ eventId, date }: { eventId: string; date: string }) {
   const { t } = useI18n()
+  const reads = useReadsComments()
   const today = useToday()
   const state = combineResources(useComments(), useCompetitors(), useEvents())
 
@@ -98,9 +100,43 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
            shape: what is suppressed is the sentence, never a comment. An event
            moved onto a later date keeps everything already published under it,
            which is what the schedule queue does to events (types.ts,
-           `subjectId`). */
-        if (mine.length === 0 && date > today) {
+           `subjectId`).
+
+           And before the race a visitor is told nothing either way, whether the
+           chain of editions carries anything or not. Otherwise the line saying
+           the comments are for members appeared on exactly those future events
+           that have some, and was missing from the rest: the sentence meant to
+           hide what was said would have said which race there is something to
+           read about. */
+        if (date > today && (mine.length === 0 || !reads)) {
           return null
+        }
+
+        /* Only members read them (owner, 11.08.2026). Asked here and not before
+           the two guards above, because those decide whether there is a section
+           at all: asked first, a visitor was told there is something hidden on
+           a race nobody has said anything about, and got more of a page than
+           the member standing beside them.
+
+           **This is a screen and not a lock, and it must not be mistaken for
+           one.** The comments have already been fetched by the time this line
+           is reached, so a visitor's browser holds the whole file and anybody
+           who opens it reads every comment on the portal. That is tolerable
+           only while there is no server: the mock layer serves one static file
+           to everybody. When the API arrives (plan F5), the endpoint that
+           serves comments must refuse an unauthenticated caller, and this
+           guard stays as what it is, the thing that keeps the page from
+           promising what it will not deliver. The same is true of the marks
+           beside them (OverallMark.tsx). */
+        if (!reads) {
+          return (
+            <>
+              <h2 className="profile__section" id="comments">
+                {t('event.comments')}
+              </h2>
+              <p className="profile__empty">{t('event.commentsForMembers')}</p>
+            </>
+          )
         }
 
         return (

@@ -13,6 +13,10 @@
 const BASE = '/mock'
 
 export const RESOURCE_NAMES = [
+  /* Who has said they are going to which event (owner, 11.08.2026). Its own
+     record and not a list on the event: it is written by members and read by
+     members, and an event is written by administration. */
+  'attendance',
   'ducats',
   /* What members wrote about an event, after a moderator let it out (owner,
      06.08.2026). Its own record and not the queue it came through: the queue is

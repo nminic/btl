@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
+import { raceLabel } from '../../data/raceLabel'
 import { btlPoints } from '../../data/scoring'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
@@ -96,7 +97,18 @@ export function ReportResult() {
             return <NotRunYet slug={event.slug} />
           }
 
-          const mineHere = races.filter((race) => race.eventId === event.id)
+          /* The races of this event that have been run, which is not the same as
+             the races of an event that has begun (owner, 11.08.2026): a race
+             carries its own day, and an event may run over two mornings. On the
+             Saturday of a weekend the form offers the two Saturday races; on the
+             Sunday it offers all three.
+
+             A race has no time of day, so the day it is on counts from its own
+             morning: „rezultat na trku moguće uneti na kalendarski dan te trke
+             ili kasnije". */
+          const mineHere = races.filter(
+            (race) => race.eventId === event.id && race.date <= today,
+          )
           /* The first of them is the one the form opens on, which is what the
              owner asked for: most events hold one race, and where they hold five
              the member changes it in one press. Taken apart rather than indexed,
@@ -104,9 +116,11 @@ export function ReportResult() {
           const [first, ...rest] = mineHere
 
           if (first === undefined) {
-            /* An event with no races is not a thing to report a result on, and
-               a form whose one choice is empty is a form that cannot be
-               submitted and does not say why. */
+            /* An event with no races run yet is not a thing to report a result
+               on, and a form whose one choice is empty is a form that cannot be
+               submitted and does not say why. Two ways to get here: an event
+               whose distances are not entered yet, and one whose first morning
+               has not come. */
             return (
               <>
                 <h1>{event.name}</h1>
@@ -166,12 +180,12 @@ export function ReportResult() {
                 options={{
                   raceId: mineHere.map((race) => ({
                     value: race.id,
-                    /* The name and the distance, because two races at one event
-                       are told apart by the distance more often than by the
-                       name. `labelKey` takes a key and falls back to what it is
-                       given when there is no such key, which is what puts a
-                       value into a list of choices (src/i18n/translate.ts). */
-                    labelKey: `${race.name} · ${race.distanceKm} km`,
+                    /* Its measurements, and its day where two of them are the
+                       same length (data/raceLabel.ts). `labelKey` takes a key
+                       and falls back to what it is given when there is no such
+                       key, which is what puts a value into a list of choices
+                       (src/i18n/translate.ts). */
+                    labelKey: raceLabel(race, mineHere, locale),
                   })),
                 }}
                 onSubmit={onSubmit}
