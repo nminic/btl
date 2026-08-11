@@ -50,7 +50,7 @@ function Biography({ text, gender }: { text: string; gender: Gender }) {
           members (owner, 11.08.2026). */}
       {text === '' ? (
         <p className="profile__bio-text profile__bio-text--none">
-          {t(gender === 'F' ? 'profile.bioEmptyWomen' : 'profile.bioEmpty')}
+          {t(gender === 'F' ? 'profile.bioEmptyFemale' : 'profile.bioEmpty')}
         </p>
       ) : (
         shortBio(text)

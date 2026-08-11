@@ -1,4 +1,6 @@
 import { Link } from 'react-router'
+import { useGrowing } from '../../components/growing'
+import { LoadMore } from '../../components/LoadMore'
 import { Portrait } from '../../components/Portrait'
 import { Stars } from '../../components/Stars'
 import { RATING_MARKS } from '../../data/types'
@@ -36,6 +38,10 @@ import './EventComments.css'
  * 11.08.2026). The chain of editions is walked backwards from this one
  * (data/editions.ts) and every comment along it is read.
  */
+/** How many comments arrive with the page, before the first refill (owner,
+ *  11.08.2026). */
+const AT_FIRST = 10
+
 export function EventComments({ eventId, date }: { eventId: string; date: string }) {
   const { t } = useI18n()
   const today = useToday()
@@ -59,15 +65,31 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
        depends on what arrives. */
     <Resource state={state} inline label={t('event.comments')}>
       {([comments, competitors, events]) => {
-        /* Every id this race has run under, this one first. */
-        const editions = new Set(editionsOf(events, eventId).map((one) => one.id))
+        /* Every running this race has had, this one first, and every comment
+           written under any of them. Each comment is paired with its running as
+           the list is built rather than looked up afterwards: built the other
+           way there is a lookup that cannot fail and a fallback nothing can
+           reach, which is a line the next reader has to take on trust. */
+        const chain = editionsOf(events, eventId)
         /* Newest first, which is the order anybody reads a list of comments in.
            Unsorted it was the order of the file, and once a moderator starts
            publishing during a visit that order is "whatever the file had, then
            whatever was approved just now". */
-        const mine = comments
-          .filter((one) => editions.has(one.eventId))
-          .sort((left, right) => right.date.localeCompare(left.date))
+        const mine = chain
+          .flatMap((edition) =>
+            comments
+              .filter((one) => one.eventId === edition.id)
+              .map((comment) => ({
+                comment,
+                /* Which running it was written about, where that is not this
+                   one. Without it the page of the 2027 race carries a
+                   paragraph about the 2024 one with nothing saying so, and a
+                   reader takes last year's startni paket for this year's
+                   promise. */
+                from: edition.id === eventId ? '' : edition.date.slice(0, 4),
+              })),
+          )
+          .sort((left, right) => right.comment.date.localeCompare(left.comment.date))
 
         /* Nothing at all before the race, heading included: nobody can rate a
            race that has not been run (PDL P9), so the sentence saying there are
@@ -90,18 +112,7 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
             {mine.length === 0 ? (
               <p className="profile__empty">{t('event.noComments')}</p>
             ) : (
-              /* Named by the heading over it, so a reader moving by landmarks
-                 knows what the list is and does not have to have read the
-                 heading on the way past. */
-              <ol className="comments" aria-labelledby="comments">
-                {mine.map((comment) => (
-                  <Comment
-                    key={comment.id}
-                    comment={comment}
-                    who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
-                  />
-                ))}
-              </ol>
+              <CommentList written={mine} competitors={competitors} />
             )}
           </>
         )
@@ -110,7 +121,103 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
   )
 }
 
-function Comment({ comment, who }: { comment: EventComment; who: Competitor | undefined }) {
+/**
+ * The comments themselves, with what they add up to over them.
+ *
+ * Its own component because the list grows as it is read and a hook cannot be
+ * called inside the callback that draws it.
+ *
+ * The mark over the list is the first thing about an event a reader wants and
+ * the last thing the page used to say (owner, 11.08.2026): what everybody
+ * thought, before what one person wrote.
+ */
+function CommentList({
+  written,
+  competitors,
+}: {
+  /** Each comment beside the year of the running it was written about, empty
+   *  where that is the one being read. */
+  written: { comment: EventComment; from: string }[]
+  competitors: Competitor[]
+}) {
+  const { t } = useI18n()
+  const { shown, whole, asked, more } = useGrowing(written.length, AT_FIRST)
+
+  return (
+    <>
+      <OverallMark comments={written.map((one) => one.comment)} />
+
+      {/* Named by the heading over it, so a reader moving by landmarks knows
+          what the list is and does not have to have read the heading on the way
+          past. */}
+      <ol className="comments" aria-labelledby="comments">
+        {written.slice(0, shown).map(({ comment, from }) => (
+          <Comment
+            key={comment.id}
+            comment={comment}
+            who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
+            from={from}
+          />
+        ))}
+      </ol>
+
+      <LoadMore
+        whole={whole}
+        asked={asked}
+        onMore={more}
+        words={{
+          more: t('event.moreComments'),
+          showing: t('event.showingComments', { shown, total: written.length }),
+          whole: t('event.allComments', { count: written.length }),
+        }}
+      />
+    </>
+  )
+}
+
+/**
+ * What everybody thought, over what one person wrote (owner, 11.08.2026).
+ *
+ * Out of the comments that carry a rating. A comment written before the ratings
+ * existed has none (types.ts), and counting it as nought would drag the average
+ * of a race down for a reason nobody chose; a race whose every comment is like
+ * that has no mark to show rather than a mark of nought.
+ *
+ * The count beside the figure is what turns a mark into something a reader can
+ * judge: 5,0 from one person and 4,2 from forty are not the same claim.
+ */
+function OverallMark({ comments }: { comments: EventComment[] }) {
+  const { locale, t } = useI18n()
+  const marked = comments.filter((one) => rated(one.rating))
+
+  if (marked.length === 0) {
+    return null
+  }
+
+  const mark = marked.reduce((so, one) => so + overall(one.rating), 0) / marked.length
+
+  return (
+    <p className="comments__mark">
+      <span aria-hidden="true">
+        <Stars label={t('event.rating.overall')} value={mark} />
+      </span>
+      <span className="comments__mark-figure">{formatNumber(mark, locale, 1)}</span>
+      <span className="comments__mark-count">{t('event.ratedBy', { count: marked.length })}</span>
+    </p>
+  )
+}
+
+function Comment({
+  comment,
+  who,
+  from,
+}: {
+  comment: EventComment
+  who: Competitor | undefined
+  /** The year of the running it was written about, or empty where that is the
+   *  one being read. */
+  from: string
+}) {
   const { locale, t } = useI18n()
 
   return (
@@ -137,7 +244,12 @@ function Comment({ comment, who }: { comment: EventComment; who: Competitor | un
               </Link>
             )}
           </p>
-          <p className="comments__date">{formatDate(comment.date, locale)}</p>
+          <p className="comments__date">
+            {formatDate(comment.date, locale)}
+            {from !== '' && (
+              <span className="comments__edition">{t('event.fromEdition', { year: from })}</span>
+            )}
+          </p>
         </div>
 
         {/* The figure, and the stars beside it drawn to the figure itself.

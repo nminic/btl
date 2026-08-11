@@ -486,6 +486,131 @@ describe('a comment a moderator lets out', () => {
     expect(card.textContent).not.toContain('0,0')
   })
 
+  it('carries what was said about an earlier running of the same race', async () => {
+    /* The whole of the editions feature, asked of the screen (owner,
+       11.08.2026). Until this the screen read one event's comments, and nothing
+       failed when the walk of editions was taken back out: `editionsOf` had its
+       own tests and the page that uses it had none.
+
+       Read out of the record rather than named here, so what is looked for is a
+       comment that really is on the parent of the edition being opened. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const comments = await loadResource<EventComment[]>('comments')
+    const inherited = must(
+      comments.find((one) =>
+        events.some((event) => event.copiedFrom === one.eventId),
+      ),
+      'a comment on an event some later edition was copied from',
+    )
+    const later = must(
+      events.find((event) => event.copiedFrom === inherited.eventId),
+      'the later edition',
+    )
+
+    renderAt(`/sr/kalendar/${later.slug}`)
+
+    expect(await underEvent(inherited.body)).toBe(true)
+  })
+
+  it('says which running an inherited comment was written about', async () => {
+    /* Otherwise the page of the 2027 race carries a paragraph about the 2024
+       one with nothing to say so, and a reader takes last year's startni paket
+       for this year's promise. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const comments = await loadResource<EventComment[]>('comments')
+    const inherited = must(
+      comments.find((one) => events.some((event) => event.copiedFrom === one.eventId)),
+      'a comment on an event some later edition was copied from',
+    )
+    const later = must(
+      events.find((event) => event.copiedFrom === inherited.eventId),
+      'the later edition',
+    )
+    const from = must(
+      events.find((event) => event.id === inherited.eventId),
+      'the edition it was written under',
+    )
+
+    renderAt(`/sr/kalendar/${later.slug}`)
+
+    const card = must(
+      (await screen.findAllByRole('listitem')).find((one) =>
+        (one.textContent ?? '').includes(inherited.body),
+      ),
+      'the inherited comment',
+    )
+
+    expect(card).toHaveTextContent(`Izdanje ${from.date.slice(0, 4)}.`)
+  })
+
+  it('shows ten of them and grows by ten, rather than the whole of a long list', async () => {
+    /* Ten before the first refill (owner, 11.08.2026). The generated data has
+       six comments on its busiest event, so a longer list is stood up here: it
+       is the length that is under test and not the data. */
+    const real = globalThis.fetch
+    const many = Array.from({ length: 23 }, (_, at) => ({
+      id: `kom-mnogo-${String(at)}`,
+      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      memberNumber: '000007',
+      who: 'Neko Nekić',
+      date: `2010-05-${String(10 + (at % 20)).padStart(2, '0')}`,
+      rating: { organisation: 4, value: 4, ambience: 4 },
+      body: `Komentar broj ${String(at + 1)}.`,
+    }))
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/comments.json')
+        ? new Response(JSON.stringify(many), { status: 200 })
+        : real(input)) as typeof fetch
+
+    const user = setupUser()
+    renderAt(`/sr/kalendar/${EVENT}`)
+
+    const list = await screen.findByRole('list', { name: 'Komentari' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(10)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
+    expect(within(list).getAllByRole('listitem')).toHaveLength(20)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
+    expect(within(list).getAllByRole('listitem')).toHaveLength(23)
+    expect(screen.getByText('To su sva 23 komentara')).toBeVisible()
+
+    globalThis.fetch = real
+  })
+
+  it('shows no overall mark for an event whose only comment carries none', async () => {
+    /* The mark over the list is an average of the comments that carry one. A
+       comment written before the ratings existed carries none (types.ts), and
+       an event holding only that one has nothing to average: what it shows is
+       no mark at all rather than a mark of nought, which would be a claim
+       nobody made (owner, 11.08.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    const queue = await loadResource<PendingItem[]>('verification')
+    const bare = must(
+      queue.find(
+        (one) =>
+          one.queue === 'comments' &&
+          one.subjectId !== '' &&
+          one.rating.organisation === 0 &&
+          one.rating.value === 0 &&
+          one.rating.ambience === 0,
+      ),
+      'a waiting comment with no marks',
+    )
+
+    await user.click(within(await cardFor(bare.body)).getByRole('button', { name: 'Odobri' }))
+
+    const event = await eventWithId(bare.subjectId)
+    await router.navigate(`/sr/kalendar/${event.slug}`)
+
+    /* The comment is under the event, and there is no figure over it. */
+    expect(await underEvent(bare.body)).toBe(true)
+    expect(document.querySelector('.comments__mark')).toBeNull()
+  })
+
   it('draws each of the three marks under its own name, not one under all three', async () => {
     /* Read off the record, and off a comment whose three marks differ: given the
        same mark three times, a queue drawing the organisation under all three

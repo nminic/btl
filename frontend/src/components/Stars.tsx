@@ -61,12 +61,18 @@ function Star({ fill }: { fill: number }) {
   )
 }
 
-/** How much of one star is worth filling, for a rating of `value` out of five.
- *  Nought below it, one above it, and the remainder on the star the number
- *  falls inside. Not exported: nothing outside asks, and this file exports
- *  components. */
+/**
+ * How much of one star is worth filling, for a rating of `value` out of five.
+ *
+ * Nought below it, and the remainder on the star the number falls inside.
+ * Anything above one is left as it is rather than capped: everything from one
+ * upwards is drawn as a whole star, so a cap would be a branch nothing could
+ * ever take (`fill < 1` answers the same either way).
+ *
+ * Not exported: nothing outside asks, and this file exports components.
+ */
 function fillOf(value: number, mark: number): number {
-  return Math.min(1, Math.max(0, value - mark + 1))
+  return Math.max(0, value - mark + 1)
 }
 
 /**

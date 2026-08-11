@@ -626,7 +626,7 @@ describe('an empty inbox and an empty result list', () => {
 
     // 000031 has never raced, so nothing is counted and nothing is waiting.
     expect(await screen.findByText('Nisi poslao nijedan rezultat na proveru.')).toBeVisible()
-    expect(screen.getByText('Na ovom profilu još nema nijedan rezultat.')).toBeVisible()
+    expect(screen.getByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
   })
 })
 

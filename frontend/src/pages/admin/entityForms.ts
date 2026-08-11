@@ -137,7 +137,11 @@ export const EVENTS: EntityDef = {
   path: 'administracija/dogadjaji',
   form: dogadjaj as FormDef,
   idField: 'id',
-  blank: {},
+  /* An event entered by hand came out of nothing, and says so. Without this the
+     field was simply missing from the record while the type promised a string,
+     and the walk of editions stopped on the second of its two guards rather
+     than the first (data/editions.ts). */
+  blank: { copiedFrom: '' },
   /* A new event opens on Trka (owner, 10.08.2026). Nearly every one of them is
      a race, and a required field whose answer is the same ninety nine times in
      a hundred is a press taken from whoever is entering a whole calendar. */
@@ -617,13 +621,10 @@ export function fieldValues<T extends string | boolean>(
  * converted by `recordValue` and a value that is not stays the text it was.
  */
 export function recordFrom(entity: EntityDef, created: Created): Record<string, unknown> {
-  const named = new Set(entity.form.fields.map((field) => field.name))
   const record: Record<string, unknown> = { ...entity.blank }
 
   for (const [name, value] of Object.entries(created.values)) {
-    if (!named.has(name)) {
-      record[name] = value
-    }
+    record[name] = value
   }
 
   for (const { field, value } of fieldValues(entity.form, created.values)) {

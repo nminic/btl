@@ -152,40 +152,46 @@
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: end;
+    /* Both, and not only the column: `display: contents` throws away the row's
+       own gap along with its box, so without this the three rows of filters
+       touched at nought pixels. */
     column-gap: var(--space-12);
+    row-gap: var(--space-12);
   }
 
-  .rankings--tooled > h1,
-  .rankings--tooled > .rankings__filters {
+  /* Only the row of filters. The heading keeps its own box, because a heading
+     is a box: it holds its line and spans the row. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters {
     display: contents;
   }
 
-  .rankings--tooled > h1 {
-    /* `display: contents` would take the heading's own box away, and a heading
-       is a box: it keeps its own line and spans the row. */
-    display: block;
+  .rankings--tooled:has(> .rankings__filters) > h1 {
     grid-column: 1 / -1;
   }
 
-  .rankings--tooled > .rankings__head-tool {
+  .rankings--tooled:has(> .rankings__filters) > .rankings__head-tool {
     grid-column: 2;
     grid-row: 2;
     margin-block-end: 0;
   }
 
-  .rankings__filters > .rankings__field:first-child {
+  /* Scoped like the four above it: these three are children of the row of
+     filters, and that row exists on the admin screens too, under a different
+     parent. Placing them in a grid they are not in would be inert, and inert is
+     not the same as written down. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field:first-child {
     grid-column: 1;
     grid-row: 2;
   }
 
-  .rankings__field--categories,
-  .rankings__field--search {
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories,
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
     grid-column: 1 / -1;
   }
 
   /* The row of filters gives its own spacing away with its box, so what stood
      between it and the table has to be put back on the last field in it. */
-  .rankings__field--search {
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
     margin-block-end: var(--space-12);
   }
 }
@@ -306,10 +312,15 @@
    The name comes from `.rankings__field`, which is why this carries that class
    as well, and what is left here is only the height, so the buttons line up
    with the select and the box rather than floating between them. */
+/* It gives way before the row does. `flex: 0 0 auto` made it unshrinkable, so
+   ten chips pushed the page itself sideways and the row's own `overflow-x`
+   never engaged: measured at 560px with ten of them, the page scrolled to 735
+   and the chips did not. `min-inline-size: 0` is what lets a flex item go
+   below the width its content asks for, which is the whole of why the internal
+   scroll exists. */
 .rankings__field--categories {
-  /* Never the one that gives way: the categories are as wide as the categories
-     are, and the search box is what takes what is left. */
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-inline-size: 0;
 }
 
 /* As tall as the select and the box beside it, with the chips centred inside

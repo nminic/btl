@@ -1,0 +1,33 @@
+/* The foot of a list that grows as it is read. It is also what the observer
+   watches, so it has to have a box of its own even when the button inside it is
+   gone: an element of no height never comes into view. */
+.load-more {
+  display: flex;
+  justify-content: center;
+  min-height: 2.5rem;
+  align-items: center;
+  margin-block-start: var(--space-12);
+}
+
+.load-more__button {
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--fast);
+}
+
+.load-more__button:hover {
+  border-color: var(--accent);
+}
+
+.load-more__end {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

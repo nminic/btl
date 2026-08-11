@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { must } from '../test/at'
 import { join } from 'node:path'
 
 /**
@@ -19,6 +20,16 @@ const SHEET = blanked(readFileSync(join(process.cwd(), 'src/pages/Rankings.css')
 /** The sheet with its comments taken out. */
 function blanked(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
+/** One rule's body inside the telephone's media query, by its selector. */
+function phoneRule(selector: string): string {
+  const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 559.98px)'))
+  const at = phone.indexOf(`${selector} {`)
+
+  expect(at, `${selector} is not in the telephone's rules`).toBeGreaterThan(-1)
+
+  return phone.slice(at, phone.indexOf('}', at))
 }
 
 /**
@@ -49,11 +60,17 @@ describe('the row the three filters stand in', () => {
     expect(row).toContain('align-items: start')
   })
 
-  it('gives the width that is left to the search, and none of it to the rest', () => {
+  it('gives the width that is left to the search, and lets the chips give way', () => {
     /* "Ime, prezime ili članski broj" has to fit inside the box it is written
-       in, and the other two are as wide as what they hold. */
+       in. The chips are as wide as the chips until the row runs out, and then
+       they shrink and scroll inside themselves: unshrinkable, ten of them
+       pushed the page sideways and the row's own scroll never engaged. */
     expect(bodyOf('.rankings__field--search')).toContain('flex: 1 1')
-    expect(bodyOf('.rankings__field--categories')).toContain('flex: 0 0 auto')
+
+    const chips = bodyOf('.rankings__field--categories')
+
+    expect(chips).toContain('flex: 0 1 auto')
+    expect(chips).toContain('min-inline-size: 0')
   })
 
   it('stands the categories as tall as the controls beside them', () => {
@@ -69,21 +86,40 @@ describe('the row the three filters stand in', () => {
        11.08.2026); above it the gender belongs with the name of the screen and
        the season with the filters. What lets a grandchild stand in that grid is
        `display: contents` on the row of filters, and that is the whole of the
-       mechanism: without it the season cannot leave the row it is written in. */
-    const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 559.98px)'))
-    const upTo = phone.slice(0, phone.indexOf('@media', 1))
+       mechanism: without it the season cannot leave the row it is written in.
 
-    expect(upTo).toContain('display: contents')
-    expect(upTo).toContain('grid-template-columns: auto 1fr')
-    /* Aligned at the foot here, because the season carries a name above it and
-       the gender does not: what makes them one row is that they end together. */
-    expect(upTo).toContain('align-items: end')
+       Read out of the rules that own the declarations rather than out of the
+       whole media query: asked of the query as one string, a `display: grid`
+       moved to any rule at all inside it still passed, which is a guard that
+       holds a word rather than a layout. */
+    const container = phoneRule('.rankings--tooled:has(> .rankings__filters)')
+
+    expect(container).toContain('display: grid')
+    expect(container).toContain('grid-template-columns: auto 1fr')
+    expect(container).toContain('column-gap')
+    /* Both gaps: `display: contents` throws the row's own away with its box, so
+       without the second the three rows of filters touch. */
+    expect(container).toContain('row-gap')
+    /* Aligned at the foot, because the season carries a name above it and the
+       gender does not: what makes them one row is that they end together. */
+    expect(container).toContain('align-items: end')
+
+    expect(
+      phoneRule('.rankings--tooled:has(> .rankings__filters) > .rankings__filters'),
+    ).toContain('display: contents')
   })
 
-  it('keeps the heading a box of its own, which display: contents would take away', () => {
+  it('scopes every one of those rules to this screen', () => {
+    /* `rankings--tooled` is eight screens. A rule inside this query that names
+       only the shared class is a rule that reaches all eight, and "inert on the
+       other seven" is a thing that stays true only until one of them grows a
+       row of filters. */
     const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 559.98px)'))
-    const heading = phone.slice(phone.indexOf('.rankings--tooled > h1 {'))
+    const query = phone.slice(0, phone.lastIndexOf('}'))
+    const loose = [...query.matchAll(/^ {2}(\.[^{]+)\{/gm)]
+      .map((one) => must(one[1], 'the selector the match found').trim())
+      .filter((one) => !one.includes(':has(> .rankings__filters)'))
 
-    expect(heading.slice(0, heading.indexOf('}'))).toContain('display: block')
+    expect(loose).toEqual([])
   })
 })

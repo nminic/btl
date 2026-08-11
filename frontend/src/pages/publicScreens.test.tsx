@@ -1317,7 +1317,7 @@ describe('CompetitorProfile', () => {
     // the whole career, or the season now would be the reason the table is empty.
     renderAt('/sr/takmicar/000031?sezona=sve')
 
-    expect(await screen.findByText('Na ovom profilu još nema nijedan rezultat.')).toBeVisible()
+    expect(await screen.findByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
     // Nothing to filter, so nothing to reset.
     expect(screen.queryByRole('button', { name: 'Poništi filtere' })).not.toBeInTheDocument()
   })

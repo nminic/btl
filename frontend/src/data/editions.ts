@@ -28,7 +28,9 @@ export function editionsOf(events: BtlEvent[], eventId: string): BtlEvent[] {
 
   let at = eventId
 
-  while (at !== '' && !met.has(at)) {
+  /* No test for the empty string an event entered by hand carries: the lookup
+     below answers nothing for it, which is the same door out. */
+  while (!met.has(at)) {
     met.add(at)
 
     const event = byId.get(at)

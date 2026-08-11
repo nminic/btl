@@ -183,11 +183,17 @@ describe('a star filled part of the way across', () => {
 
   it('draws whole stars with no cut at all, and empty ones with no ink', () => {
     /* A clip that cuts nothing is an id in the document for nothing, and there
-       are five of these on every rating on the screen. */
+       are five of these on every rating on the screen.
+
+       And the whole star must not point at one either: a `clip-path` naming an
+       id that is not in the document is an invalid reference, and by CSS
+       Masking an element with one is not rendered at all. jsdom draws nothing,
+       so the only way to see that is to read the attribute. */
     draw(<Stars label="Ocena" value={4} />)
 
     expect(cuts()).toEqual([null, null, null, null, null])
     expect(inked()).toBe(4)
+    expect(document.querySelectorAll('.stars__mark path[clip-path]')).toHaveLength(0)
   })
 
   it('says the number the way the portal writes numbers', () => {

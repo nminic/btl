@@ -568,7 +568,20 @@
       "race": "Trka",
       "training": "Trening",
       "gathering": "Skup"
-    }
+    },
+    "moreComments": "Učitaj još komentara",
+    "showingComments": "Prikazano {shown} od {total}",
+    "allComments": {
+      "one": "To je jedini komentar",
+      "few": "To su sva {count} komentara",
+      "other": "To je svih {count} komentara"
+    },
+    "ratedBy": {
+      "one": "iz {count} ocene",
+      "few": "iz {count} ocene",
+      "other": "iz {count} ocena"
+    },
+    "fromEdition": "Izdanje {year}."
   },
   "category": {
     "short": "Kraća trka",
@@ -609,7 +622,7 @@
     "time": "Vreme na stazi",
     "points": "Bodova",
     "results": "Rezultati",
-    "noResults": "Na ovom profilu još nema nijedan rezultat.",
+    "noResults": "Na ovom profilu još nema nijednog rezultata.",
     "columns": {
       "date": "Datum",
       "event": "Događaj",
@@ -674,7 +687,14 @@
       "overview": "Pregled",
       "awards": "Priznanja i nagrade"
     },
-    "bioEmptyWomen": "Ova takmičarka još nije napisala ništa o sebi."
+    "moreDucats": "Učitaj još dukata",
+    "showingDucats": "Prikazano {shown} od {total}",
+    "allDucats": {
+      "one": "To je jedini dukat",
+      "few": "To su sva {count} dukata",
+      "other": "To je svih {count} dukata"
+    },
+    "bioEmptyFemale": "Ova takmičarka još nije napisala ništa o sebi."
   },
   "teams": {
     "myTeam": "vaš tim",

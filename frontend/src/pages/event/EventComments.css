@@ -83,3 +83,27 @@
      push the card sideways. */
   overflow-wrap: anywhere;
 }
+
+/* What everybody thought, over what one person wrote (owner, 11.08.2026). The
+   figure is the fact and the stars are the picture of it, so the figure is the
+   one that carries weight; the count beside it is what turns a mark into
+   something a reader can judge, since 5,0 from one person and 4,2 from forty
+   are not the same claim. */
+.comments__mark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-12);
+}
+
+.comments__mark-figure {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-500);
+}
+
+.comments__mark-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
