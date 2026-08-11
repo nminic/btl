@@ -234,6 +234,42 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
   })
 
+  it('keeps the real place when the search narrows the table', async () => {
+    /* The number in the first column is the place the standing gave the row,
+       not the row it ended up drawn in. Searching narrows the view and does not
+       re-rank (PDL P12), so somebody who stands seventh is seventh in a table
+       that shows them alone.
+
+       This is the guard the whole „read the place, do not count the rows" rule
+       hangs on. Everywhere else on the portal the two happen to agree, because
+       the boards are drawn whole from the top; here they part, and a table that
+       numbered its own rows would say „1" for a member who is not first. */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2020')
+
+    const wholeTable = within(await screen.findByRole('table'))
+    const rows = wholeTable.getAllByRole('row')
+    /* The last of them, so the place is as far from the row number as this
+       season allows. The head counts as a row, hence the two. */
+    const last = must(rows[rows.length - 1], 'the last row of the standing')
+    const place = must(
+      within(last).getAllByRole('cell')[0]?.textContent,
+      'the place in the last row',
+    )
+    const who = must(within(last).getAllByRole('cell')[1]?.textContent, 'who holds it')
+
+    expect(place).not.toBe('1')
+
+    await user.type(screen.getByLabelText('Pretraga'), must(who, 'a name to search for').trim())
+
+    const narrowed = within(screen.getByRole('table')).getAllByRole('row')
+
+    expect(narrowed).toHaveLength(2)
+    expect(within(must(narrowed[1], 'the only row left')).getAllByRole('cell')[0]).toHaveTextContent(
+      place,
+    )
+  })
+
   it('says which category is being read, and says it in the buttons themselves', async () => {
     /* Chosen by pressing one rather than out of a list that opens (owner,
        11.08.2026). Which one is on is said by `aria-pressed` and not by colour
@@ -419,16 +455,21 @@ describe('TopBoards', () => {
   })
 
   it('says which place every column stands in, since an ol cannot', async () => {
-    /* The place is said in words rather than left to the reading order, because
-       a chart is not a table and has no column to carry it. The tables carry it
-       in a column; here it goes into the text of the column.
+    /* The place is said in words, because a chart is not a table and has no
+       column to carry it. What this holds is that every column says one, that
+       it is the one the board gave, and that it stands with the right name.
 
-       Read on the longer races of 2016, where the last two are level on every
-       rung of the ladder but the member number. Until 11.08.2026 that made them
-       a shared ninth place and this test read 9, 9; the owner settled that day
-       that there is no shared place (PDL P12), so the lower member number takes
-       the ninth and the other the tenth. What the test still holds is that the
-       chart says the place it was given rather than counting its own rows.
+       It does not hold that the chart reads the place rather than counting its
+       own rows: every board here is drawn whole from the top, so on this screen
+       the two agree column for column and no test could tell them apart. Where
+       they part is the standing under a search, and that is where the rule is
+       guarded (`keeps the real place when the search narrows the table`).
+
+       Until 11.08.2026 they parted here too: the last two of the longer races
+       of 2016 are level down to the member number, which made them a shared
+       ninth place and this test read 9, 9. There is no shared place any more
+       (PDL P12), so the lower member number takes the ninth and the other the
+       tenth.
 
        The day is handed to the screen and used here as well, so both sides work
        the field out for the same one (PDL P11). On this season it changes

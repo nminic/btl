@@ -12,9 +12,9 @@ import type { Competitor, Result } from '../../data/types'
  * Nothing anywhere records that a trophy was handed over: the standing is frozen
  * at the end of a season and the top three of each board take one (PDL P16). So
  * the awards are read back out of the standings, through the same function the
- * public tables are drawn with, and cannot drift away from them. Shared places
- * come with it, and they matter: two who tie for second are both second and both
- * take the plaque.
+ * public tables are drawn with, and cannot drift away from them. That is the
+ * whole of why they are read that way: one place, one member, one trophy, and
+ * no way for the board and the shelf to disagree (PDL P12, no shared place).
  *
  * Permanent by decision: what a member has won stays written on the profile for
  * good (PDL P11). A season somebody did not race is a season with no award, never one

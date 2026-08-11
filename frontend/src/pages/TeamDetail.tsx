@@ -72,8 +72,8 @@ export function TeamDetail() {
         const totals = totalsOf(mine)
         /* Places, not row numbers, and the whole ladder rather than points
            alone: two members level on points used to be given 1 and 2 by the
-           order they happened to be in, while the list of teams beside this one
-           already shared the place (PDL P12). */
+           order they happened to be in, which is the one thing the ladder in
+           src/data/derive.ts exists to prevent (PDL P12). */
         const rows = rankMembers(members, mine)
 
         return (

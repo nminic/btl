@@ -28,7 +28,12 @@ function renderForm(today = OPEN) {
   )
 }
 
-async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>) {
+async function fillEverythingExceptBirthDate(
+  user: ReturnType<typeof setupUser>,
+  /** Left out where the test is about the picture being missing: a file input
+   *  cannot be cleared once it holds something (`user.clear` refuses it). */
+  { picture = true }: { picture?: boolean } = {},
+) {
   await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
   await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
@@ -50,10 +55,12 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   /* Required since the list of obligatory fields was written, and given its
      place in the layout on 11.08.2026: the picture stands to the left of the
      box below, in a row of its own two. */
-  await user.upload(
-    screen.getByLabelText(/Profilna slika/),
-    new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-  )
+  if (picture) {
+    await user.upload(
+      screen.getByLabelText(/Profilna slika/),
+      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
+    )
+  }
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
   await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
@@ -251,6 +258,46 @@ describe('the biography, at the moment of joining', () => {
 })
 
 describe('the country a member lives in', () => {
+  it('is refused without a picture, which is an obligatory field', async () => {
+    /* Obligatory since the list of obligatory fields was written (PDL P8), and
+       it stayed obligatory when it was given its place in the layout on
+       11.08.2026. The picture is how members recognise each other at a race, so
+       a profile without one is a profile half made.
+
+       Everything else is filled in, so the only thing keeping the form shut is
+       the picture, and the refusal cannot be somebody else's. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user, { picture: false })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+
+    /* Said where the field is, and said again in the summary at the top, which
+       is what carries a keyboard back to it. */
+    const field = must(
+      screen.getByLabelText(/Profilna slika/).closest<HTMLElement>('.field'),
+      'the field the picture stands in',
+    )
+
+    expect(within(field).getByText('Ovo polje je obavezno.')).toBeVisible()
+    expect(screen.getByLabelText(/Profilna slika/)).toHaveAttribute('aria-invalid', 'true')
+    expect(
+      within(screen.getByRole('alert')).getByRole('link', { name: /Profilna slika/ }),
+    ).toHaveAttribute('href', '#field-photo')
+
+    /* And it goes through once the picture is there. */
+    await user.upload(
+      screen.getByLabelText(/Profilna slika/),
+      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  })
+
   it('is refused when the town was typed by hand and no country was picked', async () => {
     /* The country has no field of its own: the town carries it (PDL P6). What
        that cost was the rule that used to stand on the country field: a town the

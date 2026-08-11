@@ -167,10 +167,18 @@ export function withPlaces<T extends object>(
   /* A copy, because a caller that hands in a list it still uses would find it
    * reordered under it. */
   return [...rows]
-    .sort(
-      (left, right) =>
-        compare(left, right) || memberNumberOf(left).localeCompare(memberNumberOf(right)),
-    )
+    .sort((left, right) => {
+      const byLadder = compare(left, right)
+
+      /* Written out rather than `||`, which is what `byLadder` above does as
+         well and for the same reason (ADL A14): a rung that measures a date
+         gives `NaN` when the date is not one, and `||` would read that as „these
+         two are level" and quietly fall through to the member number. Asked
+         about zero, `NaN` is not zero, and a wrong date shows itself. */
+      return byLadder !== 0
+        ? byLadder
+        : memberNumberOf(left).localeCompare(memberNumberOf(right))
+    })
     .map((row, index) => ({ ...row, position: index + 1 }))
 }
 

@@ -104,8 +104,9 @@ export function Teams() {
                           myTeam === undefined ? undefined : mineIn([row.team.id], myTeam),
                         )}
                       >
-                        {/* The place, not the row number: a tie nothing separates
-                            is shared, so the column can read 1, 1, 3 (PDL P12). */}
+                        {/* The place, not the row number: the numbering is done
+                            where the ladder is (src/data/derive.ts), and a table
+                            drawn here may be narrowed. */}
                         <td className="table__position">
                           {row.position}
                           {myTeam === undefined ||

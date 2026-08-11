@@ -273,11 +273,11 @@ export type SessionValue = {
   publish: (comment: EventComment) => void
 }
 
+/** The six obligatory emails cannot be switched off (PDL P22); these can. */
 export const NOTIFICATION_KEYS: NotificationKey[] = [
   'resultApproved',
   'resultChanged',
   'newsletter',
 ]
 
-/** The six obligatory emails cannot be switched off (PDL P22); these can. */
 export const SessionContext = createContext<SessionValue | null>(null)

@@ -737,7 +737,16 @@ describe('a form laid out in rows', () => {
     )
 
     expect(fifth).toHaveStyle({ '--columns': '2' })
-    expect(within(fifth).getByLabelText(/Svojim rečima/)).toBeInTheDocument()
+
+    /* And in that order: the picture first, the words after it. Held on the
+       boxes themselves rather than on the labels, because the label of a field
+       carries the letter of its explanation as well. */
+    const inFifth = fifth.querySelectorAll('.field')
+
+    expect(within(must(inFifth[0], 'the first field of the row')).getByLabelText(/Profilna slika/))
+      .toBeInTheDocument()
+    expect(within(must(inFifth[1], 'the second field of the row')).getByLabelText(/Svojim rečima/))
+      .toBeInTheDocument()
 
     /* The confirmation stands alone, as every field on every other form does. */
     expect(screen.getByLabelText(/zdravstveno sposoban/).closest('.form__row')).toBeNull()
