@@ -76,6 +76,11 @@ export function EventActions({
       country: event.country,
       organizer: event.organizer,
       kind: event.kind,
+      /* Which edition this one came out of. The one place it is ever written,
+         and the reason the chain can be walked at all: an id nobody typed and
+         nobody can mistype, rather than a name that changes with a sponsor
+         (owner, 11.08.2026). */
+      copiedFrom: event.id,
     })
 
     for (const race of mine) {

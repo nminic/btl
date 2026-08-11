@@ -285,6 +285,25 @@ describe('Rankings', () => {
  * back to what it said is a change nobody would notice for a month.
  */
 describe('what the filters are called', () => {
+  it('puts the three filters in one row, each a name over its control', async () => {
+    /* Season, then categories, then search to the end of the width (owner,
+       11.08.2026). jsdom computes no layout, so what is held is the order and
+       the shape the layout is built out of: three fields in one row, each one a
+       name over a control. A row that reads right and is built some other way
+       is a row that stops reading right on the next screen that copies it. */
+    renderAt('/sr/tabela?sezona=2020')
+
+    await screen.findByRole('table')
+
+    const row = must(document.querySelector('.rankings__filters'), 'the row of filters')
+    const named = [...row.children].map((one) => (one.querySelector('span')?.textContent ?? ''))
+
+    expect(named).toEqual(['Sezona', 'Kategorija', 'Pretraga'])
+    /* And the search is the one that gives, so the words it suggests typing fit
+       inside it: the other two are as wide as what they hold. */
+    expect(at([...row.children], 2).className).toContain('rankings__field--search')
+  })
+
   it('names the category in full, and offers all of them as Sve', async () => {
     renderAt('/sr/tabela?sezona=2019')
 
@@ -1223,7 +1242,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000032')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog takmičara nema.' }),
+      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
     ).toBeVisible()
   })
 
@@ -1289,7 +1308,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/M9999')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog takmičara nema.' }),
+      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
     ).toBeVisible()
   })
 
@@ -1298,7 +1317,7 @@ describe('CompetitorProfile', () => {
     // the whole career, or the season now would be the reason the table is empty.
     renderAt('/sr/takmicar/000031?sezona=sve')
 
-    expect(await screen.findByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
+    expect(await screen.findByText('Na ovom profilu još nema nijedan rezultat.')).toBeVisible()
     // Nothing to filter, so nothing to reset.
     expect(screen.queryByRole('button', { name: 'Poništi filtere' })).not.toBeInTheDocument()
   })

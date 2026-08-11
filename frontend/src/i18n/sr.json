@@ -609,7 +609,7 @@
     "time": "Vreme na stazi",
     "points": "Bodova",
     "results": "Rezultati",
-    "noResults": "Ovaj takmičar još nema nijedan rezultat.",
+    "noResults": "Na ovom profilu još nema nijedan rezultat.",
     "columns": {
       "date": "Datum",
       "event": "Događaj",
@@ -618,7 +618,7 @@
       "points": "Bodovi",
       "length": "Dužina"
     },
-    "notFound": "Ovog takmičara nema.",
+    "notFound": "Ovog profila nema.",
     "byCategory": "Trke po dužini",
     "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata.",
     "racesWord": {
@@ -673,7 +673,8 @@
       "label": "Delovi profila",
       "overview": "Pregled",
       "awards": "Priznanja i nagrade"
-    }
+    },
+    "bioEmptyWomen": "Ova takmičarka još nije napisala ništa o sebi."
   },
   "teams": {
     "myTeam": "vaš tim",

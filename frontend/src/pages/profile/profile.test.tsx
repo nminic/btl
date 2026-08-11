@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { loadResource } from '../../data/client'
+import type { Competitor } from '../../data/types'
 import { awardsOf } from './awards'
 import { shortBio } from './bio'
 
@@ -92,7 +94,7 @@ describe('what a competitor has won', () => {
     renderAt('/sr/takmicar/000032/priznanja')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog takmičara nema.' }),
+      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
     ).toBeVisible()
   })
 })
@@ -331,7 +333,7 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
     renderAt('/sr/takmicar/000031?sezona=sve&duzina=ultra')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.getByText('Ovaj takmičar još nema nijedan rezultat.')).toBeVisible()
+    expect(screen.getByText('Na ovom profilu još nema nijedan rezultat.')).toBeVisible()
   })
 
   it('names the length for somebody who has raced, but never that far', async () => {
@@ -503,5 +505,35 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
     } finally {
       globalThis.fetch = real
     }
+  })
+})
+
+describe('what the portal calls the person whose page it is', () => {
+  /* A portal that calls every woman on it a takmičar is one written for half
+     its members (owner, 11.08.2026). Said where the sentence is about the
+     person: the empty biography and the empty list of results. */
+
+  it('says takmičarka on a woman page, and takmičar on a man page', async () => {
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const silent = (gender: string) =>
+      must(
+        competitors.find((one) => one.gender === gender && one.active && one.bio === ''),
+        `an active ${gender} with no biography`,
+      )
+    renderAt(`/sr/takmicar/${silent('F').memberNumber}`)
+    expect(await screen.findByText('Ova takmičarka još nije napisala ništa o sebi.')).toBeVisible()
+
+    cleanup()
+
+    renderAt(`/sr/takmicar/${silent('M').memberNumber}`)
+    expect(await screen.findByText('Ovaj takmičar još nije napisao ništa o sebi.')).toBeVisible()
+  })
+
+  it('asks no gender at all for a profile that is not there', async () => {
+    /* There is no record to read one off, so the sentence is written not to
+       need one rather than guessed at. */
+    renderAt('/sr/takmicar/999999')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' })).toBeVisible()
   })
 })

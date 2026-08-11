@@ -3,8 +3,9 @@ import { Portrait } from '../../components/Portrait'
 import { Stars } from '../../components/Stars'
 import { RATING_MARKS } from '../../data/types'
 import type { Competitor, EventComment } from '../../data/types'
+import { editionsOf } from '../../data/editions'
 import { overall, rated } from './overall'
-import { combinePair, useComments, useCompetitors } from '../../data/useResource'
+import { combineResources, useComments, useCompetitors, useEvents } from '../../data/useResource'
 import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
 import { useToday } from '../../clock/useClock'
@@ -27,11 +28,18 @@ import './EventComments.css'
  *
  * A comment shows who wrote it, so it carries their face and their name, and the
  * name leads to their profile the way every name on the portal does (PDL P11).
+ *
+ * **What is read is the race, not the running of it.** A comment is tied to the
+ * exact event it was written under, and next season's event is a copy with an id
+ * of its own, so a screen asking only its own event opened every new edition
+ * with nothing said about a race that has been run for fifteen years (owner,
+ * 11.08.2026). The chain of editions is walked backwards from this one
+ * (data/editions.ts) and every comment along it is read.
  */
 export function EventComments({ eventId, date }: { eventId: string; date: string }) {
   const { t } = useI18n()
   const today = useToday()
-  const state = combinePair(useComments(), useCompetitors())
+  const state = combineResources(useComments(), useCompetitors(), useEvents())
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
@@ -50,13 +58,15 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
        The heading is inside it because whether there is a section at all
        depends on what arrives. */
     <Resource state={state} inline label={t('event.comments')}>
-      {([comments, competitors]) => {
+      {([comments, competitors, events]) => {
+        /* Every id this race has run under, this one first. */
+        const editions = new Set(editionsOf(events, eventId).map((one) => one.id))
         /* Newest first, which is the order anybody reads a list of comments in.
            Unsorted it was the order of the file, and once a moderator starts
            publishing during a visit that order is "whatever the file had, then
            whatever was approved just now". */
         const mine = comments
-          .filter((one) => one.eventId === eventId)
+          .filter((one) => editions.has(one.eventId))
           .sort((left, right) => right.date.localeCompare(left.date))
 
         /* Nothing at all before the race, heading included: nobody can rate a

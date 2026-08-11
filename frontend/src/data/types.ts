@@ -89,6 +89,19 @@ export type BtlEvent = {
   country: string
   organizer: string
   kind: EventKind
+  /**
+   * The event this one was copied from, or an empty string.
+   *
+   * Written the moment a copy is made and never again (owner, 11.08.2026), so
+   * one edition knows what it came out of and a chain of them reads backwards
+   * however long it is. What it carries is the comments: what was said about
+   * last year's running is said about this race.
+   *
+   * Explicit and not by name, because the name changes: "Beogradski maraton"
+   * becomes "Wizz Air Beogradski maraton" and is the same race, while two
+   * unrelated "Novogodišnja trka" are not one race in two towns.
+   */
+  copiedFrom: string
 }
 
 /* An event does not list its races. It did, in `raceIds`, and the same link was
