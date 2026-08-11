@@ -87,24 +87,35 @@ export function PlaceField({
    * name recognises nothing by itself, so the choice stays where it was.
    */
   const spelt = plainly(value.trim())
-  /* Worked out again only when the codebook or what is typed changes. Without
-     this it is a walk over forty seven thousand towns, folding two names apiece
-     (`plainly` normalises and then runs thirteen replacements), on every
-     keystroke and on every redraw of whatever this field stands in: measured at
-     22 milliseconds a pass, which is a frame and a half of a form being typed
-     into. ADL A7 asks that a form not be redrawn whole on every key, and this is
-     the same cost by another road. */
-  const only = useMemo(() => {
-    if (spelt === '') {
-      return []
+  /* The codebook folded once, into a name and the countries that answer to it.
+   *
+     Recognising a town by walking the whole codebook and folding two names for
+     each was 24 milliseconds a pass over forty seven thousand towns, and it ran
+     on every keystroke: 170 milliseconds to type „beograd". Memoising the walk
+     kept it off the redraws but not off the keys, since what is typed is what
+     changes. Folded once per codebook, recognising is a lookup.
+   *
+     A map of names to countries and not to towns, because that is the whole
+     question here: whether the codebook can mean only one place by this name. */
+  const byName = useMemo(() => {
+    const found = new Map<string, Set<string>>()
+
+    for (const one of places) {
+      for (const written of one[2] === undefined ? [one[0]] : [one[0], one[2]]) {
+        const folded = plainly(written)
+        const already = found.get(folded)
+
+        if (already === undefined) {
+          found.set(folded, new Set([one[1]]))
+        } else {
+          already.add(one[1])
+        }
+      }
     }
 
-    const sameName = places.filter(
-      (one) => plainly(one[0]) === spelt || (one[2] !== undefined && plainly(one[2]) === spelt),
-    )
-
-    return [...new Set(sameName.map((one) => one[1]))]
-  }, [places, spelt])
+    return found
+  }, [places])
+  const only = [...(byName.get(spelt) ?? [])]
   /* Picked off the list, or spelt out so that the codebook can only mean one
      place. Picking counts even for a name two countries share, because then the
      row that was pressed said which of them it was; typing „London" says
@@ -329,15 +340,18 @@ export function PlaceField({
           <CountryOptions holding={country} />
         </select>
 
-        {/* Why it cannot be answered, where it cannot be answered. It stands in
-            the field's own hint as well, and this is the half that is attached
-            to the control itself. */}
-        {known !== undefined && (
-          <span className="place__held" id={heldId}>
-            {t('form.countryFromPlace')}
-          </span>
-        )}
       </label>
+
+      {/* Why it cannot be answered, where it cannot be answered. Outside the
+          label and not inside it: everything inside a label is the name of the
+          control, so put there this sentence became part of the name, the name
+          changed with the state, and a screen reader said the same words twice,
+          once as the name and once as the description. */}
+      {known !== undefined && (
+        <p className="place__held" id={heldId}>
+          {t('form.countryFromPlace')}
+        </p>
+      )}
     </div>
   )
 }

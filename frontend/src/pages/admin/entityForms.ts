@@ -250,6 +250,34 @@ export function eventClash(
 }
 
 /**
+ * Two races of one event on one morning and of one length.
+ *
+ * A race has no name (PDL P6), so it is known by its event, its day and its
+ * length, and two that share all three are two records nothing can tell apart:
+ * the row of one and the row of the other carry the same words, and one of the
+ * two buttons deletes results. The same pair stands twice in the list a member
+ * reports a result from, and whichever is picked is picked blindly.
+ *
+ * Refused where it is made rather than drawn around afterwards. A duplicate like
+ * this is a mistake in the entering, not a shape the calendar has: an event that
+ * really runs two races of one length on one morning gives them different
+ * lengths, because they are different races.
+ *
+ * Said on the length, which is the field somebody would change to fix it.
+ */
+export function raceClash(
+  values: FormValues,
+  others: { date: string; distanceKm: number }[],
+): Record<string, FieldError> {
+  const day = isoDate(String(values.date))
+  const length = Number(values.distanceKm)
+
+  const same = others.some((one) => one.date === day && one.distanceKm === length)
+
+  return same ? { distanceKm: { key: 'admin.raceTaken' } } : {}
+}
+
+/**
  * The address an event answers at: its name, then the year it is run in.
  *
  * The year is part of it because the same race is run every year and the name on

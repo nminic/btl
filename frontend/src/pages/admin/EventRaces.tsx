@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import type { BtlEvent, Race } from '../../data/types'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { racesOf, type Editing } from './entityForms'
+import { raceClash, racesOf, type Editing } from './entityForms'
 import './Entity.css'
 
 /**
@@ -69,6 +69,18 @@ export function EventRaces({
         <EntityEditor
           entity={entity}
           editing={editing}
+          /* Not a second race of this event on the same morning and of the same
+             length: there is nothing left to tell the two apart by
+             (entityForms.ts, `raceClash`). */
+          also={(values) =>
+            raceClash(
+              values,
+              (editing.mode === 'new'
+                ? mine
+                : mine.filter((race) => race.id !== String(editing.record[entity.idField]))
+              ).map((race) => ({ date: race.date, distanceKm: race.distanceKm })),
+            )
+          }
           /* The event follows its first race (owner, 10.08.2026): its date is
              the day it begins, so a race entered or moved to an earlier day
              makes that day the event's. Written here rather than in the race's

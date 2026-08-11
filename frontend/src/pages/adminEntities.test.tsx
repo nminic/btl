@@ -74,6 +74,46 @@ describe('the races of an event', () => {
     expect(screen.queryByRole('button', { name: 'Otvori: ' })).toBeNull()
   })
 
+  it('refuses a second race of the same length on the same morning', async () => {
+    /* There is nothing left to tell the two apart by: a race has no name
+       (PDL P6), so both rows would read „10,0 km, 1. 6. 2027." and one of the
+       two buttons beside them deletes results. The same pair would stand twice
+       in the list a member reports a result from. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const day = String(
+      (screen.queryByLabelText(/^Dan trke/) as HTMLInputElement | null)?.value ?? '',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const opened = String((screen.getByLabelText(/^Dan trke/) as HTMLInputElement).value)
+
+    expect(day).toBe('')
+    await user.type(screen.getByLabelText(/^Dužina/), '17')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* And now the same thing again, on the same morning. */
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.clear(screen.getByLabelText(/^Dan trke/))
+    await user.type(screen.getByLabelText(/^Dan trke/), opened.replace(/\D/g, ''))
+    await user.type(screen.getByLabelText(/^Dužina/), '17')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(
+      await screen.findByText(/Ovaj događaj već ima trku te dužine tog dana/),
+    ).toBeVisible()
+    /* And nothing was saved: the form is still open on what was typed. */
+    expect(screen.getByLabelText(/^Dužina/)).toHaveValue(17)
+  })
+
   it('says that opening a race puts the event form away', async () => {
     /* The form is unmounted while a race is open, so what was typed into it and
        not saved is gone. Said before the button rather than discovered after

@@ -301,6 +301,25 @@ describe('the town on a form', () => {
     })
   })
 
+  it('keeps the name of the country control the same, held or not', async () => {
+    /* The sentence saying why it is held stands outside the label. Inside it,
+       everything in a label is the name of the control: the name changed with
+       the state, and a reader was told the same words twice, once as the name
+       and once as the description. */
+    const user = setupUser()
+    const { box } = renderField()
+
+    expect(screen.getByRole('combobox', { name: 'Država' })).toBeInTheDocument()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+
+    const country = screen.getByRole('combobox', { name: 'Država' })
+
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toHaveAccessibleDescription('Mesto je iz šifarnika, pa državu nosi sa sobom.')
+  })
+
   it('will not let the country of a town it recognises be changed', async () => {
     /* Owner, 11.08.2026: „ukoliko se mesto prepozna, država se ne može
        promeniti. Dropdown države je aktivan samo ukoliko je slobodan unos
@@ -314,7 +333,7 @@ describe('the town on a form', () => {
     const list = await screen.findByRole('listbox')
     await user.click(within(list).getByText(/Bern/))
 
-    const country = screen.getByRole('combobox', { name: /Država/i })
+    const country = screen.getByRole('combobox', { name: 'Država' })
 
     expect(country).toHaveValue('CH')
     expect(country).toHaveAttribute('aria-disabled', 'true')
@@ -331,7 +350,7 @@ describe('the town on a form', () => {
     await user.type(box, 'ber')
     await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
 
-    const country = screen.getByRole('combobox', { name: /Država/i })
+    const country = screen.getByRole('combobox', { name: 'Država' })
 
     onCountry.mockClear()
     await user.selectOptions(country, 'US')
@@ -352,7 +371,7 @@ describe('the town on a form', () => {
     await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
     await user.type(box, 'ovce')
 
-    const country = screen.getByRole('combobox', { name: /Država/i })
+    const country = screen.getByRole('combobox', { name: 'Država' })
 
     expect(country).not.toHaveAttribute('aria-disabled', 'true')
 
@@ -376,7 +395,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'Bern')
 
-    const country = screen.getByRole('combobox', { name: /Država/i })
+    const country = screen.getByRole('combobox', { name: 'Država' })
 
     await waitFor(() => {
       expect(country).toHaveValue('CH')
@@ -393,7 +412,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'London')
 
-    expect(screen.getByRole('combobox', { name: /Država/i })).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('combobox', { name: 'Država' })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('holds the country of the London that was pressed', async () => {
@@ -409,7 +428,7 @@ describe('the town on a form', () => {
 
     await user.click(at(rows, 1))
 
-    const country = screen.getByRole('combobox', { name: /Država/i })
+    const country = screen.getByRole('combobox', { name: 'Država' })
 
     expect(country).toHaveValue('US')
     expect(country).toHaveAttribute('aria-disabled', 'true')
@@ -427,7 +446,7 @@ describe('the town on a form', () => {
     const list = await screen.findByRole('listbox')
     await user.click(within(list).getByText(/Bardejov/))
 
-    const country = screen.getByRole('combobox', { name: /Država/i })
+    const country = screen.getByRole('combobox', { name: 'Država' })
 
     expect(onCountry).toHaveBeenLastCalledWith('ZZ')
     expect(country).toHaveValue('ZZ')

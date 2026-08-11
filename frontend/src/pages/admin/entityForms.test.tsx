@@ -396,7 +396,23 @@ async function newRaceOnFirstEvent(user: ReturnType<typeof setupUser>) {
   await user.click(within(first).getByRole('button', { name: /^Otvori:/ }))
   await user.click(await screen.findByRole('button', { name: t('admin.form.new.races') }))
 
-  return open(t('admin.form.new.races'))
+  const form = open(t('admin.form.new.races'))
+  /* Onto the morning after the one the form opens on, which is the day the event
+     begins. The event may already hold a race of the length these tests enter,
+     and two races of one event on one morning and of one length are refused
+     (entityForms.ts, `raceClash`): there would be nothing left to tell them
+     apart by. A later morning is a different race and is what is being tested
+     here anyway, which is the category the length is read as. */
+  const day = form.getByLabelText(labelled(t('admin.field.raceDate')))
+  const opened = must(
+    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+    'the day the form opened on',
+  )
+
+  await user.clear(day)
+  await user.type(day, `${String(Number(opened[1]) + 1).padStart(2, '0')}${opened[2]}${opened[3]}`)
+
+  return form
 }
 
 /** The row of a race under the event that is open. */

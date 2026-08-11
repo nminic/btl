@@ -7,6 +7,7 @@ import type { BtlEvent, Competitor } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
+import { useReadsComments } from './readsComments'
 import { useSession } from '../../session/useSession'
 import './GoingToEvent.css'
 
@@ -22,6 +23,12 @@ import './GoingToEvent.css'
  * (owner, 11.08.2026): a visitor sees a race and its results, not who is going
  * to it. Names of people and a way to write to them are not a public directory.
  *
+ * Who counts as a member is the same question the comments ask, and it is asked
+ * in the same words (`useReadsComments`): a moderator and the superadmin have no
+ * member number of their own, and a rule written here as „has a number" would
+ * have hidden the list from them while the comments beside it stayed open. What
+ * a number is needed for is saying that you are going, which is the half below.
+ *
  * **Only ahead of the race.** Saying you are going to something that has already
  * been run is not an intention, it is a memory, and the portal has results for
  * that.
@@ -30,6 +37,7 @@ export function GoingToEvent({ event }: { event: BtlEvent }) {
   const { t } = useI18n()
   const today = useToday()
   const { memberNumber } = useSession()
+  const reads = useReadsComments()
   const state = combinePair(useAttendance(), useCompetitors())
 
   /* A screen and not a lock, and this file is the one that most needs saying so:
@@ -38,7 +46,7 @@ export function GoingToEvent({ event }: { event: BtlEvent }) {
      is: one static file served to everybody. When the API arrives (plan F5) the
      endpoint that serves attendance must refuse an unauthenticated caller, the
      same way the one for comments must (EventComments.tsx). */
-  if (memberNumber === null || event.date < today) {
+  if (!reads || event.date < today) {
     return null
   }
 
@@ -71,7 +79,9 @@ function Going({
   event: BtlEvent
   attendance: { eventId: string; memberNumber: string }[]
   competitors: Competitor[]
-  me: string
+  /** Who is reading, where that is somebody with a number of their own. A
+   *  moderator has none, reads the list, and has nothing to say about going. */
+  me: string | null
 }) {
   const { locale, t } = useI18n()
   const { going, setGoing } = useSession()
@@ -91,7 +101,7 @@ function Going({
     .map((one) => one.memberNumber)
   const numbers = [
     ...fromFile.filter((one) => one !== me || said !== false),
-    ...(said === true && !fromFile.includes(me) ? [me] : []),
+    ...(said === true && me !== null && !fromFile.includes(me) ? [me] : []),
   ]
   /* Named, and in the order the league lists people.
    *
@@ -125,6 +135,10 @@ function Going({
           (owner, 11.08.2026). `aria-pressed` is what says which of the two it is
           in, because the words on it change and a reader who cannot see it
           hears only the words. */}
+      {/* And only for somebody who can be on the list. A moderator reads it,
+          because the same question decides that as decides the comments, but a
+          moderator has no member number and so nothing to say about going. */}
+      {me !== null && (
       <button
         type="button"
         className={iAmGoing ? 'button button--primary' : 'button button--secondary'}
@@ -136,6 +150,7 @@ function Going({
             out twice, once in words and once in the role. */}
         {t('event.goingOn')}
       </button>
+      )}
 
       {named.length === 0 ? (
         <p className="profile__empty">{t('event.goingNobody')}</p>
@@ -154,8 +169,14 @@ function Going({
 
               {/* Not to oneself, and not to somebody there is no record of: a
                   member writing to their own inbox about a race they are both
-                  going to is the portal talking to itself. */}
-              {number !== me && who !== undefined && (
+                  going to is the portal talking to itself.
+               *
+                  And not from somebody with no number of their own. A moderator
+                  reads this list, because the queue sends them to an event to
+                  look at it, but a note from the moderation to a member about
+                  a car share is not what this is (PDL P22 has its own way for
+                  the moderation to write). */}
+              {number !== me && who !== undefined && me !== null && (
                 <button
                   type="button"
                   className="going__write"
@@ -170,7 +191,7 @@ function Going({
         </ul>
       )}
 
-      {writingTo !== null && (
+      {writingTo !== null && me !== null && (
         <WriteTo
           /* Keyed by whoever is being written to, so pressing another envelope
              is a new note rather than the last one's confirmation. */

@@ -537,6 +537,20 @@ describe('a name the list cannot lead to', () => {
     )
   })
 
+  it('is read by a moderator, who has nothing to say about going', async () => {
+    /* The same question decides who reads this as decides who reads the comments
+       (event/readsComments.ts), and a moderator has no member number of their
+       own: written as „has a number", the rule hid the list from the very people
+       the queue sends to an event to look at it. What a number is needed for is
+       the switch, and that is the half a moderator does not get. */
+    const { event } = await upcoming()
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'superadmin', null, undefined, '2026-08-01')
+
+    expect(await screen.findByRole('list', { name: 'Ko ide' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
+  })
+
   it('agrees with the list about a member the list cannot name', async () => {
     /* The half that was wrong and that nothing could see: the switch was
        counted over the raw numbers and the list was drawn over the records, so

@@ -293,18 +293,33 @@ describe('an event that runs over two mornings', () => {
     expect(await racesOffered()).toHaveLength(mine.length)
   })
 
-  it('says there is nothing to report before the first morning', async () => {
-    /* The event has begun in the calendar sense on its own date, so the older
-       guard lets the form through; what stops it is that no race has been run. */
+  it('offers the first morning on the day of the event itself', async () => {
+    /* The day of an event is the day of its first race (PDL P10), so on that
+       day there is something to report and the form is there. What it holds is
+       only that morning's races, which is what the test above this one says.
+
+       It used to be called „says there is nothing to report before the first
+       morning" and to assert that the form is drawn, which is the opposite of
+       what its name promised: the day before the first morning is a day the
+       event does not have. Where an event really has no race to report on, the
+       screen says so and offers no list at all, and that is held higher up in
+       this file. */
     const events = await loadResource<BtlEvent[]>('events')
     const event = must(
       events.find((one) => one.slug === WEEKEND),
       'the event of that weekend',
     )
+    const races = await loadResource<Race[]>('races')
+    const firstMorning = races.filter(
+      (one) => one.eventId === event.id && one.date === event.date,
+    )
+
+    expect(firstMorning.length).toBeGreaterThan(0)
 
     renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, event.date)
 
     expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+    expect(await racesOffered()).toHaveLength(firstMorning.length)
   })
 })
 
