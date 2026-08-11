@@ -155,6 +155,12 @@ describe('the rows of a form', () => {
       .toContain('grid-template-columns: minmax(0, 1fr);')
 
     expect(wide).toContain('grid-template-columns: repeat(var(--columns), minmax(0, 1fr));')
+
+    /* And the plain rule stands **before** the query. A media query adds no
+       specificity, so of two rules for one selector the later one wins: written
+       below, this one took the columns away at every width there is, and every
+       test still passed because jsdom computes no layout. */
+    expect(form.indexOf('.form__row {')).toBeLessThan(form.indexOf('@media (min-width: 820px)'))
     /* And the town takes its second column only there, or it makes a column the
        page has no room for and the page scrolls sideways (P24). */
     expect(wide).toContain('grid-column: span 2;')

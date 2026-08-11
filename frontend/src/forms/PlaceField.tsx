@@ -42,6 +42,7 @@ export function PlaceField({
   describedBy,
   country,
   countryInvalid = false,
+  withoutError,
   onChange,
   openAt = false,
 }: {
@@ -53,6 +54,9 @@ export function PlaceField({
   invalid: boolean
   /** Whether it is the country that is unanswered, rather than the town. */
   countryInvalid?: boolean
+  /** What describes the town when the error belongs to the country: everything
+   *  the field says about itself, minus the error. */
+  withoutError?: string
   describedBy: string | undefined
   onChange: (place: string, country: string) => void
   openAt?: boolean
@@ -248,11 +252,14 @@ export function PlaceField({
         aria-autocomplete="list"
         aria-activedescendant={highlighted === undefined ? undefined : `${listId}-${at}`}
         aria-invalid={invalid}
-        /* And not the sentence about the country: it is written where the town
-           is asked for, so the town described by it was a box read out as „Mesto,
-           Izaberi državu uz mesto." while it held a perfectly good town. The
-           country carries it instead (below). */
-        aria-describedby={countryInvalid ? undefined : describedBy}
+        /* Its own rule always, and the error only where the error is about it.
+         *
+           The two arrive as one string, so dropping the error dropped the rule
+           with it and the town stopped saying how it works; keeping both, the
+           town was read out as „Mesto, Izaberi državu uz mesto." while holding
+           a perfectly good town. The country carries the error instead
+           (below). */
+        aria-describedby={countryInvalid ? withoutError : describedBy}
         autoFocus={openAt}
         value={value}
         onChange={(event) => {

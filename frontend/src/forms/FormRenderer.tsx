@@ -276,7 +276,17 @@ const Field = memo(function Field({
            through its own control, a group has no one control, so the group is
            what the link leads to. Sex and category are the two things nothing is
            chosen for, so they are the likeliest errors on this form. */}
-        <div className="choice" role="radiogroup" aria-labelledby={labelId} id={inputId} tabIndex={-1}>
+        <div
+          className="choice"
+          role="radiogroup"
+          aria-labelledby={labelId}
+          /* The error, on the group as well as on the buttons: the summary of
+             errors leads here and puts the cursor on the group itself, and
+             a group that says only „Pol" does not say what is wrong with it. */
+          aria-describedby={error === undefined ? undefined : errorId}
+          id={inputId}
+          tabIndex={-1}
+        >
           {choices.map((option) => (
             <span className="choice__one" key={option.value}>
               <input
@@ -403,6 +413,15 @@ const Field = memo(function Field({
           invalid={error !== undefined && !aboutCountry(error)}
           countryInvalid={aboutCountry(error)}
           describedBy={describedBy === '' ? undefined : describedBy}
+          /* What is left of that when the error belongs to the country: the
+             town keeps saying how it works, and stops carrying somebody else's
+             error. */
+          withoutError={
+            describedBy
+              .split(' ')
+              .filter((one) => one !== errorId)
+              .join(' ') || undefined
+          }
           openAt={open}
           onChange={(town, country) => {
             onChange(field, town, { country })
@@ -472,7 +491,11 @@ export function FormRenderer({
   // A field that is not on screen is neither shown nor validated. The parent
   // signature appears the moment the date of birth says it is needed, which is
   // why visibility is derived from the values rather than from a blur event.
-  const visible = form.fields.filter((field) => isVisible(field, values, today))
+  /* Over what is going to be sent, the same as everything else on this form:
+     `values` is what has been typed and `filled` is that read through the
+     definition, and the two differ only for a caller that hands the form another
+     definition without remounting it. */
+  const visible = form.fields.filter((field) => isVisible(field, filled, today))
   /* Each visible field beside its own value, rather than each field looking its
      value up by name. `filled` is built from the definition, so the pairing is
      total and the value that comes out is a value: no fallback, and so no branch
@@ -491,7 +514,7 @@ export function FormRenderer({
        about the country beside a town, which is the last resort: a caller with
        something to say about the same field has said something more
        particular. */
-    const handed = check?.(values) ?? {}
+    const handed = check?.(filled) ?? {}
     /* Over what is going to be sent, not over what has been typed. The two are
        the same until a caller hands the form a second definition without
        remounting it, and then `values` is missing whatever the new definition

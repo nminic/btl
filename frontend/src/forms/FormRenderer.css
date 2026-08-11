@@ -18,6 +18,25 @@
  *
  * 60rem is four columns of about 13rem, which holds a date, a name and a town
  * with room to spare, and it is still short of the page's own reading width. */
+/* A row of fields, and one field to a line until there is room for more.
+ *
+ * Written the other way round, as columns undone by a query, the two rules met
+ * at 819,5 pixels and neither applied, which is a width a page really has once
+ * text is made larger (WCAG 2.2 SC 1.4.4). One breakpoint and one direction.
+ *
+ * Above the query and not below it: a media query adds no specificity, so of two
+ * rules for one selector the later one wins, and written below this one took the
+ * columns away at every width there is. 820 is where the portal already becomes
+ * its wide self (styles/scale.test.ts holds the list of widths at which it
+ * changes shape), so the form changes with it rather than at a width of its
+ * own. */
+.form__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
 @media (min-width: 820px) {
   .form:has(.form__row) {
     max-width: 60rem;
@@ -192,25 +211,6 @@
  * and the eye follows the movement instead of the form. `minmax(0, 1fr)` and not
  * `1fr`, because a grid column's floor is the width of its content, and a select
  * of two hundred and forty six countries would push the row past the page. */
-/* One field to a line until there is room for more, and not the other way
-   round: written as columns undone by a query, the two rules met at 819,5
-   pixels and neither applied, which is a width a page really has when text is
-   made larger (WCAG 2.2 SC 1.4.4). One breakpoint, one direction, no gap. */
-.form__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-16);
-  align-items: start;
-}
-
-/* Under the wide layout every field stands on its own line, whatever row it
-   names (owner, 11.08.2026: „na mobilnom ostaje svako polje jedno ispod
-   drugog"). Four boxes across a 360 pixel screen are four boxes nobody can type
-   in, and the same is true of a window half that wide again.
- *
-   820 is where the portal already becomes its wide self (styles/scale.test.ts
-   holds the list of widths at which it changes shape), so the form changes with
-   it rather than at a width of its own. */
 /* One answer out of two or three, drawn as buttons (forms/FormRenderer.tsx). */
 .field--choice {
   display: flex;
@@ -314,7 +314,8 @@
    The sentence runs to several lines at every width the portal has, so it takes
    whatever room there is and the letter sits at the end of the room rather than
    at the end of the words: a grid gives the spare width to the track that can
-   still grow, and the letter's track is a fixed 1.5rem. What matters is that it
+   still grow, and the letter cannot, being a circle of a fixed 1.5rem
+   (FieldHint.css). What matters is that it
    is on the first line beside the sentence rather than on a line of its own
    under it, which is where it fell while this field had no head at all. */
 .field__head--confirm {

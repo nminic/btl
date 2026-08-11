@@ -47,6 +47,17 @@ const everyType: FormDef = {
     // as an empty list, not crash the screen.
     { name: 'prazan', type: 'select', labelKey: 'proba.prazan' },
     { name: 'beleska', type: 'textarea', labelKey: 'proba.beleska' },
+    /* A field of another kind carrying a link in its words. The one the portal
+       has today is a confirmation, so without this the other branch that draws
+       words was never asked to draw a link, and losing it there would have gone
+       unsaid (forms/worded.tsx). */
+    {
+      name: 'saVezom',
+      type: 'text',
+      labelKey: 'proba.saVezom',
+      linkKey: 'proba.veza',
+      linkTo: 'pravilnik',
+    },
     /* The whole world in one select, which three forms ask for and none of them
        is the registration: it opens unanswered, so „Izaberi" has to be there
        once and only once. */
@@ -143,6 +154,17 @@ describe('FormRenderer', () => {
     expect(
       document.getElementById(must(hintId, 'an id joining the field to its hint')),
     ).toHaveTextContent('proba.mejlPravilo')
+  })
+
+  it('draws a link in the words of a field that is not a confirmation', () => {
+    /* `worded` is called from both branches that write a label, and only one of
+       them had a field to prove it: the words of an ordinary field carrying a
+       link went through the same function and nothing said so. The mark itself
+       is missing from a key that does not resolve, which is what the fallback
+       does, so what is held here is that the sentence survives whole. */
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    expect(screen.getByText('proba.saVezom')).toBeInTheDocument()
   })
 
   it('offers one way of saying nothing at all in a list of countries', () => {

@@ -329,6 +329,15 @@ describe('an empty form', () => {
 
     expect(document.getElementById(at.replace('#', ''))).toBe(country)
     expect(summary.queryByRole('link', { name: 'Mesto' })).toBeNull()
+
+    /* And the town keeps saying how it works while somebody else's error is
+       being shown: the rule and the error arrive as one string, so dropping the
+       error dropped the rule with it. */
+    const town = screen.getByLabelText(/^Mesto$/)
+    const said = must(town.getAttribute('aria-describedby'), 'what describes the town')
+
+    expect(said).toContain('field-city-hint')
+    expect(said).not.toContain('field-city-error')
   })
 })
 

@@ -636,6 +636,36 @@ describe('an answer chosen from buttons', () => {
     }
   })
 
+  it('says what is wrong with it to whoever the summary of errors sends here', async () => {
+    /* The link puts the cursor on the group itself, and a group that says only
+       „Pol" does not say what is wrong with it: the error is heard when the
+       cursor moves on to a button, which is one step later than the list of
+       things to fix promises. */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const group = screen.getByRole('radiogroup', { name: 'Pol' })
+    const said = must(group.getAttribute('aria-describedby'), 'what describes the group')
+
+    expect(document.getElementById(said)).toHaveTextContent('Ovo polje je obavezno.')
+  })
+
+  it('carries the words of a confirmation and its letter in one head', () => {
+    /* The class is what puts them on one line: written only in the stylesheet,
+       taking it off the element would have left the letter under the sentence
+       and every test would still have passed (jsdom computes no layout). */
+    renderForm()
+
+    const confirm = must(
+      screen.getByLabelText(/zdravstveno sposoban/).closest<HTMLElement>('.field'),
+      'the field of the confirmation',
+    )
+
+    expect(confirm.querySelector('.field__head--confirm')).not.toBeNull()
+  })
+
   it('refuses to go through with neither taken, and says which group is missing', async () => {
     const user = setupUser()
     renderForm()
