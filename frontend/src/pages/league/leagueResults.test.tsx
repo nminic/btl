@@ -5,6 +5,7 @@ import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
+import { formatDistance } from '../../i18n/format'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
  *
@@ -227,5 +228,58 @@ describe('a competition everybody in it fits on one page', () => {
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.length).toBeLessThanOrEqual(PER_PAGE)
     expect(screen.queryByRole('navigation', { name: sr.pager.leagueStanding })).toBeNull()
+  })
+})
+
+describe('a competition holding a race nobody gave a name', () => {
+  /** The real files, with one race of this competition stripped of its name.
+   *
+   *  Which is a thing a moderator may now do (PDL P6, 11.08.2026), and the grid
+   *  is one of the five screens that write a race down. */
+  async function withNamelessRace() {
+    const real = globalThis.fetch
+    const races = (await (await real('/mock/races.json')).json()) as Race[]
+    const events = (await (await real('/mock/events.json')).json()) as BtlEvent[]
+    const leagues = (await (await real('/mock/leagues.json')).json()) as League[]
+    const league = must(
+      leagues.find((one) => one.slug === 'brdska-2019'),
+      'takmičenje brdska-2019',
+    )
+    const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
+    const mine = must(
+      races.find((race) => held.has(race.eventId)),
+      'trka ovog takmičenja',
+    )
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/races.json')
+        ? new Response(
+            JSON.stringify(races.map((race) => (race.id === mine.id ? { ...race, name: '' } : race))),
+            { status: 200 },
+          )
+        : real(input)) as typeof fetch
+
+    return { race: mine, undo: () => { globalThis.fetch = real } }
+  }
+
+  it('heads its column with the length, and not with a comma', async () => {
+    const { race, undo } = await withNamelessRace()
+
+    try {
+      renderAt(RUN)
+
+      const heads = (await grid()).getAllByRole('columnheader').map((one) => one.textContent ?? '')
+      /* The length as this language writes it, which is what the race is known
+         by when it has nothing else (data/raceName.ts). */
+      const said = must(
+        heads.find((one) => one.startsWith(`${formatDistance(race.distanceKm, 'sr')},`)),
+        'zaglavlje trke bez naziva',
+      )
+
+      expect(said).not.toMatch(/^,/)
+      expect(heads.filter((one) => one.startsWith(','))).toEqual([])
+    } finally {
+      undo()
+    }
   })
 })

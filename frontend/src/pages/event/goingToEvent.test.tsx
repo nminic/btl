@@ -276,6 +276,12 @@ describe('writing to somebody else who is going', () => {
       screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` })
 
     await user.click(envelope)
+
+    /* And the box the envelope opened is where the keyboard is put. It is drawn
+       under the whole list, so without this the way to it from the first row of
+       an event with twenty going is nineteen more envelopes. */
+    expect(box()).toHaveFocus()
+
     await user.type(box(), 'Prvo pismo.')
     await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
 
@@ -467,6 +473,36 @@ describe('a name the list cannot lead to', () => {
     const list = await screen.findByRole('list', { name: 'Ko ide' })
 
     expect(within(list).getAllByText('Član lige')).toHaveLength(strangers.length)
+  })
+
+  it('keeps the named ones above those it cannot name, and in order', async () => {
+    /* Sorted on the surname alone, a row with no record sorted on an empty
+       string, and an empty string comes before every letter: the members the
+       portal cannot name stood at the head of the list, over people with names.
+       Nothing said so, because nothing in this file asked about the order. */
+    const { event } = await withStrangers()
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, '2026-08-01')
+
+    const list = await screen.findByRole('list', { name: 'Ko ide' })
+    const rows = within(list)
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+    const nameless = rows.map((one, index) => (one.startsWith('Član lige') ? index : -1))
+      .filter((index) => index !== -1)
+    const named = rows.map((one, index) => (one.startsWith('Član lige') ? -1 : index))
+      .filter((index) => index !== -1)
+
+    expect(nameless.length).toBeGreaterThan(0)
+    expect(named.length).toBeGreaterThan(0)
+    /* Every named row above every one that is not. */
+    expect(Math.max(...named)).toBeLessThan(Math.min(...nameless))
+
+    /* And the named ones alphabetically among themselves, by surname, the way
+       the league lists people everywhere else. */
+    const surnames = named.map((index) => must(rows[index], 'a named row').split(' ').slice(-1)[0] ?? '')
+
+    expect(surnames).toEqual([...surnames].sort((left, right) => left.localeCompare(right, 'sr')))
   })
 
   it('offers no envelope to somebody there is no record of', async () => {

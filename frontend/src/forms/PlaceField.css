@@ -28,6 +28,15 @@
   font-weight: 700;
 }
 
+/* The wrapper is set in the small uppercase of its own label, so the select has
+   to name a size or it inherits that one.
+ *
+ * The two boxes are aligned along their feet and not their heads, and that is
+ * deliberate. A select is two pixels shorter than a text box of the same font
+ * in Chrome, because `line-height` has no effect on a select there: the browser
+ * decides its height and an author cannot say otherwise without naming a number
+ * in pixels. Measured, not assumed. So the row lines up where the eye reads it,
+ * at the bottom edge, and nothing here pretends to a height it does not have. */
 .place__country-pick select {
   font-size: 0.95rem;
   text-transform: none;

@@ -131,10 +131,6 @@
       "name": "Benin"
     },
     {
-      "code": "DY",
-      "name": "Benin"
-    },
-    {
       "code": "BM",
       "name": "Bermudi"
     },
@@ -171,10 +167,6 @@
       "name": "Burkina Faso"
     },
     {
-      "code": "HV",
-      "name": "Burkina Faso"
-    },
-    {
       "code": "BI",
       "name": "Burundi"
     },
@@ -183,8 +175,20 @@
       "name": "Butan"
     },
     {
+      "code": "TD",
+      "name": "Čad"
+    },
+    {
       "code": "CF",
       "name": "Centralnoafrička Republika"
+    },
+    {
+      "code": "CZ",
+      "name": "Češka"
+    },
+    {
+      "code": "CL",
+      "name": "Čile"
     },
     {
       "code": "DK",
@@ -255,16 +259,16 @@
       "name": "Francuska"
     },
     {
-      "code": "FX",
-      "name": "Francuska"
-    },
-    {
       "code": "GF",
       "name": "Francuska Gvajana"
     },
     {
       "code": "PF",
       "name": "Francuska Polinezija"
+    },
+    {
+      "code": "TF",
+      "name": "Francuske Južne Teritorije"
     },
     {
       "code": "GA",
@@ -375,10 +379,6 @@
       "name": "Japan"
     },
     {
-      "code": "YD",
-      "name": "Jemen"
-    },
-    {
       "code": "YE",
       "name": "Jemen"
     },
@@ -389,6 +389,10 @@
     {
       "code": "JO",
       "name": "Jordan"
+    },
+    {
+      "code": "GS",
+      "name": "Južna Džordžija i Južna Sendvička Ostrva"
     },
     {
       "code": "KR",
@@ -471,10 +475,6 @@
       "name": "Kongo - Kinšasa"
     },
     {
-      "code": "ZR",
-      "name": "Kongo - Kinšasa"
-    },
-    {
       "code": "CR",
       "name": "Kostarika"
     },
@@ -485,10 +485,6 @@
     {
       "code": "CK",
       "name": "Kukova Ostrva"
-    },
-    {
-      "code": "AN",
-      "name": "Kurasao"
     },
     {
       "code": "CW",
@@ -539,6 +535,10 @@
       "name": "Madagaskar"
     },
     {
+      "code": "YT",
+      "name": "Majot"
+    },
+    {
       "code": "MW",
       "name": "Malavi"
     },
@@ -563,12 +563,12 @@
       "name": "Maroko"
     },
     {
-      "code": "MQ",
-      "name": "Martinik"
-    },
-    {
       "code": "MH",
       "name": "Maršalska Ostrva"
+    },
+    {
+      "code": "MQ",
+      "name": "Martinik"
     },
     {
       "code": "MU",
@@ -581,10 +581,6 @@
     {
       "code": "MX",
       "name": "Meksiko"
-    },
-    {
-      "code": "BU",
-      "name": "Mijanmar (Burma)"
     },
     {
       "code": "MM",
@@ -621,10 +617,6 @@
     {
       "code": "NR",
       "name": "Nauru"
-    },
-    {
-      "code": "DD",
-      "name": "Nemačka"
     },
     {
       "code": "DE",
@@ -665,6 +657,10 @@
     {
       "code": "CI",
       "name": "Obala Slonovače (Kot d’Ivoar)"
+    },
+    {
+      "code": "AX",
+      "name": "Olandska Ostrva"
     },
     {
       "code": "OM",
@@ -727,24 +723,16 @@
       "name": "Portugalija"
     },
     {
+      "code": "RE",
+      "name": "Reunion"
+    },
+    {
       "code": "RW",
       "name": "Ruanda"
     },
     {
       "code": "RU",
       "name": "Rusija"
-    },
-    {
-      "code": "SU",
-      "name": "Rusija"
-    },
-    {
-      "code": "HK",
-      "name": "SAR Hongkong (Kina)"
-    },
-    {
-      "code": "MO",
-      "name": "SAR Makao (Kina)"
     },
     {
       "code": "SV",
@@ -763,6 +751,14 @@
       "name": "Sao Tome i Principe"
     },
     {
+      "code": "HK",
+      "name": "SAR Hongkong (Kina)"
+    },
+    {
+      "code": "MO",
+      "name": "SAR Makao (Kina)"
+    },
+    {
       "code": "CQ",
       "name": "Sark"
     },
@@ -773,6 +769,14 @@
     {
       "code": "SC",
       "name": "Sejšeli"
+    },
+    {
+      "code": "BL",
+      "name": "Sen Bartelemi"
+    },
+    {
+      "code": "PM",
+      "name": "Sen Pjer i Mikelon"
     },
     {
       "code": "SN",
@@ -823,12 +827,12 @@
       "name": "Somalija"
     },
     {
-      "code": "CS",
-      "name": "Srbija"
+      "code": "ES",
+      "name": "Španija"
     },
     {
-      "code": "YU",
-      "name": "Srbija"
+      "code": "LK",
+      "name": "Šri Lanka"
     },
     {
       "code": "SD",
@@ -839,8 +843,20 @@
       "name": "Surinam"
     },
     {
+      "code": "CH",
+      "name": "Švajcarska"
+    },
+    {
+      "code": "SJ",
+      "name": "Svalbard i Jan Majen"
+    },
+    {
       "code": "SZ",
       "name": "Svazilend"
+    },
+    {
+      "code": "SE",
+      "name": "Švedska"
     },
     {
       "code": "SH",
@@ -849,6 +865,10 @@
     {
       "code": "LC",
       "name": "Sveta Lucija"
+    },
+    {
+      "code": "MF",
+      "name": "Sveti Martin"
     },
     {
       "code": "SX",
@@ -872,10 +892,6 @@
     },
     {
       "code": "TL",
-      "name": "Timor-Leste (Istočni Timor)"
-    },
-    {
-      "code": "TP",
       "name": "Timor-Leste (Istočni Timor)"
     },
     {
@@ -923,10 +939,6 @@
       "name": "Ujedinjeno Kraljevstvo"
     },
     {
-      "code": "UK",
-      "name": "Ujedinjeno Kraljevstvo"
-    },
-    {
       "code": "UA",
       "name": "Ukrajina"
     },
@@ -939,8 +951,8 @@
       "name": "Uzbekistan"
     },
     {
-      "code": "NH",
-      "name": "Vanuatu"
+      "code": "WF",
+      "name": "Valis i Futuna"
     },
     {
       "code": "VU",
@@ -953,10 +965,6 @@
     {
       "code": "VE",
       "name": "Venecuela"
-    },
-    {
-      "code": "VD",
-      "name": "Vijetnam"
     },
     {
       "code": "VN",
@@ -975,40 +983,8 @@
       "name": "Zelenortska Ostrva"
     },
     {
-      "code": "RH",
-      "name": "Zimbabve"
-    },
-    {
       "code": "ZW",
       "name": "Zimbabve"
-    },
-    {
-      "code": "TD",
-      "name": "Čad"
-    },
-    {
-      "code": "CZ",
-      "name": "Češka"
-    },
-    {
-      "code": "CL",
-      "name": "Čile"
-    },
-    {
-      "code": "ES",
-      "name": "Španija"
-    },
-    {
-      "code": "LK",
-      "name": "Šri Lanka"
-    },
-    {
-      "code": "CH",
-      "name": "Švajcarska"
-    },
-    {
-      "code": "SE",
-      "name": "Švedska"
     }
   ]
 }

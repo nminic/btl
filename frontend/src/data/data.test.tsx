@@ -7,7 +7,7 @@ import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import { plainly } from './places'
-import { ITEM_KINDS } from './types'
+import { FEATURED, ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
@@ -367,6 +367,21 @@ describe('the generated data', () => {
       'training',
     ])
     expect(events.filter((one) => one.status !== undefined)).toEqual([])
+  })
+
+  it('writes whether an event is featured as one of the two words the form offers', async () => {
+    /* The same guard the kind has, and for the same reason: the generator lives
+       outside the repo and writes this field by hand in three places. „Yes"
+       instead of „yes" reaches the form as a value with no option behind it, and
+       a select handed a value it has no option for draws an empty box
+       (forms/PlaceField.tsx carries the rest of that story). Nothing else on the
+       portal would notice. */
+    const events = await loadResource<{ featured: string }[]>('events')
+    const featured = events.map((one) => one.featured)
+
+    expect(featured.filter((one) => !FEATURED.some((word) => word === one))).toEqual([])
+    /* And both words stand in the fixture, so neither goes untried on a screen. */
+    expect([...new Set(featured)].sort()).toEqual(['no', 'yes'])
   })
 })
 

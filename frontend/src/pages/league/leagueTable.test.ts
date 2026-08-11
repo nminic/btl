@@ -184,4 +184,35 @@ describe('a heading that has to be cut somewhere', () => {
 
     expect(table.columns.every((one) => one.ambiguous)).toBe(false)
   })
+
+  it('tells two nameless races of one event apart by their lengths', () => {
+    /* Which is the whole of what a nameless race has (PDL P6, 11.08.2026). Told
+       apart by name alone the two shared one empty key, both were marked as not
+       telling themselves apart, and the reader was given two columns headed
+       „Događaj e1, , 1. 5. 2019." over two different races. */
+    const table = leagueTable(
+      { ...league, eventIds: ['e1'] },
+      [event('e1', '2019-05-01')],
+      [race('r1', 'e1', '', 10), race('r2', 'e1', '', 21.1)],
+      [],
+      [],
+    )
+
+    expect(table.columns.map((one) => one.ambiguous)).toEqual([false, false])
+  })
+
+  it('still says so when two nameless races are the same length on the same day', () => {
+    /* Then there is nothing left to tell them apart with, and the heading says
+       as much by carrying the event too. Better a heading that repeats than one
+       that claims a difference it cannot show. */
+    const table = leagueTable(
+      { ...league, eventIds: ['e1'] },
+      [event('e1', '2019-05-01')],
+      [race('r1', 'e1', '', 10), race('r2', 'e1', '', 10)],
+      [],
+      [],
+    )
+
+    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
+  })
 })

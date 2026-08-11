@@ -156,7 +156,12 @@ export function EventRaces({
                     <RowActions
                       entity={entity}
                       record={race}
-                      name={race.name}
+                      /* The same words the row is read by, and not the raw
+                         field: a race with no name gave „Otvori: " and
+                         „Obriši: " on every row of an event whose races are
+                         told apart by their length, which is one control
+                         written out five times. */
+                      name={raceName(race, locale)}
                       onOpen={() => setEditing({ mode: 'one', record: race })}
                       /* And the event follows what is left, the same way it
                          follows a race entered or moved: taking the first

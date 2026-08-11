@@ -54,6 +54,24 @@ describe('the way to report a result', () => {
     }
   })
 
+  it('writes a named race and a nameless one the same way in one list', async () => {
+    /* A race may be entered without a name and is then known by its length
+       (PDL P6, 11.08.2026), so this list holds both kinds at once. The length
+       beside a name was written raw: „Polumaraton · 5 km" with a full stop in
+       front of the decimal, under a nameless one reading „5,0 km" with a comma,
+       which is two languages in one select. */
+    renderAt('/sr/kalendar/5k-ada-virtual-challenge-2027/prijava', 'competitor', ME, undefined,
+      '2027-06-01')
+
+    const race = await screen.findByLabelText(/^Trka/)
+    const said = within(race).getAllByRole('option').map((one) => one.textContent ?? '')
+
+    expect(said.some((one) => one.startsWith('Polumaraton · '))).toBe(true)
+    /* No raw number anywhere in it: every length in this list is written the way
+       this language writes one. */
+    expect(said.filter((one) => /\d\.\d/.test(one))).toEqual([])
+  })
+
   it('offers only the races of the event it was opened from', async () => {
     renderAt(REPORT, 'competitor', '000007')
 

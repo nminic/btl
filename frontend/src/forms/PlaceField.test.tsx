@@ -20,6 +20,10 @@ const CODEBOOK: Place[] = [
   ['Beočin', 'RS'],
   ['Bern', 'CH'],
   ['Boston', 'US'],
+  /* A town in a code the list of countries has no name for. The world's
+     codebook carries eleven such (ADL A16), and one of them is a question for
+     the owner rather than for this file (PDL P6). */
+  ['Bardejov', 'ZZ'],
 ]
 
 /** The codebook as the portal fetches it. The list is a resource rather than an
@@ -293,6 +297,27 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(screen.queryByRole('listbox')).toBeNull()
     })
+  })
+
+  it('shows the country it holds even where the list has no name for it', async () => {
+    /* A select handed a value it has no option for draws nothing: the box goes
+       blank while the record still says ZZ. Whoever is looking sees a filled
+       town beside an empty country, answers what looks unanswered, and the race
+       has quietly moved to another country. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'bar')
+    const list = await screen.findByRole('listbox')
+    await user.click(within(list).getByText(/Bardejov/))
+
+    const country = screen.getByRole('combobox', { name: /Država/i })
+
+    expect(onCountry).toHaveBeenLastCalledWith('ZZ')
+    expect(country).toHaveValue('ZZ')
+    /* The code itself, because there is no name for it and a code is not a
+       country: what is unanswered is the list, not the record. */
+    expect(country).toHaveTextContent('ZZ')
   })
 
   it('leaves the field a plain box when the codebook cannot be fetched', async () => {

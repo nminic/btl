@@ -57,6 +57,8 @@ export function PlaceField({
 
   const offered = open ? placesLike(places, value) : []
   const listId = `${id}-places`
+  /* Whether the list of countries has a name for the one this record holds. */
+  const unnamed = ![...countries.region, ...countries.rest].some((one) => one.code === country)
 
   useEffect(() => {
     if (!open) {
@@ -239,6 +241,24 @@ export function PlaceField({
               </option>
             ))}
           </optgroup>
+
+          {/* And whatever code this record actually holds, where the list has no
+              name for it.
+           *
+              A select given a value it has no option for shows nothing at all:
+              the box goes blank, `selectedIndex` is -1, and the country the
+              record carries is invisible. Whoever is looking then sees a filled
+              town beside an empty country, corrects what looks unanswered, and
+              the event quietly moves to another country. The codebook of towns
+              is the world's (ADL A16) and it carries codes the list of countries
+              does not name, so this is not a case that can be ruled out by
+              filling the list better.
+
+              Named by `countryName`, which hands back the code itself where
+              there is no name (data/countryName.ts). A code is not a country and
+              is not meant to read like one; it is meant to be visible, so that
+              what is unanswered is the list and not the record. */}
+          {unnamed && <option value={country}>{countryName(country)}</option>}
         </select>
       </label>
     </div>

@@ -94,8 +94,17 @@ export function leagueTable(
 
   const seen = new Map<string, number>()
 
+  /* What two columns have to share before the reader cannot tell them apart.
+     Not the name alone: a race may have none (PDL P6), and then the heading is
+     its length, so two nameless races of one event on one day are two different
+     columns and only their lengths say so. Written here rather than read off the
+     heading because this file knows nothing of language and a heading is
+     written in one. */
+  const nameOf = (column: LeagueColumn) =>
+    column.race.trim() === '' ? `#${column.distanceKm}` : column.race
+
   for (const column of columns) {
-    const key = `${column.race}|${column.date}`
+    const key = `${nameOf(column)}|${column.date}`
     seen.set(key, (seen.get(key) ?? 0) + 1)
   }
 
@@ -107,7 +116,7 @@ export function leagueTable(
   )
 
   for (const column of columns) {
-    column.ambiguous = shared.has(`${column.race}|${column.date}`)
+    column.ambiguous = shared.has(`${nameOf(column)}|${column.date}`)
   }
 
   const counts = new Set(columns.map((one) => one.raceId))

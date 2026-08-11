@@ -100,8 +100,15 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
            shape: what is suppressed is the sentence, never a comment. An event
            moved onto a later date keeps everything already published under it,
            which is what the schedule queue does to events (types.ts,
-           `subjectId`). */
-        if (mine.length === 0 && date > today) {
+           `subjectId`).
+
+           And before the race a visitor is told nothing either way, whether the
+           chain of editions carries anything or not. Otherwise the line saying
+           the comments are for members appeared on exactly those future events
+           that have some, and was missing from the rest: the sentence meant to
+           hide what was said would have said which race there is something to
+           read about. */
+        if (date > today && (mine.length === 0 || !reads)) {
           return null
         }
 

@@ -32,6 +32,12 @@ export function GoingToEvent({ event }: { event: BtlEvent }) {
   const { memberNumber } = useSession()
   const state = combinePair(useAttendance(), useCompetitors())
 
+  /* A screen and not a lock, and this file is the one that most needs saying so:
+     it names which member is going to which race. The fetch above happens before
+     this line, so a visitor's browser holds it too. That is what a mock layer
+     is: one static file served to everybody. When the API arrives (plan F5) the
+     endpoint that serves attendance must refuse an unauthenticated caller, the
+     same way the one for comments must (EventComments.tsx). */
   if (memberNumber === null || event.date < today) {
     return null
   }
@@ -100,7 +106,17 @@ function Going({
       number,
       who: competitors.find((one) => one.memberNumber === number && one.active),
     }))
-    .sort((left, right) => (left.who?.lastName ?? '').localeCompare(right.who?.lastName ?? '', locale))
+    .sort((left, right) => {
+      /* A row nobody can be named on goes under the named ones, and not over
+         them. Sorted on the surname alone it sorted on an empty string, which
+         precedes every letter, so a handful of „Član lige" stood at the head of
+         the list above people with names. Alphabetical among those there is a
+         name for, and the rest at the foot in the order the file has them. */
+      return (
+        Number(left.who === undefined) - Number(right.who === undefined) ||
+        (left.who?.lastName ?? '').localeCompare(right.who?.lastName ?? '', locale)
+      )
+    })
   const iAmGoing = named.some((one) => one.number === me)
 
   return (
@@ -216,6 +232,16 @@ function WriteTo({
   const [words, setWords] = useState('')
   const [sent, setSent] = useState(false)
   const said = useRef<HTMLParagraphElement>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    /* And the box takes the focus when it opens, because it is what the
+       envelope opened. It is drawn under the whole list, so on an event with
+       twenty going the press on the first row put the box nineteen envelopes
+       further down the keyboard's path; the same three lines answer the same
+       thing when it is sent. */
+    box.current?.focus()
+  }, [])
 
   useEffect(() => {
     /* The confirmation takes the focus the submit button was holding, and it is
@@ -272,6 +298,7 @@ function WriteTo({
         </span>
         <textarea
           className="field__control"
+          ref={box}
           required
           /* From the definition and not typed here, which is the rule every
              other long box on the portal keeps (forms/definitions.test.ts): a

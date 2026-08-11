@@ -12,8 +12,12 @@ import { formatDistance } from '../i18n/format'
  * has to do that work.
  */
 export function raceName(race: Pick<Race, 'name' | 'distanceKm'>, locale: string): string {
-  /* Written the way every other length on the portal is written, through the
-     one function that decides that (i18n/format.ts): a race named by its length
-     must read the same as the length beside it. */
+  /* Written the way a length is spoken rather than tabulated, through the one
+     function that decides that (i18n/format.ts, `formatDistance`): „16,2 km",
+     the way anybody says which race they ran. The column of lengths beside it
+     carries two decimals because a column of numbers is read down and has to
+     line up; a name is read across, and „16,20 km" in a name is a table cell
+     that wandered into a sentence. Both are the reader's own decimal mark,
+     which is the part that must never differ. */
   return race.name.trim() === '' ? formatDistance(race.distanceKm, locale) : race.name
 }

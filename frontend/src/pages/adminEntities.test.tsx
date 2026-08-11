@@ -51,6 +51,29 @@ describe('the races of an event', () => {
     expect(screen.queryByLabelText('Događaj')).toBeNull()
   })
 
+  it('names the buttons of a race that has no name by its length', async () => {
+    /* Since 11.08.2026 a race may be entered without one, and then it is known
+       by how long it is (PDL P6). Read straight off the field, every such row
+       gave „Otvori: " and „Obriši: ", so an event whose three races are told
+       apart by their lengths had six buttons with two names between them, and
+       one of the two deletes results. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    /* Everything the form asks for except the name, which it no longer does. */
+    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* The length as this language writes it, and nothing hanging off a colon. */
+    expect(await screen.findByRole('button', { name: 'Otvori: 10,0 km' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Obriši: 10,0 km' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Otvori: ' })).toBeNull()
+  })
+
   it('says that opening a race puts the event form away', async () => {
     /* The form is unmounted while a race is open, so what was typed into it and
        not saved is gone. Said before the button rather than discovered after

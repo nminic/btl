@@ -1489,6 +1489,41 @@ describe('the comments under an event', () => {
     expect(document.querySelector('.comments__mark')).toBeNull()
   })
 
+  it('says nothing at all to a visitor on a race still to be run', async () => {
+    /* Not even that the comments are for members. Said on a future event, the
+       line appeared on exactly those whose earlier editions carry something and
+       was missing from the rest, so the sentence meant to keep what was said
+       from a visitor told them which race there is something to read about.
+       Šidski novogodišnji maraton 2027 is a copy of the 2024 running, and that
+       one has been commented on. */
+    const AHEAD = '/sr/kalendar/sidski-novogodisnji-maraton-2027'
+
+    /* First from a member's side, for two reasons: it proves this event really
+       does carry what an earlier edition of it was told, so the absence below is
+       an absence of something; and it leaves the three files in the cache
+       (data/client.ts), so the visitor's page is whole at its first paint and
+       „not there yet" cannot pass for „not shown". */
+    const { unmount } = renderAt(AHEAD, 'competitor', ME)
+    await screen.findByRole('list', { name: 'Komentari' })
+    unmount()
+
+    renderAt(AHEAD)
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByText('Komentare vide prijavljeni članovi.')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
+  })
+
+  it('still shows a member what the earlier editions said about it', async () => {
+    /* The other half of the same event: what the visitor is not shown is shown
+       to whoever is signed in, or the guard above would have quietly undone the
+       chain of editions. */
+    renderAt('/sr/kalendar/sidski-novogodisnji-maraton-2027', 'competitor', ME)
+
+    expect(await screen.findByRole('list', { name: 'Komentari' })).toBeVisible()
+  })
+
   it('is read by a moderator, who has no member number of their own', async () => {
     /* The rule is about visitors and not about member numbers: a queue that
        publishes a comment leads straight to the event to look at it, and the

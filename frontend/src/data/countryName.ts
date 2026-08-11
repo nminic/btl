@@ -5,8 +5,8 @@ import countries from './countries.json'
  * from.
  *
  * The dictionary held five of these, the five of the region, and two screens
- * asked it for whatever code they had. The select offers two hundred and fifty
- * two: eleven of the region at the top and the rest of the world under them, so
+ * asked it for whatever code they had. The select offers two hundred and thirty
+ * six: eleven of the region at the top and the rest of the world under them, so
  * a team proposed from Slovenia reached the moderator as the words
  * `country.SI`. There is no second list to keep in step now, and no code without
  * a name.

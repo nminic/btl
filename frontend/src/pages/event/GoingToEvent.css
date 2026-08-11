@@ -22,6 +22,11 @@
   place-items: center;
   inline-size: 2.25rem;
   block-size: 2.25rem;
+  /* And it keeps that size whatever stands beside it. In a row that runs out of
+     width the envelope is what a flexbox shrinks first, and a target that shrank
+     would be the one rule this size exists for (WCAG 2.2 SC 2.5.8) broken by a
+     long name on a narrow telephone. */
+  flex: 0 0 auto;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-round);
   background: transparent;
@@ -46,4 +51,19 @@
 .going__sent {
   margin-block-start: var(--space-12);
   color: var(--text-muted);
+}
+
+/* The way out of the confirmation. Quiet, because the sentence beside it is what
+   is being read and this only takes it away: the „Zatvori" in the form under it
+   is a button of the portal's own kind, and this one is a word in a sentence.
+   Without a rule of its own it was drawn by the browser, which is a grey box in
+   the middle of a line of prose. */
+.going__done {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }

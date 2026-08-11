@@ -8,7 +8,7 @@ import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
 import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
 import type { FormDef, FormValues } from '../../forms/types'
-import { formatPoints } from '../../i18n/format'
+import { formatDistance, formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
@@ -180,15 +180,20 @@ export function ReportResult() {
                 options={{
                   raceId: mineHere.map((race) => ({
                     value: race.id,
-                    /* The name and the distance, because two races at one event
-                       are told apart by the distance more often than by the
-                       name. `labelKey` takes a key and falls back to what it is
-                       given when there is no such key, which is what puts a
-                       value into a list of choices (src/i18n/translate.ts). */
+                    /* The name and the length, because two races at one event
+                       are told apart by the length more often than by the name.
+                       `labelKey` takes a key and falls back to what it is given
+                       when there is no such key, which is what puts a value into
+                       a list of choices (src/i18n/translate.ts).
+                     *
+                       The length written the one way the portal writes a length,
+                       so „Polumaraton · 21,1 km" and the nameless „21,1 km" do
+                       not stand in one list with the decimal mark of two
+                       different languages between them. */
                     labelKey:
                       race.name.trim() === ''
                         ? raceName(race, locale)
-                        : `${race.name} · ${race.distanceKm} km`,
+                        : `${race.name} · ${formatDistance(race.distanceKm, locale)}`,
                   })),
                 }}
                 onSubmit={onSubmit}
