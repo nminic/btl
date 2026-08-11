@@ -93,6 +93,35 @@ describe('a list that grows as it is read', () => {
     expect(screen.getByText('To je svih 4')).toBeVisible()
   })
 
+  it('follows a step that arrives after the first render', async () => {
+    /* The ducats are counted in rows and how many stand across is measured off
+       the grid one render after the first, so the step the state was seeded
+       with is one column's worth. Held to the step as it is now: seeded and
+       forgotten, five rows of six was permanently five ducats, and neither the
+       first page nor any boundary after it was a whole number of rows. */
+    const { rerender } = render(<Growing total={40} step={5} />)
+
+    expect(items()).toBe(5)
+
+    rerender(<Growing total={40} step={30} />)
+
+    expect(items()).toBe(30)
+  })
+
+  it('does not shrink when the step shrinks under a list already grown', async () => {
+    /* The other direction: a window narrowed from six columns to two must not
+       take back what the reader has already been shown. */
+    const user = setupUser()
+    const { rerender } = render(<Growing total={40} step={12} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    expect(items()).toBe(24)
+
+    rerender(<Growing total={40} step={4} />)
+
+    expect(items()).toBe(24)
+  })
+
   it('never shows more than there is, however far it was grown', async () => {
     /* A list shrinks under a reader: a filter narrows it, a moderator takes a
        comment down. Grown to thirty and then handed four, what is on screen has
@@ -215,6 +244,12 @@ describe('the columns of a wall', () => {
     )
   }
 
+  /* What the wall was measured against, and how many are watching it. Counted,
+     because `useColumns` measures once by hand before it starts watching: a
+     version that never observed anything passed every test here, and turning a
+     telephone sideways is exactly the case that needs the watching. */
+  let watched: Element[] = []
+
   class FakeResizeObserver {
     /* Written as a field and an assignment rather than a parameter property:
        this project compiles with `erasableSyntaxOnly`, so a constructor that
@@ -225,14 +260,18 @@ describe('the columns of a wall', () => {
       this.callback = callback
     }
 
-    observe() {
+    observe(what: Element) {
+      watched.push(what)
       this.callback()
     }
 
-    disconnect() {}
+    disconnect() {
+      watched = []
+    }
   }
 
   beforeEach(() => {
+    watched = []
     vi.stubGlobal('ResizeObserver', FakeResizeObserver)
   })
 
@@ -240,10 +279,14 @@ describe('the columns of a wall', () => {
     vi.unstubAllGlobals()
   })
 
-  it('counts the tracks the browser laid out', async () => {
+  it('counts the tracks the browser laid out, and goes on watching the wall', async () => {
     render(<Wall columns="1fr 1fr 1fr 1fr 1fr 1fr" />)
 
     expect(await screen.findByText('kolona: 6')).toBeVisible()
+    /* The wall itself, and not something else: a row of five ducats is five
+       rows at one across and one row at five, and which it is changes when the
+       window does. */
+    expect(watched).toEqual([screen.getByRole('list', { name: 'zid' })])
   })
 
   it('stands where it was where there is no layout to read', () => {

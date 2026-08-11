@@ -259,7 +259,7 @@ describe('rating an event', () => {
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
 
     expect(
-      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali.' }),
+      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali' }),
     ).toBeVisible()
     expect(screen.queryByRole('group', { name: 'Organizacija' })).toBeNull()
   })
@@ -614,7 +614,7 @@ describe('a comment a moderator lets out', () => {
 
     await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
     expect(within(list).getAllByRole('listitem')).toHaveLength(23)
-    expect(screen.getByText('To su sva 23 komentara')).toBeVisible()
+    expect(screen.getByText('To je sav sadržaj, 23 komentara')).toBeVisible()
 
     globalThis.fetch = real
   })
@@ -642,11 +642,15 @@ describe('a comment a moderator lets out', () => {
     expect(document.querySelectorAll('.comments__mark')).toHaveLength(1)
   })
 
-  it('counts every running of the race into that mark, not only this one', async () => {
-    /* The same reason the comments underneath do: a race rated for fifteen
-       years does not start from nothing because this year is a copy with an id
-       of its own. Read as a count of ratings, which is the part of the line
-       that says how many went into it. */
+  it('is the average of every running of the race, not of this one and not the best of them', async () => {
+    /* Three claims in one number, and the figure is the only place any of them
+       can be read: that it counts the earlier editions (a race rated for
+       fifteen years does not start from nothing because this year is a copy
+       with an id of its own), that it is a mean and not a maximum, and that the
+       count beside it says how many went into it.
+
+       Worked out here from the record rather than written down, so the day a
+       comment is added to the fixture this says what the screen says. */
     const events = await loadResource<BtlEvent[]>('events')
     const comments = await loadResource<EventComment[]>('comments')
     const inherited = must(
@@ -658,10 +662,102 @@ describe('a comment a moderator lets out', () => {
       'the later edition',
     )
 
+    const counted = comments.filter(
+      (one) => (one.eventId === later.id || one.eventId === inherited.eventId) && rated(one.rating),
+    )
+    const mean = counted.reduce((so, one) => so + overall(one.rating), 0) / counted.length
+    const highest = Math.max(...counted.map((one) => overall(one.rating)))
+
+    /* The two must differ, or the mean and the maximum are the same number and
+       this proves nothing about which of them is drawn. */
+    expect(counted.length).toBeGreaterThan(1)
+    expect(mean).not.toBeCloseTo(highest, 2)
+
     renderAt(`/sr/kalendar/${later.slug}`)
 
     await screen.findByRole('heading', { level: 1 })
-    expect(await screen.findByText(/iz \d+ ocen/)).toBeVisible()
+
+    const said = (value: number) => value.toFixed(1).replace('.', ',')
+
+    expect(await screen.findByText(said(mean))).toBeVisible()
+    expect(screen.queryByText(said(highest))).toBeNull()
+    expect(screen.getByText(`iz ${String(counted.length)} ocene`)).toBeVisible()
+
+    /* And the stars beside it, drawn to that number: they are the picture of
+       it, and a figure with no picture is half of what was asked for. */
+    const mark = must(document.querySelector<HTMLElement>('.comments__mark'), 'the mark')
+
+    expect(within(mark).getByRole('img', { hidden: true })).toBeVisible()
+  })
+
+  it('starts the list again when the reader walks to another race', async () => {
+    /* How far a list has grown belongs to the list, and a different race is a
+       different list. React keeps a component across a change of address, so
+       without a key the next race opened grown to wherever the last one was
+       left: twenty six shown, no button, and the foot claiming that was all of
+       them. */
+    const real = globalThis.fetch
+    const many = (eventId: string, howMany: number, from: number) =>
+      Array.from({ length: howMany }, (_, at) => ({
+        id: `kom-${eventId}-${String(at)}`,
+        eventId,
+        memberNumber: '000007',
+        who: 'Neko Nekić',
+        date: `2010-05-${String(10 + (at % 20)).padStart(2, '0')}`,
+        rating: { organisation: 4, value: 4, ambience: 4 },
+        body: `Komentar ${String(from + at)}.`,
+      }))
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/comments.json')
+        ? new Response(
+            JSON.stringify([
+              ...many('evt-fruskogorski-maraton-2010-05-08', 23, 1),
+              ...many('evt-ironman-70-3-st-polten-2010-05-30', 14, 100),
+            ]),
+            { status: 200 },
+          )
+        : real(input)) as typeof fetch
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt(`/sr/kalendar/${EVENT}`)
+
+      const list = await screen.findByRole('list', { name: 'Komentari' })
+      await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
+      expect(within(list).getAllByRole('listitem')).toHaveLength(20)
+
+      await router.navigate('/sr/kalendar/ironman-70-3-st-polten-2010')
+
+      /* Waited for a comment that belongs to the other race: the list of the one
+         being left is still on screen for a beat, and asked too early this
+         counts the old one and passes whatever the key does. Its own words and
+         not its heading, because the heading arrives before the comments do,
+         and any of them rather than the first: the list is newest first and the
+         first written is the last shown. */
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'Ironman 70.3 - St Polten' },
+        /* Longer than the default, because this waits for a second screen and
+           its data behind a suite that is measuring its own coverage. */
+        { timeout: 5000 },
+      )
+
+      /* Counted once the list belongs to the other race, which is what the
+         second half of the count says: fourteen there, ten of them shown. */
+      await waitFor(() => {
+        const drawn = within(screen.getByRole('list', { name: 'Komentari' })).getAllByRole(
+          'listitem',
+        )
+
+        expect(drawn).toHaveLength(10)
+        expect(must(drawn[0], 'the newest of them').textContent).toContain('Komentar 1')
+      })
+
+      expect(screen.getByRole('button', { name: 'Učitaj još komentara' })).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
   })
 
   it('shows no overall mark for an event whose only comment carries none', async () => {
@@ -1021,7 +1117,7 @@ describe('what an event nobody has run yet offers', () => {
     renderAt(`/sr/kalendar/${AHEAD}/ocena`, 'competitor', ME, undefined, AHEAD_DAY)
 
     expect(
-      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali.' }),
+      await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali' }),
     ).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
   })

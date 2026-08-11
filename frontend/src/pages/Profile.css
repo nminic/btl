@@ -387,3 +387,16 @@
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* What a ducat is worth, beside its name. Two characters, because the sentence
+   that used to say it under every coin was taken off the page (owner,
+   11.08.2026) and the metal alone cannot say it: bronze, silver and gold differ
+   by colour and by nothing else. Quiet enough not to compete with the name, and
+   never below the contrast a reader needs (--text-muted is the token every
+   secondary line on the portal uses). */
+.awards__tier {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

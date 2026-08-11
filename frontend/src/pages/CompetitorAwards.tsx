@@ -216,11 +216,24 @@ function AwardsFor({
         {earned.length === 0 ? (
           <p className="profile__empty">{t('awards.noDucats')}</p>
         ) : (
-          <ul className="awards__ducats" ref={wall} aria-labelledby="awards-ducats">
+          <ul className="awards__ducats" ref={wall}>
             {earned.slice(0, shown).map((ducat) => (
               <li key={ducat.id} className="awards__ducat">
                 <DucatArt ducat={ducat} label={labelFor(ducat)} />
-                <strong>{ducat.name}</strong>
+                <strong>
+                  {ducat.name}{' '}
+                  {/* What it is worth, in two characters rather than in the
+                      sentence that used to stand under every coin (owner,
+                      11.08.2026: no grey lines of explanation). It has to be
+                      seen and not only heard: tiers one to three differ by the
+                      colour of the metal and by nothing else, and colour is
+                      never the only thing that says anything (PDL P16, WCAG 2.2
+                      SC 1.4.1). Four adds a band and five a gold face, so those
+                      two would carry without it; these do not. */}
+                  <span className="awards__tier">
+                    {t('ducats.tierShort', { tier: ducat.tier })}
+                  </span>
+                </strong>
                 {/* The name the coin carries leaves the period out on purpose,
                     so the month stands here as words of the page: without
                     it a profile holding July and August reads as one ducat

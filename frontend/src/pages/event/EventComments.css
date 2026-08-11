@@ -107,3 +107,10 @@
   color: var(--text-muted);
   font-size: 0.85rem;
 }
+
+/* Which running the comment was written about, where that is not the one being
+   read. Beside the date and not glued to it: without a gap the line read
+   "15. januar 2024.Izdanje 2024." */
+.comments__edition {
+  margin-inline-start: var(--space-8);
+}

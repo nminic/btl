@@ -73,6 +73,19 @@ describe('the row the three filters stand in', () => {
     expect(chips).toContain('min-inline-size: 0')
   })
 
+  it('lets the chips scroll inside themselves rather than pushing the page', () => {
+    /* The other half of the pair: `min-inline-size: 0` lets the field shrink,
+       and this is what the shrinking is for. Without it a season with ten
+       categories pushes the page sideways at 560px, which is the fault the
+       shrinking was written to fix. */
+    /* Read out of the rule that declares it, not the last rule of that name:
+       the chip row is written twice, once for the row it stands in and once for
+       itself, and `bodyOf` answers with the later. */
+    const rows = SHEET.slice(SHEET.indexOf('.rankings__categories {'))
+
+    expect(rows.slice(0, rows.indexOf('}'))).toContain('overflow-x: auto')
+  })
+
   it('stands the categories as tall as the controls beside them', () => {
     /* The chips are shorter than a select, so without this they sat between the
        top and the bottom of the row and the three controls shared neither. */
@@ -95,7 +108,10 @@ describe('the row the three filters stand in', () => {
     const container = phoneRule('.rankings--tooled:has(> .rankings__filters)')
 
     expect(container).toContain('display: grid')
-    expect(container).toContain('grid-template-columns: auto 1fr')
+    /* Both tracks bounded at nought, because a track is otherwise at least as
+       wide as its content asks for: at 200% text the two gender buttons stopped
+       fitting and the page scrolled sideways (WCAG 2.2 SC 1.4.4, 1.4.10). */
+    expect(container).toContain('grid-template-columns: minmax(0, auto) minmax(0, 1fr)')
     expect(container).toContain('column-gap')
     /* Both gaps: `display: contents` throws the row's own away with its box, so
        without the second the three rows of filters touch. */

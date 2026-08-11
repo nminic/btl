@@ -112,7 +112,11 @@ export function EventComments({ eventId, date }: { eventId: string; date: string
             {mine.length === 0 ? (
               <p className="profile__empty">{t('event.noComments')}</p>
             ) : (
-              <CommentList written={mine} competitors={competitors} />
+              /* Keyed by the event, so walking from one race to another starts
+                 the list again. Without it React keeps the same component
+                 across a change of address and the next race opens grown to
+                 wherever the last one was left. */
+              <CommentList key={eventId} written={mine} competitors={competitors} />
             )}
           </>
         )

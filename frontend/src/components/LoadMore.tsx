@@ -28,6 +28,16 @@ export function LoadMore({
   words: { more: string; showing: string; whole: string }
 }) {
   const foot = useRef<HTMLDivElement>(null)
+  const end = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    /* Only where somebody had asked: `whole` is true from the first render on a
+       list that never had a button, and taking the focus there would move it
+       for a reader who never touched anything. */
+    if (whole && asked) {
+      end.current?.focus()
+    }
+  }, [whole, asked])
 
   useEffect(() => {
     const at = foot.current
@@ -65,8 +75,19 @@ export function LoadMore({
 
       {whole ? (
         /* Said rather than left to be guessed at: a list that simply stops has
-           not told anybody whether it ended or broke. */
-        <p className="load-more__end">{words.whole}</p>
+           not told anybody whether it ended or broke.
+
+           And it takes the focus the button was holding when it is what
+           replaced it. A keyboard reader who pressed "load more" for the last
+           time was dropped to the top of the document, which is the whole page
+           to walk again (WCAG 2.2 SC 2.4.3). It is not focused when it was
+           there from the start, because then nobody was standing on anything.
+
+           `tabIndex={-1}` so it can be focused and still not be a stop on the
+           way through. */
+        <p className="load-more__end" tabIndex={-1} ref={end}>
+          {words.whole}
+        </p>
       ) : (
         <button type="button" className="load-more__button" onClick={onMore}>
           {words.more}

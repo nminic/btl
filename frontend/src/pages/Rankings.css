@@ -59,9 +59,19 @@
     margin-block-end: var(--head-end);
   }
 
-  /* Everything else in the screen takes the whole width under the two of them. */
-  .rankings--tooled > *:not(h1):not(.rankings__head-tool) {
+  /* Everything else in the screen takes the whole width under the two of them.
+     Except the mark of the race, which belongs to the head itself: taking the
+     whole width it filled the second row, and the buttons fell to a third with
+     the second track collapsed to nothing, which is the very arrangement this
+     block was written to prevent. */
+  .rankings--tooled > *:not(h1):not(.rankings__head-tool):not(.comments__mark) {
     grid-column: 1 / -1;
+  }
+
+  .rankings--tooled > .comments__mark {
+    grid-column: 1;
+    grid-row: 2;
+    margin-block-end: 0;
   }
 }
 
@@ -150,7 +160,10 @@
 @media (max-width: 559.98px) {
   .rankings--tooled:has(> .rankings__filters) {
     display: grid;
-    grid-template-columns: auto 1fr;
+    /* `minmax(0, …)` on both, because a track is otherwise at least as wide as
+       its content asks for: at 200% text the two gender buttons stopped fitting
+       and the page itself scrolled sideways (WCAG 2.2 SC 1.4.4 and 1.4.10). */
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
     align-items: end;
     /* Both, and not only the column: `display: contents` throws away the row's
        own gap along with its box, so without this the three rows of filters

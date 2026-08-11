@@ -595,7 +595,7 @@ describe('a wall of ducats that grows as it is read', () => {
        the twelve thresholds above is behind them. */
     renderAt('/sr/takmicar/000021/priznanja')
 
-    const wall = await screen.findByRole('list', { name: /Dukati/ })
+    const wall = await screen.findByRole('list', { name: '' })
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Učitaj još dukata' })).toHaveLength(1)
     })
@@ -608,7 +608,7 @@ describe('a wall of ducats that grows as it is read', () => {
 
     await user.click(screen.getByRole('button', { name: 'Učitaj još dukata' }))
     expect(count()).toBe(12)
-    expect(screen.getByText('To je svih 12 dukata')).toBeVisible()
+    expect(screen.getByText('To je sve, 12 dukata')).toBeVisible()
 
     stop()
   })

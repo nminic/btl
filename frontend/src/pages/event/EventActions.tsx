@@ -162,8 +162,12 @@ export function EventActions({
   const mayAct = memberNumber !== null && event.date <= today
 
   /* And rating asks for one thing more: a result of their own on this event
-     (owner, 11.08.2026), which the form asks again for itself (ran.ts). */
-  const mayRate = mayAct && memberNumber !== null && ran(results, races, event.id, memberNumber)
+     (owner, 11.08.2026), which the form asks again for itself (ran.ts).
+     Whoever is signed in comes first, so the number handed to `ran` is a
+     number: written the other way round it needed a stand-in for nobody that
+     nothing could ever pass. */
+  const mayRate =
+    memberNumber !== null && mayAct && ran(results, races, event.id, memberNumber)
 
   if (!mayEdit && !mayAct) {
     return null

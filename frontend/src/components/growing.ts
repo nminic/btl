@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 
 /**
  * A long list that grows as it is read (owner, 11.08.2026).
@@ -28,21 +28,33 @@ export function useGrowing(total: number, step: number) {
      nothing. */
   const [asked, setAsked] = useState(false)
 
-  /* Never more than there is. The list shrinks under the reader as well as
-     growing: a filter narrows it, a moderator takes a comment down. Grown to
-     thirty and then handed four, this has to be four and not four followed by
-     twenty six of nothing. */
-  const room = Math.min(shown, total)
+  /* Never more than there is, and never less than a step.
+   *
+   * Less than there is, because the list shrinks under the reader as well as
+   * growing: a filter narrows it, a moderator takes a comment down. Grown to
+   * thirty and then handed four, this has to be four and not four followed by
+   * twenty six of nothing.
+   *
+   * Less than a step, because the step itself arrives late. The ducats are
+   * counted in rows, and how many stand across is measured off the grid one
+   * render after the first (`useColumns`): the state was seeded with the step
+   * as it was then, which is one column, so five rows of six was permanently
+   * five ducats. What is held here is the step as it is now. */
+  const room = Math.min(Math.max(shown, step), total)
 
   return {
     shown: room,
     /** Whether everything there is is on screen. */
     whole: room >= total,
     asked,
-    more: () => {
+    /* Made once, because the observer that watches the foot of the list is torn
+       down and set up again whenever this changes, and an observer created over
+       a foot already in view fires at once: a fresh one per render turned
+       "a page at a time" into the whole list in a burst. */
+    more: useCallback(() => {
       setShown((was) => was + step)
       setAsked(true)
-    },
+    }, [step]),
   }
 }
 
