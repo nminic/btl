@@ -710,9 +710,9 @@ describe('a form laid out in rows', () => {
       'the row the first name stands in',
     )
 
-    /* Four rows: name and sex and birthday; the way in; where they live; the
-       category and the shirt. */
-    expect(document.querySelectorAll('.form__row')).toHaveLength(4)
+    /* Five rows: name and sex and birthday; the way in; where they live; the
+       category and the shirt; the picture and the words beside it. */
+    expect(document.querySelectorAll('.form__row')).toHaveLength(5)
     expect(within(first).getByLabelText(/^Ime$/)).toBeInTheDocument()
     expect(within(first).getByRole('radiogroup', { name: 'Pol' })).toBeInTheDocument()
     /* And what a row of four is, said to the stylesheet rather than written into
@@ -728,8 +728,18 @@ describe('a form laid out in rows', () => {
 
     expect(third).toHaveStyle({ '--columns': '3' })
 
-    /* „Svojim rečima" and the confirmation stand alone, as every field on every
-       other form does. */
-    expect(screen.getByLabelText(/Svojim rečima/).closest('.form__row')).toBeNull()
+    /* The fifth row is the picture and the words beside it, in that order
+       (owner, 11.08.2026: „ide sa leve strane polje za upload... a onda boks za
+       svojim rečima"). */
+    const fifth = must(
+      screen.getByLabelText(/Profilna slika/).closest<HTMLElement>('.form__row'),
+      'the row the picture stands in',
+    )
+
+    expect(fifth).toHaveStyle({ '--columns': '2' })
+    expect(within(fifth).getByLabelText(/Svojim rečima/)).toBeInTheDocument()
+
+    /* The confirmation stands alone, as every field on every other form does. */
+    expect(screen.getByLabelText(/zdravstveno sposoban/).closest('.form__row')).toBeNull()
   })
 })

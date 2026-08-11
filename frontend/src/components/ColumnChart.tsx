@@ -46,11 +46,16 @@ export type ChartColumn = {
   /**
    * Which place this is, in words, read out before the number and never drawn.
    *
-   * A list of ten in an `ol` numbers itself 1 to 10, and that is wrong wherever
-   * two columns are level: a place nothing separates is shared, so a board reads
-   * 1, 1, 3 (Član 57 of the rulebook, PDL P12). The tables have a column for it;
-   * a chart has nowhere to put it, so it is said rather than drawn. Left out on
-   * the front page, where the chart is a widget and not a standing.
+   * A list of ten in an `ol` numbers itself 1 to 10, and the place is said in
+   * words rather than left to that, because the chart may be cut short, filtered
+   * or drawn from a board that starts elsewhere. The tables have a column for
+   * it; a chart has nowhere to put it, so it is said. Left out on the front
+   * page, where the chart is a widget and not a standing.
+   *
+   * Until 11.08.2026 the reason was a different one: a place nothing separated
+   * was shared, so a board could read 1, 1, 3 (Član 57 of the rulebook). There
+   * is no shared place any more (PDL P12), and the reading is still not the
+   * row number.
    */
   place?: string
   /** Where the column leads. Missing where there is nothing to lead to: a member

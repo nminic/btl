@@ -157,12 +157,21 @@
       ]
     },
     {
+      "name": "photo",
+      "type": "photo",
+      "labelKey": "registration.photo",
+      "hintKey": "registration.photoHint",
+      "required": true,
+      "row": 5
+    },
+    {
       "name": "bio",
       "type": "textarea",
       "labelKey": "profile.bio",
       "hintKey": "registration.bioHint",
       "required": true,
-      "maxLength": 360
+      "maxLength": 360,
+      "row": 5
     },
     {
       "name": "healthStatement",

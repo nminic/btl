@@ -710,7 +710,7 @@ describe('topByCategory', () => {
 describe('topByCategory, when the count ties', () => {
   /* Every rung of the ladder from PDL P12, in order: the number of races, then
    * the points, the kilometres and the vertical of exactly those races, then the
-   * earlier day, and finally a shared place.
+   * earlier day, and finally the member number.
    *
    * Everybody here ran two halves, so the count settles nothing on its own. The
    * list is deliberately written in the reverse of the answer: ordering by the

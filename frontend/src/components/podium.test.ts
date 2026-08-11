@@ -16,23 +16,16 @@ describe('the top of a table', () => {
     expect([4, 5, 40].map(podiumClass)).toEqual([undefined, undefined, undefined])
   })
 
-  it('marks a shared place like any other place it is', () => {
-    /* A tie nothing separates is shared, so the column can read 1, 1, 3 (PDL
-       P12). Three rows, three golds, and the fourth row is fourth. */
-    expect([1, 1, 3, 4].map(podiumClass)).toEqual(['podium', 'podium', 'podium', undefined])
-  })
+  it('reads the place it is given, not the row it is drawn in', () => {
+    /* The mark follows the number, whatever list it came out of. A board may be
+       cut short, filtered, or drawn from a standing that starts elsewhere, so
+       the row a column is drawn in is not the place it holds.
 
-  it('marks four rows when the third place is shared, which the data does contain', () => {
-    /* 1, 2, 3, 3 is a real board: the shorter races in 2023 end that way. So the
-       podium is not always three rows, and anything counting on three is
-       counting on the ties falling out one particular way. */
-    expect([1, 2, 3, 3, 5].map(podiumClass)).toEqual([
-      'podium',
-      'podium',
-      'podium',
-      'podium',
-      undefined,
-    ])
+       Until 11.08.2026 there was a sharper reason: a tie nothing separated was
+       a shared place, so a board could read 1, 1, 3 and the podium was not
+       always three rows. There is no shared place any more (PDL P12), and the
+       function is unchanged, because it never counted rows. */
+    expect([2, 3, 4].map(podiumClass)).toEqual(['podium', 'podium', undefined])
   })
 })
 
@@ -51,10 +44,9 @@ describe('the leader of a table', () => {
     expect([1, 2, 3, 4].map(leaderClass)).toEqual(['podium', undefined, undefined, undefined])
   })
 
-  it('is both of them when the first place is shared', () => {
-    /* A tie nothing separates is shared, and two people who both came first both
-       won: 1, 1, 3 is a board the data contains, and the mark follows the place
-       rather than the row. */
-    expect([1, 1, 3].map(leaderClass)).toEqual(['podium', 'podium', undefined])
+  it('reads the place it is given, not the row it is drawn in', () => {
+    /* Same reason as the podium above: the number decides, not the position in
+       the array it was mapped over. */
+    expect([2, 1, 3].map(leaderClass)).toEqual([undefined, 'podium', undefined])
   })
 })

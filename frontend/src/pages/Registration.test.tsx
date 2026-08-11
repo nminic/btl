@@ -47,6 +47,13 @@ async function fillEverythingExceptBirthDate(user: ReturnType<typeof setupUser>)
   /* Either the beginners' category or the one for their age, and the portal
      asks rather than assumes (PDL P7). */
   await user.click(screen.getByRole('radio', { name: 'Starosna' }))
+  /* Required since the list of obligatory fields was written, and given its
+     place in the layout on 11.08.2026: the picture stands to the left of the
+     box below, in a row of its own two. */
+  await user.upload(
+    screen.getByLabelText(/Profilna slika/),
+    new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
+  )
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
   await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
@@ -265,6 +272,10 @@ describe('the country a member lives in', () => {
        of, which is exactly what the field is allowed to take. */
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
     await user.click(screen.getByRole('radio', { name: 'Starosna' }))
+    await user.upload(
+      screen.getByLabelText(/Profilna slika/),
+      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
+    )
     await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
     await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
     await user.click(screen.getByLabelText(/zdravstveno sposoban/))
