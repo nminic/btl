@@ -111,7 +111,10 @@ describe('the rule beside a field', () => {
     renderForm()
 
     const hint = must(
-      screen.getByLabelText(/^Adresa za slanje$/).closest('.field')?.querySelector('.hint'),
+      screen
+        .getByLabelText(/^Adresa za slanje$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
       'the rule beside the address',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
