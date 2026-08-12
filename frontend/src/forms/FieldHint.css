@@ -1,12 +1,23 @@
 /* The rule a field carries, folded into the letter beside its label.
  *
- * `display: contents` and not a box of its own: the letter belongs on the line
- * with the label, and the words belong on the line under it, which makes them
- * two items of the head's own grid (FormRenderer.css, `.field__head`). The
- * element stays in the document all the same, which is what the pointer is
- * measured against when it moves from one to the other (FieldHint.tsx). */
+ * A box of its own, and the smallest one there is: it holds the letter and
+ * nothing else, so it sits on the line with the label like any word would. What
+ * it is for is `position: relative`, which makes it what the open words are
+ * measured from, so they can be laid over the page instead of pushed into it
+ * (owner, 12.08.2026: „a ne da se pojavi element unutar strane koji izpomera
+ * sve ostalo").
+ *
+ * Until then it was `display: contents`, and the words were an item of the
+ * head's own grid. That kept them in the flow, which is what the owner asked to
+ * be rid of.
+ *
+ * The pointer is still measured against this element rather than against either
+ * half, which is what lets it travel from the letter into the words without the
+ * box closing under it (FieldHint.tsx, SC 1.4.13). */
 .hint {
-  display: contents;
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 /* Round, quiet, and big enough to be pressed with a finger: the target is the
@@ -50,30 +61,47 @@
 /* Asked for: by the pointer, by the keyboard, or by a finger. All three go
    through the same state, so Escape closes what any of them opened.
  *
- * In the flow and not over it. Laid over what follows, a rule left open by a
- * finger swallowed the first press on whatever it covered, and a pointer could
- * never reach the words: the way down to them crossed the control, which closed
- * it on the way. Standing between the label and the control, it is reached by
- * moving straight down, and the field it explains moves down with it. */
+ * Over the page and not in it (owner, 12.08.2026). Nothing moves when it opens.
+ *
+ * Two things went wrong the last time it was laid over the page, and both are
+ * answered here rather than avoided:
+ *
+ * - **The pointer could not reach the words.** It can now, because they hang
+ *   directly under the letter with no gap between them, and both are inside the
+ *   hint, which is what the pointer is measured against (FieldHint.tsx). The
+ *   way down no longer crosses anything.
+ * - **A box left open by a finger swallowed the first press on what it
+ *   covered.** Now a press anywhere outside puts it away (FieldHint.tsx), so
+ *   what a stray tap costs is that tap and nothing more. That is the price the
+ *   owner asked for, against a page that used to jump every time a letter was
+ *   pressed.
+ *
+ * Centred on the letter rather than started at its edge, so a field in the last
+ * column of a form leans back over the form instead of off the screen. */
 .hint--open .hint__text {
-  grid-column: 1 / -1;
-  position: static;
-  inline-size: auto;
+  position: absolute;
+  z-index: 30;
+  inset-block-start: calc(100% + var(--space-4));
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  inline-size: max-content;
+  /* Never wider than the narrow screen it may be read on. */
+  max-inline-size: min(18rem, 70vw);
   block-size: auto;
   overflow: visible;
   clip-path: none;
   white-space: normal;
-  /* Never wider than a line of text is comfortable to read. */
-  max-inline-size: 32rem;
-  margin-block-start: var(--space-4);
-  padding: var(--space-8) var(--space-10);
+  padding: var(--space-6) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   background: var(--surface);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.55);
   color: var(--text);
-  font-size: 0.85rem;
+  /* Small print, which is what it is (owner, 12.08.2026: „porukica sitnim
+     slovima"). */
+  font-size: 0.75rem;
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.45;
   text-transform: none;
   letter-spacing: normal;
 }

@@ -44,6 +44,41 @@ describe('the rule beside a field', () => {
     expect(rule).toHaveClass('hint__text')
   })
 
+  it('is put away by a press anywhere outside it', async () => {
+    /* What the box being laid over the page costs, and what pays for it. It
+       covers whatever is under it, so a box left open by a finger used to
+       swallow the first press on the control beneath and nothing said why. Now
+       that press closes it and the second one lands (owner, 12.08.2026).
+
+       A press inside it is not that: somebody reaching into the words to read
+       them to the end must not have them taken away (SC 1.4.13). */
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    await user.hover(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    /* Into its own words first, which must not close it. */
+    await user.pointer({ target: must(hint.querySelector('.hint__text'), 'the words'), keys: '[MouseLeft>]' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    /* And then anywhere else, which must. */
+    await user.pointer({ target: screen.getByLabelText(/^Adresa za slanje$/), keys: '[MouseLeft>]' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('is closed by Escape pressed anywhere, while the pointer stays put', async () => {
     /* The case the whole rule exists for (WCAG 2.2 SC 1.4.13): somebody typing
        into a field with the pointer resting on the letter beside another one.

@@ -28,24 +28,34 @@ function ruleFor(selector: string): string {
 }
 
 describe('the box the rule of a field opens in', () => {
-  it('stands in the flow, between the name of the field and the field', () => {
-    /* Laid over what follows, it covered the field under it: a rule left open by
-       a finger swallowed the first press on whatever it covered, and a pointer
-       could never reach the words to read them to the end, because the way down
-       crossed the control and the control is outside the hint. In the flow it
-       covers nothing and is reached by moving straight down. */
+  it('opens over the page and moves nothing', () => {
+    /* Owner, 12.08.2026: „a ne da se pojavi element unutar strane koji izpomera
+       sve ostalo." Anything in the flow moves what comes after it, so what is
+       held here is that it is out of the flow entirely, and stacked above the
+       page rather than under it.
+
+       It hangs from the hint, which is the only element that knows where the
+       letter is, so the hint has to be what it is measured from. */
     const open = ruleFor('.hint--open .hint__text')
 
-    expect(open).toContain('position: static;')
-    expect(open).not.toContain('z-index')
-    /* Across the whole of the head, which is the row the name of the field
-       stands in. */
-    expect(open).toContain('grid-column: 1 / -1;')
+    expect(open).toContain('position: absolute;')
+    expect(open).toMatch(/z-index: \d+;/)
+    expect(open).not.toContain('grid-column')
+    expect(ruleFor('.hint')).toContain('position: relative;')
 
-    const head = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
-    const at = head.indexOf('.field__head {')
+    /* And no gap between the letter and the words, or rather one small enough to
+       cross: a pointer that has to leave the hint to reach them closes them on
+       the way (SC 1.4.13). */
+    expect(open).toContain('inset-block-start: calc(100% + var(--space-4));')
+  })
 
-    expect(head.slice(at, head.indexOf('}', at))).toContain('display: grid')
+  it('is small print, as it was asked to be', () => {
+    /* „porukica sitnim slovima" (owner, 12.08.2026). Held because the size is
+       the whole of what makes it discreet: at the size of the page's own text it
+       is a paragraph that happens to float. */
+    const open = ruleFor('.hint--open .hint__text')
+
+    expect(open).toContain('font-size: 0.75rem;')
   })
 
   it('is shown by one thing only, so that one thing can hide it', () => {
@@ -73,9 +83,15 @@ describe('the box the rule of a field opens in', () => {
        box closing under it (SC 1.4.13 asks that hovered content be hoverable):
        the hint is a wrapper the two share, and whether the pointer left it is
        decided against that wrapper rather than against either half
-       (FieldHint.tsx). `display: contents` is what keeps the wrapper out of the
-       layout while leaving it in the document. */
-    expect(ruleFor('.hint')).toContain('display: contents;')
+       (FieldHint.tsx).
+
+       A box of its own since 12.08.2026, and the smallest there is: it holds the
+       letter and nothing else, so it still sits on the line with the label, and
+       it is what the open words are measured from. */
+    const hint = ruleFor('.hint')
+
+    expect(hint).toContain('display: inline-flex;')
+    expect(hint).not.toContain('display: contents;')
   })
 })
 

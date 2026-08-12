@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import './FieldHint.css'
 
@@ -48,6 +48,10 @@ export function FieldHint({
   const [focused, setFocused] = useState(false)
   /* Put away by Escape, and only until it is asked for again. */
   const [dismissed, setDismissed] = useState(false)
+  /* The wrapper the letter and the words share, so a press can be told to be
+     inside this hint rather than inside any hint: two fields stand side by side
+     in a row, and a press on the neighbour's letter is a press outside this. */
+  const box = useRef<HTMLSpanElement>(null)
   const open = (hovered || focused) && !dismissed
 
   useEffect(() => {
@@ -79,10 +83,29 @@ export function FieldHint({
       }
     }
 
+    /* And a press anywhere outside puts it away as well.
+     *
+     * This is what the box being laid over the page costs, and what pays for it.
+     * Standing over the page it covers whatever is under it, so a box left open
+     * by a finger used to swallow the first press on the control beneath it and
+     * the reader had no way of knowing why nothing happened. Now that press
+     * closes the box, and the second one reaches the control.
+     *
+     * `pointerdown` rather than `click`, so it goes away as the finger lands
+     * rather than when it lifts; and not inside its own hint, where a press is
+     * somebody reaching for the words rather than dismissing them. */
+    function onPress(pressed: PointerEvent) {
+      if (!(pressed.target instanceof Element) || pressed.target.closest('.hint') !== box.current) {
+        setDismissed(true)
+      }
+    }
+
     document.addEventListener('keydown', onKeyDown, true)
+    document.addEventListener('pointerdown', onPress, true)
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
+      document.removeEventListener('pointerdown', onPress, true)
     }
   }, [open])
 
@@ -106,7 +129,7 @@ export function FieldHint({
   }
 
   return (
-    <span className={open ? 'hint hint--open' : 'hint'}>
+    <span className={open ? 'hint hint--open' : 'hint'} ref={box}>
       <button
         type="button"
         className="hint__ask"
