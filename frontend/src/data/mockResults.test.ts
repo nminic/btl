@@ -42,6 +42,17 @@ const races = JSON.parse(
  *  because the rows are already filtered to what can be scored, and a fallback
  *  for the answer that cannot come back would be a branch nothing can take
  *  (ADL A14). */
+/** The middle time of a field of runners, which is what one runner is measured
+ *  against: a mean would be dragged by the very row being looked for. */
+function middleOf(field: Result[]): number {
+  const times = field.map((one) => one.seconds).sort((left, right) => left - right)
+  const half = Math.floor(times.length / 2)
+  const lower = times[half - 1] ?? 0
+  const upper = times[half] ?? 0
+
+  return times.length % 2 === 0 ? (lower + upper) / 2 : upper
+}
+
 function scoredTo(places: number, one: Result): number {
   const points = btlPoints(one.distanceKm, one.ascentM, one.descentM, one.seconds)
   const step = 10 ** places
@@ -74,7 +85,20 @@ const FASTEST_KMH = 22
  * Named here rather than left under a generous threshold, so that it is one row
  * anybody can see and not a hole the whole guard falls through.
  */
-const WAITING_ON_THE_OWNER = ['res-02135']
+const WAITING_ON_THE_OWNER = [
+  /* `mirko-vojinovic`, Amsterdam marathon 2019, above. It is not only odd to
+     look at: it is the highest scoring row in the file, and taking it away moves
+     that member from first place to second in the men's table for 2019. */
+  'res-02135',
+  /* And its twin at the other end. `res-01495`: two kilometres in 1:55:57, which
+     is one kilometre an hour, slower than walking. The three others who ran that
+     same two kilometres that day took about 15:20, and 6957 seconds is what this
+     member runs a half marathon in (6569 in 2015, 6935 in 2017), so a time from
+     one distance is sitting on another, exactly as at Amsterdam. Nothing in the
+     data says what it should be. It scores 0,00, the only such row, so no
+     standing turns on it. */
+  'res-01495',
+]
 
 describe('the results the prototype is filled with', () => {
   it('holds nothing that was run faster than a person can run', () => {
@@ -107,6 +131,36 @@ describe('the results the prototype is filled with', () => {
       .filter((one) => one.written !== one.due)
 
     expect(wrong).toEqual([])
+  })
+
+  it('holds nothing that took many times longer than the same race took everybody else', () => {
+    /* The other half of „impossible", and the half a speed alone cannot see: a
+       vertical race really is walked at two kilometres an hour and a hundred hour
+       ultra really is slower still, so a floor written as a speed either lets a
+       walking pace through or calls a mountain race a fault.
+
+       Against the race rather than against a number, then: whoever else ran that
+       same distance on that same day is the measure. Three finishers at least, so
+       one other slow runner cannot decide it, and three times the middle of them,
+       which is far past anything a field of runners spreads over. It finds one
+       row in three and a half thousand, seven and a half times the median, and
+       nothing on the fast side at any factor down to two and a half. */
+    const byRace = new Map<string, Result[]>()
+
+    for (const one of results.filter((row) => row.seconds > 0)) {
+      byRace.set(one.raceId, [...(byRace.get(one.raceId) ?? []), one])
+    }
+
+    const adrift = [...byRace.values()]
+      .filter((field) => field.length >= 3)
+      .flatMap((field) =>
+        field
+          .filter((one) => one.seconds > 3 * middleOf(field.filter((other) => other !== one)))
+          .map((one) => one.id),
+      )
+      .filter((id) => !WAITING_ON_THE_OWNER.includes(id))
+
+    expect(adrift).toEqual([])
   })
 
   it('holds no result worth more points than the profile has room for', () => {

@@ -461,8 +461,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
               {/* Once over the queue and not once per card: the three fields a
                   proposed team is corrected in carry a star, and the star is
                   explained where it is drawn (forms/AskedLabel.tsx). Only on the
-                  queue that draws them. */}
-              {queue.id === 'teams' && <RequiredNote />}
+                  queue that draws them, and only while the box for a reason is
+                  shut: that box brings its own line, and two of them on one
+                  screen explain the same mark twice. */}
+              {queue.id === 'teams' && open === null && <RequiredNote />}
 
               <div className="pending__bar">
                 <h2 className="profile__section" id={waitingId}>

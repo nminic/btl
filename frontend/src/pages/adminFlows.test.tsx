@@ -2025,7 +2025,10 @@ describe('the six queues read from the file', () => {
        says what a star means. */
     const user = await open('teams', 'Novi timovi')
 
-    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.').length).toBeGreaterThan(0)
+    /* Exactly one, wherever it comes from: the queue draws it over the three
+       fields, and the box for a reason draws its own when it opens. Both at
+       once explained the same mark twice on one screen. */
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
 
     for (const name of ['Naziv tima', 'Mesto', 'Država']) {
       const field = screen.getAllByLabelText(name)[0]
@@ -2044,6 +2047,8 @@ describe('the six queues read from the file', () => {
         '.field__required',
       ),
     ).not.toBeNull()
+    /* And still one line explaining the star, not two. */
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
   })
 
   it('will not send anything back without a reason', async () => {
