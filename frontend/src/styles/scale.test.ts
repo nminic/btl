@@ -236,3 +236,33 @@ describe('the width prose is allowed', () => {
     }
   })
 })
+
+describe('the columns of the results table on a profile', () => {
+  it('are pinned, and pinned in a unit the head and the body agree on', () => {
+    /* Owner, 12.08.2026: „Kad se na strani takmičara klikće po filterima za
+       dužinu trke, kolone njegovih rezultata mrdaju levo desno. Treba ih
+       zakucati." A table sizes its columns to what is in them, so every filter
+       moved the whole row.
+     *
+       Two things are held. That the table is `fixed`, without which the widths
+       are only a suggestion. And that they are written in `rem`: `ch` is the
+       width of a digit in the font of the element it is written on, and with a
+       fixed layout the row that decides a column is the head, whose letters are
+       smaller, so every column came out at seventy one per cent of what it asked
+       for. Measured in a browser, not here: jsdom lays nothing out. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const at = css.indexOf('.profile__results .table {')
+
+    expect(css.slice(at, css.indexOf('}', at))).toContain('table-layout: fixed')
+
+    const pinned = [...css.matchAll(/\.profile__results \.table td:nth-child\(\d\)[^{]*\{([^}]*)\}/g)]
+
+    /* Six of the seven: the event takes what is left and is the only one that
+       wraps. */
+    expect(pinned).toHaveLength(5)
+
+    for (const rule of pinned) {
+      expect(rule[1]).toMatch(/inline-size:\s*[\d.]+rem;/)
+    }
+  })
+})

@@ -378,8 +378,13 @@
  * are the widest the league can ever hold: a date in full, a distance of
  * 1000,00, a climb of 88.888, a time of 888:59:59, and 200,00 points.
  *
- * `ch` is the width of one digit in the tabular figures the portal sets on
- * `:root`, so these are counted in digits and hold whatever the numbers are.
+ * Written in `rem` and not in `ch`. `ch` is the width of a digit in the font of
+ * the element it is written on, and with `table-layout: fixed` the row that
+ * decides a column is the head, whose letters are smaller: every column came out
+ * at seventy one per cent of what it asked for. `rem` is the root's font and the
+ * same in both rows. The numbers are measured, in a browser, against the cell's
+ * own font and its padding.
+ *
  * The event takes what is left, and is the only column that wraps.
  *
  * `table-layout: fixed` is what makes any of it true: without it the browser
@@ -390,29 +395,29 @@
 
 .profile__results .table th:nth-child(1),
 .profile__results .table td:nth-child(1) {
-  inline-size: 11.5ch;
+  inline-size: 6.75rem;
 }
 
 .profile__results .table th:nth-child(3),
 .profile__results .table td:nth-child(3) {
-  inline-size: 9ch;
+  inline-size: 4.5rem;
 }
 
 .profile__results .table th:nth-child(4),
 .profile__results .table td:nth-child(4),
 .profile__results .table th:nth-child(5),
 .profile__results .table td:nth-child(5) {
-  inline-size: 8ch;
+  inline-size: 4rem;
 }
 
 .profile__results .table th:nth-child(6),
 .profile__results .table td:nth-child(6) {
-  inline-size: 11ch;
+  inline-size: 5.25rem;
 }
 
 .profile__results .table th:nth-child(7),
 .profile__results .table td:nth-child(7) {
-  inline-size: 8ch;
+  inline-size: 4.25rem;
 }
 
 /* On a telephone the name of an event is cut rather than allowed to push the
