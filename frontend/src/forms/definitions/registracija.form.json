@@ -20,12 +20,20 @@
       "row": 1
     },
     {
+      "name": "birthDate",
+      "type": "date",
+      "labelKey": "registration.birthDate",
+      "hintKey": "registration.birthDateHint",
+      "required": true,
+      "row": 1
+    },
+    {
       "name": "gender",
       "type": "choice",
       "labelKey": "registration.gender",
       "hintKey": "registration.genderHint",
       "required": true,
-      "row": 1,
+      "row": 2,
       "options": [
         {
           "value": "M",
@@ -38,75 +46,12 @@
       ]
     },
     {
-      "name": "birthDate",
-      "type": "date",
-      "labelKey": "registration.birthDate",
-      "hintKey": "registration.birthDateHint",
-      "required": true,
-      "row": 1
-    },
-    {
-      "name": "parentConsent",
-      "type": "text",
-      "labelKey": "registration.parentConsent",
-      "hintKey": "registration.parentConsentHint",
-      "required": true,
-      "maxLength": 120,
-      "showWhenYoungerThan": {
-        "field": "birthDate",
-        "years": 16
-      }
-    },
-    {
-      "name": "email",
-      "type": "email",
-      "labelKey": "registration.email",
-      "hintKey": "registration.emailHint",
-      "required": true,
-      "row": 2
-    },
-    {
-      "name": "password",
-      "type": "password",
-      "labelKey": "registration.password",
-      "hintKey": "registration.passwordHint",
-      "required": true,
-      "minLength": 10,
-      "row": 2
-    },
-    {
-      "name": "passwordRepeat",
-      "type": "password",
-      "labelKey": "registration.passwordRepeat",
-      "required": true,
-      "matches": "password",
-      "row": 2
-    },
-    {
-      "name": "address",
-      "type": "text",
-      "labelKey": "registration.address",
-      "hintKey": "registration.addressHint",
-      "required": true,
-      "maxLength": 120,
-      "row": 3
-    },
-    {
-      "name": "city",
-      "type": "place",
-      "labelKey": "registration.city",
-      "hintKey": "registration.cityHint",
-      "required": true,
-      "maxLength": 80,
-      "row": 3
-    },
-    {
       "name": "firstSeason2027",
       "type": "choice",
       "labelKey": "registration.category",
       "hintKey": "registration.categoryHint",
       "required": true,
-      "row": 4,
+      "row": 2,
       "options": [
         {
           "value": "yes",
@@ -124,7 +69,7 @@
       "labelKey": "registration.shirtSize",
       "hintKey": "registration.shirtSizeHint",
       "required": true,
-      "row": 4,
+      "row": 2,
       "options": [
         {
           "value": "XS",
@@ -157,6 +102,49 @@
       ]
     },
     {
+      "name": "email",
+      "type": "email",
+      "labelKey": "registration.email",
+      "hintKey": "registration.emailHint",
+      "required": true,
+      "row": 3
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "labelKey": "registration.password",
+      "hintKey": "registration.passwordHint",
+      "required": true,
+      "minLength": 10,
+      "row": 3
+    },
+    {
+      "name": "passwordRepeat",
+      "type": "password",
+      "labelKey": "registration.passwordRepeat",
+      "required": true,
+      "matches": "password",
+      "row": 3
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "labelKey": "registration.address",
+      "hintKey": "registration.addressHint",
+      "required": true,
+      "maxLength": 120,
+      "row": 4
+    },
+    {
+      "name": "city",
+      "type": "place",
+      "labelKey": "registration.city",
+      "hintKey": "registration.cityHint",
+      "required": true,
+      "maxLength": 80,
+      "row": 4
+    },
+    {
       "name": "photo",
       "type": "photo",
       "labelKey": "registration.photo",
@@ -181,6 +169,18 @@
       "linkTo": "pravilnik",
       "required": true,
       "hintKey": "registration.healthStatementHint"
+    },
+    {
+      "name": "parentConsent",
+      "type": "text",
+      "labelKey": "registration.parentConsent",
+      "hintKey": "registration.parentConsentHint",
+      "required": true,
+      "maxLength": 120,
+      "showWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      }
     }
   ]
 }

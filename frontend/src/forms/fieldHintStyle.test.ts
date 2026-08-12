@@ -183,14 +183,30 @@ describe('the rows of a form', () => {
     expect(plain.includes('span 2')).toBe(false)
   })
 
+  it('keeps the letter in a track of its own, not in the one that grows', () => {
+    /* Measured in Chrome at 1280 on the registration form, which is where this
+       was found: three tracks and the letter lands in the growing one, where a
+       grid item stretches to fill it. Its box went from 24 pixels wide to 219,
+       so the words of a rule opened under a pointer that was nowhere near the
+       letter and half the line answered to a hover. Four tracks and it is 24,
+       which is the circle itself.
+
+       A field with no star has two items and the last two tracks stand empty,
+       which costs nothing. */
+    expect(bodyOf('.field__head')).toContain('grid-template-columns: auto auto auto 1fr;')
+  })
+
   it('puts the letter beside the words of a confirmation, not under them', () => {
-    /* The one field with no head of its own: the hint is `display: contents`, so
-       left outside it the circle became an item of the field's own column and
-       fell to a line below the sentence. Ten fields carried it beside their name
-       and this one carried it under. */
+    /* The one field with no head of its own: left outside a head the circle
+       became an item of the field's own column and fell to a line below the
+       sentence. Ten fields carried it beside their name and this one carried it
+       under.
+
+       Three tracks and not two, since the star of an obligatory field stands
+       between the words and the letter. */
     const confirm = bodyOf('.field__head--confirm')
 
-    expect(confirm).toContain('grid-template-columns: 1fr auto;')
+    expect(confirm).toContain('grid-template-columns: 1fr auto auto;')
   })
 
   it('let a form that has them be wider, and only where they are drawn', () => {
@@ -218,5 +234,25 @@ describe('the rows of a form', () => {
     const elsewhere = form.replace(wide, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
     expect(elsewhere.includes('60rem')).toBe(false)
+  })
+
+  it('lets a confirmation have the whole of that width, and after the cap', () => {
+    /* Owner, 12.08.2026: „nema razloga da se checkbox sa pravilnikom prelama
+       ovako brzo umesto da iskoristi širinu ekrana." The cap is for boxes to
+       type into; a sentence to read is not one.
+
+       Where it stands is half of the rule. Both selectors weigh the same, so of
+       the two the later one applies: written above the cap it would be undone by
+       it, and the sentence would go on breaking into four lines with nothing on
+       the screen to say why. A media query adds no specificity and this trap has
+       been walked into once already, in this very file, over the row that a
+       query turned off at every width there is. */
+    const wide = inside('@media (min-width: 820px)')
+    const kept = wide.indexOf('.form:has(.form__row) > .field,')
+    const freed = wide.indexOf('.form:has(.form__row) > .field--checkbox {')
+
+    expect(freed).toBeGreaterThan(-1)
+    expect(freed).toBeGreaterThan(kept)
+    expect(wide.slice(freed)).toContain('max-inline-size: none;')
   })
 })

@@ -358,7 +358,8 @@
     "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom.",
     "explain": "Objašnjenje",
     "country": "Država",
-    "explainMark": "i"
+    "explainMark": "i",
+    "requiredNote": "Polja sa zvezdicom su obavezna."
   },
   "registration": {
     "title": "Registracija",

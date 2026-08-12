@@ -135,6 +135,115 @@ describe('the words of a field with a link in them', () => {
   })
 })
 
+/* The star beside the name of a field that has to be answered (owner,
+   12.08.2026: „Obavezna polja treba da imaju zvezdicu pored").
+ *
+ * A fixture of its own, because what is being held is a pair at each of the
+ * three places a name is drawn: with the star and without it. `everyType` has
+ * one obligatory confirmation and one optional group of buttons, so on its own
+ * it would walk one half of each pair and leave the other unsaid. */
+const bothWays: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'ime', type: 'text', labelKey: 'proba.ime', required: true },
+    { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+    { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost', required: true },
+    { name: 'beleska', type: 'checkbox', labelKey: 'proba.beleska' },
+    {
+      name: 'izbor',
+      type: 'choice',
+      labelKey: 'proba.izbor',
+      required: true,
+      options: [
+        { value: 'da', labelKey: 'proba.da' },
+        { value: 'ne', labelKey: 'proba.ne' },
+      ],
+    },
+    {
+      name: 'pol',
+      type: 'choice',
+      labelKey: 'proba.pol',
+      options: [{ value: 'M', labelKey: 'proba.muski' }],
+    },
+  ],
+}
+
+describe('the star of an obligatory field', () => {
+  /* Found through the words rather than through the control, because the three
+     places draw three different controls and one of them, the group of buttons,
+     has no control the name belongs to at all. */
+  const starOn = (key: string) => {
+    const field = must(
+      screen.getByText(key).closest<HTMLElement>('.field'),
+      `the field named ${key}`,
+    )
+
+    return field.querySelector('.field__required')
+  }
+
+  it('stands beside the name of every field that has to be answered', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(starOn('proba.ime')).not.toBeNull()
+    expect(starOn('proba.saglasnost')).not.toBeNull()
+    expect(starOn('proba.izbor')).not.toBeNull()
+  })
+
+  it('is drawn for the eye alone, and never read out', () => {
+    /* A reader already says „obavezno" from `required` on the control itself,
+       so read out as well the star is the same thing said twice, and said as a
+       loose „zvezdica" standing between a name and a box. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(starOn('proba.ime')).toHaveAttribute('aria-hidden', 'true')
+    expect(starOn('proba.saglasnost')).toHaveAttribute('aria-hidden', 'true')
+    expect(starOn('proba.izbor')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('stands beside no field that may be left empty', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(starOn('proba.dopisano')).toBeNull()
+    expect(starOn('proba.beleska')).toBeNull()
+    expect(starOn('proba.pol')).toBeNull()
+  })
+
+  it('is not part of the name the field is found by', () => {
+    /* Which is why it is drawn outside the label and not inside it. Inside, the
+       name of every obligatory field gained a star: „Ime" became „Ime *" for a
+       screen reader and for everything that goes looking for a field by name,
+       and thirty seven tests said so at once. Held exactly, since a match on
+       part of the words would pass either way. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText('proba.ime')).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'proba.izbor' })).toBeInTheDocument()
+  })
+
+  it('is explained once over the form, where there is one to explain', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeInTheDocument()
+  })
+
+  it('is not explained on a form that draws none', () => {
+    /* A line about a mark that is nowhere on the screen is a line to work out
+       rather than a line to read. */
+    const nothingAsked: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [{ name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' }],
+    }
+
+    renderWithI18n(<FormRenderer form={nothingAsked} onSubmit={vi.fn()} />)
+
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+  })
+})
+
 describe('FormRenderer', () => {
   it('renders every supported field type', () => {
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)

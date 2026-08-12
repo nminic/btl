@@ -745,14 +745,19 @@ describe('a form laid out in rows', () => {
       'the row the first name stands in',
     )
 
-    /* Five rows: name and sex and birthday; the way in; where they live; the
-       category and the shirt; the picture and the words beside it. */
+    /* Five rows of thirds (owner, 12.08.2026: „Podeli je racionalno na trećine
+       horizontalno"): who you are; how you are classed; the way in; where you
+       live; and the picture with the words beside it. The confirmation and the
+       parent's signature stand at the foot, outside the rows, because they need
+       the whole width and because opening the signature must not shuffle the
+       three columns above it. */
     expect(document.querySelectorAll('.form__row')).toHaveLength(5)
     expect(within(first).getByLabelText(/^Ime$/)).toBeInTheDocument()
-    expect(within(first).getByRole('radiogroup', { name: 'Pol' })).toBeInTheDocument()
-    /* And what a row of four is, said to the stylesheet rather than written into
-       it: the renderer counts the columns. */
-    expect(first).toHaveStyle({ '--columns': '4' })
+    expect(within(first).getByLabelText(/^Prezime$/)).toBeInTheDocument()
+    expect(within(first).getByLabelText(/Datum rođenja/)).toBeInTheDocument()
+    /* And what a row of three is, said to the stylesheet rather than written
+       into it: the renderer counts the columns. */
+    expect(first).toHaveStyle({ '--columns': '3' })
 
     /* The row of the address is two fields and three columns, because the town
        carries the country beside it. */

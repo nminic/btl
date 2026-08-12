@@ -218,6 +218,7 @@ const Field = memo(function Field({
             <label className="field__label" htmlFor={inputId} id={labelId}>
               {worded(t(field.labelKey), field, locale, t)}
             </label>
+            {field.required === true && <RequiredMark />}
 
             {field.hintKey !== undefined && (
               <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -246,6 +247,7 @@ const Field = memo(function Field({
               <span className="field__optional"> ({t('form.optional')})</span>
             )}
           </span>
+          {field.required === true && <RequiredMark />}
 
           {field.hintKey !== undefined && (
             <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -351,6 +353,7 @@ const Field = memo(function Field({
             <span className="field__optional"> ({t('form.optional')})</span>
           )}
         </label>
+        {field.required === true && <RequiredMark />}
 
         {field.hintKey !== undefined && (
           <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -469,6 +472,27 @@ const Field = memo(function Field({
   )
 })
 
+/**
+ * The star beside the name of a field that has to be answered.
+ *
+ * Outside the `<label>` and not inside it. Inside, it joins the words the field
+ * is found by: every test and every screen reader that looks for „Ime" would be
+ * looking for „Ime *", and thirty seven tests said so at once.
+ *
+ * Owner, 12.08.2026: „Obavezna polja treba da imaju zvezdicu pored." Drawn and
+ * not spoken: `required` on the control is what a screen reader is already
+ * given, and a star read out after every second label is noise. What the star
+ * means is said once, over the form (`form.requiredNote`), which is where a
+ * legend belongs.
+ */
+function RequiredMark() {
+  return (
+    <span className="field__required" aria-hidden="true">
+      {'*'}
+    </span>
+  )
+}
+
 export function FormRenderer({
   form,
   onSubmit,
@@ -572,6 +596,14 @@ export function FormRenderer({
         <h2 className="form__title" id={titleId}>
           {title}
         </h2>
+      )}
+
+      {/* What the star beside a name means, said once over the form rather than
+          spelled out on every field (owner, 12.08.2026). Only where there is a
+          star to explain: a form of nothing but obligatory fields, or of nothing
+          but optional ones, would be explaining a mark it never draws. */}
+      {form.fields.some((one) => one.required === true) && (
+        <p className="form__legend">{t('form.requiredNote')}</p>
       )}
 
       {/* Announced the moment it appears. Without it, pressing the button with
