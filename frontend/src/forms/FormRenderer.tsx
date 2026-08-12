@@ -596,9 +596,9 @@ export function FormRenderer({
       {/* What the star beside a name means, said once over the form rather than
           spelled out on every field (owner, 12.08.2026). Only where there is a
           star to explain: a form of nothing but optional fields would be
-          explaining a mark it never draws. A form of nothing but obligatory ones
-          draws it on every field and says so here, which is the registration
-          exactly. */}
+          explaining a mark it never draws. Every form the portal has draws at
+          least one, the registration included, where „Svojim rečima" is the one
+          field that may be left empty. */}
       {form.fields.some((one) => one.required === true) && <RequiredNote />}
 
       {/* Announced the moment it appears. Without it, pressing the button with

@@ -458,13 +458,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
           return (
             <>
-              {/* Once over the queue and not once per card: the three fields a
-                  proposed team is corrected in carry a star, and the star is
-                  explained where it is drawn (forms/AskedLabel.tsx). Only on the
-                  queue that draws them, and only while the box for a reason is
-                  shut: that box brings its own line, and two of them on one
-                  screen explain the same mark twice. */}
-              {queue.id === 'teams' && open === null && <RequiredNote />}
+              {/* Once over the queue and never inside a card. The three fields a
+                  proposed team is corrected in carry a star, and so does the
+                  reason a proposal is sent back, and the star is explained where
+                  it is drawn (forms/AskedLabel.tsx).
+               *
+                  Here rather than in the box that carries the reason, because
+                  that box stands inside a card: a card folds on a telephone and a
+                  sweep takes it away, and the line explaining the star went with
+                  it while three stars stayed on the screen. Standing over the
+                  queue it cannot be taken away by anything that happens inside
+                  one card. */}
+              {(queue.id === 'teams' || open !== null) && <RequiredNote />}
 
               <div className="pending__bar">
                 <h2 className="profile__section" id={waitingId}>
@@ -512,6 +517,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                          through or the line under the button would say a number
                          the queue disagrees with. */
                       setSwept(approveAll(waiting, teams))
+                      /* And whatever card had its reason open goes with them:
+                         the sweep may settle the very card that box belongs to,
+                         and a box open over a card that is no longer there is a
+                         reason waiting to be written about nothing. */
+                      setOpen(null)
+
+
                     }}
                   >
                     {t('verification.approveAll')}

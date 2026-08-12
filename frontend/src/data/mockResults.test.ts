@@ -38,26 +38,17 @@ const races = JSON.parse(
   readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
 ) as Race[]
 
-/** The points a row is due, rounded the way the portal writes them. Written out
- *  because the rows are already filtered to what can be scored, and a fallback
- *  for the answer that cannot come back would be a branch nothing can take
- *  (ADL A14). */
-/** The middle time of a field of runners, which is what one runner is measured
- *  against: a mean would be dragged by the very row being looked for. */
-function middleOf(field: Result[]): number {
-  const times = field.map((one) => one.seconds).sort((left, right) => left - right)
-  const half = Math.floor(times.length / 2)
-  const lower = times[half - 1] ?? 0
-  const upper = times[half] ?? 0
-
-  return times.length % 2 === 0 ? (lower + upper) / 2 : upper
-}
-
-function scoredTo(places: number, one: Result): number {
-  const points = btlPoints(one.distanceKm, one.ascentM, one.descentM, one.seconds)
-  const step = 10 ** places
-
-  return Math.round((points === null ? 0 : points) * step) / step
+/**
+ * How long the rest of a field took, on average.
+ *
+ * An average and not a middle: a middle is read out of a sorted list by index,
+ * and an index into a list is a value that might not be there, so the two
+ * fallbacks written for it were branches nothing could take (ADL A14). What a
+ * mean is usually bad at does not apply here, because the row being looked at is
+ * not in the field it is measured against.
+ */
+function restTook(field: Result[]): number {
+  return field.reduce((sum, one) => sum + one.seconds, 0) / field.length
 }
 
 /**
@@ -100,14 +91,20 @@ describe('the results the prototype is filled with', () => {
        came out as 0,009999999999990905 and passed, while 11,89 against 11,88
        did not: the same one cent, caught at one end of the list and let through
        at the other. */
-    const wrong = results
-      .filter((one) => one.seconds > 0 && one.distanceKm > 0)
-      .map((one) => ({
-        id: one.id,
-        written: one.points,
-        due: scoredTo(2, one),
-      }))
-      .filter((one) => one.written !== one.due)
+    const scored = results.map((one) => ({
+      id: one.id,
+      written: one.points,
+      due: btlPoints(one.distanceKm, one.ascentM, one.descentM, one.seconds),
+    }))
+
+    /* Every row can be scored at all, which is the same thing as saying every
+       row has a length and a time. Asked first, so that what follows needs no
+       fallback for an answer that cannot come. */
+    expect(scored.filter((one) => one.due === null).map((one) => one.id)).toEqual([])
+
+    const wrong = scored.filter(
+      (one) => one.due !== null && one.written !== Math.round(one.due * 100) / 100,
+    )
 
     expect(wrong).toEqual([])
   })
@@ -120,10 +117,14 @@ describe('the results the prototype is filled with', () => {
 
        Against the race rather than against a number, then: whoever else ran that
        same distance on that same day is the measure. Three finishers at least, so
-       one other slow runner cannot decide it, and three times the middle of them,
-       which is far past anything a field of runners spreads over. It finds one
-       row in three and a half thousand, seven and a half times the median, and
-       nothing on the fast side at any factor down to two and a half. */
+       that no field is judged by one other runner alone, and three times how long
+       the rest of them took, which is far past anything a field spreads over.
+
+       It found one row when it was written, seven and a half times the rest of
+       its field: two kilometres walked in an hour and fifty six, which the owner
+       then said was a half marathon (12.08.2026). Nothing is over the line now,
+       and nothing comes near it: the widest gap left in three and a half thousand
+       rows is 1,98 times, and the fast side is clear down to a factor of 2,2. */
     const byRace = new Map<string, Result[]>()
 
     for (const one of results.filter((row) => row.seconds > 0)) {
@@ -134,7 +135,7 @@ describe('the results the prototype is filled with', () => {
       .filter((field) => field.length >= 3)
       .flatMap((field) =>
         field
-          .filter((one) => one.seconds > 3 * middleOf(field.filter((other) => other !== one)))
+          .filter((one) => one.seconds > 3 * restTook(field.filter((other) => other !== one)))
           .map((one) => one.id),
       )
 
@@ -155,7 +156,12 @@ describe('the results the prototype is filled with', () => {
        result was mended and the race it points at was not, so a race nobody ran
        stood on the public page of that event with no finishers, and the one
        result on the portal whose length disagreed with its own race was the one
-       just corrected. A result and its race are two files and one fact. */
+       just corrected.
+
+       The length and nothing else. Twenty one results disagree with their race
+       about the climb and a hundred and sixty one are dated a year apart from it,
+       both of them older than any of this and neither of them what the correction
+       could have broken. */
     const byId = new Map(races.map((one) => [one.id, one]))
     const adrift = results
       .map((one) => ({ id: one.id, race: byId.get(one.raceId), km: one.distanceKm }))

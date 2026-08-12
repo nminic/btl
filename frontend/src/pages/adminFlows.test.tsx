@@ -1135,7 +1135,11 @@ describe('the queue of memberships waiting to be activated', () => {
   const openPayments = async () => {
     const user = setupUser()
     renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, undefined, null, <Decided />)
-    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+    /* The table and not the heading. The heading is drawn before the records
+       arrive, so a test that waited on it went looking for a button that was not
+       there yet: it failed once in a run of the coverage gate and passed on the
+       next, which is the worst way for a test to fail. */
+    await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
 
     return user
   }
@@ -2049,6 +2053,53 @@ describe('the six queues read from the file', () => {
     ).not.toBeNull()
     /* And still one line explaining the star, not two. */
     expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+  })
+
+  it('keeps that line on the screen when a sweep takes the card it stood in', async () => {
+    /* It used to stand inside the box for a reason, which stands inside a card,
+       and a card is not a safe place for it: a sweep settles the card the box
+       belongs to and the line went with it while three stars stayed on the
+       screen. A star this portal deliberately keeps out of the accessibility
+       tree, so the line is all a sighted reader has.
+
+       Two ways in, and this is the one a test can walk: open a reason, then
+       press „Odobri sve". The other is a telephone, where a card folds shut and
+       takes whatever is inside it. */
+    const user = await open('teams', 'Novi timovi')
+
+    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+    asked.mockRestore()
+
+    /* The stars are still drawn, so the line has to be there with them. */
+    expect(document.querySelectorAll('.field__required').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+  })
+
+  it('takes the reason away with the card the sweep settled, and the line with it', async () => {
+    /* The other way round, on a queue with no fields of its own: the only star
+       there is the reason's, so when the sweep takes the card away the line has
+       to go too, or it explains a mark that is nowhere on the screen. The box
+       was left standing open over nothing, which is also a reason half written
+       about a proposal already decided. */
+    const user = await open('leagues', 'Predložene lige')
+
+    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+    asked.mockRestore()
+
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
   it('will not send anything back without a reason', async () => {

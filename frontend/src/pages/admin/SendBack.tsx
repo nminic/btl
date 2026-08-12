@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 
 /**
@@ -91,12 +91,15 @@ export function SendBack({
     <div className="review__reason" role="group" aria-label={about}>
       <p className="review__about">{about}</p>
 
-      {/* The same rule as every other field on the portal, and the same words
-          for it: a star where it has to be written, and nothing where it may be
-          left empty (forms/AskedLabel.tsx). Five queues send back through this
-          one box, so the rule reaching it reaches all five. */}
-      {!optional && <RequiredNote />}
+      {/* The same rule as every other field on the portal: a star where it has
+          to be written, and nothing where it may be left empty
+          (forms/AskedLabel.tsx). Five queues send back through this one box, so
+          the rule reaching it reaches all five.
 
+          What the star means is said by whoever draws this box, not here. This
+          box stands inside a card, and a card folds on a telephone and is taken
+          away by a sweep: the line explaining the star went with it and left the
+          stars behind, which is the one thing a legend must never do. */}
       <div className="rankings__field rankings__field--wide">
         <AskedLabel id="send-back-reason" asked={!optional}>
           {t(labelKey)}
