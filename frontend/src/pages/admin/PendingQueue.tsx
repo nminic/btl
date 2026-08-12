@@ -456,20 +456,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
             queue.id === 'teams' ? refusal(teamFrom(one, edits), addresses, one) : null
           const waiting = waitingIn(items, decisions, queue.id)
 
+          /* Whether a star is on this screen at all, which is what decides the
+             one line that says what a star means (forms/AskedLabel.tsx). Asked
+             of the two things that draw one and of nothing else:
+
+             - the three fields a proposed team is corrected in, which are drawn
+               once per proposal, so an emptied queue has none;
+             - the reason a proposal is sent back, which carries a star unless
+               the outcome is a deletion, where a note may be left blank. That is
+               the whole of the comments queue, and a legend over it said the
+               opposite of the truth about the only field on the screen.
+
+             Guessed at instead, from the name of the queue and from whether a
+             box was open, it was drawn over a queue with nothing left in it and
+             over a field that may be left empty, and taken away while three
+             stars stayed. */
+          const openItem = items.find((one) => one.id === open)
+          const starsHere =
+            (queue.id === 'teams' && waiting.length > 0) ||
+            (openItem !== undefined && outcomeFor(queue, openItem) !== 'delete')
+
           return (
             <>
-              {/* Once over the queue and never inside a card. The three fields a
-                  proposed team is corrected in carry a star, and so does the
-                  reason a proposal is sent back, and the star is explained where
-                  it is drawn (forms/AskedLabel.tsx).
-               *
-                  Here rather than in the box that carries the reason, because
-                  that box stands inside a card: a card folds on a telephone and a
-                  sweep takes it away, and the line explaining the star went with
-                  it while three stars stayed on the screen. Standing over the
-                  queue it cannot be taken away by anything that happens inside
-                  one card. */}
-              {(queue.id === 'teams' || open !== null) && <RequiredNote />}
+              {starsHere && <RequiredNote />}
 
               <div className="pending__bar">
                 <h2 className="profile__section" id={waitingId}>
@@ -682,6 +691,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNote'
                                 : 'review.reason'
                             }
+                            /* The queue draws that line for the whole screen,
+                               counting this box among the reasons to draw it, so
+                               the box does not draw a second one. */
+                            explain={false}
                             confirmKey={
                               outcomeFor(queue, one) === 'delete'
                                 ? 'verification.confirmDelete'

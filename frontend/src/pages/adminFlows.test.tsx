@@ -2069,15 +2069,67 @@ describe('the six queues read from the file', () => {
 
     const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+    try {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-    asked.mockRestore()
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+    } finally {
+      /* In a `finally`, as everywhere else in this repo: left to the next line,
+         a failed assertion between the two would leave `confirm` answering yes
+         for every test after it in the file. */
+      asked.mockRestore()
+    }
 
     /* The stars are still drawn, so the line has to be there with them. */
     expect(document.querySelectorAll('.field__required').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+  })
+
+  it('says nothing about a star on a queue that draws none', async () => {
+    /* The comments queue is the one where nothing is obligatory: the only field
+       on it is the note that goes with a deletion, and that note may be left
+       blank, so it carries no star. A line saying „fields with a star are
+       obligatory" over that screen tells the moderator the opposite of the truth
+       about the only field in front of them.
+
+       It was drawn there for a while, because whether to draw it was guessed at
+       from the name of the queue and from whether a box was open, and this box
+       is open exactly when a comment is being deleted. */
+    const user = await open('comments', 'Komentari')
+
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+
+    await user.click(first(screen.getAllByRole('button', { name: /^Obriši:/ })))
+
+    expect(screen.getByLabelText(/Napomena/)).toBeVisible()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+  })
+
+  it('says nothing about a star on a queue that has emptied', async () => {
+    /* The three fields of a proposed team are drawn once per proposal, so a
+       queue with nothing left in it has no star on it either. The line stood
+       there all the same, because it was drawn for the name of the queue rather
+       than for anything on the screen. */
+    const user = await open('teams', 'Novi timovi')
+    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      /* The sweep leaves the one proposal it cannot take, so it is refused by
+         hand to empty the queue. */
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+    } finally {
+      asked.mockRestore()
+    }
+
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
   it('takes the reason away with the card the sweep settled, and the line with it', async () => {
@@ -2090,12 +2142,15 @@ describe('the six queues read from the file', () => {
 
     const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-    expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
-    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+    try {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
+      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-    asked.mockRestore()
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+    } finally {
+      asked.mockRestore()
+    }
 
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
     expect(document.querySelectorAll('.field__required')).toHaveLength(0)

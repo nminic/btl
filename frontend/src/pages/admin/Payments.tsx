@@ -9,7 +9,6 @@ import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
 import { usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
-import { RequiredNote } from '../../forms/AskedLabel'
 import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
@@ -334,13 +333,7 @@ export function Payments() {
               {/* Named, because the box is under the table and not in the row:
                   on a list of twenty there is otherwise nothing on screen that
                   says whose membership is being refused.
-               *
-                  The line explaining the star stands here and not inside that
-                  box, so it is drawn by whoever draws the box and cannot be
-                  carried off by anything happening inside it
-                  (forms/AskedLabel.tsx, admin/PendingQueue.tsx). */}
-              {open !== null && <RequiredNote />}
-
+                  */}
               {open !== null && (
                 <SendBack
                   subject={open.name}

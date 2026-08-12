@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AskedLabel } from '../../forms/AskedLabel'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 
 /**
@@ -22,6 +22,7 @@ export function SendBack({
   placeholderKey = 'review.reasonPlaceholder',
   subject,
   optional = false,
+  explain = true,
   confirmKey = 'review.confirmSendBack',
   labelKey = 'review.reason',
   aboutKey = 'review.sendBackNamed',
@@ -63,6 +64,10 @@ export function SendBack({
    * button.
    */
   optional?: boolean
+  /** Whether this box says what the star means. False where whoever draws it
+   *  already draws that line for a block of fields beside this one, so one
+   *  screen carries one legend and not two. */
+  explain?: boolean
   /** The words on the confirming button, where the decision is not a refusal. */
   confirmKey?: string
   /** The words over the field, where what is asked for is not a reason. */
@@ -96,10 +101,14 @@ export function SendBack({
           (forms/AskedLabel.tsx). Five queues send back through this one box, so
           the rule reaching it reaches all five.
 
-          What the star means is said by whoever draws this box, not here. This
-          box stands inside a card, and a card folds on a telephone and is taken
-          away by a sweep: the line explaining the star went with it and left the
-          stars behind, which is the one thing a legend must never do. */}
+          And the line explaining the star stands with the star, appearing and
+          going away with it. Drawn instead by the screen around this box, on a
+          guess at whether a star is on it, it was drawn where a note may be left
+          empty and no star is, and left standing over a queue that had emptied.
+          A guess at what is on the screen is what keeps being wrong; the star
+          itself is not a guess. */}
+      {explain && !optional && <RequiredNote />}
+
       <div className="rankings__field rankings__field--wide">
         <AskedLabel id="send-back-reason" asked={!optional}>
           {t(labelKey)}

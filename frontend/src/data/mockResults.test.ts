@@ -97,9 +97,10 @@ describe('the results the prototype is filled with', () => {
       due: btlPoints(one.distanceKm, one.ascentM, one.descentM, one.seconds),
     }))
 
-    /* Every row can be scored at all, which is the same thing as saying every
-       row has a length and a time. Asked first, so that what follows needs no
-       fallback for an answer that cannot come. */
+    /* Every row can be scored at all: a length, a time, and no climb entered as
+       a negative number, which is the whole of what the formula refuses
+       (data/scoring.ts). Asked first, so that what follows needs no fallback for
+       an answer that cannot come. */
     expect(scored.filter((one) => one.due === null).map((one) => one.id)).toEqual([])
 
     const wrong = scored.filter(
@@ -124,7 +125,10 @@ describe('the results the prototype is filled with', () => {
        its field: two kilometres walked in an hour and fifty six, which the owner
        then said was a half marathon (12.08.2026). Nothing is over the line now,
        and nothing comes near it: the widest gap left in three and a half thousand
-       rows is 1,98 times, and the fast side is clear down to a factor of 2,2. */
+       rows is 1,98 times, and the fast side is clear down to a factor of 2,5:
+       at 2,2 it would find `res-00461`, who ran a mountain race in 1860 seconds
+       where the other three took 4329 apiece, which is a real gap and not a
+       fault. */
     const byRace = new Map<string, Result[]>()
 
     for (const one of results.filter((row) => row.seconds > 0)) {
@@ -159,9 +163,11 @@ describe('the results the prototype is filled with', () => {
        just corrected.
 
        The length and nothing else. Twenty one results disagree with their race
-       about the climb and a hundred and sixty one are dated a year apart from it,
-       both of them older than any of this and neither of them what the correction
-       could have broken. */
+       about the climb, and a hundred and sixty one are dated six years apart from
+       it: every one of those is a result of 2026 pointing at a race of 2020, the
+       generator's own copies of an old season into the one before this. Both are
+       older than any of this and neither is what the correction could have
+       broken. */
     const byId = new Map(races.map((one) => [one.id, one]))
     const adrift = results
       .map((one) => ({ id: one.id, race: byId.get(one.raceId), km: one.distanceKm }))
