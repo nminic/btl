@@ -423,30 +423,39 @@ describe('monthFrom', () => {
 })
 
 describe('rankTeams', () => {
-  /** Every letter for the one as far from `z` as it was from `a`. */
+  /**
+   * Every lowercase letter for the one as far from `z` as it was from `a`.
+   * Anything else, a hyphen among these ids, is left where it is.
+   */
   const mirrored = (text: string) =>
-    [...text].map((letter) => String.fromCharCode(219 - letter.charCodeAt(0))).join('')
+    [...text]
+      .map((letter) =>
+        letter >= 'a' && letter <= 'z' ? String.fromCharCode(219 - letter.charCodeAt(0)) : letter,
+      )
+      .join('')
 
   /**
-   * A team whose id, slug and name sort three different ways.
+   * A team whose id, slug and name are three different strings.
    *
    * The last rung of the team ladder is the id, and it is the only one of the
    * three that may ever decide anything: a slug is made out of the name and
    * changes when the team is renamed, which is the one thing a last rung must
-   * never do. A fixture where any two of the three sort alike cannot tell a rung
-   * on one from a rung on another, and every version of this fixture so far has
-   * been such a fixture: first all three were the same string, then the slug and
-   * the name were built from the same letter.
+   * never do. A fixture where two of the three sort alike cannot tell a rung on
+   * one from a rung on the other, and every version of this fixture has been
+   * such a fixture until now: first all three were one string, then the slug and
+   * the name came from the same letter, then from that letter read backwards,
+   * which is the same letter again wherever the id is one letter long. The one
+   * test that reaches the last rung uses `a`, `b` and `c`.
    *
-   * So the name mirrors the id (`a` becomes „Tim z", `big` becomes „Tim yrt"),
-   * and the slug mirrors it backwards (`big` becomes `tim-tryâ€¦` read the other
-   * way), which puts the three in three orders. Whole strings rather than first
-   * letters, because `b` and `big` share theirs and would otherwise collide.
+   * So where it matters the two are not derived here at all. By default the name
+   * mirrors the id (`a` becomes „Tim z"), which is enough for every test that
+   * never reaches the last rung; the test that does reach it hands in slugs and
+   * names of its own, in orders it chooses.
    */
-  const team = (id: string): Team => ({
+  const team = (id: string, sorting: { slug?: string; name?: string } = {}): Team => ({
     id,
-    slug: `tim-${mirrored([...id].reverse().join(''))}`,
-    name: `Tim ${mirrored(id)}`,
+    slug: sorting.slug ?? `tim-${mirrored(id)}`,
+    name: sorting.name ?? `Tim ${mirrored(id)}`,
     city: 'Beograd',
     country: 'RS',
     organizerMemberNumber: '000001',
@@ -559,7 +568,17 @@ describe('rankTeams', () => {
   })
 
   it('settles a tie the whole ladder leaves standing, and shares no place', () => {
-    const teams = [team('b'), team('a'), team('c')]
+    /* Only `a` and `b` reach the last rung: `c` is separated on points before it.
+       Two rows leave only two possible orders, so the slug and the name cannot be
+       told apart from each other here; what they can be told apart from is the
+       id, and that is what the rung is. Both are therefore set to the order the
+       id does not give, so a rung moved onto either one is a rung that puts `b`
+       first, and the test says so. */
+    const teams = [
+      team('b', { slug: 'tim-1', name: 'Tim 1' }),
+      team('a', { slug: 'tim-2', name: 'Tim 2' }),
+      team('c', { slug: 'tim-3', name: 'Tim 3' }),
+    ]
     const competitors = [
       competitor('000001', { teamId: 'a', teamSince: 2027 }),
       competitor('000002', { teamId: 'b', teamSince: 2027 }),
