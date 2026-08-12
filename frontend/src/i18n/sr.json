@@ -528,7 +528,8 @@
       "6": "Sub",
       "7": "Ned"
     },
-    "weekend": "Vikend"
+    "weekend": "Vikend",
+    "addOnDay": "Nov događaj {date}"
   },
   "event": {
     "raceDay": "Dan",

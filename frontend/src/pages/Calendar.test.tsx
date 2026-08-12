@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { first, must } from '../test/at'
-import { renderAt } from '../test/render'
+import { moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
 describe('Calendar', () => {
@@ -243,6 +243,60 @@ describe('Calendar', () => {
  * 05.08.2026). The order is the whole of the request: it read the other way
  * round until then, on its own line under the heading.
  */
+describe('the shortcut that starts an event on a day', () => {
+  /* Owner, 12.08.2026: „u gornjem desnom uglu svakog kalendarskog dana treba da
+     ti bude vidljivo malo dugme + ... prečica da baš tog dana dodaš novi
+     događaj." Three things are held: who sees it, where it leads, and that
+     whoever does not see it sees nothing at all in its place. */
+  it('is not there at all for a visitor', async () => {
+    renderAt('/sr/kalendar?mesec=2027-05')
+    await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
+
+    expect(screen.queryAllByRole('link', { name: /^Nov događaj/ })).toHaveLength(0)
+  })
+
+  it('is not there for a competitor either', async () => {
+    renderAt('/sr/kalendar?mesec=2027-05', 'competitor', '000001')
+    await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
+
+    expect(screen.queryAllByRole('link', { name: /^Nov događaj/ })).toHaveLength(0)
+  })
+
+  it('stands on every day for the superadmin, and carries that day into the form', async () => {
+    renderAt('/sr/kalendar?mesec=2027-05', 'superadmin')
+    await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
+
+    /* One per day of May, and the name of each says which day, because ten
+       controls called „Nov događaj" are ten identical names in a reader's list
+       (WCAG 2.2 SC 2.4.6). */
+    const ways = screen.getAllByRole('link', { name: /^Nov događaj/ })
+
+    expect(ways).toHaveLength(31)
+    expect(first(ways)).toHaveAttribute(
+      'href',
+      '/sr/administracija/dogadjaji?nov=2027-05-01',
+    )
+  })
+
+  it('is there for a moderator who may open the events screen', async () => {
+    /* The same right that screen asks of, so the two can never disagree
+       (PDL P10, 12.08.2026). */
+    renderAt('/sr/kalendar?mesec=2027-05', 'moderator', null, moderatorWith(['entity:events']))
+    await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
+
+    expect(screen.getAllByRole('link', { name: /^Nov događaj/ })).toHaveLength(31)
+  })
+
+  it('is not there for a moderator who may not', async () => {
+    /* The role is not the question: a moderator with rights over teams and none
+       over events is shown nothing here. */
+    renderAt('/sr/kalendar?mesec=2027-05', 'moderator', null, moderatorWith(['entity:teams']))
+    await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
+
+    expect(screen.queryAllByRole('link', { name: /^Nov događaj/ })).toHaveLength(0)
+  })
+})
+
 describe('the row the month is chosen in', () => {
   it('reads month, back, forward, today, in that order', async () => {
     renderAt('/sr/kalendar')

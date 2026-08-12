@@ -518,7 +518,18 @@ export const ENTITY_FORMS: EntityDef[] = [
 ]
 
 /** What the editor is open on: a record being changed, or a new one. */
-export type Editing = { mode: 'new' } | { mode: 'one'; record: Record<string, unknown> }
+export type Editing =
+  | {
+      mode: 'new'
+      /**
+       * What the empty form opens holding, over and above the entity's own
+       * `start`. The calendar uses it: a `+` pressed on a Saturday opens the
+       * form with that Saturday already in the date, which is the whole of what
+       * the shortcut saves (owner, 12.08.2026).
+       */
+      start?: FormValues
+    }
+  | { mode: 'one'; record: Record<string, unknown> }
 
 /** Whether the form itself asks for the identity of the record it creates. */
 export function namesItself(entity: EntityDef): boolean {

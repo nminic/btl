@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../clock/useClock'
+import { EVENTS } from './admin/entityForms'
+import { useMay } from './admin/rights'
 import { Resource } from '../components/Resource'
 import {
   defaultMonth,
@@ -12,7 +14,7 @@ import {
 } from '../data/derive'
 import type { BtlEvent, Race } from '../data/types'
 import { combinePair, useEvents, useRaces } from '../data/useResource'
-import { formatDate, formatMonth } from '../i18n/format'
+import { formatDate, formatMonth, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { EventChip } from './calendar/DayChips'
 import { LengthLegend } from './calendar/LengthLegend'
@@ -62,6 +64,10 @@ function Day({
   first?: number
 }) {
   const { locale, t } = useI18n()
+  /* The same right that opens the events screen itself, asked here so the
+     shortcut and the screen it leads to can never disagree about who may use
+     them (PDL P10, 12.08.2026). */
+  const may = useMay()
   const date = `${month}-${String(day).padStart(2, '0')}`
   const shown = events.slice(0, EVENTS_PER_DAY)
   const hidden = events.length - shown.length
@@ -91,6 +97,25 @@ function Day({
         {date === today && <span className="visually-hidden">, {t('calendar.today')}</span>}
         {weekend && <span className="visually-hidden">, {t('calendar.weekend')}</span>}
       </span>
+
+      {/* A way into the form with this day already in it (owner, 12.08.2026),
+          for the two people who build the calendar and nobody else. A visitor is
+          not shown a control that would answer „this is not for you", which is
+          the rule the screen of moderators keeps as well (PDL P28a).
+
+          Its name carries the date, because ten of these stand on one screen and
+          „Nov događaj" ten times over is ten identical names in a list of
+          controls (WCAG 2.2 SC 2.4.6). Drawn as a plus and read as a sentence:
+          the sign is `aria-hidden`, so the two cannot disagree (SC 2.5.3). */}
+      {may(`entity:${EVENTS.id}`) && (
+        <Link
+          className="day__add"
+          to={`/${locale}/administracija/dogadjaji?nov=${date}`}
+          aria-label={t('calendar.addOnDay', { date: formatShortDate(date, locale) })}
+        >
+          <span aria-hidden="true">{'+'}</span>
+        </Link>
+      )}
 
       {shown.map((event) => (
         <EventChip key={event.id} event={event} races={races} />

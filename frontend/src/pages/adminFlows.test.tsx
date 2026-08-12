@@ -227,6 +227,22 @@ describe('members', () => {
 })
 
 describe('events', () => {
+  it('opens the empty form on the day the calendar sent, and on no day otherwise', async () => {
+    /* The other half of the `+` in the corner of a calendar day (owner,
+       12.08.2026): pressing it is only a saving if the day arrives with it.
+       The date is read from the address, so the shortcut is a link and the
+       screen has one way of being open rather than two. */
+    renderAt('/sr/administracija/dogadjaji?nov=2027-05-08', 'superadmin')
+
+    expect(await screen.findByLabelText(/^Datum$/)).toHaveValue('08/05/2027')
+
+    /* And the same screen without it opens on the list, with nothing being
+       written. */
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
+  })
+
   it('opens on what is still ahead, and searches the whole calendar', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')

@@ -20,6 +20,7 @@ import { EventRaces } from './EventRaces'
 import { moveEvent } from './moveEvent'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
+import { fieldDate } from '../../forms/dateField'
 import { useFilterParams } from '../../app/useFilterParams'
 
 /* The calendar from the other side. Between 15 and 30 September this is the
@@ -30,8 +31,18 @@ export function AdminEvents() {
   const { editRecord, remove } = useSession()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
-  /** What was opened by pressing something on this screen. */
-  const [chosen, setChosen] = useState<Editing | null>(null)
+  /* And what was opened by pressing something somewhere else. The calendar
+     sends a date here (`?nov=2027-05-08`), which is a `+` pressed on that day
+     (owner, 12.08.2026). Read once, into the same state a press on this screen
+     writes, so there is one way of being open and not two.
+
+     A date that is not a date opens an empty form rather than nothing: a
+     mistyped address is not worth a screen that refuses to work. */
+  const [fromCalendar] = useFilterParams()
+  const askedDate = fromCalendar.get('nov')
+  const [chosen, setChosen] = useState<Editing | null>(
+    askedDate === null ? null : { mode: 'new', start: { date: fieldDate(askedDate) } },
+  )
   /* The event entered a moment ago, so its races can be added under it while
      the confirmation of the save is still on screen. */
   const [justMade, setJustMade] = useState<string | null>(null)
