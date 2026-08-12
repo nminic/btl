@@ -429,7 +429,12 @@ describe('rankTeams', () => {
      called „Tim Z", so a rung on the name would put the three in reverse. */
   const team = (id: string): Team => ({
     id,
-    slug: id,
+    /* All three deliberately different, and the last two running the other way
+       from the id: the last rung of the team ladder is the id, and a fixture
+       where any two of them sort alike cannot tell a rung on one from a rung on
+       another. `a` is `tim-z` and „Tim z", so a rung on either would reverse the
+       three. */
+    slug: `tim-${String.fromCharCode(219 - id.charCodeAt(0))}`,
     name: `Tim ${String.fromCharCode(219 - id.charCodeAt(0))}`,
     city: 'Beograd',
     country: 'RS',
