@@ -287,9 +287,12 @@ describe('the columns of the results table on a profile', () => {
        So the table has a floor of its own, and the floor is the pinned columns
        plus room for the event. Past it the table is wider than the page and
        scrolls inside its own box, which is what it did before the columns were
-       pinned and what `.table-scroll` is for. Measured in Chrome at 375 and at
-       1280: at 200% text the event keeps five and eight rem respectively, the
-       box scrolls, and the page itself still does not move sideways.
+       pinned and what `.table-scroll` is for. Measured in Chrome at 360, 375 and
+       1280: at 200% text the event keeps 4,25 rem on a telephone and eight where
+       the table is wide, and the box scrolls rather than the page. The whole of
+       that arithmetic is walked at every supported width and text size in
+       `tableWidths.test.ts`, which is where a fault of this kind belongs: both
+       times it happened, it was a sum nobody had added up.
 
        Held as a sum rather than as a number, or the floor and the widths drift
        apart and the floor stops meaning anything. */
