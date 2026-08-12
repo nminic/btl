@@ -307,15 +307,20 @@ const BY_TEAM = byLadder<TeamRow>([
 ])
 
 /**
- * Teams by the plain sum of every member, never normalised: more members is
- * meant to be an advantage, and a tie goes to the bigger team (PDL P12). A
- * rule that rewarded the smaller team is explicitly excluded.
+ * Teams by the plain sum of every member, never normalised: a rule that
+ * rewarded the smaller team is explicitly excluded, so a bigger team wins by
+ * being stronger. It no longer wins for being bigger while level, because the
+ * head count stopped being a rung on 11.08.2026 (PDL P12).
  *
  * A tie the whole ladder leaves standing is broken by the team's own id rather
- * than by a member number: a team has no member number, and the id is handed
- * out in the order teams joined, which is the same promise the member number
- * makes for people. So here too there is no shared place, and the table does
- * not shuffle between two recounts of the same data.
+ * than by a member number, because a team has no member number. What that id
+ * promises is one thing only: that it is the same tomorrow, so the table does
+ * not shuffle between two recounts of the same data. It promises nothing about
+ * when the team joined, and the rulebook no longer says it does (Article 57):
+ * the prototype hands out `team-dunav` from the seed and `teams-nov-N` from the
+ * panel, and `localeCompare` puts `teams-nov-10` ahead of `teams-nov-2`. So
+ * here too there is no shared place, and which of two teams nothing separates
+ * goes first is arbitrary and steady, which is all it has to be.
  *
  * The results are taken as given, so the caller decides whether the board is
  * one season or the whole history. The roster is not: the season is handed in

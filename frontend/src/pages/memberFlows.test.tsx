@@ -625,7 +625,7 @@ describe('an empty inbox and an empty result list', () => {
     renderAt('/sr/moji-rezultati', 'competitor', '000031')
 
     // 000031 has never raced, so nothing is counted and nothing is waiting.
-    expect(await screen.findByText('Nisi poslao nijedan rezultat na proveru.')).toBeVisible()
+    expect(await screen.findByText('Nijedan rezultat još nije poslat na proveru.')).toBeVisible()
     expect(screen.getByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
   })
 })

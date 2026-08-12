@@ -561,9 +561,13 @@ describe('TopByCategory', () => {
        and these two now weigh the same. Written without this, the rule that sets
        the motion could be moved to the foot of the file and the faces would slide
        again for exactly the people who asked them not to, with nothing red. */
-    expect(css.lastIndexOf('@media (prefers-reduced-motion: reduce)')).toBeGreaterThan(
-      css.indexOf(`${setting} {`),
-    )
+    /* The first of them, not the last: asked about the last, the rule that sets
+       the motion could be pushed in between the two blocks and the earlier one
+       would lose again. */
+    const sets = css.indexOf(`${setting} {`)
+
+    expect(sets).toBeGreaterThan(-1)
+    expect(css.indexOf('@media (prefers-reduced-motion: reduce)')).toBeGreaterThan(sets)
 
     /* And the rule they have to beat is the one that names all three of the
        face's changes, so the test fails if that one is split up again. */

@@ -193,9 +193,9 @@
   opacity: 1;
 }
 
-/* Isto tri imena duboko kao i pravilo koje licu zadaje prelaze, jer medijski
-   upit ne dodaje specificnost: napisano krace, ovo je gubilo od njega i nikoga
-   nije usporilo. */
+/* Three names deep, like the rule that gives the face its transitions: a media
+   query adds no specificity of its own, so written any shorter this lost to that
+   rule and slowed nobody down. */
 @media (prefers-reduced-motion: reduce) {
   .colchart .colchart__column .portrait,
   .colchart__who {

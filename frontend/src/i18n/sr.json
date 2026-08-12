@@ -810,7 +810,7 @@
     "sentIn": "Poslato na proveru",
     "sendAgain": "Ispravi i pošalji ponovo",
     "sendAgainNamed": "Ispravi i pošalji ponovo: {name}",
-    "noneSent": "Nisi poslao nijedan rezultat na proveru.",
+    "noneSent": "Nijedan rezultat još nije poslat na proveru.",
     "counted": "Uračunato"
   },
   "newResult": {
@@ -884,7 +884,7 @@
     "ageBand": "U svojoj starosnoj kategoriji",
     "firstSeasonBand": "U početničkoj kategoriji",
     "firstSeasonOpen": "Početnička kategorija ti je još otvorena, jer imaš manje od {points} bodova.",
-    "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer si prešao {points} bodova. Izlazak iz nje je nepovratan.",
+    "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer je pređeno {points} bodova. Izlazak iz nje je nepovratan.",
     "renew": "Obnovi za {season}.",
     "transferWindow": "Prelazni rok",
     "noTeam": "Trenutno nisi ni u jednom timu.",
