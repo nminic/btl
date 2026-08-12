@@ -9,7 +9,8 @@
       "labelKey": "registration.firstName",
       "required": true,
       "maxLength": 60,
-      "row": 1
+      "row": 1,
+      "hintKey": "registration.firstNameHint"
     },
     {
       "name": "lastName",
@@ -17,7 +18,8 @@
       "labelKey": "registration.lastName",
       "required": true,
       "maxLength": 60,
-      "row": 1
+      "row": 1,
+      "hintKey": "registration.lastNameHint"
     },
     {
       "name": "birthDate",
@@ -124,7 +126,8 @@
       "labelKey": "registration.passwordRepeat",
       "required": true,
       "matches": "password",
-      "row": 3
+      "row": 3,
+      "hintKey": "registration.passwordRepeatHint"
     },
     {
       "name": "address",
@@ -176,6 +179,31 @@
       "hintKey": "registration.parentConsentHint",
       "required": true,
       "maxLength": 120,
+      "showWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      }
+    },
+    {
+      "name": "parentRelation",
+      "type": "choice",
+      "labelKey": "registration.parentRelation",
+      "hintKey": "registration.parentRelationHint",
+      "required": true,
+      "options": [
+        {
+          "value": "mother",
+          "labelKey": "registration.mother"
+        },
+        {
+          "value": "father",
+          "labelKey": "registration.father"
+        },
+        {
+          "value": "guardian",
+          "labelKey": "registration.guardian"
+        }
+      ],
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16

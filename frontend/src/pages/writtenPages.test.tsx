@@ -155,8 +155,13 @@ describe('the fee schedule in the terms', () => {
        No figure, and that is the point: an administrator changes the amount on
        the price list (AdminPricing), so a number written into a legal text is a
        number that goes stale the first time anybody uses that screen. The terms
-       name where it is published instead, and the guard below is that they name
-       no amount at all. */
+       say where a member reads it instead, and the guard below is that they name
+       no amount at all.
+
+       „Moja članarina" and not the price list: the price list is a screen for
+       administration and there is no public one, so the terms pointed at a page
+       nobody but staff could open. The member's own screen carries the figure
+       beside the link it belongs to. */
     renderAt('/sr/uslovi-koriscenja')
 
     /* The exact title, allowing any number in front of it: the sections are
@@ -165,7 +170,7 @@ describe('the fee schedule in the terms', () => {
     const heading = await screen.findByRole('heading', { name: /^\d+\. Program preporuke$/ })
     const words = heading.parentElement?.textContent ?? ''
 
-    expect(words).toContain('stoji u cenovniku')
+    expect(words).toContain('Moja članarina')
     /* Any way of writing money, not only the codes: the owner writes „5 eur /
        600 din" himself, and a guard that sees only „EUR" and „RSD" would let his
        own spelling of the same stale figure straight through. */

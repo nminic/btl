@@ -130,6 +130,30 @@ describe('Registration once it is open', () => {
     expect(screen.queryByLabelText(/roditelja ili staratelja/)).not.toBeInTheDocument()
   })
 
+  it('asks the parent which of the three they are', async () => {
+    /* Owner, 31.07.2026 and again 11.08.2026: the signature is kept with the
+       relationship („padajući izbor: majka, otac, staratelj"), the date and time
+       and the address it came from. The three legal texts say so in as many
+       words; the form asked for the name and never for the relationship, so the
+       portal promised a choice it never offered. */
+    const user = setupUser()
+    renderForm()
+
+    expect(screen.queryByRole('radiogroup', { name: /Srodstvo/ })).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    const kinship = screen.getByRole('radiogroup', { name: /Srodstvo/ })
+
+    expect(within(kinship).getAllByRole('radio').map((one) => one.getAttribute('value'))).toEqual([
+      'mother',
+      'father',
+      'guardian',
+    ])
+    /* And it is asked for, like the signature beside it. */
+    expect(kinship).toHaveAttribute('aria-required', 'true')
+  })
+
   it('will not submit when the two passwords differ', async () => {
     const user = setupUser()
     renderForm()

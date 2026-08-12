@@ -99,10 +99,22 @@ export function FieldHint({
      * closes the box, and the second one reaches the control.
      *
      * `pointerdown` rather than `click`, so it goes away as the finger lands
-     * rather than when it lifts; and not inside its own hint, where a press is
-     * somebody reaching for the words rather than dismissing them. */
+     * rather than when it lifts.
+     *
+     * A press on the words themselves closes it too, and that is the half that
+     * was missing: the box hangs under the head of the field and therefore over
+     * the field's own control, so on a telephone the control is under the words
+     * for most of its width. Exempted, a press there did nothing at all and the
+     * box stayed where it was, and there was no way to reach the control except
+     * by pressing somewhere else first. The words are text and hold nothing to
+     * press, so nothing is lost by letting the press close them.
+     *
+     * The letter is exempt, and only the letter: a press on it is somebody
+     * asking, and the button below answers a press by clearing what Escape put
+     * away. Closed here as well, the two would fight over the same press and
+     * the box would end where it started. */
     function onPress(pressed: PointerEvent) {
-      if (!(pressed.target instanceof Element) || pressed.target.closest('.hint') !== box.current) {
+      if (!(pressed.target instanceof Element) || pressed.target.closest('.hint__ask') === null) {
         setDismissed(true)
       }
     }

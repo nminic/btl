@@ -44,14 +44,49 @@ describe('the rule beside a field', () => {
     expect(rule).toHaveClass('hint__text')
   })
 
-  it('is put away by a press anywhere outside it', async () => {
+  it('is put away by a press anywhere but the letter that opens it', async () => {
     /* What the box being laid over the page costs, and what pays for it. It
        covers whatever is under it, so a box left open by a finger used to
        swallow the first press on the control beneath and nothing said why. Now
        that press closes it and the second one lands (owner, 12.08.2026).
 
-       A press inside it is not that: somebody reaching into the words to read
-       them to the end must not have them taken away (SC 1.4.13). */
+       The words close it too, and that is the half that was missing: the box
+       hangs under the head of the field and therefore over the field's own
+       control, so on a telephone the control is under the words for most of its
+       width. Exempted, a press there did nothing at all and there was no way to
+       reach the control except by pressing somewhere else first.
+
+       Hovering is untouched, which is what SC 1.4.13 asks for: the pointer
+       travels from the letter into the words and they stay. */
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+    const words = must(hint.querySelector<HTMLElement>('.hint__text'), 'the words')
+
+    await user.hover(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    /* Into the words, which must keep them open. */
+    await user.hover(words)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    /* Pressed on the words, which must not. */
+    await user.pointer({ target: words, keys: '[MouseLeft>]' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('is put away by a press on anything else on the page', async () => {
     const user = setupUser()
     renderForm()
 
@@ -68,12 +103,6 @@ describe('the rule beside a field', () => {
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
 
-    /* Into its own words first, which must not close it. */
-    await user.pointer({ target: must(hint.querySelector('.hint__text'), 'the words'), keys: '[MouseLeft>]' })
-
-    expect(asked).toHaveAttribute('aria-expanded', 'true')
-
-    /* And then anywhere else, which must. */
     await user.pointer({ target: screen.getByLabelText(/^Adresa za slanje$/), keys: '[MouseLeft>]' })
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')

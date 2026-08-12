@@ -417,7 +417,15 @@
     "genderHint": "Liga ima muški i ženski poredak i to je jedina podela po polu.",
     "cityHint": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
     "healthStatementLink": "pravilnikom",
-    "healthStatementHint": "Za sve što se dešava na trci odgovoran je onaj ko je organizuje."
+    "healthStatementHint": "Za sve što se dešava na trci odgovoran je onaj ko je organizuje.",
+    "parentRelation": "Srodstvo",
+    "parentRelationHint": "Čuva se uz potpis, zajedno sa datumom, vremenom i IP adresom sa koje je dat.",
+    "mother": "Majka",
+    "father": "Otac",
+    "guardian": "Staratelj",
+    "firstNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
+    "lastNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
+    "passwordRepeatHint": "Mora da se poklopi sa lozinkom iznad."
   },
   "shirt": {
     "XS": "XS",
