@@ -139,13 +139,18 @@ describe('Registration once it is open', () => {
     const user = setupUser()
     renderForm()
 
-    expect(screen.queryByRole('radiogroup', { name: /Srodstvo/ })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Srodstvo/)).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
 
-    const kinship = screen.getByRole('radiogroup', { name: /Srodstvo/ })
+    const kinship = screen.getByLabelText(/Srodstvo/)
 
-    expect(within(kinship).getAllByRole('radio').map((one) => one.getAttribute('value'))).toEqual([
+    /* A list and not buttons: the decision says „padajući izbor" and it has not
+       been changed, unlike the gender and the category, which the owner turned
+       into buttons on 11.08.2026 and said so. */
+    expect(kinship.tagName).toBe('SELECT')
+    expect(within(kinship).getAllByRole('option').map((one) => one.getAttribute('value'))).toEqual([
+      '',
       'mother',
       'father',
       'guardian',

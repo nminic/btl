@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import './FieldHint.css'
 
@@ -55,10 +55,6 @@ export function FieldHint({
   const [focused, setFocused] = useState(false)
   /* Put away by Escape, and only until it is asked for again. */
   const [dismissed, setDismissed] = useState(false)
-  /* The wrapper the letter and the words share, so a press can be told to be
-     inside this hint rather than inside any hint: two fields stand side by side
-     in a row, and a press on the neighbour's letter is a press outside this. */
-  const box = useRef<HTMLSpanElement>(null)
   const open = (hovered || focused) && !dismissed
 
   useEffect(() => {
@@ -112,7 +108,14 @@ export function FieldHint({
      * The letter is exempt, and only the letter: a press on it is somebody
      * asking, and the button below answers a press by clearing what Escape put
      * away. Closed here as well, the two would fight over the same press and
-     * the box would end where it started. */
+     * the box would end where it started.
+     *
+     * Any letter, not only this one. A press on the neighbour's letter puts this
+     * box away all the same, because the neighbour's own listener is the one
+     * that opens the neighbour's box, and this one has nothing left to say about
+     * a press that went somewhere else. Told to exempt only its own letter, it
+     * would be doing what `stillHere` below does for the pointer, and the
+     * pointer needs it because a hover travels: a press does not. */
     function onPress(pressed: PointerEvent) {
       if (!(pressed.target instanceof Element) || pressed.target.closest('.hint__ask') === null) {
         setDismissed(true)
@@ -148,7 +151,7 @@ export function FieldHint({
   }
 
   return (
-    <span className={open ? 'hint hint--open' : 'hint'} ref={box}>
+    <span className={open ? 'hint hint--open' : 'hint'}>
       <button
         type="button"
         className="hint__ask"

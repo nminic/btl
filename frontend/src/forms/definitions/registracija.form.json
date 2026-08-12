@@ -186,7 +186,7 @@
     },
     {
       "name": "parentRelation",
-      "type": "choice",
+      "type": "select",
       "labelKey": "registration.parentRelation",
       "hintKey": "registration.parentRelationHint",
       "required": true,
