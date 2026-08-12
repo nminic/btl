@@ -424,38 +424,22 @@ describe('monthFrom', () => {
 
 describe('rankTeams', () => {
   /**
-   * Every lowercase letter for the one as far from `z` as it was from `a`.
-   * Anything else, a hyphen among these ids, is left where it is.
-   */
-  const mirrored = (text: string) =>
-    [...text]
-      .map((letter) =>
-        letter >= 'a' && letter <= 'z' ? String.fromCharCode(219 - letter.charCodeAt(0)) : letter,
-      )
-      .join('')
-
-  /**
-   * A team whose id, slug and name are three different strings.
+   * A team, with its slug and its name kept apart from its id.
    *
    * The last rung of the team ladder is the id, and it is the only one of the
-   * three that may ever decide anything: a slug is made out of the name and
-   * changes when the team is renamed, which is the one thing a last rung must
-   * never do. A fixture where two of the three sort alike cannot tell a rung on
-   * one from a rung on the other, and every version of this fixture has been
-   * such a fixture until now: first all three were one string, then the slug and
-   * the name came from the same letter, then from that letter read backwards,
-   * which is the same letter again wherever the id is one letter long. The one
-   * test that reaches the last rung uses `a`, `b` and `c`.
+   * three that may ever decide anything: a slug is made out of the name
+   * (`admin/entityForms.ts`) and changes when the team is renamed, which is the
+   * one thing a last rung must never do.
    *
-   * So where it matters the two are not derived here at all. By default the name
-   * mirrors the id (`a` becomes „Tim z"), which is enough for every test that
-   * never reaches the last rung; the test that does reach it hands in slugs and
-   * names of its own, in orders it chooses.
+   * The default is the plainest thing that keeps the three apart as strings. The
+   * one test that reaches the last rung needs more than that and says so where
+   * it stands: two rows leave only two possible orders, so it hands in a slug
+   * and a name of its own, both in the order the id does not give.
    */
   const team = (id: string, sorting: { slug?: string; name?: string } = {}): Team => ({
     id,
-    slug: sorting.slug ?? `tim-${mirrored(id)}`,
-    name: sorting.name ?? `Tim ${mirrored(id)}`,
+    slug: sorting.slug ?? `tim-${id}`,
+    name: sorting.name ?? `Tim ${id}`,
     city: 'Beograd',
     country: 'RS',
     organizerMemberNumber: '000001',
