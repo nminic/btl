@@ -884,7 +884,7 @@
     "ageBand": "U svojoj starosnoj kategoriji",
     "firstSeasonBand": "U početničkoj kategoriji",
     "firstSeasonOpen": "Početnička kategorija ti je još otvorena, jer imaš manje od {points} bodova.",
-    "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer je pređeno {points} bodova. Izlazak iz nje je nepovratan.",
+    "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer imaš najmanje {points} bodova. Izlazak iz nje je nepovratan.",
     "renew": "Obnovi za {season}.",
     "transferWindow": "Prelazni rok",
     "noTeam": "Trenutno nisi ni u jednom timu.",

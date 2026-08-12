@@ -156,8 +156,9 @@ export type Placed<T> = T & { position: number }
  * every rung above it leaves them equal.
  *
  * What identifies the row is passed in, because not every list is a list of
- * people: the team standing hands in the team's own id, which is the same
- * promise (one row, one value, assigned in the order they joined).
+ * people: the team standing hands in the team's own id. What that promises is
+ * one row, one value, and the same value tomorrow, which is all a last rung has
+ * to do. It promises nothing about when the team joined (see `rankTeams`).
  */
 export function withPlaces<T extends object>(
   rows: T[],

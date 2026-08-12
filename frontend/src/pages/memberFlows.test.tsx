@@ -547,7 +547,7 @@ describe('the transfer window and renewal', () => {
 
     // 000001 has raced for years and is far past twelve points.
     expect(screen.getByLabelText('U početničkoj kategoriji')).toBeDisabled()
-    expect(screen.getByText(/Početnička kategorija ti je zatvorena/)).toBeVisible()
+    expect(screen.getByText(/Početnička kategorija ti je zatvorena, jer imaš najmanje 12 bodova/)).toBeVisible()
   })
 
   it('shuts both outside the window, and says when they open', async () => {

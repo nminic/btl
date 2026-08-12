@@ -423,10 +423,14 @@ describe('monthFrom', () => {
 })
 
 describe('rankTeams', () => {
+  /* The name runs the other way from the id, and deliberately so: the last rung
+     of the team ladder is the id, and a fixture where the two sort alike cannot
+     tell a rung that reads the id from one that reads the name. Here `a` is
+     called „Tim Z", so a rung on the name would put the three in reverse. */
   const team = (id: string): Team => ({
     id,
     slug: id,
-    name: id,
+    name: `Tim ${String.fromCharCode(219 - id.charCodeAt(0))}`,
     city: 'Beograd',
     country: 'RS',
     organizerMemberNumber: '000001',
@@ -544,6 +548,11 @@ describe('rankTeams', () => {
       competitor('000001', { teamId: 'a', teamSince: 2027 }),
       competitor('000002', { teamId: 'b', teamSince: 2027 }),
       competitor('000004', { teamId: 'c', teamSince: 2027 }),
+      /* A second member for `b`, so the three teams differ in size while every
+         rung of the ladder leaves them level. Written with one member each, a
+         head count put back as a fifth rung would change nothing and no test
+         would notice it (PDL P12, 11.08.2026: the size is not a rung). */
+      competitor('000005', { teamId: 'b', teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 10),
