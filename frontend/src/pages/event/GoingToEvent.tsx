@@ -325,7 +325,7 @@ function WriteTo({
       <RequiredNote />
 
       <div className="field">
-        <AskedLabel id="going-write">
+        <AskedLabel className="field__label" id="going-write">
           {t('event.writeTo', { name: `${them.firstName} ${them.lastName}` })}
         </AskedLabel>
         <textarea

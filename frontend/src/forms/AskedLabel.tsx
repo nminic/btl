@@ -52,16 +52,29 @@ export function RequiredNote() {
 export function AskedLabel({
   id,
   asked = true,
+  className,
   children,
 }: {
   id: string
   /** False where the field may be left empty, which is one of the eight. */
   asked?: boolean
+  /**
+   * What the words are styled by, where the field around them does not do it.
+   *
+   * Five of the six places this is used sit inside `.rankings__field`, which
+   * styles the name through the box around it. The sixth is a field of the
+   * ordinary kind, where the weight comes from `.field__label` and nothing else,
+   * and without it the name of that one field was drawn lighter than every other
+   * name on the portal.
+   */
+  className?: string
   children: ReactNode
 }) {
   return (
     <span className="asked">
-      <label htmlFor={id}>{children}</label>
+      <label className={className} htmlFor={id}>
+        {children}
+      </label>
       {asked && <RequiredMark />}
     </span>
   )

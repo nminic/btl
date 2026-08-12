@@ -9,6 +9,7 @@ import { useResults } from '../../data/useResource'
 import {
   ipsPayload,
   methodsFor,
+  paysInDinars,
   paymentPurpose,
   paymentReference,
   RECIPIENT_ACCOUNT,
@@ -47,13 +48,14 @@ const RECIPIENT = RECIPIENT_NAME
  * What one member brought in is worth, in the currency that member pays in.
  *
  * Serbia pays and is credited in dinars, everyone else in euro, decided by the
- * same country on the profile that decides how the fee itself may be paid
+ * same country on the profile that decides how the fee itself may be paid, and
+ * decided by the same predicate rather than by a second copy of it
  * (data/paymentQr.ts). Two figures side by side would have said „five euro, that
  * is six hundred dinars", which is a conversion, and this list holds no rate:
  * the dinar figure is chosen, not converted (data/pricing.ts).
  */
 function creditOf(country: string, credited: PriceRow, locale: string): string {
-  return country === 'RS'
+  return paysInDinars(country)
     ? `${money(credited.rsd, locale)} RSD`
     : `${money(credited.eur, locale)} EUR`
 }
@@ -74,7 +76,7 @@ function money(amount: number, locale: string): string {
 /** And nothing on that balance, in the same currency. Written „0 EUR" for
  *  everybody, it stood under a sentence that had just promised dinars. */
 function emptyBalance(country: string): string {
-  return country === 'RS' ? '0 RSD' : '0 EUR'
+  return paysInDinars(country) ? '0 RSD' : '0 EUR'
 }
 
 export function Membership() {

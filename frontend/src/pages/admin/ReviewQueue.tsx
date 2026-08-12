@@ -5,12 +5,12 @@ import { useSession } from '../../session/useSession'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { Swept } from './Swept'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
    for the whole queue. Every sheet is bundled into one and the class would work
    without the import; the import is what says where the class comes from, so
    deleting the sheet breaks the build rather than the screen (ADL A7). */
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import './Verification.css'
 
 /* Every result that has been sent in and not yet decided, as one table.

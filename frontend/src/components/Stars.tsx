@@ -138,46 +138,49 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
        for a reader (forms/AskedLabel.tsx). On the group and not on each of the
        five, because it is the rating that is asked for and not any one star.
      *
-       `role="radiogroup"` and not a bare fieldset, which is a plain `group`:
-       ARIA gives `group` no `aria-required` at all, so the word went to a place
-       no reader looks and the half of the decision meant for readers was not
-       delivered. The renderer says the same of its own groups of buttons
-       (forms/FormRenderer.tsx). With the role written out the name has to be
-       written out too, since it is no longer the browser pairing a legend with
-       its fieldset.
+       `role="radiogroup"` around the five and nothing else, which is the shape
+       the renderer uses for its own groups of buttons: a radiogroup may own
+       radios and nothing besides, and around the whole fieldset it owned the
+       name and the star as well (forms/FormRenderer.tsx). A bare fieldset is a
+       plain `group`, and ARIA gives `group` no `aria-required` at all, so the
+       word first went to a place no reader looks.
 
-       And the star stands outside the legend, because the legend is the name of
-       the group: inside it, „Organizacija" becomes „Organizacija*" for anything
-       that goes looking by the words. */
-    <fieldset
-      className="stars stars--asking"
-      role="radiogroup"
-      aria-labelledby={nameId}
-      aria-required="true"
-    >
-      <legend id={nameId}>{label}</legend>
-      <RequiredMark />
-      {marks.map((mark) => (
-        /* The label is what is clicked and the radio inside it is what carries
-           the state, so the star is as big as a finger without anything being
-           told to have a size (WCAG 2.2 SC 2.5.8). The radio itself is off the
-           screen rather than out of the page: it is the thing a keyboard moves
-           through and a screen reader reads. */
-        <label key={mark} className="stars__pick">
-          <input
-            type="radio"
-            className="visually-hidden"
-            name={name}
-            value={mark}
-            checked={mark === value}
-            onChange={() => onChange(mark)}
-          />
-          <span className="visually-hidden">{t('event.rating.stars', { count: mark, of: STARS })}</span>
-          {/* Whole stars, because this is a choice of one of five and not a
-              measurement: nobody gives three and a third. */}
-          <Star fill={mark <= value ? 1 : 0} />
-        </label>
-      ))}
+       The star stands inside the legend and outside the words the group is named
+       by: named by the whole legend, „Organizacija" reads as „Organizacija*" for
+       anything that looks by the words; laid outside the legend entirely, it
+       fell to the head of the row of stars, because a legend is not a flex item
+       and the star is. */
+    <fieldset className="stars stars--asking">
+      <legend>
+        <span id={nameId}>{label}</span>
+        <RequiredMark />
+      </legend>
+
+      <div className="stars__row" role="radiogroup" aria-labelledby={nameId} aria-required="true">
+        {marks.map((mark) => (
+          /* The label is what is clicked and the radio inside it is what carries
+             the state, so the star is as big as a finger without anything being
+             told to have a size (WCAG 2.2 SC 2.5.8). The radio itself is off the
+             screen rather than out of the page: it is the thing a keyboard moves
+             through and a screen reader reads. */
+          <label key={mark} className="stars__pick">
+            <input
+              type="radio"
+              className="visually-hidden"
+              name={name}
+              value={mark}
+              checked={mark === value}
+              onChange={() => onChange(mark)}
+            />
+            <span className="visually-hidden">
+              {t('event.rating.stars', { count: mark, of: STARS })}
+            </span>
+            {/* Whole stars, because this is a choice of one of five and not a
+                measurement: nobody gives three and a third. */}
+            <Star fill={mark <= value ? 1 : 0} />
+          </label>
+        ))}
+      </div>
     </fieldset>
   )
 }

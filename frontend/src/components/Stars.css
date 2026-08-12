@@ -85,10 +85,21 @@
 }
 
 
-/* The star that says a rating has to be given, beside the name of the rating and
-   not inside it (components/Stars.tsx). The legend is plain inline text here, so
-   the space between them is written rather than inherited from a row: every
-   other star on the portal sits in a box with a gap of its own. */
-.stars--asking .field__required {
+/* The five stars, and the group a reader is told about: the role is on this row
+   and not on the fieldset, because a radiogroup may own radios and nothing
+   besides (components/Stars.tsx). What the fieldset was doing for the layout,
+   this does now. */
+.stars__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* The star that says a rating has to be given, on the line with the name and
+   after it. Inside the legend, because the legend is a line of its own and a
+   star left outside it fell in among the five stars, four pixels to the left of
+   the first, reading as a mark on that star (components/Stars.tsx). */
+.stars--asking legend .field__required {
   margin-inline-start: var(--space-4);
 }

@@ -123,19 +123,25 @@ describe('rating an event', () => {
 
       /* A radiogroup and not a bare fieldset, which is a plain `group`: ARIA
          gives `group` no `aria-required`, so the word went where no reader
-         looks. And the name is the label exactly, with no star in it, because
-         the star stands outside the legend that names the group. */
+         looks. Around the five stars and nothing else, since a radiogroup may
+         own radios and nothing besides. */
       expect(group, `${mark} does not say it is obligatory`).toHaveAttribute(
         'aria-required',
         'true',
       )
-      expect(group.querySelector('.field__required')).not.toBeNull()
-      /* And outside the legend, which is the name of the group. Inside it the
-         name survives, because the star is hidden from the accessibility tree,
-         but the words do not: „Organizacija" reads as „Organizacija*" for
-         anything that looks by text, which is the trap the rest of the portal
-         was built to avoid (forms/AskedLabel.tsx). */
-      expect(must(group.querySelector('legend'), `the name of ${mark}`).textContent).toBe(mark)
+      expect(within(group).getAllByRole('radio')).toHaveLength(5)
+      expect(group.querySelector('legend')).toBeNull()
+
+      /* The star is beside the name of the rating and not among the stars, and
+         the words the group is named by do not hold it: named by the whole
+         legend, „Organizacija" reads as „Organizacija*" for anything that looks
+         by text (forms/AskedLabel.tsx); laid outside the legend entirely, it
+         fell in among the five. */
+      const field = must(group.closest('fieldset'), `the rating of ${mark}`)
+      const named = must(field.querySelector('legend'), `the name of ${mark}`)
+
+      expect(named.querySelector('.field__required')).not.toBeNull()
+      expect(must(named.firstElementChild, `the words of ${mark}`).textContent).toBe(mark)
     }
 
     expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
