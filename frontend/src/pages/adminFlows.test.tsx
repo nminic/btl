@@ -2033,6 +2033,12 @@ describe('the six queues read from the file', () => {
        fields, and the box for a reason draws its own when it opens. Both at
        once explained the same mark twice on one screen. */
     expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+    /* And in the box the stylesheet folds away with the cards, since every star
+       it explains is inside one (admin/verificationStyle.test.ts). Named here
+       because that file reads the stylesheet and cannot see the markup. */
+    expect(
+      screen.getByText('Polja sa zvezdicom su obavezna.').closest('.pending__legend'),
+    ).not.toBeNull()
 
     for (const name of ['Naziv tima', 'Mesto', 'Država']) {
       const field = screen.getAllByLabelText(name)[0]

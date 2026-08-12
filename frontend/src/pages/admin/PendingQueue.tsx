@@ -478,7 +478,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
           return (
             <>
-              {starsHere && <RequiredNote />}
+              {starsHere && (
+                <div className="pending__legend">
+                  <RequiredNote />
+                </div>
+              )}
 
               <div className="pending__bar">
                 <h2 className="profile__section" id={waitingId}>
