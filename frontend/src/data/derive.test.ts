@@ -423,19 +423,30 @@ describe('monthFrom', () => {
 })
 
 describe('rankTeams', () => {
-  /* The name runs the other way from the id, and deliberately so: the last rung
-     of the team ladder is the id, and a fixture where the two sort alike cannot
-     tell a rung that reads the id from one that reads the name. Here `a` is
-     called „Tim Z", so a rung on the name would put the three in reverse. */
+  /** Every letter for the one as far from `z` as it was from `a`. */
+  const mirrored = (text: string) =>
+    [...text].map((letter) => String.fromCharCode(219 - letter.charCodeAt(0))).join('')
+
+  /**
+   * A team whose id, slug and name sort three different ways.
+   *
+   * The last rung of the team ladder is the id, and it is the only one of the
+   * three that may ever decide anything: a slug is made out of the name and
+   * changes when the team is renamed, which is the one thing a last rung must
+   * never do. A fixture where any two of the three sort alike cannot tell a rung
+   * on one from a rung on another, and every version of this fixture so far has
+   * been such a fixture: first all three were the same string, then the slug and
+   * the name were built from the same letter.
+   *
+   * So the name mirrors the id (`a` becomes „Tim z", `big` becomes „Tim yrt"),
+   * and the slug mirrors it backwards (`big` becomes `tim-tryâ€¦` read the other
+   * way), which puts the three in three orders. Whole strings rather than first
+   * letters, because `b` and `big` share theirs and would otherwise collide.
+   */
   const team = (id: string): Team => ({
     id,
-    /* All three deliberately different, and the last two running the other way
-       from the id: the last rung of the team ladder is the id, and a fixture
-       where any two of them sort alike cannot tell a rung on one from a rung on
-       another. `a` is `tim-z` and „Tim z", so a rung on either would reverse the
-       three. */
-    slug: `tim-${String.fromCharCode(219 - id.charCodeAt(0))}`,
-    name: `Tim ${String.fromCharCode(219 - id.charCodeAt(0))}`,
+    slug: `tim-${mirrored([...id].reverse().join(''))}`,
+    name: `Tim ${mirrored(id)}`,
     city: 'Beograd',
     country: 'RS',
     organizerMemberNumber: '000001',
