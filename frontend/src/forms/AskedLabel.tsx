@@ -70,10 +70,17 @@ export function AskedLabel({
   className?: string
   children: ReactNode
 }) {
+  const { t } = useI18n()
+
   return (
     <span className="asked">
       <label className={className} htmlFor={id}>
         {children}
+        {/* And the word where the field may be left empty, which is the other
+            half of the same rule: the one hand written field that is optional,
+            the note that goes with a deletion, said nothing at all about
+            itself. */}
+        {!asked && <span className="field__optional"> ({t('form.optional')})</span>}
       </label>
       {asked && <RequiredMark />}
     </span>

@@ -276,6 +276,59 @@ describe('the columns of the results table on a profile', () => {
     }
   })
 
+  it('leaves the event a column even when the reader makes the text bigger', () => {
+    /* Every pinned width is in `rem` and grows with the reader's text; the page
+       does not. The one column that is not pinned takes what is left, and what
+       was left ran out: at 125% text the event's column was ten pixels wide with
+       eight of padding on each side, so the name was clipped away entirely, and
+       at 200% the column had no width at all. That is loss of content under
+       WCAG 2.2 SC 1.4.4, and it arrived with the pinning.
+
+       So the table has a floor of its own, and the floor is the pinned columns
+       plus room for the event. Past it the table is wider than the page and
+       scrolls inside its own box, which is what it did before the columns were
+       pinned and what `.table-scroll` is for. Measured in Chrome at 375 and at
+       1280: at 200% text the event keeps five and eight rem respectively, the
+       box scrolls, and the page itself still does not move sideways.
+
+       Held as a sum rather than as a number, or the floor and the widths drift
+       apart and the floor stops meaning anything. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const wide = css.slice(0, css.indexOf('@media (max-width: 699.98px)'))
+    const onPhone = css.slice(css.indexOf('@media (max-width: 699.98px)'))
+
+    const pinnedIn = (part: string) =>
+      [...part.matchAll(/\.profile__results \.table td:nth-child\((\d)\)[^{]*\{[^}]*inline-size:\s*([\d.]+)rem;/g)]
+
+    /* The wide layout pins six columns; a telephone hides three of them and pins
+       the length again, narrower. */
+    const wideColumns = new Map(
+      pinnedIn(wide).map((one): [string, number] => [one[1] ?? '', Number(one[2])]),
+    )
+    const phoneColumns = new Map([...wideColumns, ...pinnedIn(onPhone).map((one): [string, number] => [one[1] ?? '', Number(one[2])])])
+    const hidden = ['4', '5', '6']
+
+    const floorIn = (part: string) => {
+      const written = /\.profile__results \.table \{[^}]*min-inline-size:\s*([\d.]+)rem;/.exec(part)
+
+      expect(written, 'the table has no floor').not.toBeNull()
+
+      return Number(written?.[1])
+    }
+
+    const wideSum = [...wideColumns.values()].reduce((all, one) => all + one, 0)
+    const phoneSum = [...phoneColumns.entries()]
+      .filter(([column]) => !hidden.includes(column))
+      .reduce((all, [, one]) => all + one, 0)
+
+    /* Eight rem for the event where the table is wide, five where a telephone
+       has already given it what the three hidden columns left. Five is what it
+       has at the ordinary text size on a screen of 375, so nothing changes
+       there and everything above it scrolls instead of shrinking. */
+    expect(floorIn(wide) - wideSum).toBeGreaterThanOrEqual(8)
+    expect(floorIn(onPhone) - phoneSum).toBeGreaterThanOrEqual(5)
+  })
+
   it('is never narrower than the widest thing the league can put in it', () => {
     /* Which is the whole point of the numbers, and what nothing held: the rule
        above is happy with any number of `rem`, so the date column could be cut

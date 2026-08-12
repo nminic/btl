@@ -401,6 +401,19 @@
  * reads the content first and the numbers here are only a suggestion. */
 .profile__results .table {
   table-layout: fixed;
+  /* And a floor under the whole table, or the pinned columns eat the one that is
+     not pinned.
+   *
+     Every pinned width is in `rem`, so it grows with the reader's text; the page
+     does not. At 125% text the event's column was ten pixels wide and its name
+     was gone entirely, and at 200% it had no width at all, which is loss of
+     content under WCAG 2.2 SC 1.4.4. The floor is the six pinned columns plus
+     eight rem for the event, so the event can never fall under eight; past that
+     the table is wider than the page and scrolls inside its own box, which is
+     what it did before the columns were pinned and what `.table-scroll` is for.
+
+     6,75 + 6,25 + 4 + 4 + 5,25 + 4,25 = 30,5, and eight for the event. */
+  min-inline-size: 38.5rem;
 }
 
 .profile__results .table th:nth-child(1),
@@ -449,6 +462,15 @@
   .profile__results .table th:nth-child(3),
   .profile__results .table td:nth-child(3) {
     inline-size: 5.25rem;
+  }
+
+  /* And its own floor, over the three columns a telephone keeps: 6,75 + 5,25 +
+     4,25 = 16,25, and five for the event, which is what the event has at the
+     ordinary text size on a screen of 375. Below that size nothing changes;
+     above it the table scrolls inside its box instead of squeezing the name to
+     nothing. */
+  .profile__results .table {
+    min-inline-size: 21.25rem;
   }
 
   .profile__results .table tbody td:nth-child(2) {

@@ -217,6 +217,20 @@ describe('the star of an obligatory field', () => {
     expect(starOn('proba.pol')).toBeNull()
   })
 
+  it('says of every field that may be left empty that it may, whatever kind it is', () => {
+    /* Both halves of the rule reach all three kinds. The confirmation was given
+       the star and not the word, so an optional confirmation was the one field
+       on the portal that said nothing either way: no star, and no „(neobavezno)"
+       beside it either. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    for (const key of ['proba.dopisano', 'proba.beleska', 'proba.pol']) {
+      const words = screen.getByText(key).textContent ?? ''
+
+      expect(words, `${key} does not say it may be left empty`).toContain('(neobavezno)')
+    }
+  })
+
   it('is said to a screen reader by the control, since the star is not', () => {
     /* The other half of the decision above, and the half that was missing: the
        star is hidden and nothing else said a word, so a reader met a legend

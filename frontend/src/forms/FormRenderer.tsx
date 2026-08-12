@@ -230,6 +230,14 @@ const Field = memo(function Field({
           <span className="field__head field__head--confirm">
             <label className="field__label" htmlFor={inputId} id={labelId}>
               {worded(t(field.labelKey), field, locale, t)}
+              {/* Both halves of the rule, as on every other kind of field: a
+                  star where it has to be answered and the word where it may be
+                  left alone. This branch was given the star alone, so a
+                  confirmation that is not obligatory was the one field on the
+                  portal that said nothing either way. */}
+              {field.required !== true && (
+                <span className="field__optional"> ({t('form.optional')})</span>
+              )}
             </label>
             {field.required === true && <RequiredMark />}
 

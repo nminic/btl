@@ -1716,7 +1716,11 @@ describe('the six queues read from the file', () => {
     expect(screen.getByRole('group', { name: /^Brisanje komentara: / })).toBeVisible()
     expect(screen.queryByRole('group', { name: /^Odbijanje: / })).toBeNull()
 
-    const note = screen.getByLabelText('Napomena o brisanju')
+    /* „(neobavezno)" beside its name, as every optional field on the portal
+       carries: this is the one hand written field that may be left empty, and it
+       said nothing at all about itself while the obligatory ones beside it
+       carried a star (forms/AskedLabel.tsx). */
+    const note = screen.getByLabelText('Napomena o brisanju (neobavezno)')
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
 
     const confirm = screen.getByRole('button', { name: 'Obriši komentar' })
