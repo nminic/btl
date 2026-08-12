@@ -382,6 +382,12 @@
  * the cell: the length carries a coloured dot before the number, and the dot and
  * the space after it are 17,59 pixels that the number does not get.
  *
+ * And in the weight the cell is really set in: the length and the points carry
+ * `table__points`, which is bold (styles/table.css), and „1.000,00" is 63,89
+ * pixels there against 58,69 at the ordinary weight. Measured at the ordinary
+ * weight, the length was pinned at 96 and needed 97,48, so a thousand kilometres
+ * went on breaking into two lines under a floor that said it did not.
+ *
  * Written in `rem` and not in `ch`. `ch` is the width of a digit in the font of
  * the element it is written on, and with `table-layout: fixed` the row that
  * decides a column is the head, whose letters are smaller: every column came out
@@ -404,7 +410,7 @@
 
 .profile__results .table th:nth-child(3),
 .profile__results .table td:nth-child(3) {
-  inline-size: 6rem;
+  inline-size: 6.25rem;
 }
 
 .profile__results .table th:nth-child(4),
@@ -433,7 +439,7 @@
      its space were taking. It is decoration: `aria-hidden`, with the name of the
      length beside it in words for a reader (CompetitorProfile.tsx), and the
      distance itself is right there to be read. What it costs is a colour; what
-     it buys is 24 pixels of the event's name on a screen where the name had
+     it buys is 16 pixels of the event's name on a screen where the name had
      been cut to six letters, which is the column the owner said should get
      whatever the pinned ones do not (12.08.2026). */
   .profile__results .table .profile__dot {
@@ -442,7 +448,7 @@
 
   .profile__results .table th:nth-child(3),
   .profile__results .table td:nth-child(3) {
-    inline-size: 5rem;
+    inline-size: 5.25rem;
   }
 
   .profile__results .table tbody td:nth-child(2) {

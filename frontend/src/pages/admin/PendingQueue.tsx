@@ -20,6 +20,7 @@ import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { EVENTS, idFor, RACES, recordsOf, TEAMS } from './entityForms'
 import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, outcomeFor, type Queue } from './queues'
@@ -179,30 +180,44 @@ function TeamFields({ item }: { item: PendingItem }) {
     String(edits[item.id]?.[field] ?? proposed(item)[field])
 
   return (
+    /* All three are obligatory in the definition a proposed team is saved
+       against (`admin-tim.form.json`), so all three say so the way every field on
+       the portal says it (forms/AskedLabel.tsx). The ids carry the row, because
+       a queue draws these three once per proposal and an id written twice names
+       the wrong box. */
     <div className="pending__fields">
-      <label className="rankings__field">
-        <span>{t('admin.field.teamName')}</span>
+      <div className="rankings__field">
+        <AskedLabel id={`team-name-${item.id}`}>{t('admin.field.teamName')}</AskedLabel>
         <input
+          id={`team-name-${item.id}`}
           type="text"
           value={value('name')}
+          aria-required="true"
           maxLength={limitOf(tim as FormDef, 'name')}
           onChange={(event) => edit(item.id, 'name', event.target.value)}
         />
-      </label>
+      </div>
 
-      <label className="rankings__field">
-        <span>{t('admin.field.city')}</span>
+      <div className="rankings__field">
+        <AskedLabel id={`team-city-${item.id}`}>{t('admin.field.city')}</AskedLabel>
         <input
+          id={`team-city-${item.id}`}
           type="text"
           value={value('city')}
+          aria-required="true"
           maxLength={limitOf(tim as FormDef, 'city')}
           onChange={(event) => edit(item.id, 'city', event.target.value)}
         />
-      </label>
+      </div>
 
-      <label className="rankings__field">
-        <span>{t('admin.field.country')}</span>
-        <select value={value('country')} onChange={(event) => edit(item.id, 'country', event.target.value)}>
+      <div className="rankings__field">
+        <AskedLabel id={`team-country-${item.id}`}>{t('admin.field.country')}</AskedLabel>
+        <select
+          id={`team-country-${item.id}`}
+          value={value('country')}
+          aria-required="true"
+          onChange={(event) => edit(item.id, 'country', event.target.value)}
+        >
           <option value="">{t('form.choose')}</option>
           {/* The region first and named, like every other choice of country on
               the portal (FormRenderer): nine members in ten pick one of these,
@@ -222,7 +237,7 @@ function TeamFields({ item }: { item: PendingItem }) {
             ))}
           </optgroup>
         </select>
-      </label>
+      </div>
     </div>
   )
 }
@@ -443,6 +458,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
           return (
             <>
+              {/* Once over the queue and not once per card: the three fields a
+                  proposed team is corrected in carry a star, and the star is
+                  explained where it is drawn (forms/AskedLabel.tsx). Only on the
+                  queue that draws them. */}
+              {queue.id === 'teams' && <RequiredNote />}
+
               <div className="pending__bar">
                 <h2 className="profile__section" id={waitingId}>
                   {t('review.waiting')} <span className="profile__count">{waiting.length}</span>

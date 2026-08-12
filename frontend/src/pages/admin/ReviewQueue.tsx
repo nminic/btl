@@ -10,7 +10,7 @@ import '../member/Member.css'
    for the whole queue. Every sheet is bundled into one and the class would work
    without the import; the import is what says where the class comes from, so
    deleting the sheet breaks the build rather than the screen (ADL A7). */
-import '../../forms/FormRenderer.css'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import './Verification.css'
 
 /* Every result that has been sent in and not yet decided, as one table.
@@ -182,22 +182,16 @@ export function ReviewQueue() {
       {open !== null && (
         <div className="review__reason" role="group" aria-label={t('review.sendBack')}>
           {/* Obligatory, and it says so both ways: the star for the eye and
-              `aria-required` for a reader, which is the rule every form on the
-              portal follows since 12.08.2026 („Ova pravila... treba da
-              funkcioniše na svim formama za unos i verifikaciju"). This one is
-              not built by the renderer, so it carries the rule itself. Without
+              `aria-required` for a reader, which is the rule the owner asked for
+              on 12.08.2026 („Ova pravila... treba da funkcioniše na svim formama
+              za unos i verifikaciju"). This field is written by hand rather than
+              drawn from a definition, so it takes the rule from the same place
+              every other hand written field does (forms/AskedLabel.tsx). Without
               it, the button below simply stayed dead and nothing said why. */}
+          <RequiredNote />
+
           <div className="rankings__field rankings__field--wide">
-            <span className="review__reason-head">
-              <label htmlFor="review-reason">{t('review.reason')}</label>
-              {/* Outside the label, as on every form: inside, it joins the words
-                  the field is found by and „Razlog odbijanja" becomes „Razlog
-                  odbijanja *" for everything that goes looking for it by name
-                  (forms/FormRenderer.tsx). */}
-              <span className="field__required" aria-hidden="true">
-                {'*'}
-              </span>
-            </span>
+            <AskedLabel id="review-reason">{t('review.reason')}</AskedLabel>
             <input
               id="review-reason"
               type="text"

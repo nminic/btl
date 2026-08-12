@@ -385,3 +385,13 @@
   grid-template-columns: 1fr auto auto;
   align-items: start;
 }
+
+/* The name of a hand written field and its star, side by side. The fields the
+   renderer draws have a head of their own with room for the letter that carries
+   a rule; these have a name and a star and nothing else (forms/AskedLabel.tsx).
+ */
+.asked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}

@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
+import { RequiredMark, RequiredNote } from './AskedLabel'
 import { FieldHint } from './FieldHint'
 import { plainWords, worded } from './worded'
 import { LongBox } from './LongBox'
@@ -487,32 +488,6 @@ const Field = memo(function Field({
   )
 })
 
-/**
- * The star beside the name of a field that has to be answered.
- *
- * Outside the `<label>` and not inside it. Inside, it joins the words the field
- * is found by: every test and every screen reader that looks for „Ime" would be
- * looking for „Ime *", and thirty seven tests said so at once.
- *
- * Owner, 12.08.2026: „Obavezna polja treba da imaju zvezdicu pored." Drawn and
- * not spoken: the same thing is said to a screen reader by `aria-required` on
- * the control, which is where a reader looks for it, and a star read out after
- * every second label is noise. What the star means is said once, over the form
- * (`form.requiredNote`), which is where a legend belongs.
- *
- * The two halves are one decision and neither works alone. Written before
- * `aria-required` existed, this comment said a reader was „already given" it,
- * and it was given nothing: the star was hidden and no control said a word
- * about being obligatory.
- */
-function RequiredMark() {
-  return (
-    <span className="field__required" aria-hidden="true">
-      {'*'}
-    </span>
-  )
-}
-
 export function FormRenderer({
   form,
   onSubmit,
@@ -624,9 +599,7 @@ export function FormRenderer({
           explaining a mark it never draws. A form of nothing but obligatory ones
           draws it on every field and says so here, which is the registration
           exactly. */}
-      {form.fields.some((one) => one.required === true) && (
-        <p className="form__legend">{t('form.requiredNote')}</p>
-      )}
+      {form.fields.some((one) => one.required === true) && <RequiredNote />}
 
       {/* Announced the moment it appears. Without it, pressing the button with
           a broken form does nothing perceivable for a blind visitor. */}

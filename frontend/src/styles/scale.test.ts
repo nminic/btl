@@ -290,6 +290,11 @@ describe('the columns of the results table on a profile', () => {
 
        - the value **as the portal writes it**, so a thousand kilometres is
          „1.000,00" and not „1000,00", a separator wider;
+       - the **weight the cell is set in**: the length and the points are
+         `table__points`, which is bold, and „1.000,00" is 63,89 pixels there
+         against 58,69 at the ordinary weight. Measured at the ordinary weight,
+         the length was pinned at 96 and needed 97,48, so a thousand kilometres
+         went on breaking into two lines under a floor that said it did not;
        - **whatever else stands in the cell**, which for the length is a coloured
          dot and the space after it, 17,59 pixels the number never sees;
        - the **head**, where it is wider than anything the body can hold, which
@@ -306,22 +311,28 @@ describe('the columns of the results table on a profile', () => {
     const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
     const floors = [
       { column: 1, need: 104.17, of: 'a date in full' },
-      { column: 3, need: 92.28, of: 'a dot and 1.000,00 kilometres' },
+      { column: 3, need: 97.48, of: 'a dot and 1.000,00 kilometres, in bold' },
       { column: 4, need: 62.59, of: 'a climb of 88.888' },
       { column: 5, need: 62.59, of: 'a fall of 88.888' },
       { column: 6, need: 83.31, of: '888:59:59' },
-      { column: 7, need: 64.89, of: 'the word Bodovi, wider than 200,00' },
+      { column: 7, need: 66.36, of: '200,00 in bold, wider than the word Bodovi' },
     ]
     /* And the same column again on a telephone, where the dot is gone and the
-       number is all that is left to hold: 16 of padding and 58,69 of „1.000,00".
-       Measured the same way and written here as well, or the narrower rule could
-       be cut to anything and the first floor would go on passing, since it reads
-       the wider rule above it. */
+       number is all that is left to hold: 16 of padding and 63,89 of „1.000,00"
+       in bold. Measured the same way and written here as well, or the narrower
+       rule could be cut to anything and the first floor would go on passing,
+       since it reads the wider rule above it. */
     const onPhone = css.slice(css.indexOf('@media (max-width: 699.98px)'))
     const narrow = /\.table td:nth-child\(3\)[^{]*\{[^}]*inline-size:\s*([\d.]+)rem;/.exec(onPhone)
 
     expect(narrow, 'the length column is not pinned on a telephone').not.toBeNull()
-    expect(Number(narrow?.[1]) * 16, 'a telephone cuts 1.000,00').toBeGreaterThanOrEqual(74.69)
+    expect(Number(narrow?.[1]) * 16, 'a telephone cuts 1.000,00').toBeGreaterThanOrEqual(79.89)
+
+    /* And that floor holds only while the dot is out of the cell. Written
+       without this, the dot could come back on a telephone and the number would
+       spill 17,59 pixels past a column the test went on calling wide enough. */
+    expect(onPhone).toContain('.profile__results .table .profile__dot {')
+    expect(onPhone.slice(onPhone.indexOf('.profile__dot {'))).toContain('display: none;')
 
     for (const { column, need, of } of floors) {
       const at = css.indexOf(`.profile__results .table td:nth-child(${column})`)

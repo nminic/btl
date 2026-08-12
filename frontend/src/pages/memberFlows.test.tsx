@@ -27,12 +27,20 @@ import { Messages } from './member/Messages'
  */
 /** The one thing administration does that this file is about: it changes the
  *  referral amount, the way the price list screen changes it. */
-function Administration() {
+function Administration({
+  eur = '7',
+  rsd = '840',
+  name = 'izmeni preporuku',
+}: {
+  eur?: string
+  rsd?: string
+  name?: string
+}) {
   const { editRecord } = useSession()
 
   return (
-    <button type="button" onClick={() => editRecord('referral', { eur: '7', rsd: '840' })}>
-      {'izmeni preporuku'}
+    <button type="button" onClick={() => editRecord('referral', { eur, rsd })}>
+      {name}
     </button>
   )
 }
@@ -288,6 +296,33 @@ describe('membership', () => {
     await user.click(screen.getByRole('button', { name: 'izmeni preporuku' }))
 
     expect(await screen.findByText(/donosi ti 840 RSD na balans/)).toBeVisible()
+  })
+
+  it('promises the amount as it stands, and does not round it to a whole', async () => {
+    /* The price list takes any number the form takes, and the form takes 5,5.
+       Written through the portal's own way of writing numbers, which rounds to
+       whole unless told otherwise, the price list said 5,5 and this screen
+       promised „6 EUR". A promise the terms of use point at is not a place to
+       round. */
+    render(
+      <ClockProvider simulatedDay="2027-06-01">
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000007">
+              <Administration eur="5.5" rsd="612.5" name="izmeni na pola" />
+              <Membership />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    const user = setupUser()
+
+    await screen.findByText(/donosi ti 5 EUR na balans/)
+    await user.click(screen.getByRole('button', { name: 'izmeni na pola' }))
+
+    expect(await screen.findByText(/donosi ti 5,50 EUR na balans/)).toBeVisible()
   })
 
   it('credits a member from abroad in euro, on both lines', async () => {

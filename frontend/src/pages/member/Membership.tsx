@@ -29,7 +29,7 @@ import { combineResources, useCompetitors, useTeams } from '../../data/useResour
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { PRICING, recordsOf } from '../admin/entityForms'
+import { applyChanges } from '../../forms/records'
 import { useOverlay } from '../admin/overlay'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -54,8 +54,21 @@ const RECIPIENT = RECIPIENT_NAME
  */
 function creditOf(country: string, credited: PriceRow, locale: string): string {
   return country === 'RS'
-    ? `${formatNumber(credited.rsd, locale)} RSD`
-    : `${formatNumber(credited.eur, locale)} EUR`
+    ? `${money(credited.rsd, locale)} RSD`
+    : `${money(credited.eur, locale)} EUR`
+}
+
+/**
+ * An amount as it stands, whole or not.
+ *
+ * `formatNumber` rounds to whole numbers unless told otherwise, and the price
+ * list takes any number: an administrator who sets 5,5 saw the price list say
+ * 5,5 and this screen promise „6 EUR", which is a different promise from the one
+ * the terms point at. Two decimals where there are any, none where there are
+ * not, so the common case stays „600 RSD" rather than „600,00 RSD".
+ */
+function money(amount: number, locale: string): string {
+  return formatNumber(amount, locale, Number.isInteger(amount) ? 0 : 2)
 }
 
 /** And nothing on that balance, in the same currency. Written „0 EUR" for
@@ -68,12 +81,14 @@ export function Membership() {
   const { locale, t } = useI18n()
   const { memberNumber } = useSession()
   /* The referral amount as administration has it, not as the file has it: it is
-     a row of the price list and is changed there (AdminPricing). Read the way
-     every entity on the portal is read, and defaulted to the row itself, so a
-     list that comes back empty leaves the promise standing rather than blank. */
-  const [credited = REFERRAL_ROW] = recordsOf(PRICING, [REFERRAL_ROW], useOverlay()).filter(
-    (row) => row.key === REFERRAL.key,
-  )
+     a row of the price list and is changed there (AdminPricing).
+   *
+     The changes laid over the row directly rather than the row read out of a
+     list of one. The price list is fixed: nothing is added to it and nothing is
+     taken away (owner, 30.07.2026), so of the three things administration can do
+     to a record only one can happen here, and asking for the other two left a
+     list that could be empty and a default that could never be reached. */
+  const credited = applyChanges(REFERRAL_ROW, useOverlay().edits[REFERRAL.key])
   const state = combineResources(useCompetitors(), useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It

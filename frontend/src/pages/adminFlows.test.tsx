@@ -2012,6 +2012,40 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
   })
 
+  it('says every obligatory field is obligatory, on every queue', async () => {
+    /* Owner, 12.08.2026: „Ova pravila... treba da funkcioniše na svim formama za
+       unos i verifikaciju." Eight fields on these screens are written by hand
+       rather than drawn from a definition, and the rule reached one of them: the
+       reason a result is sent back. The other seven, this box and the three a
+       proposed team is corrected in, said nothing at all and the button below
+       them simply stayed dead.
+
+       Both halves at each, since one without the other is what was found: the
+       star for the eye and `aria-required` for a reader, plus the one line that
+       says what a star means. */
+    const user = await open('teams', 'Novi timovi')
+
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.').length).toBeGreaterThan(0)
+
+    for (const name of ['Naziv tima', 'Mesto', 'Država']) {
+      const field = screen.getAllByLabelText(name)[0]
+
+      expect(field, `${name} is not on the screen`).toBeDefined()
+      expect(field).toHaveAttribute('aria-required', 'true')
+    }
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+
+    const reason = screen.getByLabelText('Razlog odbijanja')
+
+    expect(reason).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(reason.closest('.rankings__field'), 'the field the reason stands in').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+  })
+
   it('will not send anything back without a reason', async () => {
     // A team rather than a biography: biographies stopped going back at all
     // (PDL P22, 30.07.2026), so there is nothing to refuse on that queue.

@@ -166,7 +166,10 @@ describe('the fee schedule in the terms', () => {
     const words = heading.parentElement?.textContent ?? ''
 
     expect(words).toContain('stoji u cenovniku')
-    expect(words).not.toMatch(/\d+\s*(EUR|RSD)/)
+    /* Any way of writing money, not only the codes: the owner writes „5 eur /
+       600 din" himself, and a guard that sees only „EUR" and „RSD" would let his
+       own spelling of the same stale figure straight through. */
+    expect(words).not.toMatch(/\d+\s*(EUR|RSD|evr|din)/i)
     expect(words).toContain('aktivirana prvi naredni put')
     expect(words).toContain('ne u trenutku prijave')
     /* And what the balance is, which is the other thing a member is owed an

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 
 /**
@@ -90,16 +91,26 @@ export function SendBack({
     <div className="review__reason" role="group" aria-label={about}>
       <p className="review__about">{about}</p>
 
-      <label className="rankings__field rankings__field--wide">
-        <span>{t(labelKey)}</span>
+      {/* The same rule as every other field on the portal, and the same words
+          for it: a star where it has to be written, and nothing where it may be
+          left empty (forms/AskedLabel.tsx). Five queues send back through this
+          one box, so the rule reaching it reaches all five. */}
+      {!optional && <RequiredNote />}
+
+      <div className="rankings__field rankings__field--wide">
+        <AskedLabel id="send-back-reason" asked={!optional}>
+          {t(labelKey)}
+        </AskedLabel>
         <input
+          id="send-back-reason"
           ref={field}
           type="text"
           value={note}
+          aria-required={optional ? undefined : true}
           placeholder={t(placeholderKey)}
           onChange={(event) => setNote(event.target.value)}
         />
-      </label>
+      </div>
       <div className="member__links">
         <button
           type="button"
