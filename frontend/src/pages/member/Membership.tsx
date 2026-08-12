@@ -297,14 +297,16 @@ export function Membership() {
 
             {/* The referral programme, and the balance it pays into.
              *
-                Both amounts, because both are real: 600 dinars is not five euro
-                at any rate, it is the dinar figure the league chose, and a
-                member in Serbia pays in dinars and is credited in dinars.
+                Both amounts, because a member in Serbia pays in dinars and is
+                credited in dinars, and the dinar figure is stored rather than
+                converted (data/pricing.ts).
 
-                Read from the price list and not written here (data/pricing.ts),
-                because that is where an administrator sets it (owner,
-                12.08.2026). Written into this screen, a changed amount would go
-                on being promised here in the old figure.
+                Read from the price list and not written here, because that is
+                where the amount is kept and where an administrator sets it
+                (owner, 12.08.2026). What an administrator types on that screen
+                today reaches this one no sooner than any price does: edits live
+                in the session until there is a database behind them, which is
+                the whole prototype and not this field.
 
                 It says when the credit lands, and that is not a detail: it lands
                 when the new member's fee is activated, never at registration, so

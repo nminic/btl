@@ -61,8 +61,18 @@ describe('the box the rule of a field opens in', () => {
        has to step onto the page to reach them closes them on the way
        (SC 1.4.13). */
     expect(open).toContain('inset-block-start: calc(100% + var(--space-4));')
-    expect(ruleFor('.hint--open .hint__text::before')).toContain('inset-block-end: 100%;')
-    expect(ruleFor('.hint--open .hint__text::before')).toContain('block-size: var(--space-4);')
+    const bridge = ruleFor('.hint--open .hint__text::before')
+
+    expect(bridge).toContain('inset-block-end: 100%;')
+    /* One pixel more than the gap, and the pixel is not slack: the strip is
+       measured against the padding box of the words, which is a pixel inside
+       their border, so a strip exactly as tall as the gap ends a pixel short of
+       the head and leaves a hairline of bare page under the letter. */
+    expect(bridge).toContain('block-size: calc(var(--space-4) + 1px);')
+    /* And it is there to be walked on, which is the whole of what it is for:
+       told to let the pointer through, it is a strip of nothing and the box goes
+       on closing under a pointer on its way to the words. */
+    expect(bridge).not.toContain('pointer-events')
   })
 
   it('is small print, as it was asked to be', () => {

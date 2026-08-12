@@ -232,10 +232,10 @@ describe('membership', () => {
        po novom članu koji se registrovao preko tog linka i članarina mu je
        postala aktivirana prvi naredni put."
 
-       Both currencies, because 600 dinars is not five euro at any rate and a
-       member in Serbia is credited in dinars. Read from the price list, which is
-       where an administrator sets them, so a number changed there is the number
-       promised here. */
+       Both currencies, because a member in Serbia is credited in dinars and the
+       dinar figure is stored rather than converted. Read from the price list,
+       which is where the amount is kept: changed there, in `data/pricing.ts`,
+       this test fails until the promise on screen follows it. */
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
     expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()

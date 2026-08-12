@@ -84,8 +84,10 @@
  *   owner asked for, against a page that used to jump every time a letter was
  *   pressed.
  *
- * Centred on the letter rather than started at its edge, so a field in the last
- * column of a form leans back over the form instead of off the screen. */
+ * Started at the leading edge of the head and as wide as the head, so a field in
+ * the last column of a form has its rule inside that column and nowhere else.
+ * It was centred on the letter for half a day, and that is what put it off both
+ * edges of a telephone. */
 .hint--open .hint__text {
   position: absolute;
   z-index: 30;
@@ -145,11 +147,18 @@
    `.hint__text`, which is inside the hint.
 
    As wide as the words themselves and no wider: wider, it would sit over the
-   name of the field beside it and swallow presses meant for that. */
+   name of the field beside it and swallow presses meant for that.
+
+   One pixel taller than the gap it covers, and that pixel is not slack. What it
+   is measured against is the padding box of the words, which is a pixel inside
+   their border, so a strip exactly as tall as the gap ends a pixel short of the
+   head and leaves a hairline of bare page directly under the letter. A pointer
+   sampled there is on the page, `stillHere` says no, and the box closes a pixel
+   before the words it opened for. */
 .hint--open .hint__text::before {
   content: '';
   position: absolute;
   inset-block-end: 100%;
   inset-inline: 0;
-  block-size: var(--space-4);
+  block-size: calc(var(--space-4) + 1px);
 }

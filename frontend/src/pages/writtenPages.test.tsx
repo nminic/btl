@@ -195,8 +195,11 @@ describe('the fee schedule in the terms', () => {
        entry per reference the terms carry; a new one that nobody writes here
        fails the count below rather than passing unread. */
     const meant = [{ from: 'diskvalifikacijom', to: 'Pravila ponašanja' }]
+    /* Every case of the word and not only the genitive: written as „sekcije"
+       alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
+       passed unread through the very test written to catch it. */
     const made = sections.flatMap((section) => [
-      ...section.body.matchAll(/sekcije (\d+)/g),
+      ...section.body.matchAll(/sekcij\w* (\d+)/g),
     ].map((found) => ({ at: Number(found[1]), around: section.body.slice(0, found.index) })))
 
     expect(made).toHaveLength(meant.length)

@@ -75,9 +75,11 @@ export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
  *
  * Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din... po
  * novom članu koji se registrovao preko tog linka i članarina mu je postala
- * aktivirana prvi naredni put." Two currencies again, and again not one with a
- * conversion: 600 dinars is not five euro at any rate, it is the dinar figure
- * the league chose.
+ * aktivirana prvi naredni put." Two figures and not one with a conversion, as
+ * everywhere else on this list. The two do sit at the league's own rate of 120
+ * dinars to the euro today, and that is beside the point: what is stored is what
+ * a member is credited, so a rate that moves cannot move it, and the dinar
+ * figure can be set to a round number that the euro one is not.
  *
  * Here and not written into the screen that shows it, because the same owner
  * asked for it to be set on the price list („ovo admin treba da konfiguriše na

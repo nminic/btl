@@ -266,16 +266,32 @@ describe('the shortcut that starts an event on a day', () => {
     renderAt('/sr/kalendar?mesec=2027-05', 'superadmin')
     await screen.findByRole('heading', { level: 2, name: 'maj 2027.' })
 
-    /* One per day of May, and the name of each says which day, because ten
-       controls called „Nov događaj" are ten identical names in a reader's list
-       (WCAG 2.2 SC 2.4.6). */
+    /* One per day of May, each carrying its own day and named by it.
+
+       Every one of the thirty one, not the first of them: asked only about the
+       first, this passed with all thirty one pointing at the first of the month,
+       which is the whole shortcut gone. And the names counted rather than merely
+       matched on how they open, because thirty one controls called „Nov događaj"
+       are thirty one identical names in a reader's list of controls (WCAG 2.2
+       SC 2.4.6), and a prefix match is happy with that. */
     const ways = screen.getAllByRole('link', { name: /^Nov događaj/ })
 
     expect(ways).toHaveLength(31)
-    expect(first(ways)).toHaveAttribute(
-      'href',
-      '/sr/administracija/dogadjaji?nov=2027-05-01',
+
+    const days = ways.map((_, index) => String(index + 1).padStart(2, '0'))
+
+    expect(ways.map((one) => one.getAttribute('href'))).toEqual(
+      days.map((day) => `/sr/administracija/dogadjaji?nov=2027-05-${day}`),
     )
+
+    const names = ways.map((one) => one.getAttribute('aria-label') ?? '')
+
+    expect(new Set(names).size).toBe(31)
+    /* And each says the day it stands on, so the list of controls reads as a
+       calendar rather than as one name repeated. */
+    for (const [index, name] of names.entries()) {
+      expect(name).toContain(`${index + 1}. 5. 2027.`)
+    }
   })
 
   it('is there for a moderator who may open the events screen', async () => {

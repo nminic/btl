@@ -1019,8 +1019,8 @@
       "teamOrganizer": "Organizator tima",
       "leagueName": "Naziv lige",
       "priceLabel": "Naziv perioda",
-      "eur": "Cena u evrima",
-      "rsd": "Cena u dinarima",
+      "eur": "Iznos u evrima",
+      "rsd": "Iznos u dinarima",
       "pageTitle": "Naslov strane",
       "sectionHeading": "Naslov prve sekcije",
       "sectionBody": "Tekst prve sekcije",
@@ -1050,8 +1050,7 @@
       "season": "Sezona za koju liga važi.",
       "groupsByCategory": "Bez ovoga se poredak lige grupiše samo po polu.",
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
-      "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
-      "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
+      "rsd": "Dinarski iznos je zaseban i ne preračunava se po kursu na dan. Kod članarine je fiksiran za celu sezonu.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "leagueSlug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa lige, na primer vojvodjanska-2027. Ne izvodi se iz naziva, jer bi promena naziva odnela adresu koju je neko već podelio.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
@@ -1074,7 +1073,7 @@
     "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik.",
     "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
     "referral": "Preporuka",
-    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Menja se ovde, i odatle ga čitaju i članska strana i uslovi korišćenja."
+    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu."
   },
   "ducats": {
     "title": "Dukati",

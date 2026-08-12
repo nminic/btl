@@ -376,7 +376,11 @@
  * distance column wide and the date column narrow, and every press moved the
  * whole row. The widths are therefore said here rather than worked out, and they
  * are the widest the league can ever hold: a date in full, a distance of
- * 1000,00, a climb of 88.888, a time of 888:59:59, and 200,00 points.
+ * 1.000,00, a climb of 88.888, a time of 888:59:59, and 200,00 points. Written
+ * the way the portal writes them, which for a distance of a thousand means a
+ * thousands separator as well (`formatNumber`), and with whatever else stands in
+ * the cell: the length carries a coloured dot before the number, and the dot and
+ * the space after it are 17,59 pixels that the number does not get.
  *
  * Written in `rem` and not in `ch`. `ch` is the width of a digit in the font of
  * the element it is written on, and with `table-layout: fixed` the row that
@@ -400,7 +404,7 @@
 
 .profile__results .table th:nth-child(3),
 .profile__results .table td:nth-child(3) {
-  inline-size: 4.5rem;
+  inline-size: 6rem;
 }
 
 .profile__results .table th:nth-child(4),

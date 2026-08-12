@@ -262,8 +262,9 @@ describe('the columns of the results table on a profile', () => {
     const pinned = [...css.matchAll(/\.profile__results \.table td:nth-child\(\d\)[^{]*\{([^}]*)\}/g)]
 
     /* Five rules holding six of the seven columns: the fourth and the fifth are
-       the same width and share a rule. The seventh, the event, takes what is
-       left and is the only one that wraps. */
+       the same width and share a rule. The one left out is the second, the
+       event, which takes what the other six do not and is the only one that
+       wraps. */
     expect(pinned).toHaveLength(5)
 
     for (const rule of pinned) {
@@ -277,11 +278,23 @@ describe('the columns of the results table on a profile', () => {
        to five and „31. 12. 2027." would be broken across two lines with nothing
        to say why.
 
-       Measured in Chrome at 375, in the cell's own font at 16 pixels with its
-       8 and 8 of padding, against the widest the owner named on 12.08.2026: a
-       date in full, 1000,00 kilometres, a climb of 88.888 metres, a time of
-       888:59:59 and 200,00 points. Where the head is wider than anything the
-       body can hold, the head is the measure, which is the points column.
+       Measured in Chrome, in the cell's own font at 16 pixels with its 8 and 8
+       of padding, against the widest the owner named on 12.08.2026: a date in
+       full, a thousand kilometres, a climb of 88.888 metres, a time of 888:59:59
+       and 200,00 points. Three things go into each number and leaving any of
+       them out is how this went wrong once already:
+
+       - the value **as the portal writes it**, so a thousand kilometres is
+         „1.000,00" and not „1000,00", a separator wider;
+       - **whatever else stands in the cell**, which for the length is a coloured
+         dot and the space after it, 17,59 pixels the number never sees;
+       - the **head**, where it is wider than anything the body can hold, which
+         is the points column.
+
+       Measured with the first two left out, the length asked for 55,22 and was
+       given 72, and every distance from a hundred kilometres up wrapped to a
+       second line: the fault the owner reported, still there, under a floor that
+       said it was not.
 
        A floor and not the number itself: wider than needed costs a few pixels of
        the event's column and is a judgement, narrower cuts a value in half and
@@ -289,7 +302,7 @@ describe('the columns of the results table on a profile', () => {
     const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
     const floors = [
       { column: 1, need: 104.17, of: 'a date in full' },
-      { column: 3, need: 71.22, of: '1000,00 kilometres' },
+      { column: 3, need: 92.28, of: 'a dot and 1.000,00 kilometres' },
       { column: 4, need: 62.59, of: 'a climb of 88.888' },
       { column: 5, need: 62.59, of: 'a fall of 88.888' },
       { column: 6, need: 83.31, of: '888:59:59' },

@@ -333,8 +333,8 @@ describe('the price list', () => {
     /* The form of a price, which asks for a name, euro and dinars and nothing
        else: a credit has no window in the year and nothing to say about the
        right to be ranked, so it fits this form exactly. */
-    expect(await screen.findByLabelText(/^Cena u evrima/)).toHaveValue(5)
-    expect(screen.getByLabelText(/^Cena u dinarima/)).toHaveValue(600)
+    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
+    expect(screen.getByLabelText(/^Iznos u dinarima/)).toHaveValue(600)
   })
 
   it('says what a payment from abroad carries on top of the price', async () => {
@@ -390,7 +390,7 @@ describe('the price list', () => {
     expect(screen.queryByLabelText(/Važi od/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Važi do/)).not.toBeInTheDocument()
 
-    const eur = screen.getByLabelText(/Cena u evrima/)
+    const eur = screen.getByLabelText(/Iznos u evrima/)
     await user.clear(eur)
     await user.type(eur, '33')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))

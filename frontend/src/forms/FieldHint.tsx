@@ -36,9 +36,9 @@ import './FieldHint.css'
  *
  * Both are answered here rather than avoided. A press anywhere outside now puts
  * it away (`pointerdown` below), so a stray tap costs that tap and nothing more.
- * And the words hang from the letter inside this same element, with the gap
- * between them held by a transparent border rather than by empty page, so the
- * way down never leaves the hint (FieldHint.css, SC 1.4.13).
+ * And the words hang from the head of the field, which is what cannot leave the
+ * page, with the gap under the letter covered by a strip of the words' own box,
+ * so the way down never steps off the hint (FieldHint.css, SC 1.4.13).
  */
 export function FieldHint({
   id,
