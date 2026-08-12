@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR, type PriceRow } from '../../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL, type PriceRow } from '../../data/pricing'
 import { useI18n } from '../../i18n/useI18n'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
@@ -27,6 +27,18 @@ type PriceListRow = PriceRow & { label: string }
  *  paid, so it sits in the same list without pretending to have dates. */
 const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
 
+/* And the referral, which is a number an administrator sets on this screen
+   (owner, 12.08.2026) and not a price of membership at all: nobody pays it, it
+   is credited. So it is a section of its own under the table rather than a sixth
+   row in it, where two of the five columns would have had nothing to say: a
+   credit has no window in the year and no bearing on the right to be ranked, and
+   „Da" written under „Pravo rangiranja" would have been an answer to a question
+   nobody asked.
+
+   It goes through the same form as every price, which asks for a name, euro and
+   dinars and nothing else, so the two fit the one form exactly. */
+const REFERRAL_ROW: PriceRow = { ...REFERRAL, from: '', to: '', ranking: false }
+
 export function AdminPricing() {
   const { t } = useI18n()
   const overlay = useOverlay()
@@ -44,11 +56,19 @@ export function AdminPricing() {
     )
   }
 
-  const base: PriceListRow[] = [...PRICES, JUNIOR_ROW].map((row) => ({
+  const base: PriceListRow[] = [...PRICES, JUNIOR_ROW, REFERRAL_ROW].map((row) => ({
     ...row,
     label: t(`pricing.rows.${row.key}`),
   }))
-  const rows = recordsOf(PRICING, base, overlay)
+  /* One pass over the overlay for both, so an edit typed into either is read
+     back the same way. Split after it, not before. */
+  const all = recordsOf(PRICING, base, overlay)
+  const rows = all.filter((row) => row.key !== REFERRAL.key)
+  /* A list of one rather than one row, because a row found is a row that might
+     not be, and neither `!` nor `as` is written on this portal. Walked as a
+     list, the case where it is missing is the empty list and needs no guard at
+     all. */
+  const referral = all.filter((row) => row.key === REFERRAL.key)
 
   return (
     <div className="member">
@@ -90,6 +110,47 @@ export function AdminPricing() {
           </tbody>
         </table>
       </div>
+
+      {referral.map((row) => (
+        <section className="member__panel" aria-labelledby="pricing-referral" key={row.key}>
+          <h2 className="profile__section" id="pricing-referral">
+            {t('admin.referral')}
+          </h2>
+          <p className="member__note">{t('admin.referralNote')}</p>
+
+          <div className="table-scroll">
+            <table className="table">
+              <caption className="visually-hidden">{t('admin.referral')}</caption>
+              <thead>
+                <tr>
+                  {/* „Naziv" and not „Naziv perioda", which is what the price
+                      table above says: this row has no period, and a column
+                      named after one is a column that answers a question the row
+                      cannot. The form both open says the same, since it is one
+                      form for both. */}
+                  <th scope="col">{t('admin.field.rowLabel')}</th>
+                  <th scope="col">{'EUR'}</th>
+                  <th scope="col">{'RSD'}</th>
+                  <th scope="col">{t('admin.form.record')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{row.label}</td>
+                  <td>{row.eur}</td>
+                  <td>{row.rsd.toLocaleString('sr-Latn')}</td>
+                  <td>
+                    <OpenRecord
+                      name={row.label}
+                      onOpen={() => setEditing({ mode: 'one', record: row })}
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
 
       {/* What arrives on the statement is the fee plus the fee for processing
           it, where the money comes from abroad (PDL P8, 03.08.2026). Whoever

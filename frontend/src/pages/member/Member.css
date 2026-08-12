@@ -153,6 +153,18 @@
   font-weight: 700;
 }
 
+.membership__balance {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-6);
+}
+
+.membership__balance strong {
+  font-size: clamp(22px, 3.5vw, 28px);
+  color: var(--gold-text);
+}
+
 .pay {
   border-top: 1px dashed var(--border);
   padding-top: var(--space-10);

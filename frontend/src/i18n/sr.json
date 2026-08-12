@@ -780,7 +780,8 @@
       "regular": "6. oktobra do 30. novembra",
       "late": "1. do 31. decembra",
       "season": "1. januara do 30. septembra",
-      "junior": "Uzrast do 14 godina"
+      "junior": "Uzrast do 14 godina",
+      "referral": "Preporuka novog člana"
     }
   },
   "error": {
@@ -898,7 +899,11 @@
     "purposeLabel": "Svrha uplate",
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
     "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
-    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku."
+    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku.",
+    "referral": "Program preporuke",
+    "referralNote": "Svako ko se učlani preko tvog linka i aktivira članarinu donosi ti {eur} EUR, odnosno {rsd} RSD, na balans. Ne u trenutku prijave nego kad članarina bude aktivirana.",
+    "balance": "na balansu",
+    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1024,7 +1029,8 @@
       "teamSlug": "Adresa tima",
       "kind": "Vrsta događaja",
       "country": "Država",
-      "featured": "Istaknuto"
+      "featured": "Istaknuto",
+      "rowLabel": "Naziv"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -1055,7 +1061,8 @@
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja.",
       "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka.",
       "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
-      "featured": "Beleži se uz događaj, za izdvajanje u kalendaru i na naslovnoj. Ta dva prikaza se prave sa sezonom 2027."
+      "featured": "Beleži se uz događaj, za izdvajanje u kalendaru i na naslovnoj. Ta dva prikaza se prave sa sezonom 2027.",
+      "rowLabel": "Kako se red zove u cenovniku. Kod perioda je to raspon datuma, na primer 1. do 5. oktobra; sam period se ne menja."
     },
     "value": {
       "genderM": "Muški",
@@ -1065,7 +1072,9 @@
     "period": "Period u godini",
     "everyPayment": "Svaka uplata",
     "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik.",
-    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna."
+    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
+    "referral": "Preporuka",
+    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Menja se ovde, i odatle ga čitaju i članska strana i uslovi korišćenja."
   },
   "ducats": {
     "title": "Dukati",

@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR, type PriceRow } from '../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL, type PriceRow } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
@@ -144,6 +144,74 @@ describe('the fee schedule in the terms', () => {
 
     expect(row, `no row of the table quotes ${JUNIOR.eur} EUR`).toBeDefined()
     expect(row).toContain(`${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD`)
+  })
+
+  it('carries the referral programme, its amount and the moment it is credited', async () => {
+    /* Owner, 12.08.2026. A member is promised money on „Moja članarina", so the
+       terms have to say what that promise is: how much, in both currencies, and
+       when it lands. The moment is the half that matters, since it is what keeps
+       an account opened and left from being worth anything.
+
+       Both figures are read from the price list rather than typed here, so a
+       change made by an administrator shows up as a failing test rather than as
+       a legal text quoting last year's amount. */
+    renderAt('/sr/uslovi-koriscenja')
+
+    /* The exact title, allowing any number in front of it: the sections are
+       numbered and one inserted in the middle moves the rest, so the number is
+       not the thing to hold. „Program preporuke koji ne postoji" is. */
+    const heading = await screen.findByRole('heading', { name: /^\d+\. Program preporuke$/ })
+    const words = heading.parentElement?.textContent ?? ''
+
+    expect(words).toContain(`${REFERRAL.eur} EUR`)
+    expect(words).toContain(`${REFERRAL.rsd} RSD`)
+    expect(words).toContain('aktivirana prvi naredni put')
+    expect(words).toContain('ne u trenutku prijave')
+    /* And what the balance is, which is the other thing a member is owed an
+       answer to: it pays membership and is never paid out. */
+    expect(words).toContain('Nikada se ne isplaćuje u novcu')
+  })
+
+  it('numbers its sections from one and points every reference at the right one', () => {
+    /* A section was put into the middle of these terms on 12.08.2026 (the
+       referral programme, back by the owner's decision of the same day), and
+       everything after it moved down by one. „po postupku iz sekcije 6" then
+       pointed at the referral programme instead of at the rules of conduct: a
+       stale reference does not land on nothing, it lands on a real section and
+       says the wrong thing.
+
+       So both are held: that the numbers run from one with nothing missing, and
+       that each reference lands on the section whose subject the sentence is
+       about. */
+    const sections = (written as Record<string, { sections: { heading: string; body: string }[] }>)[
+      'uslovi-koriscenja'
+    ]?.sections ?? []
+    const numbers = sections.map((section) => Number(section.heading.split('.')[0]))
+
+    expect(numbers.length).toBeGreaterThan(8)
+    expect(numbers).toEqual(numbers.map((_, index) => index + 1))
+
+    /* What each reference is about, taken from the sentence that makes it. One
+       entry per reference the terms carry; a new one that nobody writes here
+       fails the count below rather than passing unread. */
+    const meant = [{ from: 'diskvalifikacijom', to: 'Pravila ponašanja' }]
+    const made = sections.flatMap((section) => [
+      ...section.body.matchAll(/sekcije (\d+)/g),
+    ].map((found) => ({ at: Number(found[1]), around: section.body.slice(0, found.index) })))
+
+    expect(made).toHaveLength(meant.length)
+
+    for (const [index, reference] of made.entries()) {
+      const about = meant[index]
+      const heading = sections[reference.at - 1]?.heading ?? ''
+
+      expect(reference.around, `reference ${index} is not the one written here`).toContain(
+        about?.from ?? '',
+      )
+      expect(heading, `reference to section ${reference.at} lands on „${heading}"`).toContain(
+        about?.to ?? '',
+      )
+    }
   })
 
   it('names one reminder per price boundary', async () => {

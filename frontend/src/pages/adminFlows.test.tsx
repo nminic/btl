@@ -295,7 +295,46 @@ describe('the price list', () => {
        year with no price at all. */
     expect(screen.queryByRole('button', { name: /^Nov/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
+    /* Five in the table and a sixth under it: the amount of a referral is set
+       on this screen too (owner, 12.08.2026) and goes through the same form,
+       which asks for a name, euro and dinars and nothing else. */
+    expect(within(table).getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
+    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(6)
+  })
+
+  it('sets the referral amount here as well, apart from the prices', async () => {
+    /* Owner, 12.08.2026: „ovo admin treba da konfiguriše na strani cenovnika
+       takođe." Apart, because nobody pays it: it is credited, so it has no
+       window in the year and no bearing on the right to be ranked, and two of
+       the five columns of the price table would have had nothing to say. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Preporuka' })
+
+    /* One row of prices under one row of headings, so the words are the row. */
+    expect(within(table).getAllByRole('row')).toHaveLength(2)
+    expect(within(table).getByText('Preporuka novog člana')).toBeVisible()
+    expect(within(table).getByText('5')).toBeVisible()
+    expect(within(table).getByText('600')).toBeVisible()
+    /* And it is not among the prices, where it would read as something a member
+       pays. */
+    expect(
+      within(screen.getByRole('table', { name: 'Cenovnik' })).queryByText('Preporuka novog člana'),
+    ).toBeNull()
+  })
+
+  it('opens the referral amount in the same form every price is changed in', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+    await user.click(screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' }))
+
+    /* The form of a price, which asks for a name, euro and dinars and nothing
+       else: a credit has no window in the year and nothing to say about the
+       right to be ranked, so it fits this form exactly. */
+    expect(await screen.findByLabelText(/^Cena u evrima/)).toHaveValue(5)
+    expect(screen.getByLabelText(/^Cena u dinarima/)).toHaveValue(600)
   })
 
   it('says what a payment from abroad carries on top of the price', async () => {
@@ -341,8 +380,13 @@ describe('the price list', () => {
 
     /* Three fields and no more. The window is the year itself and is not
        something an administrator types (owner, 30.07.2026); it used to ask for a
-       date from and a date to, which is how a price list expires. */
-    expect(screen.getByLabelText(/Naziv perioda/)).toBeVisible()
+       date from and a date to, which is how a price list expires.
+
+       „Naziv" and not „Naziv perioda" since 12.08.2026: the same form now opens
+       for the referral amount, which is a row of the price list with no period
+       at all. The column header of the price table still says „Naziv perioda",
+       because there every row is one. */
+    expect(screen.getByLabelText('Naziv')).toBeVisible()
     expect(screen.queryByLabelText(/Važi od/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Važi do/)).not.toBeInTheDocument()
 

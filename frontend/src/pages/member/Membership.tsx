@@ -18,6 +18,7 @@ import {
 import {
   JUNIOR,
   PROCESSING_FEE_EUR,
+  REFERRAL,
   priceOn,
   registrationOpen,
   seasonBeingRenewed,
@@ -294,16 +295,36 @@ export function Membership() {
               )}
             </section>
 
-            {/* The referral programme and the virtual balance stood here until
-                12.08.2026, offering eight euros of credit for every member
-                brought in. They come out with the clauses that governed them:
-                the owner's decision of 11.08.2026 puts both under „ne postoji do
-                daljnjeg" (PDL P16), and what that means is written in the same
-                place: nothing of it is built and nothing of it is promised on
-                screen, and what was already built leaves the portal. Removed
-                from the rulebook, the terms and the privacy policy on the same
-                day, this screen was the half that stayed behind and went on
-                promising money nothing stood behind. */}
+            {/* The referral programme, and the balance it pays into.
+             *
+                Both amounts, because both are real: 600 dinars is not five euro
+                at any rate, it is the dinar figure the league chose, and a
+                member in Serbia pays in dinars and is credited in dinars.
+
+                Read from the price list and not written here (data/pricing.ts),
+                because that is where an administrator sets it (owner,
+                12.08.2026). Written into this screen, a changed amount would go
+                on being promised here in the old figure.
+
+                It says when the credit lands, and that is not a detail: it lands
+                when the new member's fee is activated, never at registration, so
+                nobody is paid for an account that was opened and left. */}
+            <section className="member__panel" aria-labelledby="membership-referral">
+              <h2 className="profile__section" id="membership-referral">
+                {t('membership.referral')}
+              </h2>
+              <p className="member__note">
+                {t('membership.referralNote', {
+                  eur: REFERRAL.eur,
+                  rsd: formatNumber(REFERRAL.rsd, locale),
+                })}
+              </p>
+              <p className="pay__payload">{`https://balkanskatrkackaliga.net/${locale}/registracija?preporuka=${me.memberNumber}`}</p>
+              <p className="membership__balance">
+                <strong>{'0 EUR'}</strong> <span>{t('membership.balance')}</span>
+              </p>
+              <p className="member__note">{t('membership.balanceNote')}</p>
+            </section>
           </div>
         )
       }}

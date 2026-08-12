@@ -71,6 +71,24 @@ const BY_START = [...PRICES].sort((left, right) => left.from.localeCompare(right
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 
 /**
+ * What a member is credited for every new member they bring in.
+ *
+ * Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din... po
+ * novom članu koji se registrovao preko tog linka i članarina mu je postala
+ * aktivirana prvi naredni put." Two currencies again, and again not one with a
+ * conversion: 600 dinars is not five euro at any rate, it is the dinar figure
+ * the league chose.
+ *
+ * Here and not written into the screen that shows it, because the same owner
+ * asked for it to be set on the price list („ovo admin treba da konfiguriše na
+ * strani cenovnika takođe"): the price list is where a number a member is
+ * promised belongs, and an administrator changes it there like any other.
+ *
+ * Credited when the new member's fee is activated, never at registration
+ * (PDL P16). Nobody is paid for an account that was opened and left. */
+export const REFERRAL = { key: 'referral', eur: 5, rsd: 600 }
+
+/**
  * What a payment from abroad costs to process, in euro, on top of the fee.
  *
  * Not membership and never added into it (PDL P8, 03.08.2026). It covers what

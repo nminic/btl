@@ -227,18 +227,23 @@ describe('membership', () => {
     expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
-  it('offers no referral link and no balance, since neither exists', async () => {
-    /* Both left the portal on 12.08.2026 with the clauses that governed them
-       (PDL P16, „ne postoji do daljnjeg"). Held the other way round now: this
-       screen promised eight euros a head for a while after the rulebook, the
-       terms and the privacy policy had all stopped saying what that promise
-       was. */
+  it('carries the referral link and both amounts it is worth', async () => {
+    /* Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din...
+       po novom članu koji se registrovao preko tog linka i članarina mu je
+       postala aktivirana prvi naredni put."
+
+       Both currencies, because 600 dinars is not five euro at any rate and a
+       member in Serbia is credited in dinars. Read from the price list, which is
+       where an administrator sets them, so a number changed there is the number
+       promised here. */
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-    await screen.findByRole('heading', { name: 'Moja članarina' })
-
-    expect(screen.queryByText(/preporuka=/)).not.toBeInTheDocument()
-    expect(screen.queryByText('na balansu')).not.toBeInTheDocument()
+    expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()
+    expect(screen.getByText(/5 EUR, odnosno 600 RSD/)).toBeVisible()
+    /* And when it lands, which is the half that keeps anybody from being paid
+       for an account that was opened and left. */
+    expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
+    expect(screen.getByText('na balansu')).toBeVisible()
   })
 
   it('tells a paying member since when they have been one', async () => {
