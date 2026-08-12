@@ -697,6 +697,28 @@ describe('the queue of results', () => {
     return { user, session }
   }
 
+  it('says the reason has to be written, in both ways a field says it', async () => {
+    /* Owner, 12.08.2026: „Ova pravila... treba da funkcioniše na svim formama za
+       unos i verifikaciju." This box is not built by the renderer, so it carries
+       the rule itself: a star for the eye and `aria-required` for a reader.
+       Without them the button below simply stayed dead and nothing said why.
+
+       And the star outside the label, or „Razlog odbijanja" is not the name of
+       this field any more. */
+    const { user } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
+
+    const reason = screen.getByLabelText('Razlog odbijanja')
+
+    expect(reason).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(reason.closest('.rankings__field'), 'the field it stands in').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+  })
+
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
     const { user, session } = openWith(['pending'])
 

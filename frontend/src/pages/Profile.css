@@ -429,6 +429,22 @@
    Nothing is lost to a screen reader, which reads the whole of the link, and the
    date beside it is the other half of what identifies a race. */
 @media (max-width: 699.98px) {
+  /* The coloured dot goes, and the length column narrows by exactly what it and
+     its space were taking. It is decoration: `aria-hidden`, with the name of the
+     length beside it in words for a reader (CompetitorProfile.tsx), and the
+     distance itself is right there to be read. What it costs is a colour; what
+     it buys is 24 pixels of the event's name on a screen where the name had
+     been cut to six letters, which is the column the owner said should get
+     whatever the pinned ones do not (12.08.2026). */
+  .profile__results .table .profile__dot {
+    display: none;
+  }
+
+  .profile__results .table th:nth-child(3),
+  .profile__results .table td:nth-child(3) {
+    inline-size: 5rem;
+  }
+
   .profile__results .table tbody td:nth-child(2) {
     max-inline-size: 8.5rem;
     overflow: hidden;

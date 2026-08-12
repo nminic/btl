@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL, type PriceRow } from '../../data/pricing'
+import {
+  JUNIOR,
+  PRICES,
+  PROCESSING_FEE_EUR,
+  REFERRAL,
+  REFERRAL_ROW,
+  type PriceRow,
+} from '../../data/pricing'
 import { useI18n } from '../../i18n/useI18n'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
@@ -36,8 +43,9 @@ const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
    nobody asked.
 
    It goes through the same form as every price, which asks for a name, euro and
-   dinars and nothing else, so the two fit the one form exactly. */
-const REFERRAL_ROW: PriceRow = { ...REFERRAL, from: '', to: '', ranking: false }
+   dinars and nothing else, so the two fit the one form exactly. Its shape is in
+   `data/pricing.ts`, with the amount, because the member's screen reads the same
+   row (member/Membership.tsx). */
 
 export function AdminPricing() {
   const { t } = useI18n()

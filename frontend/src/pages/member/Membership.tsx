@@ -19,6 +19,8 @@ import {
   JUNIOR,
   PROCESSING_FEE_EUR,
   REFERRAL,
+  REFERRAL_ROW,
+  type PriceRow,
   priceOn,
   registrationOpen,
   seasonBeingRenewed,
@@ -27,6 +29,8 @@ import { combineResources, useCompetitors, useTeams } from '../../data/useResour
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { PRICING, recordsOf } from '../admin/entityForms'
+import { useOverlay } from '../admin/overlay'
 import { SignedOut } from './SignedOut'
 import './Member.css'
 
@@ -39,9 +43,37 @@ import './Member.css'
  * is read anyway. */
 const RECIPIENT = RECIPIENT_NAME
 
+/**
+ * What one member brought in is worth, in the currency that member pays in.
+ *
+ * Serbia pays and is credited in dinars, everyone else in euro, decided by the
+ * same country on the profile that decides how the fee itself may be paid
+ * (data/paymentQr.ts). Two figures side by side would have said „five euro, that
+ * is six hundred dinars", which is a conversion, and this list holds no rate:
+ * the dinar figure is chosen, not converted (data/pricing.ts).
+ */
+function creditOf(country: string, credited: PriceRow, locale: string): string {
+  return country === 'RS'
+    ? `${formatNumber(credited.rsd, locale)} RSD`
+    : `${formatNumber(credited.eur, locale)} EUR`
+}
+
+/** And nothing on that balance, in the same currency. Written „0 EUR" for
+ *  everybody, it stood under a sentence that had just promised dinars. */
+function emptyBalance(country: string): string {
+  return country === 'RS' ? '0 RSD' : '0 EUR'
+}
+
 export function Membership() {
   const { locale, t } = useI18n()
   const { memberNumber } = useSession()
+  /* The referral amount as administration has it, not as the file has it: it is
+     a row of the price list and is changed there (AdminPricing). Read the way
+     every entity on the portal is read, and defaulted to the row itself, so a
+     list that comes back empty leaves the promise standing rather than blank. */
+  const [credited = REFERRAL_ROW] = recordsOf(PRICING, [REFERRAL_ROW], useOverlay()).filter(
+    (row) => row.key === REFERRAL.key,
+  )
   const state = combineResources(useCompetitors(), useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It
@@ -297,16 +329,18 @@ export function Membership() {
 
             {/* The referral programme, and the balance it pays into.
              *
-                Both amounts, because a member in Serbia pays in dinars and is
-                credited in dinars, and the dinar figure is stored rather than
-                converted (data/pricing.ts).
+                One amount and not two, and it is the one this member is
+                credited in: whoever pays in dinars is credited in dinars
+                (data/paymentQr.ts decides that by the country on the profile,
+                and it decides it here too, so the two can never disagree). The
+                balance underneath used to be „0 EUR" for everybody, under a
+                sentence promising dinars.
 
-                Read from the price list and not written here, because that is
-                where the amount is kept and where an administrator sets it
-                (owner, 12.08.2026). What an administrator types on that screen
-                today reaches this one no sooner than any price does: edits live
-                in the session until there is a database behind them, which is
-                the whole prototype and not this field.
+                Read through the price list rather than off the constant, because
+                that is where an administrator sets it (owner, 12.08.2026) and
+                what is typed there has to be what is promised here. The same
+                read as every entity on the portal: the generated record with
+                whatever administration has changed laid over it.
 
                 It says when the credit lands, and that is not a detail: it lands
                 when the new member's fee is activated, never at registration, so
@@ -316,14 +350,12 @@ export function Membership() {
                 {t('membership.referral')}
               </h2>
               <p className="member__note">
-                {t('membership.referralNote', {
-                  eur: REFERRAL.eur,
-                  rsd: formatNumber(REFERRAL.rsd, locale),
-                })}
+                {t('membership.referralNote', { amount: creditOf(me.country, credited, locale) })}
               </p>
               <p className="pay__payload">{`https://balkanskatrkackaliga.net/${locale}/registracija?preporuka=${me.memberNumber}`}</p>
               <p className="membership__balance">
-                <strong>{'0 EUR'}</strong> <span>{t('membership.balance')}</span>
+                <strong>{emptyBalance(me.country)}</strong>{' '}
+                <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>
             </section>

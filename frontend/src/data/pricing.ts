@@ -91,6 +91,16 @@ export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 export const REFERRAL = { key: 'referral', eur: 5, rsd: 600 }
 
 /**
+ * The same, as a row of the price list, which is what it is entered as.
+ *
+ * Here and not on the screen that draws it, because two screens read it: the one
+ * an administrator sets it on and the one a member is promised it on, and a
+ * shape written twice is a shape that drifts. No window in the year and no
+ * bearing on the right to be ranked, which is what tells it from a price.
+ */
+export const REFERRAL_ROW: PriceRow = { ...REFERRAL, from: '', to: '', ranking: false }
+
+/**
  * What a payment from abroad costs to process, in euro, on top of the fee.
  *
  * Not membership and never added into it (PDL P8, 03.08.2026). It covers what

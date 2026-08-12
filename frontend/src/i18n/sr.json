@@ -369,7 +369,7 @@
     "email": "Adresa elektronske pošte",
     "emailHint": "Na nju stiže potvrda naloga. Bez potvrde nalog se ne aktivira.",
     "birthDate": "Datum rođenja",
-    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj.",
+    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj, u polju koje se tada otvara pri dnu forme.",
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
@@ -901,7 +901,7 @@
     "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
     "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku.",
     "referral": "Program preporuke",
-    "referralNote": "Svako ko se učlani preko tvog linka i aktivira članarinu donosi ti {eur} EUR, odnosno {rsd} RSD, na balans. Ne u trenutku prijave nego kad članarina bude aktivirana.",
+    "referralNote": "Svako ko se učlani preko tvog linka i aktivira članarinu donosi ti {amount} na balans. Ne u trenutku prijave nego kad članarina bude aktivirana.",
     "balance": "na balansu",
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu."
   },

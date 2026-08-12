@@ -5,6 +5,7 @@ import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
+import { useSession } from '../session/useSession'
 import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
 import { expectFrontPage, renderAt } from '../test/render'
@@ -24,6 +25,18 @@ import { Messages } from './member/Messages'
  * used to take it as a prop, so a test could put it on a day the rest of the
  * portal was not on, and nothing would say so.
  */
+/** The one thing administration does that this file is about: it changes the
+ *  referral amount, the way the price list screen changes it. */
+function Administration() {
+  const { editRecord } = useSession()
+
+  return (
+    <button type="button" onClick={() => editRecord('referral', { eur: '7', rsd: '840' })}>
+      {'izmeni preporuku'}
+    </button>
+  )
+}
+
 function renderMembershipOn(today: string, memberNumber = '000001') {
   return render(
     <ClockProvider simulatedDay={today}>
@@ -227,23 +240,64 @@ describe('membership', () => {
     expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
-  it('carries the referral link and both amounts it is worth', async () => {
+  it('carries the referral link, and credits a member in Serbia in dinars', async () => {
     /* Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din...
        po novom članu koji se registrovao preko tog linka i članarina mu je
        postala aktivirana prvi naredni put."
 
-       Both currencies, because a member in Serbia is credited in dinars and the
-       dinar figure is stored rather than converted. Read from the price list,
-       which is where the amount is kept: changed there, in `data/pricing.ts`,
-       this test fails until the promise on screen follows it. */
+       One amount and not two, and it is the one this member pays in: „five euro,
+       that is six hundred dinars" is a conversion, and the league holds no rate
+       (data/pricing.ts). The balance underneath is in the same currency; it said
+       „0 EUR" to everybody under a sentence promising dinars. */
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
     expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()
-    expect(screen.getByText(/5 EUR, odnosno 600 RSD/)).toBeVisible()
+    expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
+    expect(screen.getByText('0 RSD')).toBeVisible()
     /* And when it lands, which is the half that keeps anybody from being paid
        for an account that was opened and left. */
     expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
     expect(screen.getByText('na balansu')).toBeVisible()
+  })
+
+  it('promises what administration set, not what the file says', async () => {
+    /* The amount is a row of the price list and an administrator changes it
+       there (AdminPricing). Read off the constant instead, this screen went on
+       promising the old figure while the price list showed the new one, and the
+       words above that table said it did not.
+
+       The change is made the way that screen makes it, through the session, and
+       this screen is read after it: one session, two screens, which is the whole
+       of what „the price list is the source" means. */
+    render(
+      <ClockProvider simulatedDay="2027-06-01">
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000001">
+              <Administration />
+              <Membership />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    const user = setupUser()
+
+    await screen.findByText(/donosi ti 600 RSD na balans/)
+    await user.click(screen.getByRole('button', { name: 'izmeni preporuku' }))
+
+    expect(await screen.findByText(/donosi ti 840 RSD na balans/)).toBeVisible()
+  })
+
+  it('credits a member from abroad in euro, on both lines', async () => {
+    /* 000007 is in Banja Luka, and pays in euro like everyone outside Serbia
+       (data/paymentQr.ts). The same country decides both, so the promise and the
+       way of paying can never fall out of step. */
+    renderAt('/sr/moja-clanarina', 'competitor', '000007')
+
+    expect(await screen.findByText(/donosi ti 5 EUR na balans/)).toBeVisible()
+    expect(screen.getByText('0 EUR')).toBeVisible()
   })
 
   it('tells a paying member since when they have been one', async () => {

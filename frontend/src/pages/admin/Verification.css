@@ -240,3 +240,12 @@
   display: grid;
   gap: var(--space-6);
 }
+
+/* The name of the reason and the star that says it has to be written, on one
+   line. A box of its own, because the field around it stacks its parts and the
+   two of these belong side by side. */
+.review__reason-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}

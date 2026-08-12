@@ -264,8 +264,12 @@ describe('the columns of the results table on a profile', () => {
     /* Five rules holding six of the seven columns: the fourth and the fifth are
        the same width and share a rule. The one left out is the second, the
        event, which takes what the other six do not and is the only one that
-       wraps. */
-    expect(pinned).toHaveLength(5)
+       wraps.
+
+       Six rules and not five, because the length is pinned twice: once for every
+       width, and once again on a telephone, where the coloured dot leaves the
+       cell and the column narrows by what the dot was taking. */
+    expect(pinned).toHaveLength(6)
 
     for (const rule of pinned) {
       expect(rule[1]).toMatch(/inline-size:\s*[\d.]+rem;/)
@@ -308,9 +312,20 @@ describe('the columns of the results table on a profile', () => {
       { column: 6, need: 83.31, of: '888:59:59' },
       { column: 7, need: 64.89, of: 'the word Bodovi, wider than 200,00' },
     ]
+    /* And the same column again on a telephone, where the dot is gone and the
+       number is all that is left to hold: 16 of padding and 58,69 of „1.000,00".
+       Measured the same way and written here as well, or the narrower rule could
+       be cut to anything and the first floor would go on passing, since it reads
+       the wider rule above it. */
+    const onPhone = css.slice(css.indexOf('@media (max-width: 699.98px)'))
+    const narrow = /\.table td:nth-child\(3\)[^{]*\{[^}]*inline-size:\s*([\d.]+)rem;/.exec(onPhone)
+
+    expect(narrow, 'the length column is not pinned on a telephone').not.toBeNull()
+    expect(Number(narrow?.[1]) * 16, 'a telephone cuts 1.000,00').toBeGreaterThanOrEqual(74.69)
 
     for (const { column, need, of } of floors) {
       const at = css.indexOf(`.profile__results .table td:nth-child(${column})`)
+
 
       expect(at, `column ${column} is not pinned`).toBeGreaterThan(-1)
 

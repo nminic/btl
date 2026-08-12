@@ -234,20 +234,26 @@ describe('the address, at the moment of joining', () => {
 })
 
 describe('the biography, at the moment of joining', () => {
-  it('will not let the form through without it', async () => {
+  it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
-       there for approval. Until now it was a field somewhere in the member area
+       there for approval. Until then it was a field somewhere in the member area
        that most people never found, which is why most profiles in the data have
-       none. */
+       none. Asked for at the moment of joining, and not demanded: the list of
+       obligatory fields (PDL P8, 11.08.2026) does not hold it, and the privacy
+       policy says in as many words that it is given „dobrovoljno", on consent.
+       It was `required` in the definition all the same, so the portal refused a
+       registration over a field its own policy calls voluntary. */
     const user = setupUser()
     renderForm()
 
-    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
-    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+    expect(screen.getByLabelText(/Svojim rečima/)).toBeVisible()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12031990')
+    await user.clear(screen.getByLabelText(/Svojim rečima/))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    const summary = screen.getByRole('alert')
-    expect(within(summary).getByRole('link', { name: /Svojim rečima/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 
   it('says what happens to it, beside the field', async () => {

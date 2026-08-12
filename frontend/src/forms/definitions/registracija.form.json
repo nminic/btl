@@ -157,7 +157,6 @@
       "type": "textarea",
       "labelKey": "profile.bio",
       "hintKey": "registration.bioHint",
-      "required": true,
       "maxLength": 360,
       "row": 5
     },

@@ -10,6 +10,7 @@ import '../member/Member.css'
    for the whole queue. Every sheet is bundled into one and the class would work
    without the import; the import is what says where the class comes from, so
    deleting the sheet breaks the build rather than the screen (ADL A7). */
+import '../../forms/FormRenderer.css'
 import './Verification.css'
 
 /* Every result that has been sent in and not yet decided, as one table.
@@ -180,15 +181,32 @@ export function ReviewQueue() {
 
       {open !== null && (
         <div className="review__reason" role="group" aria-label={t('review.sendBack')}>
-          <label className="rankings__field rankings__field--wide">
-            <span>{t('review.reason')}</span>
+          {/* Obligatory, and it says so both ways: the star for the eye and
+              `aria-required` for a reader, which is the rule every form on the
+              portal follows since 12.08.2026 („Ova pravila... treba da
+              funkcioniše na svim formama za unos i verifikaciju"). This one is
+              not built by the renderer, so it carries the rule itself. Without
+              it, the button below simply stayed dead and nothing said why. */}
+          <div className="rankings__field rankings__field--wide">
+            <span className="review__reason-head">
+              <label htmlFor="review-reason">{t('review.reason')}</label>
+              {/* Outside the label, as on every form: inside, it joins the words
+                  the field is found by and „Razlog odbijanja" becomes „Razlog
+                  odbijanja *" for everything that goes looking for it by name
+                  (forms/FormRenderer.tsx). */}
+              <span className="field__required" aria-hidden="true">
+                {'*'}
+              </span>
+            </span>
             <input
+              id="review-reason"
               type="text"
               value={note}
+              aria-required="true"
               placeholder={t('review.reasonPlaceholder')}
               onChange={(event) => setNote(event.target.value)}
             />
-          </label>
+          </div>
           <div className="member__links">
             <button
               type="button"
