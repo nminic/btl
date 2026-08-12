@@ -368,6 +368,53 @@
   background: var(--length-ultra);
 }
 
+/* The results table keeps the same columns whatever is filtered out of it.
+ *
+ * Owner, 12.08.2026: „Kad se na strani takmičara klikće po filterima za dužinu
+ * trke, kolone njegovih rezultata mrdaju levo desno. Treba ih zakucati." A table
+ * sizes its columns to what is in them, so filtering to the ultras made the
+ * distance column wide and the date column narrow, and every press moved the
+ * whole row. The widths are therefore said here rather than worked out, and they
+ * are the widest the league can ever hold: a date in full, a distance of
+ * 1000,00, a climb of 88.888, a time of 888:59:59, and 200,00 points.
+ *
+ * `ch` is the width of one digit in the tabular figures the portal sets on
+ * `:root`, so these are counted in digits and hold whatever the numbers are.
+ * The event takes what is left, and is the only column that wraps.
+ *
+ * `table-layout: fixed` is what makes any of it true: without it the browser
+ * reads the content first and the numbers here are only a suggestion. */
+.profile__results .table {
+  table-layout: fixed;
+}
+
+.profile__results .table th:nth-child(1),
+.profile__results .table td:nth-child(1) {
+  inline-size: 11.5ch;
+}
+
+.profile__results .table th:nth-child(3),
+.profile__results .table td:nth-child(3) {
+  inline-size: 9ch;
+}
+
+.profile__results .table th:nth-child(4),
+.profile__results .table td:nth-child(4),
+.profile__results .table th:nth-child(5),
+.profile__results .table td:nth-child(5) {
+  inline-size: 8ch;
+}
+
+.profile__results .table th:nth-child(6),
+.profile__results .table td:nth-child(6) {
+  inline-size: 11ch;
+}
+
+.profile__results .table th:nth-child(7),
+.profile__results .table td:nth-child(7) {
+  inline-size: 8ch;
+}
+
 /* On a telephone the name of an event is cut rather than allowed to push the
    table wider than the screen (PDL P24: a table there has no horizontal scroll).
    Nothing is lost to a screen reader, which reads the whole of the link, and the
