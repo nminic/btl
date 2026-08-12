@@ -34,19 +34,35 @@ describe('the box the rule of a field opens in', () => {
        held here is that it is out of the flow entirely, and stacked above the
        page rather than under it.
 
-       It hangs from the hint, which is the only element that knows where the
-       letter is, so the hint has to be what it is measured from. */
+       It hangs from the head of the field and not from the letter, and is as
+       wide as that head: a box measured from a letter 24 pixels wide opened 65
+       pixels off the left edge of a telephone and 103 off the right, and took
+       the page into sideways scroll, which this portal forbids. The head is as
+       wide as the field, so what hangs from it can leave the page only if the
+       field does. Both halves are held, since one without the other is the fault
+       that was found: `.hint` must not be positioned, or it is what the box is
+       measured from again. */
     const open = ruleFor('.hint--open .hint__text')
 
     expect(open).toContain('position: absolute;')
     expect(open).toMatch(/z-index: \d+;/)
     expect(open).not.toContain('grid-column')
-    expect(ruleFor('.hint')).toContain('position: relative;')
+    expect(open).toContain('inline-size: 100%;')
+    expect(open).not.toContain('translate:')
+    expect(ruleFor('.hint')).not.toContain('position:')
 
-    /* And no gap between the letter and the words, or rather one small enough to
-       cross: a pointer that has to leave the hint to reach them closes them on
-       the way (SC 1.4.13). */
+    const head = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
+    const at = head.indexOf('.field__head {')
+
+    expect(head.slice(at, head.indexOf('}', at))).toContain('position: relative')
+
+    /* And the gap between the letter and the words is one the pointer can cross
+       without leaving the hint, which the strip below it answers: a pointer that
+       has to step onto the page to reach them closes them on the way
+       (SC 1.4.13). */
     expect(open).toContain('inset-block-start: calc(100% + var(--space-4));')
+    expect(ruleFor('.hint--open .hint__text::before')).toContain('inset-block-end: 100%;')
+    expect(ruleFor('.hint--open .hint__text::before')).toContain('block-size: var(--space-4);')
   })
 
   it('is small print, as it was asked to be', () => {
@@ -193,7 +209,13 @@ describe('the rows of a form', () => {
 
        A field with no star has two items and the last two tracks stand empty,
        which costs nothing. */
-    expect(bodyOf('.field__head')).toContain('grid-template-columns: auto auto auto 1fr;')
+    const head = bodyOf('.field__head')
+
+    /* Both, since one without the other does nothing: tracks named on an element
+       that is not a grid are an instruction nobody reads. The rule that held
+       this stood in the test the tooltip took away with it. */
+    expect(head).toContain('display: grid;')
+    expect(head).toContain('grid-template-columns: auto auto auto 1fr;')
   })
 
   it('puts the letter beside the words of a confirmation, not under them', () => {

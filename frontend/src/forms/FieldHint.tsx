@@ -26,12 +26,19 @@ import './FieldHint.css'
  * without moving either of them, so the answer is a third piece of state that
  * outranks both and is forgotten the next time either arrives.
  *
- * **It opens in the flow, between the label and the field.** Laid over what
- * comes after it, a rule left open by a finger swallowed the first press on
- * whatever it covered, and a pointer could never reach the words to read them to
- * the end: the way down crossed the control, which is outside this and closed it
- * on the way. Opening in the flow, the pointer moves straight from the letter
- * into the words, and nothing is covered.
+ * **It opens over the page, hanging from the letter, and moves nothing**
+ * (owner, 12.08.2026: „a ne da se pojavi element unutar strane koji izpomera
+ * sve ostalo"; FieldHint.css). It stood in the flow until then, between the
+ * label and the field, because laid over the page it had cost two things: a box
+ * left open by a finger swallowed the first press on whatever it covered, and
+ * the pointer could not reach the words, since the way down crossed the control,
+ * which is outside this and closed it on the way.
+ *
+ * Both are answered here rather than avoided. A press anywhere outside now puts
+ * it away (`pointerdown` below), so a stray tap costs that tap and nothing more.
+ * And the words hang from the letter inside this same element, with the gap
+ * between them held by a transparent border rather than by empty page, so the
+ * way down never leaves the hint (FieldHint.css, SC 1.4.13).
  */
 export function FieldHint({
   id,

@@ -89,6 +89,10 @@ const ALLOWED = new Map([
     'pages/admin/SectionNav.css | padding | 0.05rem var(--space-6)',
     'under the smallest step the grid has, on the tallest thing in its row',
   ],
+  [
+    'forms/FieldHint.css | inset-block-start | calc(1.5rem + var(--space-4))',
+    'not a step: the letter that opens the rule is 1.5rem tall (.hint__ask), and on the one field whose head runs to several lines the rule hangs under the letter rather than under the head, so the height of the letter is what is written',
+  ],
   /* Four offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
      than swept because moving them is a decision about how far a counter hangs
@@ -257,12 +261,50 @@ describe('the columns of the results table on a profile', () => {
 
     const pinned = [...css.matchAll(/\.profile__results \.table td:nth-child\(\d\)[^{]*\{([^}]*)\}/g)]
 
-    /* Six of the seven: the event takes what is left and is the only one that
-       wraps. */
+    /* Five rules holding six of the seven columns: the fourth and the fifth are
+       the same width and share a rule. The seventh, the event, takes what is
+       left and is the only one that wraps. */
     expect(pinned).toHaveLength(5)
 
     for (const rule of pinned) {
       expect(rule[1]).toMatch(/inline-size:\s*[\d.]+rem;/)
+    }
+  })
+
+  it('is never narrower than the widest thing the league can put in it', () => {
+    /* Which is the whole point of the numbers, and what nothing held: the rule
+       above is happy with any number of `rem`, so the date column could be cut
+       to five and „31. 12. 2027." would be broken across two lines with nothing
+       to say why.
+
+       Measured in Chrome at 375, in the cell's own font at 16 pixels with its
+       8 and 8 of padding, against the widest the owner named on 12.08.2026: a
+       date in full, 1000,00 kilometres, a climb of 88.888 metres, a time of
+       888:59:59 and 200,00 points. Where the head is wider than anything the
+       body can hold, the head is the measure, which is the points column.
+
+       A floor and not the number itself: wider than needed costs a few pixels of
+       the event's column and is a judgement, narrower cuts a value in half and
+       is a fault. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const floors = [
+      { column: 1, need: 104.17, of: 'a date in full' },
+      { column: 3, need: 71.22, of: '1000,00 kilometres' },
+      { column: 4, need: 62.59, of: 'a climb of 88.888' },
+      { column: 5, need: 62.59, of: 'a fall of 88.888' },
+      { column: 6, need: 83.31, of: '888:59:59' },
+      { column: 7, need: 64.89, of: 'the word Bodovi, wider than 200,00' },
+    ]
+
+    for (const { column, need, of } of floors) {
+      const at = css.indexOf(`.profile__results .table td:nth-child(${column})`)
+
+      expect(at, `column ${column} is not pinned`).toBeGreaterThan(-1)
+
+      const written = /inline-size:\s*([\d.]+)rem;/.exec(css.slice(at, css.indexOf('}', at)))
+
+      expect(written, `column ${column} has no width`).not.toBeNull()
+      expect(Number(written?.[1]) * 16, `column ${column} cuts ${of}`).toBeGreaterThanOrEqual(need)
     }
   })
 })

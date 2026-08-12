@@ -110,7 +110,7 @@ function Day({
       {may(`entity:${EVENTS.id}`) && (
         <Link
           className="day__add"
-          to={`/${locale}/administracija/dogadjaji?nov=${date}`}
+          to={`/${locale}/${EVENTS.path}?nov=${date}`}
           aria-label={t('calendar.addOnDay', { date: formatShortDate(date, locale) })}
         >
           <span aria-hidden="true">{'+'}</span>

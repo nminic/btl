@@ -37,11 +37,15 @@ export function AdminEvents() {
      writes, so there is one way of being open and not two.
 
      A date that is not a date opens an empty form rather than nothing: a
-     mistyped address is not worth a screen that refuses to work. */
+     mistyped address is not worth a screen that refuses to work. Round trip and
+     not a shape test, because „2027-13-45" has the shape of a date and is not
+     one: `isoDate` gives back only what a calendar really holds, so a day that
+     survives the journey there and back is a day that exists. */
   const [fromCalendar] = useFilterParams()
   const askedDate = fromCalendar.get('nov')
+  const askedDay = askedDate === null ? '' : fieldDate(askedDate)
   const [chosen, setChosen] = useState<Editing | null>(
-    askedDate === null ? null : { mode: 'new', start: { date: fieldDate(askedDate) } },
+    askedDate === null ? null : { mode: 'new', start: { date: isoDate(askedDay) === askedDate ? askedDay : '' } },
   )
   /* The event entered a moment ago, so its races can be added under it while
      the confirmation of the save is still on screen. */

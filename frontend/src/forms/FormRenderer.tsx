@@ -188,9 +188,20 @@ const Field = memo(function Field({
     .filter(Boolean)
     .join(' ')
 
+  /* Said to the control and not only to the eye. The star beside the name is
+     drawn for whoever can see it and is kept out of what is read aloud
+     (`RequiredMark`), so without this a screen reader was told nothing at all:
+     the legend over the form says fields with a star are obligatory, and there
+     is no star in the accessibility tree to find. `aria-required` and not the
+     native `required`, because the form is `noValidate` and answers for its own
+     rules (`validate.ts`); the native attribute would put the browser's own
+     bubble on top of the portal's error, in the browser's language. */
+  const asked = field.required === true ? true : undefined
+
   const shared = {
     id: inputId,
     name: field.name,
+    'aria-required': asked,
     'aria-invalid': error !== undefined,
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     className: 'field__control',
@@ -208,12 +219,13 @@ const Field = memo(function Field({
             checked={value === true}
             onChange={(e) => change(e.target.checked)}
           />
-          {/* The words, and the letter that explains them beside the last of
-              them: the hint is `display: contents`, so left outside this it
-              became an item of the field's own column and the circle fell to a
-              line of its own under the sentence. Ten fields carry it beside
-              their name and this one carried it below, which is the difference
-              the group of buttons was rebuilt to be rid of. */}
+          {/* The words, the star, and the letter that explains them, all in a
+              head of their own. Left outside a head the letter became an item of
+              the field's own column and fell to a line under the sentence, where
+              ten other fields carry it beside their name; the group of buttons
+              was rebuilt for the same reason. The head is also what the open
+              rule is measured from, so this one is not an ornament
+              (FieldHint.css). */}
           <span className="field__head field__head--confirm">
             <label className="field__label" htmlFor={inputId} id={labelId}>
               {worded(t(field.labelKey), field, locale, t)}
@@ -281,6 +293,7 @@ const Field = memo(function Field({
         <div
           className="choice"
           role="radiogroup"
+          aria-required={asked}
           aria-labelledby={labelId}
           /* The error, on the group as well as on the buttons: the summary of
              errors leads here and puts the cursor on the group itself, and
@@ -407,6 +420,7 @@ const Field = memo(function Field({
 
       {field.type === 'place' && (
         <PlaceField
+          required={asked}
           id={inputId}
           name={field.name}
           value={String(value)}
@@ -444,6 +458,7 @@ const Field = memo(function Field({
           id={inputId}
           name={field.name}
           value={String(value)}
+          required={asked}
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
@@ -480,10 +495,15 @@ const Field = memo(function Field({
  * looking for „Ime *", and thirty seven tests said so at once.
  *
  * Owner, 12.08.2026: „Obavezna polja treba da imaju zvezdicu pored." Drawn and
- * not spoken: `required` on the control is what a screen reader is already
- * given, and a star read out after every second label is noise. What the star
- * means is said once, over the form (`form.requiredNote`), which is where a
- * legend belongs.
+ * not spoken: the same thing is said to a screen reader by `aria-required` on
+ * the control, which is where a reader looks for it, and a star read out after
+ * every second label is noise. What the star means is said once, over the form
+ * (`form.requiredNote`), which is where a legend belongs.
+ *
+ * The two halves are one decision and neither works alone. Written before
+ * `aria-required` existed, this comment said a reader was „already given" it,
+ * and it was given nothing: the star was hidden and no control said a word
+ * about being obligatory.
  */
 function RequiredMark() {
   return (
@@ -600,8 +620,10 @@ export function FormRenderer({
 
       {/* What the star beside a name means, said once over the form rather than
           spelled out on every field (owner, 12.08.2026). Only where there is a
-          star to explain: a form of nothing but obligatory fields, or of nothing
-          but optional ones, would be explaining a mark it never draws. */}
+          star to explain: a form of nothing but optional fields would be
+          explaining a mark it never draws. A form of nothing but obligatory ones
+          draws it on every field and says so here, which is the registration
+          exactly. */}
       {form.fields.some((one) => one.required === true) && (
         <p className="form__legend">{t('form.requiredNote')}</p>
       )}

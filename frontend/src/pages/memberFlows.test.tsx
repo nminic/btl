@@ -227,11 +227,18 @@ describe('membership', () => {
     expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
-  it('carries the referral link and the balance', async () => {
+  it('offers no referral link and no balance, since neither exists', async () => {
+    /* Both left the portal on 12.08.2026 with the clauses that governed them
+       (PDL P16, „ne postoji do daljnjeg"). Held the other way round now: this
+       screen promised eight euros a head for a while after the rulebook, the
+       terms and the privacy policy had all stopped saying what that promise
+       was. */
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-    expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()
-    expect(screen.getByText('na balansu')).toBeVisible()
+    await screen.findByRole('heading', { name: 'Moja članarina' })
+
+    expect(screen.queryByText(/preporuka=/)).not.toBeInTheDocument()
+    expect(screen.queryByText('na balansu')).not.toBeInTheDocument()
   })
 
   it('tells a paying member since when they have been one', async () => {

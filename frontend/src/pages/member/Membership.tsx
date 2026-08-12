@@ -38,9 +38,6 @@ import './Member.css'
  * is read anyway. */
 const RECIPIENT = RECIPIENT_NAME
 
-/** Eight euros per member brought in, credited when their fee is activated. */
-const REFERRAL_EUR = 8
-
 export function Membership() {
   const { locale, t } = useI18n()
   const { memberNumber } = useSession()
@@ -297,17 +294,16 @@ export function Membership() {
               )}
             </section>
 
-            <section className="member__panel" aria-labelledby="membership-referral">
-              <h2 className="profile__section" id="membership-referral">
-                {t('membership.referral')}
-              </h2>
-              <p className="member__note">{t('membership.referralNote', { eur: REFERRAL_EUR })}</p>
-              <p className="pay__payload">{`https://balkanskatrkackaliga.net/${locale}/registracija?preporuka=${me.memberNumber}`}</p>
-              <p className="membership__balance">
-                <strong>0 EUR</strong> <span>{t('membership.balance')}</span>
-              </p>
-              <p className="member__note">{t('membership.balanceNote')}</p>
-            </section>
+            {/* The referral programme and the virtual balance stood here until
+                12.08.2026, offering eight euros of credit for every member
+                brought in. They come out with the clauses that governed them:
+                the owner's decision of 11.08.2026 puts both under „ne postoji do
+                daljnjeg" (PDL P16), and what that means is written in the same
+                place: nothing of it is built and nothing of it is promised on
+                screen, and what was already built leaves the portal. Removed
+                from the rulebook, the terms and the privacy policy on the same
+                day, this screen was the half that stayed behind and went on
+                promising money nothing stood behind. */}
           </div>
         )
       }}

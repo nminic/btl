@@ -167,6 +167,11 @@ const bothWays: FormDef = {
       labelKey: 'proba.pol',
       options: [{ value: 'M', labelKey: 'proba.muski' }],
     },
+    /* The two controls the renderer does not build itself. Both take the word
+       through a prop of their own, so both can lose it without any of the
+       fields above noticing. */
+    { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+    { name: 'mesto', type: 'place', labelKey: 'proba.mesto', required: true },
   ],
 }
 
@@ -192,9 +197,11 @@ describe('the star of an obligatory field', () => {
   })
 
   it('is drawn for the eye alone, and never read out', () => {
-    /* A reader already says „obavezno" from `required` on the control itself,
-       so read out as well the star is the same thing said twice, and said as a
-       loose „zvezdica" standing between a name and a box. */
+    /* A reader says „obavezno" from `aria-required` on the control, so read out
+       as well the star is the same thing said twice, and said as a loose
+       „zvezdica" standing between a name and a box. The test below holds the
+       other half: hidden here and said nowhere else, the whole thing would be
+       silent. */
     renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
 
     expect(starOn('proba.ime')).toHaveAttribute('aria-hidden', 'true')
@@ -208,6 +215,41 @@ describe('the star of an obligatory field', () => {
     expect(starOn('proba.dopisano')).toBeNull()
     expect(starOn('proba.beleska')).toBeNull()
     expect(starOn('proba.pol')).toBeNull()
+  })
+
+  it('is said to a screen reader by the control, since the star is not', () => {
+    /* The other half of the decision above, and the half that was missing: the
+       star is hidden and nothing else said a word, so a reader met a legend
+       about a mark it could not find and fourteen fields that never said they
+       had to be answered.
+
+       Held on all four kinds of control, because they carry it four different
+       ways: the plain ones through the shared props, the group of buttons on
+       the group itself (a radio is not obligatory, the choice between them is),
+       and the date and the town each through a prop of their own. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText('proba.ime')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('proba.saglasnost')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByRole('radiogroup', { name: 'proba.izbor' })).toHaveAttribute(
+      'aria-required',
+      'true',
+    )
+    expect(screen.getByLabelText('proba.datum')).toHaveAttribute('aria-required', 'true')
+    /* The town and the country beside it: half an answer is not an answer. */
+    expect(screen.getByLabelText('proba.mesto')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('Država')).toHaveAttribute('aria-required', 'true')
+  })
+
+  it('is said by no control that may be left empty', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText(/proba.dopisano/)).not.toHaveAttribute('aria-required')
+    /* Matched on the opening of the name and not the whole of it: a group that
+       may be left empty carries „(neobavezno)" after its name. */
+    expect(screen.getByRole('radiogroup', { name: /^proba\.pol/ })).not.toHaveAttribute(
+      'aria-required',
+    )
   })
 
   it('is not part of the name the field is found by', () => {

@@ -101,10 +101,17 @@
    is exactly as tall as a day without it and the grid does not change shape for
    whoever is signed in.
  *
-   Quiet until it is wanted: barely there while the eye is on the races, and
-   plain once the pointer is on the day. It is a target for a finger as well, so
-   it holds 24 by 24 even though the sign inside it is smaller (WCAG 2.2
-   SC 2.5.8). */
+   Quiet, and quiet by colour rather than by fading: it stands in `--text-muted`
+   while the eye is on the races and gains a ground and the plain text colour
+   once the pointer is on the day. It was `opacity: 0.35` until the pointer came,
+   which put it at 1,8 to 1 against the day behind it, under the 3 to 1 that
+   WCAG 2.2 SC 1.4.11 asks of a control and far under the 4,5 this portal holds
+   itself to. On a telephone there is no pointer to lift it, so that is where it
+   would have stayed. Muted and whole it is 7,7 to 1 in the light theme and 7,9
+   in the dark.
+
+   It is a target for a finger as well, so it holds 24 by 24 even though the sign
+   inside it is smaller (WCAG 2.2 SC 2.5.8). */
 .day__add {
   position: absolute;
   inset-block-start: var(--space-4);
@@ -119,16 +126,13 @@
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
-  opacity: 0.35;
   transition:
-    opacity var(--fast),
     background var(--fast),
     color var(--fast);
 }
 
 .day:hover .day__add,
 .day__add:focus-visible {
-  opacity: 1;
   background: var(--surface-hover);
   color: var(--text);
 }

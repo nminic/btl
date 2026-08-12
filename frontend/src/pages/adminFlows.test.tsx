@@ -243,6 +243,16 @@ describe('events', () => {
     expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
   })
 
+  it('opens the form empty when the address carries a day that does not exist', async () => {
+    /* „2027-13-45" has the shape of a date and is not one, and the shape was all
+       that was asked: the form opened holding „45/13/2027", a day the calendar
+       cannot show and the form refuses only once it is sent. Reachable by hand
+       typed address alone, which is exactly why nothing was watching it. */
+    renderAt('/sr/administracija/dogadjaji?nov=2027-13-45', 'superadmin')
+
+    expect(await screen.findByLabelText(/^Datum$/)).toHaveValue('')
+  })
+
   it('opens on what is still ahead, and searches the whole calendar', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')

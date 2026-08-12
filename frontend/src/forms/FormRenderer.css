@@ -109,7 +109,7 @@
    What it means is written once over the form (`.form__legend`) rather than
    spelled out beside every field, which is the whole reason for a mark instead
    of a word. Kept out of what is read aloud (`aria-hidden` in FormRenderer.tsx)
-   because a reader says „obavezno" from `required` on the control itself, and
+   because `aria-required` on the control says the same thing to a reader, and
    twice is worse than once.
 
    Outside the label and beside it, never inside: inside, it joins the words the
@@ -365,6 +365,11 @@
   grid-template-columns: auto auto auto 1fr;
   align-items: center;
   gap: var(--space-4);
+  /* And what the open rule of this field is measured from (FieldHint.css). The
+     head is as wide as the field and cannot leave the page, so neither can the
+     rule; measured from the letter instead, it opened off both edges of a
+     telephone. */
+  position: relative;
 }
 
 /* The words of a confirmation, the star, and the letter that explains them.

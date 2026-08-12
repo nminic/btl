@@ -35,6 +35,7 @@ export function DatePicker({
   name,
   value,
   invalid,
+  required,
   describedBy,
   onChange,
   openAt = false,
@@ -43,6 +44,9 @@ export function DatePicker({
   name: string
   value: string
   invalid: boolean
+  /** Whether the form asks for this one. Read out on the box, since the star
+      beside the name is drawn for the eye alone (FormRenderer.tsx). */
+  required?: boolean
   describedBy: string | undefined
   onChange: (value: string) => void
   /** Whether the cursor starts in the box. The one caller that asks is a copied
@@ -99,6 +103,7 @@ export function DatePicker({
         inputMode="numeric"
         autoComplete="off"
         placeholder="dd/mm/gggg"
+        aria-required={required}
         aria-invalid={invalid}
         aria-describedby={describedBy}
         autoFocus={openAt}

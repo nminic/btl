@@ -39,6 +39,7 @@ export function PlaceField({
   name,
   value,
   invalid,
+  required,
   describedBy,
   country,
   countryInvalid = false,
@@ -53,6 +54,10 @@ export function PlaceField({
   /** The country beside it, which this field writes as well as reads. */
   country: string
   invalid: boolean
+  /** Whether the form asks for this one. Both halves carry it: a town without
+      its country is half an answer, and the two are two controls
+      (FormRenderer.tsx). */
+  required?: boolean
   /** Whether it is the country that is unanswered, rather than the town. */
   countryInvalid?: boolean
   /** What describes the town when the error belongs to the country: everything
@@ -254,6 +259,7 @@ export function PlaceField({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={highlighted === undefined ? undefined : `${listId}-${at}`}
+        aria-required={required}
         aria-invalid={invalid}
         /* Its own rule always, and the error only where the error is about it.
          *
@@ -346,6 +352,7 @@ export function PlaceField({
              still the answer, and an answer that disappears reads as a question
              nobody asked. */
           aria-disabled={known !== undefined}
+          aria-required={required}
           aria-invalid={countryInvalid}
           /* What is wrong with it, or why it is held, and never the rule that
              belongs to the town beside it: given the whole of that, the country
