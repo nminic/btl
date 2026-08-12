@@ -73,6 +73,25 @@ describe('signing in', () => {
     expect(screen.getAllByRole('link', { name: 'Moji rezultati' }).length).toBeGreaterThan(0)
   })
 
+  it('says the one field it has is obligatory, as every field on the portal does', async () => {
+    /* Owner, 12.08.2026: the rule holds „na svim formama za unos i
+       verifikaciju", and this is the smallest form the portal has. It carried
+       the browser's own `required` and nothing else, so it said nothing to a
+       reader and drew no star (forms/AskedLabel.tsx). */
+    renderAt('/sr/prijava')
+
+    const who = await screen.findByLabelText('Ko si?')
+
+    expect(who).toHaveAttribute('aria-required', 'true')
+    expect(who).not.toHaveAttribute('required')
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(
+      must(who.closest('.rankings__field'), 'the field it stands in').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+  })
+
   it('says the prototype takes your word for it', async () => {
     renderAt('/sr/prijava')
 

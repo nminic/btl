@@ -232,6 +232,24 @@ describe('writing to somebody else who is going', () => {
     }
 
     await write(first)
+    /* Obligatory, and it says so the way every field on the portal does since
+       12.08.2026: a star, `aria-required`, and one line saying what the star
+       means. Before that the box carried the browser's own `required`, and an
+       empty send was refused by Chrome in English, on a Serbian page. */
+    const box = screen.getByRole('textbox', {
+      name: `Piši članu ${first.firstName} ${first.lastName}`,
+    })
+
+    expect(box).toHaveAttribute('aria-required', 'true')
+    expect(box).not.toHaveAttribute('required')
+    /* And the form answers for its own rules rather than leaving them to the
+       browser, which is the other half of the same decision: whatever the
+       browser refuses, it refuses in its own language. */
+    expect(must(box.closest('form'), 'the form it stands in')).toHaveAttribute('novalidate')
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(must(box.closest('.field'), 'the field it stands in').querySelector('.field__required'))
+      .not.toBeNull()
+
     await user.type(
       screen.getByRole('textbox', { name: `Piši članu ${first.firstName} ${first.lastName}` }),
       'Prvo pismo.',

@@ -4,6 +4,7 @@ import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { combinePair, useAttendance, useCompetitors } from '../../data/useResource'
 import type { BtlEvent, Competitor } from '../../data/types'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
@@ -295,6 +296,11 @@ function WriteTo({
   return (
     <form
       className="going__write-form"
+      /* The portal answers for its own rules, in its own words: left to the
+         browser, an empty box here was refused by Chrome's own bubble saying
+         „Please fill out this field", in English, on a Serbian page
+         (forms/FormRenderer.tsx says the same of every form it draws). */
+      noValidate
       onSubmit={(pressed) => {
         pressed.preventDefault()
         notify({
@@ -313,14 +319,20 @@ function WriteTo({
         setSent(true)
       }}
     >
-      <label className="field">
-        <span className="field__label">
+      {/* Obligatory, and it says so the way every field on the portal says it
+          since 12.08.2026: a star for the eye, `aria-required` for a reader, and
+          one line saying what the star means (forms/AskedLabel.tsx). */}
+      <RequiredNote />
+
+      <div className="field">
+        <AskedLabel id="going-write">
           {t('event.writeTo', { name: `${them.firstName} ${them.lastName}` })}
-        </span>
+        </AskedLabel>
         <textarea
+          id="going-write"
           className="field__control"
           ref={box}
-          required
+          aria-required="true"
           /* From the definition and not typed here, which is the rule every
              other long box on the portal keeps (forms/definitions.test.ts): a
              number written twice is a number that stops agreeing with itself. */
@@ -328,7 +340,7 @@ function WriteTo({
           value={words}
           onChange={(typed) => setWords(typed.target.value)}
         />
-      </label>
+      </div>
 
       <p className="member__actions">
         <button type="submit" className="button button--primary">

@@ -530,6 +530,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                          through or the line under the button would say a number
                          the queue disagrees with. */
                       setSwept(approveAll(waiting, teams))
+
                       /* And whatever card had its reason open goes with them:
                          the sweep may settle the very card that box belongs to,
                          and a box open over a card that is no longer there is a

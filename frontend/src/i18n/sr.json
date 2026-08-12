@@ -369,7 +369,7 @@
     "email": "Adresa elektronske pošte",
     "emailHint": "Na nju stiže potvrda naloga. Bez potvrde nalog se ne aktivira.",
     "birthDate": "Datum rođenja",
-    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj, u polju koje se tada otvara pri dnu forme.",
+    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj, u poljima koja se tada otvaraju pri dnu forme.",
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
+import { RequiredNote } from '../../forms/AskedLabel'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
 import {
   combineFour,
@@ -159,6 +160,10 @@ function RateOne() {
                   a form of radios submits on Enter from anywhere inside it, so a
                   member pressing Enter after the third star would send a comment
                   they had not written yet. */}
+              {/* One line for the three ratings below, which are the obligatory
+                  part of this screen (forms/AskedLabel.tsx). */}
+              <RequiredNote />
+
               <div className="rate">
                 {RATING_MARKS.map((mark) => (
                   <Stars
@@ -176,7 +181,12 @@ function RateOne() {
                       comment box was called "Komentar Neobavezno. Šta bi drugi
                       član voleo da zna...", which is what a screen reader would
                       have read out before every keystroke. */}
-                  <label htmlFor="comment">{t('event.commentText')}</label>
+                  {/* And the comment beside them may be left empty, marked the
+                      way every optional field on the portal is marked. */}
+                  <label htmlFor="comment">
+                    {t('event.commentText')}
+                    <span className="field__optional"> ({t('form.optional')})</span>
+                  </label>
                   {/* The same box the form next door draws for the same field
                       of the same definition (records.ts, `limitOf`): the limit
                       is refused at the door, and the writer is told how much

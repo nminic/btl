@@ -111,7 +111,24 @@ describe('rating an event', () => {
     }
     expect(screen.queryByRole('group', { name: 'Ukupna ocena' })).not.toBeInTheDocument()
 
-    expect(screen.getByLabelText('Komentar')).toBeInTheDocument()
+    /* „Komentar (neobavezno)", as every optional field on the portal is named
+       since 12.08.2026: the three ratings beside it are obligatory and say so
+       with a star, and a field with neither mark says nothing about itself. */
+    expect(screen.getByLabelText(/^Komentar \(neobavezno\)$/)).toBeInTheDocument()
+
+    /* And the three that are asked for say it on the group, since it is the
+       rating that is asked for and not any one star of it. */
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+      const group = screen.getByRole('group', { name: new RegExp(`^${mark}`) })
+
+      expect(group, `${mark} does not say it is obligatory`).toHaveAttribute(
+        'aria-required',
+        'true',
+      )
+      expect(group.querySelector('.field__required')).not.toBeNull()
+    }
+
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
   })
 
   it('offers five stars to each mark, as radios rather than as five buttons', async () => {
@@ -174,7 +191,7 @@ describe('rating an event', () => {
 
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    const box = await screen.findByLabelText('Komentar')
+    const box = await screen.findByLabelText(/^Komentar/)
     const limit = limitOf(prijava as FormDef, 'comment')
 
     /* Read on the way into the field rather than left to whoever can see it: the
@@ -209,7 +226,7 @@ describe('rating an event', () => {
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    const box = await screen.findByLabelText('Komentar')
+    const box = await screen.findByLabelText(/^Komentar/)
 
     await user.type(box, 'Staza je bila jasno obeležena.')
     expect(box).toHaveValue('Staza je bila jasno obeležena.')
@@ -282,13 +299,13 @@ describe('rating an event', () => {
     const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
     await screen.findByRole('group', { name: 'Organizacija' })
-    await user.type(screen.getByLabelText('Komentar'), 'Reci o prvoj trci.')
+    await user.type(screen.getByLabelText(/^Komentar/), 'Reci o prvoj trci.')
     await rateAll(user, 4)
 
     await router.navigate(`/sr/kalendar/${OTHER}/ocena`)
     await screen.findByRole('heading', { level: 1, name: OTHER_NAME })
 
-    expect(screen.getByLabelText('Komentar')).toHaveValue('')
+    expect(screen.getByLabelText(/^Komentar/)).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Pošalji' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -829,7 +846,7 @@ describe('a comment a moderator lets out', () => {
     const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
 
     await screen.findByRole('group', { name: 'Organizacija' })
-    await user.type(screen.getByLabelText('Komentar'), 'Prva trka u sezoni i dobro postavljena.')
+    await user.type(screen.getByLabelText(/^Komentar/), 'Prva trka u sezoni i dobro postavljena.')
     await rateAll(user, 4)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')

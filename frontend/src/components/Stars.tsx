@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { formatNumber } from '../i18n/format'
+import { RequiredMark } from '../forms/AskedLabel'
 import { useI18n } from '../i18n/useI18n'
 import './Stars.css'
 
@@ -128,8 +129,17 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
   }
 
   return (
-    <fieldset className="stars stars--asking">
-      <legend>{label}</legend>
+    <fieldset className="stars stars--asking" aria-required="true">
+      {/* All three ratings have to be given before a comment can be sent
+          (event.commentNeedsMarks), so all three say so the way every field on
+          the portal says it since 12.08.2026: a star for the eye and
+          `aria-required` for a reader (forms/AskedLabel.tsx). On the group and
+          not on each of the five, because it is the rating that is asked for and
+          not any one star of it. */}
+      <legend>
+        {label}
+        <RequiredMark />
+      </legend>
       {marks.map((mark) => (
         /* The label is what is clicked and the radio inside it is what carries
            the state, so the star is as big as a finger without anything being

@@ -41,8 +41,8 @@ export function AdminEvents() {
      not a shape test, because „2027-13-45" has the shape of a date and is not
      one: `isoDate` gives back only what a calendar really holds, so a day that
      survives the journey there and back is a day that exists. */
-  const [fromCalendar] = useFilterParams()
-  const askedDate = fromCalendar.get('nov')
+  const [params, setParams] = useFilterParams()
+  const askedDate = params.get('nov')
   const askedDay = askedDate === null ? '' : fieldDate(askedDate)
   const [chosen, setChosen] = useState<Editing | null>(
     askedDate === null ? null : { mode: 'new', start: { date: isoDate(askedDay) === askedDate ? askedDay : '' } },
@@ -102,7 +102,6 @@ export function AdminEvents() {
    * carries it because a screen cannot be told anything else: the editor is
    * state inside this component, and a link is what the other page has.
    */
-  const [params, setParams] = useFilterParams()
   const asked = params.get('zapis')
 
   return (

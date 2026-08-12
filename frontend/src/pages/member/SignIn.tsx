@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Resource } from '../../components/Resource'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useCompetitors } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useRole } from '../../roles/useRole'
@@ -38,9 +39,19 @@ export function SignIn() {
               navigate(`/${locale}/moj-profil`)
             }}
           >
-            <label className="rankings__field">
-              <span>{t('signIn.whoAreYou')}</span>
-              <select value={chosen} onChange={(e) => setChosen(e.target.value)} required>
+            {/* The rule every field on the portal keeps since 12.08.2026, this
+                one included: a star, `aria-required`, and one line saying what
+                the star means (forms/AskedLabel.tsx). */}
+            <RequiredNote />
+
+            <div className="rankings__field">
+              <AskedLabel id="sign-in-who">{t('signIn.whoAreYou')}</AskedLabel>
+              <select
+                id="sign-in-who"
+                value={chosen}
+                onChange={(e) => setChosen(e.target.value)}
+                aria-required="true"
+              >
                 <option value="">{t('form.choose')}</option>
                 {competitors.map((one) => (
                   <option key={one.memberNumber} value={one.memberNumber}>
@@ -48,7 +59,7 @@ export function SignIn() {
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
 
             <button type="submit" className="button button--primary" disabled={chosen === ''}>
               {t('signIn.submit')}

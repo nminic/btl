@@ -133,9 +133,10 @@ describe('Registration once it is open', () => {
   it('asks the parent which of the three they are', async () => {
     /* Owner, 31.07.2026 and again 11.08.2026: the signature is kept with the
        relationship („padajući izbor: majka, otac, staratelj"), the date and time
-       and the address it came from. The three legal texts say so in as many
-       words; the form asked for the name and never for the relationship, so the
-       portal promised a choice it never offered. */
+       and the address it came from. The terms and the rulebook say the
+       relationship is chosen and the privacy policy says what is kept with the
+       signature; the form asked for the name and never for the relationship, so
+       the portal promised a choice it never offered. */
     const user = setupUser()
     renderForm()
 
