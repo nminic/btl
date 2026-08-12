@@ -2044,7 +2044,7 @@ describe('the six queues read from the file', () => {
       screen.getByText('Polja sa zvezdicom su obavezna.').closest('.pending__legend'),
     ).not.toBeNull()
 
-    for (const name of ['Naziv tima', 'Mesto', 'Država']) {
+    for (const name of ['Naziv tima', 'Mesto', /^Država/]) {
       const field = screen.getAllByLabelText(name)[0]
 
       expect(field, `${name} is not on the screen`).toBeDefined()

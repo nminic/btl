@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { AskedLabel } from './AskedLabel'
 import { CountryOptions } from './CountryOptions'
 import { countryName } from '../data/countryName'
 import {
@@ -334,8 +335,15 @@ export function PlaceField({
           Filled by whoever picks a town out of the codebook and chosen by hand
           for a town it does not have, which is how a race in a hamlet stops
           being filed wherever the last chosen town was. */}
-      <label className="place__country-pick">
-        <span>{t('form.country')}</span>
+      {/* Its own name, and the same mark every other name on the portal carries:
+          the country is a second control with its own error and its own line in
+          the summary, so „Država" standing bare under a legend that says fields
+          with a star are obligatory said neither of the two things (owner,
+          12.08.2026; forms/AskedLabel.tsx). Outside the label, as everywhere. */}
+      <span className="place__country-pick">
+        <AskedLabel id={`${id}-country`} asked={required === true}>
+          {t('form.country')}
+        </AskedLabel>
         <select
           /* An id of its own, because it is a control of its own: the summary of
              errors leads here when the country is what is unanswered. */
@@ -379,8 +387,7 @@ export function PlaceField({
         >
           <CountryOptions holding={country} />
         </select>
-
-      </label>
+      </span>
 
       {/* Why it cannot be answered, where it cannot be answered. Outside the
           label and not inside it: everything inside a label is the name of the

@@ -414,7 +414,7 @@ describe('what a moderator may do before accepting a proposal', () => {
 
     expect(mine.getByLabelText('Naziv tima')).toHaveValue('Timočka trkačka družina')
     expect(mine.getByLabelText('Mesto')).toHaveValue('Zaječar')
-    expect(mine.getByLabelText('Država')).toHaveValue('RS')
+    expect(mine.getByLabelText(/^Država/)).toHaveValue('RS')
   })
 
   it('makes the team out of what was corrected, not out of what arrived', async () => {
@@ -491,7 +491,7 @@ describe('what a moderator may do before accepting a proposal', () => {
     const user = setupUser()
     const { router } = await open()
 
-    await user.selectOptions(within(card(/Timočka/)).getByLabelText('Država'), 'BA')
+    await user.selectOptions(within(card(/Timočka/)).getByLabelText(/^Država/), 'BA')
     await user.click(within(card(/Timočka/)).getByRole('button', { name: 'Odobri' }))
 
     /* Read on the team's own form, because the list of teams has no column for

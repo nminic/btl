@@ -150,11 +150,16 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
        anything that looks by the words; laid outside the legend entirely, it
        fell to the head of the row of stars, because a legend is not a flex item
        and the star is. */
-    <fieldset className="stars stars--asking">
-      <legend>
+    <div className="stars stars--asking">
+      {/* A box and not a `<fieldset>`, and its name is written as words rather
+          than as a `<legend>`. The fieldset named itself by its legend and the
+          row inside it named itself by the same words, so a reader entering the
+          rating heard „Organizacija" twice, once for each box. One box carries
+          the name now, and it is the one that owns the five buttons. */}
+      <p className="stars__name">
         <span id={nameId}>{label}</span>
         <RequiredMark />
-      </legend>
+      </p>
 
       <div className="stars__row" role="radiogroup" aria-labelledby={nameId} aria-required="true">
         {marks.map((mark) => (
@@ -181,7 +186,7 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
           </label>
         ))}
       </div>
-    </fieldset>
+    </div>
   )
 }
 

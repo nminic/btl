@@ -252,7 +252,7 @@ describe('the star of an obligatory field', () => {
     expect(screen.getByLabelText('proba.datum')).toHaveAttribute('aria-required', 'true')
     /* The town and the country beside it: half an answer is not an answer. */
     expect(screen.getByLabelText('proba.mesto')).toHaveAttribute('aria-required', 'true')
-    expect(screen.getByLabelText('Država')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText(/^Država/)).toHaveAttribute('aria-required', 'true')
   })
 
   it('is said by no control that may be left empty', () => {
@@ -264,6 +264,31 @@ describe('the star of an obligatory field', () => {
     expect(screen.getByRole('radiogroup', { name: /^proba\.pol/ })).not.toHaveAttribute(
       'aria-required',
     )
+  })
+
+  it('marks the country beside a town, which is a field of its own', () => {
+    /* The town carries its country in a second control with its own id, its own
+       error and its own line in the summary, so it is a field and says what
+       every field says. It said neither of the two things: a bare „Država"
+       under a legend promising that starred fields are obligatory, while an
+       empty country really did stop the form.
+
+       Its own state, too: obligatory where the town is, and free where the town
+       is (forms/PlaceField.tsx). */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    const asked = screen.getByLabelText(/^Država/)
+
+    expect(asked).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(asked.closest('.place__country-pick'), 'the country field').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+
+    /* And the star is outside the words, as everywhere: „Država" is the name. */
+    expect(must(asked.closest('.place__country-pick'), 'the country field')
+      .querySelector('label')?.textContent).toBe('Država')
   })
 
   it('is not part of the name the field is found by', () => {

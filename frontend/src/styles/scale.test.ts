@@ -297,16 +297,35 @@ describe('the columns of the results table on a profile', () => {
     const wide = css.slice(0, css.indexOf('@media (max-width: 699.98px)'))
     const onPhone = css.slice(css.indexOf('@media (max-width: 699.98px)'))
 
+    /* Rule by rule, and every column named in each rule.
+     *
+       Written as one pattern from the selector to the width, it swallowed the
+       fourth and the fifth: those two share a rule, and a global match starting
+       at the fourth ran past the fifth to the width they share. The pinned sum
+       came out four rem short and the floor had four rem of slack it did not
+       know about, so the guard could not fail on the one drift it exists for.
+       Doubling that shared rule to 8rem left the event nothing at all and the
+       test stayed green. */
     const pinnedIn = (part: string) =>
-      [...part.matchAll(/\.profile__results \.table td:nth-child\((\d)\)[^{]*\{[^}]*inline-size:\s*([\d.]+)rem;/g)]
+      part.split('}').flatMap((rule) => {
+        const width = /inline-size:\s*([\d.]+)rem;/.exec(rule)
+        const columns = [...rule.matchAll(/\.table td:nth-child\((\d)\)/g)]
+
+        return width === null
+          ? []
+          : columns.map((column): [string, number] => [column[1] ?? '', Number(width[1])])
+      })
 
     /* The wide layout pins six columns; a telephone hides three of them and pins
        the length again, narrower. */
-    const wideColumns = new Map(
-      pinnedIn(wide).map((one): [string, number] => [one[1] ?? '', Number(one[2])]),
-    )
-    const phoneColumns = new Map([...wideColumns, ...pinnedIn(onPhone).map((one): [string, number] => [one[1] ?? '', Number(one[2])])])
+    const wideColumns = new Map(pinnedIn(wide))
+    const phoneColumns = new Map([...wideColumns, ...pinnedIn(onPhone)])
     const hidden = ['4', '5', '6']
+
+    /* Which six, by name. A column that drops out of the reading falls out of
+       the sum as well, and a sum that is quietly short is a floor that passes
+       whatever happens above it. */
+    expect([...wideColumns.keys()].sort()).toEqual(['1', '3', '4', '5', '6', '7'])
 
     const floorIn = (part: string) => {
       const written = /\.profile__results \.table \{[^}]*min-inline-size:\s*([\d.]+)rem;/.exec(part)
@@ -321,12 +340,18 @@ describe('the columns of the results table on a profile', () => {
       .filter(([column]) => !hidden.includes(column))
       .reduce((all, [, one]) => all + one, 0)
 
-    /* Eight rem for the event where the table is wide, five where a telephone
-       has already given it what the three hidden columns left. Five is what it
-       has at the ordinary text size on a screen of 375, so nothing changes
-       there and everything above it scrolls instead of shrinking. */
+    /* Eight rem for the event where the table is wide, and 4,25 on a telephone,
+       which is what is left over there once the three columns it keeps have
+       taken theirs.
+     *
+       The telephone floor is bounded on both sides, and the upper bound is the
+       one that was missing: 20,5rem is the content column of a screen of 360,
+       the narrowest this portal answers for (CLAUDE.md), so a floor above it
+       makes the table scroll sideways at the ordinary text size on a plain
+       Android phone, which PDL P24 forbids. */
     expect(floorIn(wide) - wideSum).toBeGreaterThanOrEqual(8)
-    expect(floorIn(onPhone) - phoneSum).toBeGreaterThanOrEqual(5)
+    expect(floorIn(onPhone) - phoneSum).toBeGreaterThanOrEqual(4.25)
+    expect(floorIn(onPhone)).toBeLessThanOrEqual(20.5)
   })
 
   it('is never narrower than the widest thing the league can put in it', () => {

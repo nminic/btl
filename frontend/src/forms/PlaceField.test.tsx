@@ -83,7 +83,7 @@ function renderField(opensOn?: { town: string; country: string }) {
   return {
     onCountry,
     box: screen.getByRole('combobox', { name: '' }),
-    country: screen.getByRole('combobox', { name: 'Država' }),
+    country: screen.getByRole('combobox', { name: /^Država/ }),
   }
 }
 
@@ -316,12 +316,12 @@ describe('the town on a form', () => {
     const user = setupUser()
     const { box } = renderField()
 
-    expect(screen.getByRole('combobox', { name: 'Država' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /^Država/ })).toBeInTheDocument()
 
     await user.type(box, 'ber')
     await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveAttribute('aria-disabled', 'true')
     expect(country).toHaveAccessibleDescription('Mesto je iz šifarnika, pa državu nosi sa sobom.')
@@ -340,7 +340,7 @@ describe('the town on a form', () => {
     const list = await screen.findByRole('listbox')
     await user.click(within(list).getByText(/Bern/))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveValue('CH')
     expect(country).toHaveAttribute('aria-disabled', 'true')
@@ -357,7 +357,7 @@ describe('the town on a form', () => {
     await user.type(box, 'ber')
     await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     onCountry.mockClear()
     await user.selectOptions(country, 'US')
@@ -378,7 +378,7 @@ describe('the town on a form', () => {
     await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
     await user.type(box, 'ovce')
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).not.toHaveAttribute('aria-disabled', 'true')
 
@@ -402,7 +402,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'Bern')
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     await waitFor(() => {
       expect(country).toHaveValue('CH')
@@ -422,7 +422,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'Berne')
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     await waitFor(() => {
       expect(country).toHaveValue('CH')
@@ -439,7 +439,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'London')
 
-    expect(screen.getByRole('combobox', { name: 'Država' })).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('combobox', { name: /^Država/ })).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('holds the country of the London that was pressed', async () => {
@@ -455,7 +455,7 @@ describe('the town on a form', () => {
 
     await user.click(at(rows, 1))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveValue('US')
     expect(country).toHaveAttribute('aria-disabled', 'true')
@@ -469,7 +469,7 @@ describe('the town on a form', () => {
        could not be sent and nothing on it could be changed to help. */
     const { onCountry } = renderField({ town: 'Bern', country: '' })
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     await waitFor(() => {
       expect(country).toHaveValue('CH')
@@ -483,7 +483,7 @@ describe('the town on a form', () => {
        Beograd is in the codebook as Serbian, and this record says Austria. */
     const { onCountry } = renderField({ town: 'Beograd', country: 'AT' })
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     /* Waited for by something that says the codebook has arrived, and not by the
        value itself: „AT" is what the field opens on, so a test that waits for it
@@ -509,7 +509,7 @@ describe('the town on a form', () => {
     const list = await screen.findByRole('listbox')
     await user.click(within(list).getByText(/Bardejov/))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(onCountry).toHaveBeenLastCalledWith('ZZ')
     expect(country).toHaveValue('ZZ')

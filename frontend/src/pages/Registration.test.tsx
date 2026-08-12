@@ -369,7 +369,7 @@ describe('the country a member lives in', () => {
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
 
     /* And it goes through once the country is answered. */
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Država' }), 'RS')
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Država/ }), 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
@@ -397,7 +397,7 @@ describe('an empty form', () => {
     expect(document.getElementById(said.split(' ').filter((one) => one.endsWith('-error'))[0] ?? ''))
       .toHaveTextContent('Ovo polje je obavezno.')
     /* And the country is not the one being pointed at. */
-    expect(screen.getByRole('combobox', { name: 'Država' })).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getByRole('combobox', { name: /^Država/ })).toHaveAttribute('aria-invalid', 'false')
   })
 
   it('names the confirmation in the summary of errors without the mark in it', async () => {
@@ -430,7 +430,7 @@ describe('an empty form', () => {
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveAttribute('aria-invalid', 'true')
     /* And the town is no longer the one being blamed for it. */
@@ -441,7 +441,7 @@ describe('an empty form', () => {
        said „Mesto" and led to a box that was already filled in, while the one
        marked wrong could not be reached from the list at all. */
     const summary = within(screen.getByRole('alert'))
-    const toFix = summary.getByRole('link', { name: 'Država' })
+    const toFix = summary.getByRole('link', { name: /^Država/ })
     const at = must(toFix.getAttribute('href'), 'the address the summary points at')
 
     expect(document.getElementById(at.replace('#', ''))).toBe(country)

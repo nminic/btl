@@ -132,14 +132,22 @@ describe('rating an event', () => {
       expect(within(group).getAllByRole('radio')).toHaveLength(5)
       expect(group.querySelector('legend')).toBeNull()
 
-      /* The star is beside the name of the rating and not among the stars, and
-         the words the group is named by do not hold it: named by the whole
-         legend, „Organizacija" reads as „Organizacija*" for anything that looks
-         by text (forms/AskedLabel.tsx); laid outside the legend entirely, it
-         fell in among the five. */
-      const field = must(group.closest('fieldset'), `the rating of ${mark}`)
-      const named = must(field.querySelector('legend'), `the name of ${mark}`)
+      /* One box carries the name, and it is this one: a fieldset around it named
+         itself by its legend and the row named itself by the same words, so the
+         name was announced twice on entering the rating.
 
+         The star is beside the name and not among the stars, and the words the
+         group is named by do not hold it: holding it, „Organizacija" reads as
+         „Organizacija*" for anything that looks by text (forms/AskedLabel.tsx);
+         laid outside the name entirely, it fell in among the five stars. */
+      const field = must(group.closest('.stars--asking'), `the rating of ${mark}`)
+      const named = must(field.querySelector('.stars__name'), `the name of ${mark}`)
+
+      /* One box with that name and no second one around it. A fieldset named by
+         its legend wrapped the row named by the same words, so a reader entering
+         the rating heard „Organizacija" twice. Asked by role, since that is what
+         a reader goes by: the outer box was a `group`, and there is none now. */
+      expect(screen.queryByRole('group', { name: mark })).toBeNull()
       expect(named.querySelector('.field__required')).not.toBeNull()
       expect(must(named.firstElementChild, `the words of ${mark}`).textContent).toBe(mark)
     }

@@ -444,7 +444,10 @@
 }
 
 /* On a telephone the name of an event is cut rather than allowed to push the
-   table wider than the screen (PDL P24: a table there has no horizontal scroll).
+   table wider than the screen at the ordinary text size (PDL P24: a table there
+   has no horizontal scroll). Enlarged text is the one case where the table does
+   scroll instead, and only because the alternative is worse: see the floor
+   below, and PDL P24, corrected 12.08.2026.
    Nothing is lost to a screen reader, which reads the whole of the link, and the
    date beside it is the other half of what identifies a race. */
 @media (max-width: 699.98px) {
@@ -465,12 +468,22 @@
   }
 
   /* And its own floor, over the three columns a telephone keeps: 6,75 + 5,25 +
-     4,25 = 16,25, and five for the event, which is what the event has at the
-     ordinary text size on a screen of 375. Below that size nothing changes;
-     above it the table scrolls inside its box instead of squeezing the name to
-     nothing. */
+     4,25 = 16,25, and 4,25 for the event.
+   *
+     Twenty and a half and not twenty one and a quarter. The narrowest screen
+     this portal answers for is 360 (CLAUDE.md), where the content column is
+     328 pixels, that is 20,5rem: a floor above it made the table scroll
+     sideways on a plain Android phone at the ordinary text size, which PDL P24
+     forbids and which the comment above claimed did not happen. At 375 it made
+     no difference, which is why it was not seen.
+
+     At the ordinary size the floor therefore never binds and nothing scrolls.
+     It binds only when the reader enlarges the text, and then the table scrolls
+     inside its own box rather than squeezing the event's name to nothing, which
+     is loss of content under WCAG 2.2 SC 1.4.4. That is the trade, and it is
+     written into PDL P24. */
   .profile__results .table {
-    min-inline-size: 21.25rem;
+    min-inline-size: 20.5rem;
   }
 
   .profile__results .table tbody td:nth-child(2) {
