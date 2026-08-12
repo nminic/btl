@@ -211,10 +211,7 @@
     "contact": "Kontakt",
     "home": "Naslovna strana",
     "join": "Učlani se",
-    "openAccount": "Otvori nalog",
-    "credits": "Spisak mesta:",
-    "creditsSource": "GeoNames",
-    "creditsLicence": "CC BY 4.0"
+    "openAccount": "Otvori nalog"
   },
   "nav": {
     "home": "Naslovna",
@@ -389,6 +386,8 @@
       "other": "Dosta je, granica je {count} znakova."
     },
     "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda pre nego što se pojave na tvom profilu.",
+    "photo": "Profilna slika",
+    "photoHint": "Slika lica, tvoja i skorašnja. Stoji na profilu i po njoj te članovi prepoznaju na trkama. Moderator je pregleda pre objave; ako je vrati, dobijaš tačnu instrukciju šta da promeniš, a profil ti u međuvremenu radi bez slike.",
     "shirtSize": "Veličina majice",
     "shirtSizeHint": "Majica je deo članstva. Veličina se kasnije menja samo dogovorom.",
     "healthStatement": "Potvrđujem da sam upoznat sa {link} i da sam zdravstveno sposoban za rekreativan sport.",
@@ -411,9 +410,9 @@
       "other": "Učlanjenje se otvara {date}, za {count} dana."
     },
     "category": "Kategorija",
-    "categoryFirstSeason": "Prva sezona",
+    "categoryFirstSeason": "Početnička",
     "categoryByAge": "Starosna",
-    "categoryHint": "Prva sezona je kategorija za one koji su nov član lige: u njoj se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan i važi od naredne sezone. Ko je ne izabere, takmiči se u svojoj starosnoj kategoriji. Paralelno u obe se ne može.",
+    "categoryHint": "Početnička kategorija je za one koji su nov član lige, i zove se Početnici odnosno Početnice. U njoj se ostaje dok se ne skupi 12 bodova, a izlazak je nepovratan i važi od naredne sezone. Ko je ne izabere, takmiči se u svojoj starosnoj kategoriji. Paralelno u obe se ne može.",
     "genderHint": "Liga ima muški i ženski poredak i to je jedina podela po polu.",
     "cityHint": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
     "healthStatementLink": "pravilnikom",
@@ -603,6 +602,8 @@
     "commentsForMembers": "Komentare vide prijavljeni članovi."
   },
   "category": {
+    "rookieMale": "Početnici",
+    "rookieFemale": "Početnice",
     "short": "Kraća trka",
     "long": "Duža trka",
     "half": "Polumaraton",
@@ -796,11 +797,10 @@
     "actions": "Moje stvari",
     "signOut": "Odjavi se",
     "notifications": "Obaveštenja",
-    "notificationsNote": "Sedam obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru, krupna izmena na portalu i najava događaja. Ispod je sve ostalo.",
+    "notificationsNote": "Šest obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru i krupna izmena na portalu. Ispod je sve ostalo.",
     "notify": {
       "resultApproved": "Kad mi rezultat bude odobren",
       "resultChanged": "Kad mi neko izmeni rezultat",
-      "upcomingEvent": "Podsetnik pred događaj na koji sam se prijavio",
       "newsletter": "Povremene vesti iz lige"
     }
   },
@@ -810,7 +810,7 @@
     "sentIn": "Poslato na proveru",
     "sendAgain": "Ispravi i pošalji ponovo",
     "sendAgainNamed": "Ispravi i pošalji ponovo: {name}",
-    "noneSent": "Nisi poslao nijedan rezultat na proveru.",
+    "noneSent": "Nijedan rezultat još nije poslat na proveru.",
     "counted": "Uračunato"
   },
   "newResult": {
@@ -882,9 +882,9 @@
     "renewalShut": "Obnova se otvara 1. oktobra i traje do 31. decembra.",
     "chooseCategory": "U kojoj kategoriji se takmičiš {season}.",
     "ageBand": "U svojoj starosnoj kategoriji",
-    "firstSeasonBand": "U kategoriji Prva sezona",
-    "firstSeasonOpen": "Prva sezona ti je još otvorena, jer imaš manje od {points} bodova.",
-    "firstSeasonClosed": "Prva sezona ti je zatvorena, jer si prešao {points} bodova. Izlazak iz te kategorije je nepovratan.",
+    "firstSeasonBand": "U početničkoj kategoriji",
+    "firstSeasonOpen": "Početnička kategorija ti je još otvorena, jer imaš manje od {points} bodova.",
+    "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer imaš najmanje {points} bodova. Izlazak iz nje je nepovratan.",
     "renew": "Obnovi za {season}.",
     "transferWindow": "Prelazni rok",
     "noTeam": "Trenutno nisi ni u jednom timu.",
@@ -1002,7 +1002,7 @@
       "birthYear": "Godina rođenja",
       "city": "Mesto",
       "firstSeason": "U ligi od sezone",
-      "firstSeason2027": "Prva sezona u 2027.",
+      "firstSeason2027": "Početnička kategorija u 2027.",
       "eventName": "Naziv događaja",
       "date": "Datum",
       "event": "Događaj",
@@ -1031,8 +1031,8 @@
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
       "birthYear": "Nikad se ne prikazuje javno. Iz nje se izvodi kategorija, koja jedina ide na profil.",
-      "firstSeason": "Prva sezona u kojoj je član nastupao.",
-      "firstSeason2027": "Član sezonu 2027. provodi u kategoriji Prva sezona, a ne u svojoj starosnoj.",
+      "firstSeason": "Sezona u kojoj je član prvi put nastupao.",
+      "firstSeason2027": "Član sezonu 2027. provodi u početničkoj kategoriji, a ne u svojoj starosnoj.",
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",

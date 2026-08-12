@@ -11,8 +11,19 @@ export const AGE_BANDS = ['24-', '25-39', '40-54', '55+'] as const
 
 export type AgeBand = (typeof AGE_BANDS)[number]
 
-/** Marks the first season a member spends in the league. */
-export const FIRST_SEASON_BAND = 'PS'
+/**
+ * Marks a member who has not yet left the beginners' category.
+ *
+ * `R` for rookie, which is what the category is called in English: `M R` and
+ * `F R` (owner, 11.08.2026). The letter in front is the one the language uses,
+ * so the code itself reads `M R` and `Ž R` while there is only Serbian; the
+ * English `F` arrives with the English dictionary, the same way `Ž25-39` will. In Serbian the word carries the gender on its own,
+ * so there the two are `Početnici` and `Početnice` with no letter in front of
+ * them, and the code here is what the dictionary looks them up by
+ * (`categoryLabel`). It was `PS`, for „Prva sezona", a name the owner dropped
+ * the same day.
+ */
+export const FIRST_SEASON_BAND = 'R'
 
 /** The threshold at which a first season member leaves that category for good. */
 export const FIRST_SEASON_POINTS = 12
@@ -64,4 +75,26 @@ export function categoryCodeFor(
 /** Whether the first season category is still open to somebody. */
 export function firstSeasonAllowed(points: number): boolean {
   return points < FIRST_SEASON_POINTS
+}
+
+/**
+ * What a category is called on the screen, out of the code the league keeps it
+ * under.
+ *
+ * The age bands are the same word in every language, so they are shown as they
+ * are: `M40-54`. The beginners' category is not, and that is the whole reason
+ * this exists: in Serbian it is `Početnici` and `Početnice`, one word each and
+ * no letter of gender in front, because the word already says it; in English it
+ * is `M R` and `F R`, because `rookie` does not (owner, 11.08.2026).
+ *
+ * The code stays what it was in every other respect: it is what a filter, an
+ * address and a saved choice are written with, and none of those may change
+ * with the language.
+ */
+export function categoryLabel(code: string, t: (key: string) => string): string {
+  if (!code.endsWith(` ${FIRST_SEASON_BAND}`)) {
+    return code
+  }
+
+  return t(code.startsWith('M') ? 'category.rookieMale' : 'category.rookieFemale')
 }

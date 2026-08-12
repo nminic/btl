@@ -107,7 +107,7 @@ describe('the values a form opens with', () => {
 
   it('reads a yes back as the word the buttons answer with', () => {
     /* The other half of the pair above, so both ways round are walked: a record
-       that says yes opens with the „Prva sezona" button taken. */
+       that says yes opens with the „Početnička" button taken. */
     expect(valuesFor(form, { beginner: true }).beginner).toBe('yes')
   })
 

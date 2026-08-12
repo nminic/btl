@@ -234,6 +234,69 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
   })
 
+  it('keeps the real place when the search narrows the table', async () => {
+    /* The number in the first column is the place the standing gave the row,
+       not the row it ended up drawn in. Searching narrows the view and does not
+       re-rank (PDL P12), so somebody who stands seventh is seventh in a table
+       that shows them alone.
+
+       This is the guard the whole „read the place, do not count the rows" rule
+       hangs on. Everywhere else on the portal the two happen to agree, because
+       the boards are drawn whole from the top; here they part, and a table that
+       numbered its own rows would say „1" for a member who is not first. */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2020')
+
+    const wholeTable = within(await screen.findByRole('table'))
+    const rows = wholeTable.getAllByRole('row')
+    /* The last of them, so the place is as far from the row number as this
+       season allows. The head counts as a row, hence the two. */
+    const last = must(rows[rows.length - 1], 'the last row of the standing')
+    const place = must(
+      within(last).getAllByRole('cell')[0]?.textContent,
+      'the place in the last row',
+    )
+    const who = must(within(last).getAllByRole('cell')[1]?.textContent, 'who holds it')
+
+    expect(place).not.toBe('1')
+
+    await user.type(screen.getByLabelText('Pretraga'), must(who, 'a name to search for').trim())
+
+    const narrowed = within(screen.getByRole('table')).getAllByRole('row')
+
+    expect(narrowed).toHaveLength(2)
+    expect(within(must(narrowed[1], 'the only row left')).getAllByRole('cell')[0]).toHaveTextContent(
+      place,
+    )
+  })
+
+  it('names the beginners by their word, on the buttons and in the table alike', async () => {
+    /* The category the league keeps as `M R` is read as „Početnici" wherever a
+       visitor meets it (owner, 11.08.2026: „Tako neka se zovu od sada svuda").
+       The code is what the filter and the address are written with, and it never
+       reaches the screen.
+
+       Both places are held here, because they were not the same for a while: the
+       table was translated and the row of buttons above it was not, so one screen
+       called one category two things. */
+    const user = setupUser()
+    renderAt('/sr/tabela?sezona=2020')
+
+    const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
+
+    expect(categories.getByRole('button', { name: 'Početnici' })).toBeVisible()
+    expect(categories.queryByRole('button', { name: 'M R' })).toBeNull()
+
+    /* And pressing it filters, so the word on the button and the code behind it
+       are the same category and not two. */
+    await user.click(categories.getByRole('button', { name: 'Početnici' }))
+
+    expect(categories.getByRole('button', { name: 'Početnici' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
   it('says which category is being read, and says it in the buttons themselves', async () => {
     /* Chosen by pressing one rather than out of a list that opens (owner,
        11.08.2026). Which one is on is said by `aria-pressed` and not by colour
@@ -419,16 +482,21 @@ describe('TopBoards', () => {
   })
 
   it('says which place every column stands in, since an ol cannot', async () => {
-    /* A list of ten numbers itself 1 to 10, and that is wrong wherever the whole
-       ladder ties: a place nothing separates is shared, so a board reads 1, 1, 3
-       (Član 57, PDL P12). The tables carry it in a column and the charts had
-       nowhere to put it, so it is said rather than drawn.
+    /* The place is said in words, because a chart is not a table and has no
+       column to carry it. What this holds is that every column says one, that
+       it is the one the board gave, and that it stands with the right name.
 
-       Read on the longer races of 2016, and that is the whole of why this test
-       can fail: those ten end 9, 9. On most boards the ladder separates everybody
-       and the place is the row number, so a chart that had thrown the places away
-       and numbered its rows would pass; here it would say ten where the rule says
-       nine.
+       It does not hold that the chart reads the place rather than counting its
+       own rows: every board here is drawn whole from the top, so on this screen
+       the two agree column for column and no test could tell them apart. Where
+       they part is the standing under a search, and that is where the rule is
+       guarded (`keeps the real place when the search narrows the table`).
+
+       Until 11.08.2026 they parted here too: the last two of the longer races
+       of 2016 are level down to the member number, which made them a shared
+       ninth place and this test read 9, 9. There is no shared place any more
+       (PDL P12), so the lower member number takes the ninth and the other the
+       tenth.
 
        The day is handed to the screen and used here as well, so both sides work
        the field out for the same one (PDL P11). On this season it changes
@@ -447,7 +515,7 @@ describe('TopBoards', () => {
       10,
     )
 
-    expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 9])
+    expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 10])
 
     renderAt('/sr/top-liste?sezona=2016', 'visitor', null, undefined, TODAY)
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })

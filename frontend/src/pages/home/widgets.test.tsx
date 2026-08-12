@@ -292,7 +292,6 @@ describe('the circle in a bar', () => {
       <ColumnChart
         columns={[
           {
-            key: 'a',
             competitor: competitor('000001'),
             value: 10,
             label: '1,50',
@@ -452,6 +451,149 @@ describe('TopByCategory', () => {
     const shown = screen.getByText(/^Najviše/).textContent
 
     await waitFor(() => expect(screen.getByText(/^Najviše/).textContent).not.toBe(shown))
+  })
+
+  it('keeps its columns across a turn, so a bar has a height to travel from', async () => {
+    /* The whole of the smooth turn hangs on this. A column keyed by whoever
+       stands in it is a different element after every turn: the old one is taken
+       out, the new one comes in at its final height, and there is nothing to
+       slide. Keyed by the place, the first column stays the first column and
+       only what is in it changes, which is what the bar's own transition then
+       has something to work with (owner, 11.08.2026).
+
+       Held on the element itself rather than on a class name, because the
+       element being the same one is exactly the claim. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    /* One of each length, so the chart has a column to draw whichever of the
+       two it is showing and there is something to keep across the turn. */
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={30} />,
+    )
+
+    const first = screen.getAllByRole('listitem')[0]
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
+
+    expect(screen.getAllByRole('listitem')[0]).toBe(first)
+  })
+
+  it('takes the words out while it turns, and brings them back', async () => {
+    /* Initials, numbers and the gold band have nothing to slide between, so they
+       fade (owner, 11.08.2026: „nazivi i kružići takmičara fadeuju u nove"). The
+       widget says so with a class, and the stylesheet does the fading; what is
+       held here is that the class is on while the two are apart and off once the
+       new words are in. */
+    renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={60} />)
+
+    const chart = must(
+      screen.getByText(/^Najviše/).closest<HTMLElement>('.colchart'),
+      'the chart the band belongs to',
+    )
+
+    expect(chart).not.toHaveClass('colchart--swapping')
+
+    await waitFor(() => {
+      expect(chart).toHaveClass('colchart--swapping')
+    })
+
+    await waitFor(() => {
+      expect(chart).not.toHaveClass('colchart--swapping')
+    })
+  })
+
+  it('slides the bars and fades the words, and does neither for anybody who asked for less motion', () => {
+    /* jsdom draws nothing and computes no layout, so what is held here is the
+       stylesheet as text. The behaviour above proves the widget asks for the
+       change; this proves the sheet answers it. */
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    /* Anchored to the start of a line: the same name ends the hover and focus
+       rules above it, and a plain search finds one of those first. */
+    const bar = css.slice(css.indexOf('\n.colchart__bar {'))
+
+    // The height travels, which is the whole of the sliding bar.
+    expect(bar.slice(0, bar.indexOf('}'))).toMatch(/transition:[^;]*block-size var\(--turn\)/)
+
+    // And the words go out of sight while the two are apart.
+    const swapping = css.slice(css.indexOf('.colchart--swapping .portrait,'))
+
+    expect(swapping.slice(0, swapping.indexOf('}'))).toMatch(/opacity:\s*0/)
+
+    /* Turned off in full for anybody who asked for less motion, and turned off
+       last, so it wins over the rules above it (WCAG 2.2 SC 2.3.3). */
+    const quiet = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce)'))
+
+    expect(quiet).toMatch(/\.colchart__bar,/)
+    expect(quiet).toMatch(/opacity:\s*1/)
+    expect(css.lastIndexOf('@media (prefers-reduced-motion: reduce)')).toBeGreaterThan(
+      css.indexOf('.colchart--swapping .portrait,'),
+    )
+  })
+
+  it('lets the request for less motion win over the rule that sets the motion', () => {
+    /* A media query adds no specificity of its own, so a rule that turns motion
+       off has to be written at least as deep as the rule that turned it on. Both
+       reduced-motion blocks lost to `.colchart .colchart__column .portrait`
+       while they were written shorter, and the faces went on sliding for exactly
+       the people who asked them not to.
+     *
+       Held on the selectors and not on the order in the file, because order only
+       decides between rules of equal weight, which was the very thing that was
+       not true here. */
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    const setting = '.colchart .colchart__column .portrait'
+    const quiet = css.split('@media (prefers-reduced-motion: reduce)').slice(1)
+
+    expect(quiet).toHaveLength(2)
+
+    for (const block of quiet) {
+      expect(block.slice(0, block.indexOf('}'))).toContain(setting)
+    }
+
+    /* And they have to come after it, because equal weight is settled by order
+       and these two now weigh the same. Written without this, the rule that sets
+       the motion could be moved to the foot of the file and the faces would slide
+       again for exactly the people who asked them not to, with nothing red. */
+    /* The first of them, not the last: asked about the last, the rule that sets
+       the motion could be pushed in between the two blocks and the earlier one
+       would lose again. */
+    const sets = css.indexOf(`${setting} {`)
+
+    expect(sets).toBeGreaterThan(-1)
+    expect(css.indexOf('@media (prefers-reduced-motion: reduce)')).toBeGreaterThan(sets)
+
+    /* And the rule they have to beat is the one that names all three of the
+       face's changes, so the test fails if that one is split up again. */
+    const face = css.slice(css.indexOf(`${setting} {`))
+
+    expect(face.slice(0, face.indexOf('}'))).toMatch(
+      /transition:[^;]*opacity[^;]*inset-block-end/s,
+    )
+  })
+
+  it('gives the sliding only to the chart that turns', () => {
+    /* Nought by default and a real duration on the turning chart alone. Written
+       the other way round, picking a season on Top liste set six boards sliding
+       for a change nobody asked to see move. */
+    const css = readFileSync(join(process.cwd(), 'src/components/ColumnChart.css'), 'utf-8')
+    /* Every rule that names the duration, and which rule names it. Two of them
+       and no more, so a third one written anywhere else would show up here
+       rather than quietly setting six boards in motion. */
+    const naming = [...css.matchAll(/([^{}]+)\{[^{}]*--turn:\s*([^;]+);/g)].map(
+      (rule) => `${must(rule[1], 'a selector').trim().split('\n').pop()?.trim()} = ${must(rule[2], 'a duration').trim()}`,
+    )
+
+    expect(naming).toEqual([
+      '.colchart = 0s',
+      '.colchart--turns = 420ms cubic-bezier(0.4, 0, 0.2, 1)',
+    ])
   })
 
   it('can be stopped, and stays stopped', async () => {

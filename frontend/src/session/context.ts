@@ -172,7 +172,7 @@ export type Decisions = Record<string, Decision>
  */
 export type Deletions = Record<string, string[]>
 
-export type NotificationKey = 'resultApproved' | 'resultChanged' | 'upcomingEvent' | 'newsletter'
+export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
 
 export type SessionValue = {
   /** Member number of whoever is signed in, or null. */
@@ -273,12 +273,11 @@ export type SessionValue = {
   publish: (comment: EventComment) => void
 }
 
+/** The six obligatory emails cannot be switched off (PDL P22); these can. */
 export const NOTIFICATION_KEYS: NotificationKey[] = [
   'resultApproved',
   'resultChanged',
-  'upcomingEvent',
   'newsletter',
 ]
 
-/** The seven obligatory emails cannot be switched off (PDL P17); these can. */
 export const SessionContext = createContext<SessionValue | null>(null)

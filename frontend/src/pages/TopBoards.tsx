@@ -74,9 +74,10 @@ type Place = {
   /** Unique within one board, which a member number is not on the race board:
    *  the same runner can hold two of the ten best races. */
   key: string
-  /** Not the row number: a tie nothing separates is a shared place, so a board
-   *  can read 1, 1, 3 (PDL P12). The numbering is done in src/data/derive.ts,
-   *  where the ladder of each board is. */
+  /** Not the row number: the numbering is done in src/data/derive.ts, where the
+   *  ladder of each board is, and a board drawn here may be cut short or
+   *  filtered. Until 11.08.2026 the reason was stronger, since a tie nothing
+   *  separated was a shared place and a board could read 1, 1, 3 (PDL P12). */
   position: number
   /** Written out, or written to give up its surname where the card is too
    *  narrow to hold both words (`NameOrInitial`). */
@@ -308,7 +309,6 @@ function Boards({
       title: t(`topBoards.byLength.${category}`),
       empty: noResults,
       columns: topByCategory(field, results, season, category, PLACES).map((column) => ({
-        key: column.competitor.memberNumber,
         competitor: column.competitor,
         value: column.races,
         label: formatNumber(column.races, locale),
@@ -340,7 +340,6 @@ function Boards({
       title: t('topBoards.progress'),
       empty: t('topBoards.progressEmpty'),
       columns: topByProgress(field, results, season, PROGRESS_PLACES).map((row) => ({
-        key: row.competitor.memberNumber,
         competitor: row.competitor,
         value: row.points,
         /* In points as the portal writes them everywhere else, to two decimals

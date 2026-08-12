@@ -1,3 +1,4 @@
+import { categoryLabel } from '../../data/categories'
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
 import { SeasonPicker } from '../../components/SeasonPicker'
@@ -61,7 +62,7 @@ export function ProfileHead({
       <p className="profile__meta">
         <span className="profile__number">{competitor.memberNumber}</span>
         {' · '}
-        {categoryOfMember(competitor, SEASON)}
+        {categoryLabel(categoryOfMember(competitor, SEASON), t)}
         {' · '}
         {competitor.city}
         {' · '}

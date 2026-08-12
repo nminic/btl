@@ -260,26 +260,13 @@ export function Shell() {
           </a>
         </nav>
         <p className="shell__note">{t('shell.footerNote')}</p>
-        {/* The one thing on the portal that somebody else made and that asks to
-            be named for it: the codebook of the world's towns behind the place
-            field is GeoNames, under CC BY 4.0, which requires attribution
-            wherever the material is shared (ADL A16). It is served on every
-            screen that has a form, so it is credited where every screen ends. */}
-        <p className="shell__note">
-          {t('shell.credits')}{' '}
-          <a href="https://www.geonames.org/" rel="noreferrer noopener" target="_blank">
-            {t('shell.creditsSource')}
-          </a>
-          {', '}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            rel="license noreferrer noopener"
-            target="_blank"
-          >
-            {t('shell.creditsLicence')}
-          </a>
-          {'.'}
-        </p>
+        {/* The credit for the codebook of towns behind the place field is not
+            here any more (owner, 11.08.2026). GeoNames is CC BY 4.0 and asks to
+            be named wherever the material is shared, which the licence lets a
+            work do „in any reasonable manner based on the medium"; on a portal,
+            the terms of use is such a place. It is the last paragraph of the
+            last section of them (public/mock/pages.json, `uslovi-koriscenja`),
+            which is as quiet as naming it can be without ceasing to name it. */}
       </footer>
     </div>
   )

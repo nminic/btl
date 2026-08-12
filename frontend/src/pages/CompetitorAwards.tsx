@@ -1,3 +1,4 @@
+import { categoryLabel } from '../data/categories'
 import { useMemo, useRef } from 'react'
 import { useParams } from 'react-router'
 import { useToday } from '../clock/useClock'
@@ -196,7 +197,7 @@ function AwardsFor({
                     <td>
                       {award.kind === 'overall'
                         ? t('awards.overall')
-                        : t('awards.category', { category: award.category })}
+                        : t('awards.category', { category: categoryLabel(award.category, t) })}
                     </td>
                     <td>{t('awards.position', { position: formatNumber(award.position, locale) })}</td>
                     <td className="table__points">{formatPoints(award.points, locale)}</td>

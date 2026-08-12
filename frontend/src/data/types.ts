@@ -54,7 +54,7 @@ export type Competitor = {
    * for their age (PDL P7).
    *
    * A yes or a no, and the record keeps it as one. The registration form asks it
-   * as two buttons, „Prva sezona" and „Starosna", which write the words „yes"
+   * as two buttons, „Početnička" and „Starosna", which write the words „yes"
    * and „no"; the layer between the two turns those into this (forms/records.ts,
    * `like` and `recordValue`). It matters that they meet: „no" read as a yes
    * puts a member into the beginners' category for a whole season, and that

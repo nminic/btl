@@ -151,8 +151,7 @@ export function recordValue(field: FieldDef, text: string): unknown {
     return text === 'true'
   }
 
-  /* Two buttons answering a question a record keeps as a yes or a no: „Prva
-     sezona" and „Starosna" are the two faces of `firstSeason2027`
+  /* Two buttons answering a question a record keeps as a yes or a no: „Početnička" and „Starosna" are the two faces of `firstSeason2027`
      (data/types.ts). Which choice that is is decided by what the field offers
      rather than by what was typed into it: a choice offering „yes" and „no" is
      the shape of a question a record keeps as a boolean, and one that happens to

@@ -2,6 +2,11 @@
 *.log
 .DS_Store
 
+# Anywhere, not only under frontend/. A tool run from the root makes a second
+# node_modules there, and a cache file out of it once reached a commit: the rule
+# lived in frontend/.gitignore, which does not cover the root.
+**/node_modules/
+
 # Per-session working copies made by tooling, never part of the repo. The
 # leading ** matters: a pattern with a slash inside it is anchored to the root of
 # the repository, so .claude/worktrees/ never covered frontend/.claude/worktrees/,

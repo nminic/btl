@@ -1,3 +1,4 @@
+import { categoryLabel } from '../../data/categories'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
@@ -98,7 +99,7 @@ export function AdminMembers() {
                           </Link>{' '}
                           <span className="table__member-number">{one.memberNumber}</span>
                         </td>
-                        <td>{categoryOfMember(one, SEASON)}</td>
+                        <td>{categoryLabel(categoryOfMember(one, SEASON), t)}</td>
                         <td>{one.birthYear}</td>
                         <td>
                           <EditableCell

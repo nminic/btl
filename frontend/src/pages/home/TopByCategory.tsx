@@ -10,6 +10,11 @@ const TURN_MS = 6000
 
 const TOP = 10
 
+/** How long the words are out of sight while the chart changes what it counts.
+ *  Half of what the bars take to travel (ColumnChart.css, `--turn`), so the new
+ *  words arrive while the bars are still on their way and nothing lands at once. */
+const FADE_MS = 210
+
 /* Two bars and a triangle: the marks every player in the world uses, so the
  * button says what it does without a word on it (owner, 31.07.2026). The name
  * is still there for anyone who cannot see them, in `aria-label`. */
@@ -56,7 +61,11 @@ export function TopByCategory({
   turnMs?: number
 }) {
   const { locale, t } = useI18n()
+  /* Two of them, and the difference between them is the whole of the change.
+     `category` is where the chart is going; `shown` is what is on the screen
+     while it gets there. They are apart only during the fade. */
   const [category, setCategory] = useState<RaceCategory>(FIRST)
+  const [shown, setShown] = useState<RaceCategory>(FIRST)
   const [turning, setTurning] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
@@ -73,9 +82,25 @@ export function TopByCategory({
     return () => clearInterval(turn)
   }, [turnMs, turning])
 
-  const columns: ChartColumn[] = topByCategory(competitors, results, season, category, TOP).map(
+  /* The words go out, then what is counted changes, then they come back. The
+     bars need no such thing: their height is a style and a style slides, so they
+     set off the moment the swap happens and arrive on their own (owner,
+     11.08.2026).
+   *
+     Never longer than a third of a turn, so a chart hurried along by a test
+     spends most of its time showing something rather than fading. */
+  useEffect(() => {
+    if (shown === category) {
+      return
+    }
+
+    const swap = setTimeout(() => setShown(category), Math.min(FADE_MS, turnMs / 3))
+
+    return () => clearTimeout(swap)
+  }, [category, shown, turnMs])
+
+  const columns: ChartColumn[] = topByCategory(competitors, results, season, shown, TOP).map(
     (column) => ({
-      key: column.competitor.memberNumber,
       competitor: column.competitor,
       value: column.races,
       label: String(column.races),
@@ -88,7 +113,7 @@ export function TopByCategory({
          profile opens on all of them by default (owner, 31.07.2026), so leaving
          it out would widen the very thing the bar was showing. */
       to: column.competitor.active
-        ? `/${locale}/takmicar/${column.competitor.memberNumber}?sezona=${season}&duzina=${category}`
+        ? `/${locale}/takmicar/${column.competitor.memberNumber}?sezona=${season}&duzina=${shown}`
         : undefined,
     }),
   )
@@ -98,7 +123,8 @@ export function TopByCategory({
   return (
     <ColumnChart
       columns={columns}
-      caption={t(`home.mostOf.${category}`)}
+      swapping={shown !== category}
+      caption={t(`home.mostOf.${shown}`)}
       empty={t('home.noneYet')}
       label={t('home.turning')}
       control={

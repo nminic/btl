@@ -30,7 +30,7 @@ export type FieldType =
    * One answer out of two or three, drawn as buttons rather than as a list.
    *
    * For the questions whose answers are short, few, and worth seeing at once:
-   * „Muški / Ženski", „Prva sezona / Starosna" (owner, 11.08.2026).
+   * „Muški / Ženski", „Početnička / Starosna" (owner, 11.08.2026).
    * Nothing is chosen to begin with and exactly one must be, which is what a
    * group of radio buttons is; the buttons are what it looks like, and the radio
    * is what it is, so the keyboard behaves the way every other one does.
@@ -38,8 +38,18 @@ export type FieldType =
   | 'choice'
   | 'checkbox'
   | 'textarea'
-  /** A picture attached as proof. Optional, and deleted once the result has
-   *  been checked, so the disc does not fill with photographs of watches. */
+  /**
+   * A picture the member hands over. Two of them on the portal, and they are
+   * not the same thing:
+   *
+   * - **proof beside a result**, optional, deleted once the result has been
+   *   checked, so the disc does not fill with photographs of watches;
+   * - **the profile picture in registration**, obligatory (PDL P8), kept for as
+   *   long as the member is one, and looked at by a moderator before it shows.
+   *
+   * What the field type carries is the picking; how long the file lives is the
+   * business of whatever receives it.
+   */
   | 'photo'
 
 export type FieldOption = {
