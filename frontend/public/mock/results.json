@@ -20932,16 +20932,16 @@
   {
     "id": "res-01495",
     "memberNumber": "000015",
-    "raceId": "evt-savski-polumaraton-2016-11-11-200",
+    "raceId": "evt-savski-polumaraton-2016-11-11-2110",
     "eventName": "Savski polumaraton",
     "eventSlug": "savski-polumaraton-2016",
     "date": "2016-11-11",
-    "distanceKm": 2.0,
-    "ascentM": 0,
-    "descentM": 0,
+    "distanceKm": 21.1,
+    "ascentM": 20,
+    "descentM": 20,
     "seconds": 6957,
-    "points": 0.0,
-    "category": "short"
+    "points": 10.77,
+    "category": "half"
   },
   {
     "id": "res-01496",
@@ -29892,16 +29892,16 @@
   {
     "id": "res-02135",
     "memberNumber": "000020",
-    "raceId": "evt-amsterdam-marathon-2019-10-20-4220",
+    "raceId": "evt-amsterdam-marathon-2019-10-20-2110",
     "eventName": "Amsterdam marathon",
     "eventSlug": "amsterdam-marathon-2019",
     "date": "2019-10-20",
-    "distanceKm": 42.2,
-    "ascentM": 240,
-    "descentM": 240,
+    "distanceKm": 21.1,
+    "ascentM": 120,
+    "descentM": 120,
     "seconds": 5651,
-    "points": 186.41,
-    "category": "marathon"
+    "points": 19.5,
+    "category": "half"
   },
   {
     "id": "res-02136",

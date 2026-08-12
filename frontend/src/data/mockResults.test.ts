@@ -71,39 +71,18 @@ function scoredTo(places: number, one: Result): number {
  */
 const FASTEST_KMH = 22
 
-/**
- * The one row that is impossible and cannot be corrected from here.
- *
- * `mirko-vojinovic`, Amsterdam marathon, 20.10.2019: 42,20 kilometres in
- * 1:34:11, which is 26,88 an hour. The distance and the climb agree with the
- * other finisher of that race, so the time is what is wrong, and the scrape it
- * came from says the same 1:34:11: there is nothing in the data to correct it
- * against. His four other marathons run between 3:36:11 and 3:51:35, so 3:34:11
- * is the likely reading, but a likely reading is not a record and this is the
- * owner's own racing history. It waits on him.
- *
- * Named here rather than left under a generous threshold, so that it is one row
- * anybody can see and not a hole the whole guard falls through.
- */
-const WAITING_ON_THE_OWNER = [
-  /* `mirko-vojinovic`, Amsterdam marathon 2019, above. It is not only odd to
-     look at: it is the highest scoring row in the file, and taking it away moves
-     that member from first place to second in the men's table for 2019. */
-  'res-02135',
-  /* And its twin at the other end. `res-01495`: two kilometres in 1:55:57, which
-     is one kilometre an hour, slower than walking. The three others who ran that
-     same two kilometres that day took about 15:20, and 6957 seconds is what this
-     member runs a half marathon in (6569 in 2015, 6935 in 2017), so a time from
-     one distance is sitting on another, exactly as at Amsterdam. Nothing in the
-     data says what it should be. It scores 0,00, the only such row, so no
-     standing turns on it. */
-  'res-01495',
-]
+/* Two rows were named here on 12.08.2026 as impossible and unfixable from the
+   data: a marathon at 26,88 kilometres an hour and two kilometres walked at one.
+   The owner answered the same day, and the answer was the one thing the data
+   could not say: both were half marathons, 21,10 kilometres, and the times were
+   right all along. Corrected in the source and in the mock, so there is nothing
+   left to except and no list to keep. */
+
 
 describe('the results the prototype is filled with', () => {
   it('holds nothing that was run faster than a person can run', () => {
     const impossible = results
-      .filter((one) => one.seconds > 0 && !WAITING_ON_THE_OWNER.includes(one.id))
+      .filter((one) => one.seconds > 0)
       .map((one) => ({ id: one.id, kmh: one.distanceKm / (one.seconds / 3600) }))
       .filter((one) => one.kmh > FASTEST_KMH)
 
@@ -158,7 +137,6 @@ describe('the results the prototype is filled with', () => {
           .filter((one) => one.seconds > 3 * middleOf(field.filter((other) => other !== one)))
           .map((one) => one.id),
       )
-      .filter((id) => !WAITING_ON_THE_OWNER.includes(id))
 
     expect(adrift).toEqual([])
   })
