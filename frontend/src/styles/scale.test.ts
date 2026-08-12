@@ -218,3 +218,21 @@ describe('space and corners are chosen from the scale, not typed', () => {
     ])
   })
 })
+
+describe('the width prose is allowed', () => {
+  it('gives the written pages the whole width, with no measure of their own', () => {
+    /* Owner, 12.08.2026: „Sve strane treba da koriste punu širinu strane za
+       prikaz teksta. Dakle tekst se lomi tek na kraju redova." A measure of
+       78ch stood on both of the rules that draw prose, and it is what made the
+       rulebook break its lines halfway across the screen.
+     *
+       Held as text, because jsdom lays nothing out: what is asked is that
+       neither rule name a width at all, so a measure put back anywhere in
+       either sheet fails here rather than on somebody's screen. */
+    for (const sheet of ['src/pages/StaticPage.css', 'src/components/Markdown.css']) {
+      const css = readFileSync(join(process.cwd(), sheet), 'utf-8')
+
+      expect(css).not.toMatch(/max-(width|inline-size):\s*\d+(ch|rem|px)/)
+    }
+  })
+})

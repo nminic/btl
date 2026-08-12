@@ -24,9 +24,11 @@
 
 .page p {
   margin: 0;
-  /* Long prose does get a measure: past about eighty characters the eye loses
-     the start of the next line. Tables and widgets do not, and this is the only
-     place on the portal where it applies. */
-  max-width: 78ch;
+  /* No measure. Prose past about eighty characters is harder to read, which is
+     why one stood here, but the owner asked on 12.08.2026 for the text to run
+     the full width of the page: „Sve strane treba da koriste punu širinu strane
+     za prikaz teksta. Dakle tekst se lomi tek na kraju redova." What sets the
+     width now is the page's own container, and the line under the title is what
+     the text is meant to reach. */
   color: var(--text-muted);
 }
