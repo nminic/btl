@@ -343,7 +343,19 @@ function WriteTo({
       </div>
 
       <p className="member__actions">
-        <button type="submit" className="button button--primary">
+        {/* Held shut while there is nothing to send, which is what the browser's
+            own `required` used to do before this form began answering for its own
+            rules. Taken off without putting anything in its place, an empty
+            message went out and the screen said it had been sent.
+         *
+            Written means written, spaces taken off, exactly as the box for a
+            reason on the verification queues decides it (admin/SendBack.tsx) and
+            as the forms do (forms/validate.ts): three spaces are not a message. */}
+        <button
+          type="submit"
+          className="button button--primary"
+          disabled={words.trim() === ''}
+        >
           {t('event.writeSend')}
         </button>
         <button type="button" className="button button--secondary" onClick={onDone}>

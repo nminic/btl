@@ -1,6 +1,6 @@
 import { useId } from 'react'
-import { formatNumber } from '../i18n/format'
 import { RequiredMark } from '../forms/AskedLabel'
+import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Stars.css'
 
@@ -117,6 +117,9 @@ type Asking = {
 export function Stars({ name, label, value, onChange }: Reading | Asking) {
   const { locale, t } = useI18n()
   const marks = Array.from({ length: STARS }, (_, index) => index + 1)
+  /* The name of the group, by id: a role written by hand does not inherit the
+     browser's own pairing of a fieldset with its legend. */
+  const nameId = useId()
 
   if (onChange === undefined) {
     return (
@@ -129,17 +132,31 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
   }
 
   return (
-    <fieldset className="stars stars--asking" aria-required="true">
-      {/* All three ratings have to be given before a comment can be sent
-          (event.commentNeedsMarks), so all three say so the way every field on
-          the portal says it since 12.08.2026: a star for the eye and
-          `aria-required` for a reader (forms/AskedLabel.tsx). On the group and
-          not on each of the five, because it is the rating that is asked for and
-          not any one star of it. */}
-      <legend>
-        {label}
-        <RequiredMark />
-      </legend>
+    /* All three ratings have to be given before a comment can be sent
+       (event.commentNeedsMarks), so all three say so the way every field on the
+       portal says it since 12.08.2026: a star for the eye and `aria-required`
+       for a reader (forms/AskedLabel.tsx). On the group and not on each of the
+       five, because it is the rating that is asked for and not any one star.
+     *
+       `role="radiogroup"` and not a bare fieldset, which is a plain `group`:
+       ARIA gives `group` no `aria-required` at all, so the word went to a place
+       no reader looks and the half of the decision meant for readers was not
+       delivered. The renderer says the same of its own groups of buttons
+       (forms/FormRenderer.tsx). With the role written out the name has to be
+       written out too, since it is no longer the browser pairing a legend with
+       its fieldset.
+
+       And the star stands outside the legend, because the legend is the name of
+       the group: inside it, „Organizacija" becomes „Organizacija*" for anything
+       that goes looking by the words. */
+    <fieldset
+      className="stars stars--asking"
+      role="radiogroup"
+      aria-labelledby={nameId}
+      aria-required="true"
+    >
+      <legend id={nameId}>{label}</legend>
+      <RequiredMark />
       {marks.map((mark) => (
         /* The label is what is clicked and the radio inside it is what carries
            the state, so the star is as big as a finger without anything being

@@ -84,3 +84,11 @@
   }
 }
 
+
+/* The star that says a rating has to be given, beside the name of the rating and
+   not inside it (components/Stars.tsx). The legend is plain inline text here, so
+   the space between them is written rather than inherited from a row: every
+   other star on the portal sits in a box with a gap of its own. */
+.stars--asking .field__required {
+  margin-inline-start: var(--space-4);
+}

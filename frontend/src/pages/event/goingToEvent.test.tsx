@@ -246,6 +246,19 @@ describe('writing to somebody else who is going', () => {
        browser, which is the other half of the same decision: whatever the
        browser refuses, it refuses in its own language. */
     expect(must(box.closest('form'), 'the form it stands in')).toHaveAttribute('novalidate')
+
+    /* And nothing goes out while there is nothing to send. The browser used to
+       refuse that; taking its refusal away without putting one in its place, an
+       empty message went into somebody's inbox and the screen said it had been
+       sent. Spaces are not a message either. */
+    const send = screen.getByRole('button', { name: 'Pošalji poruku' })
+
+    expect(send).toBeDisabled()
+
+    await user.type(box, '   ')
+    expect(send).toBeDisabled()
+
+    await user.clear(box)
     expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
     expect(must(box.closest('.field'), 'the field it stands in').querySelector('.field__required'))
       .not.toBeNull()
