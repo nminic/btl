@@ -154,8 +154,18 @@ function pieces(sheet: string): Piece[] {
     }
 
     const condition = sheet.slice(query, opens)
-    const min = /min-width:\s*([\d.]+)px/.exec(condition)
-    const max = /max-width:\s*([\d.]+)px/.exec(condition)
+    /* Both spellings of a query. `(min-width: 700px)` and `(width >= 700px)`
+       are the same condition, and stylelint's own `media-feature-range-notation`
+       rule asks for the second; read only for the first, a block written the
+       modern way was taken to apply at every width at once. */
+    const min =
+      /min-width:\s*([\d.]+)px/.exec(condition) ??
+      /width\s*>=\s*([\d.]+)px/.exec(condition) ??
+      /([\d.]+)px\s*<=\s*width/.exec(condition)
+    const max =
+      /max-width:\s*([\d.]+)px/.exec(condition) ??
+      /width\s*<=\s*([\d.]+)px/.exec(condition) ??
+      /([\d.]+)px\s*>=\s*width/.exec(condition)
 
     found.push({
       min: min === null ? 0 : Number(min[1]),
@@ -258,7 +268,7 @@ function pinnedAt(screen: number, cell: 'th' | 'td'): Pinned {
 function floorAt(screen: number): number {
   const written = [
     ...appliesAt(profileCss, screen).matchAll(
-      /\.profile__results \.table \{[^}]*?min-inline-size:\s*([\d.]+)rem;/g,
+      /\.profile__results \.table \{[^}]*?min-(?:inline-size|width):\s*([\d.]+)rem;/g,
     ),
   ]
 
@@ -401,12 +411,63 @@ describe('the results table, added up rather than looked at', () => {
     expect(columnCount('td')).toBe(columnCount('th'))
   })
 
-  it('keeps the columns pinned, which is what makes any of the sums true', () => {
-    /* `table-layout: fixed` is the load-bearing declaration: without it the
-       browser sizes columns by content and every width above is fiction. */
-    const rule = /\.profile__results \.table \{[^}]*\}/.exec(appliesAt(profileCss, 1280))
+  it('keeps the columns pinned and the table filling its box', () => {
+    /* Two load-bearing declarations, not one. `table-layout: fixed` is what
+       makes the browser honour a pinned width instead of sizing by content, and
+       `width: 100%` is what makes the table fill the box every sum here measures
+       it against.
+     *
+       Only the first was guarded. Deleting the second, which reads as redundant
+       beside a floor and six pinned columns, left the table 739 pixels wide in a
+       box of 1068 at the ordinary text size, the event column at 251 instead of
+       580, and every column shifting on each press of a length filter: the
+       columns-move-when-you-press-a-filter fault this whole file exists for. All
+       eight tests stayed green. */
+    const pinned = /\.profile__results \.table \{[^}]*\}/.exec(appliesAt(profileCss, 1280))
+    const shared = /(?:^|\})\s*\.table \{([^}]*)\}/.exec(tableCss)
 
-    expect(rule?.[0]).toContain('table-layout: fixed;')
+    expect(pinned?.[0]).toContain('table-layout: fixed;')
+    expect(shared?.[1], 'nothing sizes .table to its box').toMatch(/(?:width|inline-size):\s*100%;/)
+  })
+
+  it('is reached by the stylesheet at all, which is a fact with two homes', () => {
+    /* Every rule above hangs off two class names, and both live in the markup as
+       well as in the stylesheet. Read from the stylesheet alone, renaming either
+       one in the markup detached the whole model without a single red test.
+     *
+       `profile__results` carries `table-layout: fixed`, all six pinned widths and
+       both floors: renamed, a 360 telephone drew a 347 pixel table in a 328 pixel
+       box, which is the sideways scroll PDL P24 forbids at the ordinary text
+       size. `table-scroll` carries the scrolling and the positioning: renamed, at
+       200% text the whole page scrolled sideways, 688 pixels against 360, taking
+       the words meant only for a screen reader out past the right edge.
+     *
+       This is the third thing the file cannot work out for itself and now checks
+       instead: not whether the numbers are right, but whether they reach the
+       table at all. */
+    const results = profileTsx.slice(profileTsx.indexOf('<section className="profile__results"'))
+
+    expect(results, 'the results section is not named what the stylesheet styles').not.toBe('')
+    expect(results).toContain('className="table-scroll"')
+    expect(results).toContain('className="table"')
+    expect(profileCss).toContain('.profile__results .table')
+    expect(tableCss).toContain('.table-scroll {')
+  })
+
+  it('leaves the table nothing but the shell between it and the window', () => {
+    /* The room above is the window less the shell's own padding, which is true
+       only while nothing between the two adds any of its own. A single
+       `padding-inline` on the section around the table takes eight pixels a side
+       out of a box that has none to give: at 360 the box became 312 against a
+       table of 328, and the telephone scrolled sideways at the ordinary text
+       size with every test green.
+     *
+       Worth saying why this is so tight: at 360 the room is 328 and the floor is
+       328, so the design has exactly nought pixels of slack there. Anything at
+       all taken out of that chain shows immediately. */
+    const between = [...appliesAt(profileCss, 360).matchAll(/\.profile__results \{([^}]*)\}/g)]
+
+    expect(between.flatMap((rule) => [...(rule[1] ?? '').matchAll(/padding(-inline|-left|-right)?:/g)])).toEqual([])
   })
 
   it('leaves the scrolling to the box, and lets nothing later take it back', () => {
