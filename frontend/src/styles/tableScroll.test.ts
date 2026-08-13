@@ -36,8 +36,13 @@ const SRC = join(process.cwd(), 'src')
  * the same element, which is how the matrix wears it (`rights-wrap table-scroll`
  * carries the margin and the scroll at once), and `[^<>]` is what keeps that to
  * one tag rather than letting it reach back through a whole screen.
+ *
+ * The tag also has to open something. `<div className="table-scroll" />` before
+ * a table is a box the table is beside rather than in, and the width of the
+ * table goes on the page exactly as if no box had been written at all, so the
+ * character before the `>` may not be the slash that closes the tag on itself.
  */
-const INSIDE_THE_BOX = /table-scroll[^<>]*>\s*$/
+const INSIDE_THE_BOX = /table-scroll[^<>]*[^/<>]>\s*$/
 
 /**
  * The one table that needs no box: one clipped to a single pixel.
@@ -102,6 +107,12 @@ function drawn(): { where: string; tag: string; before: string }[] {
   })
 }
 
+/** Which file a table is drawn in, without the line it is on. Cut from the last
+ *  colon rather than the first, since a path may hold one and a line may not. */
+function file(one: { where: string }): string {
+  return one.where.slice(0, one.where.lastIndexOf(':'))
+}
+
 describe('every table the portal draws', () => {
   const all = drawn()
 
@@ -112,7 +123,7 @@ describe('every table the portal draws', () => {
        missing its box, and a rewrite of it that this test stops seeing is a
        rewrite this test stops guarding. */
     expect(all.length).toBeGreaterThan(20)
-    expect(all.map((one) => one.where.split(':')[0])).toContain('pages/admin/RightsMatrix.tsx')
+    expect(all.map(file)).toContain('pages/admin/RightsMatrix.tsx')
   })
 
   it('sits in a box of its own, so a table too wide scrolls and the page does not', () => {
@@ -124,12 +135,19 @@ describe('every table the portal draws', () => {
   })
 
   it('is excused the box only where it is clipped to a pixel and can push nothing', () => {
-    const excused = all.filter((one) => CLIPPED.test(one.tag)).map((one) => one.where)
+    const excused = all.filter((one) => CLIPPED.test(one.tag)).map((one) => file(one))
 
     /* One, and the day a second appears it is worth reading rather than
        counting: a table hidden from the eye is a text alternative, and a table
-       hidden because it did not fit is the fault this file is about. */
-    expect(excused).toEqual(['components/CategoryDonut.tsx:191'])
+       hidden because it did not fit is the fault this file is about.
+
+       By file and not by `where`, which carries the line as well. A line number
+       in an expectation is a claim about a file this test has no business
+       having an opinion on: one import added at the top of the donut moves the
+       table from 191 to 192 and turns the suite red over an edit that changed
+       nothing here. The line is worth having in the failure above, where it
+       says which table has no box, and worth nothing here. */
+    expect(excused).toEqual(['components/CategoryDonut.tsx'])
   })
 })
 
