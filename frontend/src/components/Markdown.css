@@ -104,19 +104,49 @@
 }
 
 /* Written tables are words, not numbers, so every column reads from the left,
-   unlike the ranking tables that table.css is built for. */
-.markdown__table th,
-.markdown__table td {
+   unlike the ranking tables that table.css is built for.
+
+   Written heavy enough to win, which is what the ancestor and the `thead` and
+   `tbody` in these selectors are for and the only thing they are for (ADL A7).
+   A written table wears both class sets at once (`table markdown__table`), so
+   every rule here is arguing with one in the shared sheet, and until 13.08.2026
+   it was losing all three arguments while reading as though it won them:
+
+   - `.markdown__table th` and `.table th` are both one class and one element, a
+     tie, and a tie goes to whoever is emitted last. That is never this file. The
+     body of table.css is emitted at the last sheet that asks for it, which is
+     Rights.css, some hundred and forty rules after these; the `@import` at the
+     top of this file does not change that and cannot.
+   - For `text-align` the shared sheet is not even tied. It says `left` for the
+     first three columns through `.table th:nth-child(-n + 3)`, and a
+     pseudo-class counts as a class, so that is two classes and one element. It
+     is why a written table looked right for three columns and turned to the
+     right on the fourth: the privacy policy has five such tables and the
+     rulebook's worked example of scoring is nine columns wide.
+   - `.markdown__table tbody tr:hover` tied with `.table tbody tr:hover` and lost
+     the same way, so written tables lit up under the mouse exactly as the rule
+     below asked them not to.
+
+   Measured, not reasoned: on the built stylesheet these rules stand at 404 and
+   the shared body at 550. The weights below are 0,2,2 and 0,3,2 against 0,2,1
+   and 0,2,2, so none of them is a tie any more and none of them depends on
+   which sheet is written out first. */
+.markdown .markdown__table thead th,
+.markdown .markdown__table tbody td {
   text-align: left;
   vertical-align: top;
 }
 
-.markdown__table td {
+.markdown .markdown__table tbody td {
+  /* The block axis only. The inline padding is the shared sheet's and there is
+     no argument about it. */
   padding-block: var(--space-10);
   font-size: 0.92rem;
   color: var(--text-muted);
 }
 
-.markdown__table tbody tr:hover {
+/* A written table is read, not picked from: there is no row to choose here and
+   nothing happens if you click one. */
+.markdown .markdown__table tbody tr:hover {
   background: transparent;
 }
