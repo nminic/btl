@@ -48,7 +48,8 @@ function Administration({
 /* 000032 by default and not 000001: an honorary member owes nothing and is shown
    no renewal at all (Pravilnik član 15, PDL P16), so every test about renewal
    needs somebody who actually pays. Of the thirty, three do, and this is the
-   grown one of them living in Serbia. */
+   grown one of them living in Serbia. His membership is not active, which this
+   screen has no branch for and which none of these tests is about. */
 function renderMembershipOn(today: string, memberNumber = '000032') {
   return render(
     <ClockProvider simulatedDay={today}>

@@ -67,7 +67,7 @@ function speedOf(one: Result): number {
  *
  * Wide and few, because the point is not to compare like with like but to keep
  * a marathon from being judged against a kilometre with children in it. Pace
- * falls steadily with distance in this data, from a middle of 11,99 an hour
+ * falls steadily with distance in this data, from a middle of 11,98 an hour
  * under three kilometres to 4,82 beyond a hundred.
  */
 function bandOf(distanceKm: number): number {

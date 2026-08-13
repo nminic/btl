@@ -98,6 +98,12 @@ export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
  * season the member is either `season - birthYear` or one less than that, and it
  * is the lower of the two the rule asks about.
  *
+ * One day of the year that is not so, and the record cannot tell: somebody born
+ * on 1 January turns fifteen on the first day of the season and is never
+ * fourteen inside it, while this answers that they are. A record holding only
+ * the year cannot know a birthday, and paying a junior fee is the side to be
+ * wrong on.
+ *
  * Deliberately not the same figure as the parental signature, which is sixteen
  * measured on the day (PDL P23). The two are separate and must not be joined.
  */

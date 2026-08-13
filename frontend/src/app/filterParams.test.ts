@@ -17,9 +17,9 @@ import { join } from 'node:path'
  *
  * Four do carry a query in a `Link`, and all four are meant to: the calendar
  * opening a day of events, the two extracts on the front page, and a member's
- * own results reaching the standing. Each is a move to another screen, where
- * landing at the top is the right thing and `preventScrollReset` would be the
- * fault. The rule this file holds is about a control that filters the screen it
+ * own results reaching the form for entering another one. Each is a move to
+ * another screen, where landing at the top is the right thing and
+ * `preventScrollReset` would be the fault. The rule this file holds is about a control that filters the screen it
  * is already on, and none of the four is one. The sentence here used to say
  * „nothing does today", which stopped being true and said nothing about it.
  */
