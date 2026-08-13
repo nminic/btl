@@ -877,7 +877,7 @@
     "active": "Član od {season}. sezone.",
     "honorary": "Počasno članstvo. Za sezonu 2027. ne plaćaš članarinu.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
-    "junior": "Do 14 godina članarina je {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum.",
+    "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",

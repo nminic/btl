@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR, type PriceRow } from '../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
@@ -10,23 +10,6 @@ import { renderAt } from '../test/render'
 import { StaticPage } from './StaticPage'
 
 const dictionary = sr as Dictionary
-
-/** The price band under that name, out of the list the screens read.
- *
- *  By name and not by position: the prose in the terms names the cheapest band,
- *  the one after it and the one after that, and it goes on meaning those three
- *  whatever order pricing.ts happens to list them in. A name the list does not
- *  carry is a change in pricing.ts this prose has to follow, so it stops here
- *  rather than turning into "undefined EUR" inside a text the page never had. */
-function band(key: string): PriceRow {
-  const found = PRICES.find((price) => price.key === key)
-
-  if (found === undefined) {
-    throw new Error(`the price list carries no band called "${key}"`)
-  }
-
-  return found
-}
 
 describe('the written pages', () => {
   it.each([
@@ -73,17 +56,6 @@ describe('the fee schedule in the terms', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
-  async function feeParagraph(matching: RegExp) {
-    const heading = await screen.findByRole('heading', { name: /Članarina/ })
-    const section = heading.closest('section')
-
-    if (section === null) {
-      throw new Error('the fee heading stands outside a section')
-    }
-
-    return within(section).getByText(matching)
-  }
-
   /** The price table, one string per row of cells. Written pages render their
    *  Markdown as a real table (src/components/Markdown.tsx), so this reads the
    *  rows a screen reader would, not the pipes the source is written in. The
@@ -227,29 +199,25 @@ describe('the fee schedule in the terms', () => {
     }
   })
 
-  it('names one reminder per price boundary', async () => {
+  it('promises no reminders, because none are sent', async () => {
+    /* Owner, 13.08.2026: „Ne šalje se, ostaje tako, izbaciti iz pravilnika to jer
+       nema potrebe nikad da stoji." Both texts promised four reminders at the
+       price boundaries and the portal sends none, in this season or any other
+       (PDL P8). A promise nobody will ever keep is worse in a legal text than
+       anywhere else, so the sentence is gone rather than reworded. */
     renderAt('/sr/uslovi-koriscenja')
-    const reminders = await feeParagraph(/Podsetnike da vam ističe članarina/)
-    const early = band('early')
-    const regular = band('regular')
-    const late = band('late')
 
-    // Four dates, each the last day of something (PDL P8). Three of them end a
-    // price band; the fourth is the last day that still buys a ranking.
-    for (const date of ['30. septembra', '5. oktobra', '30. novembra', '30. decembra']) {
-      expect(reminders).toHaveTextContent(date)
-    }
+    const page = await screen.findByRole('article')
 
-    // The prices the reminders quote come from the same rows the table quotes.
-    expect(reminders).toHaveTextContent('šaljemo četiri puta')
-    expect(reminders).toHaveTextContent(`najnižoj ceni od ${early.eur} EUR`)
-    expect(reminders).toHaveTextContent(
-      `poslednji dan po ${early.eur} EUR, od sutra je ${regular.eur} EUR`,
-    )
-    expect(reminders).toHaveTextContent(
-      `poslednji dan po ${regular.eur} EUR, od sutra je ${late.eur} EUR`,
-    )
-    expect(reminders).toHaveTextContent('poslednjeg dana sa pravom na rangiranje')
+    expect(within(page).queryByText(/[Pp]odsetnik/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about reminders in the rulebook either', async () => {
+    renderAt('/sr/pravilnik')
+
+    const page = await screen.findByRole('article')
+
+    expect(within(page).queryByText(/[Pp]odsetnik/)).not.toBeInTheDocument()
   })
 })
 

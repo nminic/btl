@@ -237,7 +237,7 @@ describe('membership', () => {
        nothing. */
     expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
     expect(screen.queryByText(/taksa za obradu plaćanja/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Do 14 godina članarina/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/bar jedan dan 14 godina/)).not.toBeInTheDocument()
   })
 
   it('puts the junior fee in the code a junior member scans', async () => {
@@ -923,7 +923,7 @@ describe('screens that depend on the date', () => {
        one beside it (PDL P8: the price follows from the year of birth). */
     expect(
       screen.getByText(
-        `Do 14 godina članarina je ${JUNIOR.eur} EUR, a iz Srbije ${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD, bez obzira na datum.`,
+        `Ko u sezoni ima bar jedan dan 14 godina ili manje plaća ${JUNIOR.eur} EUR, a iz Srbije ${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD, bez obzira na datum uplate.`,
       ),
     ).toBeVisible()
   })
