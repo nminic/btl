@@ -142,6 +142,28 @@ describe('the superadmin', () => {
   })
 })
 
+describe('the matrix, when the text is larger than the table was drawn for', () => {
+  it('scrolls in a box of its own rather than taking the width off the page', async () => {
+    renderAt('/sr/administracija/moderatori', 'superadmin')
+    const table = await screen.findByRole('table', { name: MATRIX })
+
+    /* Sixteen columns of boxes beside a twelve rem column of names fit in 900
+       pixels at the default text size, which is the width the table shape
+       switches at, and stop fitting the moment the reader enlarges the text:
+       every width in this table is in `rem` and the page is not. At 1280 with
+       the text at 200 per cent the matrix was 214 pixels wider than the column
+       it sits in and the page itself scrolled sideways, which is the one thing
+       this portal does not do (PDL P24).
+
+       The box is the same one the other twenty-three tables sit in, and it has
+       to be the element around the table rather than one further out: a box
+       around half a screen scrolls the half-screen. jsdom lays nothing out, so
+       what is checked here is the box and not the pixels; the width itself was
+       measured in a browser. */
+    expect(must(table.parentElement, 'box around the matrix')).toHaveClass('table-scroll')
+  })
+})
+
 describe('the headings of the matrix', () => {
   it('are real table headers with a scope, in both directions', async () => {
     renderAt('/sr/administracija/moderatori', 'superadmin')
