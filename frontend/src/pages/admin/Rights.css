@@ -10,6 +10,29 @@
  * something a screen reader has to be told rather than something it can see.
  */
 
+/* For `.table-scroll`, which the box around the matrix wears. Named here rather
+   than left to whoever renders the screen: the class is used in this file's
+   component, so the rule behind it is this file's business. The screen reaches
+   it today through Member.css as well, and that is an accident of what else it
+   draws, not a dependency this component should rest on. */
+@import '../../styles/table.css';
+
+/* The box around the matrix, and the box the matrix scrolls in.
+ *
+ * The scroll is for the table shape only, and there it is not the ordinary case:
+ * at the default text size sixteen columns of boxes fit in 900 pixels, which is
+ * why that is the width the shape switches at. It is enlarged text that makes it
+ * necessary, because every width in here is in `rem` and the page is not: at
+ * 1280 with the text at 200 per cent the matrix is 214 pixels wider than the
+ * column it sits in, and without a box to scroll in those pixels come out of the
+ * page (PDL P24, and CLAUDE.md: the page itself never scrolls sideways).
+ *
+ * Nothing below fights it. `.rights` sets no `overflow` of its own in either
+ * shape, and nothing in it is positioned, so there is no box in here that could
+ * be measured against the page instead of against this one. The one thing that
+ * would be is the caption, which is `visually-hidden` and therefore
+ * `position: absolute`, and it stands at the near edge where the table starts
+ * rather than past the far one. */
 .rights-wrap {
   margin-block-start: var(--space-12);
 }

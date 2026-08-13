@@ -29,13 +29,21 @@ import './Rights.css'
  * every box in the page would be a second copy in the accessibility tree as
  * well. The words beside each box on a telephone are the same words as in its
  * name, which is what makes the layout swap free of charge.
+ *
+ * Which leaves the width where the table shape is drawn. Sixteen columns of
+ * boxes beside a twelve rem column of names are as wide as the text is big, and
+ * the screen is not: at 1280 with the text at 200 per cent the matrix wanted 214
+ * pixels more than the page had, and took them from the page, which then
+ * scrolled sideways as a whole. That is the one thing this portal does not do
+ * (PDL P24), so the table sits in the same `.table-scroll` box as the other
+ * twenty-three and scrolls inside it.
  */
 export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
   const { t } = useI18n()
   const { rights, setRight } = useSession()
 
   return (
-    <div className="rights-wrap">
+    <div className="rights-wrap table-scroll">
       <table className="rights">
         <caption className="visually-hidden">{t('rights.title')}</caption>
         <thead>
