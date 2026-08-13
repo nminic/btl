@@ -147,7 +147,16 @@ const TOO_MUCH_SLOWER = 10
  *
  * One an hour, against a slowest honest row of 1,55 over a hundred and fifty one
  * kilometres and a slowest short one of 1,91. Slow enough that no walk anybody
- * enters will trip it, and ten times off any missed unit.
+ * enters will trip it.
+ *
+ * What it catches and what it does not, measured rather than claimed: a whole
+ * band multiplied by ten fails everywhere, by four fails above a hundred
+ * kilometres, and by three passes, because the slowest honest row in that band
+ * is 4,01 an hour and a third of that still clears the floor. The two guards
+ * together therefore cover a missed unit, which is the fault this file was
+ * written for, and not a systematic error of three or four times over a whole
+ * band. Nothing here can: the middle moves with the rows it measures, and the
+ * floor has to stay under a genuine hundred kilometre walk.
  */
 const NOBODY_IS_SLOWER_THAN = 1
 

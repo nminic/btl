@@ -86,9 +86,14 @@ export function SendBack({
   /** Nothing to send back with: the button, the reason beside it and the refusal
    *  on the press all have to agree about it, so it is worked out once. */
   const missing = !optional && note.trim() === ''
-  /* Its own id per instance: five queues share this box and two of them draw it
-     inside a table, where a fixed id would be repeated down the rows. */
-  const waitsId = useId()
+  /* Its own ids per instance: five queues share this box and two of them draw it
+     inside a table, where a fixed id would be repeated down the rows. Today
+     exactly one box is open at a time, so nothing collides; the comment used to
+     say this while the field beside it still carried a written id, which is an
+     argument that reads as done and is half done. */
+  const own = useId()
+  const waitsId = `${own}-waits`
+  const fieldId = `${own}-reason`
 
   /* The box has just appeared, usually in place of the button that opened it,
    * so the focus has to come along. Without it the focus stays on an element
@@ -119,11 +124,11 @@ export function SendBack({
       {explain && !optional && <RequiredNote />}
 
       <div className="rankings__field rankings__field--wide">
-        <AskedLabel id="send-back-reason" asked={!optional}>
+        <AskedLabel id={fieldId} asked={!optional}>
           {t(labelKey)}
         </AskedLabel>
         <input
-          id="send-back-reason"
+          id={fieldId}
           ref={field}
           type="text"
           value={note}
