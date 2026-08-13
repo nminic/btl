@@ -3,7 +3,6 @@ import {
   memo,
   useCallback,
   useState,
-  type CSSProperties,
   type FormEvent,
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
@@ -711,7 +710,7 @@ export function FormRenderer({
                variable on it makes (components/ColumnChart.tsx): TypeScript's
                `CSSProperties` has no room for a custom property, and there is no
                other way to hand a number to a stylesheet. */
-            style={{ '--columns': columnsOf(fields) } as CSSProperties}
+            style={{ '--columns': columnsOf(fields) }}
           >
             {drawnRow}
           </div>

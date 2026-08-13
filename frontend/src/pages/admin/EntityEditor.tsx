@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
-import { shownValue, textFrom, valuesFor } from '../../forms/records'
+import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
@@ -347,7 +347,7 @@ export function RowActions({
   whyNoRemove?: string
 }) {
   const { remove } = useSession()
-  const id = String((record as Record<string, unknown>)[entity.idField])
+  const id = String(fieldValue(record, entity.idField))
 
   /* The row about to go is where the focus is, so deleting it leaves the focus
      on nothing and the next Tab starts the page from the top. It moves to the

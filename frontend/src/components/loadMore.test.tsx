@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
 import { must } from '../test/at'
+import { intersecting, watcher } from '../test/intersection'
 import { setupUser } from '../test/user'
 import { useColumns, useGrowing } from './growing'
 import { LoadMore } from './LoadMore'
@@ -178,10 +179,7 @@ describe('the foot of the list coming into view', () => {
     })
 
     act(() => {
-      must(watch, 'the watcher')(
-        [{ isIntersecting }] as unknown as IntersectionObserverEntry[],
-        null as never,
-      )
+      must(watch, 'the watcher')([intersecting({ isIntersecting })], watcher())
     })
   }
 

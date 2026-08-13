@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { outsideOf } from '../components/outsideOf'
 import { useToday } from '../clock/useClock'
 import { monthGrid, monthNumbers, shiftMonth } from '../data/derive'
 import { formatMonth } from '../i18n/format'
@@ -65,7 +66,7 @@ export function DatePicker({
     }
 
     function onPointerDown(event: MouseEvent) {
-      if (!box.current?.contains(event.target as Node)) {
+      if (outsideOf(box.current, event)) {
         setOpen(false)
       }
     }

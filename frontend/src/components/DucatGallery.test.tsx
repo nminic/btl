@@ -4,11 +4,11 @@ import { join } from 'node:path'
 import { ruleSentence, type DucatFamily } from '../data/ducatRule'
 import { loadResource } from '../data/client'
 import sr from '../i18n/sr.json'
-import { translate, type Dictionary } from '../i18n/translate'
+import { translate } from '../i18n/translate'
 import { at, first, must } from '../test/at'
 import { renderAt } from '../test/render'
 
-const dictionary = sr as Dictionary
+const dictionary = sr
 const t = (key: string, params?: Record<string, string | number>) =>
   translate(dictionary, 'sr', key, params)
 
@@ -146,7 +146,7 @@ describe('the wall of ducats in the rulebook', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/ducats.json')
         ? new Response('[]', { status: 200 })
-        : real(input)) as typeof fetch
+        : real(input))
 
     try {
       renderAt('/sr/pravilnik')

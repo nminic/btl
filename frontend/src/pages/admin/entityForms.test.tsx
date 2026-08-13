@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
-import { translate, type Dictionary } from '../../i18n/translate'
+import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
-import { at, first, must } from '../../test/at'
+import { at, first, inputElement, must } from '../../test/at'
 import { formatNumber } from '../../i18n/format'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -35,7 +35,7 @@ import {
  * the way back to the list, and is every one of them shut to a competitor.
  */
 
-const dictionary = sr as Dictionary
+const dictionary = sr
 
 function t(key: string): string {
   return translate(dictionary, 'sr', key)
@@ -405,7 +405,7 @@ async function newRaceOnFirstEvent(user: ReturnType<typeof setupUser>) {
      here anyway, which is the category the length is read as. */
   const day = form.getByLabelText(labelled(t('admin.field.raceDate')))
   const opened = must(
-    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(day).value)),
     'the day the form opened on',
   )
 
@@ -535,7 +535,7 @@ describe('a written page nobody has written yet', () => {
         ? new Response(JSON.stringify({ nova: { title: 'Nova strana', sections: [] } }), {
             status: 200,
           })
-        : real(input)) as typeof fetch
+        : real(input))
 
     renderAt('/sr/administracija/strane', 'superadmin')
 

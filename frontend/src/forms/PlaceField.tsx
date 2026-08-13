@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AskedLabel } from './AskedLabel'
+import { outsideOf } from '../components/outsideOf'
 import { CountryOptions } from './CountryOptions'
 import { countryName } from '../data/countryName'
 import {
@@ -172,7 +173,7 @@ export function PlaceField({
     }
 
     function onPointerDown(event: MouseEvent) {
-      if (!box.current?.contains(event.target as Node)) {
+      if (outsideOf(box.current, event)) {
         setOpen(false)
       }
     }

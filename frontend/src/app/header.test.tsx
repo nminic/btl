@@ -1,3 +1,4 @@
+import { htmlElement } from '../test/at'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -20,7 +21,7 @@ function panelOf(triggerName: string | RegExp) {
   const trigger = screen.getByRole('button', { name: triggerName })
   const panel = document.getElementById(trigger.getAttribute('aria-controls') ?? '')
 
-  return within(panel as HTMLElement)
+  return within(htmlElement(panel))
 }
 
 describe('the brand', () => {

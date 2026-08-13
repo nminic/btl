@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
-import registracija from '../forms/definitions/registracija.form.json'
+import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
-import type { FormDef, FormValues } from '../forms/types'
+import type { FormValues } from '../forms/types'
 import { REFERRAL_CODE, REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
 import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -101,13 +101,13 @@ export function Registration() {
      `?preporuka=`, nothing looked, and the one fact the whole programme rests on
      was lost at the door. A member who registers this way is credited to
      whoever brought them, but not yet: the credit falls when this member's own
-     fee is first activated (owner, 12.08.2026).
+     membership is first activated (owner, 12.08.2026).
 
      Through `useFilterParams` because that is the only door to the address bar
      (app/useFilterParams.ts). Reading is all this does; nothing here writes. */
   return (
     <FormRenderer
-      form={registracija as FormDef}
+      form={registracija}
       onSubmit={(values) => {
         setSent(referral === null ? values : { ...values, referredBy: referral })
       }}

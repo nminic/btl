@@ -21,6 +21,19 @@ describe('Markdown', () => {
     expect(screen.getByRole('heading', { level: 4, name: 'Četiri' })).toBeVisible()
   })
 
+  it('draws the two deepest headings, and nothing below them', () => {
+    render(<Markdown text={'##### Pet\n\n###### Šest\n\n####### Sedam'} />)
+
+    expect(screen.getByRole('heading', { level: 5, name: 'Pet' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 6, name: 'Šest' })).toBeVisible()
+    /* Seven hashes are not a heading at all: the shape takes two to six, so the
+       line is a paragraph and reads as one. Held here because the tags are now
+       a written-out list of four (`headingTag`), and that list is only right for
+       as long as the shape above it cannot produce a fifth. */
+    expect(screen.queryByRole('heading', { name: /Sedam/ })).not.toBeInTheDocument()
+    expect(screen.getByText('####### Sedam')).toBeVisible()
+  })
+
   it('keeps the line breaks inside one paragraph', () => {
     render(<Markdown text={'Poverenik za informacije\nBulevar kralja Aleksandra 15\n\nDrugi pasus'} />)
 
@@ -167,7 +180,7 @@ describe('Markdown', () => {
     expect(container.querySelector('img')).toBeNull()
     // React escaped it instead of parsing it, so there was never anything to run.
     expect(container.innerHTML).toContain('&lt;script&gt;')
-    expect((window as unknown as { btlRanAScript?: boolean }).btlRanAScript).toBeUndefined()
+    expect(Reflect.get(window, 'btlRanAScript')).toBeUndefined()
     expect(screen.getByText(/<b>ne podebljano<\/b>/)).toBeVisible()
   })
 })

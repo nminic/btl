@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { outsideOf } from '../components/outsideOf'
 
 /* One panel that opens under a button, used by the navigation groups, the
  * account picture and the inbox. Written once because closing on a click
@@ -30,7 +31,7 @@ export function Dropdown({
     }
 
     function onPointerDown(event: MouseEvent) {
-      if (!box.current?.contains(event.target as Node)) {
+      if (outsideOf(box.current, event)) {
         setOpen(false)
       }
     }

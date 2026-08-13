@@ -1,3 +1,4 @@
+import { at } from '../test/at'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -127,8 +128,8 @@ describe('space and corners are chosen from the scale, not typed', () => {
 
     for (const sheet of sheets) {
       for (const rule of sheet.css.matchAll(SPACING)) {
-        const property = rule[1] as string
-        const value = (rule[2] as string).trim()
+        const property = at(rule, 1)
+        const value = at(rule, 2).trim()
         /* The whole value, so a failure names what is actually written rather
            than the first number a reader of the regex happens to reach. */
         const key = `${sheet.path} | ${property} | ${value}`
@@ -161,7 +162,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
 
     for (const sheet of sheets) {
       for (const rule of sheet.css.matchAll(/(?<![-\w])([a-z-]*radius[a-z-]*)\s*:\s*([^;{}]+);/g)) {
-        const value = (rule[2] as string).trim()
+        const value = at(rule, 2).trim()
         const key = `${sheet.path} | ${rule[1]} | ${value}`
 
         if (measured.has(key)) {
@@ -225,7 +226,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
          * which is losing content for the reader who asked for bigger text
          * (WCAG 2.2 SC 1.4.4). Open in ADL, beside the typographic scale. */
         expect(query[2], `${sheet.path} sets a breakpoint in ${query[2]}`).toBe('px')
-        widths.push(query[1] as string)
+        widths.push(at(query, 1))
       }
     }
 

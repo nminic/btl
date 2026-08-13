@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { outsideOf } from '../components/outsideOf'
 import { LOCALES, type Locale } from '../i18n/config'
 import { useI18n } from '../i18n/useI18n'
 
@@ -47,7 +48,7 @@ export function LanguageMenu({ restOfPath }: { restOfPath: string }) {
     }
 
     function onPointerDown(event: MouseEvent) {
-      if (!box.current?.contains(event.target as Node)) {
+      if (outsideOf(box.current, event)) {
         setOpen(false)
       }
     }

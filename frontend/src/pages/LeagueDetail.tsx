@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
-import liga from '../forms/definitions/admin-liga.form.json'
+import { liga } from '../forms/definitions'
 import { limitOf } from '../forms/records'
-import type { FormDef } from '../forms/types'
 import { PageMeta } from '../app/PageMeta'
 import { PartsNav } from '../components/PartsNav'
 import { Resource } from '../components/Resource'
@@ -57,7 +56,7 @@ function EditableText({
              longer than the form that made it accepts, and the next person to
              open that form was told their own words were too long. The number
              lives in the definition (src/forms/records.ts). */
-          maxLength={limitOf(liga as FormDef, 'rules')}
+          maxLength={limitOf(liga, 'rules')}
           onBlur={(event) => {
             onSave(event.target.value)
             setEditing(false)

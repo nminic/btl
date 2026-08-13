@@ -1,7 +1,8 @@
+import { matchingMedia } from '../../test/media'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { first, must } from '../../test/at'
+import { first, htmlElement, must } from '../../test/at'
 import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
@@ -188,9 +189,9 @@ describe('TopTen', () => {
     )
 
     // Only the ones with somebody in them: an empty place carries no colour.
-    const faces = [
-      ...container.querySelectorAll('.portrait:not(.portrait--empty)'),
-    ] as HTMLElement[]
+    const faces = [...container.querySelectorAll('.portrait:not(.portrait--empty)')].map(
+      htmlElement,
+    )
 
     // "Ime" and the member number, which is what the fixture calls people.
     expect(first(faces).textContent).toBe('I0')
@@ -268,10 +269,7 @@ describe('Counters', () => {
 
   it('gives the numbers straight away to anyone who asked for less motion', () => {
     const previous = window.matchMedia
-    window.matchMedia = ((query: string) => ({
-      matches: query.includes('reduced-motion'),
-      media: query,
-    })) as typeof matchMedia
+    window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
 
     renderWidget(<Counters totals={totals} title="Sezona 2027." />)
 
@@ -633,10 +631,7 @@ describe('TopByCategory', () => {
 
   it('starts stopped for anyone who asked for less motion', async () => {
     const previous = window.matchMedia
-    window.matchMedia = ((query: string) => ({
-      matches: query.includes('reduced-motion'),
-      media: query,
-    })) as typeof matchMedia
+    window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
 
     try {
       renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} turnMs={10} />)

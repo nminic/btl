@@ -1,4 +1,4 @@
-import type { Competitor } from '../../data/types'
+
 import type { Decision } from '../../session/context'
 import { first } from '../../test/at'
 import {
@@ -6,6 +6,7 @@ import {
   handOutMemberNumbersFor,
   takenMemberNumbers,
   type NumberSources,
+  type Numbered,
 } from './memberNumbers'
 
 /* The three sources, named once here as well, because the fault this module was
@@ -14,7 +15,7 @@ import {
 
 const NOTHING: NumberSources = { edits: {}, creations: {}, decisions: {}, deletions: {} }
 
-const member = (memberNumber: string) => ({ memberNumber }) as Competitor
+const member = (memberNumber: string): Numbered => ({ memberNumber })
 
 const activation = (memberNumber: string): Decision => ({
   status: 'approved',

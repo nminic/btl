@@ -73,6 +73,33 @@ export function isoDate(text: string): string {
   return date === null ? '' : date.toISOString().slice(0, 10)
 }
 
+/**
+ * The same move, for a date going into a record rather than back into its own
+ * box, where there is nothing to fall back to.
+ *
+ * `isoDate` answers with an empty string, which is right while a form is being
+ * held: the value goes back into the field it came from and the person sees
+ * what they typed. It is wrong the moment the value is written into a record.
+ * An empty date is a result that belongs to no season, and it would travel to
+ * the moderator's queue looking like any other (ADL A14 rule 2: absence that
+ * means a fault in the program must not quietly become a default).
+ *
+ * So this one throws, and says what was in the box. Nothing on the portal can
+ * reach it, because the form refuses an unreadable date before it submits
+ * (`forms/validate.ts`), and that is exactly why it is written as a throw and
+ * not as a fallback: the day something does reach it, it has to stop rather
+ * than file a result nobody can place.
+ */
+export function storedDate(text: string): string {
+  const date = parseDate(text)
+
+  if (date === null) {
+    throw new Error(`${text} is not a date`)
+  }
+
+  return date.toISOString().slice(0, 10)
+}
+
 /** Keeps the typing on the rails: digits only, slashes put in for the member. */
 export function maskDate(text: string): string {
   const digits = text.replace(/\D/g, '').slice(0, 8)

@@ -4,12 +4,18 @@ import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
-import { translate, type Dictionary } from '../i18n/translate'
+import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
 import { StaticPage } from './StaticPage'
 
-const dictionary = sr as Dictionary
+const dictionary = sr
+
+/* The written pages as the portal itself reads them. Annotated and not asserted:
+   an annotation is a claim the compiler has to agree with, and this one holds
+   the file to the type every screen reads it through (ADL A14). */
+const WRITTEN: Record<string, { title: string; sections: { heading: string; body: string }[] }> =
+  written
 
 describe('the written pages', () => {
   it.each([
@@ -165,9 +171,12 @@ describe('the fee schedule in the terms', () => {
        So both are held: that the numbers run from one with nothing missing, and
        that each reference lands on the section whose subject the sentence is
        about. */
-    const sections = (written as Record<string, { sections: { heading: string; body: string }[] }>)[
-      'uslovi-koriscenja'
-    ]?.sections ?? []
+    /* Annotated rather than asserted: the ban on `as` is now enforced by the
+       linter (ADL A14, PR #77), and a name that carries the type takes the
+       parsed JSON on its own. */
+    const pages: Record<string, { sections: { heading: string; body: string }[] } | undefined> =
+      written
+    const sections = pages['uslovi-koriscenja']?.sections ?? []
     const numbers = sections.map((section) => Number(section.heading.split('.')[0]))
 
     expect(numbers.length).toBeGreaterThan(8)
@@ -243,7 +252,7 @@ describe('the rulebook', () => {
   /** The whole of it as one piece of text, which is how a rule that has to be in
    *  it is looked for: an article moved from one section to another is still in
    *  the rulebook. */
-  const rulebook = (written as Record<string, { sections: { body: string }[] }>)['pravilnik']
+  const rulebook = WRITTEN['pravilnik']
     ?.sections.map((section) => section.body)
     .join(NEWLINE)
 
@@ -395,7 +404,7 @@ describe('the rulebook', () => {
 })
 
 describe('how a written page is set', () => {
-  const pages = Object.entries(written as Record<string, { sections: { heading: string; body: string }[] }>)
+  const pages = Object.entries(WRITTEN)
 
   it('reads every written page there is', () => {
     /* Without this the two below pass on an empty list. Four since 04.08.2026,

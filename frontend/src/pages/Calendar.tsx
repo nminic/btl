@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { EVENTS } from './admin/entityForms'
@@ -82,7 +81,7 @@ function Day({
       ]
         .filter(Boolean)
         .join(' ')}
-      style={first === undefined ? undefined : ({ '--day-start': first } as CSSProperties)}
+      style={first === undefined ? undefined : { '--day-start': first }}
     >
       {/* The number is not a control any more. Pressing a day used to open a
           panel under the whole grid, which on a telephone is under everything,
