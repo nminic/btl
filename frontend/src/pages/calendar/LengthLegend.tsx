@@ -1,5 +1,12 @@
 import { CATEGORIES } from '../../data/derive'
 import { useI18n } from '../../i18n/useI18n'
+/* For the five colours of `.length-dot`, which live in the table sheet because
+   the results table draws them too (styles/table.css). Asked for here rather
+   than left to the screen, since this file has no sheet of its own to ask
+   through (ADL A7). The `.legend` names beside them are in Calendar.css and
+   still arrive borrowed, which is the same fault one sheet over and is written
+   down as open rather than fixed here. */
+import '../../styles/table.css'
 
 /**
  * What the colours on the chips mean, in one line under the grid (owner,
