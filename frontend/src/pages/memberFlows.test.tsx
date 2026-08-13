@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router'
 import type { Competitor } from '../data/types'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
+import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
@@ -265,13 +266,38 @@ describe('membership', () => {
     expect(screen.getByText(/Danas članarina košta 20 EUR, a iz Srbije 2.400 RSD/)).toBeVisible()
   })
 
-  it('writes the amount owed in the currency that member pays in', async () => {
-    /* The row carrying the amount was spelled RSD by hand, so a member abroad
-       read „Iznos 4.800 RSD" for a debt of 40 EUR, four sections above the same
-       screen quoting their referral in euro. It is the one figure a bank asks
-       for, and it is the same rule that decides every other amount on the
-       screen: the country on the profile (PDL P8). */
+  it('offers a member abroad no payment slip at all, in any form', async () => {
+    /* PDL P8, owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije. Član
+       van Srbije ga ne vidi uopšte, ni u kom obliku. Udruženje ima jedan račun,
+       u dinarima, kod srpske banke, i uplata na njega iz inostranstva je
+       najsporiji i najskuplji put koji postoji."
+     *
+       Only the drawn code was hidden. The heading, the association's dinar
+       account, the reference, the purpose and an amount were all still there, so
+       a member in North Macedonia was handed the whole of the route that
+       decision removed, and an amount of 4.200 RSD against a debt of 35 EUR. The
+       terms say the same in writing: outside Serbia it is PayPal or a card. */
     renderFor('000010')
+
+    expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Iznos')).not.toBeInTheDocument()
+    expect(screen.queryByText('Poziv na broj')).not.toBeInTheDocument()
+    expect(screen.queryByText(RECIPIENT_ACCOUNT)).not.toBeInTheDocument()
+
+    /* And still told why, since that sentence belongs to the ways of paying and
+       not to the slip. */
+    expect(screen.getByText(/Severna Makedonija/)).toBeVisible()
+    expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+  })
+
+  it('writes the amount owed to a member in Serbia, in dinars', async () => {
+    /* The row carrying the amount was spelled RSD by hand while every other
+       figure on the screen follows the country on the profile. It is the one
+       figure somebody types into their bank, so it goes through the same rule as
+       the rest even though the slip it sits in is now shown to Serbia alone. */
+    renderFor('000032')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
 
@@ -280,8 +306,7 @@ describe('membership', () => {
       'the amount beside its label',
     )
 
-    expect(amount).toMatch(/EUR$/)
-    expect(amount).not.toContain('RSD')
+    expect(amount).toMatch(/RSD$/)
   })
 
   it('stops crediting a referral for somebody administration has deleted', async () => {

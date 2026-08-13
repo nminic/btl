@@ -302,11 +302,25 @@ export function Membership() {
                       (owner, 30.07.2026). The line above about membership not
                       being on sale is the one September before the launch, and
                       not the day the list ran out. */}
-                  <h3 className="profile__section">{t('membership.payNow')}</h3>
-
+                  {/* Which ways of paying this member is offered, and why. It
+                      belongs to the ways and not to the slip: a member abroad
+                      sees no slip at all and still needs to know that PayPal and
+                      a card are what their country gets. */}
                   <p className="member__note">
                     {t('membership.byCountry', { country: countryName(me.country) })}
                   </p>
+
+                  {/* The slip itself, and only where it can be paid. PDL P8,
+                      owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije.
+                      Član van Srbije ga ne vidi uopšte, ni u kom obliku."
+                      Only the drawn code was hidden, so a member abroad still got
+                      the heading, the association's dinar account, the reference
+                      and an amount, which is the whole of the slip and the very
+                      route that decision removed. The terms say the same in
+                      writing: outside Serbia it is PayPal or a card. */}
+                  {methods.includes('ips') && (
+                    <>
+                  <h3 className="profile__section">{t('membership.payNow')}</h3>
 
                   {/* The same four facts the code carries, in writing, because a
                       code is no use to somebody typing a payment into their bank
@@ -341,6 +355,8 @@ export function Membership() {
                   </dl>
 
                   <p className="member__note">{t('membership.referenceNote')}</p>
+                    </>
+                  )}
 
                   {/* Every way of paying is one way of doing what the slip
                       above is for, so they sit under it rather than beside
