@@ -4,7 +4,7 @@ import { useToday } from '../clock/useClock'
 import registracija from '../forms/definitions/registracija.form.json'
 import { FormRenderer } from '../forms/FormRenderer'
 import type { FormDef, FormValues } from '../forms/types'
-import { REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
+import { REFERRAL_CODE, REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
 import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 
@@ -21,7 +21,21 @@ export function Registration() {
      beside it another. */
   const today = useToday()
   const [params] = useFilterParams()
-  const referral = params.get('preporuka')
+  /* A referral code and not whatever the address carried.
+   *
+   * `get` answers the empty string for `?preporuka=` with nothing after it, so a
+   * link that lost its code while being copied still had somebody told „Prijava
+   * je zabeležena kao preporuka" over a credit nobody could ever be paid, and
+   * `referredBy: ''` went out, a third state the record's own type does not have.
+   *
+   * And anything at all fitted through: `?preporuka="><img src=x onerror=...>`
+   * arrived in what is sent, word for word, sixty eight characters of it. React
+   * draws none of it and nothing here puts it in an address, so it is not an
+   * attack today; it becomes one the day a backend keeps it and an
+   * administration screen writes out who brought whom. The shape is known and
+   * costs one line, so it is checked at the door rather than migrated later. */
+  const carried = params.get('preporuka') ?? ''
+  const referral = REFERRAL_CODE.test(carried) ? carried : null
 
   // Between 15 and 30 September the portal is open for looking only: nobody can
   // even begin to register, which is a decision and not a missing screen.

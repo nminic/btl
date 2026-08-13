@@ -30,7 +30,7 @@ import {
   seasonBeingRenewed,
 } from '../../data/pricing'
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
-import { formatNumber, money } from '../../i18n/format'
+import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { applyChanges } from '../../forms/records'
@@ -66,16 +66,23 @@ function creditOf(country: string, credited: PriceRow, locale: string, times = 1
 /**
  * How many members this one brought in and was actually credited for.
  *
- * Counted rather than stored, and counted twice over: the link records who
- * brought whom, and the credit falls only when that member's own fee is first
- * activated (owner, 12.08.2026). Somebody who registered through a link and
- * never paid pays nobody, which is what `active` is doing in here.
+ * Counted rather than stored, and counted three ways over: the link records who
+ * brought whom, the credit falls only when that member's own fee is first
+ * activated (owner, 12.08.2026), and it has to have been a fee. Somebody who
+ * registered through a link and never paid pays nobody.
+ *
+ * `active` alone was not that. It is true of an honorary member too, and
+ * twenty nine of the thirty are honorary, so the league was paying 600 dinars a
+ * head for members it had itself waived the fee for. The comment above this said
+ * „never paid pays nobody" while the code said the opposite (PDL P16, 13.08.2026).
  *
  * The balance under this used to be the string „0 EUR" for everybody, written
  * out, so no arrangement of the data could ever have shown anything else.
  */
 function broughtInBy(me: Competitor, everybody: Competitor[]): number {
-  return everybody.filter((one) => one.referredBy === me.referralCode && one.active).length
+  return everybody.filter(
+    (one) => one.referredBy === me.referralCode && one.active && one.membershipBasis === 'payment',
+  ).length
 }
 
 export function Membership() {
@@ -89,7 +96,8 @@ export function Membership() {
      taken away (owner, 30.07.2026), so of the three things administration can do
      to a record only one can happen here, and asking for the other two left a
      list that could be empty and a default that could never be reached. */
-  const credited = applyChanges(REFERRAL_ROW, useOverlay().edits[REFERRAL.key])
+  const { edits } = useOverlay()
+  const credited = applyChanges(REFERRAL_ROW, edits[REFERRAL.key])
   const state = combineResources(useCompetitors(), useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It
@@ -116,7 +124,14 @@ export function Membership() {
         const nextSeason = seasonBeingRenewed(today)
         const windowOpen = inYearlyWindow(today)
         const team = teams.find((one) => one.id === me.teamId)
-        const price = priceOn(today)
+        /* The prices as administration has them, not as the file has them.
+           The referral row was already read through the price list while the fee
+           itself was read off a constant, so an administrator could put 22,50 on
+           the price list, see the table show it, and a member would still read 20
+           and scan a code for the old figure. One screen sets these; one screen
+           has to be enough. */
+        const price = applyChanges(priceOn(today), edits[priceOn(today).key])
+        const junior = applyChanges(JUNIOR, edits[JUNIOR.key])
         /* An honorary member owes nothing at all (Pravilnik član 15, PDL P16),
            and twenty nine of the thirty members in the data are honorary. */
         const honorary = me.membershipBasis === 'honorary'
@@ -126,7 +141,7 @@ export function Membership() {
            somebody born in 2014 read „Do 14 godina članarina je 20 EUR" and then
            scanned a request for 4.200 RSD. The year of birth was on the record
            the whole time. */
-        const due = juniorInSeason(nextSeason, me.birthYear) ? JUNIOR : price
+        const due = juniorInSeason(nextSeason, me.birthYear) ? junior : price
         const methods = methodsFor(me.country)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have
@@ -156,11 +171,18 @@ export function Membership() {
                   lives, the portal works it out, and what the older rule
                   forbade was reading one as a conversion of the other. The ban
                   on showing them together was replaced by a ban on picking. */}
+              {/* Nothing about a price to somebody who owes none. The slip was
+                  taken away from an honorary member and these three sentences
+                  were not, so the screen still quoted the fee, the processing
+                  charge and the junior rate to somebody it had just told they
+                  pay nothing. */}
+              {!honorary && (
+              <>
               <p className="member__note">
                 {registrationOpen(today)
                   ? t('membership.priceNow', {
-                      eur: money(price.eur, locale),
-                      rsd: formatNumber(price.rsd, locale),
+                      eur: money(due.eur, locale),
+                      rsd: money(due.rsd, locale),
                     })
                   : t('membership.notYetSold')}
               </p>
@@ -180,10 +202,12 @@ export function Membership() {
               )}
               <p className="member__note">
                 {t('membership.junior', {
-                  eur: money(JUNIOR.eur, locale),
-                  rsd: formatNumber(JUNIOR.rsd, locale),
+                  eur: money(junior.eur, locale),
+                  rsd: money(junior.rsd, locale),
                 })}
               </p>
+              </>
+              )}
             </section>
 
             <section className="member__panel" aria-labelledby="membership-renewal">
@@ -282,6 +306,17 @@ export function Membership() {
                     </dd>
                     <dt>{t('membership.purposeLabel')}</dt>
                     <dd>{purpose}</dd>
+                    {/* The amount, which this list did not have at all. It exists
+                        for somebody typing the payment into their bank by hand,
+                        and the one thing a bank cannot do without is the sum. A
+                        junior member had it worse than nobody: the only figure
+                        they could read on this screen was the grown one, and the
+                        right one was inside the code, where only a camera
+                        reaches. */}
+                    <dt>{t('membership.amountLabel')}</dt>
+                    <dd>
+                      <strong>{`${money(due.rsd, locale)} RSD`}</strong>
+                    </dd>
                   </dl>
 
                   <p className="member__note">{t('membership.referenceNote')}</p>

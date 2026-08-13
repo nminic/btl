@@ -68,6 +68,21 @@ export const PRICES: PriceRow[] = [
  *  what comes next both walk. */
 const BY_START = [...PRICES].sort((left, right) => left.from.localeCompare(right.from))
 
+/**
+ * What a referral code looks like, and the only thing a link may carry.
+ *
+ * Sixteen hexadecimal characters, assigned rather than worked out. The first
+ * version was `sha256(salt + memberNumber)` cut to ten, which a security review
+ * took apart in a day: one fixed salt for everybody makes that a two way
+ * mapping, not a one way one, and the salt came back out of a single published
+ * pair in two thousandths of a second. Member numbers are public and
+ * consecutive, so the code was the member number in another alphabet.
+ *
+ * Ten characters is also forty bits, which at ten thousand members is about an
+ * hour and a half of guessing. Sixteen is not.
+ */
+export const REFERRAL_CODE = /^[0-9a-f]{16}$/
+
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 
 /**

@@ -175,7 +175,7 @@ describe('Registration once it is open', () => {
        naredni put". This is the first half. The second half is `active` on the
        membership screen. */
     const user = setupUser()
-    renderForm(OPEN, '/sr/registracija?preporuka=b56366bc8f')
+    renderForm(OPEN, '/sr/registracija?preporuka=7f07b38ff7ee7543')
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
@@ -185,7 +185,33 @@ describe('Registration once it is open', () => {
     expect(screen.getByText(/zabeležena kao preporuka/)).toBeVisible()
     /* And whoever brought them is not named: the code belongs to that member,
        not to this one. */
-    expect(screen.queryByText(/b56366bc8f/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/7f07b38ff7ee7543/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['a link that lost its code while being copied', '/sr/registracija?preporuka='],
+    ['a code of the wrong shape', '/sr/registracija?preporuka=nemaovakvogkoda'],
+    ['anything at all', '/sr/registracija?preporuka=%22%3E%3Cimg+src%3Dx+onerror%3Dalert(1)%3E'],
+  ])('refuses %s', async (_what, address) => {
+    /* `get` answers the empty string for a parameter with nothing after it, not
+       null, so the first of these was recorded as a referral: somebody was told
+       „Prijava je zabeležena kao preporuka" over a credit nobody could ever be
+       paid, and `referredBy: ''` went out, a third state the record's own type
+       does not have.
+
+       The third arrived word for word in what is sent, sixty eight characters of
+       it. React draws none of it and nothing puts it in an address, so it is not
+       an attack today; it becomes one the day a backend keeps it and an
+       administration screen writes out who brought whom. */
+    const user = setupUser()
+    renderForm(OPEN, address)
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
   })
 
   it('says nothing about a referral to somebody who arrived without one', async () => {

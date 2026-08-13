@@ -206,6 +206,14 @@ describe('membership', () => {
     expect(screen.queryByRole('heading', { name: 'Uplati sada' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^K:PR\|V:01/)).not.toBeInTheDocument()
+
+    /* And not a word about a price either. The slip was taken away and these
+       three sentences were not, so the screen went on quoting the fee, the
+       processing charge and the junior rate to somebody it had just told pays
+       nothing. */
+    expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/taksa za obradu plaćanja/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Do 14 godina članarina/)).not.toBeInTheDocument()
   })
 
   it('puts the junior fee in the code a junior member scans', async () => {
@@ -226,6 +234,12 @@ describe('membership', () => {
 
     expect(payload).toContain(`I:RSD${JUNIOR.rsd},00`)
     expect(payload).not.toContain('I:RSD4200,00')
+
+    /* And written out, not only inside the code. The list beside it exists for
+       somebody typing the payment into their bank by hand, and it had no amount
+       at all: the only figure a junior could read was the grown one. */
+    expect(screen.getByText('2.400 RSD')).toBeVisible()
+    expect(screen.getByText(/Danas članarina košta 20 EUR, a iz Srbije 2.400 RSD/)).toBeVisible()
   })
 
   it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
@@ -297,7 +311,7 @@ describe('membership', () => {
        something only whoever pays it is told (04.08.2026). What differs is who
        pays it, and one sentence says both halves: the euro payment carries it,
        the dinar payment does not. */
-    for (const member of ['000009', '000031']) {
+    for (const member of ['000010', '000031']) {
       renderFor(member)
 
       const costs = await screen.findByText(/taksa za obradu plaćanja/)
@@ -361,7 +375,7 @@ describe('membership', () => {
     /* The link carries a code and not the member number. That number is public
        and consecutive, so a link built out of it can be assembled for anybody,
        by anybody, including for oneself. */
-    expect(await screen.findByText(/registracija\?preporuka=b56366bc8f/)).toBeVisible()
+    expect(await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)).toBeVisible()
     expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
     expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
     /* And the balance is counted. This member brought five, and four of them
@@ -788,7 +802,7 @@ describe('screens that depend on the date', () => {
        The dinar amount is written the way every amount on the portal is
        written, with the thousands separated: it was the one number on the
        screen printed as a bare 4200. */
-    renderMembershipOn('2026-10-02', '000031')
+    renderMembershipOn('2026-10-02', '000032')
 
     expect(await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.')).toBeVisible()
     /* And the junior price the same way. It was quoted in euro alone, one line
