@@ -558,9 +558,24 @@ export function FormRenderer({
    * no field of its own to be found under (src/forms/types.ts).
    */
   function onScreen(all: FormValues): FormValues {
-    const hidden = form.fields.filter((field) => !isVisible(field, all, today)).map((field) => field.name)
+    const gone = form.fields.filter((field) => !isVisible(field, all, today))
+    /* And whatever a field that has gone was writing beside itself. A place
+       field writes the country its town came with, under a name of its own, so
+       hiding the town used to leave the country behind with nothing holding it
+       (src/forms/types.ts). Nothing draws that arrangement today; the fault was
+       built in the moment the country was let through by name. */
+    const alongside = gone.flatMap((field) => (field.type === 'place' ? ['country'] : []))
+    /* A field that only agrees with another one carries nothing of its own. The
+       repeated password is the whole of that case, and it was going out in the
+       body beside the first: a secret sent twice is a second place for it to end
+       up in a proxy log or a crash report. Whether the two matched is a rule of
+       the form, answered here, and not a fact a backend is owed. */
+    const confirming = form.fields.filter((field) => field.matches !== undefined)
+    const left = [...gone, ...confirming].map((field) => field.name)
 
-    return Object.fromEntries(Object.entries(all).filter(([name]) => !hidden.includes(name)))
+    return Object.fromEntries(
+      Object.entries(all).filter(([name]) => !left.includes(name) && !alongside.includes(name)),
+    )
   }
 
   function handleSubmit(event: FormEvent) {

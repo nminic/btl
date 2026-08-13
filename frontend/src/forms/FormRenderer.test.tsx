@@ -810,6 +810,47 @@ describe('a field the form has taken back off the screen', () => {
     expect(sent[0]).not.toHaveProperty('staratelj')
   })
 
+  it('takes a field that only agrees with another one out of what is sent', async () => {
+    /* A repeated password carries nothing of its own: whether the two match is a
+       rule of the form, answered here, and not a fact a backend is owed. It was
+       going out in the body beside the first one, so the secret travelled twice
+       and had a second place to end up in a proxy log or a crash report. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+    const twice: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'lozinka', type: 'password', labelKey: 'proba.lozinka', required: true },
+        {
+          name: 'lozinkaOpet',
+          type: 'password',
+          labelKey: 'proba.dopisano',
+          required: true,
+          matches: 'lozinka',
+        },
+      ],
+    }
+
+    renderWithI18n(
+      <FormRenderer
+        form={twice}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.lozinka/), 'trkacka2027')
+    await user.type(screen.getByLabelText(/proba.dopisano/), 'trkacka2027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.lozinka).toBe('trkacka2027')
+    expect(sent[0]).not.toHaveProperty('lozinkaOpet')
+  })
+
   it('is still sent while it is on the screen', async () => {
     /* The other half, so the fix cannot be „send nothing conditional". A parent
        named by somebody who really is under sixteen is the whole point of the
@@ -832,5 +873,56 @@ describe('a field the form has taken back off the screen', () => {
 
     expect(sent).toHaveLength(1)
     expect(sent[0]?.staratelj).toBe('Milena Đurišić')
+  })
+
+  it('takes with it the value it was writing beside itself', async () => {
+    /* A place field writes two values: the town into its own name and the
+       country the town came with into another, which has no field of its own to
+       be found under. Leaving out only what the definition names therefore left
+       the country standing after its town had gone.
+     *
+       Nothing on the portal draws that arrangement today, since the one form
+       with a conditional field has no place field in it. The fault was built the
+       moment the country was let through by name, which is why it is closed
+       while it is still cheap. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+    const conditionalPlace: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+        {
+          name: 'mesto',
+          type: 'place',
+          labelKey: 'proba.mesto',
+          showWhenYoungerThan: { field: 'datum', years: 16 },
+        },
+      ],
+    }
+
+    renderWithI18n(
+      <FormRenderer
+        form={conditionalPlace}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    const birth = screen.getByLabelText(/proba.datum/)
+
+    await user.type(birth, '01012015')
+    await user.type(screen.getByLabelText(/proba.mesto/), 'Beograd')
+
+    await user.clear(birth)
+    await user.type(birth, '01011990')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).not.toHaveProperty('mesto')
+    expect(sent[0]).not.toHaveProperty('country')
   })
 })

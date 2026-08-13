@@ -71,7 +71,13 @@ function speedOf(one: Result): number {
  * under three kilometres to 4,82 beyond a hundred.
  */
 function bandOf(distanceKm: number): number {
-  return [1, 3, 6, 12, 25, 50, 100, Infinity].find((edge) => distanceKm <= edge) ?? Infinity
+  /* The narrowest edge the distance still fits under, and no fallback: an empty
+     list gives `Math.min()` its own answer of Infinity, which is the band above
+     a hundred, so the case a default would have covered is the case the last
+     band already is. A default nothing can reach is a branch nothing proves
+     (ADL A14 rule 7): both of the ones written here first survived being changed
+     to anything at all. */
+  return Math.min(...[1, 3, 6, 12, 25, 50, 100, Infinity].filter((edge) => distanceKm <= edge))
 }
 
 /** The middle speed of a band, read off a sorted list of every result in it. */
@@ -82,9 +88,15 @@ function middleSpeedOf(band: number): number {
     .sort((a, b) => a - b)
 
   /* An even count takes the lower of the two middles rather than their mean.
-     Which of them is taken cannot matter at this many rows, and a mean would
-     add a branch nothing distinguishes. */
-  return speeds[Math.floor((speeds.length - 1) / 2)] ?? 0
+     Which of them is taken cannot matter at this many rows, and a mean would add
+     a branch nothing distinguishes.
+   *
+     Read as the smallest of the upper half rather than by index, so there is no
+     default to write. Written `?? 0`, an empty band answered nought and the
+     guard switched itself off for it silently; `Math.min()` of nothing answers
+     Infinity instead, which would flag every row in that band rather than none.
+     If the two are ever going to differ, loud is the right way round. */
+  return Math.min(...speeds.slice(Math.floor((speeds.length - 1) / 2)))
 }
 
 /**
@@ -95,6 +107,25 @@ function middleSpeedOf(band: number): number {
  * the margin on the side that would otherwise cry wolf.
  */
 const TOO_MUCH_SLOWER = 10
+
+/**
+ * And a floor that owes the data nothing.
+ *
+ * The band comparison is measured against the very rows it is measuring, so a
+ * fault that hits a whole band moves the middle along with the row and the ratio
+ * comes out at one. A reviewer multiplied the time of all ninety seven results
+ * over a hundred kilometres by ten, recomputed the points, and every guard here
+ * passed on a hundred and eleven kilometres walked over nine and a half days.
+ *
+ * That is the shape of the fault this file exists for: the row that started it
+ * was 211 kilometres entered for 21,10, a unit missed on import, and a unit is
+ * missed for a whole column at a time rather than for one cell.
+ *
+ * One an hour, against a slowest honest row of 1,55 over a hundred and fifty one
+ * kilometres and a slowest short one of 1,91. Slow enough that no walk anybody
+ * enters will trip it, and ten times off any missed unit.
+ */
+const NOBODY_IS_SLOWER_THAN = 1
 
 /**
  * Nobody runs a race at this speed.
@@ -206,7 +237,11 @@ describe('the results the prototype is filled with', () => {
        the multiple is generous. The worst honest row in the data is 6,27 times
        its own band, the fabricated one was 48. */
     const crawling = running
-      .filter((one) => speedOf(one) * TOO_MUCH_SLOWER < middleSpeedOf(bandOf(one.distanceKm)))
+      .filter(
+        (one) =>
+          speedOf(one) * TOO_MUCH_SLOWER < middleSpeedOf(bandOf(one.distanceKm)) ||
+          speedOf(one) < NOBODY_IS_SLOWER_THAN,
+      )
       .map((one) => one.id)
 
     expect(crawling).toEqual([])
