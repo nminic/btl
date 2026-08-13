@@ -28,15 +28,18 @@ type Result = {
   points: number
 }
 
-const results = JSON.parse(
+/* Annotated rather than asserted. `JSON.parse` answers `any`, which a typed name
+   accepts on its own, so the two `as` here were the ban in ADL A14 rule 1 broken
+   for nothing. */
+const results: Result[] = JSON.parse(
   readFileSync(join(process.cwd(), 'public/mock/results.json'), 'utf-8'),
-) as Result[]
+)
 
 type Race = { id: string; date: string; distanceKm: number }
 
-const races = JSON.parse(
+const races: Race[] = JSON.parse(
   readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
-) as Race[]
+)
 
 /**
  * How long the rest of a field took, on average.
@@ -50,6 +53,48 @@ const races = JSON.parse(
 function restTook(field: Result[]): number {
   return field.reduce((sum, one) => sum + one.seconds, 0) / field.length
 }
+
+/** Every result that was actually run, which is the only kind with a speed. */
+const running = results.filter((one) => one.seconds > 0)
+
+/** Kilometres an hour. */
+function speedOf(one: Result): number {
+  return one.distanceKm / (one.seconds / 3600)
+}
+
+/**
+ * The distance band a result falls in, named by its upper edge.
+ *
+ * Wide and few, because the point is not to compare like with like but to keep
+ * a marathon from being judged against a kilometre with children in it. Pace
+ * falls steadily with distance in this data, from a middle of 11,99 an hour
+ * under three kilometres to 4,82 beyond a hundred.
+ */
+function bandOf(distanceKm: number): number {
+  return [1, 3, 6, 12, 25, 50, 100, Infinity].find((edge) => distanceKm <= edge) ?? Infinity
+}
+
+/** The middle speed of a band, read off a sorted list of every result in it. */
+function middleSpeedOf(band: number): number {
+  const speeds = running
+    .filter((one) => bandOf(one.distanceKm) === band)
+    .map(speedOf)
+    .sort((a, b) => a - b)
+
+  /* An even count takes the lower of the two middles rather than their mean.
+     Which of them is taken cannot matter at this many rows, and a mean would
+     add a branch nothing distinguishes. */
+  return speeds[Math.floor((speeds.length - 1) / 2)] ?? 0
+}
+
+/**
+ * How much slower than its band a result may be before it is not a result.
+ *
+ * Ten, against a worst honest row of 6,27 and a fabricated one of 48. The same
+ * shape as the ceiling below it: set from what the data actually holds, with
+ * the margin on the side that would otherwise cry wolf.
+ */
+const TOO_MUCH_SLOWER = 10
 
 /**
  * Nobody runs a race at this speed.
@@ -146,6 +191,27 @@ describe('the results the prototype is filled with', () => {
     expect(adrift).toEqual([])
   })
 
+  it('holds no result impossibly slow for the distance it was run over', () => {
+    /* The guard above needs a field to compare against, and asking for three
+       finishers left it blind to 1149 of the 1566 races that have any results
+       at all: 873 have a single finisher and 276 have two. A reviewer took a
+       two man race and made it 3,3 kilometres in fourteen hours and twenty
+       minutes, 0,23 an hour, points recomputed so the formula agreed, and every
+       guard here passed.
+     *
+       So this one needs no field. A result is measured against the middle of
+       every result run over a comparable distance, which exists for all 3528 of
+       them. Ten times slower and nothing else: an ultra is genuinely slow and a
+       kilometre with children in it is slower still, so the bands are wide and
+       the multiple is generous. The worst honest row in the data is 6,27 times
+       its own band, the fabricated one was 48. */
+    const crawling = running
+      .filter((one) => speedOf(one) * TOO_MUCH_SLOWER < middleSpeedOf(bandOf(one.distanceKm)))
+      .map((one) => one.id)
+
+    expect(crawling).toEqual([])
+  })
+
   it('holds no result worth more points than the profile has room for', () => {
     /* Owner, 12.08.2026: „a bodovi do 200,00." The column on a profile is pinned
        to exactly that, so a result above it does not merely look odd, it pushes
@@ -194,9 +260,20 @@ describe('the results the prototype is filled with', () => {
     expect(empty).toEqual([])
   })
 
-  it('holds no race longer than the profile has room for', () => {
+  it('holds no result longer than the profile has room for', () => {
     /* And the same for the length, which is pinned to „1000,00 km ako zatreba". */
     const tooFar = results.filter((one) => one.distanceKm > 1000).map((one) => one.id)
+
+    expect(tooFar).toEqual([])
+  })
+
+  it('holds no race longer than that either, run or not', () => {
+    /* The test above says „race" and reads `results`, which left the 46 races of
+       the coming season with nothing over them at all: they have no finishers
+       yet, so no result carries their length. A race of five thousand kilometres
+       entered for 2027 passed every guard in this file, and would have reached
+       the calendar and the event page before anybody ran it. */
+    const tooFar = races.filter((one) => one.distanceKm > 1000).map((one) => one.id)
 
     expect(tooFar).toEqual([])
   })
