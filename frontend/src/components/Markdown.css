@@ -123,10 +123,14 @@
 .table.markdown__table thead th,
 .table.markdown__table tbody td {
   text-align: left;
-  /* Agrees with the shared sheet rather than argues with it, and is written out
-     so a written table keeps reading across if that ever changes. */
-  vertical-align: top;
 }
+
+/* `vertical-align: top` used to stand here and was dead for the same reason,
+   though nothing showed it, since it named the value the shared sheet already
+   gives. It is gone rather than raised: every cell on the portal starts at the
+   top of its row, and that is one decision held in one place (ADL A7,
+   styles/table.css). A written table has no reason to hold its own copy, and a
+   copy is the thing that quietly disagrees later. */
 
 /* The row of a written table is prose, so it is set a little tighter than a row
    of numbers. `padding-block` alone lost to the shared `padding` shorthand,
