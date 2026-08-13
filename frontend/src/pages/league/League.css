@@ -90,12 +90,13 @@
  * `.league__grid th.league__who`. That is (0,2,1), and so is
  * `.table th:nth-child(-n + 3)`: one class and one pseudo-class against two
  * classes, one element each. A tie is settled by source order, and this file has
- * no say in that order, because it never imports the shared sheet and the bundler
- * puts that sheet wherever the last screen that does ask for it happens to fall.
- * Measured in the browser with the tie in place: four copies of the shared rule
- * stood after this one and took the property, and the column was left-aligned
- * only because both rules happened to say left. Naming `thead` and `tbody` buys
- * the second element that ends the argument. */
+ * no say in that order: the bundler emits the body of the shared sheet at the
+ * last sheet that asks for it, which is not this one, so those rules stand after
+ * everything here whether this file imports them or not. Measured in the browser
+ * with the tie in place: four copies of the shared rule stood after this one and
+ * took the property, and the column was left-aligned only because both rules
+ * happened to say left. Naming `thead` and `tbody` buys the second element that
+ * ends the argument. */
 .league__grid thead th.league__who,
 .league__grid tbody th.league__who {
   text-align: left;
