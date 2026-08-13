@@ -429,7 +429,7 @@ function shellBox(): { limit: number; padRem: number } {
 
 /** What the table is, at one width and one size, in pixels. */
 function tableAt(screen: number, text: number) {
-  const narrow = screen <= phoneUpTo()
+  const narrow = screen <= phoneUpTo(text)
   const hidden = hiddenColumns('th')
   const shown = [...pinnedAt(screen, 'th', text).entries()].filter(
     ([column]) => !(narrow && hidden.includes(column)),
@@ -562,13 +562,34 @@ describe('the results table, added up rather than looked at', () => {
        `.table-scroll`, a margin rather than a padding, the shell's own padding
        overridden inside a query, and a root font size that quietly grows every
        `rem` in the sums at once. */
-    const SIDES = /(?:padding|margin)(?:-inline|-left|-right)?:/g
+    /* Every spelling of side spacing, including the long logical ones this code
+       base actually prefers: `margin-inline-start` is already in `Shell.css` and
+       `border-inline-start` in two more sheets. Written without them, half a rem
+       of `padding-inline-start` on `.table-scroll` took the box's inside to 320
+       against a table of 328 and the telephone scrolled sideways with every test
+       green. Borders count too: they take width like padding does.
+     *
+       `-block` is deliberately absent: it takes height, not width. */
+    const SIDES =
+      /(?:padding|margin|border)(?:-inline(?:-start|-end)?|-left|-right)?(?:-width)?:\s*([^;]+)/g
     const SPACED = ['.profile__results', '.table-scroll']
+
+    /* `auto` is not spacing: it centres what is already bounded and takes no
+       width from it, which is exactly what the shell below does with
+       `margin: 0 auto`. Counted regardless of value, the guard refused
+       `margin-inline: auto`, a change that renders identically, and this file
+       says twice over that a guard refusing a harmless edit is one people learn
+       to work around. Nor is a zero. */
+    const takesWidth = (value: string): boolean =>
+      !/^(?:auto|0)(?:\s+(?:auto|0))*$/.test(value.trim())
 
     const spacing = [profileCss, tableCss].flatMap((sheet) =>
       SPACED.flatMap((name) =>
         [...appliesAt(sheet, 360, 16).matchAll(new RegExp(`\\${name} \\{([^}]*)\\}`, 'g'))].flatMap(
-          (rule) => [...(rule[1] ?? '').matchAll(SIDES)].map(() => name),
+          (rule) =>
+            [...(rule[1] ?? '').matchAll(SIDES)]
+              .filter((one) => takesWidth(one[1] ?? ''))
+              .map(() => name),
         ),
       ),
     )
@@ -591,9 +612,18 @@ describe('the results table, added up rather than looked at', () => {
        explains why it is written as a size rather than inside the `font`
        shorthand. Put to `1.125rem` instead, the floor of 20,5rem becomes 369
        pixels in a box of 324 and every sum above is out by an eighth, silently. */
-    const rootSize = /:root[^{]*\{[^}]*?font-size:\s*([^;]+);/.exec(appliesAt(rootCss, 360, 16))
+    /* Every `:root` rule, not the first. The first one carries `100%`, so a
+       second one anywhere later, which is what wins in the cascade, was never
+       read: `:root { font-size: 1.125rem }` appended to the file, or tucked
+       inside a „bigger text on a telephone" query, made every `rem` eighteen
+       pixels and the floor 369 in a box of 324, with all ten tests green. That
+       is the fourth fault this very commit claims to have closed, closed only
+       for the first rule in the sheet. */
+    const rootSizes = [
+      ...appliesAt(rootCss, 360, 16).matchAll(/:root[^{]*\{[^}]*?font-size:\s*([^;]+);/g),
+    ].map((one) => (one[1] ?? '').trim())
 
-    expect(rootSize?.[1]?.trim() ?? '100%').toBe('100%')
+    expect(rootSizes.filter((size) => size !== '100%')).toEqual([])
   })
 
   it('leaves the scrolling to the box, and lets nothing later take it back', () => {
