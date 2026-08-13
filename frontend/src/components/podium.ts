@@ -11,6 +11,11 @@
  * knows what gold means on a row.
  */
 
+/* For the gold the comment above names, which is this module's business: the
+   class is handed out from here, and the screens that draw it never learn where
+   it comes from (ADL A7). */
+import '../styles/table.css'
+
 /** How many places at the top of a table are the podium. */
 export const PODIUM = 3
 

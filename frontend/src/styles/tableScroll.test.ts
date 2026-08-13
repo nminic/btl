@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
 /**
  * Every table the portal draws sits in a box that scrolls, so that the page
@@ -75,22 +75,28 @@ const INSIDE_THE_BOX = /(?<![\w-])table-scroll(?![\w-])[^<>]*[^/<>]>[\s{}]*$/
  */
 const CLIPPED = /visually-hidden/
 
-/** Every component under `src`, the tests left out along with the helpers they
- *  are built from: a table written for a test is not a table the portal draws,
- *  whether it is written in a `.test.` file or in `src/test` beside it. */
-function components(dir = SRC, prefix = ''): { path: string; code: string }[] {
+/** Every file under `src` that the portal is built from, the tests left out
+ *  along with the helpers they are built from: a table written for a test is not
+ *  a table the portal draws, whether it is written in a `.test.` file or in
+ *  `src/test` beside it. */
+function sources(dir = SRC, prefix = ''): { path: string; code: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const at = join(dir, entry.name)
     const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
 
     if (entry.isDirectory()) {
-      return entry.name === 'test' ? [] : components(at, name)
+      return entry.name === 'test' ? [] : sources(at, name)
     }
 
-    return entry.name.endsWith('.tsx') && !entry.name.includes('.test.')
+    return /\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')
       ? [{ path: name, code: readFileSync(at, 'utf-8') }]
       : []
   })
+}
+
+/** Of those, the ones that draw something. */
+function components(): { path: string; code: string }[] {
+  return sources().filter((one) => one.path.endsWith('.tsx'))
 }
 
 /**
@@ -107,6 +113,113 @@ function bare(code: string): string {
     .replaceAll(/(^|[^:])\/\/[^\n]*/g, (line, before: string) =>
       before + ' '.repeat(line.length - before.length),
     )
+}
+
+/**
+ * What a file asks for by name: `import './Member.css'` in a component,
+ * `@import 'Rankings.css'` in a stylesheet. One expression for both, since a
+ * component never writes the second and a stylesheet never writes the first.
+ *
+ * Comments are blanked first. This portal explains its imports at least as often
+ * as it writes them, and the note above one of them names the file it is about.
+ */
+function asks(text: string): string[] {
+  return [...bare(text).matchAll(/@?import\s+[\w{},*\s]*(?:from\s+)?(?:url\()?['"][^'"]+\.css[^'"]*['"]/g)].map(
+    (one) =>
+      /* The name without the quotes around it or the query after it, cut from
+         the whole match rather than caught in a group. A group is
+         `string | undefined` under `noUncheckedIndexedAccess` (ADL A14), and the
+         `?? ''` that would settle it is a branch nothing can reach.
+
+         The forms around the name are wider than what this portal writes today,
+         on purpose: `@import url(…)` is plain CSS, `?inline` and `?raw` are
+         ordinary Vite, and `import sheet from './x.css'` is ordinary TypeScript.
+         Unmatched, each of them would be reported as a component asking for
+         nothing, which is a failure saying the opposite of what is true. */
+      one[0].slice(one[0].search(/['"]/) + 1, -1).replace(/\?.*$/, ''),
+  )
+}
+
+/**
+ * Every stylesheet a file ends up with: the ones it asks for, and the ones those
+ * ask for in turn.
+ *
+ * Whole paths, so a sheet reached two ways is one entry and a cycle is not a
+ * loop. `Profile.css` is both: it asks for `Rankings.css` and for `table.css`,
+ * and `Rankings.css` has already brought `table.css` by the time it is asked.
+ */
+function sheetsOf(at: string, code: string, seen = new Set<string>()): Set<string> {
+  for (const name of asks(code)) {
+    const sheet = resolve(dirname(at), name)
+
+    if (!seen.has(sheet)) {
+      seen.add(sheet)
+      sheetsOf(sheet, readFileSync(sheet, 'utf-8'), seen)
+    }
+  }
+
+  return seen
+}
+
+/** The sheet this file is about. */
+const TABLE = join(SRC, 'styles', 'table.css')
+
+/**
+ * Where one of its names is written and is not a class.
+ *
+ * The portal has a screen whose route is called `table`, and a route id is a
+ * word in a table of routes rather than a name worn by anything
+ * (`{ id: 'table', labelKey: 'nav.table', path: 'tabela' }`). Nothing tells the
+ * two apart from the outside: both are the same five letters, written whole,
+ * inside a string.
+ *
+ * Two other files already write the word this way, in the tag of a union
+ * (`{ kind: 'table' }` in Markdown.tsx and TopBoards.tsx). They are not excused
+ * because they do not need to be: both draw a real table as well, so they owe
+ * the sheet anyway. The day one of them keeps the tag and stops drawing the
+ * table, it lands here, and the honest answer then is to add it rather than to
+ * pretend the check can see the difference.
+ *
+ * By path, and a whole file at that, which is blunter than the reason: nothing
+ * else in `routes.ts` is checked either. A list of one that grows is a list
+ * worth reading.
+ */
+const NOT_A_CLASS = ['app/routes.ts']
+
+/**
+ * Every class name it defines.
+ *
+ * A read of the whole sheet rather than of its selectors, which is wider than it
+ * sounds: a dot before a letter anywhere in the file counts, so a `url(./x.png)`
+ * would put `png` in here and start asking components about it. All fourteen
+ * entries are genuine today, and a sheet of five rules is a thing you can read.
+ */
+const defined = new Set(
+  [...bare(readFileSync(TABLE, 'utf-8')).matchAll(/\.(-?[_a-z][\w-]*)/gi)].map((one) => one[0].slice(1)),
+)
+
+/**
+ * Every word a component writes inside a string, which is where a class name is
+ * written and where it is safe to look for one.
+ *
+ * Not a search of the whole file. `table` and `podium` are ordinary words and
+ * ordinary names for a variable, and one screen here does write
+ * `const table = useMemo(…)`; a check that trips over that is a check somebody
+ * turns off. A string is cut at its own quote and at the holes in a template,
+ * so `` `length-dot length-dot--${one}` `` gives up the part that is written
+ * rather than the part that is computed.
+ *
+ * Which is also the limit of it. That template gives up `length-dot` and a
+ * stub of the modifier, so the five `length-dot--*` names in the sheet are never
+ * matched by anything and a component writing only a modifier would not be seen.
+ * A class assembled entirely from a variable (`` `${className}__btn` ``, as the
+ * dropdown does) is invisible here for the same reason. What this catches is a
+ * name somebody wrote down, which is how all seven of them were written.
+ */
+function names(code: string): string[] {
+  return [...bare(code).matchAll(/'[^'\n]*'|"[^"\n]*"|`[^`]*`/g)].flatMap((one) =>
+    one[0].slice(1, -1).split(/[\s${}]+/),
+  )
 }
 
 /** Where a table is drawn, the tag that opens it, and everything written before
@@ -183,26 +296,53 @@ describe('the box the tables sit in', () => {
   it('scrolls sideways, which is the whole of what it is for', () => {
     /* The markup above is checked against a class name, and a class name is
        worth what its rule is worth. */
-    expect(bare(readFileSync(join(SRC, 'styles', 'table.css'), 'utf-8'))).toMatch(
-      /\.table-scroll\s*\{[^}]*overflow-x:\s*auto/,
-    )
+    expect(bare(readFileSync(TABLE, 'utf-8'))).toMatch(/\.table-scroll\s*\{[^}]*overflow-x:\s*auto/)
   })
 
-  it('is asked for by the matrix itself, which draws it without the rest of the screen', () => {
-    /* Rights.css is the sheet that RightsMatrix.tsx brings with it, and the
-       screen around it happens to pull table.css in as well, through Member.css
-       and Profile.css, which are there for the entity list and not for the
-       matrix.
+  it('is asked for by every file that writes a name from it', () => {
+    /* Nothing breaks today where it is not asked for: the portal builds one
+       stylesheet with no code splitting, so every rule in it is on every screen
+       no matter who asked. This is about the source rather than the artefact. A
+       component that writes a class its own sheet knows nothing about is a
+       component whose styling is somebody else's business to keep, and the day
+       the build splits CSS per route, or the day one of these screens stops
+       drawing whatever else was bringing the sheet along, it would lose those
+       rules without a word being said about it.
 
-       Nothing breaks today if that goes: the portal builds one stylesheet with
-       no code splitting, so every rule in it is on every screen no matter who
-       asked. This is about the source rather than the artefact. A component that
-       writes a class its own sheet knows nothing about is a component whose
-       styling is somebody else's business to keep, and the day the build splits
-       CSS per route, or the day the entity list moves off this screen, the
-       matrix would lose its box without a word being said about the matrix. */
-    expect(readFileSync(join(SRC, 'pages', 'admin', 'Rights.css'), 'utf-8')).toContain(
-      "@import '../../styles/table.css'",
-    )
+       Every name the sheet defines, not the box alone. The box was where this
+       started, and asking only about the box would have been enough for the
+       tables: every component that writes `table` writes `table-scroll` too. It
+       is not enough for the sheet, which also holds the five colours of the race
+       length dots, and the three screens that draw a dot draw no table at all.
+
+       Every file, not every component. Two of these names are not written in
+       any markup: `mine.ts` and `podium.ts` each hold a mark that three or four
+       screens draw the same way, and a name handed out by a module is a name
+       that module knows and its callers do not.
+
+       It was written for the matrix of moderator rights, which reached the sheet
+       through Member.css and Profile.css, there for the entity list beside it
+       and not for the matrix. Seven more were found the same way afterwards,
+       which is why it is asked of all of them rather than of the one. */
+    const wearing = sources()
+      .filter((one) => !NOT_A_CLASS.includes(one.path))
+      .filter((one) => names(one.code).some((name) => defined.has(name)))
+
+    /* Twenty-seven today, and a floor rather than the number: a screen with a
+       table on it is an ordinary thing to add, and this test is not about how
+       many there are. */
+    expect(wearing.length).toBeGreaterThan(20)
+
+    const borrowed = wearing
+      .filter((one) => !sheetsOf(join(SRC, one.path), one.code).has(TABLE))
+      .map((one) => {
+        /* Each name once. A screen writes `table__points` on every cell of a
+           column, and a failure that says so eleven times says it worse. */
+        const written = [...new Set(names(one.code).filter((name) => defined.has(name)))]
+
+        return `${one.path} writes ${written.join(', ')}, and no sheet of its own asks for styles/table.css`
+      })
+
+    expect(borrowed).toEqual([])
   })
 })
