@@ -6,7 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
 import { Decided } from '../test/decided'
-import { at, first, must } from '../test/at'
+import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { ENTITIES } from './admin/entityList'
@@ -434,7 +434,7 @@ describe('payment payloads', () => {
   it('takes a real PDF whose type the machine never wrote down', async () => {
     renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
 
-    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+    const pick = inputElement(await screen.findByLabelText('Izaberi PDF izvoda'))
 
     /* Handed over rather than picked, because `user.upload` matches `accept`
        against the type alone; a browser matches the extension as well, so a
@@ -463,7 +463,7 @@ describe('payment payloads', () => {
   it('refuses a file that is not a statement, and says why', async () => {
     renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
 
-    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+    const pick = inputElement(await screen.findByLabelText('Izaberi PDF izvoda'))
 
     /* Handed over rather than picked through the control: `accept` already
        turns a CSV away in the dialog, and `user.upload` honours that, so the
@@ -508,7 +508,7 @@ describe('payment payloads', () => {
        chose is worse than one that says nothing. */
     renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
 
-    const pick = (await screen.findByLabelText('Izaberi PDF izvoda')) as HTMLInputElement
+    const pick = inputElement(await screen.findByLabelText('Izaberi PDF izvoda'))
 
     fireEvent.change(pick, { target: { files: [] } })
 
@@ -838,7 +838,7 @@ describe('verification', () => {
         ? new Response(JSON.stringify([{ id: 'e1', status: 'checking', date: '2027-04-01' }]), {
             status: 200,
           })
-        : served(input)) as typeof fetch
+        : served(input))
 
     try {
       renderAt('/sr/administracija/verifikacija', 'moderator')
@@ -863,7 +863,7 @@ describe('verification', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/verification.json')
         ? new Response('nema', { status: 500 })
-        : served(input)) as typeof fetch
+        : served(input))
 
     try {
       renderAt('/sr/administracija/verifikacija', 'moderator')
@@ -890,7 +890,7 @@ describe('verification', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/verification.json')
         ? new Response('nema', { status: 500 })
-        : served(input)) as typeof fetch
+        : served(input))
 
     try {
       /* The alarm used to stand on the way into the section, which was the only
@@ -906,7 +906,7 @@ describe('verification', () => {
       const alarm = nav.getByRole('alert')
 
       expect(alarm).toHaveTextContent(/nije dostupan/)
-      /* Outside the folded list, not inside it. Below 820px the list is
+      /* Outside the folded list, not inside it. Below 51.25em the list is
          `display: none` until it is unfolded, and an alert drawn hidden is never
          announced: the warning was silent on the screen it matters most on.
 
@@ -927,7 +927,7 @@ describe('verification', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/competitors.json')
         ? new Response('nema', { status: 500 })
-        : served(input)) as typeof fetch
+        : served(input))
 
     try {
       renderAt('/sr/administracija/verifikacija', 'moderator')
@@ -1341,11 +1341,13 @@ describe('the six queues read from the file', () => {
   /** The section standing beside the work, and the counts on it. */
   const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
-  it.each([
+  const QUEUES: [PendingQueueId, string, number][] = [
     ['leagues', 'Predložene lige', 2],
     ['teams', 'Novi timovi', 2],
     ['schedule', 'Prijave promene termina', 3],
-  ] as [PendingQueueId, string, number][])(
+  ]
+
+  it.each(QUEUES)(
     'has something waiting in %s, and decides it both ways',
     async (queue, title, waiting) => {
       const user = await open(queue, title)
@@ -1443,7 +1445,7 @@ describe('the six queues read from the file', () => {
   it('folds a card open and shut, one at a time', async () => {
     /* On a telephone a card is a screenful, so five of them mean scrolling
        through four to reach the third (owner, 06.08.2026). The control is drawn
-       at every width in the markup and hidden by the stylesheet from 820px up,
+       at every width in the markup and hidden by the stylesheet from 51.25em up,
        exactly as the sectors of the navigation are, so what is held here is the
        folding itself. */
     const user = await open('comments', 'Komentari')
@@ -1856,7 +1858,7 @@ describe('the six queues read from the file', () => {
                 headers: { 'content-type': 'application/json' },
               }),
             )
-          : original(input)) as typeof fetch
+          : original(input))
 
       renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator')
       await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
@@ -2037,7 +2039,27 @@ describe('the six queues read from the file', () => {
 })
 
 describe('what is counted beside a queue', () => {
-  const item = (id: string, queue: PendingQueueId) => ({ id, queue }) as PendingItem
+  /* Whole items, because that is what a queue holds. Two fields of one with
+     the rest asserted away read as though `countFor` promised to look at no
+     more than those two, which is not a promise it makes (ADL A14). */
+  const BLANK: PendingItem = {
+    id: '',
+    queue: 'teams',
+    kind: '',
+    date: '',
+    memberNumber: '',
+    who: '',
+    subject: '',
+    subjectId: '',
+    body: '',
+    currentDate: '',
+    proposedDate: '',
+    rating: { organisation: 0, value: 0, ambience: 0 },
+    email: '',
+    city: '',
+    country: '',
+  }
+  const item = (id: string, queue: PendingQueueId): PendingItem => ({ ...BLANK, id, queue })
   const empty = { pendingResults: 0, items: [], decisions: {} }
   /* Through countFor, one queue at a time, which is how the navigation and the
      header both read it (SectionNav, Shell). There was a second function here

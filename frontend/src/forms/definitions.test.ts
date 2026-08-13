@@ -1,8 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import type { FormDef } from './types'
+import { FORMS as EXPORTED, formDef } from './definitions'
 import sr from '../i18n/sr.json'
-import { translate, type Dictionary } from '../i18n/translate'
+import { translate } from '../i18n/translate'
 
 /* What every form definition has to be true of, checked over all of them at
  * once rather than one form at a time.
@@ -14,11 +14,15 @@ import { translate, type Dictionary } from '../i18n/translate'
 
 const HERE = join(process.cwd(), 'src', 'forms', 'definitions')
 
+/* Read off the disk rather than out of `./definitions`, so a definition added as
+   a file is swept whether or not anybody remembered to read it there. Through
+   `formDef` on the way, which is what says the field types are ones the portal
+   can draw; the rule below holds the two lists to each other. */
 const FORMS = readdirSync(HERE)
   .filter((name) => name.endsWith('.form.json'))
   .map((name) => ({
     name,
-    form: JSON.parse(readFileSync(join(HERE, name), 'utf-8')) as FormDef,
+    form: formDef(JSON.parse(readFileSync(join(HERE, name), 'utf-8'))),
   }))
 
 describe('every form definition in the portal', () => {
@@ -29,6 +33,30 @@ describe('every form definition in the portal', () => {
     expect(FORMS.length).toBeGreaterThan(5)
     expect(FORMS.flatMap(({ form }) => form.fields.filter((one) => one.type === 'textarea')).length)
       .toBeGreaterThan(4)
+  })
+
+  it('is read by the module the screens import it from', () => {
+    /* The folder and `./definitions` have to name the same set. A definition
+       written as a file and not read there is a form no screen can draw, and a
+       name read there for a file that is gone is an import that fails at
+       build. Nothing else notices either, because both halves keep working for
+       every form that is in both. */
+    expect(Object.keys(EXPORTED).sort()).toEqual(FORMS.map(({ name }) => name).sort())
+  })
+
+  it('refuses a field type the portal cannot draw', () => {
+    /* What `formDef` is for. Before it, `as FormDef` at each screen said the
+       written type was one of the twelve without looking, so a typo in a
+       definition reached the renderer, which has no branch for it: the field
+       was drawn as nothing at all and the form asked for one thing less. */
+    expect(() =>
+      formDef({
+        id: 'proba',
+        titleKey: 'proba.title',
+        submitKey: 'proba.submit',
+        fields: [{ name: 'ime', type: 'tekst', labelKey: 'proba.ime' }],
+      }),
+    ).toThrow('Form proba, field ime: tekst is not a field type')
   })
 
   it('gives every long box a limit', () => {
@@ -110,7 +138,7 @@ describe('every form definition in the portal', () => {
     const wrong = FORMS.flatMap(({ name, form }) =>
       form.fields
         .filter((field) => {
-          const marked = translate(sr as Dictionary, 'sr', field.labelKey).includes('{link}')
+          const marked = translate(sr, 'sr', field.labelKey).includes('{link}')
           const led = field.linkKey !== undefined && field.linkTo !== undefined
 
           return marked !== led

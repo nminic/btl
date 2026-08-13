@@ -115,6 +115,13 @@
   text-align: center;
 }
 
+/* In pixels, like the query that hides a table's columns and unlike every other
+   query on the portal, because this one narrows two columns that already cut
+   what does not fit (`overflow: hidden` and an ellipsis on `.league__who` and
+   `.league__race-name` above). Cut is content taken away: in em, at 200 per cent
+   text, a competitor's name would lose a third of its letters on a 1280 screen
+   that has room for all of them, which is what WCAG 2.2 SC 1.4.4 is about. The
+   screen's own width decides this one. */
 @media (max-width: 699.98px) {
   .league__who {
     inline-size: 7.5rem;

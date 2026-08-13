@@ -1,8 +1,7 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { formatDate } from '../../i18n/format'
-import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
+import { prijava } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
-import type { FormDef } from '../../forms/types'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
@@ -175,7 +174,7 @@ describe('rating an event', () => {
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
     const box = await screen.findByLabelText('Komentar')
-    const limit = limitOf(prijava as FormDef, 'comment')
+    const limit = limitOf(prijava, 'comment')
 
     /* Read on the way into the field rather than left to whoever can see it: the
        box points at the count, so a screen reader says it on arrival. */
@@ -233,7 +232,7 @@ describe('rating an event', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/competitors.json')
         ? new Response('[]', { status: 200 })
-        : real(input)) as typeof fetch
+        : real(input))
 
     try {
       const user = setupUser()
@@ -601,7 +600,7 @@ describe('a comment a moderator lets out', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/comments.json')
         ? new Response(JSON.stringify(many), { status: 200 })
-        : real(input)) as typeof fetch
+        : real(input))
 
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
@@ -717,7 +716,7 @@ describe('a comment a moderator lets out', () => {
             ]),
             { status: 200 },
           )
-        : real(input)) as typeof fetch
+        : real(input))
 
     try {
       const user = setupUser()

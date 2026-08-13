@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { must } from '../test/at'
+import { at, must } from '../test/at'
 import sr from '../i18n/sr.json'
 
 /* The gold band that names a board, and the one thing about it no screen test
@@ -301,14 +301,14 @@ describe('reading a rule out of a stylesheet', () => {
 /** WCAG relative luminance of an `#rrggbb` colour. */
 function luminance(hex: string): number {
   const linear = [1, 3, 5]
-    .map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
+    .map((start) => parseInt(hex.slice(start, start + 2), 16) / 255)
     .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
-  return 0.2126 * (linear[0] as number) + 0.7152 * (linear[1] as number) + 0.0722 * (linear[2] as number)
+  return 0.2126 * at(linear, 0) + 0.7152 * at(linear, 1) + 0.0722 * at(linear, 2)
 }
 
 function contrast(one: string, other: string): number {
-  const [high, low] = [luminance(one), luminance(other)].sort((left, right) => right - left)
-  return ((high as number) + 0.05) / ((low as number) + 0.05)
+  const sorted = [luminance(one), luminance(other)].sort((left, right) => right - left)
+  return (at(sorted, 0) + 0.05) / (at(sorted, 1) + 0.05)
 }
 
 describe('the ink on the gold band', () => {
@@ -321,7 +321,7 @@ describe('the ink on the gold band', () => {
        declaration means somebody gave it a dark variant, and then the pairs
        below stop being the whole story and this test has to grow a theme. */
     expect(found, `${name} should be declared exactly once`).toHaveLength(1)
-    return found[0]?.slice(-8, -1) as string
+    return at(found, 0).slice(-8, -1)
   }
 
   it('clears 4,5:1 against every stop of the band it is painted on', () => {
@@ -335,14 +335,14 @@ describe('the ink on the gold band', () => {
 
       const stops = [...body.matchAll(/linear-gradient\([^)]*?((?:var\(--[a-z0-9-]+\)[,\s]*)+)/g)]
         .flatMap((match) => [...(match[1] ?? '').matchAll(/var\((--[a-z0-9-]+)\)/g)])
-        .map((match) => match[1] as string)
+        .map((match) => at(match, 1))
       expect(stops.length, `${band.rule} paints no gradient through tokens`).toBeGreaterThan(1)
 
       for (const stop of stops) {
         pairs.push({
           rule: band.rule,
           stop,
-          ratio: contrast(value(ink as string), value(stop)),
+          ratio: contrast(value(must(ink, `a colour token on ${band.rule}`)), value(stop)),
         })
       }
     }
@@ -389,7 +389,7 @@ describe('the gold on a row that belongs to the reader', () => {
        on the page sets. A token with one value has one, and the same one answers
        for every theme. */
     const given = (name: string) =>
-      [...tokens.matchAll(new RegExp(`${name}: ([^;]+);`, 'g'))].map((one) => one[1] as string)
+      [...tokens.matchAll(new RegExp(`${name}: ([^;]+);`, 'g'))].map((one) => at(one, 1))
 
     /* Followed to a colour, because half of these are written as the name of
        another token. Read as text, `--accent: var(--blue-700)` is not a colour
@@ -490,11 +490,22 @@ describe('the sentence above a table of places', () => {
  * finds it and reports the rule safely inside it.
  */
 function onTelephone(css: string): string {
-  /* Looked for where the comments are blanked, as a selector is, so a query
-     quoted in prose is not the one that gets read. */
-  const at = unremarked(css).indexOf('@media (max-width: 699.98px) {')
+  /* Two spellings of the same width, and a sheet has one of them. A query that
+     changes shape is written in em, so that it fires where the reader's text
+     stops fitting rather than where the screen ends; a query that takes columns
+     away is written in px, so that enlarged text never strips a desktop of its
+     data. Which is which, and why, is in scale.test.ts. */
+  const bare = unremarked(css)
+  const found = ['@media (max-width: 43.74875em) {', '@media (max-width: 699.98px) {']
+    /* Looked for where the comments are blanked, as a selector is, so a query
+       quoted in prose is not the one that gets read. */
+    .map((query) => bare.indexOf(query))
+    .filter((one) => one > -1)
 
-  expect(at, 'there is no telephone query').toBeGreaterThan(-1)
+  expect(found, 'there is no telephone query').toHaveLength(1)
+
+  const at = must(found[0], 'a telephone query in this sheet')
+
   return css.slice(at, closes(css, at))
 }
 
@@ -768,7 +779,7 @@ describe('what the owner asked for on 04.08.2026', () => {
          place it applies. */
       holds: /position:\s*sticky/,
       why: 'the two sectors are held as one column, not one over the other',
-      within: '@media (min-width: 820px)',
+      within: '@media (min-width: 51.25em)',
     },
     {
       of: 'src/pages/admin/Verification.css',
@@ -785,7 +796,7 @@ describe('what the owner asked for on 04.08.2026', () => {
       rule: '.pending__card',
       holds: /display:\s*block/,
       why: 'and every card is open from the width where a card is not a screenful',
-      within: '@media (min-width: 820px)',
+      within: '@media (min-width: 51.25em)',
     },
     {
       of: 'src/pages/admin/Verification.css',
@@ -795,7 +806,7 @@ describe('what the owner asked for on 04.08.2026', () => {
          (SectionNav.css). */
       holds: /display:\s*none/,
       why: 'nothing offers to open a card that is open',
-      within: '@media (min-width: 820px)',
+      within: '@media (min-width: 51.25em)',
     },
     {
       of: 'src/components/Stars.css',

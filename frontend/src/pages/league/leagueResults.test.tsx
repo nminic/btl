@@ -32,9 +32,9 @@ async function withCompetitors(count: number) {
   const real = globalThis.fetch
   /* The races this competition is made of, read once, so the results put in its
      place belong to it. */
-  const races = (await (await real('/mock/races.json')).json()) as Race[]
-  const events = (await (await real('/mock/events.json')).json()) as BtlEvent[]
-  const leagues = (await (await real('/mock/leagues.json')).json()) as League[]
+  const races: Race[] = await (await real('/mock/races.json')).json()
+  const events: BtlEvent[] = await (await real('/mock/events.json')).json()
+  const leagues: League[] = await (await real('/mock/leagues.json')).json()
   const league = must(
     leagues.find((one) => one.slug === 'brdska-2019'),
     'takmičenje brdska-2019',
@@ -46,7 +46,7 @@ async function withCompetitors(count: number) {
     const name = String(input)
 
     if (name.endsWith('/competitors.json')) {
-      const all = (await (await real(input)).json()) as Competitor[]
+      const all: Competitor[] = await (await real(input)).json()
       const one = first(all)
 
       return new Response(
@@ -64,7 +64,7 @@ async function withCompetitors(count: number) {
     }
 
     if (name.endsWith('/results.json')) {
-      const all = (await (await real(input)).json()) as Result[]
+      const all: Result[] = await (await real(input)).json()
       /* One result of a race that belongs to this competition, copied to every
          competitor, so every one of them is placed and the grid has a row for
          each.
@@ -93,7 +93,7 @@ async function withCompetitors(count: number) {
     }
 
     return real(input)
-  }) as typeof fetch
+  })
 
   return () => {
     globalThis.fetch = real
@@ -238,9 +238,9 @@ describe('a competition whose event runs over more than one morning', () => {
      (PDL P10). */
   async function overTwoMornings() {
     const real = globalThis.fetch
-    const races = (await (await real('/mock/races.json')).json()) as Race[]
-    const events = (await (await real('/mock/events.json')).json()) as BtlEvent[]
-    const leagues = (await (await real('/mock/leagues.json')).json()) as League[]
+    const races: Race[] = await (await real('/mock/races.json')).json()
+    const events: BtlEvent[] = await (await real('/mock/events.json')).json()
+    const leagues: League[] = await (await real('/mock/leagues.json')).json()
     const league = must(
       leagues.find((one) => one.slug === 'brdska-2019'),
       'takmičenje brdska-2019',
@@ -261,7 +261,7 @@ describe('a competition whose event runs over more than one morning', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/races.json')
         ? new Response(JSON.stringify([...races, second]), { status: 200 })
-        : real(input)) as typeof fetch
+        : real(input))
 
     return { first: mine, second, undo: () => { globalThis.fetch = real } }
   }

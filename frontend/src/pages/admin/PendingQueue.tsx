@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import registracija from '../../forms/definitions/registracija.form.json'
+import { registracija, tim } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
-import type { FormDef } from '../../forms/types'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useEvents, useRaces, useTeams } from '../../data/useResource'
@@ -12,7 +11,6 @@ import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
 import { overall, rated } from '../event/overall'
 import countries from '../../data/countries.json'
-import tim from '../../forms/definitions/admin-tim.form.json'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { moveEvent } from './moveEvent'
@@ -86,7 +84,7 @@ function EditableBody({ id, label, value }: { id: string; label: string; value: 
            leave a biography longer than the form that produced it would ever
            accept, and the number lives in the definition rather than here so
            the two ends cannot drift (src/forms/records.ts). */
-        maxLength={limitOf(registracija as FormDef, 'bio')}
+        maxLength={limitOf(registracija, 'bio')}
         onBlur={(event) => {
           edit(id, 'body', event.target.value)
           setEditing(false)
@@ -185,7 +183,7 @@ function TeamFields({ item }: { item: PendingItem }) {
         <input
           type="text"
           value={value('name')}
-          maxLength={limitOf(tim as FormDef, 'name')}
+          maxLength={limitOf(tim, 'name')}
           onChange={(event) => edit(item.id, 'name', event.target.value)}
         />
       </label>
@@ -195,7 +193,7 @@ function TeamFields({ item }: { item: PendingItem }) {
         <input
           type="text"
           value={value('city')}
-          maxLength={limitOf(tim as FormDef, 'city')}
+          maxLength={limitOf(tim, 'city')}
           onChange={(event) => edit(item.id, 'city', event.target.value)}
         />
       </label>
@@ -537,7 +535,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           {/* On a telephone a card is a screenful, so five of
                               them mean scrolling through four to reach the
                               third: the card opens on a press and the rest are
-                              a list of names (owner, 06.08.2026). From 820px up
+                              a list of names (owner, 06.08.2026). From 51.25em up
                               this control is not drawn and every card is open,
                               exactly as the sectors of the navigation work
                               (SectionNav). */}

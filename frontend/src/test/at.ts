@@ -66,3 +66,33 @@ export function must<T>(found: T | null | undefined, what: string): T {
 
   return found
 }
+
+/**
+ * The same idea once more, for which kind of element a test is about to read.
+ *
+ * Testing Library answers with `HTMLElement`, and `.value`, `.checked` and
+ * `.options` are not on it: they belong to the input and the select. That was
+ * written `found as HTMLSelectElement` at thirty-odd places, and ADL A14 bans
+ * it in a test for the same reason it bans it in the portal. It is a claim and
+ * not a look, so a query that had quietly matched something else failed later,
+ * somewhere else, saying "cannot read properties of undefined" and never saying
+ * which query was wrong.
+ *
+ * `instanceof` is the look itself, and every element jsdom builds is a real one
+ * of these, so nothing here is claimed at all.
+ */
+function elementOf<T>(found: unknown, kind: abstract new (...args: never[]) => T, what: string): T {
+  if (!(found instanceof kind)) {
+    throw new Error(`asked for ${what}, and found ${found === null ? 'nothing' : String(found)}`)
+  }
+
+  return found
+}
+
+export const htmlElement = (found: unknown): HTMLElement => elementOf(found, HTMLElement, 'an element')
+
+export const inputElement = (found: unknown): HTMLInputElement =>
+  elementOf(found, HTMLInputElement, 'an input')
+
+export const selectElement = (found: unknown): HTMLSelectElement =>
+  elementOf(found, HTMLSelectElement, 'a select')

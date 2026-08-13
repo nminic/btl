@@ -20,12 +20,15 @@ import { dirname, join, resolve } from 'node:path'
  * the shape of the screen around them.
  *
  * The matrix of moderator rights was drawn for a year without one. Nothing said
- * so, because at the default text size sixteen columns of checkboxes do fit in
- * the 900 pixels the shape switches at, and every width in that table is in
- * `rem` while the page is not: at 1280 with the text at 200 per cent it wanted
- * 214 pixels more than it had and took them from the page. Twenty-three tables
- * had the box and the twenty-fourth did not, which is the kind of thing a list
- * of twenty-four cannot be trusted to keep.
+ * so, because sixteen columns of checkboxes do fit in the width the shape
+ * switches at; what did not fit was the reader who enlarges the text, since
+ * every width in that table is in `rem` and the query was in px. At 1280 with
+ * the text at 200 per cent the matrix wanted 214 pixels more than it had and
+ * took them from the page. Twenty-three tables had the box and the twenty-fourth
+ * did not, which is the kind of thing a list of twenty-four cannot be trusted to
+ * keep. (The query went to em on 13.08.2026, so that reader now gets the card
+ * layout; the box still answers for the sizes between, and for every other
+ * table.)
  *
  * So it is read here rather than remembered. The read is of the source and not
  * of a rendered screen: jsdom lays nothing out, so nothing that renders can see

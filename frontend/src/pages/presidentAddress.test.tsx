@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { sectionsOf } from '../data/pages'
 import type { StaticPage } from '../data/types'
-import { first } from '../test/at'
+import { first, htmlElement } from '../test/at'
 import { renderAt } from '../test/render'
 import { ADDRESS_SLUG } from './home/President'
 
@@ -90,7 +90,7 @@ describe('the address of the president', () => {
     renderAt('/sr')
 
     const address = await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
-    const card = address.closest('article') as HTMLElement
+    const card = htmlElement(address.closest('article'))
 
     expect(within(card).getByRole('link', { name: 'pravilnik' })).toHaveAttribute(
       'href',

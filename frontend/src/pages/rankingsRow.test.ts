@@ -24,7 +24,7 @@ function blanked(css: string): string {
 
 /** One rule's body inside the telephone's media query, by its selector. */
 function phoneRule(selector: string): string {
-  const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 559.98px)'))
+  const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
   const at = phone.indexOf(`${selector} {`)
 
   expect(at, `${selector} is not in the telephone's rules`).toBeGreaterThan(-1)
@@ -130,7 +130,7 @@ describe('the row the three filters stand in', () => {
        only the shared class is a rule that reaches all eight, and "inert on the
        other seven" is a thing that stays true only until one of them grows a
        row of filters. */
-    const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 559.98px)'))
+    const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
     const query = phone.slice(0, phone.lastIndexOf('}'))
     const loose = [...query.matchAll(/^ {2}(\.[^{]+)\{/gm)]
       .map((one) => must(one[1], 'the selector the match found').trim())

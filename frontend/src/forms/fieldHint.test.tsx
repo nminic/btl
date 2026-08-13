@@ -2,9 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
-import registracija from './definitions/registracija.form.json'
+import { registracija } from './definitions'
 import { FormRenderer } from './FormRenderer'
-import type { FormDef } from './types'
 import { must } from '../test/at'
 import { setupUser } from '../test/user'
 
@@ -19,7 +18,7 @@ function renderForm() {
   render(
     <ClockProvider simulatedDay={null}>
       <I18nProvider locale="sr">
-        <FormRenderer form={registracija as FormDef} onSubmit={() => {}} />
+        <FormRenderer form={registracija} onSubmit={() => {}} />
       </I18nProvider>
     </ClockProvider>,
   )
@@ -139,7 +138,7 @@ describe('the rule beside a field', () => {
       <ClockProvider simulatedDay={null}>
         <I18nProvider locale="sr">
           <div onKeyDown={() => (outside += 1)}>
-            <FormRenderer form={registracija as FormDef} onSubmit={() => {}} />
+            <FormRenderer form={registracija} onSubmit={() => {}} />
           </div>
         </I18nProvider>
       </ClockProvider>,

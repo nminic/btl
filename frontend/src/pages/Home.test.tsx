@@ -1,3 +1,4 @@
+import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
 import { screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
@@ -50,15 +51,9 @@ describe('Home', () => {
     const previous = window.matchMedia
     /* The whole shape, not just `matches`: the theme in the shell subscribes to
        the system preference, and a stub without `addEventListener` throws inside
-       an effect and takes the effects after it down with it. */
-    window.matchMedia = ((query: string) => ({
-      matches: query.includes('reduced-motion'),
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => true,
-    })) as unknown as typeof matchMedia
+       an effect and takes the effects after it down with it. `matchingMedia` is
+       where that whole shape is written out (test/media.ts). */
+    window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
 
     try {
       renderAt('/sr')

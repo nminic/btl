@@ -6,8 +6,8 @@ import { raceLabel } from '../../data/raceLabel'
 import { btlPoints } from '../../data/scoring'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
-import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
-import type { FormDef, FormValues } from '../../forms/types'
+import { prijava } from '../../forms/definitions'
+import type { FormValues } from '../../forms/types'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -175,7 +175,7 @@ export function ReportResult() {
               </p>
 
               <FormRenderer
-                form={prijava as FormDef}
+                form={prijava}
                 initial={{ raceId: opened.id }}
                 options={{
                   raceId: mineHere.map((race) => ({

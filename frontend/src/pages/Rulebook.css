@@ -120,7 +120,7 @@
 
 /* From tablet up the sections stand beside the text and follow it down the
    page, and the button that opened them stops existing. */
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   .rulebook__layout {
     grid-template-columns: 15rem minmax(0, 1fr);
     gap: var(--space-32);

@@ -162,7 +162,7 @@ function ProfileBody({
      is ignored. */
   const askedLength = params.get('duzina')
   const length =
-    askedLength !== null && (CATEGORIES as string[]).includes(askedLength)
+    askedLength !== null && CATEGORIES.some((one) => one === askedLength)
       ? askedLength
       : ALL_LENGTHS
 

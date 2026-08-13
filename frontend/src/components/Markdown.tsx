@@ -82,6 +82,28 @@ function headingOf(line: string): { level: number; text: string } | undefined {
 }
 
 /**
+ * Which tag a heading of that depth is drawn with.
+ *
+ * The four are written out rather than built from the number. `h${level}` is a
+ * string as far as the compiler is concerned, so it had to be asserted to be a
+ * heading tag, and ADL A14 bans that. What holds it to four is the shape at the
+ * top of this file (`#{2,6}`) and the floor of three below it, which is two
+ * facts in two other places; here it is one closed list, and a fifth tag cannot
+ * be reached by accident.
+ */
+function headingTag(level: number): 'h3' | 'h4' | 'h5' | 'h6' {
+  if (level <= 3) {
+    return 'h3'
+  }
+
+  if (level === 4) {
+    return 'h4'
+  }
+
+  return level === 5 ? 'h5' : 'h6'
+}
+
+/**
  * The words of a link and the address under them, or nothing when the part is
  * not a link.
  *
@@ -281,7 +303,7 @@ function block(item: Block, key: number, locale: string): ReactNode {
   }
 
   if (item.kind === 'heading') {
-    const Tag = `h${item.level}` as 'h3' | 'h4' | 'h5' | 'h6'
+    const Tag = headingTag(item.level)
 
     return <Tag key={key}>{inline(item.text, locale)}</Tag>
   }

@@ -1,12 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import sr from '../i18n/sr.json'
-import { translate, type Dictionary } from '../i18n/translate'
+import { translate } from '../i18n/translate'
 import { must } from '../test/at'
 import { useState, type ReactNode } from 'react'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
-import registracija from './definitions/registracija.form.json'
+import { registracija } from './definitions'
 import { FormRenderer } from './FormRenderer'
 import { plainWords, worded } from './worded'
 import type { FieldDef, FormDef, FormValues } from './types'
@@ -237,9 +237,9 @@ describe('FormRenderer', () => {
       linkTo: 'pravilnik',
     }
     const said = plainWords(
-      translate(sr as Dictionary, 'sr', field.labelKey),
+      translate(sr, 'sr', field.labelKey),
       field,
-      (key) => translate(sr as Dictionary, 'sr', key),
+      (key) => translate(sr, 'sr', key),
     )
 
     expect(said).toBe(
@@ -382,7 +382,7 @@ describe('FormRenderer', () => {
   })
 
   it('renders the registration definition straight from JSON', () => {
-    renderWithI18n(<FormRenderer form={registracija as FormDef} onSubmit={vi.fn()} />)
+    renderWithI18n(<FormRenderer form={registracija} onSubmit={vi.fn()} />)
 
     expect(screen.getByRole('heading', { name: 'Registracija' })).toBeVisible()
     expect(screen.getByLabelText(/Veličina majice/)).toBeInTheDocument()

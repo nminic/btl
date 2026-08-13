@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
-import { at, first, must } from '../../test/at'
+import { at, first, must, selectElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
@@ -184,7 +184,7 @@ describe('the length, as one row of six', () => {
        written below it, for any selector at all, and misses one written above. */
     expect(css).toMatch(/\.profile__length-short\s*\{[^}]*clip-path: inset\(50%\)/)
     expect(css).toMatch(
-      /@media \(max-width: 620px\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
+      /@media \(max-width: 38\.75em\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
     )
     expect(css).not.toMatch(/\.profile__length-(full|short)\s*\{[^}]*display:\s*none/)
   })
@@ -290,7 +290,7 @@ describe('the address stays as short as it can be', () => {
     const { router } = renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
+    const season = selectElement(screen.getByLabelText('Sezona'))
     const another = must(at(within(season).getAllByRole('option'), 1).getAttribute('value'), 'value')
 
     /* All of them is the default (owner, 31.07.2026), so the bare address is
@@ -401,7 +401,7 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('sve')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('sve')
   })
 
   it('will not take a year that only looks like one', async () => {
@@ -412,7 +412,7 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('sve')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('sve')
   })
 
   /* The choice travels between the two parts of one profile, because it lives
@@ -422,11 +422,11 @@ describe('the season, over both parts of the profile', () => {
     renderAt('/sr/takmicar/000001?sezona=2019')
 
     await screen.findByRole('heading', { level: 1 })
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2019')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2019')
 
     await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
 
-    expect((await screen.findByLabelText('Sezona')) as HTMLSelectElement).toHaveValue('2019')
+    expect(selectElement(await screen.findByLabelText('Sezona'))).toHaveValue('2019')
   })
 })
 
@@ -483,7 +483,7 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
       return asked.endsWith('/ducats.json')
         ? new Response(JSON.stringify([family]), { status: 200 })
         : real(input)
-    }) as typeof fetch
+    })
 
     try {
       /* A season that is not the ducat's, on purpose: a trophy belongs to the
@@ -580,7 +580,7 @@ describe('a wall of ducats that grows as it is read', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/ducats.json')
         ? new Response(JSON.stringify(many), { status: 200 })
-        : real(input)) as typeof fetch
+        : real(input))
 
     return () => {
       globalThis.fetch = real
