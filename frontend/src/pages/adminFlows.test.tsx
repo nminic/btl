@@ -906,7 +906,7 @@ describe('verification', () => {
       const alarm = nav.getByRole('alert')
 
       expect(alarm).toHaveTextContent(/nije dostupan/)
-      /* Outside the folded list, not inside it. Below 820px the list is
+      /* Outside the folded list, not inside it. Below 51.25em the list is
          `display: none` until it is unfolded, and an alert drawn hidden is never
          announced: the warning was silent on the screen it matters most on.
 
@@ -1443,7 +1443,7 @@ describe('the six queues read from the file', () => {
   it('folds a card open and shut, one at a time', async () => {
     /* On a telephone a card is a screenful, so five of them mean scrolling
        through four to reach the third (owner, 06.08.2026). The control is drawn
-       at every width in the markup and hidden by the stylesheet from 820px up,
+       at every width in the markup and hidden by the stylesheet from 51.25em up,
        exactly as the sectors of the navigation are, so what is held here is the
        folding itself. */
     const user = await open('comments', 'Komentari')

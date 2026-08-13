@@ -258,8 +258,13 @@ describe('space and corners are chosen from the scale, not typed', () => {
     for (const sheet of sheets) {
       /* Only `@media`. A container query asks the same question of a box rather
          than of the window, so its widths are a property of one component and
-         not a place where the portal changes shape. */
-      const conditions = [...sheet.css.matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '').join(' ')
+         not a place where the portal changes shape.
+       *
+       * Read with the comments blanked out. A query explained in prose is not a
+       * query: the note above the container query in TopBoards.css says why it
+       * is not an `@media` one, and saying so made this guard count a width the
+       * sheet does not have and fail on a sentence. */
+      const conditions = [...unremarked(sheet.css).matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '').join(' ')
       const found = [...conditions.matchAll(WIDTH)]
 
       /* Every way of asking about a width, or the guard is a guard against one
@@ -366,21 +371,25 @@ describe('space and corners are chosen from the scale, not typed', () => {
     const taken: string[] = []
 
     for (const sheet of sheets) {
+      /* Comments blanked, here as above: a note explaining why a column is cut
+         is not a rule that cuts one. */
+      const css = unremarked(sheet.css)
+
       /* What this sheet clips wherever it says so, for the second shape. */
       const clipped = new Set(
-        [...sheet.css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
           .filter((rule) => CLIPS.test(rule[2] ?? ''))
           .map((rule) => (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')),
       )
 
-      for (const query of sheet.css.matchAll(/@media([^{]*)\{/g)) {
+      for (const query of css.matchAll(/@media([^{]*)\{/g)) {
         const at = query.index + query[0].length
 
         if (![...(query[1] ?? '').matchAll(WIDTH)].some((one) => one[2] === 'em')) {
           continue
         }
 
-        for (const rule of sheet.css.slice(at, closes(sheet.css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        for (const rule of sheet.css.slice(at, closes(css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
           const selector = (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')
           const body = rule[2] ?? ''
 
@@ -394,6 +403,18 @@ describe('space and corners are chosen from the scale, not typed', () => {
     expect([...new Set(taken)].filter((one) => !ALLOWED_TO_HIDE.has(one))).toEqual([])
   })
 })
+
+/**
+ * A copy of the stylesheet with the inside of every comment blanked out, and the
+ * same length as what went in, so a position in it is a position in the original.
+ *
+ * Every sheet here explains itself, and the explanations name the very things
+ * these guards read for. A comment saying why one query is not an `@media` one
+ * is not an `@media` query, and a comment about `display: none` hides nothing.
+ */
+function unremarked(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+}
 
 /** Where the block that opens at `at` closes, counted rather than searched for:
  *  the first `}` after a media query ends the first rule inside it. */
