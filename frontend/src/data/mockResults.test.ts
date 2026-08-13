@@ -80,8 +80,32 @@ function bandOf(distanceKm: number): number {
   return Math.min(...[1, 3, 6, 12, 25, 50, 100, Infinity].filter((edge) => distanceKm <= edge))
 }
 
+/**
+ * The middle speed of each band, worked out once and kept.
+ *
+ * Once and not once per result: the guard asks this of all 3528 rows, and
+ * answering it afresh each time filters and sorts the whole set again, which is
+ * twelve million comparisons. It ran in a second here and timed out at five on
+ * the slower machine CI uses, which is the only place it showed.
+ */
+const middles = new Map<number, number>()
+
 /** The middle speed of a band, read off a sorted list of every result in it. */
 function middleSpeedOf(band: number): number {
+  const known = middles.get(band)
+
+  if (known !== undefined) {
+    return known
+  }
+
+  const answer = middleOf(band)
+
+  middles.set(band, answer)
+
+  return answer
+}
+
+function middleOf(band: number): number {
   const speeds = running
     .filter((one) => bandOf(one.distanceKm) === band)
     .map(speedOf)
