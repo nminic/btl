@@ -17,13 +17,22 @@
    draws, not a dependency this component should rest on.
 
    One import moves table.css in the built stylesheet, which is worth knowing
-   before adding another: the bundler emits it once, at the last sheet that asks
-   for it, so it went eighty-odd rules later, past TopBoards.css and Entity.css.
-   Both builds were compared rule by rule. Nothing changed effect: every other
-   rule that touches a `.table` element either outranks it (`.boards .table th`,
-   `.league__grid tbody td.table__points`) or kept its side of it
-   (`.markdown__table`, and `.moderators` below, which is inside this file and
-   therefore still after the import). */
+   before adding another: the body of it is emitted once, at the last sheet that
+   asks for it, so it went eighty-odd rules later, past TopBoards.css and
+   Entity.css. Both builds were compared rule by rule. Nothing changed effect:
+   every other rule that touches a `.table` element either outranks it
+   (`.boards .table th`, `.league__grid tbody td.table__points`) or kept its side
+   of it (`.markdown__table`, and `.moderators` below, which is inside this file
+   and therefore still after the import).
+
+   Once is not quite the whole of it, and this is the correction rather than the
+   claim: two rules leave a copy at every sheet that asks, `.podium
+   .table__position/.table__points` and the `table__hide-phone` media query. The
+   minifier drops the earlier duplicates of everything else and keeps those,
+   which costs nothing because a duplicate that stands before an identical rule
+   decides nothing. It is written down because the count is what somebody
+   checking this by hand will be counting (measured 13.08.2026, when two more
+   sheets began asking). */
 @import '../../styles/table.css';
 
 /* The box around the matrix, and the box the matrix scrolls in.

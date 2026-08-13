@@ -1,5 +1,9 @@
 import { CATEGORIES } from '../../data/derive'
 import { useI18n } from '../../i18n/useI18n'
+/* For the five colours of `.length-dot`, which live in the table sheet because
+   the results table draws them too (styles/table.css). Asked for here rather
+   than left to the screen: this component draws nothing else. */
+import '../../styles/table.css'
 
 /**
  * What the colours on the chips mean, in one line under the grid (owner,

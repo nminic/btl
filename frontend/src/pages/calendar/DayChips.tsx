@@ -2,6 +2,10 @@ import { Link } from 'react-router'
 import { categoriesAt } from '../../data/derive'
 import type { BtlEvent, Race } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
+/* For the five colours of `.length-dot`, which live in the table sheet because
+   the results table draws them too (styles/table.css). Asked for here rather
+   than left to the screen: this component draws nothing else. */
+import '../../styles/table.css'
 
 /**
  * One event in the grid: the name and the lengths it holds, on one line (owner,

@@ -3,6 +3,11 @@ import { categoriesAt, upcomingSeries } from '../../data/derive'
 import type { BtlEvent, Race } from '../../data/types'
 import { formatDayMonth } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+/* For the five colours of `.length-dot`, which live in the table sheet because
+   the results table draws them too (styles/table.css). The front page needs it
+   said out loud more than the calendar does: Home.css asks only for the counter,
+   so nothing else on this screen was bringing the colours along. */
+import '../../styles/table.css'
 
 const ROWS = 6
 
