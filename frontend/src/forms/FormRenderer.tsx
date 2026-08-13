@@ -541,6 +541,28 @@ export function FormRenderer({
   const broken = visible.filter((field) => errors[field.name] !== undefined)
   const titleId = `form-${form.id}-title`
 
+  /**
+   * What is on screen, which is what may be sent.
+   *
+   * A field taken off the form takes its value with it. Somebody who entered a
+   * date of birth in 2015, filled in the parent's name and relationship the form
+   * then asked for, and corrected the date to an adult one, was still sending
+   * that name and that relationship: a third party named in a record with no
+   * ground to stand on, where PDL P23 collects nothing that is not needed and a
+   * parent's signature exists only as the legal basis for a member under
+   * sixteen. Nothing keeps it today because there is no database yet, but this
+   * object is the contract the F5 backend will be written against.
+   *
+   * Written as what to leave out rather than what to keep: a place field writes
+   * a value beside its own, the country the town came with, and that value has
+   * no field of its own to be found under (src/forms/types.ts).
+   */
+  function onScreen(all: FormValues): FormValues {
+    const hidden = form.fields.filter((field) => !isVisible(field, all, today)).map((field) => field.name)
+
+    return Object.fromEntries(Object.entries(all).filter(([name]) => !hidden.includes(name)))
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
@@ -566,7 +588,7 @@ export function FormRenderer({
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
-      onSubmit(trimValues(filled))
+      onSubmit(trimValues(onScreen(filled)))
     }
   }
 

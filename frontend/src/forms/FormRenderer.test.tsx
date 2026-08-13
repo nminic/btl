@@ -750,3 +750,87 @@ describe('a definition swapped under a form that is already on screen', () => {
     expect(sent[0]?.dopisano).toBe('')
   })
 })
+
+describe('a field the form has taken back off the screen', () => {
+  const askingParent: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [
+      { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+      {
+        name: 'staratelj',
+        type: 'text',
+        labelKey: 'proba.dopisano',
+        showWhenYoungerThan: { field: 'datum', years: 16 },
+      },
+    ],
+  }
+
+  it('is not sent with the rest of the form', async () => {
+    /* The registration form asks for a parent's name and their relationship the
+       moment a date of birth says the applicant is under sixteen, and takes both
+       away again when the date is corrected. Taking a field off the screen used
+       to leave its value in what was sent: enter 2015, name the parent, correct
+       the year to 1990, submit, and a third party was still named in the record.
+     *
+       PDL P23 collects nothing that is not needed and the signature exists only
+       as the legal basis for a member under sixteen, so with the basis gone the
+       name has no ground to stand on. Nothing keeps it today because there is no
+       database yet, which is exactly why it had to be caught now: this object is
+       the contract the backend will be written against.
+     *
+       The test that existed watched the field leave the screen, which it always
+       did. What is sent is the half nobody was looking at. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={askingParent}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    const birth = screen.getByLabelText(/proba.datum/)
+
+    await user.type(birth, '01012015')
+    await user.type(screen.getByLabelText(/proba.dopisano/), 'Milena Đurišić')
+
+    await user.clear(birth)
+    await user.type(birth, '01011990')
+
+    expect(screen.queryByLabelText(/proba.dopisano/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).not.toHaveProperty('staratelj')
+  })
+
+  it('is still sent while it is on the screen', async () => {
+    /* The other half, so the fix cannot be „send nothing conditional". A parent
+       named by somebody who really is under sixteen is the whole point of the
+       field. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={askingParent}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.datum/), '01012015')
+    await user.type(screen.getByLabelText(/proba.dopisano/), 'Milena Đurišić')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.staratelj).toBe('Milena Đurišić')
+  })
+})
