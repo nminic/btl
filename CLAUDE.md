@@ -80,6 +80,8 @@ Ništa se ne predlaže ni ne odlučuje u sukobu sa tim fajlovima, a svaka nova o
 
 ## Proces
 
+- **Nikad `git add -A` dok recenzija radi u istom radnom direktorijumu.** Recenzент dokazuje nalaz tako što namerno pokvari fajl, pokrene test i vrati ga. Ako se u tom prozoru zapiše sve što je izmenjeno, tuđa privremena mutacija ulazi u commit i CI pada na nečemu što u kodu ne postoji. Desilo se 13.08.2026: član `000004` je za jedan prolaz testa postao platiša i tako gurnut na granu. Zapisuju se **imenovane putanje** onoga što je stvarno menjano, ili recenzija dobija svoj worktree.
+
 - `main` grana prima izmene isključivo kroz PR sa zelenim CI (`.github/workflows/verify.yml`).
 - Pre svakog PR-a: pokrenuti oba test paketa lokalno i /code-review prolaz.
 - OBAVEZNO pre merge-a netrivijalnog PR-a: nezavisna recenzija kroz subagenta koji NIJE pisao kod. Recenzent dobija isključivo diff i opis PR-a (svež kontekst, bez konteksta autora) i vraća nalaze; kritični i visoki nalazi blokiraju merge dok se ne razreše. Za bezbednosno osetljive izmene (auth, podaci, upload) dodatno i security-reviewer agent.
