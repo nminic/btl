@@ -230,7 +230,14 @@ export function EntityEditor({
             ? `admin.form.new.${entity.id}`
             : `admin.form.edit.${entity.id}`,
         )}
-        initial={editing.mode === 'new' ? entity.start : valuesFor(form, editing.record)}
+        initial={
+          editing.mode === 'new'
+            ? /* The entity's own defaults first, then whatever opened the form
+                 on top of them, so a shortcut may fill one field and leave the
+                 rest as they always were. */
+              { ...entity.start, ...editing.start }
+            : valuesFor(form, editing.record)
+        }
         /* So the address the form shows is the address the save will leave, and
            not the one the rule would build out of the fields: an event whose
            address carries more than the rule can build keeps it, and an

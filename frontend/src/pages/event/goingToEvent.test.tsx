@@ -232,6 +232,53 @@ describe('writing to somebody else who is going', () => {
     }
 
     await write(first)
+    /* Obligatory, and it says so the way every field on the portal does since
+       12.08.2026: a star, `aria-required`, and one line saying what the star
+       means. Before that the box carried the browser's own `required`, and an
+       empty send was refused by Chrome in English, on a Serbian page. */
+    const box = screen.getByRole('textbox', {
+      name: `Piši članu ${first.firstName} ${first.lastName}`,
+    })
+
+    expect(box).toHaveAttribute('aria-required', 'true')
+    expect(box).not.toHaveAttribute('required')
+    /* And the form answers for its own rules rather than leaving them to the
+       browser, which is the other half of the same decision: whatever the
+       browser refuses, it refuses in its own language. */
+    expect(must(box.closest('form'), 'the form it stands in')).toHaveAttribute('novalidate')
+
+    /* And nothing goes out while there is nothing to send. The browser used to
+       refuse that; taking its refusal away without putting one in its place, an
+       empty message went into somebody's inbox and the screen said it had been
+       sent. Spaces are not a message either. */
+    const send = screen.getByRole('button', { name: 'Pošalji poruku' })
+
+    /* Told off rather than switched off, so somebody moving by keyboard still
+       reaches the button and reaches the reason it points at. `disabled` would
+       have taken it out of the tab order along with the explanation, which is
+       what the portal decided against three times before this one
+       (RateEvent.tsx, PendingQueue.tsx, Pager.tsx). */
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+    expect(send).not.toBeDisabled()
+    expect(send).toHaveAccessibleDescription('Napiši poruku da bi mogao da je pošalješ.')
+
+    /* And pressed, not merely inspected. An attribute is a promise about a
+       press; this is the press. Reachable means pressable, so the refusal has
+       to live in the handler too, and without it this sends an empty message. */
+    await user.click(send)
+    expect(screen.queryByText(/^Poruka je poslata članu/)).not.toBeInTheDocument()
+
+    await user.type(box, '   ')
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(send)
+    expect(screen.queryByText(/^Poruka je poslata članu/)).not.toBeInTheDocument()
+
+    await user.clear(box)
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(must(box.closest('.field'), 'the field it stands in').querySelector('.field__required'))
+      .not.toBeNull()
+
     await user.type(
       screen.getByRole('textbox', { name: `Piši članu ${first.firstName} ${first.lastName}` }),
       'Prvo pismo.',

@@ -28,24 +28,60 @@ function ruleFor(selector: string): string {
 }
 
 describe('the box the rule of a field opens in', () => {
-  it('stands in the flow, between the name of the field and the field', () => {
-    /* Laid over what follows, it covered the field under it: a rule left open by
-       a finger swallowed the first press on whatever it covered, and a pointer
-       could never reach the words to read them to the end, because the way down
-       crossed the control and the control is outside the hint. In the flow it
-       covers nothing and is reached by moving straight down. */
+  it('opens over the page and moves nothing', () => {
+    /* Owner, 12.08.2026: „a ne da se pojavi element unutar strane koji izpomera
+       sve ostalo." Anything in the flow moves what comes after it, so what is
+       held here is that it is out of the flow entirely, and stacked above the
+       page rather than under it.
+
+       It hangs from the head of the field and not from the letter, and is as
+       wide as that head: a box measured from a letter 24 pixels wide opened 65
+       pixels off the left edge of a telephone and 103 off the right, and took
+       the page into sideways scroll, which this portal forbids. The head is as
+       wide as the field, so what hangs from it can leave the page only if the
+       field does. Both halves are held, since one without the other is the fault
+       that was found: `.hint` must not be positioned, or it is what the box is
+       measured from again. */
     const open = ruleFor('.hint--open .hint__text')
 
-    expect(open).toContain('position: static;')
-    expect(open).not.toContain('z-index')
-    /* Across the whole of the head, which is the row the name of the field
-       stands in. */
-    expect(open).toContain('grid-column: 1 / -1;')
+    expect(open).toContain('position: absolute;')
+    expect(open).toMatch(/z-index: \d+;/)
+    expect(open).not.toContain('grid-column')
+    expect(open).toContain('inline-size: 100%;')
+    expect(open).not.toContain('translate:')
+    expect(ruleFor('.hint')).not.toContain('position:')
 
     const head = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf8')
     const at = head.indexOf('.field__head {')
 
-    expect(head.slice(at, head.indexOf('}', at))).toContain('display: grid')
+    expect(head.slice(at, head.indexOf('}', at))).toContain('position: relative')
+
+    /* And the gap between the letter and the words is one the pointer can cross
+       without leaving the hint, which the strip below it answers: a pointer that
+       has to step onto the page to reach them closes them on the way
+       (SC 1.4.13). */
+    expect(open).toContain('inset-block-start: calc(100% + var(--space-4));')
+    const bridge = ruleFor('.hint--open .hint__text::before')
+
+    expect(bridge).toContain('inset-block-end: 100%;')
+    /* One pixel more than the gap, and the pixel is not slack: the strip is
+       measured against the padding box of the words, which is a pixel inside
+       their border, so a strip exactly as tall as the gap ends a pixel short of
+       the head and leaves a hairline of bare page under the letter. */
+    expect(bridge).toContain('block-size: calc(var(--space-4) + 1px);')
+    /* And it is there to be walked on, which is the whole of what it is for:
+       told to let the pointer through, it is a strip of nothing and the box goes
+       on closing under a pointer on its way to the words. */
+    expect(bridge).not.toContain('pointer-events')
+  })
+
+  it('is small print, as it was asked to be', () => {
+    /* „porukica sitnim slovima" (owner, 12.08.2026). Held because the size is
+       the whole of what makes it discreet: at the size of the page's own text it
+       is a paragraph that happens to float. */
+    const open = ruleFor('.hint--open .hint__text')
+
+    expect(open).toContain('font-size: 0.75rem;')
   })
 
   it('is shown by one thing only, so that one thing can hide it', () => {
@@ -73,9 +109,15 @@ describe('the box the rule of a field opens in', () => {
        box closing under it (SC 1.4.13 asks that hovered content be hoverable):
        the hint is a wrapper the two share, and whether the pointer left it is
        decided against that wrapper rather than against either half
-       (FieldHint.tsx). `display: contents` is what keeps the wrapper out of the
-       layout while leaving it in the document. */
-    expect(ruleFor('.hint')).toContain('display: contents;')
+       (FieldHint.tsx).
+
+       A box of its own since 12.08.2026, and the smallest there is: it holds the
+       letter and nothing else, so it still sits on the line with the label, and
+       it is what the open words are measured from. */
+    const hint = ruleFor('.hint')
+
+    expect(hint).toContain('display: inline-flex;')
+    expect(hint).not.toContain('display: contents;')
   })
 })
 
@@ -167,14 +209,36 @@ describe('the rows of a form', () => {
     expect(plain.includes('span 2')).toBe(false)
   })
 
+  it('keeps the letter in a track of its own, not in the one that grows', () => {
+    /* Measured in Chrome at 1280 on the registration form, which is where this
+       was found: three tracks and the letter lands in the growing one, where a
+       grid item stretches to fill it. Its box went from 24 pixels wide to 219,
+       so the words of a rule opened under a pointer that was nowhere near the
+       letter and half the line answered to a hover. Four tracks and it is 24,
+       which is the circle itself.
+
+       A field with no star has two items and the last two tracks stand empty,
+       which costs nothing. */
+    const head = bodyOf('.field__head')
+
+    /* Both, since one without the other does nothing: tracks named on an element
+       that is not a grid are an instruction nobody reads. The rule that held
+       this stood in the test the tooltip took away with it. */
+    expect(head).toContain('display: grid;')
+    expect(head).toContain('grid-template-columns: auto auto auto 1fr;')
+  })
+
   it('puts the letter beside the words of a confirmation, not under them', () => {
-    /* The one field with no head of its own: the hint is `display: contents`, so
-       left outside it the circle became an item of the field's own column and
-       fell to a line below the sentence. Ten fields carried it beside their name
-       and this one carried it under. */
+    /* The one field with no head of its own: left outside a head the circle
+       became an item of the field's own column and fell to a line below the
+       sentence. Ten fields carried it beside their name and this one carried it
+       under.
+
+       Three tracks and not two, since the star of an obligatory field stands
+       between the words and the letter. */
     const confirm = bodyOf('.field__head--confirm')
 
-    expect(confirm).toContain('grid-template-columns: 1fr auto;')
+    expect(confirm).toContain('grid-template-columns: 1fr auto auto;')
   })
 
   it('let a form that has them be wider, and only where they are drawn', () => {
@@ -202,5 +266,25 @@ describe('the rows of a form', () => {
     const elsewhere = form.replace(wide, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
     expect(elsewhere.includes('60rem')).toBe(false)
+  })
+
+  it('lets a confirmation have the whole of that width, and after the cap', () => {
+    /* Owner, 12.08.2026: „nema razloga da se checkbox sa pravilnikom prelama
+       ovako brzo umesto da iskoristi širinu ekrana." The cap is for boxes to
+       type into; a sentence to read is not one.
+
+       Where it stands is half of the rule. Both selectors weigh the same, so of
+       the two the later one applies: written above the cap it would be undone by
+       it, and the sentence would go on breaking into four lines with nothing on
+       the screen to say why. A media query adds no specificity and this trap has
+       been walked into once already, in this very file, over the row that a
+       query turned off at every width there is. */
+    const wide = inside('@media (min-width: 51.25em)')
+    const kept = wide.indexOf('.form:has(.form__row) > .field,')
+    const freed = wide.indexOf('.form:has(.form__row) > .field--checkbox {')
+
+    expect(freed).toBeGreaterThan(-1)
+    expect(freed).toBeGreaterThan(kept)
+    expect(wide.slice(freed)).toContain('max-inline-size: none;')
   })
 })

@@ -227,6 +227,32 @@ describe('members', () => {
 })
 
 describe('events', () => {
+  it('opens the empty form on the day the calendar sent, and on no day otherwise', async () => {
+    /* The other half of the `+` in the corner of a calendar day (owner,
+       12.08.2026): pressing it is only a saving if the day arrives with it.
+       The date is read from the address, so the shortcut is a link and the
+       screen has one way of being open rather than two. */
+    renderAt('/sr/administracija/dogadjaji?nov=2027-05-08', 'superadmin')
+
+    expect(await screen.findByLabelText(/^Datum$/)).toHaveValue('08/05/2027')
+
+    /* And the same screen without it opens on the list, with nothing being
+       written. */
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
+  })
+
+  it('opens the form empty when the address carries a day that does not exist', async () => {
+    /* „2027-13-45" has the shape of a date and is not one, and the shape was all
+       that was asked: the form opened holding „45/13/2027", a day the calendar
+       cannot show and the form refuses only once it is sent. Reachable by hand
+       typed address alone, which is exactly why nothing was watching it. */
+    renderAt('/sr/administracija/dogadjaji?nov=2027-13-45', 'superadmin')
+
+    expect(await screen.findByLabelText(/^Datum$/)).toHaveValue('')
+  })
+
   it('opens on what is still ahead, and searches the whole calendar', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
@@ -258,6 +284,24 @@ describe('the price list', () => {
     expect(within(table).getAllByText('Ne')).toHaveLength(1)
   })
 
+  it('writes both currencies the same way, in the language of the page', async () => {
+    /* The dinar figure went through a formatter and the euro one went out raw
+       beside it, so a Serbian sentence read „35.5 EUR, a iz Srbije 4.200 RSD":
+       one amount with a Serbian thousands separator and the other with the
+       decimal point of another language. The form takes decimals, so this is
+       reachable by an administrator with no unusual intent.
+
+       The formatter is also no longer told which language to use. It was pinned
+       to `sr-Latn` on a screen that has the page's own language to hand. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Cenovnik' })
+
+    /* Thousands grouped the Serbian way, and nothing carrying a foreign point. */
+    expect(within(table).getAllByText('4.200').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/\d\.\d{1,2}$/)).not.toBeInTheDocument()
+  })
+
   it('is named by its own field, and neither added to nor taken from', async () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
@@ -269,7 +313,46 @@ describe('the price list', () => {
        year with no price at all. */
     expect(screen.queryByRole('button', { name: /^Nov/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
+    /* Five in the table and a sixth under it: the amount of a referral is set
+       on this screen too (owner, 12.08.2026) and goes through the same form,
+       which asks for a name, euro and dinars and nothing else. */
+    expect(within(table).getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
+    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(6)
+  })
+
+  it('sets the referral amount here as well, apart from the prices', async () => {
+    /* Owner, 12.08.2026: „ovo admin treba da konfiguriše na strani cenovnika
+       takođe." Apart, because nobody pays it: it is credited, so it has no
+       window in the year and no bearing on the right to be ranked, and two of
+       the five columns of the price table would have had nothing to say. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Preporuka' })
+
+    /* One row of prices under one row of headings, so the words are the row. */
+    expect(within(table).getAllByRole('row')).toHaveLength(2)
+    expect(within(table).getByText('Preporuka novog člana')).toBeVisible()
+    expect(within(table).getByText('5')).toBeVisible()
+    expect(within(table).getByText('600')).toBeVisible()
+    /* And it is not among the prices, where it would read as something a member
+       pays. */
+    expect(
+      within(screen.getByRole('table', { name: 'Cenovnik' })).queryByText('Preporuka novog člana'),
+    ).toBeNull()
+  })
+
+  it('opens the referral amount in the same form every price is changed in', async () => {
+    const user = setupUser()
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+    await user.click(screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' }))
+
+    /* The form of a price, which asks for a name, euro and dinars and nothing
+       else: a credit has no window in the year and nothing to say about the
+       right to be ranked, so it fits this form exactly. */
+    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
+    expect(screen.getByLabelText(/^Iznos u dinarima/)).toHaveValue(600)
   })
 
   it('says what a payment from abroad carries on top of the price', async () => {
@@ -315,12 +398,17 @@ describe('the price list', () => {
 
     /* Three fields and no more. The window is the year itself and is not
        something an administrator types (owner, 30.07.2026); it used to ask for a
-       date from and a date to, which is how a price list expires. */
-    expect(screen.getByLabelText(/Naziv perioda/)).toBeVisible()
+       date from and a date to, which is how a price list expires.
+
+       „Naziv" and not „Naziv perioda" since 12.08.2026: the same form now opens
+       for the referral amount, which is a row of the price list with no period
+       at all. The column header of the price table still says „Naziv perioda",
+       because there every row is one. */
+    expect(screen.getByLabelText('Naziv')).toBeVisible()
     expect(screen.queryByLabelText(/Važi od/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Važi do/)).not.toBeInTheDocument()
 
-    const eur = screen.getByLabelText(/Cena u evrima/)
+    const eur = screen.getByLabelText(/Iznos u evrima/)
     await user.clear(eur)
     await user.type(eur, '33')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -627,6 +715,28 @@ describe('the queue of results', () => {
     return { user, session }
   }
 
+  it('says the reason has to be written, in both ways a field says it', async () => {
+    /* Owner, 12.08.2026: „Ova pravila... treba da funkcioniše na svim formama za
+       unos i verifikaciju." This box is not built by the renderer, so it carries
+       the rule itself: a star for the eye and `aria-required` for a reader.
+       Without them the button below simply stayed dead and nothing said why.
+
+       And the star outside the label, or „Razlog odbijanja" is not the name of
+       this field any more. */
+    const { user } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
+
+    const reason = screen.getByLabelText('Razlog odbijanja')
+
+    expect(reason).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(reason.closest('.rankings__field'), 'the field it stands in').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+  })
+
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
     const { user, session } = openWith(['pending'])
 
@@ -636,7 +746,18 @@ describe('the queue of results', () => {
     const reason = screen.getByLabelText('Razlog odbijanja')
 
     await user.type(reason, '   ')
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
+    expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
+    expect(session.decide).not.toHaveBeenCalled()
+
+    /* And pressed, not merely inspected. Reachable means pressable, so the
+       refusal has to live in the handler as well as in the attribute, and
+       without it three spaces go back to the member as a reason. */
+    await user.click(confirm)
+
     expect(session.decide).not.toHaveBeenCalled()
 
     await user.type(reason, 'Vreme se ne poklapa sa zvaničnom listom.  ')
@@ -1043,7 +1164,11 @@ describe('the queue of memberships waiting to be activated', () => {
   const openPayments = async () => {
     const user = setupUser()
     renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, undefined, null, <Decided />)
-    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+    /* The table and not the heading. The heading is drawn before the records
+       arrive, so a test that waited on it went looking for a button that was not
+       there yet: it failed once in a run of the coverage gate and passed on the
+       next, which is the worst way for a test to fail. */
+    await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
 
     return user
   }
@@ -1180,7 +1305,10 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
     const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije vidljiva na izvodu.')
@@ -1201,7 +1329,10 @@ describe('the queue of memberships waiting to be activated', () => {
     /* Three spaces are not a reason. The rule is one rule on all seven queues,
        and it is the rule the forms already use (src/forms/validate.ts). */
     await user.type(screen.getByLabelText('Razlog odbijanja'), '   ')
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Izvod ne pokazuje uplatu.   ')
     await user.click(confirm)
@@ -1362,7 +1493,19 @@ describe('the six queues read from the file', () => {
 
       // The rule on these queues: no reason, no sending back.
       await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-      expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeDisabled()
+      /* Told off, not switched off: the button stays reachable so the line saying
+         why it will not go is reachable with it. */
+      const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
+
+      expect(confirm).toHaveAttribute('aria-disabled', 'true')
+      expect(confirm).not.toBeDisabled()
+      expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
+
+      /* Pressed with nothing written, on the box five queues share. Reachable
+         means pressable, so the refusal has to live in the handler too: without
+         it this sends the item back with no reason at all, on all five. */
+      await user.click(confirm)
+
       expect(
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
       ).toBeVisible()
@@ -1622,7 +1765,11 @@ describe('the six queues read from the file', () => {
     expect(screen.getByRole('group', { name: /^Brisanje komentara: / })).toBeVisible()
     expect(screen.queryByRole('group', { name: /^Odbijanje: / })).toBeNull()
 
-    const note = screen.getByLabelText('Napomena o brisanju')
+    /* „(neobavezno)" beside its name, as every optional field on the portal
+       carries: this is the one hand written field that may be left empty, and it
+       said nothing at all about itself while the obligatory ones beside it
+       carried a star (forms/AskedLabel.tsx). */
+    const note = screen.getByLabelText('Napomena o brisanju (neobavezno)')
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
 
     const confirm = screen.getByRole('button', { name: 'Obriši komentar' })
@@ -1922,6 +2069,153 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
   })
 
+  it('says every obligatory field is obligatory, on every queue', async () => {
+    /* Owner, 12.08.2026: „Ova pravila... treba da funkcioniše na svim formama za
+       unos i verifikaciju." Eight fields on these screens are written by hand
+       rather than drawn from a definition, and the rule reached one of them: the
+       reason a result is sent back. The other seven, this box and the three a
+       proposed team is corrected in, said nothing at all and the button below
+       them simply stayed dead.
+
+       Both halves at each, since one without the other is what was found: the
+       star for the eye and `aria-required` for a reader, plus the one line that
+       says what a star means. */
+    const user = await open('teams', 'Novi timovi')
+
+    /* Exactly one, wherever it comes from: the queue draws it over the three
+       fields, and the box for a reason draws its own when it opens. Both at
+       once explained the same mark twice on one screen. */
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+    /* And in the box the stylesheet folds away with the cards, since every star
+       it explains is inside one (admin/verificationStyle.test.ts). Named here
+       because that file reads the stylesheet and cannot see the markup. */
+    expect(
+      screen.getByText('Polja sa zvezdicom su obavezna.').closest('.pending__legend'),
+    ).not.toBeNull()
+
+    for (const name of ['Naziv tima', 'Mesto', /^Država/]) {
+      const field = screen.getAllByLabelText(name)[0]
+
+      expect(field, `${name} is not on the screen`).toBeDefined()
+      expect(field).toHaveAttribute('aria-required', 'true')
+    }
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+
+    const reason = screen.getByLabelText('Razlog odbijanja')
+
+    expect(reason).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(reason.closest('.rankings__field'), 'the field the reason stands in').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+    /* And still one line explaining the star, not two. */
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+  })
+
+  it('keeps that line on the screen when a sweep takes the card it stood in', async () => {
+    /* It used to stand inside the box for a reason, which stands inside a card,
+       and a card is not a safe place for it: a sweep settles the card the box
+       belongs to and the line went with it while three stars stayed on the
+       screen. A star this portal deliberately keeps out of the accessibility
+       tree, so the line is all a sighted reader has.
+
+       Two ways in, and this is the one a test can walk: open a reason, then
+       press „Odobri sve". The other is a telephone, where a card folds shut and
+       takes whatever is inside it. */
+    const user = await open('teams', 'Novi timovi')
+
+    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+    } finally {
+      /* In a `finally`, as everywhere else in this repo: left to the next line,
+         a failed assertion between the two would leave `confirm` answering yes
+         for every test after it in the file. */
+      asked.mockRestore()
+    }
+
+    /* The stars are still drawn, so the line has to be there with them. */
+    expect(document.querySelectorAll('.field__required').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+  })
+
+  it('says nothing about a star on a queue that draws none', async () => {
+    /* The comments queue is the one where nothing is obligatory: the only field
+       on it is the note that goes with a deletion, and that note may be left
+       blank, so it carries no star. A line saying „fields with a star are
+       obligatory" over that screen tells the moderator the opposite of the truth
+       about the only field in front of them.
+
+       It was drawn there for a while, because whether to draw it was guessed at
+       from the name of the queue and from whether a box was open, and this box
+       is open exactly when a comment is being deleted. */
+    const user = await open('comments', 'Komentari')
+
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+
+    await user.click(first(screen.getAllByRole('button', { name: /^Obriši:/ })))
+
+    expect(screen.getByLabelText(/Napomena/)).toBeVisible()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+  })
+
+  it('says nothing about a star on a queue that has emptied', async () => {
+    /* The three fields of a proposed team are drawn once per proposal, so a
+       queue with nothing left in it has no star on it either. The line stood
+       there all the same, because it was drawn for the name of the queue rather
+       than for anything on the screen. */
+    const user = await open('teams', 'Novi timovi')
+    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      /* The sweep leaves the one proposal it cannot take, so it is refused by
+         hand to empty the queue. */
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+    } finally {
+      asked.mockRestore()
+    }
+
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+  })
+
+  it('takes the reason away with the card the sweep settled, and the line with it', async () => {
+    /* The other way round, on a queue with no fields of its own: the only star
+       there is the reason's, so when the sweep takes the card away the line has
+       to go too, or it explains a mark that is nowhere on the screen. The box
+       was left standing open over nothing, which is also a reason half written
+       about a proposal already decided. */
+    const user = await open('leagues', 'Predložene lige')
+
+    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
+      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+    } finally {
+      asked.mockRestore()
+    }
+
+    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+  })
+
   it('will not send anything back without a reason', async () => {
     // A team rather than a biography: biographies stopped going back at all
     // (PDL P22, 30.07.2026), so there is nothing to refuse on that queue.
@@ -1930,7 +2224,10 @@ describe('the six queues read from the file', () => {
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
     const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')

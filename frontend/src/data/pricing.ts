@@ -68,7 +68,78 @@ export const PRICES: PriceRow[] = [
  *  what comes next both walk. */
 const BY_START = [...PRICES].sort((left, right) => left.from.localeCompare(right.from))
 
+/**
+ * What a referral code looks like, and the only thing a link may carry.
+ *
+ * Sixteen hexadecimal characters, assigned rather than worked out. The first
+ * version was `sha256(salt + memberNumber)` cut to ten, which a security review
+ * took apart in a day: one fixed salt for everybody makes that a two way
+ * mapping, not a one way one, and the salt came back out of a single published
+ * pair in two thousandths of a second. Member numbers are public and
+ * consecutive, so the code was the member number in another alphabet.
+ *
+ * Ten characters is also forty bits, which at ten thousand members is about an
+ * hour and a half of guessing. Sixteen is not.
+ */
+export const REFERRAL_CODE = /^[0-9a-f]{16}$/
+
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
+
+/**
+ * Whether a member pays the junior fee for a season.
+ *
+ * PDL P8, and it is the one price measured across the whole season rather than
+ * on a single day: „ko u sezoni za koju plaća bar jedan dan ima 14 godina ili
+ * manje, plaća juniorsku" (owner, 31.07.2026). Somebody who turns fifteen in
+ * March was fourteen in February, so the season holds a day on which they were
+ * fourteen and they pay the junior fee for all of it.
+ *
+ * Which makes the test on the year of birth `<= 15`, not `<= 14`: through a
+ * season the member is either `season - birthYear` or one less than that, and it
+ * is the lower of the two the rule asks about.
+ *
+ * One day of the year that is not so, and the record cannot tell: somebody born
+ * on 1 January turns fifteen on the first day of the season and is never
+ * fourteen inside it, while this answers that they are. A record holding only
+ * the year cannot know a birthday, and paying a junior fee is the side to be
+ * wrong on.
+ *
+ * Deliberately not the same figure as the parental signature, which is sixteen
+ * measured on the day (PDL P23). The two are separate and must not be joined.
+ */
+export function juniorInSeason(season: number, birthYear: number): boolean {
+  return season - birthYear <= 15
+}
+
+/**
+ * What a member is credited for every new member they bring in.
+ *
+ * Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din... po
+ * novom članu koji se registrovao preko tog linka i članarina mu je postala
+ * aktivirana prvi naredni put." Two figures and not one with a conversion, as
+ * everywhere else on this list. The two do sit at the league's own rate of 120
+ * dinars to the euro today, and that is beside the point: what is stored is what
+ * a member is credited, so a rate that moves cannot move it, and the dinar
+ * figure can be set to a round number that the euro one is not.
+ *
+ * Here and not written into the screen that shows it, because the same owner
+ * asked for it to be set on the price list („ovo admin treba da konfiguriše na
+ * strani cenovnika takođe"): the price list is where a number a member is
+ * promised belongs, and an administrator changes it there like any other.
+ *
+ * Credited when the new member's fee is activated, never at registration
+ * (PDL P16). Nobody is paid for an account that was opened and left. */
+export const REFERRAL = { key: 'referral', eur: 5, rsd: 600 }
+
+/**
+ * The same, as a row of the price list, which is what it is entered as.
+ *
+ * Here and not on the screen that draws it, because two screens read it: the one
+ * an administrator sets it on and the one a member is promised it on, and a
+ * shape written twice is a shape that drifts. No window in the year and no
+ * bearing on the right to be ranked, which is what tells it from a price.
+ */
+export const REFERRAL_ROW: PriceRow = { ...REFERRAL, from: '', to: '', ranking: false }
 
 /**
  * What a payment from abroad costs to process, in euro, on top of the fee.

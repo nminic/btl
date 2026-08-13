@@ -9,7 +9,8 @@
       "labelKey": "registration.firstName",
       "required": true,
       "maxLength": 60,
-      "row": 1
+      "row": 1,
+      "hintKey": "registration.firstNameHint"
     },
     {
       "name": "lastName",
@@ -17,6 +18,15 @@
       "labelKey": "registration.lastName",
       "required": true,
       "maxLength": 60,
+      "row": 1,
+      "hintKey": "registration.lastNameHint"
+    },
+    {
+      "name": "birthDate",
+      "type": "date",
+      "labelKey": "registration.birthDate",
+      "hintKey": "registration.birthDateHint",
+      "required": true,
       "row": 1
     },
     {
@@ -25,7 +35,7 @@
       "labelKey": "registration.gender",
       "hintKey": "registration.genderHint",
       "required": true,
-      "row": 1,
+      "row": 2,
       "options": [
         {
           "value": "M",
@@ -38,75 +48,12 @@
       ]
     },
     {
-      "name": "birthDate",
-      "type": "date",
-      "labelKey": "registration.birthDate",
-      "hintKey": "registration.birthDateHint",
-      "required": true,
-      "row": 1
-    },
-    {
-      "name": "parentConsent",
-      "type": "text",
-      "labelKey": "registration.parentConsent",
-      "hintKey": "registration.parentConsentHint",
-      "required": true,
-      "maxLength": 120,
-      "showWhenYoungerThan": {
-        "field": "birthDate",
-        "years": 16
-      }
-    },
-    {
-      "name": "email",
-      "type": "email",
-      "labelKey": "registration.email",
-      "hintKey": "registration.emailHint",
-      "required": true,
-      "row": 2
-    },
-    {
-      "name": "password",
-      "type": "password",
-      "labelKey": "registration.password",
-      "hintKey": "registration.passwordHint",
-      "required": true,
-      "minLength": 10,
-      "row": 2
-    },
-    {
-      "name": "passwordRepeat",
-      "type": "password",
-      "labelKey": "registration.passwordRepeat",
-      "required": true,
-      "matches": "password",
-      "row": 2
-    },
-    {
-      "name": "address",
-      "type": "text",
-      "labelKey": "registration.address",
-      "hintKey": "registration.addressHint",
-      "required": true,
-      "maxLength": 120,
-      "row": 3
-    },
-    {
-      "name": "city",
-      "type": "place",
-      "labelKey": "registration.city",
-      "hintKey": "registration.cityHint",
-      "required": true,
-      "maxLength": 80,
-      "row": 3
-    },
-    {
       "name": "firstSeason2027",
       "type": "choice",
       "labelKey": "registration.category",
       "hintKey": "registration.categoryHint",
       "required": true,
-      "row": 4,
+      "row": 2,
       "options": [
         {
           "value": "yes",
@@ -124,7 +71,7 @@
       "labelKey": "registration.shirtSize",
       "hintKey": "registration.shirtSizeHint",
       "required": true,
-      "row": 4,
+      "row": 2,
       "options": [
         {
           "value": "XS",
@@ -157,6 +104,50 @@
       ]
     },
     {
+      "name": "email",
+      "type": "email",
+      "labelKey": "registration.email",
+      "hintKey": "registration.emailHint",
+      "required": true,
+      "row": 3
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "labelKey": "registration.password",
+      "hintKey": "registration.passwordHint",
+      "required": true,
+      "minLength": 10,
+      "row": 3
+    },
+    {
+      "name": "passwordRepeat",
+      "type": "password",
+      "labelKey": "registration.passwordRepeat",
+      "required": true,
+      "matches": "password",
+      "row": 3,
+      "hintKey": "registration.passwordRepeatHint"
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "labelKey": "registration.address",
+      "hintKey": "registration.addressHint",
+      "required": true,
+      "maxLength": 120,
+      "row": 4
+    },
+    {
+      "name": "city",
+      "type": "place",
+      "labelKey": "registration.city",
+      "hintKey": "registration.cityHint",
+      "required": true,
+      "maxLength": 80,
+      "row": 4
+    },
+    {
       "name": "photo",
       "type": "photo",
       "labelKey": "registration.photo",
@@ -169,7 +160,6 @@
       "type": "textarea",
       "labelKey": "profile.bio",
       "hintKey": "registration.bioHint",
-      "required": true,
       "maxLength": 360,
       "row": 5
     },
@@ -181,6 +171,43 @@
       "linkTo": "pravilnik",
       "required": true,
       "hintKey": "registration.healthStatementHint"
+    },
+    {
+      "name": "parentConsent",
+      "type": "text",
+      "labelKey": "registration.parentConsent",
+      "hintKey": "registration.parentConsentHint",
+      "required": true,
+      "maxLength": 120,
+      "showWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      }
+    },
+    {
+      "name": "parentRelation",
+      "type": "select",
+      "labelKey": "registration.parentRelation",
+      "hintKey": "registration.parentRelationHint",
+      "required": true,
+      "options": [
+        {
+          "value": "mother",
+          "labelKey": "registration.mother"
+        },
+        {
+          "value": "father",
+          "labelKey": "registration.father"
+        },
+        {
+          "value": "guardian",
+          "labelKey": "registration.guardian"
+        }
+      ],
+      "showWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      }
     }
   ]
 }

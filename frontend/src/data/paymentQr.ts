@@ -120,5 +120,18 @@ export type PaymentMethod = 'ips' | 'paypal' | 'card'
  * and nothing else.
  */
 export function methodsFor(country: string): PaymentMethod[] {
-  return country === 'RS' ? ['ips', 'card'] : ['paypal', 'card']
+  return paysInDinars(country) ? ['ips', 'card'] : ['paypal', 'card']
+}
+
+/**
+ * Whether this member pays, and is credited, in dinars.
+ *
+ * One question asked in one place. The membership screen decides three things by
+ * it, the way to pay and the two figures of the referral programme, and each of
+ * them used to hold its own copy of the same comparison while a comment beside
+ * them promised the three could never disagree. Three copies of a rule are three
+ * chances for two of them to be changed.
+ */
+export function paysInDinars(country: string): boolean {
+  return country === 'RS'
 }

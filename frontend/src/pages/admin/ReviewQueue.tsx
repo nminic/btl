@@ -5,6 +5,7 @@ import { useSession } from '../../session/useSession'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import { Swept } from './Swept'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
    for the whole queue. Every sheet is bundled into one and the class would work
@@ -180,15 +181,26 @@ export function ReviewQueue() {
 
       {open !== null && (
         <div className="review__reason" role="group" aria-label={t('review.sendBack')}>
-          <label className="rankings__field rankings__field--wide">
-            <span>{t('review.reason')}</span>
+          {/* Obligatory, and it says so both ways: the star for the eye and
+              `aria-required` for a reader, which is the rule the owner asked for
+              on 12.08.2026 („Ova pravila... treba da funkcioniše na svim formama
+              za unos i verifikaciju"). This field is written by hand rather than
+              drawn from a definition, so it takes the rule from the same place
+              every other hand written field does (forms/AskedLabel.tsx). Without
+              it, the button below simply stayed dead and nothing said why. */}
+          <RequiredNote />
+
+          <div className="rankings__field rankings__field--wide">
+            <AskedLabel id="review-reason">{t('review.reason')}</AskedLabel>
             <input
+              id="review-reason"
               type="text"
               value={note}
+              aria-required="true"
               placeholder={t('review.reasonPlaceholder')}
               onChange={(event) => setNote(event.target.value)}
             />
-          </label>
+          </div>
           <div className="member__links">
             <button
               type="button"
@@ -196,9 +208,20 @@ export function ReviewQueue() {
               /* Written means written, spaces taken off, exactly as the forms
                  decide it (src/forms/validate.ts). Three spaces are not a
                  reason, and a plain comparison against the empty string let
-                 them through. */
-              disabled={note.trim() === ''}
+                 them through.
+
+                 Told off rather than switched off, as everywhere else on the
+                 portal: `disabled` takes the button out of the tab order and
+                 takes with it the very line this screen added to say why it will
+                 not go. */
+              aria-disabled={note.trim() === ''}
+              aria-describedby={note.trim() === '' ? 'review-reason-waits' : undefined}
               onClick={() => {
+                /* Reachable means pressable, so the refusal lives here too. */
+                if (note.trim() === '') {
+                  return
+                }
+
                 decide(open, 'rejected', note.trim())
                 setOpen(null)
                 setNote('')
@@ -214,6 +237,14 @@ export function ReviewQueue() {
               {t('review.cancel')}
             </button>
           </div>
+
+          {/* Why it will not go yet, said where it can be read rather than left
+              to a button that is simply dead. */}
+          {note.trim() === '' && (
+            <p id="review-reason-waits" className="rate__hint" role="status">
+              {t('review.reasonNeeded')}
+            </p>
+          )}
         </div>
       )}
 

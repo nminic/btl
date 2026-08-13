@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { RequiredMark } from '../forms/AskedLabel'
 import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Stars.css'
@@ -116,6 +117,9 @@ type Asking = {
 export function Stars({ name, label, value, onChange }: Reading | Asking) {
   const { locale, t } = useI18n()
   const marks = Array.from({ length: STARS }, (_, index) => index + 1)
+  /* The name of the group, by id: a role written by hand does not inherit the
+     browser's own pairing of a fieldset with its legend. */
+  const nameId = useId()
 
   if (onChange === undefined) {
     return (
@@ -128,30 +132,61 @@ export function Stars({ name, label, value, onChange }: Reading | Asking) {
   }
 
   return (
-    <fieldset className="stars stars--asking">
-      <legend>{label}</legend>
-      {marks.map((mark) => (
-        /* The label is what is clicked and the radio inside it is what carries
-           the state, so the star is as big as a finger without anything being
-           told to have a size (WCAG 2.2 SC 2.5.8). The radio itself is off the
-           screen rather than out of the page: it is the thing a keyboard moves
-           through and a screen reader reads. */
-        <label key={mark} className="stars__pick">
-          <input
-            type="radio"
-            className="visually-hidden"
-            name={name}
-            value={mark}
-            checked={mark === value}
-            onChange={() => onChange(mark)}
-          />
-          <span className="visually-hidden">{t('event.rating.stars', { count: mark, of: STARS })}</span>
-          {/* Whole stars, because this is a choice of one of five and not a
-              measurement: nobody gives three and a third. */}
-          <Star fill={mark <= value ? 1 : 0} />
-        </label>
-      ))}
-    </fieldset>
+    /* All three ratings have to be given before a comment can be sent
+       (event.commentNeedsMarks), so all three say so the way every field on the
+       portal says it since 12.08.2026: a star for the eye and `aria-required`
+       for a reader (forms/AskedLabel.tsx). On the group and not on each of the
+       five, because it is the rating that is asked for and not any one star.
+     *
+       `role="radiogroup"` around the five and nothing else, which is the shape
+       the renderer uses for its own groups of buttons: a radiogroup may own
+       radios and nothing besides, and around the whole fieldset it owned the
+       name and the star as well (forms/FormRenderer.tsx). A bare fieldset is a
+       plain `group`, and ARIA gives `group` no `aria-required` at all, so the
+       word first went to a place no reader looks.
+
+       The star stands inside the legend and outside the words the group is named
+       by: named by the whole legend, „Organizacija" reads as „Organizacija*" for
+       anything that looks by the words; laid outside the legend entirely, it
+       fell to the head of the row of stars, because a legend is not a flex item
+       and the star is. */
+    <div className="stars stars--asking">
+      {/* A box and not a `<fieldset>`, and its name is written as words rather
+          than as a `<legend>`. The fieldset named itself by its legend and the
+          row inside it named itself by the same words, so a reader entering the
+          rating heard „Organizacija" twice, once for each box. One box carries
+          the name now, and it is the one that owns the five buttons. */}
+      <p className="stars__name">
+        <span id={nameId}>{label}</span>
+        <RequiredMark />
+      </p>
+
+      <div className="stars__row" role="radiogroup" aria-labelledby={nameId} aria-required="true">
+        {marks.map((mark) => (
+          /* The label is what is clicked and the radio inside it is what carries
+             the state, so the star is as big as a finger without anything being
+             told to have a size (WCAG 2.2 SC 2.5.8). The radio itself is off the
+             screen rather than out of the page: it is the thing a keyboard moves
+             through and a screen reader reads. */
+          <label key={mark} className="stars__pick">
+            <input
+              type="radio"
+              className="visually-hidden"
+              name={name}
+              value={mark}
+              checked={mark === value}
+              onChange={() => onChange(mark)}
+            />
+            <span className="visually-hidden">
+              {t('event.rating.stars', { count: mark, of: STARS })}
+            </span>
+            {/* Whole stars, because this is a choice of one of five and not a
+                measurement: nobody gives three and a third. */}
+            <Star fill={mark <= value ? 1 : 0} />
+          </label>
+        ))}
+      </div>
+    </div>
   )
 }
 

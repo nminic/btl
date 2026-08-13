@@ -88,10 +88,66 @@
 }
 
 .day {
+  /* What the shortcut in the corner is placed against (owner, 12.08.2026). */
+  position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
   background: var(--surface);
+}
+
+/* The way into a new event on this very day, for the two people who build the
+   calendar (Calendar.tsx). In the corner and out of the flow, so a day with it
+   is exactly as tall as a day without it and the grid does not change shape for
+   whoever is signed in.
+ *
+   Quiet, and quiet by colour rather than by fading: it stands in `--text-muted`
+   while the eye is on the races and gains a ground and the plain text colour
+   once the pointer is on the day. It was `opacity: 0.35` until the pointer came,
+   which put it at 1,8 to 1 against the day behind it, under the 3 to 1 that
+   WCAG 2.2 SC 1.4.11 asks of a control and far under the 4,5 this portal holds
+   itself to. On a telephone there is no pointer to lift it, so that is where it
+   would have stayed. Muted and whole it is 7,7 to 1 in the light theme and 7,9
+   in the dark.
+
+   It is a target for a finger as well, so it holds 24 by 24 even though the sign
+   inside it is smaller (WCAG 2.2 SC 2.5.8). */
+.day__add {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: var(--radius-round);
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    background var(--fast),
+    color var(--fast);
+}
+
+.day:hover .day__add,
+.day__add:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* And it is never invisible to the keyboard: opacity is not focus, and a control
+   that only appears under a pointer is a control a keyboard cannot find. */
+.day__add:focus-visible {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day__add {
+    transition: none;
+  }
 }
 
 .day__number {

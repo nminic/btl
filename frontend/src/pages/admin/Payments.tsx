@@ -332,7 +332,8 @@ export function Payments() {
 
               {/* Named, because the box is under the table and not in the row:
                   on a list of twenty there is otherwise nothing on screen that
-                  says whose membership is being refused. */}
+                  says whose membership is being refused.
+                  */}
               {open !== null && (
                 <SendBack
                   subject={open.name}

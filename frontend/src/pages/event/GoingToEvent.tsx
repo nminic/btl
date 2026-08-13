@@ -4,6 +4,7 @@ import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { combinePair, useAttendance, useCompetitors } from '../../data/useResource'
 import type { BtlEvent, Competitor } from '../../data/types'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
@@ -251,6 +252,9 @@ function WriteTo({
   const today = useToday()
   const { notify } = useSession()
   const [words, setWords] = useState('')
+  /** Nothing to send: worked out once, since the button, the reason beside it
+   *  and the refusal on submit all have to agree about it. */
+  const empty = words.trim() === ''
   const [sent, setSent] = useState(false)
   const said = useRef<HTMLParagraphElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
@@ -295,8 +299,24 @@ function WriteTo({
   return (
     <form
       className="going__write-form"
+      /* The portal answers for its own rules, in its own words: left to the
+         browser, an empty box here was refused by Chrome's own bubble saying
+         „Please fill out this field", in English, on a Serbian page
+         (forms/FormRenderer.tsx says the same of every form it draws). */
+      noValidate
       onSubmit={(pressed) => {
         pressed.preventDefault()
+
+        /* The other half of telling the button off rather than switching it
+           off: a control that is reachable is a control that can be pressed, so
+           the refusal has to live here too and not only in an attribute. Written
+           means written, spaces taken off, exactly as the box for a reason on
+           the verification queues decides it (admin/SendBack.tsx) and as the
+           forms do (forms/validate.ts): three spaces are not a message. */
+        if (empty) {
+          return
+        }
+
         notify({
           /* Who it is from, in words, because that is what an inbox shows. A
              member whose own record is gone writes as the league would: there is
@@ -313,14 +333,20 @@ function WriteTo({
         setSent(true)
       }}
     >
-      <label className="field">
-        <span className="field__label">
+      {/* Obligatory, and it says so the way every field on the portal says it
+          since 12.08.2026: a star for the eye, `aria-required` for a reader, and
+          one line saying what the star means (forms/AskedLabel.tsx). */}
+      <RequiredNote />
+
+      <div className="field">
+        <AskedLabel className="field__label" id="going-write">
           {t('event.writeTo', { name: `${them.firstName} ${them.lastName}` })}
-        </span>
+        </AskedLabel>
         <textarea
+          id="going-write"
           className="field__control"
           ref={box}
-          required
+          aria-required="true"
           /* From the definition and not typed here, which is the rule every
              other long box on the portal keeps (forms/definitions.test.ts): a
              number written twice is a number that stops agreeing with itself. */
@@ -328,16 +354,44 @@ function WriteTo({
           value={words}
           onChange={(typed) => setWords(typed.target.value)}
         />
-      </label>
+      </div>
 
       <p className="member__actions">
-        <button type="submit" className="button button--primary">
+        {/* Held shut while there is nothing to send, which is what the browser's
+            own `required` used to do before this form began answering for its own
+            rules. Taken off without putting anything in its place, an empty
+            message went out and the screen said it had been sent.
+         *
+            Written means written, spaces taken off, exactly as the box for a
+            reason on the verification queues decides it (admin/SendBack.tsx) and
+            as the forms do (forms/validate.ts): three spaces are not a message. */}
+        {/* Not switched off, told off. `disabled` takes the control out of the
+            tab order, so somebody moving by keyboard never reaches it and never
+            reaches the reason either. This is the fourth time the portal answers
+            this question and it now answers it the same way as the other three
+            (RateEvent.tsx, PendingQueue.tsx, Pager.tsx). */}
+        <button
+          type="submit"
+          className="button button--primary"
+          aria-disabled={empty}
+          aria-describedby={empty ? 'write-waits' : undefined}
+        >
           {t('event.writeSend')}
         </button>
         <button type="button" className="button button--secondary" onClick={onDone}>
           {t('form.close')}
         </button>
       </p>
+
+      {/* Why it will not go yet, said where it can be read rather than left to a
+          button that is simply dead. Drawn only while it is true, the same as on
+          the rating card next door: this whole form is opened by a press, so
+          nothing rests on the region being announced as it arrives. */}
+      {empty && (
+        <p id="write-waits" className="rate__hint" role="status">
+          {t('event.writeNeedsWords')}
+        </p>
+      )}
     </form>
   )
 }
