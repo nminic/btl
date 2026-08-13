@@ -60,7 +60,7 @@
 
 /* On a phone the header strip wraps, and a control that reads as one thing must
    not be broken across two lines. */
-@media (max-width: 559.98px) {
+@media (max-width: 34.99875em) {
   .date-switch .datepicker {
     width: 9rem;
   }

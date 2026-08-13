@@ -23,7 +23,7 @@
    the teams. Below 560px the grid is not there at all and the distance comes
    from the block under this one, which brings its own. A margin written here was
    measured at neither width. */
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .rankings--tooled > .boards__filters {
     grid-row: 1;
     grid-column: 2;
@@ -65,7 +65,15 @@
      capped at 1100px (Shell.css), so the narrow board is 317px wide on a 1280px
      page and on a 1920px one alike, and these two boards abbreviate at every
      desktop width the portal produces. The number matters if that cap moves, and
-     it is measured rather than guessed for the same reason. */
+     it is measured rather than guessed for the same reason.
+
+     In pixels, and left there on 13.08.2026 when every `@media` width on the
+     portal went to em. The two are not the same question. A media query in em
+     asks about the reader's text against the screen, which is what a breakpoint
+     is for; this one asks whether a name fits a box, and both the name and the
+     box grow with the text, so the ratio the measurement was taken at holds. It
+     is a component's own threshold rather than a place the portal changes shape,
+     which is why scale.test.ts does not read container queries at all. */
   container-type: inline-size;
 }
 
@@ -148,7 +156,7 @@
    and 291,4px without this. It costs nothing to look at either, because what
    does not fit wraps instead: the same board is sixty-two pixels taller without
    it. */
-@media (max-width: 699.98px) {
+@media (max-width: 43.74875em) {
   .boards .table th,
   .boards .table td {
     padding-inline: var(--space-6);
@@ -186,7 +194,7 @@
  * stand one under another at the full width, which is what a chart of ten
  * columns wants anyway.
  */
-@media (min-width: 900px) {
+@media (min-width: 56.25em) {
   .boards__grid {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   }

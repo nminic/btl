@@ -46,7 +46,7 @@
 
 /* On a telephone the two do not fit beside each other: the country falls under
    the town rather than squeezing it to nothing. */
-@media (max-width: 559.98px) {
+@media (max-width: 34.99875em) {
   .place {
     display: block;
   }
@@ -123,7 +123,7 @@
  * entirely: eight rows are some three hundred pixels, and the control underneath
  * could not be reached while the list was open. Pushed down instead, it is only
  * ever hidden by what it is being chosen from. */
-@media (max-width: 559.98px) {
+@media (max-width: 34.99875em) {
   .place__list {
     position: static;
     margin-block-start: var(--space-6);

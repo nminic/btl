@@ -23,20 +23,31 @@ import './Rights.css'
  * readable cell by cell for anybody who does navigate it as a table.
  *
  * The second is the shape on a telephone. Sixteen columns do not fit in 360
- * pixels and never will, so below 900 pixels the same markup is laid out as one
+ * pixels and never will, so below 56.25em the same markup is laid out as one
  * block per moderator with the boxes under each other (PDL P24: no table on this
- * portal scrolls sideways). Nothing is drawn twice for that: a second copy of
+ * portal scrolls sideways). That width is 900 pixels for a reader who has not
+ * touched the text size and 1800 for one who has doubled it, which is the point
+ * of writing it in em: what the query is really asking is whether sixteen
+ * columns of boxes fit beside a twelve rem column of names, and every one of
+ * those widths grows with the text. Nothing is drawn twice for that: a second copy of
  * every box in the page would be a second copy in the accessibility tree as
  * well. The words beside each box on a telephone are the same words as in its
  * name, which is what makes the layout swap free of charge.
  *
  * Which leaves the width where the table shape is drawn. Sixteen columns of
  * boxes beside a twelve rem column of names are as wide as the text is big, and
- * the screen is not: at 1280 with the text at 200 per cent the matrix wanted 214
- * pixels more than the page had, and took them from the page, which then
- * scrolled sideways as a whole. That is the one thing this portal does not do
- * (PDL P24), so the table sits in the same `.table-scroll` box as the other
- * twenty-three and scrolls inside it.
+ * the screen is not: with the query in pixels, at 1280 with the text at 200 per
+ * cent, the matrix wanted 214 pixels more than the page had and took them from
+ * the page, which then scrolled sideways as a whole. That is the one thing this
+ * portal does not do (PDL P24).
+ *
+ * Both halves of that are fixed, and both are worth keeping. The query is in em
+ * now, so at that size the card layout is what gets drawn and there is nothing
+ * to scroll; and the table still sits in the same `.table-scroll` box as every
+ * other table, for the sizes in between and the screens wider than this one. A
+ * reader at 125 per cent on 1280, or at 200 on a 1900 screen, is over the
+ * threshold and under the width the table wants, and the box is what stands
+ * between them and a page that scrolls sideways.
  */
 export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
   const { t } = useI18n()

@@ -169,7 +169,7 @@
   gap: var(--space-8);
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .pending__marks {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -192,7 +192,7 @@
 /* The card as a fold, on the width where a card is a screenful.
 
    Five cards on a telephone mean scrolling through four to reach the third, so
-   below 820px a card is its name and its day, and the rest opens on a press
+   below 51.25em a card is its name and its day, and the rest opens on a press
    (owner, 06.08.2026). Above that width every card is open and the control is
    not drawn at all, which is how the two sectors of the navigation work
    (SectionNav.css): a control that is not there cannot say the wrong thing about
@@ -221,23 +221,23 @@
   color: var(--text);
 }
 
-/* And the line that says what the star means goes wherever the stars go.
- *
-   Every star on this screen is inside a card: the three fields a proposed team
-   is corrected in, and the reason a proposal is sent back. Above 820px every
-   card is open, so the line stands with them. Below it a card is a fold, and the
-   line stood over a screen of folded titles with no star anywhere on it, which
-   is the fourth shape this one line has been wrong in. Whether a star is on
-   screen is not something the renderer can answer here, because what hides the
-   card is this stylesheet; so the answer is written where the hiding is, and it
-   is the question itself: is there a star inside an open card. */
-@media (max-width: 819px) {
-  .member:not(:has(.pending__card--open .field__required)) .pending__legend {
-    display: none;
-  }
-}
-
-@media (min-width: 820px) {
+/* And the line that says what the star means goes wherever the stars go.
+ *
+   Every star on this screen is inside a card: the three fields a proposed team
+   is corrected in, and the reason a proposal is sent back. Above 820px every
+   card is open, so the line stands with them. Below it a card is a fold, and the
+   line stood over a screen of folded titles with no star anywhere on it, which
+   is the fourth shape this one line has been wrong in. Whether a star is on
+   screen is not something the renderer can answer here, because what hides the
+   card is this stylesheet; so the answer is written where the hiding is, and it
+   is the question itself: is there a star inside an open card. */
+@media (max-width: 51.24875em) {
+  .member:not(:has(.pending__card--open .field__required)) .pending__legend {
+    display: none;
+  }
+}
+
+@media (min-width: 51.25em) {
   .pending__card {
     display: block;
   }

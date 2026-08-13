@@ -241,7 +241,7 @@
 /* Six hundred and twenty. The width at which the six length buttons swap the
    word for the distance, which is a change of what they say and not of how they
    are spaced, so it stays where it was measured. */
-@media (max-width: 620px) {
+@media (max-width: 38.75em) {
   .profile__length-full {
     position: absolute;
     width: 1px;
@@ -306,7 +306,7 @@
 }
 
 /* Two across from tablet up. */
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   .profile__row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -320,7 +320,7 @@
    Below a thousand the words column is about forty characters a line, which is a
    newspaper column, so below that the biography takes the full width and the two
    worked-out cards share the row under it. */
-@media (min-width: 1000px) {
+@media (min-width: 62.5em) {
   .profile__row--bio {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -449,7 +449,16 @@
    scroll instead, and only because the alternative is worse: see the floor
    below, and PDL P24, corrected 12.08.2026.
    Nothing is lost to a screen reader, which reads the whole of the link, and the
-   date beside it is the other half of what identifies a race. */
+   date beside it is the other half of what identifies a race.
+
+   In pixels, and it is the screen's own width that has to decide this one. Cut
+   is cut: at 200 per cent text an em query here would fire on a 1280 screen and
+   take the name of the race off it, on a screen with room for the whole of it,
+   because somebody made the letters bigger. PDL P24 settled that on 12.08.2026
+   and settled it the other way: at enlarged text this table scrolls inside its
+   own box, "jer koloni događaja ne ostaje ništa i ime trke nestaje sa ekrana,
+   što je gubitak sadržaja po WCAG 2.2 SC 1.4.4". The scroll box is what pays for
+   the width here, not the ellipsis. */
 @media (max-width: 699.98px) {
   /* The coloured dot goes, and the length column narrows by exactly what it and
      its space were taking. It is decoration: `aria-hidden`, with the name of the

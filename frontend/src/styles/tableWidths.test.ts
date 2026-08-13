@@ -72,6 +72,11 @@ const SCROLLBAR = 15
 /** What the reader may do to the text. WCAG 2.2 SC 1.4.4 asks for 200%. */
 const TEXT = [16, 20, 24, 32]
 
+/** What an `em` is worth in a media query: the browser's own root size, never
+ *  the reader's, since a query is answered before any of the page's own type
+ *  applies. Sixteen everywhere that matters. */
+const ROOT_TEXT = 16
+
 /** What the event's name needs to still be a column and not a sliver. */
 const EVENT_FLOOR_REM = 4.25
 
@@ -154,22 +159,32 @@ function pieces(sheet: string): Piece[] {
     }
 
     const condition = sheet.slice(query, opens)
-    /* Both spellings of a query. `(min-width: 700px)` and `(width >= 700px)`
-       are the same condition, and stylelint's own `media-feature-range-notation`
-       rule asks for the second; read only for the first, a block written the
-       modern way was taken to apply at every width at once. */
-    const min =
-      /min-width:\s*([\d.]+)px/.exec(condition) ??
-      /width\s*>=\s*([\d.]+)px/.exec(condition) ??
-      /([\d.]+)px\s*<=\s*width/.exec(condition)
-    const max =
-      /max-width:\s*([\d.]+)px/.exec(condition) ??
-      /width\s*<=\s*([\d.]+)px/.exec(condition) ??
-      /([\d.]+)px\s*>=\s*width/.exec(condition)
+    /* Every spelling of a query, in both units.
+     *
+       `(min-width: 700px)` and `(width >= 700px)` are the same condition, and
+       stylelint's own `media-feature-range-notation` rule asks for the second;
+       read only for the first, a block written the modern way was taken to
+       apply at every width at once.
+     *
+       And `em` as well as `px`, because the portal moved its breakpoints to `em`
+       so they follow the reader's text rather than the device (#78, ADL A7).
+       Three queries in `Profile.css` became `38.75em`, `51.25em` and `62.5em`
+       overnight, and a parser reading only pixels took all three to apply
+       everywhere at once. The two that hide columns stayed in pixels on purpose,
+       which is exactly why both units have to be read: the sheet now mixes
+       them. */
+    const bound = (property: string, arrow: string): RegExp =>
+      new RegExp(`(?:${property}-width:|width\\s*${arrow})\\s*([\\d.]+)(px|em)`)
+
+    const asPixels = (found: RegExpExecArray | null): number | null =>
+      found === null ? null : Number(found[1]) * (found[2] === 'em' ? ROOT_TEXT : 1)
+
+    const min = asPixels(bound('min', '>=').exec(condition))
+    const max = asPixels(bound('max', '<=').exec(condition))
 
     found.push({
-      min: min === null ? 0 : Number(min[1]),
-      max: max === null ? Infinity : Number(max[1]),
+      min: min ?? 0,
+      max: max ?? Infinity,
       body: sheet.slice(opens + 1, closes),
       at: query,
     })

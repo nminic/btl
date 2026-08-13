@@ -62,7 +62,7 @@
   gap: var(--space-8);
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .comments__marks {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

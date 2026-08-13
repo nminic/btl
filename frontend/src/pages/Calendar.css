@@ -349,7 +349,7 @@
    days, and moving it to 820 took the grid, the weekday headings and the ring on
    today away from every window between 780 and 819, which is a tablet held
    upright. A calendar that is not a grid is not a calendar. */
-@media (min-width: 780px) {
+@media (min-width: 48.75em) {
   /* Working days are all the same width and the weekend is wider. The widths
      stay the same from month to month, so they are learned once. */
   .calendar__grid {

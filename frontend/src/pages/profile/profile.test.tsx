@@ -184,7 +184,7 @@ describe('the length, as one row of six', () => {
        written below it, for any selector at all, and misses one written above. */
     expect(css).toMatch(/\.profile__length-short\s*\{[^}]*clip-path: inset\(50%\)/)
     expect(css).toMatch(
-      /@media \(max-width: 620px\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
+      /@media \(max-width: 38\.75em\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
     )
     expect(css).not.toMatch(/\.profile__length-(full|short)\s*\{[^}]*display:\s*none/)
   })

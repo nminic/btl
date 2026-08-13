@@ -38,7 +38,7 @@ function inside(query: string): string {
 
 describe('the line that says what a star means, on a queue of folded cards', () => {
   it('goes away with the cards, and comes back with the star inside one', () => {
-    /* Below 820px a card is its name and its day, and everything else opens on a
+    /* Below 51,25em, which is 820 pixels at the ordinary size, a card is its name and its day, and everything else opens on a
        press: both things that draw a star on these screens, the three fields a
        proposed team is corrected in and the reason a proposal is sent back, are
        inside that card. The renderer cannot see any of this, because it is the
@@ -48,7 +48,7 @@ describe('the line that says what a star means, on a queue of folded cards', () 
        Held as text and by both halves. The rule with the wrong selector is a rule
        that never matches, which reads exactly like the fault it was written for:
        a legend standing over a screen with nothing starred on it. */
-    const folded = inside('@media (max-width: 819px)')
+    const folded = inside('@media (max-width: 51.24875em)')
 
     expect(folded).toContain(':has(.pending__card--open .field__required)')
     expect(folded).toContain('.pending__legend')
@@ -56,14 +56,14 @@ describe('the line that says what a star means, on a queue of folded cards', () 
   })
 
   it('is written for the width where a card folds, and for no other', () => {
-    /* Above 820px every card is open, so a legend drawn by the renderer is a
+    /* Above 51,25em every card is open, so a legend drawn by the renderer is a
        legend beside its stars and nothing here may take it away. Written outside
        the query, this rule would hide the line on the very screens where it
        belongs. */
-    const wide = inside('@media (min-width: 820px)')
+    const wide = inside('@media (min-width: 51.25em)')
 
     expect(wide).not.toContain('.pending__legend')
-    expect(css.slice(0, css.indexOf('@media (max-width: 819px)'))).not.toContain(
+    expect(css.slice(0, css.indexOf('@media (max-width: 51.24875em)'))).not.toContain(
       '.pending__legend',
     )
   })

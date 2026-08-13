@@ -185,7 +185,7 @@ describe('the rows of a form', () => {
        met at 819,5 pixels and neither applied: the row stayed four wide inside a
        form still 34rem across. So one column is what a row is, and the columns
        are what a wide enough window adds. */
-    const wide = inside('@media (min-width: 820px)')
+    const wide = inside('@media (min-width: 51.25em)')
     /* The rule outside the query, which is what a row is before anything widens
        it: the same selector stands inside the query too, so it is looked for in
        what is left once the query is taken out. */
@@ -202,7 +202,7 @@ describe('the rows of a form', () => {
        specificity, so of two rules for one selector the later one wins: written
        below, this one took the columns away at every width there is, and every
        test still passed because jsdom computes no layout. */
-    expect(form.indexOf('.form__row {')).toBeLessThan(form.indexOf('@media (min-width: 820px)'))
+    expect(form.indexOf('.form__row {')).toBeLessThan(form.indexOf('@media (min-width: 51.25em)'))
     /* And the town takes its second column only there, or it makes a column the
        page has no room for and the page scrolls sideways (P24). */
     expect(wide).toContain('grid-column: span 2;')
@@ -246,7 +246,7 @@ describe('the rows of a form', () => {
        columns of it are 124 pixels each, which a date does not fit into. Inside
        the query that draws rows at all, or a telephone got a form of sixty rem
        laid out one field to a line. */
-    const wide = inside('@media (min-width: 820px)')
+    const wide = inside('@media (min-width: 51.25em)')
 
     /* The selector as well as the width. Held by the width alone, `.form:has(
        .form__row)` could become a plain `.form` and every form on the portal
@@ -279,7 +279,7 @@ describe('the rows of a form', () => {
        the screen to say why. A media query adds no specificity and this trap has
        been walked into once already, in this very file, over the row that a
        query turned off at every width there is. */
-    const wide = inside('@media (min-width: 820px)')
+    const wide = inside('@media (min-width: 51.25em)')
     const kept = wide.indexOf('.form:has(.form__row) > .field,')
     const freed = wide.indexOf('.form:has(.form__row) > .field--checkbox {')
 
