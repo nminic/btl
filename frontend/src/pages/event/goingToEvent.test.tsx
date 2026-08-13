@@ -253,10 +253,26 @@ describe('writing to somebody else who is going', () => {
        sent. Spaces are not a message either. */
     const send = screen.getByRole('button', { name: 'Pošalji poruku' })
 
-    expect(send).toBeDisabled()
+    /* Told off rather than switched off, so somebody moving by keyboard still
+       reaches the button and reaches the reason it points at. `disabled` would
+       have taken it out of the tab order along with the explanation, which is
+       what the portal decided against three times before this one
+       (RateEvent.tsx, PendingQueue.tsx, Pager.tsx). */
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+    expect(send).not.toBeDisabled()
+    expect(send).toHaveAccessibleDescription('Napiši poruku da bi mogao da je pošalješ.')
+
+    /* And pressed, not merely inspected. An attribute is a promise about a
+       press; this is the press. Reachable means pressable, so the refusal has
+       to live in the handler too, and without it this sends an empty message. */
+    await user.click(send)
+    expect(screen.queryByText(/^Poruka je poslata članu/)).not.toBeInTheDocument()
 
     await user.type(box, '   ')
-    expect(send).toBeDisabled()
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(send)
+    expect(screen.queryByText(/^Poruka je poslata članu/)).not.toBeInTheDocument()
 
     await user.clear(box)
     expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()

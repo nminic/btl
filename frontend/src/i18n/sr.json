@@ -610,7 +610,8 @@
     "writeSend": "Pošalji poruku",
     "written": "Poruka je poslata članu {name}, u Poruke na portalu.",
     "someMember": "Član lige",
-    "commentsForMembers": "Komentare vide prijavljeni članovi."
+    "commentsForMembers": "Komentare vide prijavljeni članovi.",
+    "writeNeedsWords": "Napiši poruku da bi mogao da je pošalješ."
   },
   "category": {
     "rookieMale": "Početnici",
@@ -803,7 +804,8 @@
     "whoAreYou": "Ko si?",
     "submit": "Prijavi se",
     "needed": "Za ovo treba prijava",
-    "neededText": "Ovaj deo portala vide samo članovi."
+    "neededText": "Ovaj deo portala vide samo članovi.",
+    "needsSomebody": "Izaberi člana da bi mogao da se prijaviš."
   },
   "myProfile": {
     "actions": "Moje stvari",

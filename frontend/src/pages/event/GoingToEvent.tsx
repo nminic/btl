@@ -252,6 +252,9 @@ function WriteTo({
   const today = useToday()
   const { notify } = useSession()
   const [words, setWords] = useState('')
+  /** Nothing to send: worked out once, since the button, the reason beside it
+   *  and the refusal on submit all have to agree about it. */
+  const empty = words.trim() === ''
   const [sent, setSent] = useState(false)
   const said = useRef<HTMLParagraphElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
@@ -303,6 +306,17 @@ function WriteTo({
       noValidate
       onSubmit={(pressed) => {
         pressed.preventDefault()
+
+        /* The other half of telling the button off rather than switching it
+           off: a control that is reachable is a control that can be pressed, so
+           the refusal has to live here too and not only in an attribute. Written
+           means written, spaces taken off, exactly as the box for a reason on
+           the verification queues decides it (admin/SendBack.tsx) and as the
+           forms do (forms/validate.ts): three spaces are not a message. */
+        if (empty) {
+          return
+        }
+
         notify({
           /* Who it is from, in words, because that is what an inbox shows. A
              member whose own record is gone writes as the league would: there is
@@ -351,10 +365,16 @@ function WriteTo({
             Written means written, spaces taken off, exactly as the box for a
             reason on the verification queues decides it (admin/SendBack.tsx) and
             as the forms do (forms/validate.ts): three spaces are not a message. */}
+        {/* Not switched off, told off. `disabled` takes the control out of the
+            tab order, so somebody moving by keyboard never reaches it and never
+            reaches the reason either. This is the fourth time the portal answers
+            this question and it now answers it the same way as the other three
+            (RateEvent.tsx, PendingQueue.tsx, Pager.tsx). */}
         <button
           type="submit"
           className="button button--primary"
-          disabled={words.trim() === ''}
+          aria-disabled={empty}
+          aria-describedby={empty ? 'write-waits' : undefined}
         >
           {t('event.writeSend')}
         </button>
@@ -362,6 +382,16 @@ function WriteTo({
           {t('form.close')}
         </button>
       </p>
+
+      {/* Why it will not go yet, said where it can be read rather than left to a
+          button that is simply dead. Drawn only while it is true, the same as on
+          the rating card next door: this whole form is opened by a press, so
+          nothing rests on the region being announced as it arrives. */}
+      {empty && (
+        <p id="write-waits" className="rate__hint" role="status">
+          {t('event.writeNeedsWords')}
+        </p>
+      )}
     </form>
   )
 }

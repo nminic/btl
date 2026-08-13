@@ -92,6 +92,41 @@ describe('signing in', () => {
     ).not.toBeNull()
   })
 
+  it('will not sign anybody in until somebody is chosen', async () => {
+    /* The `required` this form used to carry was taken off and replaced by a
+       lone `disabled` on the button, which nothing held: delete it and all 1789
+       tests still passed, because an expression in a JSX attribute is not a
+       branch coverage counts. What it was hiding: pressing the button signed the
+       session in as the empty string and walked to a profile headed „Ovog
+       profila nema."
+     *
+       So it is pressed here, not inspected, and told off rather than switched
+       off, which is what the portal does everywhere else it refuses a press. */
+    const user = setupUser()
+    renderAt('/sr/prijava')
+
+    const send = await screen.findByRole('button', { name: 'Prijavi se' })
+
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+    expect(send).not.toBeDisabled()
+    expect(send).toHaveAccessibleDescription('Izaberi člana da bi mogao da se prijaviš.')
+
+    await user.click(send)
+
+    expect(screen.getByLabelText('Ko si?')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Ovog profila nema.' })).not.toBeInTheDocument()
+
+    /* And once somebody is chosen it goes through, so the guard cannot be
+       „refuse always". */
+    await user.selectOptions(screen.getByLabelText('Ko si?'), '000001')
+
+    expect(send).toHaveAttribute('aria-disabled', 'false')
+
+    await user.click(send)
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+  })
+
   it('says the prototype takes your word for it', async () => {
     renderAt('/sr/prijava')
 
