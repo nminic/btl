@@ -3,7 +3,7 @@ import { dataOr, useModerators } from '../data/useResource'
 import { devToolsEnabled } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
-import { ROLES, type Role } from './context'
+import { ROLES } from './context'
 import { initialsOf } from './initials'
 import { useRole } from './useRole'
 import './RoleSwitch.css'
@@ -59,12 +59,20 @@ function RoleChooser() {
         onChange={(event) => {
           const chosen = moderators.find((one) => optionFor(one) === event.target.value)
 
-          if (chosen === undefined) {
-            become(event.target.value as Role)
+          if (chosen !== undefined) {
+            become('moderator', chosen)
             return
           }
 
-          become('moderator', chosen)
+          /* Looked for rather than declared. Every option this control draws is
+             either a moderator or one of ROLES, so the word coming back is a
+             role; saying so with an assertion (ADL A14) meant that a value from
+             anywhere else was passed on as a role and became one. */
+          const role = ROLES.find((one) => one === event.target.value)
+
+          if (role !== undefined) {
+            become(role)
+          }
         }}
       >
         {ROLES.map((option) =>

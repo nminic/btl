@@ -1,4 +1,4 @@
-import { must } from '../test/at'
+import { htmlElement, must } from '../test/at'
 import { render, screen, within } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -147,7 +147,7 @@ describe('DatePicker', () => {
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
 
     // 1 May 2027 is a Saturday, so the week starts with five empty cells.
-    const grid = screen.getByText('maj 2027.').closest('.datepicker__pop') as HTMLElement
+    const grid = htmlElement(screen.getByText('maj 2027.').closest('.datepicker__pop'))
     expect(within(grid).getAllByRole('button', { name: /^\d+$/ })).toHaveLength(31)
   })
 })

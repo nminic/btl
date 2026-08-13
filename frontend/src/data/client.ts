@@ -49,6 +49,13 @@ async function request<T>(name: ResourceName): Promise<T> {
     throw new Error(`Cannot load ${name}: ${response.status}`)
   }
 
+  /* Written out rather than left to `json()`, which is typed `Promise<any>` and
+     would carry the same claim into `T` with nothing said. That is worse than
+     the assertion, not better: the linter cannot see a type, so an `any` here
+     would be the one lie on the portal that nothing reports. This is the third
+     of the named places below, and it goes when the answers have a known shape.
+  */
+  // oxlint-disable-next-line typescript/consistent-type-assertions
   return (await response.json()) as T
 }
 
@@ -71,10 +78,34 @@ const inFlight = new Map<ResourceName, Promise<unknown>>()
  * first paint. */
 const arrived = new Map<ResourceName, unknown>()
 
+/*
+ * The two assertions below, with the one in `request` above, are three of the
+ * four left under `src/` (ADL A14 bans them, and the linter refuses them
+ * everywhere else; the fourth is in `pages/admin/entityForms.ts`).
+ *
+ * They are here because the two caches are one store holding twelve different
+ * shapes, keyed by name, and what a name is worth is decided by the caller.
+ * TypeScript has no way to say that: a map's value type is one type, so what
+ * comes back out is `unknown` and the caller's `T` has to be put back on it.
+ *
+ * Not written round with `any`, which would let the same claim through in
+ * silence. Left visible, named, and refused by default, so the day the backend
+ * arrives and the shapes are known by name this is the place that changes.
+ *
+ * `arrivedResource` is the one of the three that a table of shapes by resource
+ * name would actually remove, because an object typed `{ [K in ResourceName]?:
+ * Shapes[K] }` reads and writes by key without a claim. It is left as it is
+ * because the signature would then be keyed by name rather than by the caller's
+ * `T`, and `useResource` and every one of its callers would have to follow; a
+ * change of that size is its own PR. `loadResource` would not fall out even
+ * then: the stored value wraps the indexed type in a promise, and TypeScript
+ * refuses the correlated write.
+ */
 export function loadResource<T>(name: ResourceName): Promise<T> {
   const cached = inFlight.get(name)
 
   if (cached !== undefined) {
+    // oxlint-disable-next-line typescript/consistent-type-assertions
     return cached as Promise<T>
   }
 
@@ -91,7 +122,7 @@ export function loadResource<T>(name: ResourceName): Promise<T> {
 
   inFlight.set(name, promise)
 
-  return promise as Promise<T>
+  return promise
 }
 
 /**
@@ -103,6 +134,7 @@ export function loadResource<T>(name: ResourceName): Promise<T> {
 export function arrivedResource<T>(name: ResourceName): T | undefined {
   const known = arrived.get(name)
 
+  // oxlint-disable-next-line typescript/consistent-type-assertions
   return known === undefined ? undefined : (known as T)
 }
 

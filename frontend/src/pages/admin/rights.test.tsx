@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
-import { translate, type Dictionary } from '../../i18n/translate'
+import { translate } from '../../i18n/translate'
 import { first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -17,7 +17,7 @@ import { GROUP_STARTS, RIGHT_GROUPS, RIGHTS } from './rights'
  * business being in.
  */
 
-const dictionary = sr as Dictionary
+const dictionary = sr
 
 function t(key: string, params?: Record<string, string | number>): string {
   return translate(dictionary, 'sr', key, params)

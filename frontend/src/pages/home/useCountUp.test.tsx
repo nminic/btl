@@ -1,3 +1,4 @@
+import { matchingMedia } from '../../test/media'
 import { render, screen } from '@testing-library/react'
 import { useCountUp } from './useCountUp'
 
@@ -19,7 +20,7 @@ function withSingleFrame(msFromNow: number, run: () => void) {
     }
 
     return 1
-  }) as typeof requestAnimationFrame
+  })
 
   try {
     run()
@@ -50,10 +51,7 @@ describe('useCountUp', () => {
 
   it('hands over the number at once when less motion was asked for', () => {
     const previous = window.matchMedia
-    window.matchMedia = ((query: string) => ({
-      matches: query.includes('reduced-motion'),
-      media: query,
-    })) as typeof matchMedia
+    window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
 
     render(<Probe target={77} />)
 
@@ -65,7 +63,7 @@ describe('useCountUp', () => {
 it('lands on the number even in a tab that is never drawn', async () => {
   const original = window.requestAnimationFrame
   // A background tab gets no frames at all.
-  window.requestAnimationFrame = (() => 1) as typeof requestAnimationFrame
+  window.requestAnimationFrame = (() => 1)
 
   render(<Probe target={512} />)
   expect(screen.getByTestId('value')).toHaveTextContent('0')

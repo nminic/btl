@@ -1,3 +1,5 @@
+import { htmlElement, must } from '../test/at'
+import { intersecting, watcher } from '../test/intersection'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -88,7 +90,7 @@ describe('the rulebook', () => {
 
     expect(link).toHaveAttribute('href', '#9-takmicarske-kategorije')
     expect(target).not.toBeNull()
-    expect(within(target as HTMLElement).getByRole('heading', { level: 2 })).toHaveTextContent(
+    expect(within(htmlElement(target)).getByRole('heading', { level: 2 })).toHaveTextContent(
       '9. Takmičarske kategorije',
     )
   })
@@ -145,10 +147,7 @@ describe('the section being read', () => {
     })
 
     act(() => {
-      ;(watch as IntersectionObserverCallback)(
-        entries as unknown as IntersectionObserverEntry[],
-        null as never,
-      )
+      must(watch, 'the watcher')(entries.map(intersecting), watcher())
     })
   }
 
@@ -169,8 +168,8 @@ describe('the section being read', () => {
   it('is marked in the side navigation, and not by colour alone', async () => {
     await openRulebook()
 
-    const third = document.getElementById('3-ko-se-takmici') as HTMLElement
-    const fourth = document.getElementById('4-clanarina') as HTMLElement
+    const third = htmlElement(document.getElementById('3-ko-se-takmici'))
+    const fourth = htmlElement(document.getElementById('4-clanarina'))
 
     await announce([
       { target: third, isIntersecting: true },
@@ -190,7 +189,7 @@ describe('the section being read', () => {
   it('stays where it was between two sections', async () => {
     await openRulebook()
 
-    const second = document.getElementById('2-sezona-i-rokovi') as HTMLElement
+    const second = htmlElement(document.getElementById('2-sezona-i-rokovi'))
 
     await announce([{ target: second, isIntersecting: true }])
     await announce([{ target: second, isIntersecting: false }])
@@ -234,7 +233,7 @@ describe('the rulebook that takes in another page', () => {
               headers: { 'content-type': 'application/json' },
             }),
           )
-        : original(input)) as typeof fetch
+        : original(input))
   }
 
   it('draws what it takes in above its own sections, and lists it too', async () => {
@@ -272,7 +271,7 @@ describe('the rulebook that takes in another page', () => {
   })
 
   it('says so when the text cannot be loaded', async () => {
-    globalThis.fetch = (async () => new Response('nema', { status: 500 })) as typeof fetch
+    globalThis.fetch = (async () => new Response('nema', { status: 500 }))
 
     renderAt('/sr/pravilnik')
 

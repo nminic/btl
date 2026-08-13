@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { ROUTES } from '../../app/routes'
 import sr from '../../i18n/sr.json'
-import { translate, type Dictionary } from '../../i18n/translate'
+import { translate } from '../../i18n/translate'
 import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { needFor, NEEDS } from './needs'
@@ -16,7 +16,7 @@ import { RIGHTS } from './rights'
  * change what a membership costs (PDL P21, ADL A8).
  */
 
-const dictionary = sr as Dictionary
+const dictionary = sr
 
 function t(key: string, params?: Record<string, string | number>): string {
   return translate(dictionary, 'sr', key, params)

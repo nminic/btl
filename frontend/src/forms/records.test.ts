@@ -1,6 +1,6 @@
 import { must } from '../test/at'
-import { fieldDate, isoDate } from './dateField'
-import registracija from './definitions/registracija.form.json'
+import { fieldDate, isoDate, storedDate } from './dateField'
+import { registracija } from './definitions'
 import {
   applyChanges,
   limitOf,
@@ -73,6 +73,17 @@ describe('a date between the two shapes it has', () => {
     expect(fieldDate('3. april 2027.')).toBe('')
     expect(isoDate('03/04')).toBe('')
     expect(isoDate('31/02/2027')).toBe('')
+  })
+
+  it('refuses rather than empties when it is going into a record', () => {
+    /* The other half of the pair. Empty is right while the value is going back
+       into the box it came from, and wrong when it is being written down: a
+       result with no date belongs to no season and reaches the moderator
+       looking like any other (ADL A14 rule 2). */
+    expect(storedDate('03/04/2027')).toBe('2027-04-03')
+    expect(() => storedDate('03/04')).toThrow('03/04 is not a date')
+    expect(() => storedDate('31/02/2027')).toThrow('31/02/2027 is not a date')
+    expect(() => storedDate('')).toThrow(' is not a date')
   })
 })
 
@@ -245,14 +256,14 @@ describe('the limit a field carries in its definition', () => {
   /* Read rather than written out beside each of the two boxes that are edited
      outside a form, so the limit is one number in one file. */
   it('is the number in the definition', () => {
-    expect(limitOf(registracija as FormDef, 'bio')).toBe(360)
+    expect(limitOf(registracija, 'bio')).toBe(360)
   })
 
   it('refuses a name that is not a field with a limit, rather than taking the cap off', () => {
     /* Returning undefined would leave the box with no `maxLength` at all, which
        is the thing the caller asked for the number to prevent. */
-    expect(() => limitOf(registracija as FormDef, 'nema-ovoga')).toThrow(/no field/)
-    expect(() => limitOf(registracija as FormDef, 'pol')).toThrow(/length limit/)
+    expect(() => limitOf(registracija, 'nema-ovoga')).toThrow(/no field/)
+    expect(() => limitOf(registracija, 'pol')).toThrow(/length limit/)
   })
 })
 

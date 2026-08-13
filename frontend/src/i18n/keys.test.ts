@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
-import registracija from '../forms/definitions/registracija.form.json'
+import { registracija } from '../forms/definitions'
 import { CATEGORIES } from '../data/derive'
 import { EVENT_KINDS, ITEM_KINDS, PENDING_QUEUE_IDS, RATING_MARKS } from '../data/types'
 import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
@@ -11,11 +11,10 @@ import { DUCAT_KINDS } from '../data/ducatRule'
 import { JUNIOR, PRICES } from '../data/pricing'
 import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
 import { QUEUES } from '../pages/admin/queues'
-import type { FormDef } from '../forms/types'
 import sr from './sr.json'
-import { translate, type Dictionary } from './translate'
+import { translate } from './translate'
 
-const dictionary = sr as Dictionary
+const dictionary = sr
 
 /* translate() returns the key itself when a key is missing, which keeps the
  * screen usable but is invisible to every other test: a route pointing at
@@ -39,7 +38,7 @@ describe('translation keys used in code', () => {
   })
 
   it('exist for every part of the registration form', () => {
-    const form = registracija as FormDef
+    const form = registracija
     const keys = [form.titleKey, form.submitKey]
 
     for (const field of form.fields) {

@@ -25,7 +25,7 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
     <span
       className="portrait"
       aria-hidden="true"
-      style={{ '--face-hue': hueFor(competitor.memberNumber) } as React.CSSProperties}
+      style={{ '--face-hue': hueFor(competitor.memberNumber) }}
     >
       {competitor.firstName.slice(0, 1)}
       {competitor.lastName.slice(0, 1)}

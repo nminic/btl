@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useToday } from '../clock/useClock'
-import registracija from '../forms/definitions/registracija.form.json'
+import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
-import type { FormDef, FormValues } from '../forms/types'
+import type { FormValues } from '../forms/types'
 import { REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
 import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -74,5 +74,5 @@ export function Registration() {
     )
   }
 
-  return <FormRenderer form={registracija as FormDef} onSubmit={setSent} />
+  return <FormRenderer form={registracija} onSubmit={setSent} />
 }
