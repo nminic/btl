@@ -192,7 +192,7 @@
 /* The card as a fold, on the width where a card is a screenful.
 
    Five cards on a telephone mean scrolling through four to reach the third, so
-   below 820px a card is its name and its day, and the rest opens on a press
+   below 51.25em a card is its name and its day, and the rest opens on a press
    (owner, 06.08.2026). Above that width every card is open and the control is
    not drawn at all, which is how the two sectors of the navigation work
    (SectionNav.css): a control that is not there cannot say the wrong thing about

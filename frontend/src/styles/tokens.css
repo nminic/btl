@@ -198,7 +198,9 @@
    *   560   a telephone stops being a telephone          35em
    *   700   a narrow window, where a table gives up its columns   43.75em
    *   820   the wide layout, and the navigation stops folding away   51.25em
-   *         (819 is its other half, for the rules that stop where it starts)
+   *         (51.24875em is its other half, for the rules that stop where it
+   *         starts; the pairs are 0.00125em apart, which is a fifth of a pixel
+   *         at the default text size and stays under one however large it gets)
    *  1000   a big screen, where the widest tables can open out   62.5em
    *
    * Written in em, and the pixels above are what an em is worth when the reader

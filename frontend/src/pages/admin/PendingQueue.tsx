@@ -537,7 +537,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           {/* On a telephone a card is a screenful, so five of
                               them mean scrolling through four to reach the
                               third: the card opens on a press and the rest are
-                              a list of names (owner, 06.08.2026). From 820px up
+                              a list of names (owner, 06.08.2026). From 51.25em up
                               this control is not drawn and every card is open,
                               exactly as the sectors of the navigation work
                               (SectionNav). */}

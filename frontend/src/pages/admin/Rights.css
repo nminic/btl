@@ -29,12 +29,19 @@
 /* The box around the matrix, and the box the matrix scrolls in.
  *
  * The scroll is for the table shape only, and there it is not the ordinary case:
- * at the default text size sixteen columns of boxes fit in 900 pixels, which is
- * why that is the width the shape switches at. It is enlarged text that makes it
- * necessary, because every width in here is in `rem` and the page is not: at
- * 1280 with the text at 200 per cent the matrix is 214 pixels wider than the
- * column it sits in, and without a box to scroll in those pixels come out of the
- * page (PDL P24, and CLAUDE.md: the page itself never scrolls sideways).
+ * sixteen columns of boxes fit in the width the shape switches at, which is what
+ * that width was picked to mean. What it does not survive is the gap between two
+ * widths that used to be measured differently: the query was in pixels while
+ * every width in here is in `rem`, so at 1280 with the text at 200 per cent the
+ * matrix stood 214 pixels wider than the column it sits in and those pixels came
+ * out of the page (PDL P24, and CLAUDE.md: the page itself never scrolls
+ * sideways).
+ *
+ * The query is in em since 13.08.2026, so that particular reader now gets the
+ * card layout instead. The box stays, because the gap is narrower rather than
+ * closed: a reader at 125 per cent on this screen, or at 200 per cent on a
+ * nineteen hundred pixel one, is past the threshold and still short of the width
+ * the table wants.
  *
  * Nothing below fights it. `.rights` sets no `overflow` of its own in either
  * shape, and nothing in it is positioned, so there is no box in here that could

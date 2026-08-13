@@ -371,8 +371,17 @@
 /* On a telephone the name of an event is cut rather than allowed to push the
    table wider than the screen (PDL P24: a table there has no horizontal scroll).
    Nothing is lost to a screen reader, which reads the whole of the link, and the
-   date beside it is the other half of what identifies a race. */
-@media (max-width: 43.74875em) {
+   date beside it is the other half of what identifies a race.
+
+   In pixels, and it is the screen's own width that has to decide this one. Cut
+   is cut: at 200 per cent text an em query here would fire on a 1280 screen and
+   take the name of the race off it, on a screen with room for the whole of it,
+   because somebody made the letters bigger. PDL P24 settled that on 12.08.2026
+   and settled it the other way: at enlarged text this table scrolls inside its
+   own box, "jer koloni događaja ne ostaje ništa i ime trke nestaje sa ekrana,
+   što je gubitak sadržaja po WCAG 2.2 SC 1.4.4". The scroll box is what pays for
+   the width here, not the ellipsis. */
+@media (max-width: 699.98px) {
   .profile__results .table tbody td:nth-child(2) {
     max-inline-size: 8.5rem;
     overflow: hidden;

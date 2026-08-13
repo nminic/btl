@@ -68,7 +68,7 @@ function Section({
        times over. */
     <nav aria-label={t('admin.sectionNav', { name: title })}>
       {/* On a telephone the list would push the work off the first screen, so
-          there it sits behind a button. From 820px up the button goes away and
+          there it sits behind a button. From 51.25em up the button goes away and
           the list stands beside the work and follows it down. */}
       <button
         type="button"
@@ -80,7 +80,7 @@ function Section({
         {title}
       </button>
 
-      {/* And the same word where the button is not drawn. From 820px up the
+      {/* And the same word where the button is not drawn. From 51.25em up the
           button goes away, and until this the two sectors were two runs of links
           one under the other with nothing saying which was which and nothing
           between them. Said once either way: the button carries it below that
