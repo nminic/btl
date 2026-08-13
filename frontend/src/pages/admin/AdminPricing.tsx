@@ -7,6 +7,7 @@ import {
   REFERRAL_ROW,
   type PriceRow,
 } from '../../data/pricing'
+import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
@@ -48,7 +49,7 @@ const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
    row (member/Membership.tsx). */
 
 export function AdminPricing() {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const overlay = useOverlay()
   const [editing, setEditing] = useState<Editing | null>(null)
 
@@ -104,8 +105,8 @@ export function AdminPricing() {
               <tr key={row.key}>
                 <td>{row.label}</td>
                 <td>{period(row, t('admin.everyPayment'))}</td>
-                <td>{row.eur}</td>
-                <td>{row.rsd.toLocaleString('sr-Latn')}</td>
+                <td>{money(row.eur, locale)}</td>
+                <td>{money(row.rsd, locale)}</td>
                 <td>{row.ranking ? t('admin.yes') : t('admin.no')}</td>
                 <td>
                   <OpenRecord
@@ -145,8 +146,8 @@ export function AdminPricing() {
               <tbody>
                 <tr>
                   <td>{row.label}</td>
-                  <td>{row.eur}</td>
-                  <td>{row.rsd.toLocaleString('sr-Latn')}</td>
+                  <td>{money(row.eur, locale)}</td>
+                  <td>{money(row.rsd, locale)}</td>
                   <td>
                     <OpenRecord
                       name={row.label}

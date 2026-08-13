@@ -13,8 +13,15 @@ import { join } from 'node:path'
  *
  * What it covers is exactly the one hook, by name. A screen that wrote a filter
  * through `useNavigate` or through a `Link` carrying a query would walk past
- * this; nothing does today, and the day one does, this is the file that has to
- * learn about it.
+ * this.
+ *
+ * Four do carry a query in a `Link`, and all four are meant to: the calendar
+ * opening a day of events, the two extracts on the front page, and a member's
+ * own results reaching the standing. Each is a move to another screen, where
+ * landing at the top is the right thing and `preventScrollReset` would be the
+ * fault. The rule this file holds is about a control that filters the screen it
+ * is already on, and none of the four is one. The sentence here used to say
+ * „nothing does today", which stopped being true and said nothing about it.
  */
 
 const SRC = join(process.cwd(), 'src')

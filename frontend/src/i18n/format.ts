@@ -69,6 +69,25 @@ export function formatNumber(value: number, locale: string, fractionDigits = 0):
   return numberFormat(locale, fractionDigits).format(value)
 }
 
+/**
+ * An amount of money as it stands, whole or not.
+ *
+ * `formatNumber` rounds to whole numbers unless told otherwise, and the price
+ * list takes any number: an administrator who set 5,5 saw the price list say 5,5
+ * and the membership screen promise „6 EUR", which is a different promise from
+ * the one the terms point at. Two decimals where there are any, none where there
+ * are not, so the common case stays „600 RSD" rather than „600,00 RSD".
+ *
+ * Here rather than beside one of the screens that needs it, because both of them
+ * do: the price list writes the amounts an administrator sets and the membership
+ * screen writes the same amounts back to the member. The euro figure used to go
+ * out raw beside a formatted dinar one, so a Serbian sentence read „35.5 EUR, a
+ * iz Srbije 4.200 RSD" with the decimal point of another language in it.
+ */
+export function money(amount: number, locale: string): string {
+  return formatNumber(amount, locale, Number.isInteger(amount) ? 0 : 2)
+}
+
 /** BTL points are always shown with two decimals (see CLAUDE.md, domain). */
 export function formatPoints(value: number, locale: string): string {
   return formatNumber(value, locale, 2)

@@ -30,7 +30,7 @@ import {
   seasonBeingRenewed,
 } from '../../data/pricing'
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
-import { formatNumber } from '../../i18n/format'
+import { formatNumber, money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { applyChanges } from '../../forms/records'
@@ -61,19 +61,6 @@ function creditOf(country: string, credited: PriceRow, locale: string, times = 1
   return paysInDinars(country)
     ? `${money(credited.rsd * times, locale)} RSD`
     : `${money(credited.eur * times, locale)} EUR`
-}
-
-/**
- * An amount as it stands, whole or not.
- *
- * `formatNumber` rounds to whole numbers unless told otherwise, and the price
- * list takes any number: an administrator who sets 5,5 saw the price list say
- * 5,5 and this screen promise „6 EUR", which is a different promise from the one
- * the terms point at. Two decimals where there are any, none where there are
- * not, so the common case stays „600 RSD" rather than „600,00 RSD".
- */
-function money(amount: number, locale: string): string {
-  return formatNumber(amount, locale, Number.isInteger(amount) ? 0 : 2)
 }
 
 /**
@@ -172,7 +159,7 @@ export function Membership() {
               <p className="member__note">
                 {registrationOpen(today)
                   ? t('membership.priceNow', {
-                      eur: price.eur,
+                      eur: money(price.eur, locale),
                       rsd: formatNumber(price.rsd, locale),
                     })
                   : t('membership.notYetSold')}
@@ -193,7 +180,7 @@ export function Membership() {
               )}
               <p className="member__note">
                 {t('membership.junior', {
-                  eur: JUNIOR.eur,
+                  eur: money(JUNIOR.eur, locale),
                   rsd: formatNumber(JUNIOR.rsd, locale),
                 })}
               </p>

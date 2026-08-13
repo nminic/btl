@@ -284,6 +284,24 @@ describe('the price list', () => {
     expect(within(table).getAllByText('Ne')).toHaveLength(1)
   })
 
+  it('writes both currencies the same way, in the language of the page', async () => {
+    /* The dinar figure went through a formatter and the euro one went out raw
+       beside it, so a Serbian sentence read „35.5 EUR, a iz Srbije 4.200 RSD":
+       one amount with a Serbian thousands separator and the other with the
+       decimal point of another language. The form takes decimals, so this is
+       reachable by an administrator with no unusual intent.
+
+       The formatter is also no longer told which language to use. It was pinned
+       to `sr-Latn` on a screen that has the page's own language to hand. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Cenovnik' })
+
+    /* Thousands grouped the Serbian way, and nothing carrying a foreign point. */
+    expect(within(table).getAllByText('4.200').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/\d\.\d{1,2}$/)).not.toBeInTheDocument()
+  })
+
   it('is named by its own field, and neither added to nor taken from', async () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
