@@ -6,7 +6,12 @@ import { useI18n } from '../../i18n/useI18n'
 /* For the five colours of `.length-dot`, which live in the table sheet because
    the results table draws them too (styles/table.css). The front page needs it
    said out loud more than the calendar does: Home.css asks only for the counter,
-   so nothing else on this screen was bringing the colours along. */
+   so nothing else on this screen was bringing the colours along.
+
+   The dots and not the card around them. `.card` and the `.extract` names are in
+   Home.css, which this file does not ask for either; that is the same fault and
+   it is written down as open (ADL A7) rather than fixed here, since only
+   table.css is read by the test that keeps this honest. */
 import '../../styles/table.css'
 
 const ROWS = 6

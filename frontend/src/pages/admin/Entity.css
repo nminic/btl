@@ -3,7 +3,13 @@
 /* For `.table` and `.table-scroll`, which the races of an event wear
    (EventRaces.tsx). Asked for here because that component writes those names
    (ADL A7): until now it reached them through AdminEvents, which brings
-   Member.css for the list beside it and not for this table. */
+   Member.css for the list beside it and not for this table.
+
+   This sheet is shared, so the ask is made for one of its two readers:
+   EntityEditor draws no table and gets the rules anyway. That is the ordinary
+   shape for a component with a sheet of its own, and the cost of it is a few
+   rules on a screen that does not use them. Where a component has no sheet at
+   all, the ask goes in the component instead (calendar/DayChips.tsx). */
 @import '../../styles/table.css';
 
 /* Scoped rather than set on .button, because raising the specificity of that

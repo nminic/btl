@@ -173,12 +173,27 @@ const TABLE = join(SRC, 'styles', 'table.css')
  * two apart from the outside: both are the same five letters, written whole,
  * inside a string.
  *
- * By path, since the reason is about this one line and not about a shape a
- * second file could have. A list of one that grows is a list worth reading.
+ * Two other files already write the word this way, in the tag of a union
+ * (`{ kind: 'table' }` in Markdown.tsx and TopBoards.tsx). They are not excused
+ * because they do not need to be: both draw a real table as well, so they owe
+ * the sheet anyway. The day one of them keeps the tag and stops drawing the
+ * table, it lands here, and the honest answer then is to add it rather than to
+ * pretend the check can see the difference.
+ *
+ * By path, and a whole file at that, which is blunter than the reason: nothing
+ * else in `routes.ts` is checked either. A list of one that grows is a list
+ * worth reading.
  */
 const NOT_A_CLASS = ['app/routes.ts']
 
-/** Every class name it defines. */
+/**
+ * Every class name it defines.
+ *
+ * A read of the whole sheet rather than of its selectors, which is wider than it
+ * sounds: a dot before a letter anywhere in the file counts, so a `url(./x.png)`
+ * would put `png` in here and start asking components about it. All fourteen
+ * entries are genuine today, and a sheet of five rules is a thing you can read.
+ */
 const defined = new Set(
   [...bare(readFileSync(TABLE, 'utf-8')).matchAll(/\.(-?[_a-z][\w-]*)/gi)].map((one) => one[0].slice(1)),
 )
@@ -193,6 +208,13 @@ const defined = new Set(
  * turns off. A string is cut at its own quote and at the holes in a template,
  * so `` `length-dot length-dot--${one}` `` gives up the part that is written
  * rather than the part that is computed.
+ *
+ * Which is also the limit of it. That template gives up `length-dot` and a
+ * stub of the modifier, so the five `length-dot--*` names in the sheet are never
+ * matched by anything and a component writing only a modifier would not be seen.
+ * A class assembled entirely from a variable (`` `${className}__btn` ``, as the
+ * dropdown does) is invisible here for the same reason. What this catches is a
+ * name somebody wrote down, which is how all seven of them were written.
  */
 function names(code: string): string[] {
   return [...bare(code).matchAll(/'[^'\n]*'|"[^"\n]*"|`[^`]*`/g)].flatMap((one) =>
