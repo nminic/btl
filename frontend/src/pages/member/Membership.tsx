@@ -66,23 +66,23 @@ function creditOf(country: string, credited: PriceRow, locale: string, times = 1
 /**
  * How many members this one brought in and was actually credited for.
  *
- * Counted rather than stored, and counted three ways over: the link records who
- * brought whom, the credit falls only when that member's own fee is first
- * activated (owner, 12.08.2026), and it has to have been a fee. Somebody who
- * registered through a link and never paid pays nobody.
+ * Counted rather than stored, and counted twice over: the link records who
+ * brought whom, and the credit falls when that member's own membership is first
+ * activated (owner, 12.08.2026). Somebody who registered through a link and
+ * never went active pays nobody.
  *
- * `active` alone was not that. It is true of an honorary member too, and
- * twenty nine of the thirty are honorary, so the league was paying 600 dinars a
- * head for members it had itself waived the fee for. The comment above this said
- * „never paid pays nobody" while the code said the opposite (PDL P16, 13.08.2026).
+ * Activation and not payment, decided by the owner on 13.08.2026 after a review
+ * asked: „OK je da se za preporuku dobije balans čak i ako je preporučen član
+ * dobio počasnu aktivaciju." So an honorary member counts. What the referrer is
+ * paid for is bringing somebody into the league, and the league deciding to
+ * waive that person's fee is the league's own business, not a reason to withhold
+ * it (PDL P16).
  *
  * The balance under this used to be the string „0 EUR" for everybody, written
  * out, so no arrangement of the data could ever have shown anything else.
  */
 function broughtInBy(me: Competitor, everybody: Competitor[]): number {
-  return everybody.filter(
-    (one) => one.referredBy === me.referralCode && one.active && one.membershipBasis === 'payment',
-  ).length
+  return everybody.filter((one) => one.referredBy === me.referralCode && one.active).length
 }
 
 export function Membership() {

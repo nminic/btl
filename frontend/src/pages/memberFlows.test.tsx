@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import type { Competitor } from '../data/types'
 import { ClockProvider } from '../clock/ClockProvider'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -16,6 +19,12 @@ import { Messages } from './member/Messages'
 /* The flows a member walks. The one that matters most is the last: a result
  * goes in, the moderator finds it, decides, and the member sees the decision.
  * That sequence is the reason for building the front end before the database. */
+
+/** The members as the prototype serves them, read rather than restated: one test
+ *  has to say what the data actually holds, not repeat a sentence about it. */
+const competitors: Competitor[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+)
 
 /**
  * Membership on a given day.
@@ -380,10 +389,21 @@ describe('membership', () => {
     expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
     expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
     /* And the balance is counted. This member brought five, and four of them
-       have had their own fee activated: 4 × 600. The fifth registered through
-       the link and never paid, and pays nobody, which is the whole of the
+       have had their membership activated: 4 × 600. The fifth registered through
+       the link and never went active, and pays nobody, which is the whole of the
        „prvi naredni put" half of the rule. Written out as the string „0 RSD"
-       for everybody, no arrangement of the data could ever have shown this. */
+       for everybody, no arrangement of the data could ever have shown this.
+
+       All four of the four are honorary, and that is the point of choosing them:
+       a review proposed that the credit should require the fee to have been paid,
+       and the owner decided otherwise on 13.08.2026, doslovno „OK je da se za
+       preporuku dobije balans čak i ako je preporučen član dobio počasnu
+       aktivaciju". Read the data rather than trust the sentence: if somebody
+       later makes those members payers, this test stops proving the decision and
+       says so. */
+    const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
+
+    expect(brought.filter((one) => one.active && one.membershipBasis === 'honorary')).toHaveLength(4)
     expect(screen.getByText('2.400 RSD')).toBeVisible()
     /* And when it lands, which is the half that keeps anybody from being paid
        for an account that was opened and left. */
