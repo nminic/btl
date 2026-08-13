@@ -195,11 +195,23 @@
    * and 820 both meaning the wide layout, 1000 and 1100 both meaning a big
    * screen.
    *
-   *   560   a telephone stops being a telephone
-   *   700   a narrow window, where a table gives up its columns
-   *   820   the wide layout, and the navigation stops folding away
+   *   560   a telephone stops being a telephone          35em
+   *   700   a narrow window, where a table gives up its columns   43.75em
+   *   820   the wide layout, and the navigation stops folding away   51.25em
    *         (819 is its other half, for the rules that stop where it starts)
-   *  1000   a big screen, where the widest tables can open out
+   *  1000   a big screen, where the widest tables can open out   62.5em
+   *
+   * Written in em, and the pixels above are what an em is worth when the reader
+   * has not touched the text size. That is the whole point of the unit: a width
+   * query in em is measured against the size the reader's browser starts from,
+   * so when they double the text the portal changes shape at double the width,
+   * and every layout keeps the amount of text it was drawn around. Everything
+   * behind these widths is in rem already and grows with the reader; until
+   * 13.08.2026 the breakpoint was the one thing that did not (scale.test.ts).
+   *
+   * Two exceptions are in px and say so where they are written: a query that
+   * takes content away rather than changing shape has to stay on the screen's
+   * real width, or enlarged text would strip columns off a desktop.
    *
    * Two screens keep a width of their own because their content sets it, not
    * the page, and both say so where they are written: the front page at 860,

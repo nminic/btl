@@ -241,7 +241,7 @@
 /* Six hundred and twenty. The width at which the six length buttons swap the
    word for the distance, which is a change of what they say and not of how they
    are spaced, so it stays where it was measured. */
-@media (max-width: 620px) {
+@media (max-width: 38.75em) {
   .profile__length-full {
     position: absolute;
     width: 1px;
@@ -306,7 +306,7 @@
 }
 
 /* Two across from tablet up. */
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   .profile__row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -320,7 +320,7 @@
    Below a thousand the words column is about forty characters a line, which is a
    newspaper column, so below that the biography takes the full width and the two
    worked-out cards share the row under it. */
-@media (min-width: 1000px) {
+@media (min-width: 62.5em) {
   .profile__row--bio {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -372,7 +372,7 @@
    table wider than the screen (PDL P24: a table there has no horizontal scroll).
    Nothing is lost to a screen reader, which reads the whole of the link, and the
    date beside it is the other half of what identifies a race. */
-@media (max-width: 699.98px) {
+@media (max-width: 43.74875em) {
   .profile__results .table tbody td:nth-child(2) {
     max-inline-size: 8.5rem;
     overflow: hidden;

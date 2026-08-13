@@ -190,6 +190,50 @@ describe('space and corners are chosen from the scale, not typed', () => {
      * space all used to slip past a stricter one. */
     const widths: string[] = []
 
+    /* In em, so that the width the portal changes shape at moves with the text
+       the reader asked for.
+     *
+     * These were all in px until 13.08.2026, on a reason that was the wrong way
+     * round: that a breakpoint in em would move with the reader's text size
+     * while every other width here does not. Every other width here does. The
+     * spacing scale is in rem on purpose, "so that somebody who has made their
+     * text bigger gets bigger gaps" (tokens.css), and so are the widths the
+     * breakpoints are picked from. The breakpoint alone stood still, so at
+     * enlarged text it stopped describing the thing it was picked for: 900 was
+     * picked because sixteen columns of checkboxes fit in it beside a twelve rem
+     * column of names, and at 200 per cent that content needs about 1800 while
+     * the query still said 1280 would do. Measured on that screen: in px the
+     * matrix stays a table and scrolls 329 pixels inside its box, in em it falls
+     * back to the card layout and scrolls nowhere.
+     *
+     * A hidden control is not content taken away, which is why four sheets hide
+     * something here and are still in em: the button that folds the navigation,
+     * the two that fold a panel open, and the words beside each checkbox in the
+     * rights matrix. In each the thing hidden is either a control whose whole
+     * job is to reach a layout that is now on the screen anyway, or a label the
+     * heading above the column now carries. Nothing that was readable stops
+     * being readable. */
+    const TAKES_CONTENT_AWAY = new Map([
+      [
+        'components/ColumnChart.css',
+        'drops the seventh column and everything past it, which is data and not decoration',
+      ],
+      [
+        'styles/table.css',
+        'drops the columns marked `table__hide-phone`, which is what the row holds',
+      ],
+    ])
+
+    /* Those two stay in px, and the reason is the reader they would otherwise
+       punish. In em, at 200 per cent text, a 1280 desktop counts as 640: the
+       chart would lose four of its ten columns and every table on the portal
+       would lose its hidden columns, on a screen with room for all of them,
+       because somebody made the letters bigger. Taking content away from that
+       reader is what WCAG 2.2 SC 1.4.4 is about, and a table that is a little
+       tight is the better of the two. */
+    expect([...TAKES_CONTENT_AWAY.keys()].every((path) =>
+      sheets.some((sheet) => sheet.path === path))).toBe(true)
+
     for (const sheet of sheets) {
       /* Only `@media`. A container query asks the same question of a box rather
          than of the window, so its widths are a property of one component and
@@ -197,31 +241,18 @@ describe('space and corners are chosen from the scale, not typed', () => {
       const queries = [...sheet.css.matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '')
 
       for (const query of queries.join(' ').matchAll(/\(\s*(?:min|max)-width\s*:\s*([\d.]+)([a-z]+)\s*\)/g)) {
-        /* In pixels, for now, and the reason first written here was the wrong
-           way round.
-         *
-         * It said a breakpoint in em would move with the reader's text size
-         * while every other width here does not. Every other width here does:
-         * the spacing scale below is in rem on purpose, "so that somebody who
-         * has made their text bigger gets bigger gaps" (tokens.css), and so are
-         * the widths the breakpoints are chosen from. It is the breakpoint alone
-         * that stands still, which means that at enlarged text it stops
-         * describing the thing it was picked for. The rights matrix is what
-         * showed it: 900 was picked because sixteen columns of checkboxes fit in
-         * it beside a twelve rem column of names, and at 200 per cent text that
-         * content needs about 1800 while the query still says 1280 will do
-         * (measured 13.08.2026, fixed there with a scroll box).
-         *
-         * The rule is kept anyway, because converting is a decision per
-         * breakpoint rather than one decision. A breakpoint that changes shape
-         * may go to em: the matrix would fall back to its card layout, which
-         * shows the same sixteen rights and scrolls nowhere. A breakpoint that
-         * takes content away may not: `.table__hide-phone` at 699.98 would, in
-         * em, drop columns on a 1280 desktop the moment the text is enlarged,
-         * which is losing content for the reader who asked for bigger text
-         * (WCAG 2.2 SC 1.4.4). Open in ADL, beside the typographic scale. */
-        expect(query[2], `${sheet.path} sets a breakpoint in ${query[2]}`).toBe('px')
-        widths.push(query[1] as string)
+        const unit = TAKES_CONTENT_AWAY.has(sheet.path) ? 'px' : 'em'
+
+        expect(query[2], `${sheet.path} sets a breakpoint in ${query[2]}`).toBe(unit)
+
+        /* Listed in pixels whichever unit it is written in, because the list
+           below is the set of places the portal changes shape and that set is
+           the same set either way. Sixteen is the initial font size, which is
+           what a width query in em is measured against: not the root font size,
+           which a stylesheet can change, but the one the reader's browser
+           starts from. */
+        const written = Number(query[1])
+        widths.push(String(unit === 'em' ? Math.round(written * 16 * 1e5) / 1e5 : written))
       }
     }
 

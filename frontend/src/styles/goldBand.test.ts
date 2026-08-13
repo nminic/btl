@@ -490,11 +490,22 @@ describe('the sentence above a table of places', () => {
  * finds it and reports the rule safely inside it.
  */
 function onTelephone(css: string): string {
-  /* Looked for where the comments are blanked, as a selector is, so a query
-     quoted in prose is not the one that gets read. */
-  const at = unremarked(css).indexOf('@media (max-width: 699.98px) {')
+  /* Two spellings of the same width, and a sheet has one of them. A query that
+     changes shape is written in em, so that it fires where the reader's text
+     stops fitting rather than where the screen ends; a query that takes columns
+     away is written in px, so that enlarged text never strips a desktop of its
+     data. Which is which, and why, is in scale.test.ts. */
+  const bare = unremarked(css)
+  const found = ['@media (max-width: 43.74875em) {', '@media (max-width: 699.98px) {']
+    /* Looked for where the comments are blanked, as a selector is, so a query
+       quoted in prose is not the one that gets read. */
+    .map((query) => bare.indexOf(query))
+    .filter((one) => one > -1)
 
-  expect(at, 'there is no telephone query').toBeGreaterThan(-1)
+  expect(found, 'there is no telephone query').toHaveLength(1)
+
+  const at = must(found[0], 'a telephone query in this sheet')
+
   return css.slice(at, closes(css, at))
 }
 
@@ -768,7 +779,7 @@ describe('what the owner asked for on 04.08.2026', () => {
          place it applies. */
       holds: /position:\s*sticky/,
       why: 'the two sectors are held as one column, not one over the other',
-      within: '@media (min-width: 820px)',
+      within: '@media (min-width: 51.25em)',
     },
     {
       of: 'src/pages/admin/Verification.css',
@@ -785,7 +796,7 @@ describe('what the owner asked for on 04.08.2026', () => {
       rule: '.pending__card',
       holds: /display:\s*block/,
       why: 'and every card is open from the width where a card is not a screenful',
-      within: '@media (min-width: 820px)',
+      within: '@media (min-width: 51.25em)',
     },
     {
       of: 'src/pages/admin/Verification.css',
@@ -795,7 +806,7 @@ describe('what the owner asked for on 04.08.2026', () => {
          (SectionNav.css). */
       holds: /display:\s*none/,
       why: 'nothing offers to open a card that is open',
-      within: '@media (min-width: 820px)',
+      within: '@media (min-width: 51.25em)',
     },
     {
       of: 'src/components/Stars.css',

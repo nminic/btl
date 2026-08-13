@@ -154,7 +154,7 @@
 
 /* From tablet up the navigation is always visible, so the menu button and the
    collapsed state stop existing. */
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   .shell__nav {
     display: flex;
     flex-direction: row;
@@ -351,7 +351,7 @@
   letter-spacing: 0.01em;
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .brand__mark {
     width: 68px;
     height: 68px;
@@ -572,7 +572,7 @@
   text-align: center;
 }
 
-@media (max-width: 819px) {
+@media (max-width: 51.1875em) {
   .account__panel,
   .inbox__panel {
     right: -0.5rem;

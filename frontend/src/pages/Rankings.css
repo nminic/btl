@@ -35,7 +35,7 @@
   margin-block-end: var(--space-8);
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   /* Only where there is a second thing to place. Six screens always draw their
      control, so for them this asks nothing; the event does not, and there the
      row was a grid of two tracks with an empty second one, laying the gutter
@@ -157,7 +157,7 @@
 
    Scoped to this screen. `rankings--tooled` is shared by eight, and none of
    the others has a select to bring up. */
-@media (max-width: 559.98px) {
+@media (max-width: 34.99875em) {
   .rankings--tooled:has(> .rankings__filters) {
     display: grid;
     /* `minmax(0, …)` on both, because a track is otherwise at least as wide as

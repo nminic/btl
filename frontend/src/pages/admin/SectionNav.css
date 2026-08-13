@@ -135,7 +135,7 @@
 
 /* From 820px up the section stands beside the work and follows it down the
    page, and the button that opened it stops existing. */
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   .adminsection {
     grid-template-columns: 15rem minmax(0, 1fr);
     gap: var(--space-32);

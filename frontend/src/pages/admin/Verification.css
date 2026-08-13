@@ -169,7 +169,7 @@
   gap: var(--space-8);
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .pending__marks {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -221,7 +221,7 @@
   color: var(--text);
 }
 
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   .pending__card {
     display: block;
   }

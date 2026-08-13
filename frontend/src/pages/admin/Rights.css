@@ -170,7 +170,7 @@
    moved onto the page scale because it cannot be checked from the outside
    without signing in as a moderator, and a table that is one column too wide is
    a worse outcome than a breakpoint that is eighty pixels off the scale. */
-@media (min-width: 900px) {
+@media (min-width: 56.25em) {
   .rights {
     display: table;
   }
