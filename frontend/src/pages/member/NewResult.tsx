@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
 import type { FormValues } from '../../forms/types'
-import { fieldDate, isoDate } from '../../forms/dateField'
+import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
@@ -86,12 +86,14 @@ export function NewResult() {
 
     const sent = {
       eventName: String(values.eventName),
-      /* Through `isoDate`, which is what every other form writes a date with
-         (forms/records.ts). It was parsed here and the result called a Date
-         without looking, on the grounds that the form refuses to submit without
-         one; where that had ever been wrong, the screen threw on submit rather
-         than saying anything (ADL A14). */
-      date: isoDate(String(values.date)),
+      /* Through `storedDate`, which reads the date or throws saying what was in
+         the box. It was parsed here and the result called a Date without
+         looking (ADL A14 bans that), and answering with an empty date instead
+         would be the other half of the same fault: a result with no date
+         belongs to no season and would reach the moderator looking ordinary
+         (rule 2). Nothing can reach the throw, because the form refuses an
+         unreadable date before it submits. */
+      date: storedDate(String(values.date)),
       distanceKm,
       ascentM,
       descentM,

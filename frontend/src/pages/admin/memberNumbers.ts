@@ -1,4 +1,5 @@
 import { nextMemberNumber } from '../../data/memberNumber'
+import type { Competitor } from '../../data/types'
 import type { SessionValue } from '../../session/context'
 import { MEMBERS, recordsOf } from './entityForms'
 
@@ -39,8 +40,13 @@ export type NumberSources = Pick<SessionValue, 'edits' | 'creations' | 'decision
  * about numbers had to invent a member, could not, and wrote
  * `({ memberNumber }) as Competitor` instead, which is the assertion ADL A14
  * bans. A signature that asks for what it uses needs nothing invented.
+ *
+ * Written as a `Pick` and not as a bare `{ memberNumber: string }`, so the tie
+ * to the member stays: a bare shape would also accept a result or a queue item,
+ * each of which carries that field and none of which is who a number belongs
+ * to, and renaming the field on `Competitor` would leave this compiling.
  */
-export type Numbered = { memberNumber: string }
+export type Numbered = Pick<Competitor, 'memberNumber'>
 
 /**
  * Every member number that is spoken for: the ones in the member list as the

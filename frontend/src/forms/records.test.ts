@@ -1,5 +1,5 @@
 import { must } from '../test/at'
-import { fieldDate, isoDate } from './dateField'
+import { fieldDate, isoDate, storedDate } from './dateField'
 import { registracija } from './definitions'
 import {
   applyChanges,
@@ -73,6 +73,17 @@ describe('a date between the two shapes it has', () => {
     expect(fieldDate('3. april 2027.')).toBe('')
     expect(isoDate('03/04')).toBe('')
     expect(isoDate('31/02/2027')).toBe('')
+  })
+
+  it('refuses rather than empties when it is going into a record', () => {
+    /* The other half of the pair. Empty is right while the value is going back
+       into the box it came from, and wrong when it is being written down: a
+       result with no date belongs to no season and reaches the moderator
+       looking like any other (ADL A14 rule 2). */
+    expect(storedDate('03/04/2027')).toBe('2027-04-03')
+    expect(() => storedDate('03/04')).toThrow('03/04 is not a date')
+    expect(() => storedDate('31/02/2027')).toThrow('31/02/2027 is not a date')
+    expect(() => storedDate('')).toThrow(' is not a date')
   })
 })
 
