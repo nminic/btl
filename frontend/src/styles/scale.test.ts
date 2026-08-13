@@ -197,8 +197,29 @@ describe('space and corners are chosen from the scale, not typed', () => {
       const queries = [...sheet.css.matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '')
 
       for (const query of queries.join(' ').matchAll(/\(\s*(?:min|max)-width\s*:\s*([\d.]+)([a-z]+)\s*\)/g)) {
-        /* In pixels, always: a breakpoint in em moves with the reader's text
-           size while every other width here does not. */
+        /* In pixels, for now, and the reason first written here was the wrong
+           way round.
+         *
+         * It said a breakpoint in em would move with the reader's text size
+         * while every other width here does not. Every other width here does:
+         * the spacing scale below is in rem on purpose, "so that somebody who
+         * has made their text bigger gets bigger gaps" (tokens.css), and so are
+         * the widths the breakpoints are chosen from. It is the breakpoint alone
+         * that stands still, which means that at enlarged text it stops
+         * describing the thing it was picked for. The rights matrix is what
+         * showed it: 900 was picked because sixteen columns of checkboxes fit in
+         * it beside a twelve rem column of names, and at 200 per cent text that
+         * content needs about 1800 while the query still says 1280 will do
+         * (measured 13.08.2026, fixed there with a scroll box).
+         *
+         * The rule is kept anyway, because converting is a decision per
+         * breakpoint rather than one decision. A breakpoint that changes shape
+         * may go to em: the matrix would fall back to its card layout, which
+         * shows the same sixteen rights and scrolls nowhere. A breakpoint that
+         * takes content away may not: `.table__hide-phone` at 699.98 would, in
+         * em, drop columns on a 1280 desktop the moment the text is enlarged,
+         * which is losing content for the reader who asked for bigger text
+         * (WCAG 2.2 SC 1.4.4). Open in ADL, beside the typographic scale. */
         expect(query[2], `${sheet.path} sets a breakpoint in ${query[2]}`).toBe('px')
         widths.push(query[1] as string)
       }
