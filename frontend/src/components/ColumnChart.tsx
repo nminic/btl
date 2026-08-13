@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { Competitor } from '../data/types'
 import { Portrait } from './Portrait'
@@ -112,14 +112,14 @@ function Bar({ column, highest }: { column: ChartColumn; highest: number }) {
                   what was already there, then what was added to it. */}
               <span
                 className="colchart__level colchart__level--base"
-                style={{ '--level': share(base.value, whole) } as CSSProperties}
+                style={{ '--level': share(base.value, whole) }}
               >
                 <Count label={base.label} reading={base.reading} quiet />
               </span>
               <span
                 className="colchart__level colchart__level--top"
                 style={
-                  { '--level': share(column.value - base.value, whole) } as CSSProperties
+                  { '--level': share(column.value - base.value, whole) }
                 }
               >
                 <Count label={column.label} reading={column.reading} />
@@ -147,7 +147,7 @@ function Bar({ column, highest }: { column: ChartColumn; highest: number }) {
   )
 
   /** How tall this bar asks to be. */
-  const height = { '--bar': share(column.value, highest) } as CSSProperties
+  const height = { '--bar': share(column.value, highest) }
 
   if (column.to === undefined) {
     return (
@@ -252,7 +252,7 @@ export function ColumnChart({
       ]
         .filter((one) => one !== '')
         .join(' ')}
-      style={{ '--count-chars': digits } as CSSProperties}
+      style={{ '--count-chars': digits }}
       aria-label={captionId === undefined ? label : undefined}
       aria-labelledby={captionId}
     >

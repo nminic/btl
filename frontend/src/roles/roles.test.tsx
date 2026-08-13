@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { SessionProvider } from '../session/SessionProvider'
@@ -119,6 +119,24 @@ describe('RoleSwitch', () => {
        carrying somebody else's rights, so they are set together and never
        separately. */
     expect(screen.getByTestId('ko')).toHaveTextContent('niko')
+  })
+
+  it('becomes nothing at all when the answer is neither a role nor a moderator', async () => {
+    const user = setupUser()
+    renderSwitch()
+
+    await user.selectOptions(await screen.findByLabelText('Uloga'), 'superadmin')
+
+    /* The control offers no such choice, so the only road here is from outside
+       it. The word used to be taken for a role and passed straight on
+       (`event.target.value as Role`), which is the assertion ADL A14 bans: it
+       says a thing is a role instead of looking, so anything at all became one
+       and every check of rights after it was answering about a role that does
+       not exist. Now a word that is not a role is not one, and the person at
+       the keyboard stays who they were. */
+    fireEvent.change(screen.getByLabelText('Uloga'), { target: { value: 'predsednik' } })
+
+    expect(screen.getByTestId('uloga')).toHaveTextContent('superadmin')
   })
 
   it('does not exist in a production build', () => {

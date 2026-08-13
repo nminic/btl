@@ -107,6 +107,27 @@ export function failed(...states: ResourceState<unknown>[]): boolean {
   return states.some((state) => state.status === 'error')
 }
 
+/**
+ * The failure of the first resource that has one, as a state of its own.
+ *
+ * Written to give back the error state rather than the state that carries it,
+ * because an error state says nothing about the shape of the data that never
+ * arrived: this one fits the combined type without anything being asserted
+ * about it, and `find` would have handed back a state of one resource's type
+ * for all three to be called (ADL A14).
+ */
+function firstError(
+  states: ResourceState<unknown>[],
+): { status: 'error'; error: Error } | undefined {
+  for (const state of states) {
+    if (state.status === 'error') {
+      return state
+    }
+  }
+
+  return undefined
+}
+
 /* One screen usually needs several resources at once, and it has to show one
  * loading state and one error, not three. Error wins over loading, because a
  * screen that is partly broken is broken. */
@@ -115,11 +136,10 @@ export function combineResources<A, B, C>(
   second: ResourceState<B>,
   third: ResourceState<C>,
 ): ResourceState<[A, B, C]> {
-  const all = [first, second, third]
-  const failed = all.find((state) => state.status === 'error')
+  const failure = firstError([first, second, third])
 
-  if (failed !== undefined) {
-    return failed as ResourceState<[A, B, C]>
+  if (failure !== undefined) {
+    return failure
   }
 
   if (first.status !== 'ready' || second.status !== 'ready' || third.status !== 'ready') {
@@ -137,11 +157,10 @@ export function combineFour<A, B, C, D>(
   third: ResourceState<C>,
   fourth: ResourceState<D>,
 ): ResourceState<[A, B, C, D]> {
-  const all = [first, second, third, fourth]
-  const failed = all.find((state) => state.status === 'error')
+  const failure = firstError([first, second, third, fourth])
 
-  if (failed !== undefined) {
-    return failed as ResourceState<[A, B, C, D]>
+  if (failure !== undefined) {
+    return failure
   }
 
   if (
@@ -161,10 +180,10 @@ export function combinePair<A, B>(
   first: ResourceState<A>,
   second: ResourceState<B>,
 ): ResourceState<[A, B]> {
-  const failed = [first, second].find((state) => state.status === 'error')
+  const failure = firstError([first, second])
 
-  if (failed !== undefined) {
-    return failed as ResourceState<[A, B]>
+  if (failure !== undefined) {
+    return failure
   }
 
   if (first.status !== 'ready' || second.status !== 'ready') {

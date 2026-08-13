@@ -5,7 +5,7 @@ import { loadResource } from '../data/client'
 import { fieldFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
-import { at, first, last, must } from '../test/at'
+import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import type { Competitor, Result } from '../data/types'
@@ -739,7 +739,7 @@ describe('TopBoards', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
 
-    const season = (await screen.findByLabelText('Sezona')) as HTMLSelectElement
+    const season = selectElement(await screen.findByLabelText('Sezona'))
     const opens = season.value
 
     expect(router.state.location.search).toBe('')
@@ -750,7 +750,7 @@ describe('TopBoards', () => {
     await user.selectOptions(season, opens)
     expect(router.state.location.search).toBe('')
     /* And the boards are of that season either way. */
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe(opens)
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe(opens)
   })
 
   it('offers the seasons that have results, and never all of them at once', async () => {
@@ -759,7 +759,7 @@ describe('TopBoards', () => {
        handed in as the default, and this screen hands one in. */
     renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
 
-    const season = (await screen.findByLabelText('Sezona')) as HTMLSelectElement
+    const season = selectElement(await screen.findByLabelText('Sezona'))
 
     expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
     expect(within(season).getAllByRole('option').length).toBeGreaterThan(3)
@@ -1041,7 +1041,7 @@ describe('TopBoards', () => {
 
     const season = await screen.findByLabelText('Sezona')
     // No season in the address, so the page picks one that has results.
-    expect(Number((season as HTMLSelectElement).value)).toBeGreaterThan(2000)
+    expect(Number(selectElement(season).value)).toBeGreaterThan(2000)
 
     const before = board('Najviše kilometara')
       .getAllByRole('row')
@@ -1134,7 +1134,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
+    const season = selectElement(screen.getByLabelText('Sezona'))
     const years = within(season)
       .getAllByRole('option')
       .map((one) => Number(one.getAttribute('value')))
@@ -1232,7 +1232,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007?sezona=2010')
 
     await screen.findByRole('heading', { level: 1 })
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2010')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2010')
   })
 
   it('gives the heading back to the name and puts the club in the line below', async () => {
@@ -1402,9 +1402,9 @@ describe('CompetitorProfile', () => {
 
     /* Scoped to the head of the page: over the whole career the table below
        carries dozens of event names, and some of them are clubs too. */
-    const head = (await screen.findByRole('heading', { level: 1 })).closest(
+    const head = htmlElement((await screen.findByRole('heading', { level: 1 })).closest(
       'header',
-    ) as HTMLElement
+    ))
 
     expect(within(head).getByRole('link')).toHaveAttribute(
       'href',
@@ -1499,7 +1499,7 @@ describe('Teams', () => {
     renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
 
     await standing()
-    const season = screen.getByLabelText('Sezona') as HTMLSelectElement
+    const season = selectElement(screen.getByLabelText('Sezona'))
 
     expect(season.value).toBe('2026')
     expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
@@ -1515,7 +1515,7 @@ describe('Teams', () => {
     const before = await points()
 
     await user.selectOptions(season, '2019')
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2019')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2019')
     expect(await points()).not.toEqual(before)
   })
 
@@ -1527,7 +1527,7 @@ describe('Teams', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/teams.json')
         ? new Response('[]', { headers: { 'content-type': 'application/json' } })
-        : real(input)) as typeof fetch
+        : real(input))
 
     try {
       renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
@@ -1548,7 +1548,7 @@ describe('Teams', () => {
 
     await standing()
 
-    expect((screen.getByLabelText('Sezona') as HTMLSelectElement).value).toBe('2026')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2026')
     expect(
       within(screen.getByLabelText('Sezona')).queryByRole('option', { name: '1999' }),
     ).not.toBeInTheDocument()
@@ -1846,12 +1846,12 @@ describe('the top boards, when a member on them has left the league', () => {
         return real(input)
       }
 
-      const all = (await (await real(input)).json()) as { active: boolean }[]
+      const all: { active: boolean }[] = await (await real(input)).json()
 
       return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
         status: 200,
       })
-    }) as typeof fetch
+    })
 
     try {
       renderAt('/sr/top-liste?sezona=2019')

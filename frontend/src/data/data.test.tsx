@@ -125,6 +125,26 @@ describe('the address of an event', () => {
   })
 })
 
+/**
+ * Serves every resource off disk as usual, except the one named, whose file is
+ * not there.
+ *
+ * What "not there" used to be was the name `nepostoji`, which is not a
+ * `ResourceName` and so had to be called one (ADL A14 bans that). A real name
+ * whose file does not answer walks the very same line of `client.ts` and needs
+ * nothing claimed about it.
+ */
+function unserved(name: ResourceName) {
+  const real = globalThis.fetch
+
+  globalThis.fetch = async (input: RequestInfo | URL) =>
+    String(input).endsWith(`/${name}.json`) ? new Response('nema', { status: 404 }) : real(input)
+
+  return () => {
+    globalThis.fetch = real
+  }
+}
+
 describe('loadResource', () => {
   it('resolves a known resource', async () => {
     const competitors = await loadResource<Competitor[]>('competitors')
@@ -134,7 +154,13 @@ describe('loadResource', () => {
   })
 
   it('rejects when the resource is not served', async () => {
-    await expect(loadResource('nepostoji' as ResourceName)).rejects.toThrow('Cannot load')
+    const restore = unserved('moderators')
+
+    try {
+      await expect(loadResource('moderators')).rejects.toThrow('Cannot load')
+    } finally {
+      restore()
+    }
   })
 })
 
@@ -147,9 +173,15 @@ describe('useResource', () => {
   })
 
   it('reports an error', async () => {
-    render(<Probe name={'nepostoji' as ResourceName} />)
+    const restore = unserved('moderators')
 
-    await waitFor(() => expect(screen.getByText(/greska:/)).toBeInTheDocument())
+    try {
+      render(<Probe name="moderators" />)
+
+      await waitFor(() => expect(screen.getByText(/greska:/)).toBeInTheDocument())
+    } finally {
+      restore()
+    }
   })
 
   it('keeps the answer to the question it is asking now', async () => {
@@ -167,17 +199,23 @@ describe('useResource', () => {
 
   it('drops a failure that arrives after unmount', async () => {
     const onError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { unmount } = render(<Probe name={'nepostoji' as ResourceName} />)
-    unmount()
+    const restore = unserved('moderators')
 
-    await Promise.resolve()
-    await Promise.resolve()
+    try {
+      const { unmount } = render(<Probe name="moderators" />)
+      unmount()
 
-    // Nothing was rendered and nothing complained: the guard swallowed the
-    // late rejection instead of setting state on a dead component.
-    expect(screen.queryByText(/greska:/)).not.toBeInTheDocument()
-    expect(onError).not.toHaveBeenCalled()
-    onError.mockRestore()
+      await Promise.resolve()
+      await Promise.resolve()
+
+      // Nothing was rendered and nothing complained: the guard swallowed the
+      // late rejection instead of setting state on a dead component.
+      expect(screen.queryByText(/greska:/)).not.toBeInTheDocument()
+      expect(onError).not.toHaveBeenCalled()
+    } finally {
+      restore()
+      onError.mockRestore()
+    }
   })
 
   it('exposes one hook per resource', async () => {

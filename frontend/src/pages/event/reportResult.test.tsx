@@ -8,7 +8,7 @@ import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
-import { first, must } from '../../test/at'
+import { first, must, selectElement } from '../../test/at'
 import { formatDistance, formatNumber } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -42,7 +42,7 @@ describe('the way to report a result', () => {
     const race = await screen.findByLabelText(/^Trka/)
 
     /* Preselected, so an event of one race is a time and nothing else. */
-    expect((race as HTMLSelectElement).value).not.toBe('')
+    expect(selectElement(race).value).not.toBe('')
 
     for (const asked of [/Sati/, /Minuta/, /Sekundi/, /Komentar/]) {
       expect(screen.getByLabelText(asked)).toBeVisible()
@@ -72,7 +72,7 @@ describe('the way to report a result', () => {
     renderAt(REPORT, 'competitor', '000007')
 
     const race = await screen.findByLabelText(/^Trka/)
-    const offered = Array.from((race as HTMLSelectElement).options).length
+    const offered = Array.from(selectElement(race).options).length
 
     expect(offered).toBeGreaterThan(1)
     expect(offered).toBeLessThan(10)
@@ -257,7 +257,7 @@ describe('an event that runs over two mornings', () => {
   async function racesOffered(): Promise<string[]> {
     const chooser = await screen.findByLabelText(/^Trka/)
 
-    return [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
+    return [...selectElement(chooser).options].map((one) => one.textContent ?? '')
   }
 
   it('offers only the races of the first morning, on the first morning', async () => {
@@ -361,7 +361,7 @@ describe('a race, which has no name of its own', () => {
     renderAt(`/sr/kalendar/${event.slug}/prijava`, 'competitor', ME)
 
     const chooser = await screen.findByLabelText(/^Trka/)
-    const said = [...(chooser as HTMLSelectElement).options].map((one) => one.textContent ?? '')
+    const said = [...selectElement(chooser).options].map((one) => one.textContent ?? '')
 
     /* By the length alone, which is the whole of what tells two races of one
        event apart. */

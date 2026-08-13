@@ -15,6 +15,9 @@ import { setupUser } from '../test/user'
  * the screen must still render. They fail the moment somebody widens one of
  * these screens back onto data it does not use. */
 
+/** The two resources a screen may lose without the screen itself going. */
+const BOTH: [ResourceName][] = [['races'], ['events']]
+
 /** Serves every resource off disk as usual, except the one named, which fails. */
 function breakResource(name: ResourceName) {
   const real = globalThis.fetch
@@ -22,7 +25,7 @@ function breakResource(name: ResourceName) {
   globalThis.fetch = (async (input: RequestInfo | URL) =>
     String(input).endsWith(`/${name}.json`)
       ? new Response('greska', { status: 500 })
-      : real(input)) as typeof fetch
+      : real(input))
 
   return () => {
     globalThis.fetch = real
@@ -36,7 +39,7 @@ function stallResource(name: ResourceName) {
   globalThis.fetch = (async (input: RequestInfo | URL) =>
     String(input).endsWith(`/${name}.json`)
       ? new Promise<Response>(() => {})
-      : real(input)) as typeof fetch
+      : real(input))
 
   return () => {
     globalThis.fetch = real
@@ -249,7 +252,7 @@ describe('a screen waits only on the data it shows', () => {
     expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
   })
 
-  it.each([['races'], ['events']] as [ResourceName][])(
+  it.each(BOTH)(
     'says %s failed rather than that it is waiting for it',
     async (name) => {
       /* Two different things, and `dataOr` answers the same for both: told to

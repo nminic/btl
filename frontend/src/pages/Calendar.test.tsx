@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
-import { first, must } from '../test/at'
+import { first, htmlElement, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -101,7 +101,7 @@ describe('Calendar', () => {
     /* The column is handed to CSS as a value, never written on the element:
        written on it, the day was placed in column six on a telephone too, where
        there is no seven column grid, and the implicit grid grew to hold it. */
-    const opening = first(days) as HTMLElement
+    const opening = htmlElement(first(days))
     expect(opening.style.gridColumnStart).toBe('')
     expect(opening.style.getPropertyValue('--day-start')).toBe('6')
     expect(opening).toHaveClass('day--first')

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { at } from '../test/at'
+import { at, inputElement } from '../test/at'
 import { setupUser } from '../test/user'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -93,7 +93,7 @@ describe('a rating being given', () => {
   it('marks the one that was chosen, and only it', () => {
     draw(<Stars name="ambience" label="Ambijent" value={4} onChange={() => undefined} />)
 
-    const chosen = screen.getAllByRole('radio').filter((one) => (one as HTMLInputElement).checked)
+    const chosen = screen.getAllByRole('radio').filter((one) => inputElement(one).checked)
 
     expect(chosen).toHaveLength(1)
     expect(chosen[0]).toHaveAttribute('value', '4')

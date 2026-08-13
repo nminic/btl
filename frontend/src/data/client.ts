@@ -49,7 +49,7 @@ async function request<T>(name: ResourceName): Promise<T> {
     throw new Error(`Cannot load ${name}: ${response.status}`)
   }
 
-  return (await response.json()) as T
+  return await response.json()
 }
 
 /* One request per resource per visit. Without this every screen change fetches
@@ -71,10 +71,24 @@ const inFlight = new Map<ResourceName, Promise<unknown>>()
  * first paint. */
 const arrived = new Map<ResourceName, unknown>()
 
+/*
+ * The two assertions below are the only ones left under `src/` (ADL A14 bans
+ * them, and the linter now refuses them everywhere else).
+ *
+ * They are here because the two caches are one store holding twelve different
+ * shapes, keyed by name, and what a name is worth is decided by the caller.
+ * TypeScript has no way to say that: a map's value type is one type, so what
+ * comes back out is `unknown` and the caller's `T` has to be put back on it.
+ *
+ * Not written round with `any`, which would let the same claim through in
+ * silence. Left visible, named, and refused by default, so the day the backend
+ * arrives and the shapes are known by name this is the place that changes.
+ */
 export function loadResource<T>(name: ResourceName): Promise<T> {
   const cached = inFlight.get(name)
 
   if (cached !== undefined) {
+    // oxlint-disable-next-line typescript/consistent-type-assertions
     return cached as Promise<T>
   }
 
@@ -91,7 +105,7 @@ export function loadResource<T>(name: ResourceName): Promise<T> {
 
   inFlight.set(name, promise)
 
-  return promise as Promise<T>
+  return promise
 }
 
 /**
@@ -103,6 +117,7 @@ export function loadResource<T>(name: ResourceName): Promise<T> {
 export function arrivedResource<T>(name: ResourceName): T | undefined {
   const known = arrived.get(name)
 
+  // oxlint-disable-next-line typescript/consistent-type-assertions
   return known === undefined ? undefined : (known as T)
 }
 

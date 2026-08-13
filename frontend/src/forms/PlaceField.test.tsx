@@ -35,7 +35,7 @@ function servingTheCodebook() {
   globalThis.fetch = (async (input: RequestInfo | URL) =>
     String(input).endsWith('/places.json')
       ? new Response(JSON.stringify(CODEBOOK), { status: 200 })
-      : real(input)) as typeof fetch
+      : real(input))
 
   return () => {
     globalThis.fetch = real
@@ -527,7 +527,7 @@ describe('the town on a form', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/places.json')
         ? new Response('', { status: 500 })
-        : real(input)) as typeof fetch
+        : real(input))
 
     const user = setupUser()
     const { box } = renderField()

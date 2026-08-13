@@ -78,10 +78,15 @@ export function awardsOf(
          is not this change to make. */
       const category = categoryOfMember(competitor, season)
 
-      return [
-        { kind: 'overall' as AwardKind, category: '', code: undefined },
-        { kind: 'category' as AwardKind, category, code: category },
-      ].flatMap(({ kind, category: band, code }) => {
+      /* The two boards one season is stood on, named rather than written into
+         the loop, because the list is what says `kind` holds an award kind and
+         not merely a word. */
+      const boards: { kind: AwardKind; category: string; code: string | undefined }[] = [
+        { kind: 'overall', category: '', code: undefined },
+        { kind: 'category', category, code: category },
+      ]
+
+      return boards.flatMap(({ kind, category: band, code }) => {
         const row = rankingFor(competitors, inSeason, {
           season,
           gender: competitor.gender,

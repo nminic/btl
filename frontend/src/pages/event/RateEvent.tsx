@@ -12,10 +12,9 @@ import {
   useResults,
 } from '../../data/useResource'
 import { ran } from './ran'
-import prijava from '../../forms/definitions/prijava-sa-trke.form.json'
+import { prijava } from '../../forms/definitions'
 import { LongBox } from '../../forms/LongBox'
 import { limitOf } from '../../forms/records'
-import type { FormDef } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from '../member/SignedOut'
@@ -187,7 +186,7 @@ function RateOne() {
                   <LongBox
                     id="comment"
                     value={comment}
-                    maxLength={limitOf(prijava as FormDef, 'comment')}
+                    maxLength={limitOf(prijava, 'comment')}
                     leftId="comment-left"
                     aria-describedby="comment-hint comment-left"
                     onChange={setComment}

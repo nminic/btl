@@ -1,17 +1,17 @@
 import { fieldDate } from '../../forms/dateField'
-import clan from '../../forms/definitions/admin-clan.form.json'
-import dogadjaj from '../../forms/definitions/admin-dogadjaj.form.json'
-import liga from '../../forms/definitions/admin-liga.form.json'
-import cena from '../../forms/definitions/admin-cena.form.json'
-import moderator from '../../forms/definitions/admin-moderator.form.json'
-import strana from '../../forms/definitions/admin-strana.form.json'
-import tim from '../../forms/definitions/admin-tim.form.json'
-import trka from '../../forms/definitions/admin-trka.form.json'
+import { clan } from '../../forms/definitions'
+import { dogadjaj } from '../../forms/definitions'
+import { liga } from '../../forms/definitions'
+import { cena } from '../../forms/definitions'
+import { moderator } from '../../forms/definitions'
+import { strana } from '../../forms/definitions'
+import { tim } from '../../forms/definitions'
+import { trka } from '../../forms/definitions'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
 import { isoDate } from '../../forms/dateField'
 import { slugify } from '../rulebookToc'
-import { applyChanges, recordValue } from '../../forms/records'
+import { applyChanges, fieldValue, recordValue } from '../../forms/records'
 import type { DerivedField, FieldDef, FieldError, FormDef, FormValues } from '../../forms/types'
 import type { Created, Creations, Deletions, Edits } from '../../session/context'
 
@@ -125,7 +125,7 @@ export const MEMBERS: EntityDef = {
   id: 'members',
   labelKey: 'admin.members',
   path: 'administracija/clanovi',
-  form: clan as FormDef,
+  form: clan,
   idField: 'memberNumber',
   handsOutIdentity: nextMemberNumber,
   blank: { teamId: null, active: true },
@@ -135,7 +135,7 @@ export const EVENTS: EntityDef = {
   id: 'events',
   labelKey: 'admin.events',
   path: 'administracija/dogadjaji',
-  form: dogadjaj as FormDef,
+  form: dogadjaj,
   idField: 'id',
   /* An event entered by hand came out of nothing, and says so. Without this the
      field was simply missing from the record while the type promised a string,
@@ -350,7 +350,7 @@ export const RACES: EntityDef = {
      entity rather than the part that happens to be used today. */
   labelKey: 'admin.races',
   path: 'administracija/trke',
-  form: trka as FormDef,
+  form: trka,
   idField: 'id',
   blank: {},
   derived: categoryFrom,
@@ -398,7 +398,7 @@ export const TEAMS: EntityDef = {
   id: 'teams',
   labelKey: 'admin.teams',
   path: 'administracija/timovi',
-  form: tim as FormDef,
+  form: tim,
   idField: 'id',
   /* What the form does not ask for but every team carries. A screen reads
      `team.bio` and splits it into paragraphs, so a team made without one is a
@@ -436,7 +436,7 @@ export const LEAGUES: EntityDef = {
   id: 'leagues',
   labelKey: 'admin.leagues',
   path: 'administracija/lige',
-  form: liga as FormDef,
+  form: liga,
   idField: 'id',
   /* No address here: the form asks for one, and an empty default is exactly what
      left a league answering at /liga/ (PENDING, 10.08.2026). */
@@ -451,7 +451,7 @@ export const PRICING: EntityDef = {
   id: 'pricing',
   labelKey: 'admin.pricing',
   path: 'administracija/cenovnik',
-  form: cena as FormDef,
+  form: cena,
   idField: 'key',
   fixed: true,
   blank: {},
@@ -464,7 +464,7 @@ export const PAGES: EntityDef = {
   id: 'pages',
   labelKey: 'admin.pages',
   path: 'administracija/strane',
-  form: strana as FormDef,
+  form: strana,
   idField: 'slug',
   blank: { sectionCount: 1 },
 }
@@ -489,7 +489,7 @@ export const MODERATORS: EntityDef = {
   labelKey: 'admin.moderators',
   path: 'administracija/moderatori',
   superadminOnly: true,
-  form: moderator as FormDef,
+  form: moderator,
   idField: 'id',
   blank: { rights: [] },
 }
@@ -699,15 +699,22 @@ export type Overlay = { edits: Edits; creations: Creations; deletions: Deletions
  * The cast is the one place the prototype admits it has no database. A created
  * record is built out of a form definition and a table of defaults, so nothing
  * can prove its shape at compile time; the tests prove it at run time instead.
+ *
+ * ADL A14 bans assertions and the linter refuses them, so this one is refused
+ * by name rather than left to pass unnoticed. What takes it away is a backend
+ * that answers with records of a known shape, not a rewrite here: any other
+ * spelling of it (`any`, a hand-written type guard) makes the same claim with
+ * less said.
  */
 export function recordsOf<T extends object>(
   entity: EntityDef,
   base: T[],
   { edits, creations, deletions }: Overlay,
 ): T[] {
+  // oxlint-disable-next-line typescript/consistent-type-assertions
   const made = (creations[entity.id] ?? []).map((one) => recordFrom(entity, one) as T)
   const gone = deletions[entity.id] ?? []
-  const identity = (one: T) => String((one as Record<string, unknown>)[entity.idField])
+  const identity = (one: T) => String(fieldValue(one, entity.idField))
 
   /* Deletions are read past the generated records only. What was entered during
      this visit is dropped when it is deleted (SessionProvider), so it is never

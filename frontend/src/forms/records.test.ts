@@ -1,6 +1,6 @@
 import { must } from '../test/at'
 import { fieldDate, isoDate } from './dateField'
-import registracija from './definitions/registracija.form.json'
+import { registracija } from './definitions'
 import {
   applyChanges,
   limitOf,
@@ -245,14 +245,14 @@ describe('the limit a field carries in its definition', () => {
   /* Read rather than written out beside each of the two boxes that are edited
      outside a form, so the limit is one number in one file. */
   it('is the number in the definition', () => {
-    expect(limitOf(registracija as FormDef, 'bio')).toBe(360)
+    expect(limitOf(registracija, 'bio')).toBe(360)
   })
 
   it('refuses a name that is not a field with a limit, rather than taking the cap off', () => {
     /* Returning undefined would leave the box with no `maxLength` at all, which
        is the thing the caller asked for the number to prevent. */
-    expect(() => limitOf(registracija as FormDef, 'nema-ovoga')).toThrow(/no field/)
-    expect(() => limitOf(registracija as FormDef, 'pol')).toThrow(/length limit/)
+    expect(() => limitOf(registracija, 'nema-ovoga')).toThrow(/no field/)
+    expect(() => limitOf(registracija, 'pol')).toThrow(/length limit/)
   })
 })
 
