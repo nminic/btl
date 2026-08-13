@@ -72,22 +72,28 @@ const INSIDE_THE_BOX = /(?<![\w-])table-scroll(?![\w-])[^<>]*[^/<>]>[\s{}]*$/
  */
 const CLIPPED = /visually-hidden/
 
-/** Every component under `src`, the tests left out along with the helpers they
- *  are built from: a table written for a test is not a table the portal draws,
- *  whether it is written in a `.test.` file or in `src/test` beside it. */
-function components(dir = SRC, prefix = ''): { path: string; code: string }[] {
+/** Every file under `src` that the portal is built from, the tests left out
+ *  along with the helpers they are built from: a table written for a test is not
+ *  a table the portal draws, whether it is written in a `.test.` file or in
+ *  `src/test` beside it. */
+function sources(dir = SRC, prefix = ''): { path: string; code: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const at = join(dir, entry.name)
     const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
 
     if (entry.isDirectory()) {
-      return entry.name === 'test' ? [] : components(at, name)
+      return entry.name === 'test' ? [] : sources(at, name)
     }
 
-    return entry.name.endsWith('.tsx') && !entry.name.includes('.test.')
+    return /\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')
       ? [{ path: name, code: readFileSync(at, 'utf-8') }]
       : []
   })
+}
+
+/** Of those, the ones that draw something. */
+function components(): { path: string; code: string }[] {
+  return sources().filter((one) => one.path.endsWith('.tsx'))
 }
 
 /**
@@ -154,6 +160,20 @@ function sheetsOf(at: string, code: string, seen = new Set<string>()): Set<strin
 
 /** The sheet this file is about. */
 const TABLE = join(SRC, 'styles', 'table.css')
+
+/**
+ * Where one of its names is written and is not a class.
+ *
+ * The portal has a screen whose route is called `table`, and a route id is a
+ * word in a table of routes rather than a name worn by anything
+ * (`{ id: 'table', labelKey: 'nav.table', path: 'tabela' }`). Nothing tells the
+ * two apart from the outside: both are the same five letters, written whole,
+ * inside a string.
+ *
+ * By path, since the reason is about this one line and not about a shape a
+ * second file could have. A list of one that grows is a list worth reading.
+ */
+const NOT_A_CLASS = ['app/routes.ts']
 
 /** Every class name it defines. */
 const defined = new Set(
@@ -254,7 +274,7 @@ describe('the box the tables sit in', () => {
     expect(bare(readFileSync(TABLE, 'utf-8'))).toMatch(/\.table-scroll\s*\{[^}]*overflow-x:\s*auto/)
   })
 
-  it('is asked for by every component that wears a name from it', () => {
+  it('is asked for by every file that writes a name from it', () => {
     /* Nothing breaks today where it is not asked for: the portal builds one
        stylesheet with no code splitting, so every rule in it is on every screen
        no matter who asked. This is about the source rather than the artefact. A
@@ -270,13 +290,20 @@ describe('the box the tables sit in', () => {
        is not enough for the sheet, which also holds the five colours of the race
        length dots, and the three screens that draw a dot draw no table at all.
 
+       Every file, not every component. Two of these names are not written in
+       any markup: `mine.ts` and `podium.ts` each hold a mark that three or four
+       screens draw the same way, and a name handed out by a module is a name
+       that module knows and its callers do not.
+
        It was written for the matrix of moderator rights, which reached the sheet
        through Member.css and Profile.css, there for the entity list beside it
-       and not for the matrix. Five more were found the same way afterwards,
+       and not for the matrix. Seven more were found the same way afterwards,
        which is why it is asked of all of them rather than of the one. */
-    const wearing = components().filter((one) => names(one.code).some((name) => defined.has(name)))
+    const wearing = sources()
+      .filter((one) => !NOT_A_CLASS.includes(one.path))
+      .filter((one) => names(one.code).some((name) => defined.has(name)))
 
-    /* Twenty-five today, and a floor rather than the number: a screen with a
+    /* Twenty-seven today, and a floor rather than the number: a screen with a
        table on it is an ordinary thing to add, and this test is not about how
        many there are. */
     expect(wearing.length).toBeGreaterThan(20)

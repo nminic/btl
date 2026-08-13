@@ -14,6 +14,11 @@
  * number nobody has: absence here means the portal is being read by a visitor,
  * and the difference decides whether any row is marked at all.
  */
+/* For the rule behind the name below, which is this module's business: the name
+   is handed out from here, and the screens that draw it never learn where it
+   comes from (ADL A7). */
+import '../styles/table.css'
+
 export const MINE = 'table__mine'
 
 /**
