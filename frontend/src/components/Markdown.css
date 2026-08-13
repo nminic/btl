@@ -132,7 +132,48 @@
    gives. It is gone rather than raised: every cell on the portal starts at the
    top of its row, and that is one decision held in one place (ADL A7,
    styles/table.css). A written table has no reason to hold its own copy, and a
-   copy is the thing that quietly disagrees later. */
+   copy is the thing that quietly disagrees later. *//* And the head of a written table reads like the document it stands in, not like
+   the head of a ranking table (owner, 14.08.2026: „kao običan tekst dokumenta").
+ *
+ * The shared sheet dresses `th` for a standing, where a column heading is a
+ * three letter label over a column of numbers and the eye wants it small and out
+ * of the way: 11.2px, capitals, letter-spaced, and never wrapping. On a written
+ * page the heading is a phrase somebody wrote, „Zašto ga obrađujemo", and all
+ * four of those work against it. Capitals are the slowest thing on the page to
+ * read, 11.2px under a 16px paragraph reads as a footnote over the text it
+ * heads, and `nowrap` is not a matter of taste at all: it is what makes the
+ * table wider than the telephone.
+ *
+ * Measured on the privacy policy at 360px, in a box of 328, on all four of its
+ * four column tables. Dressed as a standing they want 417, 452, 413 and 435;
+ * read as sentences they want 342, 416, 338 and 394. So each is 19 to 75 pixels
+ * narrower, which is worth having, and **none of them fits**: 14, 88, 10 and 66
+ * pixels still have to be scrolled past.
+ *
+ * An earlier note here claimed 480 falling to 348 with 20 left over. None of
+ * those three numbers reproduces, and the claim mattered because it said the
+ * problem was solved. What holds the remaining width is not the head at all but
+ * the longest word in the body: the columns come to 106+109+121+80 = 416 against
+ * „Predstavljanje,", „administracije", „podrazumevano". Making the scrolling
+ * actually go is a separate piece of work on the body, and it is written down
+ * rather than implied (ADL A7, and PDL P24 for what the rule asks).
+ *
+ * The heading stays bold, because bold is how a document says heading;
+ * everything else goes back to being text.
+ *
+ * Two classes and two elements, (0,2,2), against the shared (0,1,1), for the
+ * reason the block above gives. */
+.table.markdown__table thead th {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  /* The colour of the words, not of the muted labels around a standing: a
+     heading that is quieter than the rows under it is a heading upside down. */
+  color: var(--text);
+  /* The one that costs the pixels. A phrase is allowed its second line. */
+  white-space: normal;
+}
 
 /* The row of a written table is prose, so it is set a little tighter than a row
    of numbers. `padding-block` alone lost to the shared `padding` shorthand,
