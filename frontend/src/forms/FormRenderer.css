@@ -25,7 +25,7 @@
   align-items: start;
 }
 
-@media (min-width: 820px) {
+@media (min-width: 51.25em) {
   /* A form laid out in rows is as wide as those rows need.
    *
      The plain width above is right for one field to a line: a box wider than it

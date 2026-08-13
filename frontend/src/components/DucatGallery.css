@@ -28,7 +28,7 @@
   --ducat-art-size: clamp(7.5rem, 22vw, 11rem);
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .ducats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -38,7 +38,7 @@
    the portal already changes shape at (styles/scale.test.ts): 560 is where a
    telephone stops being a telephone, and 780 is where the wide layout begins,
    which is also the first width at which three coins and their cards fit. */
-@media (min-width: 780px) {
+@media (min-width: 48.75em) {
   .ducats {
     grid-template-columns: repeat(3, 1fr);
   }

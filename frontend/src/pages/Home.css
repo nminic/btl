@@ -44,7 +44,7 @@
   align-items: stretch;
 }
 
-@media (min-width: 560px) {
+@media (min-width: 35em) {
   .home__boards {
     grid-template-columns: 1fr 1fr;
   }
@@ -59,7 +59,7 @@
    from 1,64px to 1,0px. It still holds, and it is thinner than it was.
    Narrowing the faces instead would make ten of them unreadable, which is what
    the phone rule already does by dropping four. */
-@media (min-width: 860px) {
+@media (min-width: 53.75em) {
   .home__split {
     grid-template-columns: 2fr 1fr;
     grid-template-areas:

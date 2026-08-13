@@ -34,7 +34,7 @@
   margin-top: var(--space-4);
 }
 
-@media (min-width: 700px) {
+@media (min-width: 43.75em) {
   .leagues__list {
     grid-template-columns: 1fr 1fr;
   }

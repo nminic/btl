@@ -108,6 +108,69 @@ const ALLOWED = new Map([
   ],
 ])
 
+/**
+ * Every way of asking a stylesheet about a width, in either syntax.
+ *
+ * The old form spells it `(min-width: 35em)` and the one that replaced it spells
+ * the same question `(width >= 35em)`. Both are read, because a guard that knows
+ * one spelling is a guard somebody steps around without meaning to.
+ */
+const WIDTH = /\(\s*(?:(?:min|max)-width\s*:\s*|width\s*[<>]=?\s*)([\d.]+)([a-z]+)\s*\)/g
+
+/**
+ * The width queries that stay in pixels, keyed by sheet and by the width in
+ * pixels, each with what it takes away.
+ *
+ * Everything else is in em, so that the width the portal changes shape at moves
+ * with the text the reader asked for. They were all in px until 13.08.2026, on a
+ * reason that was the wrong way round: that a breakpoint in em would move with
+ * the reader's text size while every other width here does not. Every other
+ * width here does. The spacing scale is rem on purpose, "so that somebody who
+ * has made their text bigger gets bigger gaps" (tokens.css), and so are the
+ * widths the breakpoints are picked from. The breakpoint alone stood still, so
+ * at enlarged text it stopped describing what it was picked for: 900 was picked
+ * because sixteen columns of checkboxes fit in it beside a twelve rem column of
+ * names, and at 200 per cent that content wants about 1800 while the query still
+ * said 1280 would do.
+ *
+ * These four are the other case. In em, at 200 per cent text, a 1280 desktop
+ * counts as 640, so each of them would take something off a screen with room for
+ * it, for no reason but that the reader made the letters bigger. That is what
+ * WCAG 2.2 SC 1.4.4 is about, and PDL P24 settled the same question the same way
+ * on 12.08.2026: at enlarged text the table on a profile scrolls inside its box
+ * rather than losing the name of the race.
+ *
+ * Taking away is not always `display: none`, which is the whole reason two of
+ * these four were nearly missed: a column narrowed onto an ellipsis loses just
+ * as many letters as one that is not drawn. The test below this one reads for
+ * that shape rather than for the declaration.
+ *
+ * A hidden control is not content taken away, which is why five sheets hide
+ * something behind a query that is in em: the button that folds the navigation,
+ * the three that fold a panel open, and the words beside each checkbox in the
+ * rights matrix. What goes there is a control whose whole job is to reach a
+ * layout that is now on the screen anyway, or a label the column heading now
+ * carries.
+ */
+const IN_PIXELS = new Map([
+  [
+    'components/ColumnChart.css 559.98',
+    'drops the seventh column of the chart and everything past it',
+  ],
+  [
+    'styles/table.css 699.98',
+    'drops the columns marked `table__hide-phone`, which is what the row holds',
+  ],
+  [
+    'pages/Profile.css 699.98',
+    'cuts the name of a race to an ellipsis (PDL P24, 12.08.2026, says this table scrolls instead)',
+  ],
+  [
+    'pages/league/League.css 699.98',
+    'cuts a competitor name and a race name to an ellipsis, both already clipped above',
+  ],
+])
+
 describe('space and corners are chosen from the scale, not typed', () => {
   const sheets = stylesheets().filter((one) => one.path !== 'styles/tokens.css')
 
@@ -191,40 +254,60 @@ describe('space and corners are chosen from the scale, not typed', () => {
      * space all used to slip past a stricter one. */
     const widths: string[] = []
 
+    const seen: string[] = []
+
     for (const sheet of sheets) {
       /* Only `@media`. A container query asks the same question of a box rather
          than of the window, so its widths are a property of one component and
-         not a place where the portal changes shape. */
-      const queries = [...sheet.css.matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '')
+         not a place where the portal changes shape.
+       *
+       * Read with the comments blanked out. A query explained in prose is not a
+       * query: the note above the container query in TopBoards.css says why it
+       * is not an `@media` one, and saying so made this guard count a width the
+       * sheet does not have and fail on a sentence. */
+      const conditions = [...unremarked(sheet.css).matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '').join(' ')
+      const found = [...conditions.matchAll(WIDTH)]
 
-      for (const query of queries.join(' ').matchAll(/\(\s*(?:min|max)-width\s*:\s*([\d.]+)([a-z]+)\s*\)/g)) {
-        /* In pixels, for now, and the reason first written here was the wrong
-           way round.
-         *
-         * It said a breakpoint in em would move with the reader's text size
-         * while every other width here does not. Every other width here does:
-         * the spacing scale below is in rem on purpose, "so that somebody who
-         * has made their text bigger gets bigger gaps" (tokens.css), and so are
-         * the widths the breakpoints are chosen from. It is the breakpoint alone
-         * that stands still, which means that at enlarged text it stops
-         * describing the thing it was picked for. The rights matrix is what
-         * showed it: 900 was picked because sixteen columns of checkboxes fit in
-         * it beside a twelve rem column of names, and at 200 per cent text that
-         * content needs about 1800 while the query still says 1280 will do
-         * (measured 13.08.2026, fixed there with a scroll box).
-         *
-         * The rule is kept anyway, because converting is a decision per
-         * breakpoint rather than one decision. A breakpoint that changes shape
-         * may go to em: the matrix would fall back to its card layout, which
-         * shows the same sixteen rights and scrolls nowhere. A breakpoint that
-         * takes content away may not: `.table__hide-phone` at 699.98 would, in
-         * em, drop columns on a 1280 desktop the moment the text is enlarged,
-         * which is losing content for the reader who asked for bigger text
-         * (WCAG 2.2 SC 1.4.4). Open in ADL, beside the typographic scale. */
-        expect(query[2], `${sheet.path} sets a breakpoint in ${query[2]}`).toBe('px')
-        widths.push(at(query, 1))
+      /* Every way of asking about a width, or the guard is a guard against one
+         spelling. `@media (width >= 25em)` is the same question in the syntax
+         that replaced this one, and it used to walk straight past: no unit
+         checked, no width checked, and a breakpoint off the scale below with
+         nothing said. Counted rather than matched loosely, so the next spelling
+         that arrives fails here instead of being waved through. */
+      expect(
+        found.length,
+        `${sheet.path} asks about a width in a way this guard cannot read`,
+      ).toBe((conditions.match(/width/g) ?? []).length)
+
+      for (const query of found) {
+        /* Read as pixels whichever unit it is written in. Sixteen is the initial
+           font size, which is what a width query in em is measured against: not
+           the root font size, which a stylesheet can set, but the one the
+           reader's browser starts from. */
+        const written = Number(query[1])
+        const unit = query[2]
+        const at = Math.round((unit === 'em' ? written * 16 : written) * 1e5) / 1e5
+        const key = `${sheet.path} ${at}`
+        const wanted = IN_PIXELS.has(key) ? 'px' : 'em'
+
+        expect(unit, `${sheet.path} sets the breakpoint at ${at} in ${unit}`).toBe(wanted)
+
+        if (wanted === 'px') {
+          seen.push(key)
+        }
+
+        widths.push(String(at))
       }
     }
+
+    /* And every exception is a live one. Keyed by sheet and width rather than by
+       sheet, because three of those four sheets hold other queries that only
+       change shape and are in em like everything else; keyed by sheet alone, one
+       exception would have dragged all of Profile.css back to pixels. Checked
+       for rather than assumed, so that deleting the query leaves the reason
+       written here failing instead of standing as documentation for a rule that
+       is no longer anywhere. */
+    expect(seen.sort()).toEqual([...IN_PIXELS.keys()].sort())
 
     expect([...new Set(widths)].map(Number).sort((left, right) => left - right)).toEqual([
       // A telephone stops being a telephone. Its other half, so the two do not
@@ -232,11 +315,124 @@ describe('space and corners are chosen from the scale, not typed', () => {
       559.98, 560,
       // A narrow window, where a table gives up its columns. Same, and its half.
       620, 699.98, 700,
-      // The wide layout, and the navigation stops folding away. 819 is its half.
-      780, 819, 820,
+      // The wide layout, and the navigation stops folding away, with its half.
+      780, 819.98, 820,
       // Set by their own content, each said where it is written: the front page
       // at 860, the rights table and the Top liste at 900.
       860, 900, 1000,
     ])
   })
+
+  /**
+   * And nothing goes off the screen behind a query that moves with the text.
+   *
+   * The sorting above is a judgement, and it was made by hand and made wrong
+   * twice: the first pass looked for `display: none` and nothing else, so two
+   * queries that narrow a column onto an ellipsis went into em, where at 200 per
+   * cent text they would have cut the name of a race off a 1280 screen. An
+   * independent read caught them. This is that read, mechanised, so the next one
+   * is caught by the suite instead of by luck.
+   *
+   * Two shapes count as taking something away. One is a declaration that removes
+   * it outright, `display: none` and its neighbours. The other is a width put on
+   * a box that is clipped somewhere else in the same sheet, which is how the two
+   * that were missed were written: the ellipsis is in the base rule and the
+   * query only makes the column narrower.
+   *
+   * Everything found has to be named below with a reason, and the reason has to
+   * be that nothing readable stops being readable.
+   */
+  it('takes nothing off the screen behind a width that moves with the text', () => {
+    /* Read by the value and not by the property, because the same property
+       undoes what it does: the half of a label swap that puts the short name
+       back on the screen says `clip-path: none`, and a rule that reveals is not
+       a rule that takes away.
+     *
+     * The look-ahead sits against the colon with no `\s*` in front of it. Given
+       one, the engine backtracks the space away, asks "is `none` here?" at the
+       space instead of at the word, is told no, and every `clip-path: none` on
+       the portal reads as a rule that hides something. */
+    const TAKING_AWAY =
+      /display\s*:\s*none|visibility\s*:\s*hidden|clip-path\s*:(?!\s*none\b)|overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis/
+    /* A measured width, not `auto`: the reveal half of a label swap says
+       `width: auto`, which is the opposite of narrowing a column. */
+    const NARROWS = /(?:max-)?(?:inline-size|width)\s*:\s*[\d.]/
+    const CLIPS = /overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis/
+
+    /* Read as `sheet selector`, each with why it costs the reader nothing. */
+    const ALLOWED_TO_HIDE = new Map([
+      ['app/Shell.css .shell__menu-button', 'the button that opens the navigation, which is now on the screen'],
+      ['pages/admin/SectionNav.css .adminsection__toggle', 'the control that opens a panel that is now open'],
+      ['pages/admin/Verification.css .pending__toggle', 'the same, on the queue of things to verify'],
+      ['pages/Rulebook.css .rulebook__toggle', 'the same, on the table of contents'],
+      ['pages/admin/Rights.css .rights__inline', 'the words beside a checkbox, which the column heading now carries and which are aria-hidden either way'],
+      ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
+    ])
+
+    const taken: string[] = []
+
+    for (const sheet of sheets) {
+      /* Comments blanked, here as above: a note explaining why a column is cut
+         is not a rule that cuts one. */
+      const css = unremarked(sheet.css)
+
+      /* What this sheet clips wherever it says so, for the second shape. */
+      const clipped = new Set(
+        [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+          .filter((rule) => CLIPS.test(rule[2] ?? ''))
+          .map((rule) => (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')),
+      )
+
+      for (const query of css.matchAll(/@media([^{]*)\{/g)) {
+        const at = query.index + query[0].length
+
+        if (![...(query[1] ?? '').matchAll(WIDTH)].some((one) => one[2] === 'em')) {
+          continue
+        }
+
+        for (const rule of sheet.css.slice(at, closes(css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+          const selector = (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')
+          const body = rule[2] ?? ''
+
+          if (TAKING_AWAY.test(body) || (NARROWS.test(body) && clipped.has(selector))) {
+            taken.push(`${sheet.path} ${selector}`)
+          }
+        }
+      }
+    }
+
+    expect([...new Set(taken)].filter((one) => !ALLOWED_TO_HIDE.has(one))).toEqual([])
+  })
 })
+
+/**
+ * A copy of the stylesheet with the inside of every comment blanked out, and the
+ * same length as what went in, so a position in it is a position in the original.
+ *
+ * Every sheet here explains itself, and the explanations name the very things
+ * these guards read for. A comment saying why one query is not an `@media` one
+ * is not an `@media` query, and a comment about `display: none` hides nothing.
+ */
+function unremarked(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+}
+
+/** Where the block that opens at `at` closes, counted rather than searched for:
+ *  the first `}` after a media query ends the first rule inside it. */
+function closes(css: string, at: number): number {
+  let depth = 1
+
+  for (let index = at; index < css.length; index += 1) {
+    if (css[index] === '{') {
+      depth += 1
+    } else if (css[index] === '}') {
+      depth -= 1
+
+      if (depth === 0) {
+        return index
+      }
+    }
+  }
+
+  throw new Error(`the block at ${at} is never closed`)
+}
