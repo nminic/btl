@@ -160,7 +160,7 @@ describe('the matrix, when the text is larger than the table was drawn for', () 
        around half a screen scrolls the half-screen. jsdom lays nothing out, so
        what is checked here is the box and not the pixels; the width itself was
        measured in a browser. */
-    expect(must(table.parentElement, 'box around the matrix').className).toContain('table-scroll')
+    expect(must(table.parentElement, 'box around the matrix')).toHaveClass('table-scroll')
   })
 })
 

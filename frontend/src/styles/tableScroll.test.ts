@@ -6,9 +6,18 @@ import { join } from 'node:path'
  * never has to.
  *
  * That the page never scrolls sideways is one of the few rules written down as a
- * rule (PDL P24, and CLAUDE.md), and the box called `.table-scroll` is the whole
- * of how it is kept: a table wider than the column it sits in scrolls inside its
+ * rule (PDL P24, and CLAUDE.md), and the box called `.table-scroll` is half of
+ * how it is kept: a table wider than the column it sits in scrolls inside its
  * own kerb, and the reader's screen stays where it was.
+ *
+ * The other half is that the box is allowed to be narrower than what is in it.
+ * A flex or grid item is `min-width: auto` by default, which is min-content, so
+ * a box holding a wide table refuses to shrink and the width goes on the page
+ * with `overflow-x: auto` written and doing nothing. The portal already knows
+ * this and says so where it matters (`minmax(0, 1fr)` in TopBoards.css and
+ * SectionNav.css, `min-inline-size: 0` in Rankings.css). This file does not
+ * check that half: it reads markup, and that half is in the stylesheets and in
+ * the shape of the screen around them.
  *
  * The matrix of moderator rights was drawn for a year without one. Nothing said
  * so, because at the default text size sixteen columns of checkboxes do fit in
@@ -41,8 +50,15 @@ const SRC = join(process.cwd(), 'src')
  * a table is a box the table is beside rather than in, and the width of the
  * table goes on the page exactly as if no box had been written at all, so the
  * character before the `>` may not be the slash that closes the tag on itself.
+ *
+ * The name is whole or it is not the name. `no-table-scroll` and
+ * `table-scrollbar` both hold these thirteen letters and neither is this box,
+ * and `\b` does not tell them apart because a dash is already a boundary to a
+ * word. A comment between the box and the table is allowed through, however:
+ * `bare` leaves a blanked one as an empty pair of braces, and a note about why
+ * a table scrolls is exactly the sort of thing written there.
  */
-const INSIDE_THE_BOX = /table-scroll[^<>]*[^/<>]>\s*$/
+const INSIDE_THE_BOX = /(?<![\w-])table-scroll(?![\w-])[^<>]*[^/<>]>[\s{}]*$/
 
 /**
  * The one table that needs no box: one clipped to a single pixel.
@@ -56,15 +72,16 @@ const INSIDE_THE_BOX = /table-scroll[^<>]*[^/<>]>\s*$/
  */
 const CLIPPED = /visually-hidden/
 
-/** Every component under `src`, tests left out: a table written in a test is not
- *  a table the portal draws. */
+/** Every component under `src`, the tests left out along with the helpers they
+ *  are built from: a table written for a test is not a table the portal draws,
+ *  whether it is written in a `.test.` file or in `src/test` beside it. */
 function components(dir = SRC, prefix = ''): { path: string; code: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const at = join(dir, entry.name)
     const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
 
     if (entry.isDirectory()) {
-      return components(at, name)
+      return entry.name === 'test' ? [] : components(at, name)
     }
 
     return entry.name.endsWith('.tsx') && !entry.name.includes('.test.')
@@ -96,7 +113,12 @@ function drawn(): { where: string; tag: string; before: string }[] {
     const text = bare(code)
 
     return [...text.matchAll(/<table\b[^>]*>/g)].map((one) => {
-      const at = one.index ?? 0
+      /* Not `one.index ?? 0`. A match from `matchAll` carries its index, so the
+         fallback is a branch nothing can reach, and were it ever reached it
+         would hand the whole file to the check below as what precedes the
+         table, where some other screen's box could satisfy it. A test is the
+         one place a silent nothing is never the right answer (src/test/at.ts). */
+      const at = one.index
 
       return {
         where: `${path}:${text.slice(0, at).split('\n').length}`,
@@ -127,9 +149,12 @@ describe('every table the portal draws', () => {
   })
 
   it('sits in a box of its own, so a table too wide scrolls and the page does not', () => {
+    /* Said as a sentence rather than as a path. Whoever trips this has almost
+       certainly written a perfectly good screen and is owed the rule, not a
+       line number to go and look up. */
     const loose = all
       .filter((one) => !CLIPPED.test(one.tag) && !INSIDE_THE_BOX.test(one.before))
-      .map((one) => one.where)
+      .map((one) => `${one.where} draws a table with no <div className="table-scroll"> around it`)
 
     expect(loose).toEqual([])
   })
@@ -161,11 +186,18 @@ describe('the box the tables sit in', () => {
   })
 
   it('is asked for by the matrix itself, which draws it without the rest of the screen', () => {
-    /* Rights.css is the sheet that RightsMatrix.tsx brings with it. The screen
-       around it happens to pull table.css in as well, through Member.css and
-       Profile.css, but that is an accident of the other tables on that screen:
-       take the entity list off it and the matrix loses its box without a word
-       being said about the matrix. */
+    /* Rights.css is the sheet that RightsMatrix.tsx brings with it, and the
+       screen around it happens to pull table.css in as well, through Member.css
+       and Profile.css, which are there for the entity list and not for the
+       matrix.
+
+       Nothing breaks today if that goes: the portal builds one stylesheet with
+       no code splitting, so every rule in it is on every screen no matter who
+       asked. This is about the source rather than the artefact. A component that
+       writes a class its own sheet knows nothing about is a component whose
+       styling is somebody else's business to keep, and the day the build splits
+       CSS per route, or the day the entity list moves off this screen, the
+       matrix would lose its box without a word being said about the matrix. */
     expect(readFileSync(join(SRC, 'pages', 'admin', 'Rights.css'), 'utf-8')).toContain(
       "@import '../../styles/table.css'",
     )

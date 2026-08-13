@@ -14,7 +14,16 @@
    than left to whoever renders the screen: the class is used in this file's
    component, so the rule behind it is this file's business. The screen reaches
    it today through Member.css as well, and that is an accident of what else it
-   draws, not a dependency this component should rest on. */
+   draws, not a dependency this component should rest on.
+
+   One import moves table.css in the built stylesheet, which is worth knowing
+   before adding another: the bundler emits it once, at the last sheet that asks
+   for it, so it went eighty-odd rules later, past TopBoards.css and Entity.css.
+   Both builds were compared rule by rule. Nothing changed effect: every other
+   rule that touches a `.table` element either outranks it (`.boards .table th`,
+   `.league__grid tbody td.table__points`) or kept its side of it
+   (`.markdown__table`, and `.moderators` below, which is inside this file and
+   therefore still after the import). */
 @import '../../styles/table.css';
 
 /* The box around the matrix, and the box the matrix scrolls in.
