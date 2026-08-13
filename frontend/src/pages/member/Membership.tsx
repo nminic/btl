@@ -23,7 +23,6 @@ import {
   PROCESSING_FEE_EUR,
   REFERRAL,
   REFERRAL_ROW,
-  type PriceRow,
   juniorInSeason,
   priceOn,
   registrationOpen,
@@ -34,6 +33,7 @@ import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { applyChanges } from '../../forms/records'
+import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -48,19 +48,33 @@ import './Member.css'
 const RECIPIENT = RECIPIENT_NAME
 
 /**
- * What one member brought in is worth, in the currency that member pays in.
+ * An amount in the currency this member pays and is credited in.
  *
- * Serbia pays and is credited in dinars, everyone else in euro, decided by the
- * same country on the profile that decides how the fee itself may be paid, and
- * decided by the same predicate rather than by a second copy of it
- * (data/paymentQr.ts). Two figures side by side would have said „five euro, that
- * is six hundred dinars", which is a conversion, and this list holds no rate:
- * the dinar figure is chosen, not converted (data/pricing.ts).
+ * Serbia in dinars, everyone else in euro, decided by the same country on the
+ * profile that decides how the fee itself may be paid, and by the same predicate
+ * rather than a second copy of it (data/paymentQr.ts). Two figures side by side
+ * would have said „five euro, that is six hundred dinars", which is a
+ * conversion, and this list holds no rate: the dinar figure is chosen, not
+ * converted (data/pricing.ts).
+ *
+ * Used for what a referral brings and for what the fee itself comes to. Written
+ * for the referral alone, the row of the payment slip that carries the amount
+ * was spelled RSD by hand, so a member in North Macedonia read „Iznos 4.800 RSD"
+ * for a debt of 40 EUR, four sections above the same screen saying „5 EUR". It
+ * is the same rule twice, so it is the same function twice.
  */
-function creditOf(country: string, credited: PriceRow, locale: string, times = 1): string {
+function inTheirCurrency(
+  country: string,
+  /* The two amounts and nothing else, because that is all this needs. Asked for
+     a whole `PriceRow`, the junior fee could not be handed to it: it is a price
+     with no period, since it holds „bez obzira na datum". */
+  row: { eur: number; rsd: number },
+  locale: string,
+  times = 1,
+): string {
   return paysInDinars(country)
-    ? `${money(credited.rsd * times, locale)} RSD`
-    : `${money(credited.eur * times, locale)} EUR`
+    ? `${money(row.rsd * times, locale)} RSD`
+    : `${money(row.eur * times, locale)} EUR`
 }
 
 /**
@@ -96,7 +110,8 @@ export function Membership() {
      taken away (owner, 30.07.2026), so of the three things administration can do
      to a record only one can happen here, and asking for the other two left a
      list that could be empty and a default that could never be reached. */
-  const { edits } = useOverlay()
+  const overlay = useOverlay()
+  const { edits } = overlay
   const credited = applyChanges(REFERRAL_ROW, edits[REFERRAL.key])
   const state = combineResources(useCompetitors(), useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
@@ -133,8 +148,14 @@ export function Membership() {
         const price = applyChanges(priceOn(today), edits[priceOn(today).key])
         const junior = applyChanges(JUNIOR, edits[JUNIOR.key])
         /* An honorary member owes nothing at all (Pravilnik član 15, PDL P16),
-           and twenty nine of the thirty members in the data are honorary. */
+           and twenty nine of the thirty two members in the data are honorary. */
         const honorary = me.membershipBasis === 'honorary'
+        /* The members as administration has them, not as the file has them.
+           Counted straight off the file, somebody an administrator had deleted
+           went on earning their referrer six hundred dinars: they were gone from
+           the list of members and still in the sum here. ADL A8 says deleting a
+           record frees the identity from everything, not only from a list. */
+        const members = recordsOf(MEMBERS, competitors, overlay)
         /* What this member actually owes, which is not always what the calendar
            says the fee is. The junior price was on this screen as a sentence and
            nowhere else: the code a member scans carried the adult figure, so
@@ -315,7 +336,7 @@ export function Membership() {
                         reaches. */}
                     <dt>{t('membership.amountLabel')}</dt>
                     <dd>
-                      <strong>{`${money(due.rsd, locale)} RSD`}</strong>
+                      <strong>{inTheirCurrency(me.country, due, locale)}</strong>
                     </dd>
                   </dl>
 
@@ -420,7 +441,7 @@ export function Membership() {
                 {t('membership.referral')}
               </h2>
               <p className="member__note">
-                {t('membership.referralNote', { amount: creditOf(me.country, credited, locale) })}
+                {t('membership.referralNote', { amount: inTheirCurrency(me.country, credited, locale) })}
               </p>
               {/* The code and not the member number. That number is public and
                   consecutive: it is the address of a profile and the sign in
@@ -430,7 +451,7 @@ export function Membership() {
                   it, so a change of domain does not leave this link behind. */}
               <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode}`}</p>
               <p className="membership__balance">
-                <strong>{creditOf(me.country, credited, locale, broughtInBy(me, competitors))}</strong>{' '}
+                <strong>{inTheirCurrency(me.country, credited, locale, broughtInBy(me, members))}</strong>{' '}
                 <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>

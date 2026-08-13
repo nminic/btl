@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { Competitor } from '../data/types'
+import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -34,6 +35,18 @@ const competitors: Competitor[] = JSON.parse(
  * used to take it as a prop, so a test could put it on a day the rest of the
  * portal was not on, and nothing would say so.
  */
+/** And the other thing it does: it deletes a member, the way the list of members
+ *  deletes one. `MEMBERS.id` rather than the word, so the two cannot drift. */
+function Deleting({ memberNumber }: { memberNumber: string }) {
+  const { remove } = useSession()
+
+  return (
+    <button type="button" onClick={() => remove(MEMBERS.id, memberNumber)}>
+      obriši člana
+    </button>
+  )
+}
+
 /** The one thing administration does that this file is about: it changes the
  *  referral amount, the way the price list screen changes it. */
 function Administration({
@@ -250,6 +263,57 @@ describe('membership', () => {
        at all: the only figure a junior could read was the grown one. */
     expect(screen.getByText('2.400 RSD')).toBeVisible()
     expect(screen.getByText(/Danas članarina košta 20 EUR, a iz Srbije 2.400 RSD/)).toBeVisible()
+  })
+
+  it('writes the amount owed in the currency that member pays in', async () => {
+    /* The row carrying the amount was spelled RSD by hand, so a member abroad
+       read „Iznos 4.800 RSD" for a debt of 40 EUR, four sections above the same
+       screen quoting their referral in euro. It is the one figure a bank asks
+       for, and it is the same rule that decides every other amount on the
+       screen: the country on the profile (PDL P8). */
+    renderFor('000010')
+
+    expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+
+    const amount = must(
+      screen.getByText('Iznos').nextElementSibling?.textContent,
+      'the amount beside its label',
+    )
+
+    expect(amount).toMatch(/EUR$/)
+    expect(amount).not.toContain('RSD')
+  })
+
+  it('stops crediting a referral for somebody administration has deleted', async () => {
+    /* The credit was counted straight off the generated file, so a member an
+       administrator had deleted was gone from every list and still in this sum:
+       six hundred dinars a year for somebody who does not exist. ADL A8 says
+       deleting a record frees the identity from everything, not only from a
+       list, and every other screen on the portal reads the same overlay. */
+    const user = setupUser()
+    const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
+    const credited = brought.filter((one) => one.active)
+
+    render(
+      <ClockProvider simulatedDay="2026-11-01">
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000001">
+              <Deleting memberNumber={must(credited[0]?.memberNumber, 'somebody credited')} />
+              <Membership />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    expect(await screen.findByText(`${(credited.length * 600).toLocaleString('sr-Latn')} RSD`)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'obriši člana' }))
+
+    expect(
+      screen.getByText(`${((credited.length - 1) * 600).toLocaleString('sr-Latn')} RSD`),
+    ).toBeVisible()
   })
 
   it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
