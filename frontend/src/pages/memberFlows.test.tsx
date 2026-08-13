@@ -733,7 +733,10 @@ describe('a result from entry to decision', () => {
     await user.click(await screen.findByRole('button', { name: 'Odbij' }))
 
     const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Link ne otvara rezultate.')
     expect(confirm).toBeEnabled()

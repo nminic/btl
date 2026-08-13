@@ -938,7 +938,8 @@
       "choose": "Izaberi PDF izvoda",
       "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radiće server; do tada uplate potvrđuješ ručno.",
       "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen."
-    }
+    },
+    "reasonNeeded": "Upiši razlog da bi mogao da pošalješ."
   },
   "admin": {
     "title": "Administracija",

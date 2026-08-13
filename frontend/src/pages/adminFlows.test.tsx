@@ -746,7 +746,18 @@ describe('the queue of results', () => {
     const reason = screen.getByLabelText('Razlog odbijanja')
 
     await user.type(reason, '   ')
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
+    expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
+    expect(session.decide).not.toHaveBeenCalled()
+
+    /* And pressed, not merely inspected. Reachable means pressable, so the
+       refusal has to live in the handler as well as in the attribute, and
+       without it three spaces go back to the member as a reason. */
+    await user.click(confirm)
+
     expect(session.decide).not.toHaveBeenCalled()
 
     await user.type(reason, 'Vreme se ne poklapa sa zvaničnom listom.  ')
@@ -1294,7 +1305,10 @@ describe('the queue of memberships waiting to be activated', () => {
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
     const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije vidljiva na izvodu.')
@@ -1315,7 +1329,10 @@ describe('the queue of memberships waiting to be activated', () => {
     /* Three spaces are not a reason. The rule is one rule on all seven queues,
        and it is the rule the forms already use (src/forms/validate.ts). */
     await user.type(screen.getByLabelText('Razlog odbijanja'), '   ')
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Izvod ne pokazuje uplatu.   ')
     await user.click(confirm)
@@ -1474,7 +1491,19 @@ describe('the six queues read from the file', () => {
 
       // The rule on these queues: no reason, no sending back.
       await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-      expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeDisabled()
+      /* Told off, not switched off: the button stays reachable so the line saying
+         why it will not go is reachable with it. */
+      const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
+
+      expect(confirm).toHaveAttribute('aria-disabled', 'true')
+      expect(confirm).not.toBeDisabled()
+      expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
+
+      /* Pressed with nothing written, on the box five queues share. Reachable
+         means pressable, so the refusal has to live in the handler too: without
+         it this sends the item back with no reason at all, on all five. */
+      await user.click(confirm)
+
       expect(
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
       ).toBeVisible()
@@ -2193,7 +2222,10 @@ describe('the six queues read from the file', () => {
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
     const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')

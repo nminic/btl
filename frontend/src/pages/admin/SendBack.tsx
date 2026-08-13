@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 
@@ -9,8 +9,11 @@ import { useI18n } from '../../i18n/useI18n'
  * The rule is one rule and it holds everywhere it applies: approving explains
  * itself, and handing work back does not. A member who gets a refusal with no
  * reason writes back to ask, so the reason is not politeness but the cheaper of
- * the two paths. The button stays disabled until something is written, which is
- * why the reason cannot be forgotten rather than merely asked for.
+ * the two paths. The button refuses until something is written, which is why the
+ * reason cannot be forgotten rather than merely asked for. It refuses without
+ * going dead: `disabled` would take it out of the tab order and take the
+ * explanation with it, so it carries `aria-disabled` and points at a line saying
+ * what it is waiting for, exactly as the rest of the portal does.
  *
  * What counts as written is the same everywhere: the text with the spaces taken
  * off it, exactly as the forms decide it (src/forms/validate.ts). A reason of
@@ -80,6 +83,12 @@ export function SendBack({
   const { t } = useI18n()
   const [note, setNote] = useState('')
   const field = useRef<HTMLInputElement>(null)
+  /** Nothing to send back with: the button, the reason beside it and the refusal
+   *  on the press all have to agree about it, so it is worked out once. */
+  const missing = !optional && note.trim() === ''
+  /* Its own id per instance: five queues share this box and two of them draw it
+     inside a table, where a fixed id would be repeated down the rows. */
+  const waitsId = useId()
 
   /* The box has just appeared, usually in place of the button that opened it,
    * so the focus has to come along. Without it the focus stays on an element
@@ -124,11 +133,24 @@ export function SendBack({
         />
       </div>
       <div className="member__links">
+        {/* Told off, not switched off, as everywhere else on the portal
+            (RateEvent, PendingQueue, Pager, GoingToEvent, SignIn): `disabled`
+            takes the control out of the tab order and takes the reason with it.
+            This box is shared by five verification queues, so it is the widest
+            single place the rule was still broken. */}
         <button
           type="button"
           className="button button--primary"
-          disabled={!optional && note.trim() === ''}
-          onClick={() => onConfirm(note.trim())}
+          aria-disabled={missing}
+          aria-describedby={missing ? waitsId : undefined}
+          onClick={() => {
+            /* Reachable means pressable, so the refusal lives here too. */
+            if (missing) {
+              return
+            }
+
+            onConfirm(note.trim())
+          }}
         >
           {t(confirmKey)}
         </button>
@@ -136,6 +158,15 @@ export function SendBack({
           {t('review.cancel')}
         </button>
       </div>
+
+      {/* Why it will not go yet, said where it can be read. Drawn only while it
+          is true, the same as on the rating card: this whole box arrives on a
+          press, so nothing rests on the region being announced as it appears. */}
+      {missing && (
+        <p id={waitsId} className="rate__hint" role="status">
+          {t('review.reasonNeeded')}
+        </p>
+      )}
     </div>
   )
 }
