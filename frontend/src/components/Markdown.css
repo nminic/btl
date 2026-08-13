@@ -104,19 +104,50 @@
 }
 
 /* Written tables are words, not numbers, so every column reads from the left,
-   unlike the ranking tables that table.css is built for. */
-.markdown__table th,
-.markdown__table td {
+   unlike the ranking tables that table.css is built for.
+ *
+ * Written against both classes the table wears, and every rule below needs both.
+ * `.markdown__table th` is one class and one element, (0,1,1), and so is
+ * `.table th`; the tie went to whichever the bundler emitted later, which was
+ * never this file. Measured on the rulebook before the change, on the example
+ * table of nine columns: the first three read from the left only because
+ * `.table th:nth-child(-n + 3)` happens to agree, and **columns four to nine
+ * were right-aligned** under a comment promising the opposite.
+ *
+ * So the weight to beat is not `.table th` at (0,1,1) but that `:nth-child` rule
+ * at (0,2,1), a pseudo-class counting as a class. Naming the element's own two
+ * classes and then `thead`/`tbody` gives (0,2,2), which settles it outright
+ * rather than by whatever order a future import happens to produce. Same shape
+ * as `.league__grid thead th.league__race` in League.css, and the same reason
+ * (ADL A7). */
+.table.markdown__table thead th,
+.table.markdown__table tbody td {
   text-align: left;
+  /* Agrees with the shared sheet rather than argues with it, and is written out
+     so a written table keeps reading across if that ever changes. */
   vertical-align: top;
 }
 
-.markdown__table td {
+/* The row of a written table is prose, so it is set a little tighter than a row
+   of numbers. `padding-block` alone lost to the shared `padding` shorthand,
+   which decides the same two edges under their physical names: measured, the
+   rows came out at the shared 12px rather than the 10 written here. */
+.table.markdown__table tbody td {
   padding-block: var(--space-10);
   font-size: 0.92rem;
   color: var(--text-muted);
 }
 
-.markdown__table tbody tr:hover {
+/* Nothing to point at. A ranking table lights the row under the pointer because
+   the reader is following one competitor across a dozen columns; a written table
+   is read down the page like the prose around it, and a row that lights up
+   invites a click that does not exist.
+ *
+ * Three classes deep because the shared rule is already two classes and two
+ * elements: `.table tbody tr:hover` counts `.table` and `:hover` against `tbody`
+ * and `tr`, so the obvious `.markdown__table tbody tr:hover` merely ties it and
+ * lost by order. Measured with the transition suppressed, the row was painting
+ * `--surface-hover` under the pointer. */
+.table.markdown__table tbody tr:hover {
   background: transparent;
 }
