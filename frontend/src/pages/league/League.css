@@ -107,17 +107,23 @@
  *
  * The row of a competitor is headed by his name, so that cell is a `th` and a
  * screen reader can say whose row a number belongs to. That is right for the ear
- * and, left alone, wrong for the eye: `.table th` puts every heading at 700, and
- * this is the one table on the portal where a name is a heading. Measured
- * against the ranking table, which draws the same names as `td`: there they are
- * 400 and only the position and the points are 700, here every name in the
- * column came out bold.
+ * and, left alone, wrong for the eye: `.table th` dresses every heading, and this
+ * is the one table on the portal where a name is one. It used to say
+ * `font-weight: 400` a class short of that rule and so said nothing at all
+ * (13.08.2026), which is what this line puts back and all it puts back.
  *
- * This block used to say `font-weight: 400` one element short of the shared rule
- * and so said nothing at all (13.08.2026); it is written out here rather than
- * put back where it was, because the two cells wearing this class do not want the
- * same answer. `thead` holds the word above the column, which is a heading like
- * every other heading on the portal and stays bold. */
+ * Only the body. `thead` holds the word above the column, which is a heading like
+ * every other on the portal and stays bold.
+ *
+ * What is deliberately not settled here: the weight is one of four ways this
+ * column is dressed as a heading rather than as a name. Measured against the same
+ * name on the ranking table, where it is a `td`: 11,2px against 16px, uppercase
+ * against none, 0,56px of tracking against none. Undoing all four is what
+ * `.rights__who` does for the same shape of cell, and it is the better end state,
+ * but it is a change to the look of the busiest column on the portal rather than
+ * a rule that never applied. It costs something too: at 360 the column is 7,5rem
+ * and nine of nineteen names are already cut, and at 16px eleven would be. That
+ * is the owner's call, not this commit's (ADL A7). */
 .league__grid tbody th.league__who {
   font-weight: 400;
 }

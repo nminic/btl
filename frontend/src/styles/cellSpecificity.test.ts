@@ -29,14 +29,22 @@ import { at } from '../test/at'
  * those properties on one of those classes to be at least as specific as the
  * shared rule it is arguing with.
  *
- * At least as specific, not more. A tie is settled by source order, and there is
- * one in the tree that is deliberate and documented: `.moderators th` is (0,1,1)
- * exactly like `.table th`, and wins because Rights.css imports the shared sheet
- * above it (`white-space: normal`, measured on the moderators screen). A tie is a
- * rule its author had to think about; losing outright is the fault here. Whoever
- * writes one should know what they are buying: League.css never imports the
- * shared sheet, so a tie written there is settled by where the bundler happens to
- * put a sheet this file has no say over.
+ * Two things this deliberately does not do, both worth knowing before trusting
+ * it further than it goes.
+ *
+ * It does not fail a tie. Equal weight is settled by source order, and a rule
+ * written at the same weight is one its author had to think about; losing
+ * outright is the fault here. Whoever writes a tie should know what they are
+ * buying, because the bundler emits the body of the shared sheet at the last
+ * sheet that asks for it, which is rarely the sheet doing the arguing.
+ *
+ * And it only examines a rule whose last compound carries a class, because that
+ * is the shape a screen writes when it means one of its own columns. A rule
+ * ending in a bare `th` or `td` is never looked at. `.moderators th` is one, and
+ * it is deliberate; `.markdown__table th` is another and is a live defect, since
+ * it ties `.table th` and loses on order, leaving every column past the third of
+ * a written table right-aligned against a comment saying they read from the left.
+ * That one is not this PR's to fix, but it is what the two holes cost together.
  *
  * Read as text, not as a rendered screen. jsdom resolves no cascade across
  * stylesheets, so a test that mounted the grid would agree with whichever rule it
@@ -96,18 +104,30 @@ function rules(code: string): Rule[] {
     const head = at(block, 1)
     const body = at(block, 2)
 
-    /* The head of an at-rule, not of a rule: `@media (...)` opens a block whose
-       contents this same loop reaches on its own. */
-    if (head.trim().startsWith('@')) continue
+    /* An at-rule that ends in a semicolon rather than a block belongs to
+       whatever came before this selector, not to it. `@import` is the one this
+       tree writes, and it has no braces, so the head of the first rule in a
+       sheet that imports anything begins with it. Taking the head whole let
+       `startsWith('@')` fire and threw that rule away: eight sheets lost their
+       first rule, and the sheets that import `table.css` are precisely the ones
+       whose rules argue with it. */
+    const written = head.slice(head.lastIndexOf(';') + 1)
+
+    /* The head of an at-rule with a block, not of a rule. `@media (...)` opens
+       one whose contents this same loop reaches on its own, since a head cannot
+       hold a brace. */
+    if (written.trim().startsWith('@')) continue
 
     found.push({
-      selectors: head.split(',').map((one) => one.trim()).filter(Boolean),
+      selectors: written.split(',').map((one) => one.trim()).filter(Boolean),
       properties: [...body.matchAll(/(?:^|;)\s*([a-z-]+)\s*:/g)].map((one) => at(one, 1)),
       /* Where the selector starts, not where the match does. Everything between
          the previous rule and this one belongs to this match, and a comment
          blanked to spaces is most of it, so the match itself begins a screenful
          too early and every rule in a sheet would be reported on line 1. */
-      line: text.slice(0, block.index + Math.max(head.search(/\S/), 0)).split('\n').length,
+      line: text
+        .slice(0, block.index + head.length - written.length + Math.max(written.search(/\S/), 0))
+        .split('\n').length,
     })
   }
 
@@ -124,7 +144,34 @@ function rules(code: string): Rule[] {
  * `.table th:nth-child(-n + 3)` one weight too many.
  */
 function weight(selector: string): [number, number, number] {
-  let rest = selector
+  /* `:where()` weighs nothing whatever is inside it, and `:is()`, `:not()` and
+     `:has()` weigh exactly what their heaviest argument weighs. Counting them as
+     one class apiece and then counting their contents as well was wrong in the
+     direction that matters: it made a page rule look heavier than it is, which
+     is a rule that loses on the screen and passes here. `.a:where(.b)` came out
+     (0,3,0) against the (0,1,0) it really is.
+
+     One level deep, which is what `[^()]*` allows and what this tree writes. A
+     selector with parentheses inside parentheses would be scored as text and
+     should be given a test of its own on the day somebody writes one. */
+  let rest = selector.replaceAll(/:where\([^()]*\)/g, ' ')
+
+  const inside = [...rest.matchAll(/:(?:is|not|has)\(([^()]*)\)/g)].map((one) =>
+    at(one, 1)
+      .split(',')
+      .map((argument) => weight(argument.trim()))
+      .reduce<[number, number, number]>(
+        (heaviest, one) =>
+          one[0] !== heaviest[0]
+            ? (one[0] > heaviest[0] ? one : heaviest)
+            : one[1] !== heaviest[1]
+              ? (one[1] > heaviest[1] ? one : heaviest)
+              : (one[2] > heaviest[2] ? one : heaviest),
+        [0, 0, 0],
+      ),
+  )
+
+  rest = rest.replaceAll(/:(?:is|not|has)\([^()]*\)/g, ' ')
 
   const take = (pattern: RegExp): number => {
     const hits = rest.match(pattern) ?? []
@@ -136,8 +183,28 @@ function weight(selector: string): [number, number, number] {
   const ids = take(/#[\w-]+/g)
   const elements = take(/::[\w-]+/g)
   const classes = take(/\.[\w-]+/g) + take(/\[[^\]]*\]/g) + take(/:[\w-]+(?:\([^()]*\))?/g)
+  const types = take(/(?:^|[\s>+~])\s*[a-z][\w-]*/g)
 
-  return [ids, classes, elements + take(/(?:^|[\s>+~])\s*[a-z][\w-]*/g)]
+  return inside.reduce<[number, number, number]>(
+    (total, one) => [total[0] + one[0], total[1] + one[1], total[2] + one[2]],
+    [ids, classes, elements + types],
+  )
+}
+
+/**
+ * The property a declaration is arguing over.
+ *
+ * Two names for one edge of one box are one argument. `.table th { padding }`
+ * decides `padding-block` as well, and `border-bottom` and `border-block-end`
+ * are the same line drawn by the logical name and the physical one. Compared as
+ * written, `.league__who { padding-block: 0 }` is a real loss that reads here as
+ * a property the shared sheet never mentions, and this tree already writes
+ * `padding-inline` and `border-block-end` on cells.
+ */
+function family(property: string): string {
+  return property
+    .replaceAll(/-(?:block|inline)(?:-(?:start|end))?\b/g, '')
+    .replaceAll(/-(?:top|right|bottom|left)\b/g, '')
 }
 
 /** Whether the cascade prefers the second selector outright, source order aside.
@@ -219,10 +286,11 @@ function classesOf(tag: string): string[] {
  * counted every `th` in the tree would have condemned the one table on the portal
  * where the pattern is already right.
  */
-function cellClasses(): Map<string, Set<string>> {
+function cellClasses(): { found: Map<string, Set<string>>; unreadable: string[] } {
   const found = new Map<string, Set<string>>()
+  const unreadable = new Set<string>()
 
-  for (const { code } of sources('.tsx')) {
+  for (const { path, code } of sources('.tsx')) {
     const text = bare(code)
 
     for (const opening of text.matchAll(/<table\b/g)) {
@@ -235,14 +303,24 @@ function cellClasses(): Map<string, Set<string>> {
       const inside = text.slice(from, closing === -1 ? undefined : closing)
 
       for (const cell of inside.matchAll(/<(th|td)\b/g)) {
-        for (const name of classesOf(tagFrom(inside, cell.index))) {
+        const written = tagFrom(inside, cell.index)
+        const names = classesOf(written)
+
+        /* A cell whose class is decided somewhere else. Reading source cannot
+           follow `className={cellClass(column)}` into the function that answers
+           it, so those classes are not in the map and the rules that style them
+           are not checked. That is worth knowing rather than worth guessing at,
+           so it is counted and pinned below instead of passing in silence. */
+        if (names.length === 0 && written.includes('className=')) unreadable.add(path)
+
+        for (const name of names) {
           found.set(name, (found.get(name) ?? new Set()).add(at(cell, 1)))
         }
       }
     }
   }
 
-  return found
+  return { found, unreadable: [...unreadable].map((one) => one.replaceAll('\\', '/')).sort() }
 }
 
 /** What the shared sheet decides about a cell: for each kind of cell, each
@@ -255,19 +333,27 @@ function sharedRules(): Map<string, Map<string, string>> {
 
   for (const rule of rules(readFileSync(join(SRC, SHARED), 'utf-8'))) {
     for (const selector of rule.selectors) {
-      /* `.table th`, `.table td`, and the same with a pseudo-class after them.
+      /* `.table th`, `.table td`, and the same with pseudo-classes after them.
          A descendant further down (`.table tbody tr`) styles the row and not the
-         cell, and never reaches a property a cell rule is arguing over. */
-      const cell = /^\.table\s+(th|td)\b\S*$/.exec(selector)
+         cell, and never reaches a property a cell rule is arguing over.
+
+         The pseudo-class is matched with its own parentheses rather than with
+         `\S*`, which cannot cross a space. `.table th:nth-child(-n + 3)` is
+         written with spaces inside the parens, so it never entered this map at
+         all and `text-align` was recorded at the (0,1,1) of `.table th` instead
+         of the (0,2,1) it really carries. That is the one selector this whole
+         file is about, and a rule at (0,2,0) that truly loses to it passed. */
+      const cell = /^\.table\s+(th|td)((?::[\w-]+(?:\([^()]*\))?)*)$/.exec(selector)
 
       if (cell === null) continue
 
       const known = shared.get(at(cell, 1))
 
       for (const property of rule.properties) {
-        const before = known?.get(property)
+        const name = family(property)
+        const before = known?.get(name)
 
-        if (before === undefined || loses(before, selector)) known?.set(property, selector)
+        if (before === undefined || loses(before, selector)) known?.set(name, selector)
       }
     }
   }
@@ -302,16 +388,63 @@ describe('the shared table rules', () => {
     expect(weight('.league__grid th.league__who')).toEqual([0, 2, 1])
     expect(weight('.league__grid thead th.league__race')).toEqual([0, 2, 2])
 
+    /* The functional pseudo-classes, which are the ones that read heavier than
+       they weigh. `:where()` contributes nothing at all, and the other three
+       contribute what their heaviest argument contributes and no more. Counted
+       naively, the first of these came out (0,3,0) and a rule that really loses
+       passed this whole file. */
+    expect(weight('.a:where(.b)')).toEqual([0, 1, 0])
+    expect(weight('.a:not(.b)')).toEqual([0, 2, 0])
+    expect(weight('.a:not(h1)')).toEqual([0, 1, 1])
+    /* The heaviest argument, not all of them: one class of its own and the id
+       the `:is()` weighs in at. */
+    expect(weight('.a:is(.b, #c)')).toEqual([1, 1, 0])
+
     expect(loses('.league__race', '.table th')).toBe(true)
     expect(loses('.league__grid thead th.league__race', '.table th')).toBe(false)
-    /* A tie is not a loss, which is the whole of why `.moderators th` survives
-       this test. */
-    expect(loses('.moderators th', '.table th')).toBe(false)
+    /* A tie is not a loss, and this is the shape that made that policy worth
+       stating: (0,2,0) against the pseudo-class rule is a loss, not a tie. */
+    expect(loses('.league__grid .league__who', '.table th:nth-child(-n + 3)')).toBe(true)
+  })
+
+  it('reads one edge of a box under either of its two names', () => {
+    /* `.table th` decides padding, so it decides `padding-block` too, and the
+       logical name is what this tree increasingly writes. Compared as written,
+       a real loss reads as a property nobody shares. */
+    expect(family('padding-block')).toBe('padding')
+    expect(family('padding-inline-start')).toBe('padding')
+    expect(family('border-block-end')).toBe(family('border-bottom'))
+    /* And a name that merely looks like one of those is left alone. */
+    expect(family('vertical-align')).toBe('vertical-align')
+    expect(family('white-space')).toBe('white-space')
+    expect(family('font-weight')).toBe('font-weight')
+  })
+
+  it('reads a rule that follows an at-rule with no block of its own', () => {
+    /* `@import` ends in a semicolon, so it lands in the head of the first rule
+       after it. Taken whole, that head began with `@` and the rule was dropped:
+       eight sheets lost their first rule, and the sheets that import the shared
+       one are exactly those whose rules argue with it. */
+    const [first] = rules("@import 'x.css';\n\n.a th {\n  padding: 0;\n}\n")
+
+    expect(first?.selectors).toEqual(['.a th'])
+    expect(first?.properties).toEqual(['padding'])
+    expect(first?.line).toBe(3)
   })
 })
 
 describe('a class the portal puts on a cell of a shared table', () => {
-  const cells = cellClasses()
+  const { found: cells, unreadable } = cellClasses()
+
+  it('is counted, or the screen it is on is named as one this test cannot read', () => {
+    /* One screen builds its cell classes in a function (`cellClass` in
+       TopBoards.tsx), so `boards__detail` and `boards__figure` are outside every
+       check below. Nothing is wrong with them today, since both are (0,3,0) or
+       heavier and win comfortably; what would be wrong is not knowing. A second
+       screen appearing here is a second blind spot and is worth either writing
+       the class out in the markup or widening this file. */
+    expect(unreadable).toEqual(['pages/TopBoards.tsx'])
+  })
 
   it('is found by this test, in both kinds of cell', () => {
     /* The grid of a competition is named because it is where this was measured,
@@ -354,7 +487,7 @@ describe('a class the portal puts on a cell of a shared table', () => {
 
               return rule.properties.flatMap((property) =>
                 [...kinds].flatMap((kind) => {
-                  const theirs = shared.get(kind)?.get(property)
+                  const theirs = shared.get(kind)?.get(family(property))
 
                   return theirs !== undefined && loses(selector, theirs)
                     ? [
