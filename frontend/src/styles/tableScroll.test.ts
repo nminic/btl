@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
 /**
  * Every table the portal draws sits in a box that scrolls, so that the page
@@ -106,6 +106,45 @@ function bare(code: string): string {
     )
 }
 
+/**
+ * What a file asks for by name: `import './Member.css'` in a component,
+ * `@import 'Rankings.css'` in a stylesheet. One expression for both, since a
+ * component never writes the second and a stylesheet never writes the first.
+ *
+ * Comments are blanked first. This portal explains its imports at least as often
+ * as it writes them, and the note above one of them names the file it is about.
+ */
+function asks(text: string): string[] {
+  return [...bare(text).matchAll(/@?import\s+['"][^'"]+\.css['"]/g)].map((one) =>
+    /* The name without the quotes around it, cut from the whole match rather
+       than caught in a group. A group is `string | undefined` under
+       `noUncheckedIndexedAccess` (ADL A14), and the `?? ''` that would settle it
+       is a branch nothing can reach. */
+    one[0].slice(one[0].search(/['"]/) + 1, -1),
+  )
+}
+
+/**
+ * Every stylesheet a file ends up with: the ones it asks for, and the ones those
+ * ask for in turn.
+ *
+ * Whole paths, so a sheet reached two ways is one entry and a cycle is not a
+ * loop. `Profile.css` is both: it asks for `Rankings.css` and for `table.css`,
+ * and `Rankings.css` has already brought `table.css` by the time it is asked.
+ */
+function sheetsOf(at: string, code: string, seen = new Set<string>()): Set<string> {
+  for (const name of asks(code)) {
+    const sheet = resolve(dirname(at), name)
+
+    if (!seen.has(sheet)) {
+      seen.add(sheet)
+      sheetsOf(sheet, readFileSync(sheet, 'utf-8'), seen)
+    }
+  }
+
+  return seen
+}
+
 /** Where a table is drawn, the tag that opens it, and everything written before
  *  it, which is where its box would be. */
 function drawn(): { where: string; tag: string; before: string }[] {
@@ -185,21 +224,34 @@ describe('the box the tables sit in', () => {
     )
   })
 
-  it('is asked for by the matrix itself, which draws it without the rest of the screen', () => {
-    /* Rights.css is the sheet that RightsMatrix.tsx brings with it, and the
-       screen around it happens to pull table.css in as well, through Member.css
-       and Profile.css, which are there for the entity list and not for the
-       matrix.
-
-       Nothing breaks today if that goes: the portal builds one stylesheet with
-       no code splitting, so every rule in it is on every screen no matter who
-       asked. This is about the source rather than the artefact. A component that
-       writes a class its own sheet knows nothing about is a component whose
+  it('is asked for by every component that wears it, and not by the screen around it', () => {
+    /* Nothing breaks today where it is not: the portal builds one stylesheet
+       with no code splitting, so every rule in it is on every screen no matter
+       who asked. This is about the source rather than the artefact. A component
+       that writes a class its own sheet knows nothing about is a component whose
        styling is somebody else's business to keep, and the day the build splits
-       CSS per route, or the day the entity list moves off this screen, the
-       matrix would lose its box without a word being said about the matrix. */
-    expect(readFileSync(join(SRC, 'pages', 'admin', 'Rights.css'), 'utf-8')).toContain(
-      "@import '../../styles/table.css'",
-    )
+       CSS per route, or the day one of these screens stops drawing whatever else
+       was bringing the sheet along, the table would lose its rules without a
+       word being said about that table.
+
+       Asked of `table-scroll` rather than of `table`, because the two are
+       written in the one file: a screen that has the box has the rest of it, and
+       the box is the name no other rule on the portal is likely to want.
+
+       It was written for the matrix of moderator rights, which reached the sheet
+       through Member.css and Profile.css, there for the entity list beside it
+       and not for the matrix. Two more were found the same way afterwards, which
+       is the reason it is asked of all of them rather than of the one. */
+    const wearing = components().filter((one) => bare(one.code).includes('table-scroll'))
+
+    /* Twenty-two today, and a floor rather than the number for the same reason
+       as above: a screen with a table on it is an ordinary thing to add. */
+    expect(wearing.length).toBeGreaterThan(20)
+
+    const borrowed = wearing
+      .filter((one) => !sheetsOf(join(SRC, one.path), one.code).has(join(SRC, 'styles', 'table.css')))
+      .map((one) => `${one.path} wears table-scroll, and no sheet of its own asks for table.css`)
+
+    expect(borrowed).toEqual([])
   })
 })

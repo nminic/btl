@@ -1,5 +1,18 @@
 /* The form behind a list, and the two controls that open it. */
 
+/* For `.table` and `.table-scroll`, which the races of an event wear
+   (EventRaces.tsx). Asked for here because that component writes those class
+   names, and a component that writes a class its own sheet knows nothing about
+   is a component whose styling is somebody else's business to keep.
+
+   It reached them anyway until now, through whatever else the screen around it
+   happened to draw: the portal builds one stylesheet with no code splitting, so
+   every rule in it is on every screen no matter who asked. That is a property of
+   today's build rather than of this screen. The day the build splits CSS per
+   route, or the day the entity list stops bringing Profile.css with it, this
+   table would lose its rules without a word being said about it. */
+@import '../../styles/table.css';
+
 /* Scoped rather than set on .button, because raising the specificity of that
    class would take the colour off every primary button on the portal. */
 .entity-editor > .button,

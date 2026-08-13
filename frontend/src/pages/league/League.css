@@ -1,6 +1,22 @@
 /* The grid of a competition: everybody down the side, every race across the
    top. */
 
+/* For `.table` and `.table-scroll`, which the grid wears (LeagueResults.tsx),
+   and which half this file is written against: the rules below that name
+   `.table` are answers to what is in there, and an answer whose question is not
+   on the page is a rule that does nothing.
+
+   It reached them anyway until now, through whatever else the screen around it
+   happened to draw: the portal builds one stylesheet with no code splitting, so
+   every rule in it is on every screen no matter who asked. That is a property of
+   today's build rather than of this screen. The day the build splits CSS per
+   route, this grid would lose its rules without a word being said about it.
+
+   At the top because that is the only place an `@import` may stand, and the
+   consequence is the one this file wants: everything below is written knowing
+   what is above it, and stays below it. */
+@import '../../styles/table.css';
+
 /* The heading of a race column, turned on its side (owner, 31.07.2026). The
    widest competition in the data has forty six races; laid flat those headings
    would be several thousand pixels of table before a single number. Turned, each
