@@ -1,4 +1,6 @@
+import { addressOf } from '../../app/head'
 import { countryName } from '../../data/countryName'
+import type { Competitor } from '../../data/types'
 import { useToday } from '../../clock/useClock'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
@@ -54,10 +56,10 @@ const RECIPIENT = RECIPIENT_NAME
  * is six hundred dinars", which is a conversion, and this list holds no rate:
  * the dinar figure is chosen, not converted (data/pricing.ts).
  */
-function creditOf(country: string, credited: PriceRow, locale: string): string {
+function creditOf(country: string, credited: PriceRow, locale: string, times = 1): string {
   return paysInDinars(country)
-    ? `${money(credited.rsd, locale)} RSD`
-    : `${money(credited.eur, locale)} EUR`
+    ? `${money(credited.rsd * times, locale)} RSD`
+    : `${money(credited.eur * times, locale)} EUR`
 }
 
 /**
@@ -73,10 +75,19 @@ function money(amount: number, locale: string): string {
   return formatNumber(amount, locale, Number.isInteger(amount) ? 0 : 2)
 }
 
-/** And nothing on that balance, in the same currency. Written „0 EUR" for
- *  everybody, it stood under a sentence that had just promised dinars. */
-function emptyBalance(country: string): string {
-  return paysInDinars(country) ? '0 RSD' : '0 EUR'
+/**
+ * How many members this one brought in and was actually credited for.
+ *
+ * Counted rather than stored, and counted twice over: the link records who
+ * brought whom, and the credit falls only when that member's own fee is first
+ * activated (owner, 12.08.2026). Somebody who registered through a link and
+ * never paid pays nobody, which is what `active` is doing in here.
+ *
+ * The balance under this used to be the string „0 EUR" for everybody, written
+ * out, so no arrangement of the data could ever have shown anything else.
+ */
+function broughtInBy(me: Competitor, everybody: Competitor[]): number {
+  return everybody.filter((one) => one.referredBy === me.referralCode && one.active).length
 }
 
 export function Membership() {
@@ -369,9 +380,15 @@ export function Membership() {
               <p className="member__note">
                 {t('membership.referralNote', { amount: creditOf(me.country, credited, locale) })}
               </p>
-              <p className="pay__payload">{`https://balkanskatrkackaliga.net/${locale}/registracija?preporuka=${me.memberNumber}`}</p>
+              {/* The code and not the member number. That number is public and
+                  consecutive: it is the address of a profile and the sign in
+                  list prints it beside every name, so anybody could assemble
+                  somebody else's link, or credit themselves with a member they
+                  never brought. The origin comes from the one place that holds
+                  it, so a change of domain does not leave this link behind. */}
+              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode}`}</p>
               <p className="membership__balance">
-                <strong>{emptyBalance(me.country)}</strong>{' '}
+                <strong>{creditOf(me.country, credited, locale, broughtInBy(me, competitors))}</strong>{' '}
                 <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>

@@ -16,11 +16,14 @@ const OPEN = '2026-10-02'
 
 /* The day goes on the clock above the screen, which is where the portal keeps
    it and what the switch in the header moves (src/clock). */
-function renderForm(today = OPEN) {
+function renderForm(today = OPEN, address = '/sr/registracija') {
   return render(
     <ClockProvider simulatedDay={today}>
       <I18nProvider locale="sr">
-        <MemoryRouter>
+        {/* The address matters to one pair of tests and to nothing else: a
+            member who arrives by somebody's referral link arrives with the code
+            in the query, and that is the only fact the programme rests on. */}
+        <MemoryRouter initialEntries={[address]}>
           <Registration />
         </MemoryRouter>
       </I18nProvider>
@@ -158,6 +161,43 @@ describe('Registration once it is open', () => {
     ])
     /* And it is asked for, like the signature beside it. */
     expect(kinship).toHaveAttribute('aria-required', 'true')
+  })
+
+  it('keeps who brought a member who arrived by a referral link', async () => {
+    /* The address said `?preporuka=` and nothing read it. The link was written
+       on the membership screen, printed for the member to share, and the one
+       fact the whole programme rests on was dropped at the door: no record
+       could say who brought whom, so no credit could ever be worked out, and
+       the balance beside the link was the string „0" written out.
+     *
+       Owner, 12.08.2026: the link brings 5 EUR / 600 RSD „po novom članu koji
+       se registrovao preko tog linka i članarina mu je postala aktivirana prvi
+       naredni put". This is the first half. The second half is `active` on the
+       membership screen. */
+    const user = setupUser()
+    renderForm(OPEN, '/sr/registracija?preporuka=b56366bc8f')
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.getByText(/zabeležena kao preporuka/)).toBeVisible()
+    /* And whoever brought them is not named: the code belongs to that member,
+       not to this one. */
+    expect(screen.queryByText(/b56366bc8f/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about a referral to somebody who arrived without one', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
   })
 
   it('will not submit when the two passwords differ', async () => {

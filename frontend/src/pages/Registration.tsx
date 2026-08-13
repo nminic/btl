@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
 import registracija from '../forms/definitions/registracija.form.json'
 import { FormRenderer } from '../forms/FormRenderer'
@@ -19,6 +20,8 @@ export function Registration() {
      behind it, which meant this screen could be shown one day and the price
      beside it another. */
   const today = useToday()
+  const [params] = useFilterParams()
+  const referral = params.get('preporuka')
 
   // Between 15 and 30 September the portal is open for looking only: nobody can
   // even begin to register, which is a decision and not a missing screen.
@@ -53,6 +56,11 @@ export function Registration() {
         <h1>{t('registration.doneTitle')}</h1>
         <p>{t('registration.doneText', { email: String(sent.email) })}</p>
         <p>{t('registration.checkSpam')}</p>
+        {/* Said only to somebody who arrived by a link, and it says both halves
+            of the rule: the referral is recorded now, and it pays when this
+            member's own fee is activated. Whoever brought them is not named,
+            since the code is theirs and not this member's to be told. */}
+        {sent.referredBy === undefined ? null : <p>{t('registration.doneReferral')}</p>}
         {/* Asking again says so and stays where it is. It used to empty `sent`,
             which unmounted this confirmation and handed back a blank form:
             nothing said the letter had gone out again, and everything typed was
@@ -74,5 +82,21 @@ export function Registration() {
     )
   }
 
-  return <FormRenderer form={registracija as FormDef} onSubmit={setSent} />
+  /* Who brought this member, taken off the link they arrived by and kept with
+     what they send. The link was being written and never read: the address said
+     `?preporuka=`, nothing looked, and the one fact the whole programme rests on
+     was lost at the door. A member who registers this way is credited to
+     whoever brought them, but not yet: the credit falls when this member's own
+     fee is first activated (owner, 12.08.2026).
+
+     Through `useFilterParams` because that is the only door to the address bar
+     (app/useFilterParams.ts). Reading is all this does; nothing here writes. */
+  return (
+    <FormRenderer
+      form={registracija as FormDef}
+      onSubmit={(values) => {
+        setSent(referral === null ? values : { ...values, referredBy: referral })
+      }}
+    />
+  )
 }

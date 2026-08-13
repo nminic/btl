@@ -425,7 +425,8 @@
     "guardian": "Staratelj",
     "firstNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
     "lastNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
-    "passwordRepeatHint": "Mora da se poklopi sa lozinkom iznad."
+    "passwordRepeatHint": "Mora da se poklopi sa lozinkom iznad.",
+    "doneReferral": "Prijava je zabeležena kao preporuka. Član koji te je pozvao dobija zaslugu kad tvoja članarina bude aktivirana."
   },
   "shirt": {
     "XS": "XS",

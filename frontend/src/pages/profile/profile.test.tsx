@@ -233,6 +233,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     firstSeason: 2020,
     active: true,
     membershipBasis: 'payment' as const,
+    referralCode: 'proba0000',
+    referredBy: null,
     teamId: null,
     teamSince: null,
     bio: '',

@@ -278,9 +278,18 @@ describe('membership', () => {
        „0 EUR" to everybody under a sentence promising dinars. */
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-    expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()
+    /* The link carries a code and not the member number. That number is public
+       and consecutive, so a link built out of it can be assembled for anybody,
+       by anybody, including for oneself. */
+    expect(await screen.findByText(/registracija\?preporuka=b56366bc8f/)).toBeVisible()
+    expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
     expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
-    expect(screen.getByText('0 RSD')).toBeVisible()
+    /* And the balance is counted. This member brought five, and four of them
+       have had their own fee activated: 4 × 600. The fifth registered through
+       the link and never paid, and pays nobody, which is the whole of the
+       „prvi naredni put" half of the rule. Written out as the string „0 RSD"
+       for everybody, no arrangement of the data could ever have shown this. */
+    expect(screen.getByText('2.400 RSD')).toBeVisible()
     /* And when it lands, which is the half that keeps anybody from being paid
        for an account that was opened and left. */
     expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
