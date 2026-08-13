@@ -45,7 +45,11 @@ function Administration({
   )
 }
 
-function renderMembershipOn(today: string, memberNumber = '000001') {
+/* 000032 by default and not 000001: an honorary member owes nothing and is shown
+   no renewal at all (Pravilnik član 15, PDL P16), so every test about renewal
+   needs somebody who actually pays. Of the thirty, three do, and this is the
+   grown one of them living in Serbia. */
+function renderMembershipOn(today: string, memberNumber = '000032') {
   return render(
     <ClockProvider simulatedDay={today}>
       <I18nProvider locale="sr">
@@ -186,8 +190,46 @@ describe('membership', () => {
      level below it (PDL P28a puts the slip inside renewal). As third level
      headings they read as four more sections of the renewal, which they are
      not. */
-  it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
+  it('asks an honorary member for nothing at all', async () => {
+    /* Pravilnik član 15 and PDL P16: an honorary member never has a payment.
+       Only the line about their status said so, while the whole of the renewal
+       underneath went on being drawn: a price, „Uplati sada", the recipient, a
+       reference number and a QR code for 4.800 RSD they do not owe. Twenty nine
+       of the thirty members in the data are honorary, so that was very nearly
+       the only thing this screen ever showed. */
     renderFor('000001')
+
+    expect(await screen.findByText(/Počasno članstvo\. Za sezonu/)).toBeVisible()
+    expect(screen.getByText(/Počasno članstvo se ne obnavlja/)).toBeVisible()
+
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Uplati sada' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^K:PR\|V:01/)).not.toBeInTheDocument()
+  })
+
+  it('puts the junior fee in the code a junior member scans', async () => {
+    /* The junior price was on this screen as a sentence and nowhere else. The
+       code carried the figure for a grown member, so somebody of fourteen read
+       „Do 14 godina članarina je 20 EUR, a iz Srbije 2.400 RSD" and then scanned
+       a request for 4.200. The year of birth was on the record the whole time.
+
+       000031 is fourteen through the season being renewed, which is what PDL P8
+       measures: „ko u sezoni za koju plaća bar jedan dan ima 14 godina ili
+       manje". */
+    renderFor('000031')
+
+    const payload = must(
+      (await screen.findByText(/^K:PR\|V:01/)).textContent,
+      'the payload the screen shows',
+    )
+
+    expect(payload).toContain(`I:RSD${JUNIOR.rsd},00`)
+    expect(payload).not.toContain('I:RSD4200,00')
+  })
+
+  it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
+    renderFor('000032')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
@@ -209,7 +251,7 @@ describe('membership', () => {
        Not opened first: what is inside a `details` is in the page whether it is
        open or not, and what this is about is the two agreeing, not the
        disclosure. */
-    renderFor('000001')
+    renderFor('000032')
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
@@ -225,8 +267,11 @@ describe('membership', () => {
   })
 
   it('offers a member abroad PayPal and a card, and no code at all', async () => {
-    // 000009 is in Montenegro in the generated data.
-    renderFor('000009')
+    /* 000010 is the one member abroad who pays rather than being honoured, and
+       the generator says why one had to exist: with every foreign member
+       honorary, this screen would have nobody to show and the rule about the
+       processing fee could not be checked. */
+    renderFor('000010')
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 4, name: /[Kk]artic/ })).toBeVisible()
@@ -239,11 +284,11 @@ describe('membership', () => {
   it('says which country the ways of paying come from, in words', async () => {
     /* The sentence above them says the ways of paying follow the country on the
        profile, and the country is kept as a code. It was printed raw, so a member
-       in Montenegro read "(ME)"; the words come off the same file the select is
+       abroad read the bare code; the words come off the same file the select is
        filled from (countryName). */
-    renderFor('000009')
+    renderFor('000010')
 
-    expect(await screen.findByText(/Crna Gora/)).toBeVisible()
+    expect(await screen.findByText(/Severna Makedonija/)).toBeVisible()
     expect(screen.queryByText(/\(ME\)/)).not.toBeInTheDocument()
   })
 

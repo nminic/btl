@@ -71,6 +71,26 @@ const BY_START = [...PRICES].sort((left, right) => left.from.localeCompare(right
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 
 /**
+ * Whether a member pays the junior fee for a season.
+ *
+ * PDL P8, and it is the one price measured across the whole season rather than
+ * on a single day: „ko u sezoni za koju plaća bar jedan dan ima 14 godina ili
+ * manje, plaća juniorsku" (owner, 31.07.2026). Somebody who turns fifteen in
+ * March was fourteen in February, so the season holds a day on which they were
+ * fourteen and they pay the junior fee for all of it.
+ *
+ * Which makes the test on the year of birth `<= 15`, not `<= 14`: through a
+ * season the member is either `season - birthYear` or one less than that, and it
+ * is the lower of the two the rule asks about.
+ *
+ * Deliberately not the same figure as the parental signature, which is sixteen
+ * measured on the day (PDL P23). The two are separate and must not be joined.
+ */
+export function juniorInSeason(season: number, birthYear: number): boolean {
+  return season - birthYear <= 15
+}
+
+/**
  * What a member is credited for every new member they bring in.
  *
  * Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din... po

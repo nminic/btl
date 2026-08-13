@@ -24,6 +24,7 @@ import {
   REFERRAL,
   REFERRAL_ROW,
   type PriceRow,
+  juniorInSeason,
   priceOn,
   registrationOpen,
   seasonBeingRenewed,
@@ -129,6 +130,16 @@ export function Membership() {
         const windowOpen = inYearlyWindow(today)
         const team = teams.find((one) => one.id === me.teamId)
         const price = priceOn(today)
+        /* An honorary member owes nothing at all (Pravilnik član 15, PDL P16),
+           and twenty nine of the thirty members in the data are honorary. */
+        const honorary = me.membershipBasis === 'honorary'
+        /* What this member actually owes, which is not always what the calendar
+           says the fee is. The junior price was on this screen as a sentence and
+           nowhere else: the code a member scans carried the adult figure, so
+           somebody born in 2014 read „Do 14 godina članarina je 20 EUR" and then
+           scanned a request for 4.200 RSD. The year of birth was on the record
+           the whole time. */
+        const due = juniorInSeason(nextSeason, me.birthYear) ? JUNIOR : price
         const methods = methodsFor(me.country)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have
@@ -149,7 +160,7 @@ export function Membership() {
                 {t('membership.status')}
               </h2>
               <p className="membership__state">
-                {me.membershipBasis === 'honorary'
+                {honorary
                   ? t('membership.honorary')
                   : t('membership.active', { season: me.firstSeason })}
               </p>
@@ -193,7 +204,16 @@ export function Membership() {
                 {t('membership.renewal', { season: nextSeason })}
               </h2>
 
-              {windowOpen ? (
+              {/* An honorary member owes nothing, ever (Pravilnik član 15, PDL
+                  P16). Only the line about their status said so, while the
+                  whole of the renewal underneath went on being drawn: a price,
+                  „Uplati sada", the recipient, a reference number and a QR code
+                  for 4.800 RSD they do not owe. Twenty nine of the thirty
+                  members in the data are honorary, so that was very nearly the
+                  only thing this screen ever showed. */}
+              {honorary ? (
+                <p className="member__note">{t('membership.honoraryNoRenewal')}</p>
+              ) : windowOpen ? (
                 <>
                   <p className="member__note">{t('membership.renewalOpen')}</p>
 
@@ -292,7 +312,7 @@ export function Membership() {
                           text={ipsPayload({
                             account: RECIPIENT_ACCOUNT,
                             recipient: RECIPIENT,
-                            amountRsd: price.rsd,
+                            amountRsd: due.rsd,
                             purpose,
                             reference,
                           })}
@@ -304,7 +324,7 @@ export function Membership() {
                             {ipsPayload({
                               account: RECIPIENT_ACCOUNT,
                               recipient: RECIPIENT,
-                              amountRsd: price.rsd,
+                              amountRsd: due.rsd,
                               purpose,
                               reference,
                             })}

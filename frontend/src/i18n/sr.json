@@ -914,7 +914,8 @@
     "referral": "Program preporuke",
     "referralNote": "Svako ko se učlani preko tvog linka i aktivira članarinu donosi ti {amount} na balans. Ne u trenutku prijave nego kad članarina bude aktivirana.",
     "balance": "na balansu",
-    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu."
+    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
+    "honoraryNoRenewal": "Počasno članstvo se ne obnavlja i ne plaća. Nema šta da uplatiš."
   },
   "review": {
     "title": "Red za proveru rezultata",
