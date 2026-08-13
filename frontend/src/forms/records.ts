@@ -113,6 +113,19 @@ function like(current: unknown, value: string): unknown {
   return value
 }
 
+/**
+ * One value off a record, by a field name that is data rather than code.
+ *
+ * A record is typed by the fields it declares, and a name coming out of a form
+ * definition or an entity table is not one of them as far as the compiler can
+ * see; reading it used to mean calling the record a bag of unknowns first
+ * (`record as Record<string, unknown>`), which ADL A14 bans. `Reflect.get` is
+ * the read itself, and what comes back is what it is: unknown.
+ */
+export function fieldValue(record: object, field: string): unknown {
+  return Reflect.get(record, field)
+}
+
 /** The record as the screens read it: what was generated, with what
  *  administration has changed on top. The record underneath is never touched. */
 export function applyChanges<T extends object>(
@@ -123,13 +136,16 @@ export function applyChanges<T extends object>(
     return record
   }
 
-  const next = { ...record } as Record<string, unknown>
+  const next: Record<string, unknown> = {}
 
   for (const [field, value] of Object.entries(changes)) {
-    next[field] = like(next[field], value)
+    next[field] = like(fieldValue(record, field), value)
   }
 
-  return next as T
+  /* `Object.assign` rather than a spread, because it hands back the type of
+     what it was given: the copy is still the record's own type, and nothing has
+     to be asserted about the changes going onto it. */
+  return Object.assign({ ...record }, next)
 }
 
 /** Whether a field's two answers are the words a yes or no question carries. */

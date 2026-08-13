@@ -33,6 +33,22 @@ import { MEMBERS, recordsOf } from './entityForms'
 export type NumberSources = Pick<SessionValue, 'edits' | 'creations' | 'decisions' | 'deletions'>
 
 /**
+ * Anything a member number can be read off.
+ *
+ * The portal hands over `Competitor`, and this module reads one field of it.
+ * Saying so is not tidiness: asking for a whole competitor meant that a test
+ * about numbers had to invent a member, could not, and wrote
+ * `({ memberNumber }) as Competitor` instead, which is the assertion ADL A14
+ * bans. A signature that asks for what it uses needs nothing invented.
+ *
+ * Written as a `Pick` and not as a bare `{ memberNumber: string }`, so the tie
+ * to the member stays: a bare shape would also accept a result or a queue item,
+ * each of which carries that field and none of which is who a number belongs
+ * to, and renaming the field on `Competitor` would leave this compiling.
+ */
+export type Numbered = Pick<Competitor, 'memberNumber'>
+
+/**
  * Every member number that is spoken for: the ones in the member list as the
  * screen shows it, records entered during this visit included, and the ones the
  * activations of this visit have handed out.
@@ -42,7 +58,7 @@ export type NumberSources = Pick<SessionValue, 'edits' | 'creations' | 'decision
  * been written down anywhere.
  */
 export function takenMemberNumbers(
-  competitors: Competitor[],
+  competitors: Numbered[],
   { edits, creations, decisions, deletions }: NumberSources,
 ): string[] {
   /* Read through the overlay, and then the deleted put back.
@@ -69,7 +85,7 @@ export function takenMemberNumbers(
 
 /** The number the next member gets, against everything that is spoken for. */
 export function handOutMemberNumber(
-  competitors: Competitor[],
+  competitors: Numbered[],
   sources: NumberSources,
 ): string {
   return nextMemberNumber(takenMemberNumbers(competitors, sources))
@@ -91,7 +107,7 @@ export function handOutMemberNumber(
  * clothes.
  */
 export function handOutMemberNumbersFor<T>(
-  competitors: Competitor[],
+  competitors: Numbered[],
   sources: NumberSources,
   /* Whatever the caller is handing numbers to, given back beside the number it
      got. It used to take the identities alone, and the screen then had to pair

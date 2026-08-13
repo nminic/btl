@@ -73,7 +73,7 @@ function CompetitorCards({
               <Link className="card" to={`/${locale}/takmicar/${competitor.memberNumber}`}>
                 <span
                   className="card__face"
-                  style={{ '--face-hue': hueFor(competitor.memberNumber) } as React.CSSProperties}
+                  style={{ '--face-hue': hueFor(competitor.memberNumber) }}
                   aria-hidden="true"
                 >
                   {monogramFor(competitor, competitor.memberNumber)}

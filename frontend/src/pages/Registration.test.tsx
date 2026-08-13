@@ -2,9 +2,9 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { translate, type Dictionary } from '../i18n/translate'
+import { translate } from '../i18n/translate'
 import sr from '../i18n/sr.json'
-import { first, last, must } from '../test/at'
+import { first, inputElement, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
@@ -158,7 +158,7 @@ describe('Registration once it is open', () => {
       </ClockProvider>,
     )
 
-    const field = screen.getByLabelText(/Slika kao dopuna/) as HTMLInputElement
+    const field = inputElement(screen.getByLabelText(/Slika kao dopuna/))
     const file = new File(['sadržaj'], 'sat.jpg', { type: 'image/jpeg' })
 
     await user.upload(field, file)
@@ -509,13 +509,13 @@ describe('the box a member writes about themselves in', () => {
   it('counts in Serbian, which has three forms and not one', () => {
     /* "Još 1 znakova" is not a sentence anybody writes. The engine has had
        plural forms since it was written and this key was a single string. */
-    expect(translate(sr as Dictionary, 'sr', 'registration.bioLeft', { count: 1 })).toBe(
+    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 1 })).toBe(
       'Još 1 znak',
     )
-    expect(translate(sr as Dictionary, 'sr', 'registration.bioLeft', { count: 3 })).toBe(
+    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 3 })).toBe(
       'Još 3 znaka',
     )
-    expect(translate(sr as Dictionary, 'sr', 'registration.bioLeft', { count: 7 })).toBe(
+    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 7 })).toBe(
       'Još 7 znakova',
     )
   })

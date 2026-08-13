@@ -176,12 +176,12 @@ describe('EventDetail, the results of the league members who ran it', () => {
         return real(input)
       }
 
-      const all = (await (await real(input)).json()) as { memberNumber: string }[]
+      const all: { memberNumber: string }[] = await (await real(input)).json()
 
       return new Response(JSON.stringify(all.filter((one) => one.memberNumber !== '000001')), {
         status: 200,
       })
-    }) as typeof fetch
+    })
 
     /* Put back whatever happens above, or a failing assertion leaves every later
        test in this file reading a member list with somebody cut out of it. The
@@ -323,7 +323,7 @@ describe('LeagueDetail', () => {
             ]),
             { status: 200 },
           )
-        : real(input)) as typeof fetch
+        : real(input))
 
     renderAt('/sr/lige')
 
@@ -459,12 +459,12 @@ describe('the grid of a competition, in the details the review found unguarded',
         return real(input)
       }
 
-      const all = (await (await real(input)).json()) as { active: boolean }[]
+      const all: { active: boolean }[] = await (await real(input)).json()
 
       return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
         status: 200,
       })
-    }) as typeof fetch
+    })
 
     try {
       renderAt(RUN)
@@ -488,12 +488,12 @@ describe('the grid of a competition, in the details the review found unguarded',
         return real(input)
       }
 
-      const all = (await (await real(input)).json()) as { active: boolean }[]
+      const all: { active: boolean }[] = await (await real(input)).json()
 
       return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
         status: 200,
       })
-    }) as typeof fetch
+    })
 
     try {
       renderAt(RUN, 'visitor', null, undefined, '2019-06-01')

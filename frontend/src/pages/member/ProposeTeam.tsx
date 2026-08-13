@@ -6,8 +6,8 @@ import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import { NO_RATING } from '../../data/types'
 import { FormRenderer } from '../../forms/FormRenderer'
-import predlogTima from '../../forms/definitions/predlog-tima.form.json'
-import type { FieldError, FormDef, FormValues } from '../../forms/types'
+import { predlogTima } from '../../forms/definitions'
+import type { FieldError, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
@@ -139,7 +139,7 @@ export function ProposeTeam() {
             <>
               <p className="member__note">{t('teams.proposeNote2')}</p>
               <FormRenderer
-                form={predlogTima as FormDef}
+                form={predlogTima}
                 /* By the address the name makes, which is what has to be
                    unique and is what the queue compares (teamProposal.ts).
                    Comparing names let "Dunavski Trkaci" through to sit in the

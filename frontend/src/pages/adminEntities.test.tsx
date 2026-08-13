@@ -6,7 +6,7 @@ import { RoleProvider } from '../roles/RoleProvider'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
-import { at, must } from '../test/at'
+import { at, inputElement, must, selectElement } from '../test/at'
 import { Saved } from '../test/saved'
 import { loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
@@ -83,13 +83,12 @@ describe('the races of an event', () => {
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const day = String(
-      (screen.queryByLabelText(/^Dan trke/) as HTMLInputElement | null)?.value ?? '',
-    )
+    const found = screen.queryByLabelText(/^Dan trke/)
+    const day = found === null ? '' : inputElement(found).value
 
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
-    const opened = String((screen.getByLabelText(/^Dan trke/) as HTMLInputElement).value)
+    const opened = String(inputElement(screen.getByLabelText(/^Dan trke/)).value)
 
     expect(day).toBe('')
     await user.type(screen.getByLabelText(/^Dužina/), '17')
@@ -207,7 +206,7 @@ describe('the races of an event', () => {
        still ahead, so which event is first depends on the day the tests run. */
     const day = screen.getByLabelText(/^Dan trke/)
     const startsOn = must(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(day).value)),
       'the day the form opened on',
     )
 
@@ -262,7 +261,7 @@ describe('the races of an event', () => {
     /* The day before the one the form opened on, which is the event's own. */
     const day = screen.getByLabelText(/^Dan trke/)
     const was = must(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((day as HTMLInputElement).value)),
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(day).value)),
       'the day the form opened on',
     )
 
@@ -512,7 +511,7 @@ describe('the races of an event', () => {
 
     const date = screen.getByLabelText(/^Datum/)
     const was = must(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String((date as HTMLInputElement).value)),
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(date).value)),
       'the day the event is on',
     )
 
@@ -839,7 +838,7 @@ describe('Balkanska trkačka liga among the leagues', () => {
             ]),
             { status: 200 },
           )
-        : real(input)) as typeof fetch
+        : real(input))
 
     return () => {
       globalThis.fetch = real
@@ -908,7 +907,7 @@ describe('what the form for a new event asks for', () => {
     const featured = screen.getByLabelText(/^Istaknuto/)
 
     expect(featured).toHaveValue('no')
-    expect([...(featured as HTMLSelectElement).options].map((one) => one.textContent)).toEqual([
+    expect([...selectElement(featured).options].map((one) => one.textContent)).toEqual([
       'Ne',
       'Da',
     ])

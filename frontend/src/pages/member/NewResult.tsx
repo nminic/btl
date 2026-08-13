@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
-import unosRezultata from '../../forms/definitions/unos-rezultata.form.json'
-import type { FormDef, FormValues } from '../../forms/types'
-import { fieldDate, parseDate } from '../../forms/dateField'
+import { unosRezultata } from '../../forms/definitions'
+import type { FormValues } from '../../forms/types'
+import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
@@ -82,13 +82,18 @@ export function NewResult() {
     const ascentM = Number(values.ascentM)
     const descentM = Number(values.descentM)
     const total = seconds(values)
-    const date = parseDate(String(values.date))
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     const sent = {
       eventName: String(values.eventName),
-      // The form refuses to submit without a real date, so this is never null.
-      date: (date as Date).toISOString().slice(0, 10),
+      /* Through `storedDate`, which reads the date or throws saying what was in
+         the box. It was parsed here and the result called a Date without
+         looking (ADL A14 bans that), and answering with an empty date instead
+         would be the other half of the same fault: a result with no date
+         belongs to no season and would reach the moderator looking ordinary
+         (rule 2). Nothing can reach the throw, because the form refuses an
+         unreadable date before it submits. */
+      date: storedDate(String(values.date)),
       distanceKm,
       ascentM,
       descentM,
@@ -151,7 +156,7 @@ export function NewResult() {
       )}
 
       <FormRenderer
-        form={unosRezultata as FormDef}
+        form={unosRezultata}
         initial={correcting === undefined ? undefined : filledFrom(correcting)}
         onSubmit={onSubmit}
       />

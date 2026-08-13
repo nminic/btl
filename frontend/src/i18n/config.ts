@@ -12,12 +12,12 @@ export const DEFAULT_LOCALE: Locale = 'sr'
  * (ADL A2: translations come after the content, not next to it). Until then
  * /en shows the Serbian text rather than a screen full of raw keys. */
 const DICTIONARIES: Record<Locale, Dictionary> = {
-  sr: sr as Dictionary,
-  en: sr as Dictionary,
+  sr: sr,
+  en: sr,
 }
 
 export function isLocale(value: string | undefined): value is Locale {
-  return LOCALES.includes(value as Locale)
+  return LOCALES.some((one) => one === value)
 }
 
 /* The language each address is actually written in, which is not always the
