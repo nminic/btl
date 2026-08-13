@@ -396,7 +396,13 @@ describe('space and corners are chosen from the scale, not typed', () => {
           continue
         }
 
-        for (const rule of sheet.css.slice(at, closes(css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        /* `css` and not `sheet.css`: the comment two paragraphs up says the
+           comments are blanked here as above, and this one line was still
+           reading the raw sheet. A comment written inside a media block then
+           became part of the selector it stood over, so adding one line of
+           explanation above `.pending__toggle` failed the guard over a
+           stylesheet that renders identically. */
+        for (const rule of css.slice(at, closes(css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
           const selector = (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')
           const body = rule[2] ?? ''
 

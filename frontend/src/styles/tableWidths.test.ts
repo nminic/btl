@@ -72,9 +72,20 @@ const SCROLLBAR = 15
 /** What the reader may do to the text. WCAG 2.2 SC 1.4.4 asks for 200%. */
 const TEXT = [16, 20, 24, 32]
 
-/** What an `em` is worth in a media query: the browser's own root size, never
- *  the reader's, since a query is answered before any of the page's own type
- *  applies. Sixteen everywhere that matters. */
+/**
+ * What an `em` in a media query is worth when nobody has touched the text.
+ *
+ * The root size the reader's browser starts from, which is theirs to change and
+ * the whole reason the portal moved its breakpoints to `em` (#78, ADL A7). Only
+ * a default: every sum here answers its queries at the size being tested, so a
+ * rule behind `43.75em` is reached at 700 pixels for a reader on the default and
+ * at 1400 for one at 200 per cent.
+ *
+ * Written as „never the reader's, sixteen everywhere that matters", it was the
+ * opposite of the decision it cited, and the code followed the comment: a floor
+ * moved behind an `em` query vanished at 200 per cent with every test green, and
+ * the event column went with it.
+ */
 const ROOT_TEXT = 16
 
 /** What the event's name needs to still be a column and not a sliver. */
@@ -93,21 +104,62 @@ const EVENT_FLOOR_REM = 4.25
  * both places. The point is that it cannot happen by accident.
  */
 const MEASURED: Record<string, number> = {
-  '1': 6.75,
-  '3': 6.25,
-  '4': 4,
-  '5': 4,
-  '6': 5.25,
-  '7': 4.25,
+  'profile.columns.date': 6.75,
+  'profile.columns.distance': 6.25,
+  'rankings.columns.ascent': 4,
+  'rankings.columns.descent': 4,
+  'profile.columns.time': 5.25,
+  'profile.columns.points': 4.25,
 }
 
-/** And the same for the telephone, which narrows one column and hides three. */
-const MEASURED_ON_PHONE: Record<string, number> = { ...MEASURED, '3': 5.25 }
+/** And the same for the telephone, which narrows the distance and hides three. */
+const MEASURED_ON_PHONE: Record<string, number> = {
+  ...MEASURED,
+  'profile.columns.distance': 5.25,
+}
+
+/**
+ * Which column each heading is, read from the markup.
+ *
+ * Keyed by the heading rather than by the position it happens to hold today.
+ * Written as `'1'`, `'3'`, `'4'`, nothing tied a width to the thing it was
+ * measured against: swapping the date and the event in `CompetitorProfile.tsx`
+ * left every test green while all six widths moved onto other columns and each
+ * heading stopped naming what was under it.
+ */
+function columnOf(heading: string): string {
+  const head = profileTsx.slice(profileTsx.indexOf('<thead>'), profileTsx.indexOf('</thead>'))
+  const at = [...head.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g)].findIndex((one) =>
+    (one[1] ?? '').includes(`'${heading}'`),
+  )
+
+  expect(at, `no heading reads ${heading}`).toBeGreaterThan(-1)
+
+  return String(at + 1)
+}
+
+/** The measured widths against the columns they were measured on. */
+function byColumn(measured: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(measured).map(([heading, width]) => [columnOf(heading), width]),
+  )
+}
 
 type Pinned = Map<string, number>
 
+/** A width a query names, in the unit it was written in. */
+type Bound = { value: number; em: boolean }
+
 /** One piece of a stylesheet, with the widths it applies at and where it sat. */
-type Piece = { min: number; max: number; body: string; at: number }
+type Piece = {
+  min: Bound | null
+  max: Bound | null
+  /** Whether the bound excludes the width it names (`>` rather than `>=`). */
+  strictMin: boolean
+  strictMax: boolean
+  body: string
+  at: number
+}
 
 /**
  * A stylesheet split into its plain rules and each `@media` block, in the order
@@ -126,7 +178,7 @@ function pieces(sheet: string): Piece[] {
 
   const keepPlain = (text: string, from: number): void => {
     if (text.trim() !== '') {
-      found.push({ min: 0, max: Infinity, body: text, at: from })
+      found.push({ min: null, max: null, strictMin: false, strictMax: false, body: text, at: from })
     }
   }
 
@@ -159,32 +211,40 @@ function pieces(sheet: string): Piece[] {
     }
 
     const condition = sheet.slice(query, opens)
-    /* Every spelling of a query, in both units.
+    /* Every spelling of a query, in both units, and kept in the unit it was
+       written in.
      *
        `(min-width: 700px)` and `(width >= 700px)` are the same condition, and
-       stylelint's own `media-feature-range-notation` rule asks for the second;
-       read only for the first, a block written the modern way was taken to
-       apply at every width at once.
+       stylelint's own `media-feature-range-notation` rule asks for the second.
+       The strict forms count too: `(width > 62.5em)` matched neither pattern
+       when only `>=` and `<=` were read, so the block was taken to apply at
+       every width at once, which is the very fault reading the new syntax was
+       meant to close. A sibling guard (`scale.test.ts`) reads `[<>]=?`, so the
+       two files disagreed about what a query even is.
      *
-       And `em` as well as `px`, because the portal moved its breakpoints to `em`
-       so they follow the reader's text rather than the device (#78, ADL A7).
-       Three queries in `Profile.css` became `38.75em`, `51.25em` and `62.5em`
-       overnight, and a parser reading only pixels took all three to apply
-       everywhere at once. The two that hide columns stayed in pixels on purpose,
-       which is exactly why both units have to be read: the sheet now mixes
-       them. */
+       And the unit is carried rather than converted here, because an `em` in a
+       media query is resolved against the root size the reader's browser starts
+       from, which is the whole reason the portal moved to `em` (#78, ADL A7).
+       Converted at 16 once, every query answered as though nobody had ever
+       enlarged their text: a floor written behind `(width >= 43.75em)` simply
+       vanished at 200 per cent, and the event column with it. */
     const bound = (property: string, arrow: string): RegExp =>
       new RegExp(`(?:${property}-width:|width\\s*${arrow})\\s*([\\d.]+)(px|em)`)
 
-    const asPixels = (found: RegExpExecArray | null): number | null =>
-      found === null ? null : Number(found[1]) * (found[2] === 'em' ? ROOT_TEXT : 1)
+    const read = (found: RegExpExecArray | null): Bound | null =>
+      found === null ? null : { value: Number(found[1]), em: found[2] === 'em' }
 
-    const min = asPixels(bound('min', '>=').exec(condition))
-    const max = asPixels(bound('max', '<=').exec(condition))
+    const min = read(bound('min', '>=?').exec(condition))
+    const max = read(bound('max', '<=?').exec(condition))
+    /* A strict bound excludes the width it names; a browser answers
+       `(width > 62.5em)` false at exactly 62.5em. */
+    const strict = (arrow: string): boolean => new RegExp(`width\\s*${arrow}(?!=)`).test(condition)
 
     found.push({
-      min: min ?? 0,
-      max: max ?? Infinity,
+      min,
+      max,
+      strictMin: strict('>'),
+      strictMax: strict('<'),
       body: sheet.slice(opens + 1, closes),
       at: query,
     })
@@ -197,9 +257,20 @@ function pieces(sheet: string): Piece[] {
 }
 
 /** Everything in a stylesheet that applies at one width, in the order written. */
-function appliesAt(sheet: string, screen: number): string {
+function appliesAt(sheet: string, screen: number, text = ROOT_TEXT): string {
+  const inPixels = (bound: Bound): number => bound.value * (bound.em ? text : 1)
+
   return pieces(sheet)
-    .filter((piece) => screen >= piece.min && screen <= piece.max)
+    .filter((piece) => {
+      const over =
+        piece.min === null ||
+        (piece.strictMin ? screen > inPixels(piece.min) : screen >= inPixels(piece.min))
+      const under =
+        piece.max === null ||
+        (piece.strictMax ? screen < inPixels(piece.max) : screen <= inPixels(piece.max))
+
+      return over && under
+    })
     .map((piece) => piece.body)
     .join('\n')
 }
@@ -221,7 +292,7 @@ function hidingClass(): string {
   const turnedOff = [...onHeaders].filter((name) =>
     pieces(tableCss).some(
       (piece) =>
-        piece.max < Infinity && new RegExp(`\\.${name}\\s*\\{[^}]*display:\\s*none`).test(piece.body),
+        piece.max !== null && new RegExp(`\\.${name}\\s*\\{[^}]*display:\\s*none`).test(piece.body),
     ),
   )
 
@@ -237,15 +308,20 @@ function hidingClass(): string {
  * `table.css` to 360px rendered the race name zero pixels wide at 375 with every
  * test green.
  */
-function phoneUpTo(): number {
+function phoneUpTo(text = ROOT_TEXT): number {
   const hiding = pieces(tableCss).find((piece) =>
     new RegExp(`\\.${hidingClass()}\\s*\\{[^}]*display:\\s*none`).test(piece.body),
   )
 
-  expect(hiding, 'nothing hides .table__hide-phone any more').toBeDefined()
-  expect(hiding?.max, 'the columns are hidden with no upper width').toBeLessThan(Infinity)
+  expect(hiding, 'nothing hides those columns any more').toBeDefined()
+  expect(hiding?.max, 'the columns are hidden with no upper width').not.toBeNull()
 
-  return hiding === undefined ? 0 : hiding.max
+  /* Worked out in the size being asked about, since this breakpoint may be
+     written in either unit: it is in pixels today and on purpose, because it
+     takes content away (#78), while the sheet around it is not. */
+  const edge = hiding?.max
+
+  return edge === null || edge === undefined ? 0 : edge.value * (edge.em ? text : 1)
 }
 
 /**
@@ -261,10 +337,10 @@ function phoneUpTo(): number {
  * only the logical spelling meant a column rewritten the other way vanished out
  * of every sum here without a word.
  */
-function pinnedAt(screen: number, cell: 'th' | 'td'): Pinned {
+function pinnedAt(screen: number, cell: 'th' | 'td', text = ROOT_TEXT): Pinned {
   const found: Pinned = new Map()
 
-  for (const rule of appliesAt(profileCss, screen).split('}')) {
+  for (const rule of appliesAt(profileCss, screen, text).split('}')) {
     const width = /(?:^|[\s;{])(?:inline-size|width):\s*([\d.]+)rem;/.exec(rule)
 
     if (width === null) {
@@ -280,9 +356,9 @@ function pinnedAt(screen: number, cell: 'th' | 'td'): Pinned {
 }
 
 /** The floor under the whole table at one width, last one written wins. */
-function floorAt(screen: number): number {
+function floorAt(screen: number, text = ROOT_TEXT): number {
   const written = [
-    ...appliesAt(profileCss, screen).matchAll(
+    ...appliesAt(profileCss, screen, text).matchAll(
       /\.profile__results \.table \{[^}]*?min-(?:inline-size|width):\s*([\d.]+)rem;/g,
     ),
   ]
@@ -355,7 +431,7 @@ function shellBox(): { limit: number; padRem: number } {
 function tableAt(screen: number, text: number) {
   const narrow = screen <= phoneUpTo()
   const hidden = hiddenColumns('th')
-  const shown = [...pinnedAt(screen, 'th').entries()].filter(
+  const shown = [...pinnedAt(screen, 'th', text).entries()].filter(
     ([column]) => !(narrow && hidden.includes(column)),
   )
   const columns = shown.reduce((all, [, one]) => all + one, 0) * text
@@ -367,7 +443,7 @@ function tableAt(screen: number, text: number) {
   /* Never narrower than the columns it pins: a table cannot give back width it
      has already promised, so that is the third thing the box is measured
      against, not just the floor. */
-  const table = Math.max(room, floorAt(screen) * text, columns)
+  const table = Math.max(room, floorAt(screen, text) * text, columns)
 
   return { room, columns, table, event: table - columns, scrolls: table > room }
 }
@@ -406,8 +482,8 @@ describe('the results table, added up rather than looked at', () => {
        And exactly one column carries no width of its own, because every sum here
        hands the whole remainder to the event. A second unpinned column shares
        that remainder in the browser and the model would not know. */
-    expect(Object.fromEntries(pinnedAt(1280, 'th'))).toEqual(MEASURED)
-    expect(Object.fromEntries(pinnedAt(360, 'th'))).toEqual(MEASURED_ON_PHONE)
+    expect(Object.fromEntries(pinnedAt(1280, 'th'))).toEqual(byColumn(MEASURED))
+    expect(Object.fromEntries(pinnedAt(360, 'th'))).toEqual(byColumn(MEASURED_ON_PHONE))
     expect(columnCount('th') - Object.keys(MEASURED).length).toBe(1)
   })
 
@@ -480,9 +556,44 @@ describe('the results table, added up rather than looked at', () => {
        Worth saying why this is so tight: at 360 the room is 328 and the floor is
        328, so the design has exactly nought pixels of slack there. Anything at
        all taken out of that chain shows immediately. */
-    const between = [...appliesAt(profileCss, 360).matchAll(/\.profile__results \{([^}]*)\}/g)]
+    /* Every link in that chain, not one of them. Written for `padding` on
+       `.profile__results` in one sheet alone, four edits walked past it and each
+       broke a 360 telephone at the ordinary text size: padding on
+       `.table-scroll`, a margin rather than a padding, the shell's own padding
+       overridden inside a query, and a root font size that quietly grows every
+       `rem` in the sums at once. */
+    const SIDES = /(?:padding|margin)(?:-inline|-left|-right)?:/g
+    const SPACED = ['.profile__results', '.table-scroll']
 
-    expect(between.flatMap((rule) => [...(rule[1] ?? '').matchAll(/padding(-inline|-left|-right)?:/g)])).toEqual([])
+    const spacing = [profileCss, tableCss].flatMap((sheet) =>
+      SPACED.flatMap((name) =>
+        [...appliesAt(sheet, 360, 16).matchAll(new RegExp(`\\${name} \\{([^}]*)\\}`, 'g'))].flatMap(
+          (rule) => [...(rule[1] ?? '').matchAll(SIDES)].map(() => name),
+        ),
+      ),
+    )
+
+    expect(spacing).toEqual([])
+
+    /* The shell's padding is read off the first rule that names it, so a second
+       one inside a query would change the room without changing what is read.
+       Its `margin: 0 auto` is not counted: `auto` centres what is already
+       bounded and takes no width from it. */
+    const shellRules = [...appliesAt(shellCss, 360, 16).matchAll(/\.shell__main[^{]*\{([^}]*)\}/g)]
+    const shellSpacing = shellRules.flatMap((rule) => [
+      ...(rule[1] ?? '').matchAll(/(?:padding(?:-inline|-left|-right)?|margin-(?:inline|left|right)):/g),
+    ])
+
+    expect(shellSpacing).toHaveLength(1)
+
+    /* And the root leaves the reader's own size alone, which is what every `rem`
+       in these sums is counted in. `100%` is that, said out loud, and the sheet
+       explains why it is written as a size rather than inside the `font`
+       shorthand. Put to `1.125rem` instead, the floor of 20,5rem becomes 369
+       pixels in a box of 324 and every sum above is out by an eighth, silently. */
+    const rootSize = /:root[^{]*\{[^}]*?font-size:\s*([^;]+);/.exec(appliesAt(rootCss, 360, 16))
+
+    expect(rootSize?.[1]?.trim() ?? '100%').toBe('100%')
   })
 
   it('leaves the scrolling to the box, and lets nothing later take it back', () => {
