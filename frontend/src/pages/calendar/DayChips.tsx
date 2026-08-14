@@ -2,6 +2,17 @@ import { Link } from 'react-router'
 import { categoriesAt } from '../../data/derive'
 import type { BtlEvent, Race } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
+/* For the five colours of `.length-dot`, which live in the table sheet because
+   the results table draws them too (styles/table.css). Asked for here rather
+   than left to the screen, since this file has no sheet of its own to ask
+   through (ADL A7).
+
+   That is the dots and not the chip. The rest of what this draws, `.chip` and
+   the two names under it, is in Calendar.css and arrives the same borrowed way
+   the dots used to: the screen around this one asks for it. Only table.css is
+   read by the test that keeps this honest, so the rest is named in ADL A7 as
+   still open rather than quietly fixed here. */
+import '../../styles/table.css'
 
 /**
  * One event in the grid: the name and the lengths it holds, on one line (owner,

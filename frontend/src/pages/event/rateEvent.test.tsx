@@ -90,7 +90,7 @@ const OTHER_NAME = 'Ironman 70.3 - St Polten'
  *  be published as a third of itself. */
 async function rateAll(user: ReturnType<typeof setupUser>, mark = 4) {
   for (const name of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
-    const group = screen.getByRole('group', { name })
+    const group = screen.getByRole('radiogroup', { name })
 
     await user.click(at(within(group).getAllByRole('radio'), mark - 1))
   }
@@ -106,17 +106,58 @@ describe('rating an event', () => {
        these (PDL P6), so a field for it would be a fourth place for the same
        fact to disagree with itself. */
     for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
-      expect(screen.getByRole('group', { name: mark })).toBeInTheDocument()
+      expect(screen.getByRole('radiogroup', { name: mark })).toBeInTheDocument()
     }
-    expect(screen.queryByRole('group', { name: 'Ukupna ocena' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Ukupna ocena' })).not.toBeInTheDocument()
 
-    expect(screen.getByLabelText('Komentar')).toBeInTheDocument()
+    /* „Komentar (neobavezno)", as every optional field on the portal is named
+       since 12.08.2026: the three ratings beside it are obligatory and say so
+       with a star, and a field with neither mark says nothing about itself. */
+    expect(screen.getByLabelText(/^Komentar \(neobavezno\)$/)).toBeInTheDocument()
+
+    /* And the three that are asked for say it on the group, since it is the
+       rating that is asked for and not any one star of it. */
+    for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
+      const group = screen.getByRole('radiogroup', { name: mark })
+
+      /* A radiogroup and not a bare fieldset, which is a plain `group`: ARIA
+         gives `group` no `aria-required`, so the word went where no reader
+         looks. Around the five stars and nothing else, since a radiogroup may
+         own radios and nothing besides. */
+      expect(group, `${mark} does not say it is obligatory`).toHaveAttribute(
+        'aria-required',
+        'true',
+      )
+      expect(within(group).getAllByRole('radio')).toHaveLength(5)
+      expect(group.querySelector('legend')).toBeNull()
+
+      /* One box carries the name, and it is this one: a fieldset around it named
+         itself by its legend and the row named itself by the same words, so the
+         name was announced twice on entering the rating.
+
+         The star is beside the name and not among the stars, and the words the
+         group is named by do not hold it: holding it, „Organizacija" reads as
+         „Organizacija*" for anything that looks by text (forms/AskedLabel.tsx);
+         laid outside the name entirely, it fell in among the five stars. */
+      const field = must(group.closest('.stars--asking'), `the rating of ${mark}`)
+      const named = must(field.querySelector('.stars__name'), `the name of ${mark}`)
+
+      /* One box with that name and no second one around it. A fieldset named by
+         its legend wrapped the row named by the same words, so a reader entering
+         the rating heard „Organizacija" twice. Asked by role, since that is what
+         a reader goes by: the outer box was a `group`, and there is none now. */
+      expect(screen.queryByRole('group', { name: mark })).toBeNull()
+      expect(named.querySelector('.field__required')).not.toBeNull()
+      expect(must(named.firstElementChild, `the words of ${mark}`).textContent).toBe(mark)
+    }
+
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
   })
 
   it('offers five stars to each mark, as radios rather than as five buttons', async () => {
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    const group = await screen.findByRole('group', { name: 'Organizacija' })
+    const group = await screen.findByRole('radiogroup', { name: 'Organizacija' })
 
     /* A rating is one choice out of five, so it is one group of radios: the
        arrow keys move through it and a reader hears which of the five is
@@ -146,7 +187,7 @@ describe('rating an event', () => {
     /* Two of the three is still not a rating. The average divides by three
        whatever is given, so a mark left out is published as a nought and the
        same card calls it "Bez ocene". */
-    const ambience = screen.getByRole('group', { name: 'Ambijent' })
+    const ambience = screen.getByRole('radiogroup', { name: 'Ambijent' })
 
     await user.click(at(within(ambience).getAllByRole('radio'), 3))
     expect(send).toHaveAttribute('aria-disabled', 'true')
@@ -173,7 +214,7 @@ describe('rating an event', () => {
 
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    const box = await screen.findByLabelText('Komentar')
+    const box = await screen.findByLabelText(/^Komentar/)
     const limit = limitOf(prijava, 'comment')
 
     /* Read on the way into the field rather than left to whoever can see it: the
@@ -208,7 +249,7 @@ describe('rating an event', () => {
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    const box = await screen.findByLabelText('Komentar')
+    const box = await screen.findByLabelText(/^Komentar/)
 
     await user.type(box, 'Staza je bila jasno obeležena.')
     expect(box).toHaveValue('Staza je bila jasno obeležena.')
@@ -238,7 +279,7 @@ describe('rating an event', () => {
       const user = setupUser()
       renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-      await screen.findByRole('group', { name: 'Organizacija' })
+      await screen.findByRole('radiogroup', { name: 'Organizacija' })
       await rateAll(user, 3)
       await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
@@ -260,7 +301,7 @@ describe('rating an event', () => {
     expect(
       await screen.findByRole('heading', { name: 'Ovaj događaj ocenjuju oni koji su ga istrčali' }),
     ).toBeVisible()
-    expect(screen.queryByRole('group', { name: 'Organizacija' })).toBeNull()
+    expect(screen.queryByRole('radiogroup', { name: 'Organizacija' })).toBeNull()
   })
 
   it('leads back to the event from that refusal, which is what they wanted anyway', async () => {
@@ -280,20 +321,20 @@ describe('rating an event', () => {
     const user = setupUser()
     const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    await screen.findByRole('group', { name: 'Organizacija' })
-    await user.type(screen.getByLabelText('Komentar'), 'Reci o prvoj trci.')
+    await screen.findByRole('radiogroup', { name: 'Organizacija' })
+    await user.type(screen.getByLabelText(/^Komentar/), 'Reci o prvoj trci.')
     await rateAll(user, 4)
 
     await router.navigate(`/sr/kalendar/${OTHER}/ocena`)
     await screen.findByRole('heading', { level: 1, name: OTHER_NAME })
 
-    expect(screen.getByLabelText('Komentar')).toHaveValue('')
+    expect(screen.getByLabelText(/^Komentar/)).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Pošalji' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
     for (const mark of ['Organizacija', 'Vrednost za novac', 'Ambijent']) {
-      const group = screen.getByRole('group', { name: mark })
+      const group = screen.getByRole('radiogroup', { name: mark })
 
       expect(within(group).queryAllByRole('radio', { checked: true })).toHaveLength(0)
     }
@@ -303,14 +344,14 @@ describe('rating an event', () => {
     const user = setupUser()
     const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
-    await screen.findByRole('group', { name: 'Organizacija' })
+    await screen.findByRole('radiogroup', { name: 'Organizacija' })
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
 
     await router.navigate(`/sr/kalendar/${OTHER}/ocena`)
 
-    expect(await screen.findByRole('group', { name: 'Organizacija' })).toBeVisible()
+    expect(await screen.findByRole('radiogroup', { name: 'Organizacija' })).toBeVisible()
     expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
   })
 
@@ -364,7 +405,7 @@ describe('rating an event', () => {
        are two screens with two doors. */
     const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
 
-    await screen.findByRole('group', { name: 'Organizacija' })
+    await screen.findByRole('radiogroup', { name: 'Organizacija' })
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
@@ -392,7 +433,7 @@ describe('rating an event', () => {
     expect(await screen.findByRole('heading', { level: 1 })).not.toHaveTextContent(
       'Fruškogorski maraton',
     )
-    expect(screen.queryByRole('group', { name: 'Organizacija' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Organizacija' })).not.toBeInTheDocument()
   })
 
   it('says so on an address that names no event of ours', async () => {
@@ -827,8 +868,8 @@ describe('a comment a moderator lets out', () => {
     const user = setupUser()
     const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
 
-    await screen.findByRole('group', { name: 'Organizacija' })
-    await user.type(screen.getByLabelText('Komentar'), 'Prva trka u sezoni i dobro postavljena.')
+    await screen.findByRole('radiogroup', { name: 'Organizacija' })
+    await user.type(screen.getByLabelText(/^Komentar/), 'Prva trka u sezoni i dobro postavljena.')
     await rateAll(user, 4)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
@@ -1035,7 +1076,7 @@ describe('what an event nobody has run yet offers', () => {
 
     expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
       .toBeVisible()
-    expect(screen.queryByRole('group', { name: /Organizacija/ })).toBeNull()
+    expect(screen.queryByRole('radiogroup', { name: /Organizacija/ })).toBeNull()
     expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
   })
 

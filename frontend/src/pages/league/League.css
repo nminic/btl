@@ -1,6 +1,17 @@
 /* The grid of a competition: everybody down the side, every race across the
    top. */
 
+/* For `.table` and `.table-scroll`, which the grid wears (LeagueResults.tsx),
+   and which half this file is written against: the rules below that name
+   `.table` are answers to what is in there (ADL A7).
+
+   This changes nothing about which of the two wins where they meet. The built
+   stylesheet emits the body of table.css at the last sheet that asks for it,
+   which is not this one, so those rules stand after everything here whether this
+   line is written or not. What the rules below rest on is specificity, and they
+   say so where they do it. */
+@import '../../styles/table.css';
+
 /* The heading of a race column, turned on its side (owner, 31.07.2026). The
    widest competition in the data has forty six races; laid flat those headings
    would be several thousand pixels of table before a single number. Turned, each

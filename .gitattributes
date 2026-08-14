@@ -1,0 +1,21 @@
+# Line endings are git's business, not each machine's.
+#
+# Without this, normalisation hangs on whatever `core.autocrlf` each contributor
+# happens to have. On 13.08.2026 one file went into history with `CR CR LF` on
+# sixteen lines; git then marked that one file of 356 as not text, stopped
+# normalising it, and rewrote the whole of it in a single merge, so every line of
+# it was attributed to that merge and the next person to touch it on Linux would
+# have conflicted on all 258 lines. One line here closes the class rather than
+# the instance.
+* text=auto
+
+# Binaries, said out loud so nothing tries to normalise them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

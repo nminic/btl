@@ -26,12 +26,19 @@ import './FieldHint.css'
  * without moving either of them, so the answer is a third piece of state that
  * outranks both and is forgotten the next time either arrives.
  *
- * **It opens in the flow, between the label and the field.** Laid over what
- * comes after it, a rule left open by a finger swallowed the first press on
- * whatever it covered, and a pointer could never reach the words to read them to
- * the end: the way down crossed the control, which is outside this and closed it
- * on the way. Opening in the flow, the pointer moves straight from the letter
- * into the words, and nothing is covered.
+ * **It opens over the page, hanging from the letter, and moves nothing**
+ * (owner, 12.08.2026: „a ne da se pojavi element unutar strane koji izpomera
+ * sve ostalo"; FieldHint.css). It stood in the flow until then, between the
+ * label and the field, because laid over the page it had cost two things: a box
+ * left open by a finger swallowed the first press on whatever it covered, and
+ * the pointer could not reach the words, since the way down crossed the control,
+ * which is outside this and closed it on the way.
+ *
+ * Both are answered here rather than avoided. A press anywhere outside now puts
+ * it away (`pointerdown` below), so a stray tap costs that tap and nothing more.
+ * And the words hang from the head of the field, which is what cannot leave the
+ * page, with the gap under the letter covered by a strip of the words' own box,
+ * so the way down never steps off the hint (FieldHint.css, SC 1.4.13).
  */
 export function FieldHint({
   id,
@@ -79,10 +86,48 @@ export function FieldHint({
       }
     }
 
+    /* And a press anywhere outside puts it away as well.
+     *
+     * This is what the box being laid over the page costs, and what pays for it.
+     * Standing over the page it covers whatever is under it, so a box left open
+     * by a finger used to swallow the first press on the control beneath it and
+     * the reader had no way of knowing why nothing happened. Now that press
+     * closes the box, and the second one reaches the control.
+     *
+     * `pointerdown` rather than `click`, so it goes away as the finger lands
+     * rather than when it lifts.
+     *
+     * A press on the words themselves closes it too, and that is the half that
+     * was missing: the box hangs under the head of the field and therefore over
+     * the field's own control, so on a telephone the control is under the words
+     * for most of its width. Exempted, a press there did nothing at all and the
+     * box stayed where it was, and there was no way to reach the control except
+     * by pressing somewhere else first. The words are text and hold nothing to
+     * press, so nothing is lost by letting the press close them.
+     *
+     * The letter is exempt, and only the letter: a press on it is somebody
+     * asking, and the button below answers a press by clearing what Escape put
+     * away. Closed here as well, the two would fight over the same press and
+     * the box would end where it started.
+     *
+     * Any letter, not only this one. A press on the neighbour's letter puts this
+     * box away all the same, because the neighbour's own listener is the one
+     * that opens the neighbour's box, and this one has nothing left to say about
+     * a press that went somewhere else. Told to exempt only its own letter, it
+     * would be doing what `stillHere` below does for the pointer, and the
+     * pointer needs it because a hover travels: a press does not. */
+    function onPress(pressed: PointerEvent) {
+      if (!(pressed.target instanceof Element) || pressed.target.closest('.hint__ask') === null) {
+        setDismissed(true)
+      }
+    }
+
     document.addEventListener('keydown', onKeyDown, true)
+    document.addEventListener('pointerdown', onPress, true)
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
+      document.removeEventListener('pointerdown', onPress, true)
     }
   }, [open])
 

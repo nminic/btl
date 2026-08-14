@@ -17,13 +17,26 @@
    draws, not a dependency this component should rest on.
 
    One import moves table.css in the built stylesheet, which is worth knowing
-   before adding another: the bundler emits it once, at the last sheet that asks
-   for it, so it went eighty-odd rules later, past TopBoards.css and Entity.css.
-   Both builds were compared rule by rule. Nothing changed effect: every other
-   rule that touches a `.table` element either outranks it (`.boards .table th`,
-   `.league__grid tbody td.table__points`) or kept its side of it
-   (`.markdown__table`, and `.moderators` below, which is inside this file and
-   therefore still after the import). */
+   before adding another: the body of it is emitted once, at the last sheet that
+   asks for it, so it went eighty-odd rules later, past TopBoards.css and
+   Entity.css. Both builds were compared rule by rule, and no rule moved across
+   it: what precedes it either outranks it (`.boards .table th`,
+   `.league__grid tbody td.table__points`) or was already on that side of it, and
+   `.moderators` below is inside this file and therefore still after the import.
+
+   Once is the body. Two rules leave a copy at every place table.css is inlined,
+   `.podium .table__position/.table__points` and the `table__hide-phone` media
+   query, and the minifier drops the earlier duplicates of everything else and
+   keeps those two. That costs nothing, since a duplicate standing before an
+   identical rule decides nothing, but the count is what somebody checking this
+   by hand will be counting: ten copies on 13.08.2026.
+
+   Ten is not the number of sheets that ask, and guessing it from the asks is how
+   the count was got wrong once already. Profile.css asks and leaves none, since
+   Rankings.css inlined the sheet a line earlier; Calendar.css and Member.css
+   never ask and carry one each, re-inlined through the sheets they do ask for;
+   and one copy is no sheet at all but the table.css that five components now
+   import straight into the module graph. */
 @import '../../styles/table.css';
 
 /* The box around the matrix, and the box the matrix scrolls in.

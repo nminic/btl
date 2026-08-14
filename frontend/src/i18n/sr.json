@@ -1,7 +1,6 @@
 {
   "app": {
     "name": "Balkanska trkačka liga",
-    "nameUppercase": "BALKANSKA TRKAČKA LIGA",
     "short": "BTL",
     "slogan": "Svaka trka se broji"
   },
@@ -236,11 +235,6 @@
     "settings": "Podešavanja",
     "table": "BTL tabele"
   },
-  "theme": {
-    "label": "Tema",
-    "toDark": "Uključi tamnu temu",
-    "toLight": "Uključi svetlu temu"
-  },
   "language": {
     "label": "Jezik",
     "sr": "Srpski",
@@ -319,7 +313,6 @@
     "loading": "Učitavanje",
     "loadingPart": "Učitavanje: {part}",
     "error": "Podaci se ne mogu učitati.",
-    "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."
   },
   "form": {
@@ -358,7 +351,8 @@
     "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom.",
     "explain": "Objašnjenje",
     "country": "Država",
-    "explainMark": "i"
+    "explainMark": "i",
+    "requiredNote": "Polja sa zvezdicom su obavezna."
   },
   "registration": {
     "title": "Registracija",
@@ -368,7 +362,7 @@
     "email": "Adresa elektronske pošte",
     "emailHint": "Na nju stiže potvrda naloga. Bez potvrde nalog se ne aktivira.",
     "birthDate": "Datum rođenja",
-    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj.",
+    "birthDateHint": "Oblik dd/mm/gggg. Godina rođenja se ne prikazuje javno. Ispod 16 godina prijavu potpisuje roditelj, u poljima koja se tada otvaraju pri dnu forme.",
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
@@ -416,7 +410,16 @@
     "genderHint": "Liga ima muški i ženski poredak i to je jedina podela po polu.",
     "cityHint": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
     "healthStatementLink": "pravilnikom",
-    "healthStatementHint": "Za sve što se dešava na trci odgovoran je onaj ko je organizuje."
+    "healthStatementHint": "Za sve što se dešava na trci odgovoran je onaj ko je organizuje.",
+    "parentRelation": "Srodstvo",
+    "parentRelationHint": "Čuva se uz potpis, zajedno sa datumom, vremenom i IP adresom sa koje je dat.",
+    "mother": "Majka",
+    "father": "Otac",
+    "guardian": "Staratelj",
+    "firstNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
+    "lastNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
+    "passwordRepeatHint": "Mora da se poklopi sa lozinkom iznad.",
+    "doneReferral": "Prijava je zabeležena kao preporuka. Član koji te je pozvao dobija zaslugu kad tvoja članarina bude aktivirana."
   },
   "shirt": {
     "XS": "XS",
@@ -528,7 +531,8 @@
       "6": "Sub",
       "7": "Ned"
     },
-    "weekend": "Vikend"
+    "weekend": "Vikend",
+    "addOnDay": "Nov događaj {date}"
   },
   "event": {
     "raceDay": "Dan",
@@ -599,7 +603,8 @@
     "writeSend": "Pošalji poruku",
     "written": "Poruka je poslata članu {name}, u Poruke na portalu.",
     "someMember": "Član lige",
-    "commentsForMembers": "Komentare vide prijavljeni članovi."
+    "commentsForMembers": "Komentare vide prijavljeni članovi.",
+    "writeNeedsWords": "Napiši poruku da bi mogao da je pošalješ."
   },
   "category": {
     "rookieMale": "Početnici",
@@ -778,7 +783,8 @@
       "regular": "6. oktobra do 30. novembra",
       "late": "1. do 31. decembra",
       "season": "1. januara do 30. septembra",
-      "junior": "Uzrast do 14 godina"
+      "junior": "Uzrast do 14 godina",
+      "referral": "Preporuka novog člana"
     }
   },
   "error": {
@@ -791,7 +797,8 @@
     "whoAreYou": "Ko si?",
     "submit": "Prijavi se",
     "needed": "Za ovo treba prijava",
-    "neededText": "Ovaj deo portala vide samo članovi."
+    "neededText": "Ovaj deo portala vide samo članovi.",
+    "needsSomebody": "Izaberi člana da bi mogao da se prijaviš."
   },
   "myProfile": {
     "actions": "Moje stvari",
@@ -863,7 +870,7 @@
     "active": "Član od {season}. sezone.",
     "honorary": "Počasno članstvo. Za sezonu 2027. ne plaćaš članarinu.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
-    "junior": "Do 14 godina članarina je {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum.",
+    "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
@@ -871,10 +878,6 @@
     "cardNote": "Kartično plaćanje ide preko provajdera, na njegovoj strani. Podaci o kartici nikad ne prolaze kroz portal. Provajder još nije izabran.",
     "paypal": "PayPal",
     "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
-    "referral": "Program preporuke",
-    "referralNote": "Svako ko se učlani preko tvog linka donosi ti {eur} EUR na balans, u trenutku kad mu se članarina aktivira.",
-    "balance": "na balansu",
-    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu, ne prenosi se drugom članu, i briše se posle prve godine bez aktivne članarine.",
     "ipsQrLabel": "IPS QR kod za uplatnicu",
     "showPayload": "Prikaži sadržaj koda",
     "renewal": "Obnova članarine za {season}.",
@@ -900,7 +903,13 @@
     "purposeLabel": "Svrha uplate",
     "referenceNote": "Poziv na broj je ono po čemu se uplata prepoznaje. Bez njega članarina stiže, ali se ne zna čija je.",
     "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
-    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku."
+    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku.",
+    "referral": "Program preporuke",
+    "referralNote": "Svako ko se učlani preko tvog linka i aktivira članarinu donosi ti {amount} na balans. Ne u trenutku prijave nego kad članarina bude aktivirana.",
+    "balance": "na balansu",
+    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
+    "honoraryNoRenewal": "Počasno članstvo se ne obnavlja i ne plaća. Nema šta da uplatiš.",
+    "amountLabel": "Iznos"
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -912,7 +921,6 @@
     "reason": "Razlog odbijanja",
     "reasonPlaceholder": "Bez razloga se ne odbija. Član dobija tvoj razlog i sme da pošalje ponovo.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
-    "officialResults": "Zvanični rezultati",
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",
     "cancel": "Odustani",
@@ -922,7 +930,8 @@
       "choose": "Izaberi PDF izvoda",
       "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radiće server; do tada uplate potvrđuješ ručno.",
       "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen."
-    }
+    },
+    "reasonNeeded": "Upiši razlog da bi mogao da pošalješ."
   },
   "admin": {
     "title": "Administracija",
@@ -1016,8 +1025,8 @@
       "teamOrganizer": "Organizator tima",
       "leagueName": "Naziv lige",
       "priceLabel": "Naziv perioda",
-      "eur": "Cena u evrima",
-      "rsd": "Cena u dinarima",
+      "eur": "Iznos u evrima",
+      "rsd": "Iznos u dinarima",
       "pageTitle": "Naslov strane",
       "sectionHeading": "Naslov prve sekcije",
       "sectionBody": "Tekst prve sekcije",
@@ -1026,7 +1035,8 @@
       "teamSlug": "Adresa tima",
       "kind": "Vrsta događaja",
       "country": "Država",
-      "featured": "Istaknuto"
+      "featured": "Istaknuto",
+      "rowLabel": "Naziv"
     },
     "hint": {
       "gender": "Pol odlučuje o kategoriji i o rang listi. Druge vrednosti ne postoje.",
@@ -1046,8 +1056,7 @@
       "season": "Sezona za koju liga važi.",
       "groupsByCategory": "Bez ovoga se poredak lige grupiše samo po polu.",
       "rules": "Propozicije se prikazuju na strani lige. Prazno polje znači da sekcije nema.",
-      "priceLabel": "Kako se period zove u cenovniku, na primer 1. do 5. oktobra. Sam period se ne menja.",
-      "rsd": "Dinarska cena je fiksirana za sezonu, po kursu 1 EUR = 120 RSD. Ne preračunava se po kursu na dan.",
+      "rsd": "Dinarski iznos je zaseban i ne preračunava se po kursu na dan. Kod članarine je fiksiran za celu sezonu.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "leagueSlug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa lige, na primer vojvodjanska-2027. Ne izvodi se iz naziva, jer bi promena naziva odnela adresu koju je neko već podelio.",
       "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
@@ -1057,7 +1066,8 @@
       "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja.",
       "kind": "Trka je podrazumevana. Trening i skup stoje u kalendaru kao i trka.",
       "city": "Od drugog slova portal nudi mesta iz svetskog šifarnika i sam popunjava državu. Uz mesto iz šifarnika država se ne bira; bira se samo uz mesto koje se upisuje rukom.",
-      "featured": "Beleži se uz događaj, za izdvajanje u kalendaru i na naslovnoj. Ta dva prikaza se prave sa sezonom 2027."
+      "featured": "Beleži se uz događaj, za izdvajanje u kalendaru i na naslovnoj. Ta dva prikaza se prave sa sezonom 2027.",
+      "rowLabel": "Kako se red zove u cenovniku. Kod perioda je to raspon datuma, na primer 1. do 5. oktobra; sam period se ne menja."
     },
     "value": {
       "genderM": "Muški",
@@ -1067,7 +1077,9 @@
     "period": "Period u godini",
     "everyPayment": "Svaka uplata",
     "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik.",
-    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna."
+    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
+    "referral": "Preporuka",
+    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu."
   },
   "ducats": {
     "title": "Dukati",

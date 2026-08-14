@@ -1,12 +1,27 @@
 /* The rule a field carries, folded into the letter beside its label.
  *
- * `display: contents` and not a box of its own: the letter belongs on the line
- * with the label, and the words belong on the line under it, which makes them
- * two items of the head's own grid (FormRenderer.css, `.field__head`). The
- * element stays in the document all the same, which is what the pointer is
- * measured against when it moves from one to the other (FieldHint.tsx). */
+ * A box of its own, and the smallest one there is: it holds the letter and
+ * nothing else, so it sits on the line with the label like any word would.
+ *
+ * Until 12.08.2026 it was `display: contents`, and the words were an item of the
+ * head's own grid. That kept them in the flow, which is what the owner asked to
+ * be rid of („a ne da se pojavi element unutar strane koji izpomera sve
+ * ostalo").
+ *
+ * Deliberately **not** positioned. It was `position: relative` for half a day,
+ * and the open words were measured from a letter 24 pixels wide and centred on
+ * it: on a telephone „Pol" opened 65 pixels off the left edge of the screen,
+ * where nothing can scroll to, and the confirmation opened 103 pixels off the
+ * right and took the whole page into sideways scroll, which this portal forbids
+ * outright. They are measured from the head of the field instead, which is a box
+ * that cannot leave the page because the field cannot (FormRenderer.css).
+ *
+ * The pointer is still measured against this element rather than against either
+ * half, which is what lets it travel from the letter into the words without the
+ * box closing under it (FieldHint.tsx, SC 1.4.13). */
 .hint {
-  display: contents;
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 /* Round, quiet, and big enough to be pressed with a finger: the target is the
@@ -50,30 +65,100 @@
 /* Asked for: by the pointer, by the keyboard, or by a finger. All three go
    through the same state, so Escape closes what any of them opened.
  *
- * In the flow and not over it. Laid over what follows, a rule left open by a
- * finger swallowed the first press on whatever it covered, and a pointer could
- * never reach the words: the way down to them crossed the control, which closed
- * it on the way. Standing between the label and the control, it is reached by
- * moving straight down, and the field it explains moves down with it. */
+ * Over the page and not in it (owner, 12.08.2026). Nothing moves when it opens.
+ *
+ * Two things went wrong the last time it was laid over the page, and both are
+ * answered here rather than avoided:
+ *
+ * - **The pointer could not reach the words.** It can now, because the whole
+ *   way down is inside the hint, which is what the pointer is measured against
+ *   (FieldHint.tsx). There is a gap of `--space-4` under the letter, so the
+ *   words do not touch it, and that gap is filled by a strip of the words'
+ *   own box rather than left as bare page: crossing bare page, the pointer is
+ *   for one moment on something that is not this hint, `stillHere` says no, and
+ *   the box closes under it a few pixels short of the words it opened for
+ *   (WCAG 2.2 SC 1.4.13, hoverable).
+ * - **A box left open by a finger swallowed the first press on what it
+ *   covered.** Now a press anywhere outside puts it away (FieldHint.tsx), so
+ *   what a stray tap costs is that tap and nothing more. That is the price the
+ *   owner asked for, against a page that used to jump every time a letter was
+ *   pressed.
+ *
+ * Started at the leading edge of the head and as wide as the head, so a field in
+ * the last column of a form has its rule inside that column and nowhere else.
+ * It was centred on the letter for half a day, and that is what put it off both
+ * edges of a telephone. */
 .hint--open .hint__text {
-  grid-column: 1 / -1;
-  position: static;
-  inline-size: auto;
+  position: absolute;
+  z-index: 30;
+  inset-block-start: calc(100% + var(--space-4));
+  inset-inline-start: 0;
+  inline-size: 100%;
+  /* Small print stays small print: a rule of six words does not want a box of
+     sixty rem, which is what the confirmation would give it. */
+  max-inline-size: min(22rem, 100%);
   block-size: auto;
   overflow: visible;
   clip-path: none;
   white-space: normal;
-  /* Never wider than a line of text is comfortable to read. */
-  max-inline-size: 32rem;
-  margin-block-start: var(--space-4);
-  padding: var(--space-8) var(--space-10);
+  padding: var(--space-6) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   background: var(--surface);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.55);
   color: var(--text);
-  font-size: 0.85rem;
+  /* Small print, which is what it is (owner, 12.08.2026: „porukica sitnim
+     slovima"). */
+  font-size: 0.75rem;
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.45;
   text-transform: none;
   letter-spacing: normal;
+}
+
+/* The confirmation is the one field whose head is more than one line high, and
+   both of its ends have to be answered separately.
+ *
+   Sideways: the letter stands at the end of a sentence that takes the whole
+   width of the form, so the rule opens at that end rather than at the far left
+   where the sentence begins. Both ends are inside the page; what matters is that
+   the letter stands over the box, or the pointer has nowhere to walk down.
+
+   Downward: everywhere else the head is one line and the letter sits on it, so
+   hanging the box under the head hangs it under the letter. Here the sentence
+   runs to three lines on a telephone and the letter is at the top of them
+   (`align-items: start` in FormRenderer.css), so under the head is sixty pixels
+   under the letter and the way down crosses all of it. Hung under the letter
+   instead: `1.5rem` is the letter itself (`.hint__ask` above), and the gap after
+   it is the same one every other field has. The words then lie over the rest of
+   the sentence, which is what a box laid over the page is for. */
+.field__head--confirm .hint--open .hint__text {
+  inset-block-start: calc(1.5rem + var(--space-4));
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
+/* The way down, which is nothing to look at and everything to walk on.
+ *
+   It fills the gap between the letter and the words with a piece of the words'
+   own box, so a pointer going from one to the other is never on anything else.
+   Generated content is hit like any other painted box and the event names the
+   element that generated it, so what the pointer lands on here is
+   `.hint__text`, which is inside the hint.
+
+   As wide as the words themselves and no wider: wider, it would sit over the
+   name of the field beside it and swallow presses meant for that.
+
+   One pixel taller than the gap it covers, and that pixel is not slack. What it
+   is measured against is the padding box of the words, which is a pixel inside
+   their border, so a strip exactly as tall as the gap ends a pixel short of the
+   head and leaves a hairline of bare page directly under the letter. A pointer
+   sampled there is on the page, `stillHere` says no, and the box closes a pixel
+   before the words it opened for. */
+.hint--open .hint__text::before {
+  content: '';
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline: 0;
+  block-size: calc(var(--space-4) + 1px);
 }

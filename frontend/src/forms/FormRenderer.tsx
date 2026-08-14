@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
+import { RequiredMark, RequiredNote } from './AskedLabel'
 import { FieldHint } from './FieldHint'
 import { plainWords, worded } from './worded'
 import { LongBox } from './LongBox'
@@ -187,9 +188,20 @@ const Field = memo(function Field({
     .filter(Boolean)
     .join(' ')
 
+  /* Said to the control and not only to the eye. The star beside the name is
+     drawn for whoever can see it and is kept out of what is read aloud
+     (`RequiredMark`), so without this a screen reader was told nothing at all:
+     the legend over the form says fields with a star are obligatory, and there
+     is no star in the accessibility tree to find. `aria-required` and not the
+     native `required`, because the form is `noValidate` and answers for its own
+     rules (`validate.ts`); the native attribute would put the browser's own
+     bubble on top of the portal's error, in the browser's language. */
+  const asked = field.required === true ? true : undefined
+
   const shared = {
     id: inputId,
     name: field.name,
+    'aria-required': asked,
     'aria-invalid': error !== undefined,
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     className: 'field__control',
@@ -207,16 +219,26 @@ const Field = memo(function Field({
             checked={value === true}
             onChange={(e) => change(e.target.checked)}
           />
-          {/* The words, and the letter that explains them beside the last of
-              them: the hint is `display: contents`, so left outside this it
-              became an item of the field's own column and the circle fell to a
-              line of its own under the sentence. Ten fields carry it beside
-              their name and this one carried it below, which is the difference
-              the group of buttons was rebuilt to be rid of. */}
+          {/* The words, the star, and the letter that explains them, all in a
+              head of their own. Left outside a head the letter became an item of
+              the field's own column and fell to a line under the sentence, where
+              ten other fields carry it beside their name; the group of buttons
+              was rebuilt for the same reason. The head is also what the open
+              rule is measured from, so this one is not an ornament
+              (FieldHint.css). */}
           <span className="field__head field__head--confirm">
             <label className="field__label" htmlFor={inputId} id={labelId}>
               {worded(t(field.labelKey), field, locale, t)}
+              {/* Both halves of the rule, as on every other kind of field: a
+                  star where it has to be answered and the word where it may be
+                  left alone. This branch was given the star alone, so a
+                  confirmation that is not obligatory was the one field on the
+                  portal that said nothing either way. */}
+              {field.required !== true && (
+                <span className="field__optional"> ({t('form.optional')})</span>
+              )}
             </label>
+            {field.required === true && <RequiredMark />}
 
             {field.hintKey !== undefined && (
               <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -245,6 +267,7 @@ const Field = memo(function Field({
               <span className="field__optional"> ({t('form.optional')})</span>
             )}
           </span>
+          {field.required === true && <RequiredMark />}
 
           {field.hintKey !== undefined && (
             <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -278,6 +301,7 @@ const Field = memo(function Field({
         <div
           className="choice"
           role="radiogroup"
+          aria-required={asked}
           aria-labelledby={labelId}
           /* The error, on the group as well as on the buttons: the summary of
              errors leads here and puts the cursor on the group itself, and
@@ -350,6 +374,7 @@ const Field = memo(function Field({
             <span className="field__optional"> ({t('form.optional')})</span>
           )}
         </label>
+        {field.required === true && <RequiredMark />}
 
         {field.hintKey !== undefined && (
           <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -403,6 +428,7 @@ const Field = memo(function Field({
 
       {field.type === 'place' && (
         <PlaceField
+          required={asked}
           id={inputId}
           name={field.name}
           value={String(value)}
@@ -440,6 +466,7 @@ const Field = memo(function Field({
           id={inputId}
           name={field.name}
           value={String(value)}
+          required={asked}
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
@@ -513,6 +540,43 @@ export function FormRenderer({
   const broken = visible.filter((field) => errors[field.name] !== undefined)
   const titleId = `form-${form.id}-title`
 
+  /**
+   * What is on screen, which is what may be sent.
+   *
+   * A field taken off the form takes its value with it. Somebody who entered a
+   * date of birth in 2015, filled in the parent's name and relationship the form
+   * then asked for, and corrected the date to an adult one, was still sending
+   * that name and that relationship: a third party named in a record with no
+   * ground to stand on, where PDL P23 collects nothing that is not needed and a
+   * parent's signature exists only as the legal basis for a member under
+   * sixteen. Nothing keeps it today because there is no database yet, but this
+   * object is the contract the F5 backend will be written against.
+   *
+   * Written as what to leave out rather than what to keep: a place field writes
+   * a value beside its own, the country the town came with, and that value has
+   * no field of its own to be found under (src/forms/types.ts).
+   */
+  function onScreen(all: FormValues): FormValues {
+    const gone = form.fields.filter((field) => !isVisible(field, all, today))
+    /* And whatever a field that has gone was writing beside itself. A place
+       field writes the country its town came with, under a name of its own, so
+       hiding the town used to leave the country behind with nothing holding it
+       (src/forms/types.ts). Nothing draws that arrangement today; the fault was
+       built in the moment the country was let through by name. */
+    const alongside = gone.flatMap((field) => (field.type === 'place' ? ['country'] : []))
+    /* A field that only agrees with another one carries nothing of its own. The
+       repeated password is the whole of that case, and it was going out in the
+       body beside the first: a secret sent twice is a second place for it to end
+       up in a proxy log or a crash report. Whether the two matched is a rule of
+       the form, answered here, and not a fact a backend is owed. */
+    const confirming = form.fields.filter((field) => field.matches !== undefined)
+    const left = [...gone, ...confirming].map((field) => field.name)
+
+    return Object.fromEntries(
+      Object.entries(all).filter(([name]) => !left.includes(name) && !alongside.includes(name)),
+    )
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
@@ -538,7 +602,7 @@ export function FormRenderer({
     setErrors(found)
 
     if (Object.keys(found).length === 0) {
-      onSubmit(trimValues(filled))
+      onSubmit(trimValues(onScreen(filled)))
     }
   }
 
@@ -572,6 +636,14 @@ export function FormRenderer({
           {title}
         </h2>
       )}
+
+      {/* What the star beside a name means, said once over the form rather than
+          spelled out on every field (owner, 12.08.2026). Only where there is a
+          star to explain: a form of nothing but optional fields would be
+          explaining a mark it never draws. Every form the portal has draws at
+          least one, the registration included, where „Svojim rečima" is the one
+          field that may be left empty. */}
+      {form.fields.some((one) => one.required === true) && <RequiredNote />}
 
       {/* Announced the moment it appears. Without it, pressing the button with
           a broken form does nothing perceivable for a blind visitor. */}

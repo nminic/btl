@@ -1,4 +1,6 @@
+import { addressOf } from '../../app/head'
 import { countryName } from '../../data/countryName'
+import type { Competitor } from '../../data/types'
 import { useToday } from '../../clock/useClock'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
@@ -9,6 +11,7 @@ import { useResults } from '../../data/useResource'
 import {
   ipsPayload,
   methodsFor,
+  paysInDinars,
   paymentPurpose,
   paymentReference,
   RECIPIENT_ACCOUNT,
@@ -18,14 +21,20 @@ import {
 import {
   JUNIOR,
   PROCESSING_FEE_EUR,
+  REFERRAL,
+  REFERRAL_ROW,
+  juniorInSeason,
   priceOn,
   registrationOpen,
   seasonBeingRenewed,
 } from '../../data/pricing'
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
-import { formatNumber } from '../../i18n/format'
+import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { applyChanges } from '../../forms/records'
+import { MEMBERS, recordsOf } from '../admin/entityForms'
+import { useOverlay } from '../admin/overlay'
 import { SignedOut } from './SignedOut'
 import './Member.css'
 
@@ -38,12 +47,72 @@ import './Member.css'
  * is read anyway. */
 const RECIPIENT = RECIPIENT_NAME
 
-/** Eight euros per member brought in, credited when their fee is activated. */
-const REFERRAL_EUR = 8
+/**
+ * An amount in the currency this member pays and is credited in.
+ *
+ * Serbia in dinars, everyone else in euro, decided by the same country on the
+ * profile that decides how the fee itself may be paid, and by the same predicate
+ * rather than a second copy of it (data/paymentQr.ts). Two figures side by side
+ * would have said „five euro, that is six hundred dinars", which is a
+ * conversion, and this list holds no rate: the dinar figure is chosen, not
+ * converted (data/pricing.ts).
+ *
+ * Used for what a referral brings and for what the fee itself comes to. Written
+ * for the referral alone, the row of the payment slip that carries the amount
+ * was spelled RSD by hand, so a member in North Macedonia read „Iznos 4.800 RSD"
+ * for a debt of 40 EUR, four sections above the same screen saying „5 EUR". It
+ * is the same rule twice, so it is the same function twice.
+ */
+function inTheirCurrency(
+  country: string,
+  /* The two amounts and nothing else, because that is all this needs. Asked for
+     a whole `PriceRow`, the junior fee could not be handed to it: it is a price
+     with no period, since it holds „bez obzira na datum". */
+  row: { eur: number; rsd: number },
+  locale: string,
+  times = 1,
+): string {
+  return paysInDinars(country)
+    ? `${money(row.rsd * times, locale)} RSD`
+    : `${money(row.eur * times, locale)} EUR`
+}
+
+/**
+ * How many members this one brought in and was actually credited for.
+ *
+ * Counted rather than stored, and counted twice over: the link records who
+ * brought whom, and the credit falls when that member's own membership is first
+ * activated (owner, 12.08.2026). Somebody who registered through a link and
+ * never went active pays nobody.
+ *
+ * Activation and not payment, decided by the owner on 13.08.2026 after a review
+ * asked: „OK je da se za preporuku dobije balans čak i ako je preporučen član
+ * dobio počasnu aktivaciju." So an honorary member counts. What the referrer is
+ * paid for is bringing somebody into the league, and the league deciding to
+ * waive that person's fee is the league's own business, not a reason to withhold
+ * it (PDL P16).
+ *
+ * The balance under this used to be the string „0 EUR" for everybody, written
+ * out, so no arrangement of the data could ever have shown anything else.
+ */
+function broughtInBy(me: Competitor, everybody: Competitor[]): number {
+  return everybody.filter((one) => one.referredBy === me.referralCode && one.active).length
+}
 
 export function Membership() {
   const { locale, t } = useI18n()
   const { memberNumber } = useSession()
+  /* The referral amount as administration has it, not as the file has it: it is
+     a row of the price list and is changed there (AdminPricing).
+   *
+     The changes laid over the row directly rather than the row read out of a
+     list of one. The price list is fixed: nothing is added to it and nothing is
+     taken away (owner, 30.07.2026), so of the three things administration can do
+     to a record only one can happen here, and asking for the other two left a
+     list that could be empty and a default that could never be reached. */
+  const overlay = useOverlay()
+  const { edits } = overlay
+  const credited = applyChanges(REFERRAL_ROW, edits[REFERRAL.key])
   const state = combineResources(useCompetitors(), useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It
@@ -70,7 +139,30 @@ export function Membership() {
         const nextSeason = seasonBeingRenewed(today)
         const windowOpen = inYearlyWindow(today)
         const team = teams.find((one) => one.id === me.teamId)
-        const price = priceOn(today)
+        /* The prices as administration has them, not as the file has them.
+           The referral row was already read through the price list while the fee
+           itself was read off a constant, so an administrator could put 22,50 on
+           the price list, see the table show it, and a member would still read 20
+           and scan a code for the old figure. One screen sets these; one screen
+           has to be enough. */
+        const price = applyChanges(priceOn(today), edits[priceOn(today).key])
+        const junior = applyChanges(JUNIOR, edits[JUNIOR.key])
+        /* An honorary member owes nothing at all (Pravilnik član 15, PDL P16),
+           and twenty nine of the thirty two members in the data are honorary. */
+        const honorary = me.membershipBasis === 'honorary'
+        /* The members as administration has them, not as the file has them.
+           Counted straight off the file, somebody an administrator had deleted
+           went on earning their referrer six hundred dinars: they were gone from
+           the list of members and still in the sum here. ADL A8 says deleting a
+           record frees the identity from everything, not only from a list. */
+        const members = recordsOf(MEMBERS, competitors, overlay)
+        /* What this member actually owes, which is not always what the calendar
+           says the fee is. The junior price was on this screen as a sentence and
+           nowhere else: the code a member scans carried the adult figure, so
+           somebody born in 2014 read „Do 14 godina članarina je 20 EUR" and then
+           scanned a request for 4.200 RSD. The year of birth was on the record
+           the whole time. */
+        const due = juniorInSeason(nextSeason, me.birthYear) ? junior : price
         const methods = methodsFor(me.country)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have
@@ -91,7 +183,7 @@ export function Membership() {
                 {t('membership.status')}
               </h2>
               <p className="membership__state">
-                {me.membershipBasis === 'honorary'
+                {honorary
                   ? t('membership.honorary')
                   : t('membership.active', { season: me.firstSeason })}
               </p>
@@ -100,11 +192,18 @@ export function Membership() {
                   lives, the portal works it out, and what the older rule
                   forbade was reading one as a conversion of the other. The ban
                   on showing them together was replaced by a ban on picking. */}
+              {/* Nothing about a price to somebody who owes none. The slip was
+                  taken away from an honorary member and these three sentences
+                  were not, so the screen still quoted the fee, the processing
+                  charge and the junior rate to somebody it had just told they
+                  pay nothing. */}
+              {!honorary && (
+              <>
               <p className="member__note">
                 {registrationOpen(today)
                   ? t('membership.priceNow', {
-                      eur: price.eur,
-                      rsd: formatNumber(price.rsd, locale),
+                      eur: money(due.eur, locale),
+                      rsd: money(due.rsd, locale),
                     })
                   : t('membership.notYetSold')}
               </p>
@@ -124,10 +223,12 @@ export function Membership() {
               )}
               <p className="member__note">
                 {t('membership.junior', {
-                  eur: JUNIOR.eur,
-                  rsd: formatNumber(JUNIOR.rsd, locale),
+                  eur: money(junior.eur, locale),
+                  rsd: money(junior.rsd, locale),
                 })}
               </p>
+              </>
+              )}
             </section>
 
             <section className="member__panel" aria-labelledby="membership-renewal">
@@ -135,7 +236,16 @@ export function Membership() {
                 {t('membership.renewal', { season: nextSeason })}
               </h2>
 
-              {windowOpen ? (
+              {/* An honorary member owes nothing, ever (Pravilnik član 15, PDL
+                  P16). Only the line about their status said so, while the
+                  whole of the renewal underneath went on being drawn: a price,
+                  „Uplati sada", the recipient, a reference number and a QR code
+                  for 4.800 RSD they do not owe. Twenty nine of the thirty
+                  members in the data are honorary, so that was very nearly the
+                  only thing this screen ever showed. */}
+              {honorary ? (
+                <p className="member__note">{t('membership.honoraryNoRenewal')}</p>
+              ) : windowOpen ? (
                 <>
                   <p className="member__note">{t('membership.renewalOpen')}</p>
 
@@ -192,11 +302,25 @@ export function Membership() {
                       (owner, 30.07.2026). The line above about membership not
                       being on sale is the one September before the launch, and
                       not the day the list ran out. */}
-                  <h3 className="profile__section">{t('membership.payNow')}</h3>
-
+                  {/* Which ways of paying this member is offered, and why. It
+                      belongs to the ways and not to the slip: a member abroad
+                      sees no slip at all and still needs to know that PayPal and
+                      a card are what their country gets. */}
                   <p className="member__note">
                     {t('membership.byCountry', { country: countryName(me.country) })}
                   </p>
+
+                  {/* The slip itself, and only where it can be paid. PDL P8,
+                      owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije.
+                      Član van Srbije ga ne vidi uopšte, ni u kom obliku."
+                      Only the drawn code was hidden, so a member abroad still got
+                      the heading, the association's dinar account, the reference
+                      and an amount, which is the whole of the slip and the very
+                      route that decision removed. The terms say the same in
+                      writing: outside Serbia it is PayPal or a card. */}
+                  {methods.includes('ips') && (
+                    <>
+                  <h3 className="profile__section">{t('membership.payNow')}</h3>
 
                   {/* The same four facts the code carries, in writing, because a
                       code is no use to somebody typing a payment into their bank
@@ -217,9 +341,22 @@ export function Membership() {
                     </dd>
                     <dt>{t('membership.purposeLabel')}</dt>
                     <dd>{purpose}</dd>
+                    {/* The amount, which this list did not have at all. It exists
+                        for somebody typing the payment into their bank by hand,
+                        and the one thing a bank cannot do without is the sum. A
+                        junior member had it worse than nobody: the only figure
+                        they could read on this screen was the grown one, and the
+                        right one was inside the code, where only a camera
+                        reaches. */}
+                    <dt>{t('membership.amountLabel')}</dt>
+                    <dd>
+                      <strong>{inTheirCurrency(me.country, due, locale)}</strong>
+                    </dd>
                   </dl>
 
                   <p className="member__note">{t('membership.referenceNote')}</p>
+                    </>
+                  )}
 
                   {/* Every way of paying is one way of doing what the slip
                       above is for, so they sit under it rather than beside
@@ -234,7 +371,7 @@ export function Membership() {
                           text={ipsPayload({
                             account: RECIPIENT_ACCOUNT,
                             recipient: RECIPIENT,
-                            amountRsd: price.rsd,
+                            amountRsd: due.rsd,
                             purpose,
                             reference,
                           })}
@@ -246,7 +383,7 @@ export function Membership() {
                             {ipsPayload({
                               account: RECIPIENT_ACCOUNT,
                               recipient: RECIPIENT,
-                              amountRsd: price.rsd,
+                              amountRsd: due.rsd,
                               purpose,
                               reference,
                             })}
@@ -297,14 +434,41 @@ export function Membership() {
               )}
             </section>
 
+            {/* The referral programme, and the balance it pays into.
+             *
+                One amount and not two, and it is the one this member is
+                credited in: whoever pays in dinars is credited in dinars
+                (data/paymentQr.ts decides that by the country on the profile,
+                and it decides it here too, so the two can never disagree). The
+                balance underneath used to be „0 EUR" for everybody, under a
+                sentence promising dinars.
+
+                Read through the price list rather than off the constant, because
+                that is where an administrator sets it (owner, 12.08.2026) and
+                what is typed there has to be what is promised here. The same
+                read as every entity on the portal: the generated record with
+                whatever administration has changed laid over it.
+
+                It says when the credit lands, and that is not a detail: it lands
+                when the new member's fee is activated, never at registration, so
+                nobody is paid for an account that was opened and left. */}
             <section className="member__panel" aria-labelledby="membership-referral">
               <h2 className="profile__section" id="membership-referral">
                 {t('membership.referral')}
               </h2>
-              <p className="member__note">{t('membership.referralNote', { eur: REFERRAL_EUR })}</p>
-              <p className="pay__payload">{`https://balkanskatrkackaliga.net/${locale}/registracija?preporuka=${me.memberNumber}`}</p>
+              <p className="member__note">
+                {t('membership.referralNote', { amount: inTheirCurrency(me.country, credited, locale) })}
+              </p>
+              {/* The code and not the member number. That number is public and
+                  consecutive: it is the address of a profile and the sign in
+                  list prints it beside every name, so anybody could assemble
+                  somebody else's link, or credit themselves with a member they
+                  never brought. The origin comes from the one place that holds
+                  it, so a change of domain does not leave this link behind. */}
+              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode}`}</p>
               <p className="membership__balance">
-                <strong>0 EUR</strong> <span>{t('membership.balance')}</span>
+                <strong>{inTheirCurrency(me.country, credited, locale, broughtInBy(me, members))}</strong>{' '}
+                <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>
             </section>

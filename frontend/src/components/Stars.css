@@ -11,26 +11,24 @@
   color: var(--gold-text);
 }
 
-/* The one asking a question carries its own name, so it is a block with a
-   legend rather than a run of stars in a line of text. */
+/* The one asking a question carries its own name, so it is a block with that
+   name above it rather than a run of stars in a line of text. */
 .stars--asking {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 
-/* Its own line above the stars, because a legend that shares a line with the
-   first star reads as a label on that star. A legend is laid out by the fieldset
-   and not as a flex item, so it takes its own line whatever this says; the width
-   is written down because a legend that wrapped would still be a legend and this
-   makes it one line's worth of room rather than whatever the words need. */
-.stars--asking legend {
+/* Its own line above the stars, because a name that shares a line with the first
+   star reads as a label on that star. Written as words rather than as a
+   `<legend>` since 12.08.2026 (components/Stars.tsx), so the line it takes is
+   the one this says and not one a fieldset decides for it. */
+.stars--asking .stars__name {
   inline-size: 100%;
-  margin-block-end: var(--space-4);
+  /* Its own margin, since a paragraph brings one of its own that a legend did
+     not. */
+  margin: 0 0 var(--space-4);
   padding: 0;
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -84,3 +82,22 @@
   }
 }
 
+
+/* The five stars, and the group a reader is told about: the role is on this row
+   and not on the fieldset, because a radiogroup may own radios and nothing
+   besides (components/Stars.tsx). What the fieldset was doing for the layout,
+   this does now. */
+.stars__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* The star that says a rating has to be given, on the line with the name and
+   after it. On that line and not outside it: left outside, it fell in among the
+   five stars, four pixels to the left of the first, reading as a mark on that
+   star (components/Stars.tsx). */
+.stars--asking .stars__name .field__required {
+  margin-inline-start: var(--space-4);
+}

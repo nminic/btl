@@ -90,6 +90,10 @@ const ALLOWED = new Map([
     'pages/admin/SectionNav.css | padding | 0.05rem var(--space-6)',
     'under the smallest step the grid has, on the tallest thing in its row',
   ],
+  [
+    'forms/FieldHint.css | inset-block-start | calc(1.5rem + var(--space-4))',
+    'not a step: the letter that opens the rule is 1.5rem tall (.hint__ask), and on the one field whose head runs to several lines the rule hangs under the letter rather than under the head, so the height of the letter is what is written',
+  ],
   /* Four offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
      than swept because moving them is a decision about how far a counter hangs
@@ -366,6 +370,8 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/Verification.css .pending__toggle', 'the same, on the queue of things to verify'],
       ['pages/Rulebook.css .rulebook__toggle', 'the same, on the table of contents'],
       ['pages/admin/Rights.css .rights__inline', 'the words beside a checkbox, which the column heading now carries and which are aria-hidden either way'],
+      ['pages/admin/Verification.css .member:not(:has(.pending__card--open .field__required)) .pending__legend',
+        'the line saying what the star means, on a screen where every card is folded and no star is drawn'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
     ])
 
@@ -390,7 +396,13 @@ describe('space and corners are chosen from the scale, not typed', () => {
           continue
         }
 
-        for (const rule of sheet.css.slice(at, closes(css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        /* `css` and not `sheet.css`: the comment two paragraphs up says the
+           comments are blanked here as above, and this one line was still
+           reading the raw sheet. A comment written inside a media block then
+           became part of the selector it stood over, so adding one line of
+           explanation above `.pending__toggle` failed the guard over a
+           stylesheet that renders identically. */
+        for (const rule of css.slice(at, closes(css, at)).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
           const selector = (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')
           const body = rule[2] ?? ''
 
@@ -436,3 +448,209 @@ function closes(css: string, at: number): number {
 
   throw new Error(`the block at ${at} is never closed`)
 }
+
+describe('the width prose is allowed', () => {
+  it('gives the written pages the whole width, with no measure of their own', () => {
+    /* Owner, 12.08.2026: „Sve strane treba da koriste punu širinu strane za
+       prikaz teksta. Dakle tekst se lomi tek na kraju redova." A measure of
+       78ch stood on both of the rules that draw prose, and it is what made the
+       rulebook break its lines halfway across the screen.
+     *
+       Held as text, because jsdom lays nothing out: what is asked is that
+       neither rule name a width at all, so a measure put back anywhere in
+       either sheet fails here rather than on somebody's screen. */
+    for (const sheet of ['src/pages/StaticPage.css', 'src/components/Markdown.css']) {
+      const css = readFileSync(join(process.cwd(), sheet), 'utf-8')
+
+      expect(css).not.toMatch(/max-(width|inline-size):\s*\d+(ch|rem|px)/)
+    }
+  })
+})
+
+describe('the columns of the results table on a profile', () => {
+  it('are pinned, and pinned in a unit the head and the body agree on', () => {
+    /* Owner, 12.08.2026: „Kad se na strani takmičara klikće po filterima za
+       dužinu trke, kolone njegovih rezultata mrdaju levo desno. Treba ih
+       zakucati." A table sizes its columns to what is in them, so every filter
+       moved the whole row.
+     *
+       Two things are held. That the table is `fixed`, without which the widths
+       are only a suggestion. And that they are written in `rem`: `ch` is the
+       width of a digit in the font of the element it is written on, and with a
+       fixed layout the row that decides a column is the head, whose letters are
+       smaller, so every column came out at seventy one per cent of what it asked
+       for. Measured in a browser, not here: jsdom lays nothing out. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const at = css.indexOf('.profile__results .table {')
+
+    expect(css.slice(at, css.indexOf('}', at))).toContain('table-layout: fixed')
+
+    const pinned = [...css.matchAll(/\.profile__results \.table td:nth-child\(\d\)[^{]*\{([^}]*)\}/g)]
+
+    /* Five rules holding six of the seven columns: the fourth and the fifth are
+       the same width and share a rule. The one left out is the second, the
+       event, which takes what the other six do not and is the only one that
+       wraps.
+
+       Six rules and not five, because the length is pinned twice: once for every
+       width, and once again on a telephone, where the coloured dot leaves the
+       cell and the column narrows by what the dot was taking. */
+    expect(pinned).toHaveLength(6)
+
+    for (const rule of pinned) {
+      expect(rule[1]).toMatch(/inline-size:\s*[\d.]+rem;/)
+    }
+  })
+
+  it('leaves the event a column even when the reader makes the text bigger', () => {
+    /* Every pinned width is in `rem` and grows with the reader's text; the page
+       does not. The one column that is not pinned takes what is left, and what
+       was left ran out: at 125% text the event's column was ten pixels wide with
+       eight of padding on each side, so the name was clipped away entirely, and
+       at 200% the column had no width at all. That is loss of content under
+       WCAG 2.2 SC 1.4.4, and it arrived with the pinning.
+
+       So the table has a floor of its own, and the floor is the pinned columns
+       plus room for the event. Past it the table is wider than the page and
+       scrolls inside its own box, which is what it did before the columns were
+       pinned and what `.table-scroll` is for. Measured in Chrome at 360, 375 and
+       1280: at 200% text the event keeps 4,25 rem on a telephone and eight where
+       the table is wide, and the box scrolls rather than the page. The whole of
+       that arithmetic is walked at every supported width and text size in
+       `tableWidths.test.ts`, which is where a fault of this kind belongs: both
+       times it happened, it was a sum nobody had added up.
+
+       Held as a sum rather than as a number, or the floor and the widths drift
+       apart and the floor stops meaning anything. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const wide = css.slice(0, css.indexOf('@media (max-width: 699.98px)'))
+    const onPhone = css.slice(css.indexOf('@media (max-width: 699.98px)'))
+
+    /* Rule by rule, and every column named in each rule.
+     *
+       Written as one pattern from the selector to the width, it swallowed the
+       fourth and the fifth: those two share a rule, and a global match starting
+       at the fourth ran past the fifth to the width they share. The pinned sum
+       came out four rem short and the floor had four rem of slack it did not
+       know about, so the guard could not fail on the one drift it exists for.
+       Doubling that shared rule to 8rem left the event nothing at all and the
+       test stayed green. */
+    const pinnedIn = (part: string) =>
+      part.split('}').flatMap((rule) => {
+        const width = /inline-size:\s*([\d.]+)rem;/.exec(rule)
+        const columns = [...rule.matchAll(/\.table td:nth-child\((\d)\)/g)]
+
+        return width === null
+          ? []
+          : columns.map((column): [string, number] => [column[1] ?? '', Number(width[1])])
+      })
+
+    /* The wide layout pins six columns; a telephone hides three of them and pins
+       the length again, narrower. */
+    const wideColumns = new Map(pinnedIn(wide))
+    const phoneColumns = new Map([...wideColumns, ...pinnedIn(onPhone)])
+    const hidden = ['4', '5', '6']
+
+    /* Which six, by name. A column that drops out of the reading falls out of
+       the sum as well, and a sum that is quietly short is a floor that passes
+       whatever happens above it. */
+    expect([...wideColumns.keys()].sort()).toEqual(['1', '3', '4', '5', '6', '7'])
+
+    const floorIn = (part: string) => {
+      const written = /\.profile__results \.table \{[^}]*min-inline-size:\s*([\d.]+)rem;/.exec(part)
+
+      expect(written, 'the table has no floor').not.toBeNull()
+
+      return Number(written?.[1])
+    }
+
+    const wideSum = [...wideColumns.values()].reduce((all, one) => all + one, 0)
+    const phoneSum = [...phoneColumns.entries()]
+      .filter(([column]) => !hidden.includes(column))
+      .reduce((all, [, one]) => all + one, 0)
+
+    /* Eight rem for the event where the table is wide, and 4,25 on a telephone,
+       which is what is left over there once the three columns it keeps have
+       taken theirs.
+     *
+       The telephone floor is bounded on both sides, and the upper bound is the
+       one that was missing: 20,5rem is the content column of a screen of 360,
+       the narrowest this portal answers for (CLAUDE.md), so a floor above it
+       makes the table scroll sideways at the ordinary text size on a plain
+       Android phone, which PDL P24 forbids. */
+    expect(floorIn(wide) - wideSum).toBeGreaterThanOrEqual(8)
+    expect(floorIn(onPhone) - phoneSum).toBeGreaterThanOrEqual(4.25)
+    expect(floorIn(onPhone)).toBeLessThanOrEqual(20.5)
+  })
+
+  it('is never narrower than the widest thing the league can put in it', () => {
+    /* Which is the whole point of the numbers, and what nothing held: the rule
+       above is happy with any number of `rem`, so the date column could be cut
+       to five and „31. 12. 2027." would be broken across two lines with nothing
+       to say why.
+
+       Measured in Chrome, in the cell's own font at 16 pixels with its 8 and 8
+       of padding, against the widest the owner named on 12.08.2026: a date in
+       full, a thousand kilometres, a climb of 88.888 metres, a time of 888:59:59
+       and 200,00 points. Three things go into each number and leaving any of
+       them out is how this went wrong once already:
+
+       - the value **as the portal writes it**, so a thousand kilometres is
+         „1.000,00" and not „1000,00", a separator wider;
+       - the **weight the cell is set in**: the length and the points are
+         `table__points`, which is bold, and „1.000,00" is 63,89 pixels there
+         against 58,69 at the ordinary weight. Measured at the ordinary weight,
+         the length was pinned at 96 and needed 97,48, so a thousand kilometres
+         went on breaking into two lines under a floor that said it did not;
+       - **whatever else stands in the cell**, which for the length is a coloured
+         dot and the space after it, 17,59 pixels the number never sees;
+       - the **head**, where it is wider than anything the body can hold, which
+         is the points column.
+
+       Measured with the first two left out, the length asked for 55,22 and was
+       given 72, and every distance from a hundred kilometres up wrapped to a
+       second line: the fault the owner reported, still there, under a floor that
+       said it was not.
+
+       A floor and not the number itself: wider than needed costs a few pixels of
+       the event's column and is a judgement, narrower cuts a value in half and
+       is a fault. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+    const floors = [
+      { column: 1, need: 104.17, of: 'a date in full' },
+      { column: 3, need: 97.48, of: 'a dot and 1.000,00 kilometres, in bold' },
+      { column: 4, need: 62.59, of: 'a climb of 88.888' },
+      { column: 5, need: 62.59, of: 'a fall of 88.888' },
+      { column: 6, need: 83.31, of: '888:59:59' },
+      { column: 7, need: 66.36, of: '200,00 in bold, wider than the word Bodovi' },
+    ]
+    /* And the same column again on a telephone, where the dot is gone and the
+       number is all that is left to hold: 16 of padding and 63,89 of „1.000,00"
+       in bold. Measured the same way and written here as well, or the narrower
+       rule could be cut to anything and the first floor would go on passing,
+       since it reads the wider rule above it. */
+    const onPhone = css.slice(css.indexOf('@media (max-width: 699.98px)'))
+    const narrow = /\.table td:nth-child\(3\)[^{]*\{[^}]*inline-size:\s*([\d.]+)rem;/.exec(onPhone)
+
+    expect(narrow, 'the length column is not pinned on a telephone').not.toBeNull()
+    expect(Number(narrow?.[1]) * 16, 'a telephone cuts 1.000,00').toBeGreaterThanOrEqual(79.89)
+
+    /* And that floor holds only while the dot is out of the cell. Written
+       without this, the dot could come back on a telephone and the number would
+       spill 17,59 pixels past a column the test went on calling wide enough. */
+    expect(onPhone).toContain('.profile__results .table .profile__dot {')
+    expect(onPhone.slice(onPhone.indexOf('.profile__dot {'))).toContain('display: none;')
+
+    for (const { column, need, of } of floors) {
+      const at = css.indexOf(`.profile__results .table td:nth-child(${column})`)
+
+
+      expect(at, `column ${column} is not pinned`).toBeGreaterThan(-1)
+
+      const written = /inline-size:\s*([\d.]+)rem;/.exec(css.slice(at, css.indexOf('}', at)))
+
+      expect(written, `column ${column} has no width`).not.toBeNull()
+      expect(Number(written?.[1]) * 16, `column ${column} cuts ${of}`).toBeGreaterThanOrEqual(need)
+    }
+  })
+})

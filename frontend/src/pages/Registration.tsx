@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
 import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
 import type { FormValues } from '../forms/types'
-import { REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
+import { REFERRAL_CODE, REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
 import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 
@@ -19,6 +20,22 @@ export function Registration() {
      behind it, which meant this screen could be shown one day and the price
      beside it another. */
   const today = useToday()
+  const [params] = useFilterParams()
+  /* A referral code and not whatever the address carried.
+   *
+   * `get` answers the empty string for `?preporuka=` with nothing after it, so a
+   * link that lost its code while being copied still had somebody told „Prijava
+   * je zabeležena kao preporuka" over a credit nobody could ever be paid, and
+   * `referredBy: ''` went out, a third state the record's own type does not have.
+   *
+   * And anything at all fitted through: `?preporuka="><img src=x onerror=...>`
+   * arrived in what is sent, word for word, sixty eight characters of it. React
+   * draws none of it and nothing here puts it in an address, so it is not an
+   * attack today; it becomes one the day a backend keeps it and an
+   * administration screen writes out who brought whom. The shape is known and
+   * costs one line, so it is checked at the door rather than migrated later. */
+  const carried = params.get('preporuka') ?? ''
+  const referral = REFERRAL_CODE.test(carried) ? carried : null
 
   // Between 15 and 30 September the portal is open for looking only: nobody can
   // even begin to register, which is a decision and not a missing screen.
@@ -53,6 +70,11 @@ export function Registration() {
         <h1>{t('registration.doneTitle')}</h1>
         <p>{t('registration.doneText', { email: String(sent.email) })}</p>
         <p>{t('registration.checkSpam')}</p>
+        {/* Said only to somebody who arrived by a link, and it says both halves
+            of the rule: the referral is recorded now, and it pays when this
+            member's own fee is activated. Whoever brought them is not named,
+            since the code is theirs and not this member's to be told. */}
+        {sent.referredBy === undefined ? null : <p>{t('registration.doneReferral')}</p>}
         {/* Asking again says so and stays where it is. It used to empty `sent`,
             which unmounted this confirmation and handed back a blank form:
             nothing said the letter had gone out again, and everything typed was
@@ -74,5 +96,21 @@ export function Registration() {
     )
   }
 
-  return <FormRenderer form={registracija} onSubmit={setSent} />
+  /* Who brought this member, taken off the link they arrived by and kept with
+     what they send. The link was being written and never read: the address said
+     `?preporuka=`, nothing looked, and the one fact the whole programme rests on
+     was lost at the door. A member who registers this way is credited to
+     whoever brought them, but not yet: the credit falls when this member's own
+     membership is first activated (owner, 12.08.2026).
+
+     Through `useFilterParams` because that is the only door to the address bar
+     (app/useFilterParams.ts). Reading is all this does; nothing here writes. */
+  return (
+    <FormRenderer
+      form={registracija}
+      onSubmit={(values) => {
+        setSent(referral === null ? values : { ...values, referredBy: referral })
+      }}
+    />
+  )
 }

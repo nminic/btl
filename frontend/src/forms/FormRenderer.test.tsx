@@ -135,6 +135,196 @@ describe('the words of a field with a link in them', () => {
   })
 })
 
+/* The star beside the name of a field that has to be answered (owner,
+   12.08.2026: „Obavezna polja treba da imaju zvezdicu pored").
+ *
+ * A fixture of its own, because what is being held is a pair at each of the
+ * three places a name is drawn: with the star and without it. `everyType` has
+ * one obligatory confirmation and one optional group of buttons, so on its own
+ * it would walk one half of each pair and leave the other unsaid. */
+const bothWays: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'ime', type: 'text', labelKey: 'proba.ime', required: true },
+    { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+    { name: 'saglasnost', type: 'checkbox', labelKey: 'proba.saglasnost', required: true },
+    { name: 'beleska', type: 'checkbox', labelKey: 'proba.beleska' },
+    {
+      name: 'izbor',
+      type: 'choice',
+      labelKey: 'proba.izbor',
+      required: true,
+      options: [
+        { value: 'da', labelKey: 'proba.da' },
+        { value: 'ne', labelKey: 'proba.ne' },
+      ],
+    },
+    {
+      name: 'pol',
+      type: 'choice',
+      labelKey: 'proba.pol',
+      options: [{ value: 'M', labelKey: 'proba.muski' }],
+    },
+    /* The two controls the renderer does not build itself. Both take the word
+       through a prop of their own, so both can lose it without any of the
+       fields above noticing. */
+    { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+    { name: 'mesto', type: 'place', labelKey: 'proba.mesto', required: true },
+  ],
+}
+
+describe('the star of an obligatory field', () => {
+  /* Found through the words rather than through the control, because the three
+     places draw three different controls and one of them, the group of buttons,
+     has no control the name belongs to at all. */
+  const starOn = (key: string) => {
+    const field = must(
+      screen.getByText(key).closest<HTMLElement>('.field'),
+      `the field named ${key}`,
+    )
+
+    return field.querySelector('.field__required')
+  }
+
+  it('stands beside the name of every field that has to be answered', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(starOn('proba.ime')).not.toBeNull()
+    expect(starOn('proba.saglasnost')).not.toBeNull()
+    expect(starOn('proba.izbor')).not.toBeNull()
+  })
+
+  it('is drawn for the eye alone, and never read out', () => {
+    /* A reader says „obavezno" from `aria-required` on the control, so read out
+       as well the star is the same thing said twice, and said as a loose
+       „zvezdica" standing between a name and a box. The test below holds the
+       other half: hidden here and said nowhere else, the whole thing would be
+       silent. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(starOn('proba.ime')).toHaveAttribute('aria-hidden', 'true')
+    expect(starOn('proba.saglasnost')).toHaveAttribute('aria-hidden', 'true')
+    expect(starOn('proba.izbor')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('stands beside no field that may be left empty', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(starOn('proba.dopisano')).toBeNull()
+    expect(starOn('proba.beleska')).toBeNull()
+    expect(starOn('proba.pol')).toBeNull()
+  })
+
+  it('says of every field that may be left empty that it may, whatever kind it is', () => {
+    /* Both halves of the rule reach all three kinds. The confirmation was given
+       the star and not the word, so an optional confirmation was the one field
+       on the portal that said nothing either way: no star, and no „(neobavezno)"
+       beside it either. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    for (const key of ['proba.dopisano', 'proba.beleska', 'proba.pol']) {
+      const words = screen.getByText(key).textContent ?? ''
+
+      expect(words, `${key} does not say it may be left empty`).toContain('(neobavezno)')
+    }
+  })
+
+  it('is said to a screen reader by the control, since the star is not', () => {
+    /* The other half of the decision above, and the half that was missing: the
+       star is hidden and nothing else said a word, so a reader met a legend
+       about a mark it could not find and fourteen fields that never said they
+       had to be answered.
+
+       Held on all four kinds of control, because they carry it four different
+       ways: the plain ones through the shared props, the group of buttons on
+       the group itself (a radio is not obligatory, the choice between them is),
+       and the date and the town each through a prop of their own. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText('proba.ime')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText('proba.saglasnost')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByRole('radiogroup', { name: 'proba.izbor' })).toHaveAttribute(
+      'aria-required',
+      'true',
+    )
+    expect(screen.getByLabelText('proba.datum')).toHaveAttribute('aria-required', 'true')
+    /* The town and the country beside it: half an answer is not an answer. */
+    expect(screen.getByLabelText('proba.mesto')).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByLabelText(/^Država/)).toHaveAttribute('aria-required', 'true')
+  })
+
+  it('is said by no control that may be left empty', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText(/proba.dopisano/)).not.toHaveAttribute('aria-required')
+    /* Matched on the opening of the name and not the whole of it: a group that
+       may be left empty carries „(neobavezno)" after its name. */
+    expect(screen.getByRole('radiogroup', { name: /^proba\.pol/ })).not.toHaveAttribute(
+      'aria-required',
+    )
+  })
+
+  it('marks the country beside a town, which is a field of its own', () => {
+    /* The town carries its country in a second control with its own id, its own
+       error and its own line in the summary, so it is a field and says what
+       every field says. It said neither of the two things: a bare „Država"
+       under a legend promising that starred fields are obligatory, while an
+       empty country really did stop the form.
+
+       Its own state, too: obligatory where the town is, and free where the town
+       is (forms/PlaceField.tsx). */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    const asked = screen.getByLabelText(/^Država/)
+
+    expect(asked).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(asked.closest('.place__country-pick'), 'the country field').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+
+    /* And the star is outside the words, as everywhere: „Država" is the name. */
+    expect(must(asked.closest('.place__country-pick'), 'the country field')
+      .querySelector('label')?.textContent).toBe('Država')
+  })
+
+  it('is not part of the name the field is found by', () => {
+    /* Which is why it is drawn outside the label and not inside it. Inside, the
+       name of every obligatory field gained a star: „Ime" became „Ime *" for a
+       screen reader and for everything that goes looking for a field by name,
+       and thirty seven tests said so at once. Held exactly, since a match on
+       part of the words would pass either way. */
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText('proba.ime')).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'proba.izbor' })).toBeInTheDocument()
+  })
+
+  it('is explained once over the form, where there is one to explain', () => {
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeInTheDocument()
+  })
+
+  it('is not explained on a form that draws none', () => {
+    /* A line about a mark that is nowhere on the screen is a line to work out
+       rather than a line to read. */
+    const nothingAsked: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [{ name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' }],
+    }
+
+    renderWithI18n(<FormRenderer form={nothingAsked} onSubmit={vi.fn()} />)
+
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+  })
+})
+
 describe('FormRenderer', () => {
   it('renders every supported field type', () => {
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
@@ -558,5 +748,181 @@ describe('a definition swapped under a form that is already on screen', () => {
        what somebody reads back out of the record a year later. */
     expect(sent).toHaveLength(1)
     expect(sent[0]?.dopisano).toBe('')
+  })
+})
+
+describe('a field the form has taken back off the screen', () => {
+  const askingParent: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [
+      { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+      {
+        name: 'staratelj',
+        type: 'text',
+        labelKey: 'proba.dopisano',
+        showWhenYoungerThan: { field: 'datum', years: 16 },
+      },
+    ],
+  }
+
+  it('is not sent with the rest of the form', async () => {
+    /* The registration form asks for a parent's name and their relationship the
+       moment a date of birth says the applicant is under sixteen, and takes both
+       away again when the date is corrected. Taking a field off the screen used
+       to leave its value in what was sent: enter 2015, name the parent, correct
+       the year to 1990, submit, and a third party was still named in the record.
+     *
+       PDL P23 collects nothing that is not needed and the signature exists only
+       as the legal basis for a member under sixteen, so with the basis gone the
+       name has no ground to stand on. Nothing keeps it today because there is no
+       database yet, which is exactly why it had to be caught now: this object is
+       the contract the backend will be written against.
+     *
+       The test that existed watched the field leave the screen, which it always
+       did. What is sent is the half nobody was looking at. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={askingParent}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    const birth = screen.getByLabelText(/proba.datum/)
+
+    await user.type(birth, '01012015')
+    await user.type(screen.getByLabelText(/proba.dopisano/), 'Milena Đurišić')
+
+    await user.clear(birth)
+    await user.type(birth, '01011990')
+
+    expect(screen.queryByLabelText(/proba.dopisano/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).not.toHaveProperty('staratelj')
+  })
+
+  it('takes a field that only agrees with another one out of what is sent', async () => {
+    /* A repeated password carries nothing of its own: whether the two match is a
+       rule of the form, answered here, and not a fact a backend is owed. It was
+       going out in the body beside the first one, so the secret travelled twice
+       and had a second place to end up in a proxy log or a crash report. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+    const twice: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'lozinka', type: 'password', labelKey: 'proba.lozinka', required: true },
+        {
+          name: 'lozinkaOpet',
+          type: 'password',
+          labelKey: 'proba.dopisano',
+          required: true,
+          matches: 'lozinka',
+        },
+      ],
+    }
+
+    renderWithI18n(
+      <FormRenderer
+        form={twice}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.lozinka/), 'trkacka2027')
+    await user.type(screen.getByLabelText(/proba.dopisano/), 'trkacka2027')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.lozinka).toBe('trkacka2027')
+    expect(sent[0]).not.toHaveProperty('lozinkaOpet')
+  })
+
+  it('is still sent while it is on the screen', async () => {
+    /* The other half, so the fix cannot be „send nothing conditional". A parent
+       named by somebody who really is under sixteen is the whole point of the
+       field. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={askingParent}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.datum/), '01012015')
+    await user.type(screen.getByLabelText(/proba.dopisano/), 'Milena Đurišić')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.staratelj).toBe('Milena Đurišić')
+  })
+
+  it('takes with it the value it was writing beside itself', async () => {
+    /* A place field writes two values: the town into its own name and the
+       country the town came with into another, which has no field of its own to
+       be found under. Leaving out only what the definition names therefore left
+       the country standing after its town had gone.
+     *
+       Nothing on the portal draws that arrangement today, since the one form
+       with a conditional field has no place field in it. The fault was built the
+       moment the country was let through by name, which is why it is closed
+       while it is still cheap. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+    const conditionalPlace: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+        {
+          name: 'mesto',
+          type: 'place',
+          labelKey: 'proba.mesto',
+          showWhenYoungerThan: { field: 'datum', years: 16 },
+        },
+      ],
+    }
+
+    renderWithI18n(
+      <FormRenderer
+        form={conditionalPlace}
+        onSubmit={(values) => {
+          sent.push(values)
+        }}
+      />,
+    )
+
+    const birth = screen.getByLabelText(/proba.datum/)
+
+    await user.type(birth, '01012015')
+    await user.type(screen.getByLabelText(/proba.mesto/), 'Beograd')
+
+    await user.clear(birth)
+    await user.type(birth, '01011990')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).not.toHaveProperty('mesto')
+    expect(sent[0]).not.toHaveProperty('country')
   })
 })
