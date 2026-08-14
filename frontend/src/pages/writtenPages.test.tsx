@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR, type PriceRow } from '../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
@@ -16,23 +16,6 @@ const dictionary = sr
    the file to the type every screen reads it through (ADL A14). */
 const WRITTEN: Record<string, { title: string; sections: { heading: string; body: string }[] }> =
   written
-
-/** The price band under that name, out of the list the screens read.
- *
- *  By name and not by position: the prose in the terms names the cheapest band,
- *  the one after it and the one after that, and it goes on meaning those three
- *  whatever order pricing.ts happens to list them in. A name the list does not
- *  carry is a change in pricing.ts this prose has to follow, so it stops here
- *  rather than turning into "undefined EUR" inside a text the page never had. */
-function band(key: string): PriceRow {
-  const found = PRICES.find((price) => price.key === key)
-
-  if (found === undefined) {
-    throw new Error(`the price list carries no band called "${key}"`)
-  }
-
-  return found
-}
 
 describe('the written pages', () => {
   it.each([
@@ -79,17 +62,6 @@ describe('the fee schedule in the terms', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
-  async function feeParagraph(matching: RegExp) {
-    const heading = await screen.findByRole('heading', { name: /Članarina/ })
-    const section = heading.closest('section')
-
-    if (section === null) {
-      throw new Error('the fee heading stands outside a section')
-    }
-
-    return within(section).getByText(matching)
-  }
-
   /** The price table, one string per row of cells. Written pages render their
    *  Markdown as a real table (src/components/Markdown.tsx), so this reads the
    *  rows a screen reader would, not the pipes the source is written in. The
@@ -152,29 +124,109 @@ describe('the fee schedule in the terms', () => {
     expect(row).toContain(`${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD`)
   })
 
-  it('names one reminder per price boundary', async () => {
+  it('carries the referral programme, its amount and the moment it is credited', async () => {
+    /* Owner, 12.08.2026. A member is promised money on „Moja članarina", so the
+       terms have to say what that promise is: how much, in both currencies, and
+       when it lands. The moment is the half that matters, since it is what keeps
+       an account opened and left from being worth anything.
+
+       No figure, and that is the point: an administrator changes the amount on
+       the price list (AdminPricing), so a number written into a legal text is a
+       number that goes stale the first time anybody uses that screen. The terms
+       say where a member reads it instead, and the guard below is that they name
+       no amount at all.
+
+       „Moja članarina" and not the price list: the price list is a screen for
+       administration and there is no public one, so the terms pointed at a page
+       nobody but staff could open. The member's own screen carries the figure
+       beside the link it belongs to. */
     renderAt('/sr/uslovi-koriscenja')
-    const reminders = await feeParagraph(/Podsetnike da vam ističe članarina/)
-    const early = band('early')
-    const regular = band('regular')
-    const late = band('late')
 
-    // Four dates, each the last day of something (PDL P8). Three of them end a
-    // price band; the fourth is the last day that still buys a ranking.
-    for (const date of ['30. septembra', '5. oktobra', '30. novembra', '30. decembra']) {
-      expect(reminders).toHaveTextContent(date)
+    /* The exact title, allowing any number in front of it: the sections are
+       numbered and one inserted in the middle moves the rest, so the number is
+       not the thing to hold. „Program preporuke koji ne postoji" is. */
+    const heading = await screen.findByRole('heading', { name: /^\d+\. Program preporuke$/ })
+    const words = heading.parentElement?.textContent ?? ''
+
+    expect(words).toContain('Moja članarina')
+    /* Any way of writing money, not only the codes: the owner writes „5 eur /
+       600 din" himself, and a guard that sees only „EUR" and „RSD" would let his
+       own spelling of the same stale figure straight through. */
+    expect(words).not.toMatch(/\d+\s*(EUR|RSD|evr|din)/i)
+    expect(words).toContain('aktivirana prvi naredni put')
+    expect(words).toContain('ne u trenutku prijave')
+    /* And what the balance is, which is the other thing a member is owed an
+       answer to: it pays membership and is never paid out. */
+    expect(words).toContain('Nikada se ne isplaćuje u novcu')
+  })
+
+  it('numbers its sections from one and points every reference at the right one', () => {
+    /* A section was put into the middle of these terms on 12.08.2026 (the
+       referral programme, back by the owner's decision of the same day), and
+       everything after it moved down by one. „po postupku iz sekcije 6" then
+       pointed at the referral programme instead of at the rules of conduct: a
+       stale reference does not land on nothing, it lands on a real section and
+       says the wrong thing.
+
+       So both are held: that the numbers run from one with nothing missing, and
+       that each reference lands on the section whose subject the sentence is
+       about. */
+    /* Annotated rather than asserted: the ban on `as` is now enforced by the
+       linter (ADL A14, PR #77), and a name that carries the type takes the
+       parsed JSON on its own. */
+    const pages: Record<string, { sections: { heading: string; body: string }[] } | undefined> =
+      written
+    const sections = pages['uslovi-koriscenja']?.sections ?? []
+    const numbers = sections.map((section) => Number(section.heading.split('.')[0]))
+
+    expect(numbers.length).toBeGreaterThan(8)
+    expect(numbers).toEqual(numbers.map((_, index) => index + 1))
+
+    /* What each reference is about, taken from the sentence that makes it. One
+       entry per reference the terms carry; a new one that nobody writes here
+       fails the count below rather than passing unread. */
+    const meant = [{ from: 'diskvalifikacijom', to: 'Pravila ponašanja' }]
+    /* Every case of the word and not only the genitive: written as „sekcije"
+       alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
+       passed unread through the very test written to catch it. */
+    const made = sections.flatMap((section) => [
+      ...section.body.matchAll(/sekcij\w* (\d+)/g),
+    ].map((found) => ({ at: Number(found[1]), around: section.body.slice(0, found.index) })))
+
+    expect(made).toHaveLength(meant.length)
+
+    for (const [index, reference] of made.entries()) {
+      const about = meant[index]
+      const heading = sections[reference.at - 1]?.heading ?? ''
+
+      expect(reference.around, `reference ${index} is not the one written here`).toContain(
+        about?.from ?? '',
+      )
+      expect(heading, `reference to section ${reference.at} lands on „${heading}"`).toContain(
+        about?.to ?? '',
+      )
     }
+  })
 
-    // The prices the reminders quote come from the same rows the table quotes.
-    expect(reminders).toHaveTextContent('šaljemo četiri puta')
-    expect(reminders).toHaveTextContent(`najnižoj ceni od ${early.eur} EUR`)
-    expect(reminders).toHaveTextContent(
-      `poslednji dan po ${early.eur} EUR, od sutra je ${regular.eur} EUR`,
-    )
-    expect(reminders).toHaveTextContent(
-      `poslednji dan po ${regular.eur} EUR, od sutra je ${late.eur} EUR`,
-    )
-    expect(reminders).toHaveTextContent('poslednjeg dana sa pravom na rangiranje')
+  it('promises no reminders, because none are sent', async () => {
+    /* Owner, 13.08.2026: „Ne šalje se, ostaje tako, izbaciti iz pravilnika to jer
+       nema potrebe nikad da stoji." Both texts promised four reminders at the
+       price boundaries and the portal sends none, in this season or any other
+       (PDL P8). A promise nobody will ever keep is worse in a legal text than
+       anywhere else, so the sentence is gone rather than reworded. */
+    renderAt('/sr/uslovi-koriscenja')
+
+    const page = await screen.findByRole('article')
+
+    expect(within(page).queryByText(/[Pp]odsetnik/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about reminders in the rulebook either', async () => {
+    renderAt('/sr/pravilnik')
+
+    const page = await screen.findByRole('article')
+
+    expect(within(page).queryByText(/[Pp]odsetnik/)).not.toBeInTheDocument()
   })
 })
 

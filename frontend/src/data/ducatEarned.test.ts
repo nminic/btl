@@ -15,6 +15,8 @@ const member: Competitor = {
   firstSeason: 2027,
   active: true,
   membershipBasis: 'payment',
+  referralCode: 'proba0000',
+  referredBy: null,
   teamId: null,
   teamSince: null,
   bio: '',

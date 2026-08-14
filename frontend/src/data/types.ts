@@ -64,6 +64,24 @@ export type Competitor = {
   firstSeason: number
   active: boolean
   membershipBasis: MembershipBasis
+  /**
+   * The code this member's own referral link carries.
+   *
+   * Not the member number, which is what the link used to carry: that number is
+   * public and consecutive, since it is the address of a profile and the sign in
+   * list prints it beside every name. Anybody could have assembled somebody
+   * else's link, or credited themselves with a member they never brought.
+   */
+  referralCode: string
+  /**
+   * The code of whoever brought this member, if anybody did.
+   *
+   * The link records who; it does not record a credit. The credit falls only
+   * when this member's own fee is first activated, which is `active`, so a
+   * member who registered through a link and never paid pays nobody (owner,
+   * 12.08.2026).
+   */
+  referredBy: string | null
   teamId: string | null
   /**
    * The season this member joined their club, which is not the season they

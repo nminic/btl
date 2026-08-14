@@ -16,11 +16,14 @@ const OPEN = '2026-10-02'
 
 /* The day goes on the clock above the screen, which is where the portal keeps
    it and what the switch in the header moves (src/clock). */
-function renderForm(today = OPEN) {
+function renderForm(today = OPEN, address = '/sr/registracija') {
   return render(
     <ClockProvider simulatedDay={today}>
       <I18nProvider locale="sr">
-        <MemoryRouter>
+        {/* The address matters to one pair of tests and to nothing else: a
+            member who arrives by somebody's referral link arrives with the code
+            in the query, and that is the only fact the programme rests on. */}
+        <MemoryRouter initialEntries={[address]}>
           <Registration />
         </MemoryRouter>
       </I18nProvider>
@@ -130,6 +133,99 @@ describe('Registration once it is open', () => {
     expect(screen.queryByLabelText(/roditelja ili staratelja/)).not.toBeInTheDocument()
   })
 
+  it('asks the parent which of the three they are', async () => {
+    /* Owner, 31.07.2026 and again 11.08.2026: the signature is kept with the
+       relationship („padajući izbor: majka, otac, staratelj"), the date and time
+       and the address it came from. The terms and the rulebook say the
+       relationship is chosen and the privacy policy says what is kept with the
+       signature; the form asked for the name and never for the relationship, so
+       the portal promised a choice it never offered. */
+    const user = setupUser()
+    renderForm()
+
+    expect(screen.queryByLabelText(/Srodstvo/)).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    const kinship = screen.getByLabelText(/Srodstvo/)
+
+    /* A list and not buttons: the decision says „padajući izbor" and it has not
+       been changed, unlike the gender and the category, which the owner turned
+       into buttons on 11.08.2026 and said so. */
+    expect(kinship.tagName).toBe('SELECT')
+    expect(within(kinship).getAllByRole('option').map((one) => one.getAttribute('value'))).toEqual([
+      '',
+      'mother',
+      'father',
+      'guardian',
+    ])
+    /* And it is asked for, like the signature beside it. */
+    expect(kinship).toHaveAttribute('aria-required', 'true')
+  })
+
+  it('keeps who brought a member who arrived by a referral link', async () => {
+    /* The address said `?preporuka=` and nothing read it. The link was written
+       on the membership screen, printed for the member to share, and the one
+       fact the whole programme rests on was dropped at the door: no record
+       could say who brought whom, so no credit could ever be worked out, and
+       the balance beside the link was the string „0" written out.
+     *
+       Owner, 12.08.2026: the link brings 5 EUR / 600 RSD „po novom članu koji
+       se registrovao preko tog linka i članarina mu je postala aktivirana prvi
+       naredni put". This is the first half. The second half is `active` on the
+       membership screen. */
+    const user = setupUser()
+    renderForm(OPEN, '/sr/registracija?preporuka=7f07b38ff7ee7543')
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.getByText(/zabeležena kao preporuka/)).toBeVisible()
+    /* And whoever brought them is not named: the code belongs to that member,
+       not to this one. */
+    expect(screen.queryByText(/7f07b38ff7ee7543/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['a link that lost its code while being copied', '/sr/registracija?preporuka='],
+    ['a code of the wrong shape', '/sr/registracija?preporuka=nemaovakvogkoda'],
+    ['anything at all', '/sr/registracija?preporuka=%22%3E%3Cimg+src%3Dx+onerror%3Dalert(1)%3E'],
+  ])('refuses %s', async (_what, address) => {
+    /* `get` answers the empty string for a parameter with nothing after it, not
+       null, so the first of these was recorded as a referral: somebody was told
+       „Prijava je zabeležena kao preporuka" over a credit nobody could ever be
+       paid, and `referredBy: ''` went out, a third state the record's own type
+       does not have.
+
+       The third arrived word for word in what is sent, sixty eight characters of
+       it. React draws none of it and nothing puts it in an address, so it is not
+       an attack today; it becomes one the day a backend keeps it and an
+       administration screen writes out who brought whom. */
+    const user = setupUser()
+    renderForm(OPEN, address)
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about a referral to somebody who arrived without one', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
+  })
+
   it('will not submit when the two passwords differ', async () => {
     const user = setupUser()
     renderForm()
@@ -234,20 +330,26 @@ describe('the address, at the moment of joining', () => {
 })
 
 describe('the biography, at the moment of joining', () => {
-  it('will not let the form through without it', async () => {
+  it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
-       there for approval. Until now it was a field somewhere in the member area
+       there for approval. Until then it was a field somewhere in the member area
        that most people never found, which is why most profiles in the data have
-       none. */
+       none. Asked for at the moment of joining, and not demanded: the list of
+       obligatory fields (PDL P8, 11.08.2026) does not hold it, and the privacy
+       policy says in as many words that it is given „dobrovoljno", on consent.
+       It was `required` in the definition all the same, so the portal refused a
+       registration over a field its own policy calls voluntary. */
     const user = setupUser()
     renderForm()
 
-    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
-    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+    expect(screen.getByLabelText(/Svojim rečima/)).toBeVisible()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12031990')
+    await user.clear(screen.getByLabelText(/Svojim rečima/))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    const summary = screen.getByRole('alert')
-    expect(within(summary).getByRole('link', { name: /Svojim rečima/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 
   it('says what happens to it, beside the field', async () => {
@@ -333,7 +435,7 @@ describe('the country a member lives in', () => {
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
 
     /* And it goes through once the country is answered. */
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Država' }), 'RS')
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Država/ }), 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
@@ -361,7 +463,7 @@ describe('an empty form', () => {
     expect(document.getElementById(said.split(' ').filter((one) => one.endsWith('-error'))[0] ?? ''))
       .toHaveTextContent('Ovo polje je obavezno.')
     /* And the country is not the one being pointed at. */
-    expect(screen.getByRole('combobox', { name: 'Država' })).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getByRole('combobox', { name: /^Država/ })).toHaveAttribute('aria-invalid', 'false')
   })
 
   it('names the confirmation in the summary of errors without the mark in it', async () => {
@@ -394,7 +496,7 @@ describe('an empty form', () => {
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    const country = screen.getByRole('combobox', { name: 'Država' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveAttribute('aria-invalid', 'true')
     /* And the town is no longer the one being blamed for it. */
@@ -405,7 +507,7 @@ describe('an empty form', () => {
        said „Mesto" and led to a box that was already filled in, while the one
        marked wrong could not be reached from the list at all. */
     const summary = within(screen.getByRole('alert'))
-    const toFix = summary.getByRole('link', { name: 'Država' })
+    const toFix = summary.getByRole('link', { name: /^Država/ })
     const at = must(toFix.getAttribute('href'), 'the address the summary points at')
 
     expect(document.getElementById(at.replace('#', ''))).toBe(country)

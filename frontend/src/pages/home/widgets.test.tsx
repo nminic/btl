@@ -36,6 +36,8 @@ const competitor = (memberNumber: string, active = true): Competitor => ({
   firstSeason2027: false,
   firstSeason: 2027,
   membershipBasis: 'payment',
+  referralCode: 'proba0000',
+  referredBy: null,
   teamId: null,
   teamSince: null,
   bio: '',

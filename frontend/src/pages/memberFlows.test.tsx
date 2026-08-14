@@ -1,10 +1,16 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import type { Competitor } from '../data/types'
+import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
+import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
+import { useSession } from '../session/useSession'
 import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
 import { expectFrontPage, renderAt } from '../test/render'
@@ -16,6 +22,12 @@ import { Messages } from './member/Messages'
  * goes in, the moderator finds it, decides, and the member sees the decision.
  * That sequence is the reason for building the front end before the database. */
 
+/** The members as the prototype serves them, read rather than restated: one test
+ *  has to say what the data actually holds, not repeat a sentence about it. */
+const competitors: Competitor[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+)
+
 /**
  * Membership on a given day.
  *
@@ -24,7 +36,44 @@ import { Messages } from './member/Messages'
  * used to take it as a prop, so a test could put it on a day the rest of the
  * portal was not on, and nothing would say so.
  */
-function renderMembershipOn(today: string, memberNumber = '000001') {
+/** And the other thing it does: it deletes a member, the way the list of members
+ *  deletes one. `MEMBERS.id` rather than the word, so the two cannot drift. */
+function Deleting({ memberNumber }: { memberNumber: string }) {
+  const { remove } = useSession()
+
+  return (
+    <button type="button" onClick={() => remove(MEMBERS.id, memberNumber)}>
+      obriši člana
+    </button>
+  )
+}
+
+/** The one thing administration does that this file is about: it changes the
+ *  referral amount, the way the price list screen changes it. */
+function Administration({
+  eur = '7',
+  rsd = '840',
+  name = 'izmeni preporuku',
+}: {
+  eur?: string
+  rsd?: string
+  name?: string
+}) {
+  const { editRecord } = useSession()
+
+  return (
+    <button type="button" onClick={() => editRecord('referral', { eur, rsd })}>
+      {name}
+    </button>
+  )
+}
+
+/* 000032 by default and not 000001: an honorary member owes nothing and is shown
+   no renewal at all (Pravilnik član 15, PDL P16), so every test about renewal
+   needs somebody who actually pays. Of the thirty, three do, and this is the
+   grown one of them living in Serbia. His membership is not active, which this
+   screen has no branch for and which none of these tests is about. */
+function renderMembershipOn(today: string, memberNumber = '000032') {
   return render(
     <ClockProvider simulatedDay={today}>
       <I18nProvider locale="sr">
@@ -50,6 +99,60 @@ describe('signing in', () => {
     // Member screens are now in the navigation, and also among the actions on
     // the profile, so there is deliberately more than one way in.
     expect(screen.getAllByRole('link', { name: 'Moji rezultati' }).length).toBeGreaterThan(0)
+  })
+
+  it('says the one field it has is obligatory, as every field on the portal does', async () => {
+    /* Owner, 12.08.2026: the rule holds „na svim formama za unos i
+       verifikaciju", and this is the smallest form the portal has. It carried
+       the browser's own `required` and nothing else, so it said nothing to a
+       reader and drew no star (forms/AskedLabel.tsx). */
+    renderAt('/sr/prijava')
+
+    const who = await screen.findByLabelText('Ko si?')
+
+    expect(who).toHaveAttribute('aria-required', 'true')
+    expect(who).not.toHaveAttribute('required')
+    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(
+      must(who.closest('.rankings__field'), 'the field it stands in').querySelector(
+        '.field__required',
+      ),
+    ).not.toBeNull()
+  })
+
+  it('will not sign anybody in until somebody is chosen', async () => {
+    /* The `required` this form used to carry was taken off and replaced by a
+       lone `disabled` on the button, which nothing held: delete it and all 1789
+       tests still passed, because an expression in a JSX attribute is not a
+       branch coverage counts. What it was hiding: pressing the button signed the
+       session in as the empty string and walked to a profile headed „Ovog
+       profila nema."
+     *
+       So it is pressed here, not inspected, and told off rather than switched
+       off, which is what the portal does everywhere else it refuses a press. */
+    const user = setupUser()
+    renderAt('/sr/prijava')
+
+    const send = await screen.findByRole('button', { name: 'Prijavi se' })
+
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+    expect(send).not.toBeDisabled()
+    expect(send).toHaveAccessibleDescription('Izaberi člana da bi mogao da se prijaviš.')
+
+    await user.click(send)
+
+    expect(screen.getByLabelText('Ko si?')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Ovog profila nema.' })).not.toBeInTheDocument()
+
+    /* And once somebody is chosen it goes through, so the guard cannot be
+       „refuse always". */
+    await user.selectOptions(screen.getByLabelText('Ko si?'), '000001')
+
+    expect(send).toHaveAttribute('aria-disabled', 'false')
+
+    await user.click(send)
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
   })
 
   it('says the prototype takes your word for it', async () => {
@@ -111,8 +214,135 @@ describe('membership', () => {
      level below it (PDL P28a puts the slip inside renewal). As third level
      headings they read as four more sections of the renewal, which they are
      not. */
-  it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
+  it('asks an honorary member for nothing at all', async () => {
+    /* Pravilnik član 15 and PDL P16: an honorary member never has a payment.
+       Only the line about their status said so, while the whole of the renewal
+       underneath went on being drawn: a price, „Uplati sada", the recipient, a
+       reference number and a QR code for 4.800 RSD they do not owe. Twenty nine
+       of the thirty members in the data are honorary, so that was very nearly
+       the only thing this screen ever showed. */
     renderFor('000001')
+
+    expect(await screen.findByText(/Počasno članstvo\. Za sezonu/)).toBeVisible()
+    expect(screen.getByText(/Počasno članstvo se ne obnavlja/)).toBeVisible()
+
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Uplati sada' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^K:PR\|V:01/)).not.toBeInTheDocument()
+
+    /* And not a word about a price either. The slip was taken away and these
+       three sentences were not, so the screen went on quoting the fee, the
+       processing charge and the junior rate to somebody it had just told pays
+       nothing. */
+    expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/taksa za obradu plaćanja/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/bar jedan dan 14 godina/)).not.toBeInTheDocument()
+  })
+
+  it('puts the junior fee in the code a junior member scans', async () => {
+    /* The junior price was on this screen as a sentence and nowhere else. The
+       code carried the figure for a grown member, so somebody of fourteen read
+       „Do 14 godina članarina je 20 EUR, a iz Srbije 2.400 RSD" and then scanned
+       a request for 4.200. The year of birth was on the record the whole time.
+
+       000031 is fourteen through the season being renewed, which is what PDL P8
+       measures: „ko u sezoni za koju plaća bar jedan dan ima 14 godina ili
+       manje". */
+    renderFor('000031')
+
+    const payload = must(
+      (await screen.findByText(/^K:PR\|V:01/)).textContent,
+      'the payload the screen shows',
+    )
+
+    expect(payload).toContain(`I:RSD${JUNIOR.rsd},00`)
+    expect(payload).not.toContain('I:RSD4200,00')
+
+    /* And written out, not only inside the code. The list beside it exists for
+       somebody typing the payment into their bank by hand, and it had no amount
+       at all: the only figure a junior could read was the grown one. */
+    expect(screen.getByText('2.400 RSD')).toBeVisible()
+    expect(screen.getByText(/Danas članarina košta 20 EUR, a iz Srbije 2.400 RSD/)).toBeVisible()
+  })
+
+  it('offers a member abroad no payment slip at all, in any form', async () => {
+    /* PDL P8, owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije. Član
+       van Srbije ga ne vidi uopšte, ni u kom obliku. Udruženje ima jedan račun,
+       u dinarima, kod srpske banke, i uplata na njega iz inostranstva je
+       najsporiji i najskuplji put koji postoji."
+     *
+       Only the drawn code was hidden. The heading, the association's dinar
+       account, the reference, the purpose and an amount were all still there, so
+       a member in North Macedonia was handed the whole of the route that
+       decision removed, and an amount of 4.200 RSD against a debt of 35 EUR. The
+       terms say the same in writing: outside Serbia it is PayPal or a card. */
+    renderFor('000010')
+
+    expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Iznos')).not.toBeInTheDocument()
+    expect(screen.queryByText('Poziv na broj')).not.toBeInTheDocument()
+    expect(screen.queryByText(RECIPIENT_ACCOUNT)).not.toBeInTheDocument()
+
+    /* And still told why, since that sentence belongs to the ways of paying and
+       not to the slip. */
+    expect(screen.getByText(/Severna Makedonija/)).toBeVisible()
+    expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+  })
+
+  it('writes the amount owed to a member in Serbia, in dinars', async () => {
+    /* The row carrying the amount was spelled RSD by hand while every other
+       figure on the screen follows the country on the profile. It is the one
+       figure somebody types into their bank, so it goes through the same rule as
+       the rest even though the slip it sits in is now shown to Serbia alone. */
+    renderFor('000032')
+
+    expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+
+    const amount = must(
+      screen.getByText('Iznos').nextElementSibling?.textContent,
+      'the amount beside its label',
+    )
+
+    expect(amount).toMatch(/RSD$/)
+  })
+
+  it('stops crediting a referral for somebody administration has deleted', async () => {
+    /* The credit was counted straight off the generated file, so a member an
+       administrator had deleted was gone from every list and still in this sum:
+       six hundred dinars a year for somebody who does not exist. ADL A8 says
+       deleting a record frees the identity from everything, not only from a
+       list, and every other screen on the portal reads the same overlay. */
+    const user = setupUser()
+    const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
+    const credited = brought.filter((one) => one.active)
+
+    render(
+      <ClockProvider simulatedDay="2026-11-01">
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000001">
+              <Deleting memberNumber={must(credited[0]?.memberNumber, 'somebody credited')} />
+              <Membership />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    expect(await screen.findByText(`${(credited.length * 600).toLocaleString('sr-Latn')} RSD`)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'obriši člana' }))
+
+    expect(
+      screen.getByText(`${((credited.length - 1) * 600).toLocaleString('sr-Latn')} RSD`),
+    ).toBeVisible()
+  })
+
+  it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
+    renderFor('000032')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
@@ -134,7 +364,7 @@ describe('membership', () => {
        Not opened first: what is inside a `details` is in the page whether it is
        open or not, and what this is about is the two agreeing, not the
        disclosure. */
-    renderFor('000001')
+    renderFor('000032')
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
@@ -150,8 +380,11 @@ describe('membership', () => {
   })
 
   it('offers a member abroad PayPal and a card, and no code at all', async () => {
-    // 000009 is in Montenegro in the generated data.
-    renderFor('000009')
+    /* 000010 is the one member abroad who pays rather than being honoured, and
+       the generator says why one had to exist: with every foreign member
+       honorary, this screen would have nobody to show and the rule about the
+       processing fee could not be checked. */
+    renderFor('000010')
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 4, name: /[Kk]artic/ })).toBeVisible()
@@ -164,11 +397,11 @@ describe('membership', () => {
   it('says which country the ways of paying come from, in words', async () => {
     /* The sentence above them says the ways of paying follow the country on the
        profile, and the country is kept as a code. It was printed raw, so a member
-       in Montenegro read "(ME)"; the words come off the same file the select is
+       abroad read the bare code; the words come off the same file the select is
        filled from (countryName). */
-    renderFor('000009')
+    renderFor('000010')
 
-    expect(await screen.findByText(/Crna Gora/)).toBeVisible()
+    expect(await screen.findByText(/Severna Makedonija/)).toBeVisible()
     expect(screen.queryByText(/\(ME\)/)).not.toBeInTheDocument()
   })
 
@@ -177,7 +410,7 @@ describe('membership', () => {
        something only whoever pays it is told (04.08.2026). What differs is who
        pays it, and one sentence says both halves: the euro payment carries it,
        the dinar payment does not. */
-    for (const member of ['000009', '000031']) {
+    for (const member of ['000010', '000031']) {
       renderFor(member)
 
       const costs = await screen.findByText(/taksa za obradu plaćanja/)
@@ -227,11 +460,111 @@ describe('membership', () => {
     expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
-  it('carries the referral link and the balance', async () => {
+  it('carries the referral link, and credits a member in Serbia in dinars', async () => {
+    /* Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din...
+       po novom članu koji se registrovao preko tog linka i članarina mu je
+       postala aktivirana prvi naredni put."
+
+       One amount and not two, and it is the one this member pays in: „five euro,
+       that is six hundred dinars" is a conversion, and the league holds no rate
+       (data/pricing.ts). The balance underneath is in the same currency; it said
+       „0 EUR" to everybody under a sentence promising dinars. */
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-    expect(await screen.findByText(/registracija\?preporuka=000001/)).toBeVisible()
+    /* The link carries a code and not the member number. That number is public
+       and consecutive, so a link built out of it can be assembled for anybody,
+       by anybody, including for oneself. */
+    expect(await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)).toBeVisible()
+    expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
+    expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
+    /* And the balance is counted. This member brought five, and four of them
+       have had their membership activated: 4 × 600. The fifth registered through
+       the link and never went active, and pays nobody, which is the whole of the
+       „prvi naredni put" half of the rule. Written out as the string „0 RSD"
+       for everybody, no arrangement of the data could ever have shown this.
+
+       All four of the four are honorary, and that is the point of choosing them:
+       a review proposed that the credit should require the fee to have been paid,
+       and the owner decided otherwise on 13.08.2026, doslovno „OK je da se za
+       preporuku dobije balans čak i ako je preporučen član dobio počasnu
+       aktivaciju". Read the data rather than trust the sentence: if somebody
+       later makes those members payers, this test stops proving the decision and
+       says so. */
+    const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
+
+    expect(brought.filter((one) => one.active && one.membershipBasis === 'honorary')).toHaveLength(4)
+    expect(screen.getByText('2.400 RSD')).toBeVisible()
+    /* And when it lands, which is the half that keeps anybody from being paid
+       for an account that was opened and left. */
+    expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
     expect(screen.getByText('na balansu')).toBeVisible()
+  })
+
+  it('promises what administration set, not what the file says', async () => {
+    /* The amount is a row of the price list and an administrator changes it
+       there (AdminPricing). Read off the constant instead, this screen went on
+       promising the old figure while the price list showed the new one, and the
+       words above that table said it did not.
+
+       The change is made the way that screen makes it, through the session, and
+       this screen is read after it: one session, two screens, which is the whole
+       of what „the price list is the source" means. */
+    render(
+      <ClockProvider simulatedDay="2027-06-01">
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000001">
+              <Administration />
+              <Membership />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    const user = setupUser()
+
+    await screen.findByText(/donosi ti 600 RSD na balans/)
+    await user.click(screen.getByRole('button', { name: 'izmeni preporuku' }))
+
+    expect(await screen.findByText(/donosi ti 840 RSD na balans/)).toBeVisible()
+  })
+
+  it('promises the amount as it stands, and does not round it to a whole', async () => {
+    /* The price list takes any number the form takes, and the form takes 5,5.
+       Written through the portal's own way of writing numbers, which rounds to
+       whole unless told otherwise, the price list said 5,5 and this screen
+       promised „6 EUR". A promise the terms of use point at is not a place to
+       round. */
+    render(
+      <ClockProvider simulatedDay="2027-06-01">
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <SessionProvider initialMemberNumber="000007">
+              <Administration eur="5.5" rsd="612.5" name="izmeni na pola" />
+              <Membership />
+            </SessionProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    const user = setupUser()
+
+    await screen.findByText(/donosi ti 5 EUR na balans/)
+    await user.click(screen.getByRole('button', { name: 'izmeni na pola' }))
+
+    expect(await screen.findByText(/donosi ti 5,50 EUR na balans/)).toBeVisible()
+  })
+
+  it('credits a member from abroad in euro, on both lines', async () => {
+    /* 000007 is in Banja Luka, and pays in euro like everyone outside Serbia
+       (data/paymentQr.ts). The same country decides both, so the promise and the
+       way of paying can never fall out of step. */
+    renderAt('/sr/moja-clanarina', 'competitor', '000007')
+
+    expect(await screen.findByText(/donosi ti 5 EUR na balans/)).toBeVisible()
+    expect(screen.getByText('0 EUR')).toBeVisible()
   })
 
   it('tells a paying member since when they have been one', async () => {
@@ -510,7 +843,10 @@ describe('a result from entry to decision', () => {
     await user.click(await screen.findByRole('button', { name: 'Odbij' }))
 
     const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    expect(confirm).toBeDisabled()
+    /* Told off, not switched off: the button stays reachable so the line saying
+       why it will not go is reachable with it. */
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).not.toBeDisabled()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Link ne otvara rezultate.')
     expect(confirm).toBeEnabled()
@@ -579,7 +915,7 @@ describe('screens that depend on the date', () => {
        The dinar amount is written the way every amount on the portal is
        written, with the thousands separated: it was the one number on the
        screen printed as a bare 4200. */
-    renderMembershipOn('2026-10-02', '000031')
+    renderMembershipOn('2026-10-02', '000032')
 
     expect(await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.')).toBeVisible()
     /* And the junior price the same way. It was quoted in euro alone, one line
@@ -587,7 +923,7 @@ describe('screens that depend on the date', () => {
        one beside it (PDL P8: the price follows from the year of birth). */
     expect(
       screen.getByText(
-        `Do 14 godina članarina je ${JUNIOR.eur} EUR, a iz Srbije ${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD, bez obzira na datum.`,
+        `Ko u sezoni ima bar jedan dan 14 godina ili manje plaća ${JUNIOR.eur} EUR, a iz Srbije ${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD, bez obzira na datum uplate.`,
       ),
     ).toBeVisible()
   })

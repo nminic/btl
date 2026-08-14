@@ -13,9 +13,11 @@
   /* A written line break inside a paragraph is kept, runs of spaces are not.
      Addresses and signatures depend on it. */
   white-space: pre-line;
-  /* Long prose gets a measure: past about eighty characters the eye loses the
-     start of the next line. Tables do not, and they set their own width. */
-  max-width: 78ch;
+  /* No measure, by the owner's word of 12.08.2026: the text runs the full width
+     of the page and breaks only at the end of the line. A measure did stand
+     here, and the reason was real, but the rulebook and the legal pages are read
+     looking for one clause rather than start to finish, and there the width is
+     what keeps a clause on one screen (StaticPage.css says the same). */
   color: var(--text-muted);
 }
 

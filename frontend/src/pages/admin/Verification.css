@@ -221,6 +221,22 @@
   color: var(--text);
 }
 
+/* And the line that says what the star means goes wherever the stars go.
+ *
+   Every star on this screen is inside a card: the three fields a proposed team
+   is corrected in, and the reason a proposal is sent back. Above 820px every
+   card is open, so the line stands with them. Below it a card is a fold, and the
+   line stood over a screen of folded titles with no star anywhere on it, which
+   is the fourth shape this one line has been wrong in. Whether a star is on
+   screen is not something the renderer can answer here, because what hides the
+   card is this stylesheet; so the answer is written where the hiding is, and it
+   is the question itself: is there a star inside an open card. */
+@media (max-width: 51.24875em) {
+  .member:not(:has(.pending__card--open .field__required)) .pending__legend {
+    display: none;
+  }
+}
+
 @media (min-width: 51.25em) {
   .pending__card {
     display: block;
