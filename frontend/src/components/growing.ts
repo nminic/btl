@@ -25,8 +25,18 @@ export function useGrowing(total: number, step: number) {
   const [shown, setShown] = useState(step)
   /* Nothing is announced until somebody has asked for more: the first ten
      arrived with the page, and a status message on load is a message about
-     nothing. */
-  const [asked, setAsked] = useState(false)
+     nothing.
+   *
+   * Remembered as the length the asking was about, not as a yes. A list can
+   * become whole two ways, and only one of them is the reader reaching the end:
+   * the other is the list shrinking under them. On the results of a profile,
+   * which is the first caller with a filter over it, narrowing to marathons
+   * made the list whole and `LoadMore` moved the focus to the closing sentence,
+   * so pressing a filter threw the reader from the row of filters to the foot of
+   * the table (WCAG 2.2 SC 3.2.2 and 2.4.3). Asking is about the list as it was;
+   * a different list has not been asked about. */
+  const [askedAbout, setAskedAbout] = useState<number | null>(null)
+  const asked = askedAbout === total
 
   /* Never more than there is, and never less than a step.
    *
@@ -53,8 +63,8 @@ export function useGrowing(total: number, step: number) {
        "a page at a time" into the whole list in a burst. */
     more: useCallback(() => {
       setShown((was) => was + step)
-      setAsked(true)
-    }, [step]),
+      setAskedAbout(total)
+    }, [step, total]),
   }
 }
 

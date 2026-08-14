@@ -35,8 +35,12 @@ const ALL_LENGTHS = 'sve'
  *
  * Fifty, because that is the number the owner named on 12.08.2026 asking why
  * this table did not grow: „Zbog čega na rezultatima takmičara ne ide učitavanje
- * na skroll kad/ako ih ima preko 50 na strani?“ Under fifty nothing is asked of
- * the reader and no control is drawn.
+ * na skroll kad/ako ih ima preko 50 na strani?“
+ *
+ * The foot is drawn under fifty as well, as it is on the ducats: it is then one
+ * sentence saying that is all of them, and nothing is asked of the reader. Said
+ * here because an earlier note claimed no control is drawn at all, which the
+ * condition below has never done.
  */
 const AT_FIRST = 50
 

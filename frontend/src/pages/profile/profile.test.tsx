@@ -129,6 +129,17 @@ describe('the length, as one row of six', () => {
     const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
     await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
+    /* And the rows really are only that length. The count above is the same
+       expression the table draws from, so on its own it cannot tell a
+       filtered table from an unfiltered one under a filtered heading. */
+    const lengths = within(screen.getByRole('table', { name: 'Rezultati' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'the length cell'))
+      .map((text) => text.split(':')[0])
+
+    expect(lengths.length).toBeGreaterThan(0)
+    expect([...new Set(lengths)]).toEqual(['Polumaraton'])
 
     const narrowed = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 

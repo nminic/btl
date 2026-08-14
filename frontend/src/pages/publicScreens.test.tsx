@@ -1207,6 +1207,16 @@ describe('CompetitorProfile', () => {
     expect(before.length).toBeGreaterThan(1)
 
     await user.click(screen.getByRole('button', { name: 'Maraton 42,2 km' }))
+    /* The rows themselves, not only the count: the count is the expression
+       the table draws from, so it cannot tell the two apart. */
+    const lengths = within(screen.getByRole('table', { name: 'Rezultati' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'the length cell'))
+      .map((text) => text.split(':')[0])
+
+    expect(lengths.length).toBeGreaterThan(0)
+    expect([...new Set(lengths)]).toEqual(['Maraton'])
 
     expect(Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))).toBeLessThan(all)
     expect(ring()).toEqual(before)
@@ -1333,7 +1343,7 @@ describe('CompetitorProfile', () => {
        length that this person ran once, late, would be missing from the reading
        and not from the ring. */
     for (let guard = 0; guard < 20; guard += 1) {
-      const more = screen.queryByRole('button', { name: 'Prikaži još rezultata' })
+      const more = screen.queryByRole('button', { name: 'Učitaj još rezultata' })
 
       if (more === null) {
         break
@@ -1341,6 +1351,10 @@ describe('CompetitorProfile', () => {
 
       await user.click(more)
     }
+
+    /* And it really did fill: the loop is allowed to run out, and a reading taken
+       from a table still half drawn would pass while saying nothing. */
+    expect(screen.queryByRole('button', { name: 'Učitaj još rezultata' })).toBeNull()
     // Everything the ring names, less the total, which is not a length.
     const named = within(chart)
       .getAllByRole('rowheader')
