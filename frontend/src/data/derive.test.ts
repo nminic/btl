@@ -446,6 +446,7 @@ describe('rankTeams', () => {
     country: 'RS',
     organizerMemberNumber: '000001',
     bio: '',
+    logo: null,
   })
 
   it('sums every member, without normalising for team size', () => {

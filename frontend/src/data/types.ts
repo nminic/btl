@@ -208,6 +208,15 @@ export type Team = {
    * the page has to look right in.
    */
   bio: string
+  /**
+   * The logo, as a path to a picture, or null until the team has one.
+   *
+   * Owner, 12.08.2026: added at team level and drawn in the table of teams
+   * before the name, in a circle. Null and not an empty string, because the two
+   * would mean the same thing on screen and different things in a record: a team
+   * that has none is not a team whose logo is the empty path.
+   */
+  logo: string | null
 }
 
 export type League = {

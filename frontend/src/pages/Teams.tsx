@@ -6,6 +6,7 @@ import { offeredSeason, useSeason } from '../components/season'
 import { rankTeams, seasonOf, seasonsWithResults } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
+import { TeamMark } from '../components/TeamMark'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
 import { mineIn, rowClass } from '../components/mine'
@@ -115,7 +116,13 @@ export function Teams() {
                           )}
                         </td>
                         <td>
-                          <Link to={`/${locale}/tim/${row.team.slug}`}>{row.team.name}</Link>
+                          {/* The mark before the name, both inside the link, so
+                              the whole pair is one target and a reader aiming at
+                              the logo lands on the team (owner, 12.08.2026). */}
+                          <Link className="teams__name" to={`/${locale}/tim/${row.team.slug}`}>
+                            <TeamMark team={row.team} />
+                            {row.team.name}
+                          </Link>
                         </td>
                         <td className="table__hide-phone">{row.team.city}</td>
                         <td className="table__hide-phone">{formatNumber(row.members, locale)}</td>
