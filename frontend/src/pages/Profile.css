@@ -368,8 +368,86 @@
   background: var(--length-ultra);
 }
 
+/* The results table keeps the same columns whatever is filtered out of it.
+ *
+ * Owner, 12.08.2026: „Kad se na strani takmičara klikće po filterima za dužinu
+ * trke, kolone njegovih rezultata mrdaju levo desno. Treba ih zakucati." A table
+ * sizes its columns to what is in them, so filtering to the ultras made the
+ * distance column wide and the date column narrow, and every press moved the
+ * whole row. The widths are therefore said here rather than worked out, and they
+ * are the widest the league can ever hold: a date in full, a distance of
+ * 1.000,00, a climb of 88.888, a time of 888:59:59, and 200,00 points. Written
+ * the way the portal writes them, which for a distance of a thousand means a
+ * thousands separator as well (`formatNumber`), and with whatever else stands in
+ * the cell: the length carries a coloured dot before the number, and the dot and
+ * the space after it are 17,59 pixels that the number does not get.
+ *
+ * And in the weight the cell is really set in: the length and the points carry
+ * `table__points`, which is bold (styles/table.css), and „1.000,00" is 63,89
+ * pixels there against 58,69 at the ordinary weight. Measured at the ordinary
+ * weight, the length was pinned at 96 and needed 97,48, so a thousand kilometres
+ * went on breaking into two lines under a floor that said it did not.
+ *
+ * Written in `rem` and not in `ch`. `ch` is the width of a digit in the font of
+ * the element it is written on, and with `table-layout: fixed` the row that
+ * decides a column is the head, whose letters are smaller: every column came out
+ * at seventy one per cent of what it asked for. `rem` is the root's font and the
+ * same in both rows. The numbers are measured, in a browser, against the cell's
+ * own font and its padding.
+ *
+ * The event takes what is left, and is the only column that wraps.
+ *
+ * `table-layout: fixed` is what makes any of it true: without it the browser
+ * reads the content first and the numbers here are only a suggestion. */
+.profile__results .table {
+  table-layout: fixed;
+  /* And a floor under the whole table, or the pinned columns eat the one that is
+     not pinned.
+   *
+     Every pinned width is in `rem`, so it grows with the reader's text; the page
+     does not. At 125% text the event's column was ten pixels wide and its name
+     was gone entirely, and at 200% it had no width at all, which is loss of
+     content under WCAG 2.2 SC 1.4.4. The floor is the six pinned columns plus
+     eight rem for the event, so the event can never fall under eight; past that
+     the table is wider than the page and scrolls inside its own box, which is
+     what it did before the columns were pinned and what `.table-scroll` is for.
+
+     6,75 + 6,25 + 4 + 4 + 5,25 + 4,25 = 30,5, and eight for the event. */
+  min-inline-size: 38.5rem;
+}
+
+.profile__results .table th:nth-child(1),
+.profile__results .table td:nth-child(1) {
+  inline-size: 6.75rem;
+}
+
+.profile__results .table th:nth-child(3),
+.profile__results .table td:nth-child(3) {
+  inline-size: 6.25rem;
+}
+
+.profile__results .table th:nth-child(4),
+.profile__results .table td:nth-child(4),
+.profile__results .table th:nth-child(5),
+.profile__results .table td:nth-child(5) {
+  inline-size: 4rem;
+}
+
+.profile__results .table th:nth-child(6),
+.profile__results .table td:nth-child(6) {
+  inline-size: 5.25rem;
+}
+
+.profile__results .table th:nth-child(7),
+.profile__results .table td:nth-child(7) {
+  inline-size: 4.25rem;
+}
+
 /* On a telephone the name of an event is cut rather than allowed to push the
-   table wider than the screen (PDL P24: a table there has no horizontal scroll).
+   table wider than the screen at the ordinary text size (PDL P24: a table there
+   has no horizontal scroll). Enlarged text is the one case where the table does
+   scroll instead, and only because the alternative is worse: see the floor
+   below, and PDL P24, corrected 12.08.2026.
    Nothing is lost to a screen reader, which reads the whole of the link, and the
    date beside it is the other half of what identifies a race.
 
@@ -382,6 +460,41 @@
    što je gubitak sadržaja po WCAG 2.2 SC 1.4.4". The scroll box is what pays for
    the width here, not the ellipsis. */
 @media (max-width: 699.98px) {
+  /* The coloured dot goes, and the length column narrows by exactly what it and
+     its space were taking. It is decoration: `aria-hidden`, with the name of the
+     length beside it in words for a reader (CompetitorProfile.tsx), and the
+     distance itself is right there to be read. What it costs is a colour; what
+     it buys is 16 pixels of the event's name on a screen where the name had
+     been cut to six letters, which is the column the owner said should get
+     whatever the pinned ones do not (12.08.2026). */
+  .profile__results .table .profile__dot {
+    display: none;
+  }
+
+  .profile__results .table th:nth-child(3),
+  .profile__results .table td:nth-child(3) {
+    inline-size: 5.25rem;
+  }
+
+  /* And its own floor, over the three columns a telephone keeps: 6,75 + 5,25 +
+     4,25 = 16,25, and 4,25 for the event.
+   *
+     Twenty and a half and not twenty one and a quarter. The narrowest screen
+     this portal answers for is 360 (CLAUDE.md), where the content column is
+     328 pixels, that is 20,5rem: a floor above it made the table scroll
+     sideways on a plain Android phone at the ordinary text size, which PDL P24
+     forbids and which the comment above claimed did not happen. At 375 it made
+     no difference, which is why it was not seen.
+
+     At the ordinary size the floor therefore never binds and nothing scrolls.
+     It binds only when the reader enlarges the text, and then the table scrolls
+     inside its own box rather than squeezing the event's name to nothing, which
+     is loss of content under WCAG 2.2 SC 1.4.4. That is the trade, and it is
+     written into PDL P24. */
+  .profile__results .table {
+    min-inline-size: 20.5rem;
+  }
+
   .profile__results .table tbody td:nth-child(2) {
     max-inline-size: 8.5rem;
     overflow: hidden;

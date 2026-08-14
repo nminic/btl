@@ -149,6 +149,8 @@ describe('monogramFor', () => {
     firstSeason: 2015,
     active: true,
     membershipBasis: 'payment',
+    referralCode: 'proba0000',
+    referredBy: null,
     teamId: null,
     teamSince: null,
     bio: '',

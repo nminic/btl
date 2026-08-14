@@ -43,6 +43,70 @@ describe('the rule beside a field', () => {
     expect(rule).toHaveClass('hint__text')
   })
 
+  it('is put away by a press anywhere but the letter that opens it', async () => {
+    /* What the box being laid over the page costs, and what pays for it. It
+       covers whatever is under it, so a box left open by a finger used to
+       swallow the first press on the control beneath and nothing said why. Now
+       that press closes it and the second one lands (owner, 12.08.2026).
+
+       The words close it too, and that is the half that was missing: the box
+       hangs under the head of the field and therefore over the field's own
+       control, so on a telephone the control is under the words for most of its
+       width. Exempted, a press there did nothing at all and there was no way to
+       reach the control except by pressing somewhere else first.
+
+       Hovering is untouched, which is what SC 1.4.13 asks for: the pointer
+       travels from the letter into the words and they stay. */
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+    const words = must(hint.querySelector<HTMLElement>('.hint__text'), 'the words')
+
+    await user.hover(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    /* Into the words, which must keep them open. */
+    await user.hover(words)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    /* Pressed on the words, which must not. */
+    await user.pointer({ target: words, keys: '[MouseLeft>]' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('is put away by a press on anything else on the page', async () => {
+    const user = setupUser()
+    renderForm()
+
+    const hint = must(
+      screen
+        .getByLabelText(/^Mesto$/)
+        .closest('.field')
+        ?.querySelector<HTMLElement>('.hint'),
+      'the rule beside the town',
+    )
+    const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
+
+    await user.hover(asked)
+
+    expect(asked).toHaveAttribute('aria-expanded', 'true')
+
+    await user.pointer({ target: screen.getByLabelText(/^Adresa za slanje$/), keys: '[MouseLeft>]' })
+
+    expect(asked).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('is closed by Escape pressed anywhere, while the pointer stays put', async () => {
     /* The case the whole rule exists for (WCAG 2.2 SC 1.4.13): somebody typing
        into a field with the pointer resting on the letter beside another one.
@@ -709,14 +773,19 @@ describe('a form laid out in rows', () => {
       'the row the first name stands in',
     )
 
-    /* Five rows: name and sex and birthday; the way in; where they live; the
-       category and the shirt; the picture and the words beside it. */
+    /* Five rows of thirds (owner, 12.08.2026: „Podeli je racionalno na trećine
+       horizontalno"): who you are; how you are classed; the way in; where you
+       live; and the picture with the words beside it. The confirmation and the
+       parent's signature stand at the foot, outside the rows, because they need
+       the whole width and because opening the signature must not shuffle the
+       three columns above it. */
     expect(document.querySelectorAll('.form__row')).toHaveLength(5)
     expect(within(first).getByLabelText(/^Ime$/)).toBeInTheDocument()
-    expect(within(first).getByRole('radiogroup', { name: 'Pol' })).toBeInTheDocument()
-    /* And what a row of four is, said to the stylesheet rather than written into
-       it: the renderer counts the columns. */
-    expect(first).toHaveStyle({ '--columns': '4' })
+    expect(within(first).getByLabelText(/^Prezime$/)).toBeInTheDocument()
+    expect(within(first).getByLabelText(/Datum rođenja/)).toBeInTheDocument()
+    /* And what a row of three is, said to the stylesheet rather than written
+       into it: the renderer counts the columns. */
+    expect(first).toHaveStyle({ '--columns': '3' })
 
     /* The row of the address is two fields and three columns, because the town
        carries the country beside it. */

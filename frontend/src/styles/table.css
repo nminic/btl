@@ -4,7 +4,17 @@
 
 .table-scroll {
   /* Wide tables scroll inside their own box. The page body never scrolls
-     sideways, which is a hard rule on this portal. */
+     sideways, which is a hard rule on this portal.
+   *
+     `position: relative` is what makes that true of everything inside, and not
+     only of what is painted in the flow. Words put off the screen for the eye
+     and left in the page for a reader (`.visually-hidden`, index.css) are
+     `position: absolute`, so they are measured against the nearest positioned
+     box: with none, that was the page itself, and `overflow-x` here never
+     touched them. Once a table is wider than its box, which at enlarged text it
+     is, those words sat forty pixels past the right edge and the whole page
+     gained a sideways scroll to nothing. */
+  position: relative;
   overflow-x: auto;
 }
 

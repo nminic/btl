@@ -6,8 +6,8 @@
     {
       "name": "label",
       "type": "text",
-      "labelKey": "admin.field.priceLabel",
-      "hintKey": "admin.hint.priceLabel",
+      "labelKey": "admin.field.rowLabel",
+      "hintKey": "admin.hint.rowLabel",
       "required": true,
       "maxLength": 80
     },
