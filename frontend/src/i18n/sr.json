@@ -1309,15 +1309,11 @@
   },
   "picture": {
     "title": "Profilna slika",
-    "onPortal": "Tvoja slika je na portalu i vide je svi članovi.",
-    "none": "Nemaš sliku na portalu. Dok je nema, u krugu stoje tvoji inicijali.",
-    "waiting": "Nova slika čeka odobrenje. Do odluke na portalu stoji ona koju već imaš.",
-    "waitingNote": "Kad moderator odluči, javljamo ti u sanduče. Ako je vrati, u poruci piše šta treba da izmeniš.",
+    "none": "Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali. Pošalji sliku i moderator će je pregledati.",
+    "waitingNote": "Tvoja slika čeka odobrenje. Kad moderator odluči, javljamo ti u sanduče, a ako je vrati, u poruci piše šta treba da izmeniš.",
     "choose": "Izaberi novu sliku",
     "rule": "Slika lica, tvoja i skorašnja. Po njoj te članovi prepoznaju na trkama.",
     "send": "Pošalji na odobrenje",
-    "remove": "Ukloni sliku",
-    "chooseFirst": "Izaberi sliku da bi mogao da je pošalješ.",
-    "forReview": "Nova profilna slika: {name}"
+    "chooseFirst": "Izaberi sliku da bi mogao da je pošalješ."
   }
 }

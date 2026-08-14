@@ -35,7 +35,7 @@ export function Settings() {
       {/* First, because it is the only thing on this screen other people see.
           The theme and the notifications are the reader's own business; the
           picture is what the league sees beside their name. */}
-      <Resource state={competitors}>
+      <Resource state={competitors} inline>
         {(competitors) => {
           const me = competitors.find((one) => one.memberNumber === memberNumber)
 
