@@ -18,12 +18,28 @@
    costs its own line height and no more.
 
    `vertical-rl` plus a half turn gives text running upwards, which is the way a
-   turned column heading is read everywhere it is used. */
-.league__race {
+   turned column heading is read everywhere it is used. The half turn also moves
+   where the heading begins: the first letter ends up at the foot of the cell and
+   the ellipsis, when there is one, at its head. So the foot is the line these
+   headings are read from, and the foot is what they are aligned by.
+
+   Two elements deep, and every line below depends on it. This was written as
+   `.league__race` alone until 13.08.2026, and a lone class is (0,1,0) while the
+   shared `.table th` is (0,1,1), so the whole block lost and nothing in it ever
+   applied. Measured on the standing before the change: `vertical-align` came out
+   `top`, the padding `10px 8px` instead of `6px 2px`, and the heading bold at 700
+   instead of 400. Source order cannot save a rule from that and neither can
+   moving the import; only specificity can. Same trap as `.league__who` below. */
+.league__grid thead th.league__race {
   vertical-align: bottom;
   padding: var(--space-6) var(--space-2);
   font-weight: 400;
   white-space: nowrap;
+  /* And the turned headings sit in the middle of their own column. The first
+     three cells of any table read from the left (`.table th:nth-child(-n + 3)`),
+     which caught the first of these headings and no other, so one column's
+     heading stood twelve pixels off from all the rest. */
+  text-align: center;
 }
 
 .league__race-name {
@@ -70,13 +86,69 @@
   max-inline-size: 11rem;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* A name reads from the left and stays on one line.
+ *
+ * Neither of these changes what is on the screen today, and both were written a
+ * class short of the shared rule and so were being thrown away. The screen was
+ * right by luck: `.table th` sets `text-align: right`, and
+ * `.table th:nth-child(-n + 3)` sets it back to left for the first three
+ * columns, which this one happens to be the first of; `nowrap` matched what
+ * `.table th` already said.
+ *
+ * Both halves named, and that is the whole reason this rule is not written
+ * `.league__grid th.league__who`. That is (0,2,1), and so is
+ * `.table th:nth-child(-n + 3)`: one class and one pseudo-class against two
+ * classes, one element each. A tie is settled by source order, and this file has
+ * no say in that order: the bundler emits the body of the shared sheet at the
+ * last sheet that asks for it, which is not this one, so those rules stand after
+ * everything here whether this file imports them or not. Measured in the browser
+ * with the tie in place: four copies of the shared rule stood after this one and
+ * took the property, and the column was left-aligned only because both rules
+ * happened to say left. Naming `thead` and `tbody` buys the second element that
+ * ends the argument. */
+.league__grid thead th.league__who,
+.league__grid tbody th.league__who {
   text-align: left;
-  font-weight: 400;
   white-space: nowrap;
+}
+
+/* The weight a name is written in, and only in the body.
+ *
+ * The row of a competitor is headed by his name, so that cell is a `th` and a
+ * screen reader can say whose row a number belongs to. That is right for the ear
+ * and, left alone, wrong for the eye: `.table th` dresses every heading, and this
+ * is the one table on the portal where a name is one. It used to say
+ * `font-weight: 400` a class short of that rule and so said nothing at all
+ * (13.08.2026), which is what this line puts back and all it puts back.
+ *
+ * Only the body. `thead` holds the word above the column, which is a heading like
+ * every other on the portal and stays bold.
+ *
+ * What is deliberately not settled here: the weight is one of four ways this
+ * column is dressed as a heading rather than as a name. Measured against the same
+ * name on the ranking table, where it is a `td`: 11,2px against 16px, uppercase
+ * against none, 0,56px of tracking against none. Undoing all four is what
+ * `.rights__who` does for the same shape of cell, and it is the better end state,
+ * but it is a change to the look of the busiest column on the portal rather than
+ * a rule that never applied. It costs something too: at 360 the column is 7,5rem
+ * and nine of nineteen names are already cut, and at 16px eleven would be. That
+ * is the owner's call, not this commit's (ADL A7). */
+.league__grid tbody th.league__who {
+  font-weight: 400;
 }
 
 .league__total {
   inset-inline-start: 11rem;
+}
+
+/* The total is the column the grid is ordered by, so it is bold in both halves
+   of the table. Two elements deep for the head of it, where `.table th` says 700
+   as well and this rule would have been thrown away for agreeing; in the body
+   the cell is a `td`, which the shared rule leaves alone. */
+.league__grid th.league__total,
+.league__grid td.league__total {
   font-weight: 700;
 }
 
@@ -106,13 +178,6 @@
 .league__grid tbody td.table__points,
 .league__grid thead th.league__total {
   text-align: right;
-}
-
-/* And the turned headings sit in the middle of their own column. The same
-   shared rule left-aligned the first of them and no other, so one column's
-   heading stood twelve pixels off from all the rest. */
-.league__grid thead th.league__race {
-  text-align: center;
 }
 
 /* In pixels, like the query that hides a table's columns and unlike every other
