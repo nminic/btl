@@ -119,7 +119,7 @@ export function Teams() {
                           {/* The mark before the name, both inside the link, so
                               the whole pair is one target and a reader aiming at
                               the logo lands on the team (owner, 12.08.2026). */}
-                          <Link className="teams__name" to={`/${locale}/tim/${row.team.slug}`}>
+                          <Link to={`/${locale}/tim/${row.team.slug}`}>
                             <TeamMark team={row.team} />
                             {row.team.name}
                           </Link>

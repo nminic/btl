@@ -18,12 +18,12 @@ import './Portrait.css'
  */
 export function Portrait({ competitor }: { competitor?: Competitor }) {
   if (competitor === undefined) {
-    return <span className="portrait portrait--empty" aria-hidden="true" />
+    return <span className="face-circle portrait portrait--empty" aria-hidden="true" />
   }
 
   return (
     <span
-      className="portrait"
+      className="face-circle portrait"
       aria-hidden="true"
       style={{ '--face-hue': hueFor(competitor.memberNumber) }}
     >
