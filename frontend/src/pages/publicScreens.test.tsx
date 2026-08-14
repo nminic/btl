@@ -1187,7 +1187,11 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007?sezona=sve')
 
     await screen.findByRole('heading', { level: 1 })
-    const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
+    /* Counted as the heading counts them, not as the table draws them: the
+       table grows as it is read and stops at fifty, so the number of rows on
+       screen says how far somebody has scrolled, not how many results there
+       are (CompetitorProfile.tsx). */
+    const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
     /* What the ring says before and after, read whole. Naming one length would
        not do any more: the ring names only the lengths this person has run, so
@@ -1204,8 +1208,7 @@ describe('CompetitorProfile', () => {
 
     await user.click(screen.getByRole('button', { name: 'Maraton 42,2 km' }))
 
-    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
-      .toBeLessThan(all)
+    expect(Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))).toBeLessThan(all)
     expect(ring()).toEqual(before)
   })
 
@@ -1214,16 +1217,17 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007?sezona=sve')
 
     await screen.findByRole('heading', { level: 1 })
-    const all = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length
+    /* Counted as the heading counts them, not as the table draws them: the
+       table grows as it is read and stops at fifty, so the number of rows on
+       screen says how far somebody has scrolled, not how many results there
+       are (CompetitorProfile.tsx). */
+    const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
     await user.selectOptions(screen.getByLabelText('Sezona'), '2020')
-    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
-      .toBeLessThan(all)
+    expect(Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))).toBeLessThan(all)
 
     await user.selectOptions(screen.getByLabelText('Sezona'), 'sve')
-    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')).toHaveLength(
-      all,
-    )
+    expect(Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))).toBe(all)
   })
 
   it('shows a season from the address that this person has nothing in', async () => {
@@ -1319,9 +1323,24 @@ describe('CompetitorProfile', () => {
        carried three rows reading nought (owner, 31.07.2026). Checked against the
        table of results rather than against a fixed number, or this passes on any
        count at all. */
+    const user = setupUser()
     renderAt('/sr/takmicar/000007?sezona=sve')
 
     const chart = await screen.findByRole('table', { name: 'Trke po dužini' })
+
+    /* The whole table first. It grows as it is read and stops at fifty, and this
+       reads the lengths out of the rows: with only the first fifty on screen a
+       length that this person ran once, late, would be missing from the reading
+       and not from the ring. */
+    for (let guard = 0; guard < 20; guard += 1) {
+      const more = screen.queryByRole('button', { name: 'Prikaži još rezultata' })
+
+      if (more === null) {
+        break
+      }
+
+      await user.click(more)
+    }
     // Everything the ring names, less the total, which is not a length.
     const named = within(chart)
       .getAllByRole('rowheader')

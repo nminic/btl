@@ -719,7 +719,14 @@
       "few": "To je sve, {count} dukata",
       "other": "To je sve, {count} dukata"
     },
-    "bioEmptyFemale": "Ova takmičarka još nije napisala ništa o sebi."
+    "bioEmptyFemale": "Ova takmičarka još nije napisala ništa o sebi.",
+    "moreResults": "Prikaži još rezultata",
+    "showingResults": "Prikazano {shown} od {total} rezultata.",
+    "allResults": {
+      "one": "To je sav {count} rezultat.",
+      "few": "To su sva {count} rezultata.",
+      "other": "To je svih {count} rezultata."
+    }
   },
   "teams": {
     "myTeam": "vaš tim",

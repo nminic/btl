@@ -122,14 +122,18 @@ describe('the length, as one row of six', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/takmicar/000002?sezona=sve')
 
-    const table = await screen.findByRole('table', { name: 'Rezultati' })
-    const all = within(table).getAllByRole('row').length
+    /* Counted as the heading counts them, not as the table draws them: the table
+       grows as it is read and stops at fifty, so the number of rows on screen is
+       a fact about how far somebody has scrolled (CompetitorProfile.tsx). */
+    await screen.findByRole('table', { name: 'Rezultati' })
+    const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
     await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
 
-    const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
-    expect(narrowed.length).toBeLessThan(all)
-    expect(narrowed.length).toBeGreaterThan(1)
+    const narrowed = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
+
+    expect(narrowed).toBeLessThan(all)
+    expect(narrowed).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Polumaraton 21,1 km' })).toHaveAttribute(
       'aria-pressed',
       'true',
