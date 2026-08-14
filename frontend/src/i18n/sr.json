@@ -1,7 +1,6 @@
 {
   "app": {
     "name": "Balkanska trkačka liga",
-    "nameUppercase": "BALKANSKA TRKAČKA LIGA",
     "short": "BTL",
     "slogan": "Svaka trka se broji"
   },
@@ -236,11 +235,6 @@
     "settings": "Podešavanja",
     "table": "BTL tabele"
   },
-  "theme": {
-    "label": "Tema",
-    "toDark": "Uključi tamnu temu",
-    "toLight": "Uključi svetlu temu"
-  },
   "language": {
     "label": "Jezik",
     "sr": "Srpski",
@@ -319,7 +313,6 @@
     "loading": "Učitavanje",
     "loadingPart": "Učitavanje: {part}",
     "error": "Podaci se ne mogu učitati.",
-    "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."
   },
   "form": {
@@ -928,7 +921,6 @@
     "reason": "Razlog odbijanja",
     "reasonPlaceholder": "Bez razloga se ne odbija. Član dobija tvoj razlog i sme da pošalje ponovo.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
-    "officialResults": "Zvanični rezultati",
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",
     "cancel": "Odustani",
