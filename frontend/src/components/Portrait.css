@@ -10,18 +10,27 @@
    different size says so with the widget in the selector, which is what
    `.home .top10 .portrait` and the chart's own rule do. */
 
+/* The circle itself, wherever the portal draws one.
+ *
+ * A face and a team mark are the same circle in two sizes, and the six
+ * declarations that make it a circle of somebody`s own colour were written
+ * twice. One decision in one place (ADL A7): what each of them adds is only
+ * what genuinely differs, which is the size, the type, and whether it stands in
+ * a grid or in a line of text. */
+.face-circle {
+  /* Never squeezed and never stretched: a circle that gives way to the box
+     around it is an ellipse. */
+  /* The same recipe the competitor cards use, so one person, or one team,
+     wears one colour wherever the portal draws them. */
+  background: hsl(var(--face-hue, 214) 45% 32%);
+}
 .portrait {
   display: grid;
   place-items: center;
-  /* Never squeezed and never stretched: it is a circle, and a circle that gives
-     way to the box around it is an ellipse. */
   flex: none;
   inline-size: 2.9rem;
   block-size: 2.9rem;
   border-radius: 50%;
-  /* The same recipe the competitor cards use, so one person wears one colour
-     wherever the portal draws them. */
-  background: hsl(var(--face-hue, 214) 45% 32%);
   color: var(--white);
   font-size: 0.85rem;
   font-weight: 700;

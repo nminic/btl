@@ -25,7 +25,7 @@ export function TeamMark({ team }: { team: Team }) {
   if (team.logo !== null) {
     return (
       <img
-        className="team-mark team-mark--logo"
+        className="face-circle team-mark team-mark--logo"
         src={team.logo}
         alt=""
         aria-hidden="true"
@@ -42,7 +42,7 @@ export function TeamMark({ team }: { team: Team }) {
   }
 
   return (
-    <span className="team-mark" aria-hidden="true" style={{ '--face-hue': hueFor(team.id) }}>
+    <span className="face-circle team-mark" aria-hidden="true" style={{ '--face-hue': hueFor(team.id) }}>
       {initialsOf(team.name)}
     </span>
   )
