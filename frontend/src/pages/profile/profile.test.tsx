@@ -122,14 +122,29 @@ describe('the length, as one row of six', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/takmicar/000002?sezona=sve')
 
-    const table = await screen.findByRole('table', { name: 'Rezultati' })
-    const all = within(table).getAllByRole('row').length
+    /* Counted as the heading counts them, not as the table draws them: the table
+       grows as it is read and stops at fifty, so the number of rows on screen is
+       a fact about how far somebody has scrolled (CompetitorProfile.tsx). */
+    await screen.findByRole('table', { name: 'Rezultati' })
+    const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
     await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
+    /* And the rows really are only that length. The count above is the same
+       expression the table draws from, so on its own it cannot tell a
+       filtered table from an unfiltered one under a filtered heading. */
+    const lengths = within(screen.getByRole('table', { name: 'Rezultati' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'the length cell'))
+      .map((text) => text.split(':')[0])
 
-    const narrowed = within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row')
-    expect(narrowed.length).toBeLessThan(all)
-    expect(narrowed.length).toBeGreaterThan(1)
+    expect(lengths.length).toBeGreaterThan(0)
+    expect([...new Set(lengths)]).toEqual(['Polumaraton'])
+
+    const narrowed = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
+
+    expect(narrowed).toBeLessThan(all)
+    expect(narrowed).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Polumaraton 21,1 km' })).toHaveAttribute(
       'aria-pressed',
       'true',

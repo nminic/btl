@@ -4,6 +4,8 @@ import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
+import { useGrowing } from '../components/growing'
+import { LoadMore } from '../components/LoadMore'
 import { Counters } from './home/Counters'
 import {
   CATEGORIES,
@@ -19,14 +21,29 @@ import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileHead, ProfileParts } from './profile/ProfileHead'
 import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
+import { useFilterParams } from '../app/useFilterParams'
+import './Profile.css'
 
 /** What the address says when no length is chosen. The same word the season
  *  uses, and a constant of its own: they are two filters that happen to spell
  *  their "everything" the same way, and one of them changing its mind must not
  *  silently change the other. */
 const ALL_LENGTHS = 'sve'
-import './Profile.css'
-import { useFilterParams } from '../app/useFilterParams'
+
+/**
+ * How many results arrive with the page, before the table starts growing.
+ *
+ * Fifty, because that is the number the owner named on 12.08.2026 asking why
+ * this table did not grow: „Zbog čega na rezultatima takmičara ne ide učitavanje
+ * na skroll kad/ako ih ima preko 50 na strani?“
+ *
+ * The foot is drawn under fifty as well, as it is on the ducats: it is then one
+ * sentence saying that is all of them, and nothing is asked of the reader. Said
+ * here because an earlier note claimed no control is drawn at all, which the
+ * condition below has never done.
+ */
+const AT_FIRST = 50
+
 
 /**
  * The biography as it is published, in paragraphs, with no links inside it: a
@@ -178,6 +195,18 @@ function ProfileBody({
   /* The two widgets follow the season and nothing else. */
   const totals = useMemo(() => totalsOf(inSeason), [inSeason])
 
+  /* A table that grows as it is read, the same mechanism the comments under an
+     event and the ducats on a profile already use (components/growing.ts).
+     Owner, 12.08.2026, asking why this one did not have it: „Zbog čega na
+     rezultatima takmičara ne ide učitavanje na skroll kad/ako ih ima preko 50 na
+     strani?"
+   *
+     Fifty at first, because that is the number he named. The heading above still
+     counts the whole filtered set, not what is drawn: it answers „how many
+     results does this competitor have", which is not the same question as „how
+     far have I read". */
+  const { shown: grown, whole, asked: askedMore, more } = useGrowing(shown.length, AT_FIRST)
+
   function changeLength(value: string) {
     const merged = new URLSearchParams(params)
 
@@ -251,7 +280,7 @@ function ProfileBody({
                 </tr>
               </thead>
               <tbody>
-                {shown.map((result) => (
+                {shown.slice(0, grown).map((result) => (
                   <tr key={result.id}>
                     <td>{formatShortDate(result.date, locale)}</td>
                     {/* The event, not just its name (owner, 31.07.2026). Somebody
@@ -284,6 +313,23 @@ function ProfileBody({
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Under the table and outside the box that scrolls sideways: the
+            control belongs to the list, not to the width of it, and a reader
+            who has pushed the table left must not have to push it back to find
+            the button. */}
+        {shown.length > 0 && (
+          <LoadMore
+            whole={whole}
+            asked={askedMore}
+            onMore={more}
+            words={{
+              more: t('profile.moreResults'),
+              showing: t('profile.showingResults', { shown: grown, total: shown.length }),
+              whole: t('profile.allResults', { count: shown.length }),
+            }}
+          />
         )}
       </section>
     </div>
