@@ -1,8 +1,11 @@
+import { Resource } from '../../components/Resource'
+import { useCompetitors } from '../../data/useResource'
 import { useTheme } from '../../app/useTheme'
 import type { Theme } from '../../app/themeContext'
 import { useI18n } from '../../i18n/useI18n'
 import { NOTIFICATION_KEYS } from '../../session/context'
 import { useSession } from '../../session/useSession'
+import { ProfilePicture } from './ProfilePicture'
 import { SignedOut } from './SignedOut'
 import './Member.css'
 
@@ -16,6 +19,9 @@ export function Settings() {
   const { t } = useI18n()
   const { memberNumber, notifications, setNotification } = useSession()
   const { theme, choose } = useTheme()
+  /* Above the early return, because a hook is: called after it, the order of
+     hooks changes between a signed in reader and a signed out one. */
+  const competitors = useCompetitors()
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -25,6 +31,17 @@ export function Settings() {
     <div className="member">
       <h1>{t('settings.title')}</h1>
       <p className="member__note">{t('settings.intro')}</p>
+
+      {/* First, because it is the only thing on this screen other people see.
+          The theme and the notifications are the reader's own business; the
+          picture is what the league sees beside their name. */}
+      <Resource state={competitors}>
+        {(competitors) => {
+          const me = competitors.find((one) => one.memberNumber === memberNumber)
+
+          return me === undefined ? null : <ProfilePicture me={me} />
+        }}
+      </Resource>
 
       <section className="member__panel" aria-labelledby="settings-appearance">
         <h2 className="profile__section" id="settings-appearance">
