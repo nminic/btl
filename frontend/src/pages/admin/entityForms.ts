@@ -396,7 +396,7 @@ export const TEAMS: EntityDef = {
   /* What the form does not ask for but every team carries. A screen reads
      `team.bio` and splits it into paragraphs, so a team made without one is a
      team whose page cannot be drawn. */
-  blank: { bio: '' },
+  blank: { bio: '', logo: null },
   /**
    * The address the team answers at, from its name.
    *

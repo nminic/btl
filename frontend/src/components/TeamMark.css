@@ -11,20 +11,12 @@
   display: inline-grid;
   place-items: center;
   vertical-align: middle;
-  /* Never squeezed and never stretched: a circle that gives way to the box
-     around it is an ellipse, and a table cell is a box that gives way. */
-  flex: none;
   inline-size: 1.75rem;
   block-size: 1.75rem;
-  border-radius: 50%;
   /* The step between the mark and the name, written here rather than on the
      cell: the two travel together and the gap belongs to the pair. */
   margin-inline-end: var(--space-8);
-  background: hsl(var(--face-hue, 214) 45% 32%);
-  color: var(--white);
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 /* A picture fills the circle rather than sitting in it, and is cut to the circle
