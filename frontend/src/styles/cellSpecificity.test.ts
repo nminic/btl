@@ -41,10 +41,12 @@ import { at } from '../test/at'
  * And it only examines a rule whose last compound carries a class, because that
  * is the shape a screen writes when it means one of its own columns. A rule
  * ending in a bare `th` or `td` is never looked at. `.moderators th` is one, and
- * it is deliberate; `.markdown__table th` is another and is a live defect, since
- * it ties `.table th` and loses on order, leaving every column past the third of
- * a written table right-aligned against a comment saying they read from the left.
- * That one is not this PR's to fix, but it is what the two holes cost together.
+ * it is deliberate. `.markdown__table th` was another, and was a live defect: it
+ * tied `.table th` and lost on order, leaving every column past the third of a
+ * written table right-aligned against a comment saying they read from the left.
+ * That one is fixed, in the branch that landed just before this one, by naming
+ * both classes the element carries. It is left written down because it is what
+ * the hole costs when nobody is looking for it, not because it is still there.
  *
  * Read as text, not as a rendered screen. jsdom resolves no cascade across
  * stylesheets, so a test that mounted the grid would agree with whichever rule it
