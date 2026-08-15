@@ -5,7 +5,8 @@ import { at, first, must, selectElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
-import type { Competitor } from '../../data/types'
+import { formatPoints } from '../../i18n/format'
+import type { Competitor, Result } from '../../data/types'
 import { awardsOf } from './awards'
 import { shortBio } from './bio'
 
@@ -88,6 +89,57 @@ describe('what a competitor has won', () => {
 
     expect(seasons.length).toBeGreaterThan(0)
     expect([...seasons].sort((left, right) => right - left)).toEqual(seasons)
+  })
+
+  it('writes the place that was taken, not the row it is drawn in', async () => {
+    /* The table is ordered by season, newest first, and only then by place
+       (pages/profile/awards.ts). So a member who came second in one season and
+       first in the one before reads „2." above „1.", and a table numbering its
+       own rows would print those the other way round.
+
+       This is the one screen on the portal where the two genuinely differ, and
+       it went unguarded through two attempts to say where the rule was held. A
+       review replaced the place with the row index twice over, once in
+       `awards.ts` and once here, and all 1849 tests passed both times: the
+       first because the standing it reads is numbered densely and nothing is
+       cut out of it, the second because nobody was looking.
+
+       Read against the awards themselves rather than against a number written
+       here, and only where a member has two, since one row cannot disagree with
+       its own index. */
+    renderAt('/sr/takmicar/000001/priznanja?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Pehari' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    const places = rows.map((row) => at(within(row).getAllByRole('cell'), 2).textContent)
+
+    /* Pinned to the places the ladder actually gave, and not merely to „these
+       are not 1, 2, 3". A review moved every place up by one and that weaker
+       assertion passed: the column then read „3." where the member came second
+       and „2." where they came first, so the screen claimed a trophy nobody
+       won (PDL P16 gives one to the first three). Worked out here from the same
+       records the screen reads, so a change in the seed says so instead of
+       passing. */
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const results = await loadResource<Result[]>('results')
+    const me = must(
+      competitors.find((one) => one.memberNumber === '000001'),
+      'the member whose trophies are on screen',
+    )
+    const won = awardsOf(me, competitors, results)
+
+    expect(rows.length).toBeGreaterThan(1)
+    expect(places).toEqual(won.map((one) => `${String(one.position)}. mesto`))
+    /* The points beside the place, for the same reason and found the same way:
+       a review moved every one of them by one and nothing noticed. A row of
+       this table is two facts about one season, and a table that gets either of
+       them wrong says the member won something they did not. */
+    expect(rows.map((row) => at(within(row).getAllByRole('cell'), 3).textContent)).toEqual(
+      won.map((one) => formatPoints(one.points, 'sr')),
+    )
+    /* And they really do differ from the row numbers, or the line above would
+       hold just as well over a table that counted itself. */
+    expect(places).not.toEqual(rows.map((_, index) => `${String(index + 1)}. mesto`))
   })
 
   it('is not there at all for a member who is no longer active', async () => {
