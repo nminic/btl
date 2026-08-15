@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -352,10 +354,34 @@ describe('the biography, at the moment of joining', () => {
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 
-  it('says what happens to it, beside the field', async () => {
+  it('says what happens to it, beside the field, refusal and all', async () => {
+    /* Both halves. It said only that a moderator reads it, which was the whole
+       story while a biography was published as the moderator left it; since
+       15.08.2026 it can come back (PDL P22), and the field beside which a member
+       writes is where they should learn that. The picture has said as much all
+       along, so the two now tell the same story. */
     renderForm()
 
-    expect(screen.getByText(/Moderator ih pregleda pre nego što se pojave/)).toBeVisible()
+    expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
+    expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
+    /* And it stops there, because there is nowhere to send a second one. The
+       first version of this sentence went on to say the member writes another,
+       which no screen lets them do: the biography is asked for once, at joining,
+       and `pages/member/Settings.tsx` offers the picture and nothing else.
+     *
+       Held against that fact rather than against the words. Written as „these
+       five words are not on the screen", a review put the same promise back in
+       different words and all 1906 tests passed. What this asks is how many
+       forms on the portal have a box for a biography: while the answer is one,
+       the sentence beside that box must not promise a second. Build the screen
+       and this fails, which is the moment to write the promise back. */
+    const forms = readdirSync(join(process.cwd(), 'src/forms/definitions'))
+    const asking = forms.filter((name) =>
+      readFileSync(join(process.cwd(), 'src/forms/definitions', name), 'utf-8').includes('"name": "bio"'),
+    )
+
+    expect(asking).toEqual(['registracija.form.json'])
+    expect(screen.queryByText(/nov tekst|ponovo|opet/)).not.toBeInTheDocument()
   })
 })
 

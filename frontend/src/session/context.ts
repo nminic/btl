@@ -129,11 +129,15 @@ export type Decision = {
   /**
    * What was written down with the decision.
    *
-   * Why it was sent back on most queues, the instruction the member is to follow
-   * on the profile pictures, and on the biographies the text that actually went
-   * out, because there the moderator edits before publishing and the published
-   * version is whatever they left (PDL P22). Empty where nothing was written:
-   * a plain approval, and a deleted comment, which carries no reason at all.
+   * Why it was sent back, and on the profile pictures the instruction the member
+   * is to follow. Empty where nothing was written: a plain approval, and a
+   * deleted comment, which carries no reason at all.
+   *
+   * It carried one thing more until 15.08.2026: on a biography, the text that
+   * actually went out, because a moderator could edit before publishing and
+   * what was published was whatever they left. The owner withdrew that on
+   * 06.08.2026 (PDL P22), so an approval publishes what the member wrote and
+   * there is nothing about it left to record.
    */
   note: string
   /** The payments queue only: on what basis the membership was activated, paid

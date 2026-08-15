@@ -22,7 +22,13 @@ import { useI18n } from '../../i18n/useI18n'
  */
 
 export function SendBack({
-  placeholderKey = 'review.reasonPlaceholder',
+  /* The words for a queue that writes the reason down and sends nobody
+     anything, which is what every caller but the racing profile does. The
+     promise („Član dobija tvoj razlog") was the default until 15.08.2026, so
+     the payments queue told a moderator the member would read what they wrote
+     while `notify` is never called from that screen at all. A default that is
+     true of one caller out of three is the wrong default (PENDING R9b). */
+  placeholderKey = 'review.reasonKeptPlaceholder',
   subject,
   optional = false,
   explain = true,

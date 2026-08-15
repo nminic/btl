@@ -17,30 +17,36 @@ import { PENDING_QUEUE_IDS, type ItemKind, type PendingItem, type PendingQueueId
  * The moderator's second decision on a queue, and therefore what the first one is
  * called as well.
  *
- * Four answers rather than a yes or a no. It used to be one boolean, "does
+ * Three answers rather than a yes or a no. It used to be one boolean, "does
  * refusing ask why", and the three exceptions the owner settled on 30.07.2026
  * (PDL P22) are three different things rather than degrees of the same one:
  *
  * - `sendBack`: approve, or hand the work back with a reason. Five of the seven.
  *   A member who is refused with no reason writes back to ask, so the reason is
  *   the cheaper of the two paths rather than politeness.
- * - `instruct`: approve, or hand the picture back with a reason. Pictures are the
- *   only thing that still goes back to a competitor, so the reason is the one
- *   that has to arrive somewhere: it goes to the member's inbox, and the member
- *   changes the picture by it. It is called a reason like everywhere else and
- *   written into the same box; what differs is that the queue asks for one
- *   precise enough to work from, which is what the empty field says (SendBack).
+ * - `instruct`: approve, or hand the picture back with a reason. A picture is the
+ *   one thing asked for in words precise enough to work from. It is called a
+ *   reason like everywhere else and written into the same box; what differs is
+ *   that the queue asks for one somebody can act on, which is what the empty
+ *   field says (SendBack). Both sorts on that queue reach the inbox of whoever
+ *   sent them in, each under its own heading (`returned`).
  * - `delete`: accept, or delete on the spot. No reason is asked for, and nothing
  *   at all is sent to the member. A comment is not work to be improved: it goes
  *   out onto the portal or it does not, and a moderator reads them by the dozen.
  *   The word matters as much as the click. "Refused" suggests a refused comment
  *   is being kept somewhere and could be brought back, and none is.
- * - `editAndPublish`: there is no second decision. The moderator adjusts the text
- *   as they see fit and publishes what they left. A biography never goes back to
- *   the competitor for approval, so there is no button for it and no reason to
- *   write.
+ *
+ * There were four. `editAndPublish` was the biography: the moderator adjusted
+ * the text as they saw fit and published what they left, with no second
+ * decision and nothing going back. The owner withdrew that on 06.08.2026 and
+ * confirmed it on 11.08.2026 (PDL P22): „Sve što se odbije vraća se članu", uz
+ * obavezan razlog, i član sme da pošalje ponovo. A biography is the words a
+ * member wrote about themselves, and a moderator rewriting them and publishing
+ * the result puts somebody else`s sentences on their profile under their name.
+ * So it is `sendBack` like the other five, and the exception is the comment,
+ * which is deleted rather than returned.
  */
-export type QueueOutcome = 'sendBack' | 'instruct' | 'delete' | 'editAndPublish'
+export type QueueOutcome = 'sendBack' | 'instruct' | 'delete'
 
 /**
  * Which seven there are.
@@ -116,10 +122,13 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
     labelKey: 'verification.profiles',
     sourceKey: 'verification.fromProfiles',
     path: `${ADDRESS}/trkacki-profil`,
-    /* The one queue whose items are not all decided the same way, so what stands
-       here is what it is for the sort that is not named: a picture is handed
-       back with an instruction, and the text is edited and published
-       (`outcomeFor`). */
+    /* The one queue whose items are not all decided the same way, so this is
+       never read: `outcomeFor` answers off the item before it ever reaches the
+       queue. It stands because the type asks every queue for one, and a review
+       measured what that costs: changed to `delete`, all 1901 tests passed,
+       because nothing can reach it. What it says is therefore the same thing
+       `outcomeFor` says for the sort that is not named, so the two cannot
+       disagree in a way anybody would notice. */
     outcome: 'instruct',
   },
   comments: {
@@ -171,7 +180,45 @@ export function canSendBack(
   queue: Queue,
   item: { kind: ItemKind; memberNumber: string },
 ): boolean {
-  return outcomeFor(queue, item) !== 'instruct' || item.memberNumber !== ''
+  if (queue.id !== 'profiles') {
+    return true
+  }
+
+  /* On this queue a refusal is written to somebody, so it can only be made
+     where there is both a heading to write under and a member to write to. */
+  return returned(queue, item) !== null && item.memberNumber !== ''
+}
+
+/**
+ * The heading a refusal on this queue reaches the member under, or nothing
+ * where a refusal is not sent at all.
+ *
+ * One place, because three things read it: whether the item may be handed back
+ * without a member number, whether a message goes out, and what that message is
+ * called. Written out at each of them, the biography was added to one of the
+ * three on 15.08.2026 and left out of the other two, so a refusal that could not
+ * be stopped also could not arrive.
+ *
+ * The two sorts on the racing profile queue and nothing else. The other five
+ * refuse without writing to anybody, which is a limit of the prototype rather
+ * than a decision and is written down in PENDING.
+ */
+export function returned(
+  queue: Queue,
+  item: { kind: ItemKind },
+): 'verification.photoReturned' | 'verification.bioReturned' | null {
+  if (queue.id !== 'profiles' || item.kind === '') {
+    /* Nothing to write under. The empty sort is every queue that holds one
+       kind of thing, and the racing profile never carries it (data/types.ts);
+       an item that does is a record nobody understands, and the safe answer
+       is that it cannot be handed back rather than that it is a picture. A
+       review found the old shape treating everything that is not a biography
+       as one, which put the wrong heading in the one function written to stop
+       exactly that. */
+    return null
+  }
+
+  return item.kind === 'bio' ? 'verification.bioReturned' : 'verification.photoReturned'
 }
 
 /**
@@ -180,9 +227,10 @@ export function canSendBack(
  *
  * The racing profile is that one queue (owner, 06.08.2026): a member's
  * biography and their picture are looked at together, because they are the same
- * profile, and the decision over each is not the same. The text is edited and
- * published, and never goes back; the picture is accepted or handed back with an
- * instruction the member works from.
+ * profile, and the decision over each is not quite the same. Both are refused
+ * with a reason and handed back to the member (PDL P22); what differs is what
+ * the moderator is asked to write, since a picture is changed by an instruction
+ * precise enough to work from and a text is written again.
  *
  * Read off the item and not off its shape. A biography is a paragraph and a
  * picture is a file name, and telling them apart by looking would be a rule that
@@ -193,7 +241,11 @@ export function outcomeFor(queue: Queue, item: { kind: ItemKind }): QueueOutcome
     return queue.outcome
   }
 
-  return item.kind === 'bio' ? 'editAndPublish' : 'instruct'
+  /* Both go back to the member, and they go back differently. A biography is
+     refused with a reason and the member writes another; a picture is handed
+     back with an instruction precise enough to work from, which is what the
+     empty box on that queue asks for (SendBack.tsx, PDL P22). */
+  return item.kind === 'bio' ? 'sendBack' : 'instruct'
 }
 
 /**
