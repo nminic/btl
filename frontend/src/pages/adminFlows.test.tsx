@@ -1,3 +1,4 @@
+import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -2006,7 +2007,11 @@ describe('the six queues read from the file', () => {
        as „Profilna slika je vraćena", a message about a thing they did not
        send. Both halves are asserted here, the arrival and the heading. */
     const user = setupUser()
-    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000011')
+    /* Read on a named day rather than on whatever day the machine is having, so
+       the date the refusal carries can be checked against something. */
+    const day = '2026-08-15'
+
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000011', undefined, day)
     await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
     /* The card of the member at the keyboard, and not simply the first
@@ -2045,9 +2050,18 @@ describe('the six queues read from the file', () => {
        the association). Held here because nothing held it: a review emptied the
        sender and all 1906 tests passed, which left a member with a message
        whose one line of provenance read „ · 15.08.2026." */
-    expect(must(subject.nextElementSibling, 'the line of provenance under the subject').textContent).toContain(
-      sr.app.name,
-    )
+    const provenance = must(
+      subject.nextElementSibling,
+      'the line of provenance under the subject',
+    ).textContent
+
+    expect(provenance).toContain(sr.app.name)
+    /* And the day it was written, which is the other half of that one line and
+       was covered without being checked: a review put 2000-01-01 in its place
+       and all 1907 tests stayed green, so a refusal could carry any date at all.
+       Read as the portal writes it, through the same formatter the screen uses,
+       so this says „today" rather than one spelling of it. */
+    expect(provenance).toContain(formatShortDate(day, 'sr'))
   })
 
   it('promises the message only where one is actually sent', async () => {
@@ -2282,6 +2296,45 @@ describe('the six queues read from the file', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('1'))
       .toBeVisible()
+  })
+
+  it('tells the member their team was accepted, and says who is telling them', async () => {
+    /* The other place on these screens that writes to a member, and until now
+       the only one nothing followed. A review emptied the sender here and all
+       1907 tests stayed green, so the one line of provenance on the message
+       would have read „ · 15.08.2026" with nobody's name in front of it.
+     *
+       The league writes it, never the moderator by name: a decision is the
+       league's, and a member who could read the name of whoever decided would
+       write back to a person rather than to the association (PDL P22). */
+    const user = setupUser()
+    const day = '2026-08-15'
+
+    renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin', '000007', undefined, day)
+    await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
+
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Timočka trkačka družina') !== null),
+        'the card carrying the team proposed by the member at the keyboard',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(screen.getByRole('link', { name: /Timočka trkačka družina/ }))
+
+    const subject = screen.getByRole('heading', { level: 1, name: /je prihvaćen/ })
+    const provenance = must(
+      subject.nextElementSibling,
+      'the line of provenance under the subject',
+    ).textContent
+
+    expect(provenance).toContain(sr.app.name)
+    expect(provenance).toContain(formatShortDate(day, 'sr'))
   })
 
   it('leads from one queue straight to the next', async () => {

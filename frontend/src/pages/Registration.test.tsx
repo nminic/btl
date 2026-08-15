@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -387,10 +387,29 @@ describe('the biography, at the moment of joining', () => {
        picture, the sentence above may stop where it stops. The day a second
        appears, whatever it is called and however it is written, this fails, and
        that is when the promise goes back in. */
-    cleanup()
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
-    const sending = await screen.findAllByRole('button', { name: 'Pošalji na odobrenje' })
+    /* Waited for by name before anything is counted, and this is the whole
+       difference between a guard and a green light. `findAllByRole` settles on
+       the first tick that has any match at all, so counting straight away counts
+       whatever happens to be on screen first: a review built a second panel one
+       tick behind the picture and the count stayed at one, and built one a tick
+       ahead of it and the count stayed at one again, the other way round. Both
+       times two controls were on the screen a moment later. */
+    await screen.findByRole('region', { name: 'Profilna slika' })
+    /* And then the screen is let finish arriving before anything is counted.
+       Waiting for the picture is not enough on its own: a panel whose own effect
+       mounts it one tick behind the picture is not on the screen yet at the
+       moment the picture is, and a review built exactly that and watched the
+       count stay at one. A turn of the loop is what „the screen has finished
+       arriving" actually is here. */
+    await act(async () => {
+      await new Promise((settled) => {
+        setTimeout(settled, 0)
+      })
+    })
+
+    const sending = screen.getAllByRole('button', { name: 'Pošalji na odobrenje' })
 
     expect(sending).toHaveLength(1)
     expect(must(first(sending).closest('section'), 'the panel the control belongs to')).toHaveAccessibleName(

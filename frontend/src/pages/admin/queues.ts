@@ -202,9 +202,11 @@ export function canSendBack(
  * The two sorts on the racing profile queue and nothing else. The other five
  * refuse without writing to anybody, which is where this branch leaves them and
  * not where they stay: the owner decided on 15.08.2026 that the refusal goes out
- * from every queue („Poruka ide sa svih redova"), and that is being built on its
- * own branch because it needs a heading of its own for each of the five and a
- * test each. Until it lands, the five say nothing on screen either, which is
+ * from the queues that refuse anything („Poruka ide sa svih redova"), and that is
+ * being built on its own branch because it needs a heading of its own for each
+ * and a test each. Not quite every queue: a comment is deleted rather than
+ * handed back, with no message at all, which is the one exception PDL P22 names
+ * and which `outcome: 'delete'` above is. Until it lands, the five say nothing on screen either, which is
  * what `reasonKeptPlaceholder` is for.
  */
 export function returned(
