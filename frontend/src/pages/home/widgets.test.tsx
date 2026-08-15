@@ -582,9 +582,102 @@ describe('TopByCategory', () => {
     expect(screen.getByText(/^Najviše/).textContent).toBe(opening)
   })
 
+  it('puts back a turn that had already set off when a column is taken hold of', async () => {
+    /* The turn is two steps: the words go out, and a third of a fade later what
+       is counted changes. Holding only the first left the second to finish under
+       a reader who arrived in between, and inside that window the link under
+       their finger still became somebody else's. Measured by a review. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={300} />,
+    )
+
+    const chart = must(
+      screen.getByText(/^Najviše/).closest<HTMLElement>('.colchart'),
+      'the chart the band belongs to',
+    )
+
+    /* Caught in the middle of a turn, which is what the class says. */
+    await waitFor(() => {
+      expect(chart.className).toContain('colchart--swapping')
+    })
+
+    const column = screen.getByRole('link')
+    const held = column.getAttribute('href')
+
+    column.focus()
+
+    /* Long enough for the swap that was already under way to have landed. */
+    await new Promise((settled) => {
+      setTimeout(settled, 400)
+    })
+
+    expect(column).toHaveFocus()
+    expect(column).toHaveAttribute('href', held)
+    expect(chart.className).not.toContain('colchart--swapping')
+  })
+
+  it('turns again after the column it was held by is taken out of the page', async () => {
+    /* React sends no `focusout` for an element that is no longer there, so a
+       remembered „held" would never be unremembered: the chart waited for a
+       reader who had already gone, for ever, while the button went on offering
+       to stop something standing still. Measured by a review, and the reason the
+       hold is a question put to the page rather than a fact kept in a variable.
+     *
+       The same widget given new numbers, which is what happens on the front page
+       by itself: `Home.tsx` works its season and its field out of `useToday()`,
+       and the clock looks again every minute. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const two = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'short' as const },
+    ]
+    const one = [{ ...result('000001', 10), category: 'short' as const }]
+
+    const { rerender } = renderWidget(
+      <TopByCategory competitors={competitors} results={two} season={2027} turnMs={20} />,
+    )
+
+    const second = at(screen.getAllByRole('link'), 1)
+
+    second.focus()
+
+    expect(second).toHaveFocus()
+
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    rerender(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    /* Gone from the page, and with it the focus: nothing announced it and
+       nothing can, because the element that would have said so is the one that
+       left. */
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(document.activeElement).toBe(document.body)
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
+  })
+
   it('turns again once the keyboard has left it', async () => {
     /* The other half, and the one that says the hold is a hold and not a stop:
-       a chart that never turned again would pass the test above. */
+       a chart that never turned again would pass the test above.
+     *
+       Letting go and taking hold again between two columns really does happen,
+       which a review measured: `onHeld` is called with the bars, then with
+       nothing, then with the bars. Nothing gets through in that gap, because
+       there is no turn of the loop in it for a timer to fire in. */
     const competitors = [competitor('000001'), competitor('000002')]
     const results = [
       { ...result('000001', 10), category: 'short' as const },
