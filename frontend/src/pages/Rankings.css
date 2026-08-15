@@ -197,22 +197,33 @@
     grid-row: 2;
   }
 
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories,
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories {
     grid-column: 1 / -1;
   }
 
-  /* The row of filters gives its own spacing away with its box, so what stood
-     between it and the table has to be put back on the last field in it. */
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
+  /* The row of filters gives its own spacing away with `display: contents`, so
+     what stood between it and the table has to be put back on the last field in
+     it. That was the search box until 31.07.2026, and taking the box out took
+     the spacing with it: a review measured the gap between the filters and the
+     table fall from 24px to 12px on a 360px screen.
+
+     The chips alone. They were briefly named beside `--wide`, on the reasoning
+     that a screen might end its row with either, and a review measured that no
+     element on the portal matches that branch at all: the three screens with a
+     row of filters are this one and two in administration, and neither of those
+     carries `rankings--tooled`. A selector nothing wears is a selector nobody
+     can see go wrong, which is how the block this one replaced survived a
+     fortnight. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories:last-child {
     margin-block-end: var(--space-12);
   }
 }
 
-/* One row: season, categories, search (owner, 11.08.2026). `align-items:
-   start` and not `end`, because each field is a name over a control and the
-   three names have to sit on one line: aligned at the foot, a field whose
-   control is taller pushes its own name up and the three read as three
+/* One row: season and categories (owner, 11.08.2026; there was a search box
+   at the end of it until 31.07.2026). `align-items: start` and not `end`,
+   because each field is a name over a control and both names
+   have to sit on one line: aligned at the foot, a field whose
+   control is taller pushes its own name up and the two read as two
    heights. */
 .rankings__filters {
   display: flex;
@@ -270,25 +281,12 @@
   padding: var(--space-8);
 }
 
-/* Still used by five other screens, whose search box does take the rest of the
-   row: a list of members is filtered by anything, and the box is the screen's
-   one control. */
+/* The field that takes what is left of a row, on the six screens whose one
+   control is a box: the competitors, three administration lists, the way back
+   on a queue, and the picture on a profile. Not this screen any more, whose
+   search went on 31.07.2026. */
 .rankings__field--wide {
   flex: 1 1 14rem;
-}
-
-/* Everything left of the row, so what the box asks for fits inside it: "Ime,
-   prezime ili članski broj" is twenty nine characters and a box narrower than
-   that reads as one that takes a word (owner, 11.08.2026). `min-inline-size: 0`
-   because a flex item will not shrink below the width its content asks for
-   without it, and an input's content width is its `size` attribute. */
-.rankings__field--search {
-  flex: 1 1 16rem;
-  min-inline-size: 0;
-}
-
-.rankings__field--search input {
-  inline-size: 100%;
 }
 
 /* The same row of buttons the results on a profile use (Profile.css), and for
@@ -337,7 +335,7 @@
 }
 
 /* As tall as the select and the box beside it, with the chips centred inside
-   that band: the three controls share a top and a bottom, which is what being
+   that band: both controls share a top and a bottom, which is what being
    in one row means to somebody looking at it. 2.5rem is what the select and the
    input come to from their own padding and border. */
 .rankings__field--categories .rankings__categories {

@@ -458,8 +458,6 @@
     "myRow": "vaš red",
     "categoryFilter": "Kategorija",
     "allCategories": "Sve",
-    "search": "Pretraga",
-    "searchPlaceholder": "Ime, prezime ili članski broj",
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
     "columns": {
       "position": "#",
