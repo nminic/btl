@@ -352,10 +352,16 @@ describe('the biography, at the moment of joining', () => {
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 
-  it('says what happens to it, beside the field', async () => {
+  it('says what happens to it, beside the field, refusal and all', async () => {
+    /* Both halves. It said only that a moderator reads it, which was the whole
+       story while a biography was published as the moderator left it; since
+       15.08.2026 it can come back (PDL P22), and the field beside which a member
+       writes is where they should learn that. The picture has said as much all
+       along, so the two now tell the same story. */
     renderForm()
 
-    expect(screen.getByText(/Moderator ih pregleda pre nego što se pojave/)).toBeVisible()
+    expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
+    expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
   })
 })
 

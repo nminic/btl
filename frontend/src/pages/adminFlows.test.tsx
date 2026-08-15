@@ -757,6 +757,12 @@ describe('the queue of results', () => {
         '.field__required',
       ),
     ).not.toBeNull()
+    /* And it does not promise a message. This queue has a field of its own rather
+       than the shared box, so it carries its own words, and it kept the promising
+       ones after the shared default was corrected. Nothing measured that: a review
+       put them back and all 1905 tests passed. `notify` is never called from this
+       screen (PENDING R9b). */
+    expect(reason).toHaveAttribute('placeholder', sr.review.reasonKeptPlaceholder)
   })
 
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
@@ -1931,6 +1937,22 @@ describe('the six queues read from the file', () => {
      back, because it is the same decision; what differs is what the moderator is
      asked to write, since that reason is what the member reads and changes the
      picture by (PDL P22, owner, 30.07.2026). */
+  it('does not promise one on the three queues in the middle either', async () => {
+    /* Leagues, teams and reported dates draw the shared box through the queue
+       screen, which chooses the words itself rather than taking the default. That
+       branch had nothing behind it: a review set it back to the promising words
+       and all 1905 tests passed, and the leagues queue is the very one the
+       promise was first measured on (PENDING R9b). */
+    const user = await open('leagues', 'Predložene lige')
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonKeptPlaceholder,
+    )
+  })
+
   it('asks the picture for an instruction and the biography for a reason', async () => {
     const user = await open('profiles', 'Trkački profil')
 
@@ -2016,9 +2038,9 @@ describe('the six queues read from the file', () => {
   it('promises the message only where one is actually sent', async () => {
     /* Owner, R10: the screen must not promise what the code does not do. The
        empty box used to read „Član dobija tvoj razlog" everywhere a reason is
-       asked for, and `notify` is called from one screen and for one queue, so on
-       the other six it was telling a moderator that words they were about to
-       write would be read by somebody who never sees them.
+       asked for, and a refusal writes to the member on one queue only, so on the
+       other six it was telling a moderator that words they were about to write
+       would be read by somebody who never sees them.
      *
        Read against `returned`, which is the one place that knows whether a
        message goes, rather than against a list of queue names written here: a
@@ -2028,12 +2050,16 @@ describe('the six queues read from the file', () => {
     for (const one of Object.values(QUEUE)) {
       const sends = returned(one, { kind: 'bio' }) !== null
 
-      expect(
-        [sr.review.reasonPlaceholder, sr.review.reasonKeptPlaceholder].filter((words) =>
-          words.includes('Član dobija tvoj razlog'),
-        ),
-        'exactly one of the two sets of words makes the promise',
-      ).toHaveLength(1)
+      /* Which of the two makes the promise, and not merely that one of them
+         does. Written the loose way this passed while a review swapped the two
+         values in the dictionary, at which point every queue that sends nothing
+         promised a message and the one that sends one said it does not: exactly
+         backwards, on both screens this round had just corrected. Every other
+         test compares a placeholder against `sr.review.*`, so they all move
+         together with the values and none of them can see it. */
+      expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog')
+      expect(sr.review.reasonKeptPlaceholder).toContain('još ne ide')
+      expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
 
       /* And the queue that sends is the racing profile and only it. */
       expect(sends, one.id).toBe(one.id === 'profiles')

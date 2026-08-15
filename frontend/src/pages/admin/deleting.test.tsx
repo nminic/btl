@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { livePage } from '../../data/pages'
@@ -255,6 +257,13 @@ describe('one decision for a whole queue', () => {
       /* The text itself, read under the words that name it, and not the whole
          card: the card carries the member's name above it, and a word taken
          from there is a word the biography never had. */
+      /* The id of each waiting biography, read off the queue before the sweep so
+         the assertion below can name them rather than count them. */
+      const queue = JSON.parse(readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'))
+      const ids = queue
+        .filter((one: { queue: string; kind: string }) => one.queue === 'profiles' && one.kind === 'bio')
+        .map((one: { id: string }) => one.id)
+
       const texts = cards.map((one) =>
         must(
           must(
@@ -270,10 +279,14 @@ describe('one decision for a whole queue', () => {
       const decided = within(screen.getByRole('list', { name: 'session decisions' }))
       const settled = decided.getAllByRole('listitem').map((one) => String(one.textContent))
 
-      /* Every one of them settled, and not one of them carrying its words. */
-      expect(settled.filter((line) => line.includes('approved')).length).toBeGreaterThanOrEqual(
-        cards.length,
-      )
+      /* Each of them settled, by its own id and not by counting. Written as a
+         count it compared the settled items of the whole queue against the
+         biographies alone, so two pictures satisfied it: a review made the sweep
+         skip every biography and this assertion held (`Decided` writes the id at
+         the head of each line, src/test/decided.tsx). */
+      for (const id of ids) {
+        expect(settled.some((line) => line.startsWith(`${id} | approved`)), id).toBe(true)
+      }
 
       for (const text of texts) {
         const word = must(text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')

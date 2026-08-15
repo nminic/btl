@@ -151,7 +151,8 @@ describe('the picture on a profile, changed later', () => {
     expect(within(card).getByText(/nova-slika\.jpg/)).toBeVisible()
     expect(within(card).getByText(/000007/)).toBeVisible()
     /* The decision offered is the one for a picture: handed back with an
-       instruction, never published as somebody's own words. */
+       instruction precise enough to work from, rather than the plain reason a
+       text is refused with (PDL P22). */
     expect(within(card).getByRole('button', { name: 'Odobri' })).toBeVisible()
     expect(within(card).queryByRole('button', { name: 'Objavi' })).not.toBeInTheDocument()
   })
