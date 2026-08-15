@@ -33,11 +33,13 @@ function blanked(css: string): string {
  * only at the front, the range ran to the end of the sheet, and `findLast`
  * happily answered with a rule that is not in the query at all. Proved by
  * emptying the real rule and writing a copy of it at the foot of the file: the
- * copy then applies at every width, the desktop table becomes the telephone`s
+ * copy then applies at every width, the desktop table becomes the telephone's
  * two column grid, and all seven guards passed.
  *
- * The query is the one block in this sheet that nests, so its end is the first
- * brace standing alone at the start of a line.
+ * The end is the first brace standing alone at the start of a line, because
+ * everything inside a media query in this sheet is indented. It was written
+ * first as „the one block that nests", which is not true: there are two media
+ * queries here. The conclusion held and the reason did not.
  */
 function phoneQuery(): string {
   const whole = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
@@ -211,14 +213,28 @@ describe('the row the filters stand in', () => {
     /* `rankings--tooled` is eight screens. A rule inside this query that names
        only the shared class is a rule that reaches all eight, and "inert on the
        other seven" is a thing that stays true only until one of them grows a
-       row of filters. */
-    /* `phoneQuery` already stops at the brace that closes the query. It used
-       to be cut again here with `lastIndexOf`, which on an unbounded range was
-       the last brace of the whole file, and what saved this one was the two
-       spaces of indentation in the pattern below rather than the cut. */
-    const loose = [...phoneQuery().matchAll(/^ {2}(\.[^{]+)\{/gm)]
-      .map((one) => must(one[1], 'the selector the match found').trim())
-      .filter((one) => !one.includes(':has(> .rankings__filters)'))
+       row of filters.
+     *
+       `phoneQuery` already stops at the brace that closes the query. It used to
+       be cut again here with `lastIndexOf`, which on an unbounded range was the
+       last brace of the whole file, and what saved this one was the two spaces
+       of indentation in the pattern below rather than the cut.
+     *
+       Every selector on its own, and not the list it was written in. A review
+       hid an unscoped one beside a scoped one, `.rankings__tabs` on the line
+       above `.rankings--tooled:has(> .rankings__filters) > h1`: read as one
+       string the pair contains the scoping, so the whole match dropped out of
+       the check and the loose class reached all eight screens with seven guards
+       passing. A list is as many rules as it has commas.
+     *
+       And any selector, not only a class. The pattern asked for a leading dot,
+       so `table { display: grid }` at the top of this query passed and reached
+       every table on the portal under 560px, which is wider than the eight
+       screens this guard exists for. */
+    const loose = [...phoneQuery().matchAll(/^ {2}([^{}]+)\{/gm)]
+      .flatMap((one) => must(one[1], 'the selectors the match found').split(','))
+      .map((one) => one.trim())
+      .filter((one) => one !== '' && !one.includes(':has(> .rankings__filters)'))
 
     expect(loose).toEqual([])
   })
