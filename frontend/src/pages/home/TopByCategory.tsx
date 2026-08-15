@@ -70,8 +70,18 @@ export function TopByCategory({
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
 
+  /* Whether somebody has a column by the keyboard.
+   *
+   * Held apart from `turning` rather than folded into it, because they are two
+   * different answers to „is it turning": one is what the reader asked for with
+   * the button, and it is what the button's name has to go on saying; the other
+   * is a wait that ends by itself. Folded together, tabbing through the chart
+   * would rename the button to „Nastavi smenjivanje" and leave it renamed, so a
+   * reader would be told they had stopped something they never touched. */
+  const [held, setHeld] = useState(false)
+
   useEffect(() => {
-    if (!turning) {
+    if (!turning || held) {
       return
     }
 
@@ -80,7 +90,7 @@ export function TopByCategory({
     }, turnMs)
 
     return () => clearInterval(turn)
-  }, [turnMs, turning])
+  }, [turnMs, turning, held])
 
   /* The words go out, then what is counted changes, then they come back. The
      bars need no such thing: their height is a style and a style slides, so they
@@ -123,6 +133,7 @@ export function TopByCategory({
   return (
     <ColumnChart
       columns={columns}
+      onHeld={setHeld}
       swapping={shown !== category}
       caption={t(`home.mostOf.${shown}`)}
       empty={t('home.noneYet')}

@@ -186,6 +186,7 @@ export function ColumnChart({
   label,
   control,
   swapping,
+  onHeld,
 }: {
   columns: ChartColumn[]
   /** The gold band under the bars. */
@@ -216,6 +217,19 @@ export function ColumnChart({
    * takmičara fadeuju u nove").
    */
   swapping?: boolean
+  /**
+   * Told when the keyboard enters this chart and when it leaves.
+   *
+   * Only the turning chart passes it, and only for one reason: a column is a
+   * link to one person's profile, and a turn changes which person each column
+   * is while keeping the elements themselves (`swapping` above is what that is
+   * for). A reader who tabs onto a column and reads it is holding a link that
+   * becomes somebody else's under them, and Enter opens a profile they never
+   * chose. The turn waits for them instead (WCAG 2.2 SC 3.2.5).
+   *
+   * A chart that stands still has nothing to hold and passes nothing.
+   */
+  onHeld?: (held: boolean) => void
 }) {
   const highest = Math.max(1, ...columns.map((one) => one.value))
   /* How wide the circle in a bar has to be, in characters, which is the longest
@@ -275,7 +289,25 @@ export function ColumnChart({
       {columns.length === 0 ? (
         <p className="card__empty">{empty}</p>
       ) : (
-        <ol className="colchart__columns">
+        <ol
+          className="colchart__columns"
+          /* The bars and not the whole chart, because it is the bars that
+             change who they lead to. The control sits in the same section and
+             is the one thing in it that means the same after a turn as before
+             it; held from the section, pressing „Nastavi smenjivanje" would
+             leave the chart standing until the reader tabbed away from the very
+             button they had just pressed to start it. */
+          onFocus={() => onHeld?.(true)}
+          /* Moving from one column to the next lets go and takes hold again in
+             the same breath, and React settles both before it renders, so the
+             hold never actually drops between two columns. A guard against that
+             was written here and taken out again: with it and without it the
+             chart behaves the same, and no test could tell the two apart, which
+             is the whole argument against keeping it. Even unsettled the worst
+             it could do is start the interval counting afresh, which delays a
+             turn rather than letting one through. */
+          onBlur={() => onHeld?.(false)}
+        >
           {columns.map((column, place) => (
             /* By the place and not by who holds it. The chart on the front
                page changes what it counts every few seconds, and a column
