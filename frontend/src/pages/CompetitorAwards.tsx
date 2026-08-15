@@ -1,6 +1,7 @@
+import { addressOf, memberNumberIn, redirectTo } from './profileAddress'
 import { categoryLabel } from '../data/categories'
 import { useMemo, useRef } from 'react'
-import { useParams } from 'react-router'
+import { Navigate, useLocation, useParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
@@ -39,7 +40,15 @@ import './Profile.css'
  * thing must not have two names. This is the collection rather than the
  * catalogue.
  */
-function AwardsBody({ memberNumber }: { memberNumber: string | undefined }) {
+function AwardsBody({
+  memberNumber,
+  part,
+}: {
+  memberNumber: string | undefined
+  /** The whole of what the address carried, so the screen can tell whether it
+   *  is the one address these trophies live at (PDL P11). */
+  part: string | undefined
+}) {
   const { t } = useI18n()
   const state = combinePair(
     combineResources(useCompetitors(), useResults(), useTeams()),
@@ -60,6 +69,7 @@ function AwardsBody({ memberNumber }: { memberNumber: string | undefined }) {
         return (
           <AwardsFor
             competitor={competitor}
+            part={part}
             competitors={competitors}
             results={results}
             ducats={ducats}
@@ -77,18 +87,21 @@ const ROWS_AT_FIRST = 5
 
 function AwardsFor({
   competitor,
+  part,
   competitors,
   results,
   ducats,
   team,
 }: {
   competitor: Parameters<typeof awardsOf>[0]
+  part: string | undefined
   competitors: Parameters<typeof awardsOf>[1]
   results: Parameters<typeof awardsOf>[2]
   ducats: Parameters<typeof earnedDucats>[2]
   team: Parameters<typeof ProfileHead>[0]['team']
 }) {
   const { locale, t } = useI18n()
+  const { search } = useLocation()
   const today = useToday()
   const asked = useSeason()
 
@@ -157,15 +170,27 @@ function AwardsFor({
 
   const name = `${competitor.firstName} ${competitor.lastName}`
 
+  /* One address and no alias, the same as on the profile itself: a reader who
+     arrived by the number alone is moved to the one these trophies live at
+     rather than being left on a second address (PDL P11). */
+  const elsewhere = redirectTo(competitor, part, locale, '/priznanja')
+
+  if (elsewhere !== null) {
+    return <Navigate to={`${elsewhere}${search}`} replace />
+  }
+
   return (
     <div className="profile profile--competitor">
       <PageMeta
         title={t('seo.competitor.awardsTitle', { name })}
         description={t('seo.competitor.awardsDescription', { name })}
+        /* The same rule one level down: the trophies of one person are one
+           page, whichever form of the address opened them. */
+        path={`takmicar/${addressOf(competitor)}/priznanja`}
       />
 
       <ProfileHead competitor={competitor} team={team} seasons={seasons} season={season} />
-      <ProfileParts memberNumber={competitor.memberNumber} />
+      <ProfileParts competitor={competitor} />
 
       <p className="profile__scope">{t('awards.note')}</p>
 
@@ -271,5 +296,5 @@ function AwardsFor({
 export function CompetitorAwards() {
   const params = useParams()
 
-  return <AwardsBody memberNumber={params.memberNumber} />
+  return <AwardsBody memberNumber={memberNumberIn(params.memberNumber)} part={params.memberNumber} />
 }

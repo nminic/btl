@@ -192,12 +192,22 @@ describe('the address of a page', () => {
     await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr`))
   })
 
-  it('keeps a filter out of the canonical address', async () => {
+  it('keeps a filter out of the canonical address, and carries the name', async () => {
     renderAt('/sr/takmicar/000007?sezona=2027')
+
+    /* Waited on the record rather than on the address. The profile declares its
+       own canonical once it knows whose it is (PDL P11: one address, and it
+       carries the name), and until then the head holds the address being read.
+       Asked without waiting, `waitFor` catches that first state and passes: the
+       old form of this test passed against both answers, which is the same as
+       passing against none. */
+    await screen.findByRole('heading', { level: 1, name: 'Strahinja Vukićević' })
 
     // A filtered profile is the same page as the unfiltered one; two addresses
     // for it would be one page competing with itself.
-    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007`))
+    await waitFor(() =>
+      expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`),
+    )
   })
 })
 
@@ -205,10 +215,20 @@ describe('what a shared link shows', () => {
   it('carries the name, the sentence and the name of the site', async () => {
     renderAt('/sr/takmicar/000007')
 
+    /* The record first, for the same reason as above: the address a link shares
+       is the one the profile declares once it knows whose it is. */
+    await screen.findByRole('heading', { level: 1, name: 'Strahinja Vukićević' })
+
     await waitFor(() => expect(content('property', 'og:title')).toBe(document.title))
     expect(content('property', 'og:description')).toBe(content('name', 'description'))
     expect(content('property', 'og:site_name')).toBe(LEAGUE)
-    expect(content('property', 'og:url')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007`)
+    /* Waited on, like the canonical it mirrors: the address a profile shares is
+       declared when the record arrives, one render after the title. */
+    await waitFor(() =>
+      expect(content('property', 'og:url')).toBe(
+        `${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`,
+      ),
+    )
     expect(content('name', 'twitter:title')).toBe(document.title)
     expect(content('name', 'twitter:description')).toBe(content('name', 'description'))
   })

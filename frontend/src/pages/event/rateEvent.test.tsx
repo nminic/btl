@@ -1,3 +1,4 @@
+import { addressOf } from '../profileAddress'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { formatDate } from '../../i18n/format'
 import { prijava } from '../../forms/definitions'
@@ -915,7 +916,10 @@ describe('a comment a moderator lets out', () => {
     )
     const mine = within(card).getByRole('link', { name: `${me.firstName} ${me.lastName}` })
 
-    expect(mine).toHaveAttribute('href', `/sr/takmicar/${ME}`)
+    /* The address carries the name behind the number now (PDL P11), and it is
+       built from the same record the link is drawn from, so a change in the
+       generated data says so rather than moving the link quietly. */
+    expect(mine).toHaveAttribute('href', `/sr/takmicar/${addressOf(me)}`)
     /* The year the suite is running in. The day itself is written by the
        screen through Intl, and repeating that here would be the source
        assessing itself. */

@@ -34,6 +34,9 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
 
   const title = declared?.title ?? t(`seo.${seoKey}.title`)
   const description = declared?.description ?? t(`seo.${seoKey}.description`)
+  /* The address the page says it lives at, where it says one. Everything else
+     is the address being read. */
+  const canonical = declared?.path ?? path
 
   /* What the live region announces is the wording the person just clicked, so it
    * comes from the navigation label wherever there is one. The tab and the
@@ -58,10 +61,10 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
       title,
       description,
       siteName: t('app.name'),
-      path,
+      path: canonical,
       textLocale: dictionaryLocale(locale),
     })
-  }, [title, description, path, locale, t])
+  }, [title, description, canonical, locale, t])
 
   return { pageTitle, declare: setDeclared }
 }

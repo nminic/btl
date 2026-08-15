@@ -1,3 +1,4 @@
+import { profilePath } from '../profileAddress'
 import { useEffect, useState } from 'react'
 import { ColumnChart, type ChartColumn } from '../../components/ColumnChart'
 import { topByCategory } from '../../data/derive'
@@ -113,7 +114,7 @@ export function TopByCategory({
          profile opens on all of them by default (owner, 31.07.2026), so leaving
          it out would widen the very thing the bar was showing. */
       to: column.competitor.active
-        ? `/${locale}/takmicar/${column.competitor.memberNumber}?sezona=${season}&duzina=${shown}`
+        ? `${profilePath(column.competitor, locale)}?sezona=${season}&duzina=${shown}`
         : undefined,
     }),
   )
