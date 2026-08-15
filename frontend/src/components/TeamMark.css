@@ -1,3 +1,12 @@
+/* The circle itself, which this file only adds to. Written out rather than
+   assumed: `TeamMark.tsx` puts `face-circle` on every mark it draws, and until
+   this line the only file defining that class was pulled in by `Portrait.tsx`,
+   which the table of teams never draws. The marks were painted correctly by
+   accident, because the bundler concatenates every stylesheet in the
+   application into one, and would have gone bare the day a page loaded this
+   sheet without that one. A sheet brings what it uses (ADL A7). */
+@import './Portrait.css';
+
 /* A team's mark: its logo in a circle, or its initials until it has one.
 
    The same building block as a face (components/Portrait.css) and deliberately
@@ -21,8 +30,17 @@
 
 /* A picture fills the circle rather than sitting in it, and is cut to the circle
    rather than letterboxed: a logo squeezed to fit reads as a mistake, and one
-   with bars beside it reads as an empty frame. */
-.team-mark--logo {
-  object-fit: cover;
+   with bars beside it reads as an empty frame.
+
+   The cutting itself is in components/Crop.css, under `.crop-fitted`, because
+   the same three declarations draw a member's face and a team's logo and the
+   crop a member chose has to survive the trip to either. What stays here is
+   what makes this one a team mark: the surface behind a logo with holes in
+   it. */
+/* Named twice on purpose. This and `.face-circle` are both one class, so which
+   background a logo gets would come down to whichever stylesheet the bundler
+   put last, and that is decided by the order of imports in whichever component
+   happened to be loaded first. */
+.team-mark.team-mark--logo {
   background: var(--surface);
 }

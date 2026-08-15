@@ -16,6 +16,8 @@ const item = (over: Partial<PendingItem> = {}): PendingItem => ({
   subject: 'Trkači Morave',
   subjectId: '',
   body: '',
+  picture: '',
+  crop: { x: 0.5, y: 0.5, size: 1 },
   currentDate: '',
   proposedDate: '',
   rating: NO_RATING,

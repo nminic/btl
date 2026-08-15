@@ -137,6 +137,23 @@
      be free to move apart. Both clear 4.5:1 on their own surface. */
   --danger: #b3402f;
 
+  /* What lies over the part of a picture a crop throws away.
+     Owner, 12.08.2026: „zatamnjen ali dovoljno vidljiv ostatak". Both halves of
+     that sentence are a measurement. Dark enough that the kept square reads as
+     the picture at a glance, and light enough that a moderator can still make
+     out a face, a competitor's number or a second person in what will not be
+     kept, which is the whole reason he asked for it: a face cut out of a
+     photograph tells nobody what it was cut out of.
+     Fifty five parts in a hundred leaves a photograph at roughly two fifths of
+     its brightness, which is the same shade a dialogue lays over a page and is
+     read there as „still there, not the thing in hand".
+     One value in both themes on purpose. It lies on a photograph and not on the
+     page, and a photograph is whatever colour somebody's camera made it; a
+     shade that lightened with the dark theme would leave the square barely
+     distinguishable from the rest of a bright picture. The guard is in
+     styles/circle.test.ts. */
+  --crop-shade: rgb(0 0 0 / 55%);
+
   /* Space, on a grid of two pixels.
    *
    * These were written as numbers where they were used, and spread into thirty

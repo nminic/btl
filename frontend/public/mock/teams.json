@@ -7,7 +7,12 @@
     "country": "RS",
     "bio": "Okupljamo se sredom uveče na Štrandu i nedeljom ujutru na Kamenički put, po svakom vremenu. Tim je nastao 2014. iz društva koje je zajedno trčalo Fruškogorski, a danas nas je preko trideset, od ljudi koji trče prvu peticu do onih koji su prešli sto kilometara odjednom.\n\nNe tražimo vreme na testu. Tražimo da se dođe.",
     "logo": "/mock/logo/dunav.svg",
-    "organizerMemberNumber": "000001"
+    "organizerMemberNumber": "000001",
+    "crop": {
+      "x": 0.5,
+      "y": 0.35,
+      "size": 0.72
+    }
   },
   {
     "id": "team-nisava",
@@ -17,7 +22,12 @@
     "country": "RS",
     "bio": "Klub sa jednom idejom: da svako ko hoće maraton dobije plan, društvo na dugim trčanjima i nekoga ko ga sačeka na dvadeset petom kilometru. Treniramo na Nišavskom keju i na Bubnju.",
     "logo": null,
-    "organizerMemberNumber": "000005"
+    "organizerMemberNumber": "000005",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "team-vardar",
@@ -27,7 +37,12 @@
     "country": "MK",
     "bio": "Trčimo obalom Vardara i po Vodnu. Tim je otvoren i za one koji dolaze iz drugih gradova, jer nas polovina ionako putuje na trke.",
     "logo": null,
-    "organizerMemberNumber": "000003"
+    "organizerMemberNumber": "000003",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "team-novi",
@@ -37,6 +52,11 @@
     "country": "RS",
     "bio": "",
     "logo": null,
-    "organizerMemberNumber": ""
+    "organizerMemberNumber": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   }
 ]

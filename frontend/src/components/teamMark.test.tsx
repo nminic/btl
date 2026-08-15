@@ -22,11 +22,24 @@ const aTeam = (over: Partial<Team> = {}): Team => ({
   city: 'Novi Sad',
   country: 'RS',
   organizerMemberNumber: '000001',
+  crop: { x: 0.5, y: 0.5, size: 1 },
   bio: '',
   logo: null,
   ...over,
 })
 
+/**
+ * A team as it actually arrives: parsed out of text.
+ *
+ * Every record on this portal is read out of JSON, which is why nothing can
+ * vouch for its shape and why there is a check to read a crop through
+ * (components/crop.ts). Round tripping through text here also drops a field
+ * that was never set, which is the case that mattered: the missing key, not the
+ * wrong value.
+ */
+function asRead(record: object): Team {
+  return JSON.parse(JSON.stringify(record))
+}
 describe('the circle before a team name', () => {
   it('holds the initials of a team that has no logo', () => {
     renderWithI18n(<TeamMark team={aTeam()} />)
@@ -55,6 +68,59 @@ describe('the circle before a team name', () => {
 
     expect(drawn).toHaveAttribute('src', '/mock/logo/dunav.svg')
     expect(screen.queryByText('DT')).not.toBeInTheDocument()
+    /* And fetched when it comes near rather than with the page. A table of
+       teams is a request per row otherwise, none of which anybody asked for
+       yet, and a review found the attribute could be switched off with every
+       test still passing. */
+    expect(drawn).toHaveAttribute('loading', 'lazy')
+  })
+
+  it('cuts the logo where the team cut it', () => {
+    /* Owner, 12.08.2026: a member arranges the square and „Korisnik treba da
+       može da sačuva kropovan format". Drawn by the browser's own way of showing
+       part of a picture, which needs no width and no height (`fittedTo` in
+       components/crop.ts), so what is asserted is the three properties it
+       produces rather than a pixel nothing in jsdom has.
+
+       Written after a review deleted the whole style and watched 1888 tests
+       pass: the one thing `Team.crop` exists for was drawn by nothing that
+       checked it. */
+    const { container } = renderWithI18n(
+      <TeamMark team={aTeam({ logo: '/mock/logo/dunav.svg', crop: { x: 0.25, y: 1, size: 0.5 } })} />,
+    )
+
+    /* The three the component writes.  is the fourth and is
+       in the stylesheet, which jsdom applies none of: it is guarded as text,
+       beside the shade, in styles/circle.test.ts. */
+    expect(must(container.querySelector('img'), 'the logo')).toHaveStyle({
+      objectPosition: '25% 100%',
+      transform: 'scale(2)',
+      transformOrigin: '25% 100%',
+    })
+  })
+
+  it('draws a team whose record says nothing sensible about the square', () => {
+    /* A record is whatever the file, the overlay, or F5 last said it was. With
+       the crop read straight off it, a team seeded without one threw on a field
+       that was not there and took the whole table of teams into the error
+       boundary: nought rows over one missing key. Read through the check, the
+       team simply wears its logo whole.
+
+       Both sorts of nonsense, because they fail differently: a missing field
+       throws, and a size of nought divides into an infinite scale, which the
+       browser drops silently and leaves the logo pinned in a corner. */
+    for (const crop of [undefined, { x: 5, y: -1, size: 0 }]) {
+      const { container, unmount } = renderWithI18n(
+        <TeamMark team={asRead({ ...aTeam({ logo: '/mock/logo/dunav.svg' }), crop })} />,
+      )
+
+      expect(must(container.querySelector('img'), 'the logo')).toHaveStyle({
+        objectPosition: '50% 50%',
+        transform: 'scale(1)',
+      })
+
+      unmount()
+    }
   })
 
   it('is decoration in both of its forms, so the name is read once', () => {
@@ -66,7 +132,15 @@ describe('the circle before a team name', () => {
       <TeamMark team={aTeam({ logo: '/mock/logo/dunav.svg' })} />,
     )
 
-    expect(must(withLogo.querySelector('img'), 'the logo')).toHaveAttribute('aria-hidden', 'true')
+    /* On the circle rather than on the picture inside it, since the crop
+       arrived: a magnified picture has to be clipped by something that is never
+       scaled, so the mark is now a box with a picture in it, and hiding the box
+       hides everything in it. Both are still asserted, because a picture with no
+       alternative text at all is read out as its file name by some readers even
+       inside a hidden subtree. */
+    expect(must(withLogo.querySelector('[aria-hidden]'), 'the circle')).toContainElement(
+      must(withLogo.querySelector('img'), 'the logo'),
+    )
     expect(must(withLogo.querySelector('img'), 'the logo')).toHaveAttribute('alt', '')
 
     const { container: withInitials } = renderWithI18n(<TeamMark team={aTeam()} />)

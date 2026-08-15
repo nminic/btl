@@ -205,7 +205,18 @@ function ProfileBody({
      counts the whole filtered set, not what is drawn: it answers „how many
      results does this competitor have", which is not the same question as „how
      far have I read". */
-  const { shown: grown, whole, asked: askedMore, more } = useGrowing(shown.length, AT_FIRST)
+  /* Told what the list is of, and not only how long it is. Two length
+     categories holding the same number of races are two lists, and a reader who
+     has read one to the end has not asked anything about the other: without
+     this, switching between them moves the focus to the foot of the table
+     (components/growing.ts). Both filters go in, because both make a different
+     list of the same results. */
+  const {
+    shown: grown,
+    whole,
+    asked: askedMore,
+    more,
+  } = useGrowing(shown.length, AT_FIRST, params.toString())
 
   function changeLength(value: string) {
     const merged = new URLSearchParams(params)

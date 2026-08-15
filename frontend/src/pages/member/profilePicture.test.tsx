@@ -58,6 +58,10 @@ describe('the picture on a profile, changed later', () => {
     expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
 
     await user.upload(await panel.findByLabelText(/Izaberi novu sliku/), anImage())
+    /* Waited for rather than assumed. The browser reads the file off the disc
+       and hands it back a tick later, and the cropper is what says it has: sent
+       before that, the picture would be a name with nothing behind it. */
+    await panel.findByLabelText('Veličina isečka')
     await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
 
     const told = (await panelFor()).getByText(/čeka odobrenje/)
@@ -133,6 +137,10 @@ describe('the picture on a profile, changed later', () => {
     const panel = await panelFor()
 
     await user.upload(await panel.findByLabelText(/Izaberi novu sliku/), anImage())
+    /* Waited for, as above. Without this the send is pressed while the browser
+       is still reading the file and nothing is sent at all: it passed on this
+       machine, alone, and failed the moment the whole suite ran beside it. */
+    await panel.findByLabelText('Veličina isečka')
     await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
 
     await router.navigate('/sr/administracija/verifikacija/trkacki-profil')

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -50,6 +50,58 @@ describe('a proposal a member sends', () => {
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
     expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+  })
+
+  it('carries the logo and the square of it the member chose, all the way to the team', async () => {
+    /* Owner, 12.08.2026: cropping inside the site is for profile pictures and
+       team pictures, and whoever approves „treba da vidi isto fokus na vidljiv
+       deo slike i zatamnjen ali dovoljno vidljiv ostatak".
+
+       So this walks the whole way: choose a picture, cut it, send it, read it on
+       the moderator's card, approve, and find it on the team. Each half was
+       written separately and each half passed alone; what nothing checked was
+       that the same picture came out of the other end. */
+    const user = setupUser()
+    /* Signed in as somebody who may also decide, because this walks both
+       ends of the flow and the administration is shut to a competitor. */
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+
+    await user.upload(
+      await screen.findByLabelText(/Znak tima/),
+      new File(['znak'], 'znak-tima.png', { type: 'image/png' }),
+    )
+
+    const cutting = within(await screen.findByRole('group', { name: 'Isecanje slike' }))
+
+    fireEvent.change(cutting.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+    fireEvent.change(cutting.getByLabelText('Pomeri gore i dole'), { target: { value: '0' } })
+
+    await fill(user, 'Trkači Morave')
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    /* The moderator sees the picture, cut where the member cut it, with the rest
+       still under the shade. */
+    const shown = must(
+      card.getByAltText(/Slika koju je poslao/).closest('.crop'),
+      'the picture on the card',
+    )
+
+    expect(must(shown.querySelector('.crop__frame'), 'the lit square')).toHaveStyle({
+      inlineSize: '50%',
+      insetBlockStart: '0%',
+    })
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+    await router.navigate('/sr/administracija/timovi')
+
+    const list = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+    expect(list.getByText('Trkači Morave')).toBeVisible()
   })
 
   it('refuses to send without the three things it asks for', async () => {

@@ -249,6 +249,27 @@ describe('a record that is entered rather than changed', () => {
     expect(row.getByText(t('admin.basisValue.honorary'))).toBeVisible()
   })
 
+  it('carries every field the record has, including the ones no field asks for', () => {
+    /* A record is what was made; a form is one way of filling it. A team has a
+       logo and a square of that logo, and the form an administrator enters
+       one on asks for neither, so both come off the blank the entity carries.
+
+       Written as a test because the blank went in without one and the review
+       proved it: taking `logo` back out left 1849 tests passing. What it costs
+       is not abstract. `TeamMark` decides between a picture and a monogram by
+       asking whether the logo is null, and a field that is simply absent is
+       `undefined`, which is not null: every team entered by an administrator
+       drew an empty picture element where its initials belong.
+
+       Read off the entity rather than off a screen, because the screens that
+       draw teams read the file the league was seeded from and not the overlay
+       this record lives in until F5 (entityForms.ts). */
+    const made = recordFrom(TEAMS, { id: 'tim-probni', values: { name: 'Probni tim' } })
+
+    expect(made.logo).toBeNull()
+    expect(made.crop).toEqual({ x: 0.5, y: 0.5, size: 1 })
+    expect(made.name).toBe('Probni tim')
+  })
 })
 
 describe('the identity of a record', () => {

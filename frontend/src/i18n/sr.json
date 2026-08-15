@@ -752,6 +752,9 @@
     "proposeNote": "Zašto ovaj tim",
     "proposeNoteHint": "Neobavezno. Ko ga čini, gde trenira, sve što moderatoru pomaže da odluči.",
     "proposeNote2": "Tim postoji tek kad ga odobri moderator. Do tada nije vidljiv nigde na portalu.",
+    "proposeLogo": "Znak tima",
+    "proposeLogoRule": "Znak se prikazuje u krugu pored naziva tima. Ako ga nemaš, preskoči; tim će nositi svoje inicijale dok ga ne pošalješ.",
+    "proposeLogoAlt": "Znak koji si izabrao za tim, sa uokvirenim delom koji će se videti",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
@@ -1248,6 +1251,7 @@
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",
     "publish": "Objavi",
+    "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
     "photoReturned": "Profilna slika je vraćena",
     "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se odbije uz razlog. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
     "numbersGiven": "Dodeljeni članski brojevi",
@@ -1307,6 +1311,14 @@
     "next": "Sledeća",
     "leagueStanding": "Strane poretka takmičenja"
   },
+  "crop": {
+    "choosing": "Isecanje slike",
+    "framed": "Uokvireni deo slike je ono što će se videti. Ostatak je zatamnjen, ali se i dalje nazire.",
+    "x": "Pomeri levo i desno",
+    "y": "Pomeri gore i dole",
+    "size": "Veličina isečka",
+    "share": "{share}%"
+  },
   "picture": {
     "title": "Profilna slika",
     "none": "Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali. Pošalji sliku i moderator će je pregledati.",
@@ -1314,6 +1326,8 @@
     "choose": "Izaberi novu sliku",
     "rule": "Slika lica, tvoja i skorašnja. Po njoj te članovi prepoznaju na trkama.",
     "send": "Pošalji na odobrenje",
-    "chooseFirst": "Izaberi sliku da bi mogao da je pošalješ."
+    "chooseFirst": "Izaberi sliku da bi mogao da je pošalješ.",
+    "chosenAlt": "Slika koju si izabrao, sa uokvirenim delom koji će se videti",
+    "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti"
   }
 }

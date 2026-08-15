@@ -1,4 +1,5 @@
 import { fieldDate } from '../../forms/dateField'
+import { WHOLE } from '../../components/crop'
 import { cena, clan, dogadjaj, liga, moderator, strana, tim, trka } from '../../forms/definitions'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { categoryOf } from '../../data/raceCategory'
@@ -396,7 +397,12 @@ export const TEAMS: EntityDef = {
   /* What the form does not ask for but every team carries. A screen reads
      `team.bio` and splits it into paragraphs, so a team made without one is a
      team whose page cannot be drawn. */
-  blank: { bio: '', logo: null },
+  /* A team entered by an administrator has no logo and so nothing to cut:
+     the whole picture is what a record with no picture holds
+     (components/crop.ts). Without the logo the field was simply missing and a
+     team made here drew an empty picture element instead of its initials,
+     which is why both are written out rather than left to a default. */
+  blank: { bio: '', logo: null, crop: WHOLE },
   /**
    * The address the team answers at, from its name.
    *

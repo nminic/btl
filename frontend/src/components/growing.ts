@@ -21,22 +21,48 @@ import { useCallback, useEffect, useState, type RefObject } from 'react'
  * anybody whether it ended or broke.
  */
 
-export function useGrowing(total: number, step: number) {
+export function useGrowing(total: number, step: number, over = '') {
   const [shown, setShown] = useState(step)
   /* Nothing is announced until somebody has asked for more: the first ten
      arrived with the page, and a status message on load is a message about
      nothing.
    *
-   * Remembered as the length the asking was about, not as a yes. A list can
+   * And it stops being true the moment the list is a different list. A list can
    * become whole two ways, and only one of them is the reader reaching the end:
-   * the other is the list shrinking under them. On the results of a profile,
+   * the other is the list changing under them. On the results of a profile,
    * which is the first caller with a filter over it, narrowing to marathons
    * made the list whole and `LoadMore` moved the focus to the closing sentence,
    * so pressing a filter threw the reader from the row of filters to the foot of
-   * the table (WCAG 2.2 SC 3.2.2 and 2.4.3). Asking is about the list as it was;
-   * a different list has not been asked about. */
-  const [askedAbout, setAskedAbout] = useState<number | null>(null)
-  const asked = askedAbout === total
+   * the table (WCAG 2.2 SC 3.2.2 and 2.4.3).
+   *
+   * The first attempt at this remembered the length that had been asked about
+   * and compared it, which closed the case it was written for and left the case
+   * next to it open: read a profile of 229 results to the end, narrow to
+   * marathons, then widen back to all. The total is 229 again, so „I asked
+   * about 229" came back true and the focus jumped to the foot of the table
+   * from a filter nobody had pressed twice. A number that has come back is not
+   * a question that has been asked again.
+   *
+   * So it is cleared by the change rather than checked against a value, which
+   * is the one shape that holds however many times a reader moves between
+   * filters. */
+  const [asked, setAsked] = useState(false)
+  /* What list this is: how long it is, and what the caller says it is of. The
+     length alone cannot tell two filters of equal size apart, and on a table of
+     results by length there is nothing unusual about two categories holding the
+     same number of races. Empty where a list has nothing to be filtered by, and
+     then the length is the whole of it. */
+  const list = `${over}:${total}`
+  const [drawn, setDrawn] = useState(list)
+
+  if (drawn !== list) {
+    /* Set during the render that noticed, which is what React asks for when
+       state has to follow something handed in: an effect would let one frame
+       through with the old answer, and that frame is exactly the one where the
+       focus moves. */
+    setDrawn(list)
+    setAsked(false)
+  }
 
   /* Never more than there is, and never less than a step.
    *
@@ -63,8 +89,8 @@ export function useGrowing(total: number, step: number) {
        "a page at a time" into the whole list in a burst. */
     more: useCallback(() => {
       setShown((was) => was + step)
-      setAskedAbout(total)
-    }, [step, total]),
+      setAsked(true)
+    }, [step]),
   }
 }
 

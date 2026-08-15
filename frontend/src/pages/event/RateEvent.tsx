@@ -16,6 +16,7 @@ import { ran } from './ran'
 import { prijava } from '../../forms/definitions'
 import { LongBox } from '../../forms/LongBox'
 import { limitOf } from '../../forms/records'
+import { WHOLE } from '../../components/crop'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from '../member/SignedOut'
@@ -129,6 +130,10 @@ function RateOne() {
 
             propose({
               queue: 'comments',
+              /* No picture on this queue, and so no square of one: five of
+                 the seven carry neither (data/types.ts). */
+              picture: '',
+              crop: WHOLE,
               /* No sorts on this queue: one is only told apart where a queue
                  holds two (data/types.ts, `kind`). */
               kind: '',

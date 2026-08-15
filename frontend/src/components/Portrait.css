@@ -18,23 +18,40 @@
  * what genuinely differs, which is the size, the type, and whether it stands in
  * a grid or in a line of text. */
 .face-circle {
+  /* What makes it a circle at all, and the reason this block exists.
+     Written here on 13.08.2026 and immediately left empty of everything but the
+     colour: the comments moved and the declarations did not, so for a day every
+     team mark on the portal was a square while every face stayed round. Nothing
+     caught it, because jsdom applies no stylesheet and nobody looks at the
+     table of teams on a phone. The guard is in styles/circle.test.ts and it reads
+     this file rather than trusting the shape of it. */
+  border-radius: 50%;
+  place-items: center;
   /* Never squeezed and never stretched: a circle that gives way to the box
      around it is an ellipse. */
+  flex: none;
+  /* Cut to the circle, so a picture inside one is a round picture. It matters
+     more since a crop can magnify: a logo scaled to twice the circle spills
+     over the name beside it without this (components/Crop.css). */
+  overflow: hidden;
   /* The same recipe the competitor cards use, so one person, or one team,
      wears one colour wherever the portal draws them. */
   background: hsl(var(--face-hue, 214) 45% 32%);
+  /* White, bold, and spaced, because the initials stand on that colour and
+     nothing else on the portal does. Left behind when the block was extracted,
+     the team marks inherited the colour of a link and its ordinary weight, and
+     a review measured 2,78:1 against the 4,5:1 a piece of text owes (WCAG 2.2
+     SC 1.4.3). Two letters on a dark disc are text, not decoration: they are
+     the whole of what tells one team from another until it has a logo. */
+  color: var(--white);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 .portrait {
   display: grid;
-  place-items: center;
-  flex: none;
   inline-size: 2.9rem;
   block-size: 2.9rem;
-  border-radius: 50%;
-  color: var(--white);
   font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 /* Drawn in the colour of a control's edge and not a surface's: this ring is the
