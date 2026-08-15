@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { frameOf, UNKNOWN } from './crop'
+import { cropIn, frameOf, UNKNOWN } from './crop'
 import type { Crop, Shape } from './crop'
 import { useI18n } from '../i18n/useI18n'
 import './Crop.css'
@@ -46,7 +46,9 @@ export function CropWindow({ picture, crop, alt, children }: {
      the browser can answer it, and answered late: a photograph arrives after
      the first drawing either way. */
   const [shape, setShape] = useState<Shape>(UNKNOWN)
-  const frame = frameOf(crop, shape)
+  /* The same check, for the same reason: what a waiting item carries came out
+     of a file on this portal today and out of a database tomorrow. */
+  const frame = frameOf(cropIn(crop), shape)
 
   return (
     <div className="crop">

@@ -1,5 +1,5 @@
 import type { Team } from '../data/types'
-import { fittedTo } from './crop'
+import { cropIn, fittedTo } from './crop'
 import { hueFor } from '../pages/competitorFace'
 import './Crop.css'
 import './TeamMark.css'
@@ -48,7 +48,12 @@ export function TeamMark({ team }: { team: Team }) {
              long and each of these is a request nobody asked for yet. */
           loading="lazy"
           decoding="async"
-          style={fittedTo(team.crop)}
+          /* Read through the check and not straight off the record. A team is
+             whatever the file, the overlay or F5 last said it was, and a record
+             with no square at all threw on a field that was not there and took
+             the whole table into the error boundary: nought rows over one
+             missing key (components/crop.ts). */
+          style={fittedTo(cropIn(team.crop))}
         />
       </span>
     )

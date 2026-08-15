@@ -151,7 +151,7 @@
      page, and a photograph is whatever colour somebody's camera made it; a
      shade that lightened with the dark theme would leave the square barely
      distinguishable from the rest of a bright picture. The guard is in
-     styles/crop.test.ts. */
+     styles/circle.test.ts. */
   --crop-shade: rgb(0 0 0 / 55%);
 
   /* Space, on a grid of two pixels.

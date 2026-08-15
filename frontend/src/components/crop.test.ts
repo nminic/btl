@@ -1,5 +1,6 @@
+import { must } from '../test/at'
 import { CLOSEST, cropIn, fittedTo, frameOf, UNKNOWN, WHOLE } from './crop'
-import type { Crop } from './crop'
+import type { CoverStyle, Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
  *
@@ -12,6 +13,80 @@ import type { Crop } from './crop'
 
 const landscape = { width: 800, height: 400 }
 const portrait = { width: 400, height: 800 }
+
+/**
+ * Which part of a picture a browser would actually show for the fitted style,
+ * worked out from the rules rather than taken on trust.
+ *
+ * The square box is any size at all, so it is called 1. `object-fit: cover`
+ * scales the picture until its shorter edge fills that box, which puts the
+ * scale at `1 / min(width, height)`. `object-position` in percentages lines the
+ * point that far along the picture up with the point that far along the box,
+ * which for a picture larger than its box is that share of the room left over.
+ * `transform: scale(k)` about a point `p` of the box leaves visible the stretch
+ * `[p - p/k, p + (1 - p)/k]` of it, because scaling about `p` maps `q` to
+ * `p + k(q - p)`.
+ *
+ * The answer comes back in percentages of the picture, which is what the bright
+ * window is drawn in, so the two can be compared without either being told
+ * about the other.
+ */
+function shownBy(style: CoverStyle, shape: Shape): Frame {
+  const along = style.objectPosition.split(' ').map(share)
+  const magnified = Number(must(/scale\(([\d.]+)\)/.exec(style.transform), 'the magnification')[1])
+  /* A square box of side one, because the answer is a percentage and the size
+     of the box cancels out of it. `cover` then scales the picture until its
+     shorter edge is one. */
+  const cover = 1 / Math.min(shape.width, shape.height)
+
+  const seen = (share: number, edge: number) => {
+    /* How long that edge is once the picture has been scaled to cover the box.
+       One of the two is exactly 1; the other is longer, and the difference is
+       the room the picture has to slide in. */
+    const drawn = edge * cover
+    // What the magnification leaves visible, in those same lengths.
+    const window = 1 / magnified
+
+    return {
+      // That share of the room left over, as a fraction of the whole picture.
+      from: (100 * share * (drawn - window)) / drawn,
+      size: (100 * window) / drawn,
+    }
+  }
+
+  const across = seen(must(along[0], 'the horizontal share'), shape.width)
+  const down = seen(must(along[1], 'the vertical share'), shape.height)
+
+  return {
+    left: `${round(across.from)}%`,
+    top: `${round(down.from)}%`,
+    width: `${round(across.size)}%`,
+    height: `${round(down.size)}%`,
+  }
+}
+
+/** A frame in pixels of the picture it is drawn over, which is the one unit in
+ *  which „the same square" means anything to a reader. */
+function inPixels(frame: Frame, shape: Shape) {
+  return {
+    left: (share(frame.left) * shape.width),
+    top: (share(frame.top) * shape.height),
+    width: (share(frame.width) * shape.width),
+    height: (share(frame.height) * shape.height),
+  }
+}
+
+/** „42%" as 0.42, which is how `object-position` and `transform-origin` are
+ *  written and how a crop is held. */
+function share(said: string): number {
+  return Number(said.replace('%', '')) / 100
+}
+
+/** The same four places the source rounds to, so two numbers that agree in
+ *  every way anybody can see are not separated by binary. */
+function round(value: number): number {
+  return Math.round(value * 1e4) / 1e4
+}
 
 describe('the largest square, before anybody moves anything', () => {
   it('is as wide as the shorter edge, whichever edge that is', () => {
@@ -140,19 +215,42 @@ describe('the same square, drawn by the browser as a finished picture', () => {
     })
   })
 
-  it('agrees with the bright window about which part of the picture shows', () => {
-    /* The one thing worth proving twice, because two unrelated pieces of CSS
-       draw the same three numbers. Read off the frame, a crop of 0.5 flush
-       right on a wide picture starts three quarters of the way across; read off
-       the fitted style, it magnifies by two about the right edge, which shows
-       the last half of a covered square, and a covered square on that picture
-       is its middle half. Both come to the same 200 pixels ending at 800. */
-    const flush: Crop = { x: 1, y: 0.5, size: 0.5 }
-    const frame = frameOf(flush, landscape)
+  it.each([
+    { x: 0.5, y: 0.5, size: 1 },
+    { x: 1, y: 0.5, size: 0.5 },
+    { x: 0, y: 1, size: 0.2 },
+    { x: 0.8, y: 0.2, size: 0.45 },
+    { x: 0.25, y: 0.35, size: 0.72 },
+  ])('shows the same part of the picture drawn either way ($x, $y, $size)', (crop: Crop) => {
+    /* The one thing worth proving properly, because two unrelated pieces of CSS
+       draw the same three numbers and neither can see the other. If they
+       disagree, a member cuts one thing and the portal shows another, and this
+       is the only place it can be caught: the bright window is measured in
+       percentages of the picture, and the circle is measured in nothing at all.
 
-    expect(frame.left).toBe('75%')
-    expect(frame.width).toBe('25%')
-    expect(fittedTo(flush).transformOrigin).toBe('100% 50%')
+       An earlier version of this test asserted three numbers side by side and
+       said in prose that they agreed, which is not the same claim. This one
+       works out what the browser would actually show for the fitted style,
+       from the rules of `object-fit`, `object-position` and `transform`, and
+       compares that against the window. */
+    for (const shape of [landscape, portrait, { width: 500, height: 500 }]) {
+      const fitted = inPixels(shownBy(fittedTo(crop), shape), shape)
+      const window = inPixels(frameOf(crop, shape), shape)
+
+      /* Compared in pixels of the picture and to a hundredth of one, which is
+         the honest claim rather than an exact one. The fitted style hands the
+         browser a magnification rounded to four places, because
+         `scale(3.3333333333333335)` reads as a fault to everybody who opens the
+         inspector, and that rounding is worth about two thousandths of a pixel
+         on a photograph eight hundred across. Written as an exact equality this
+         test would fail on a third of the crops a slider can produce, and the
+         first person to see it would loosen the arithmetic rather than the
+         assertion. */
+      expect(fitted.left).toBeCloseTo(window.left, 2)
+      expect(fitted.top).toBeCloseTo(window.top, 2)
+      expect(fitted.width).toBeCloseTo(window.width, 2)
+      expect(fitted.height).toBeCloseTo(window.height, 2)
+    }
   })
 })
 

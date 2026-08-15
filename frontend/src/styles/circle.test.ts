@@ -32,6 +32,19 @@ const read = (name: string) =>
 
 const portrait = read('Portrait.css')
 const teamMark = read('TeamMark.css')
+const cropping = read('Crop.css')
+const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
+
+/** What one declaration is set to, by rule and property. Names nothing itself:
+ *  what it hands back is whatever the stylesheet says, and the tests compare
+ *  that against the one thing it has to be (ADL A7). */
+function valueOf(sheet: string, selector: string, property: string): string {
+  const found = new RegExp(`^\\s{2}${property}:\\s*([^;]+);`, 'm').exec(bodyOf(sheet, selector))
+
+  expect(found, `${selector} sets ${property}`).not.toBeNull()
+
+  return (found?.[1] ?? '').trim()
+}
 
 /** One rule's body, by the selector that opens it. Everything between the brace
  *  that follows the selector and the first closing brace, which is all these
@@ -61,8 +74,27 @@ describe('the circle a face and a team mark share', () => {
   it('is a circle, and says so where both of them read it', () => {
     /* The one that got away. A block that has lost its radius still paints,
        still sizes, and still centres its letters, so the only thing that says
-       anything is wrong is the shape, and the shape is what nothing tests. */
+       anything is wrong is the shape, and the shape is what nothing tests.
+
+       Half, and not a rounded corner. The first version of this file asked only
+       whether the property was there, and a review changed the value to
+       `var(--radius-8)` and watched all 1888 tests pass: every face and every
+       team mark was a rounded square, which is exactly what PDL P13 refuses in
+       the owner's own words. A guard that counts properties guards nothing. */
     expect(shared).toContain('border-radius')
+    expect(valueOf(portrait, '.face-circle', 'border-radius')).toBe('50%')
+  })
+
+  it('writes the initials in the one colour that stands on a face', () => {
+    /* The other half of the same lesson. Asked only for the presence of
+       `color`, the guard let `var(--text-muted)` through, which measures 3,90:1
+       to 4,37:1 on the colours these discs are painted in, against the 4,5:1
+       normal text owes (WCAG 2.2 SC 1.4.3). The discs are `hsl(... 45% 32%)`, a
+       lightness chosen for white, so white is the value and not merely a
+       colour. */
+    expect(valueOf(portrait, '.face-circle', 'color')).toBe('var(--white)')
+    expect(valueOf(portrait, '.face-circle', 'font-weight')).toBe('700')
+    expect(valueOf(portrait, '.face-circle', 'background')).toContain('hsl(var(--face-hue')
   })
 
   it('carries every declaration neither mark can do without', () => {
@@ -116,5 +148,52 @@ describe('the circle a face and a team mark share', () => {
        loaded first. Named twice, this one wins wherever it lands. */
     expect(teamMark).toContain('.team-mark.team-mark--logo {')
     expect(bodyOf(teamMark, '.team-mark.team-mark--logo')).toMatch(/background:\s*var\(--surface\)/)
+  })
+})
+
+/* The other half of a crop, which no rendered test can see either.
+ *
+ * The square is drawn twice by two unrelated pieces of CSS: `components/crop.ts`
+ * works out three fractions, and one of the two drawings is nothing but a
+ * property in a stylesheet. A review changed `cover` to `contain` and watched
+ * all 1888 tests pass, which means the whole of that arithmetic had stopped
+ * meaning anything and the logos were being letterboxed rather than cut. Same
+ * rule as above: jsdom applies no stylesheet, so the sheet is read as text.
+ */
+describe('a crop drawn by the stylesheet', () => {
+  it('fills the circle rather than fitting inside it', () => {
+    /* `cover` is what makes `fittedTo` correct at all: it is the crop at its
+       largest, and the two other properties are the zoom and the pan away from
+       there (components/crop.ts). Anything else and the picture the member cut
+       is not the picture on screen. */
+    expect(valueOf(cropping, '.crop-fitted img', 'object-fit')).toBe('cover')
+    expect(valueOf(cropping, '.crop-fitted', 'overflow')).toBe('hidden')
+  })
+
+  it('shows the whole picture where the square is being chosen', () => {
+    /* And the opposite, three rules further down, for the same reason. The one
+       place on the portal that deliberately shows everything is the review view:
+       `cover` here would cut away exactly what the owner asked to stay visible. */
+    expect(valueOf(cropping, '.crop__whole', 'object-fit')).toBe('contain')
+  })
+
+  it('shades what is thrown away without hiding it', () => {
+    /* Owner, 12.08.2026: „zatamnjen ali dovoljno vidljiv ostatak". Both halves
+       are a measurement and neither was guarded: a review set the shade to solid
+       black, and to no shade at all, and watched every test pass both times.
+
+       The band is wide because the exact value is a matter of taste and the
+       requirement is not: opaque tells a moderator nothing about what a face was
+       cut out of, and a veil tells them nothing about which part is kept. */
+    const shade = valueOf(tokens, ':root', '--crop-shade')
+    const alpha = Number(/(\d+)%\s*\)/.exec(shade)?.[1] ?? 0)
+
+    expect(shade).toContain('rgb(0 0 0')
+    expect(alpha).toBeGreaterThanOrEqual(35)
+    expect(alpha).toBeLessThanOrEqual(70)
+
+    /* And it is actually laid over the picture, as a shadow spreading out of the
+       lit square rather than as four bands that can drift apart. */
+    expect(valueOf(cropping, '.crop__frame', 'box-shadow')).toContain('var(--crop-shade)')
   })
 })

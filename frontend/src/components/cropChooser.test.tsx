@@ -5,6 +5,7 @@ import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import { CropChooser } from './CropChooser'
 import type { Chosen } from './CropChooser'
+import { CropWindow } from './CropWindow'
 
 /**
  * Choosing a picture and saying which square of it counts.
@@ -297,6 +298,36 @@ describe('choosing which square of a picture counts', () => {
       expect(screen.queryByRole('group', { name: 'Isecanje slike' })).not.toBeInTheDocument()
     } finally {
       Object.defineProperty(globalThis, 'FileReader', { value: real, configurable: true })
+    }
+  })
+
+  it('draws a waiting picture whose record says nothing sensible about the square', () => {
+    /* The review view reads a crop off a record too, and a record is whatever
+       the file, the session or F5 last said it was. Read straight off it, an
+       item with no square at all threw on a field that was not there and took
+       the moderator's whole queue with it; a size of nought divided into a
+       frame of infinite width.
+
+       Parsed out of text, which is how every record on this portal actually
+       arrives, and which drops a key that was never set. */
+    for (const crop of [undefined, { x: 5, y: -1, size: 0 }]) {
+      const { container, unmount } = renderWithI18n(
+        <CropWindow
+          picture="data:image/png;base64,x"
+          alt="Slika koja čeka"
+          {...JSON.parse(JSON.stringify({ crop }))}
+        />,
+      )
+
+      /* The whole picture, which is what a record nobody understands means:
+         showing the photograph somebody sent beats cutting it somewhere they
+         never chose. */
+      expect(must(container.querySelector('.crop__frame'), 'the lit square')).toHaveStyle({
+        insetInlineStart: '0%',
+        inlineSize: '100%',
+      })
+
+      unmount()
     }
   })
 

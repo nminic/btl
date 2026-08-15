@@ -416,23 +416,20 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       create(TEAMS.id, id, {
         ...made,
         organizerMemberNumber: one.memberNumber,
-        /* The logo the member sent, where they sent one. Left out entirely
-           where they did not, so the team takes the `null` its blank record
-           carries (entityForms.ts): null and an empty string would read the
-           same on screen and mean different things in a record.
-         *
-           **The square they chose does not come with it, and that is a limit
+        /* **The picture does not survive the approval, and that is a limit
            rather than a decision.** What stands in for a database until F5 is an
-           overlay of text (session/context.ts), and a crop is three numbers. It
-           could be packed into a string here and unpacked wherever a team is
-           drawn, and then a crop would be written two ways on one portal, which
-           is the drift that costs a day to find. So a team accepted during this
-           visit wears its logo at the largest square until there is a record
-           that can hold three numbers beside it; the moderator still judges the
-           square the member chose, on the card above, which is what the owner
-           asked to see (12.08.2026). Written down in PENDING rather than left
-           for somebody to notice. */
-        ...(one.picture === '' ? {} : { logo: one.picture }),
+           overlay of text (session/context.ts): a crop is three numbers and
+           cannot go into it without being written a second way, and nothing
+           anywhere reads a created team's logo back. No public screen reads the
+           overlay at all (entityForms.ts) and the administration draws no mark,
+           so a line carrying the picture here is a line no test can reach and
+           no reader can see. A review measured exactly that: with the line in
+           place, deleting it left all 1888 tests passing.
+         *
+           So nothing about the picture crosses this point until F5, said once
+           rather than half done. The moderator still judges the square the
+           member chose, on the card above, which is what the owner asked for
+           (12.08.2026). Written down in PENDING. */
       })
 
       notify({

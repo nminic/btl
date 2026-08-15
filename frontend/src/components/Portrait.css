@@ -23,7 +23,7 @@
      colour: the comments moved and the declarations did not, so for a day every
      team mark on the portal was a square while every face stayed round. Nothing
      caught it, because jsdom applies no stylesheet and nobody looks at the
-     table of teams on a phone. The guard is in styles/crop.test.ts and it reads
+     table of teams on a phone. The guard is in styles/circle.test.ts and it reads
      this file rather than trusting the shape of it. */
   border-radius: 50%;
   place-items: center;

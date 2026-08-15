@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { must } from '../test/at'
@@ -281,6 +283,23 @@ describe('the focus, when a list becomes whole', () => {
     await user.click(screen.getByRole('button', { name: 'filter 2' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('')
+  })
+
+  it('is told what the list is of by the one screen that has filters', () => {
+    /* The argument only helps where it is actually passed, and the tests above
+       pass it themselves from a harness of their own. A review took it off the
+       real call and watched all 1888 tests pass with coverage still at 100 per
+       cent, which is the same shape of hole as every other finding this week.
+
+       Read off the source, because nothing on the profile can show it: with
+       today`s data no two of that member`s filters hold the same number of
+       races, so the screen behaves identically either way, and it is the day
+       somebody`s results happen to line up that this stops being true. */
+    const profile = readFileSync(join(process.cwd(), 'src/pages/CompetitorProfile.tsx'), 'utf-8')
+    const call = must(/useGrowing\(([^)]*)\)/.exec(profile), 'the call that grows the table')[1]
+
+    expect(call).toContain('params')
+    expect(must(call, 'the arguments').split(',')).toHaveLength(3)
   })
 
   it('goes on talking where it is told only how long the list is', async () => {
