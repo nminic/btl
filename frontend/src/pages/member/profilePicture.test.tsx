@@ -1,3 +1,4 @@
+import sr from '../../i18n/sr.json'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
@@ -154,7 +155,11 @@ describe('the picture on a profile, changed later', () => {
        instruction precise enough to work from, rather than the plain reason a
        text is refused with (PDL P22). */
     expect(within(card).getByRole('button', { name: 'Odobri' })).toBeVisible()
+    /* The word left the dictionary with the decision (PDL P22), so asking the
+       screen for it can no longer fail on its own; the dictionary is asked with
+       it, which is where it would have to reappear. */
     expect(within(card).queryByRole('button', { name: 'Objavi' })).not.toBeInTheDocument()
+    expect(JSON.stringify(sr.verification)).not.toContain('Objavi')
   })
 
   it('is not held up by something else the member put forward', async () => {

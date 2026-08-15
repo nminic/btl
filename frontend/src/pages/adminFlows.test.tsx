@@ -1853,7 +1853,12 @@ describe('the six queues read from the file', () => {
 
       expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
       expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
+      /* And there is no such word to draw. Asking the screen alone stopped being
+         an assertion the moment `verification.publish` left the dictionary: a
+         button nobody can name cannot appear. So the dictionary is asked as
+         well, which is where the word would have to come back first. */
       expect(card.queryByRole('button', { name: 'Objavi' })).toBeNull()
+      expect(JSON.stringify(sr.verification)).not.toContain('Objavi')
     }
   })
 
@@ -1881,6 +1886,7 @@ describe('the six queues read from the file', () => {
     expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
     expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
     expect(card.queryByRole('button', { name: 'Objavi' })).not.toBeInTheDocument()
+    expect(JSON.stringify(sr.verification)).not.toContain('Objavi')
 
     await user.click(card.getByRole('button', { name: 'Odbij' }))
 
@@ -2072,9 +2078,17 @@ describe('the six queues read from the file', () => {
        other test moved with them, since they all compare a placeholder against
        `sr.review.*` rather than against words. Reword freely, and change these
        three lines with the sentence. */
-    expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog')
+    expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
     expect(sr.review.reasonKeptPlaceholder).toContain('još ne ide')
     expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
+    /* And neither of them says the member may send another. They may not: a
+       biography is written once, at joining, and there is nowhere to write a
+       second one. The promise stood in the words that now belong to the
+       biography alone, which is the one place it was false (PDL P22, PENDING
+       R10). */
+    for (const words of [sr.review.reasonPlaceholder, sr.review.reasonKeptPlaceholder]) {
+      expect(words, words).not.toContain('pošalje ponovo')
+    }
   })
 
   it('writes it to that member and to nobody else, least of all to everybody', async () => {
@@ -2237,7 +2251,7 @@ describe('the six queues read from the file', () => {
 
       expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
       expect(
-        screen.getByText(/nema člana kome bi uputstvo stiglo/),
+        screen.getByText(/nema člana kome bi odgovor stigao/),
       ).toBeVisible()
       // Approving is still a decision the moderator can take; nothing is sent.
       expect(screen.getByRole('button', { name: 'Odobri' })).toBeVisible()
