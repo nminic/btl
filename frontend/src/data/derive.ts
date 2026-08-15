@@ -140,11 +140,20 @@ export type Placed<T> = T & { position: number }
  * twice.
  *
  * **There is no shared place** (PDL P12, owner 31.07.2026, confirmed
- * 11.08.2026). Every ladder ends in the member number, which no two members
- * share, so two rows can never be level all the way down: the one who joined
- * the league first goes ahead. Written this way the trophy for second place is
- * always handed to somebody, and the table and the award list can never
- * disagree in public.
+ * 11.08.2026). Every ladder ends in the member number, so where two rows belong
+ * to two members the ladder always ends: the one who joined the league first
+ * goes ahead. Written this way the trophy for second place is always handed to
+ * somebody, and the table and the award list can never disagree in public.
+ *
+ * Not that two rows can never be level all the way down, which is what this said
+ * until 15.08.2026. The last rung is a tie-break between **people**, and one
+ * board does not list people: `bestSingleRaces` lists races, and one member may
+ * hold two rows of it. Two races of one member, level on points and distance,
+ * are level on the member number as well, so the order between them is the order
+ * the results happened to arrive in. That is the one thing this function is
+ * written to avoid, and on that board it is not avoided; the date is not a rung
+ * there on purpose (see `bestSingleRaces`), so adding one is a decision and not
+ * a repair. Written down rather than patched here (PENDING).
  *
  * Until 11.08.2026 rows the ladder left level shared one number and the numbers
  * after them were skipped, so a shared first place read 1, 1, 3 and the award
