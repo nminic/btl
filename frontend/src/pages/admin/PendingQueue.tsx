@@ -674,9 +674,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNotePlaceholder'
                                 : outcomeFor(queue, one) === 'instruct'
                                   ? 'review.instructionPlaceholder'
-                                  : returned(queue, one) === null
-                                    ? 'review.reasonKeptPlaceholder'
-                                    : 'review.reasonPlaceholder'
+                                  : 'review.reasonPlaceholder'
                             }
                             optional={outcomeFor(queue, one) === 'delete'}
                             aboutKey={

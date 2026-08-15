@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -523,7 +525,7 @@ describe('payment payloads', () => {
 
     expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
       'placeholder',
-      sr.review.reasonKeptPlaceholder,
+      sr.review.reasonPlaceholder,
     )
   })
 
@@ -762,7 +764,7 @@ describe('the queue of results', () => {
        ones after the shared default was corrected. Nothing measured that: a review
        put them back and all 1905 tests passed. `notify` is never called from this
        screen (PENDING R9b). */
-    expect(reason).toHaveAttribute('placeholder', sr.review.reasonKeptPlaceholder)
+    expect(reason).toHaveAttribute('placeholder', sr.review.reasonPlaceholder)
   })
 
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
@@ -1484,6 +1486,12 @@ describe('the queue of memberships waiting to be activated', () => {
 })
 
 describe('the six queues read from the file', () => {
+  /** What is waiting on one queue, read off the file the screen reads. */
+  const itemsOf = (queue: string): PendingItem[] =>
+    JSON.parse(
+      readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'),
+    ).filter((one: PendingItem) => one.queue === queue)
+
   const open = async (queue: PendingQueueId, title: string) => {
     const user = setupUser()
     renderAt(`/sr/${QUEUE[queue].path}`, 'moderator', null, undefined, null, <Decided />)
@@ -1517,7 +1525,14 @@ describe('the six queues read from the file', () => {
         screen.getByRole('heading', { level: 2, name: `Čeka proveru ${waiting}` }),
       ).toBeVisible()
       expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(waiting)
-      expect(screen.getAllByRole('button', { name: 'Odbij' })).toHaveLength(waiting)
+      /* „Odbij" only where there is somebody to write to. Since 15.08.2026 a
+         refusal reaches the member on every queue, so an item that carries no
+         member number cannot be refused: an empty recipient in this portal is the
+         whole league. On the reported dates one of the three is such an item, a
+         report from somebody with no account at all (PDL P10). */
+      const named = itemsOf(queue).filter((one) => one.memberNumber !== '').length
+
+      expect(screen.getAllByRole('button', { name: 'Odbij' })).toHaveLength(named)
 
       // The rule on these queues: no reason, no sending back.
       await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
@@ -1955,7 +1970,7 @@ describe('the six queues read from the file', () => {
 
     expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
       'placeholder',
-      sr.review.reasonKeptPlaceholder,
+      sr.review.reasonPlaceholder,
     )
   })
 
@@ -2063,8 +2078,9 @@ describe('the six queues read from the file', () => {
          backwards, on both screens this round had just corrected. Every other
          test compares a placeholder against `sr.review.*`, so they all move
          together with the values and none of them can see it. */
-      /* The queue that sends is the racing profile and only it. */
-      expect(sends, one.id).toBe(one.id === 'profiles')
+      /* Every queue sends except the comments, which are deleted rather than
+         returned and write to nobody (owner, 15.08.2026, PDL P22). */
+      expect(sends, one.id).toBe(one.id !== 'comments')
     }
 
     /* And the words themselves, once rather than once per queue: these say
@@ -2079,14 +2095,12 @@ describe('the six queues read from the file', () => {
        `sr.review.*` rather than against words. Reword freely, and change these
        three lines with the sentence. */
     expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
-    expect(sr.review.reasonKeptPlaceholder).toContain('još ne ide')
-    expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
     /* And neither of them says the member may send another. They may not: a
        biography is written once, at joining, and there is nowhere to write a
        second one. The promise stood in the words that now belong to the
        biography alone, which is the one place it was false (PDL P22, PENDING
        R10). */
-    for (const words of [sr.review.reasonPlaceholder, sr.review.reasonKeptPlaceholder]) {
+    for (const words of [sr.review.reasonPlaceholder, sr.review.reasonPlaceholder]) {
       expect(words, words).not.toContain('pošalje ponovo')
     }
   })
@@ -2193,20 +2207,29 @@ describe('the six queues read from the file', () => {
     })
 
     it('is decided by the queue rather than by the screen that draws it', () => {
-      /* Both sorts on the racing profile queue write to the member who sent the
-         thing in, so both need somebody to write to. The other five refuse
-         without sending anything, so the question does not arise there.
+      /* Every queue that returns something writes to whoever sent it in, so
+         every one of them needs somebody to write to. An empty recipient in this
+         portal is the whole league rather than nobody (Message.to), so a refusal
+         with no number would put a moderator words about one member on the front
+         of every member inbox.
        *
-         The biography answered yes until 15.08.2026, on the reasoning that it
-         was never handed back at all. It is now, and an empty recipient in this
-         portal is the whole league rather than nobody (Message.to), so a
-         refusal with no number would put a moderator words about one member on
-         the front of every member inbox. */
+         It read „the racing profile and nobody else" until 15.08.2026, first
+         because a picture was the only thing handed back, then because a
+         biography joined it. The owner then had the message sent from all of
+         them, so the guard is about all of them. The comments are the one
+         exception: deleted rather than returned, and nothing is written. */
       expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '000013' })).toBe(true)
       expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '' })).toBe(false)
       expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '000011' })).toBe(true)
       expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(false)
-      expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(true)
+      /* And the teams too, since 15.08.2026. Every queue that writes to somebody
+         needs somebody to write to; the owner had the message sent from all of
+         them, so the guard that was about pictures is about all of them. */
+      expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '000011' })).toBe(true)
+      expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(false)
+      /* The comments are the exception: deleted rather than returned, nothing is
+         written, so there is nobody the deletion needs. */
+      expect(canSendBack(QUEUE.comments, { kind: '', memberNumber: '' })).toBe(true)
       /* And a racing profile item of no sort at all cannot go back either. The
          empty sort belongs to the queues that hold one kind of thing and this
          one never carries it (data/types.ts), so an item that does is a record

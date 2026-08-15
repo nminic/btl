@@ -197,7 +197,7 @@ export function ReviewQueue() {
               type="text"
               value={note}
               aria-required="true"
-              placeholder={t('review.reasonKeptPlaceholder')}
+              placeholder={t('review.reasonPlaceholder')}
               onChange={(event) => setNote(event.target.value)}
             />
           </div>

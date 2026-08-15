@@ -68,6 +68,20 @@ export type Queue = {
    *  every queue rather than defaulted, so a ninth arrives having answered the
    *  question instead of inheriting somebody else's answer. */
   outcome: QueueOutcome
+  /**
+   * The heading a refusal on this queue reaches the member under, or nothing
+   * where nothing is sent.
+   *
+   * Owner, 15.08.2026: „Poruka ide sa svih redova." Until then a refusal wrote
+   * to the member on the racing profile alone, so on the other five a moderator
+   * wrote a reason nobody would ever read, and the screen had to say so.
+   *
+   * On the queue rather than in a table somewhere, for the same reason as
+   * `outcome`: a queue added later answers the question instead of inheriting
+   * somebody else's answer. The racing profile names none here, because it holds
+   * two sorts and answers per item (`returned`).
+   */
+  returnedKey?: string
 }
 
 const ADDRESS = 'administracija/verifikacija'
@@ -91,6 +105,7 @@ const ADDRESS = 'administracija/verifikacija'
 export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
   results: {
     id: 'results',
+    returnedKey: 'verification.resultReturned',
     labelKey: 'verification.results',
     sourceKey: 'verification.fromResults',
     path: `${ADDRESS}/rezultati`,
@@ -98,6 +113,7 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
   },
   payments: {
     id: 'payments',
+    returnedKey: 'verification.paymentReturned',
     labelKey: 'verification.payments',
     sourceKey: 'verification.fromPayments',
     path: `${ADDRESS}/uplate`,
@@ -105,6 +121,7 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
   },
   leagues: {
     id: 'leagues',
+    returnedKey: 'verification.leagueReturned',
     labelKey: 'verification.leagues',
     sourceKey: 'verification.fromLeagues',
     path: `${ADDRESS}/lige`,
@@ -112,6 +129,7 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
   },
   teams: {
     id: 'teams',
+    returnedKey: 'verification.teamReturned',
     labelKey: 'verification.teams',
     sourceKey: 'verification.fromTeams',
     path: `${ADDRESS}/timovi`,
@@ -140,6 +158,7 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
   },
   schedule: {
     id: 'schedule',
+    returnedKey: 'verification.scheduleReturned',
     labelKey: 'verification.schedule',
     sourceKey: 'verification.fromSchedule',
     path: `${ADDRESS}/termini`,
@@ -180,12 +199,22 @@ export function canSendBack(
   queue: Queue,
   item: { kind: ItemKind; memberNumber: string },
 ): boolean {
-  if (queue.id !== 'profiles') {
+  /* The comments are deleted rather than returned and write to nobody, so
+     nothing is asked of them. */
+  if (queue.outcome === 'delete') {
     return true
   }
 
-  /* On this queue a refusal is written to somebody, so it can only be made
-     where there is both a heading to write under and a member to write to. */
+  /* Everywhere else a refusal is written to whoever sent the thing in, so it
+     needs both a heading to arrive under and a member to arrive at. An empty
+     recipient in this portal is not nobody but the whole league (Message.to),
+     so a refusal with no number would put a moderator's words about one person
+     on the front of every member's inbox. A heading is missing only where the
+     item is of no sort the queue knows, which is a record nobody understands.
+   *
+     Since 15.08.2026 that is six queues rather than one (owner: „Poruka ide sa
+     svih redova"), which is why this asks the queue rather than naming the
+     racing profile. */
   return returned(queue, item) !== null && item.memberNumber !== ''
 }
 
@@ -203,22 +232,25 @@ export function canSendBack(
  * refuse without writing to anybody, which is a limit of the prototype rather
  * than a decision and is written down in PENDING.
  */
-export function returned(
-  queue: Queue,
-  item: { kind: ItemKind },
-): 'verification.photoReturned' | 'verification.bioReturned' | null {
-  if (queue.id !== 'profiles' || item.kind === '') {
-    /* Nothing to write under. The empty sort is every queue that holds one
-       kind of thing, and the racing profile never carries it (data/types.ts);
-       an item that does is a record nobody understands, and the safe answer
-       is that it cannot be handed back rather than that it is a picture. A
-       review found the old shape treating everything that is not a biography
-       as one, which put the wrong heading in the one function written to stop
-       exactly that. */
-    return null
+export function returned(queue: Queue, item: { kind: ItemKind }): string | null {
+  if (queue.id === 'profiles') {
+    /* The one queue that holds two sorts, and they are refused differently.
+       The empty sort belongs to the queues that hold one kind of thing and
+       this one never carries it (data/types.ts); an item that does is a record
+       nobody understands, and the safe answer is that it cannot be handed back
+       rather than that it is a picture. A review found the old shape treating
+       everything that is not a biography as one, which put the wrong heading in
+       the one function written to stop exactly that. */
+    if (item.kind === '') {
+      return null
+    }
+
+    return item.kind === 'bio' ? 'verification.bioReturned' : 'verification.photoReturned'
   }
 
-  return item.kind === 'bio' ? 'verification.bioReturned' : 'verification.photoReturned'
+  /* The comments are deleted rather than returned, and nothing is sent
+     (PDL P22): a comment is not work to be improved. */
+  return queue.returnedKey ?? null
 }
 
 /**
