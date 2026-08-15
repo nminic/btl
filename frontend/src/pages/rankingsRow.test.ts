@@ -6,7 +6,7 @@ import { join } from 'node:path'
  * The row the filters stand in, held in the stylesheet where it is decided.
  *
  * jsdom computes no layout, so nothing that renders this screen can say whether
- * three fields are side by side or one under the other. What can be said is
+ * two fields are side by side or one under the other. What can be said is
  * that the rules the arrangement is built out of are still there, and each of
  * them is one the owner asked for by name.
  *
@@ -26,18 +26,40 @@ function blanked(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '')
 }
 
-/** One rule inside the telephone's media query, from the selector it is found
- *  by back to the brace that opens it and on to the one that closes it. The
- *  selector may be one of several the rule carries, which is why what comes
- *  back starts at the beginning of the whole list rather than at the match. */
+/**
+ * One rule inside the telephone's media query, by a selector it carries.
+ *
+ * Matched against the whole selector, not against a piece of the text. Every
+ * rule in this media query opens with the same
+ * `.rankings--tooled:has(> .rankings__filters)`, so searching for a substring
+ * finds whichever rule happens to stand first or last rather than the one that
+ * is being asked about. A review proved what that costs with a decoy rule at
+ * the top of the query: the guard over the spacing passed while the real rule
+ * was set to nought and the gap on a telephone had halved.
+ *
+ * A rule may carry several selectors, so each list is split on commas and the
+ * whole of one entry has to match. What comes back is the body alone.
+ *
+ * The **last** rule that carries it, because that is the one the browser obeys:
+ * two rules of equal weight are settled by which comes later. Written to take
+ * the first, this passed against a decoy at the top of the query while the real
+ * rule below it was set to nought and the gap on a telephone had halved. Taking
+ * the last is not a trick against decoys, it is reading the sheet the way the
+ * browser does.
+ */
 function phoneRule(selector: string): string {
   const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
-  const found = phone.indexOf(selector)
-  const at = found === -1 ? -1 : phone.lastIndexOf(`}`, found) + 1
+  const rules = [...phone.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  const found = rules.findLast((rule) =>
+    must(rule[1], 'the selectors of a rule')
+      .split(',')
+      .map((one) => one.trim())
+      .includes(selector),
+  )
 
-  expect(at, `${selector} is not in the telephone's rules`).toBeGreaterThan(-1)
+  expect(found, `${selector} is not a selector in the telephone's rules`).toBeDefined()
 
-  return phone.slice(at, phone.indexOf('}', at))
+  return must(found?.[2], 'the body of the rule')
 }
 
 /**
@@ -56,15 +78,16 @@ function bodyOf(selector: string): string {
   return SHEET.slice(at, SHEET.indexOf('}', at))
 }
 
-describe('the row the three filters stand in', () => {
+describe('the row the filters stand in', () => {
   it('lays them out in a row, names above controls', () => {
-    /* Season, then categories, then search (owner, 11.08.2026). */
+    /* Season, then categories (owner, 11.08.2026). There was a search box at
+       the end of the row until he had it taken out on 31.07.2026. */
     const row = bodyOf('.rankings__filters')
 
     expect(row).toContain('display: flex')
     /* Aligned at the top and not at the foot: each field is a name over a
        control, and aligned at the foot a field with a taller control pushes its
-       own name up, so the three names read as three heights. */
+       own name up, so the two names read as two heights. */
     expect(row).toContain('align-items: start')
   })
 
@@ -80,9 +103,9 @@ describe('the row the three filters stand in', () => {
        portal could see. The rule names the two fields that can be last, and
        `:last-child` is what keeps it from spacing a field with something under
        it. */
-    const spacing = phoneRule('.rankings__field--wide:last-child')
-
-    expect(spacing).toContain('.rankings__field--categories:last-child')
+    const spacing = phoneRule(
+      '.rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories:last-child',
+    )
 
     expect(spacing).toContain('margin-block-end: var(--space-12)')
     /* And the class it names is one an element actually wears. The rule it

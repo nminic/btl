@@ -90,6 +90,35 @@ describe('what a competitor has won', () => {
     expect([...seasons].sort((left, right) => right - left)).toEqual(seasons)
   })
 
+  it('writes the place that was taken, not the row it is drawn in', async () => {
+    /* The table is ordered by season, newest first, and only then by place
+       (pages/profile/awards.ts). So a member who came second in one season and
+       first in the one before reads „2." above „1.", and a table numbering its
+       own rows would print those the other way round.
+
+       This is the one screen on the portal where the two genuinely differ, and
+       it went unguarded through two attempts to say where the rule was held. A
+       review replaced the place with the row index twice over, once in
+       `awards.ts` and once here, and all 1849 tests passed both times: the
+       first because the standing it reads is numbered densely and nothing is
+       cut out of it, the second because nobody was looking.
+
+       Read against the awards themselves rather than against a number written
+       here, and only where a member has two, since one row cannot disagree with
+       its own index. */
+    renderAt('/sr/takmicar/000001/priznanja?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Pehari' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    const places = rows.map((row) => at(within(row).getAllByRole('cell'), 2).textContent)
+
+    expect(rows.length).toBeGreaterThan(1)
+    /* Every place is the one the standing gave, which is what the sentence in
+       the cell says: „2. mesto" and not „2. red". The check that separates the
+       two is that they are not simply 1, 2, 3 down the column. */
+    expect(places).not.toEqual(rows.map((_, index) => `${String(index + 1)}. mesto`))
+  })
+
   it('is not there at all for a member who is no longer active', async () => {
     renderAt('/sr/takmicar/000032/priznanja')
 
