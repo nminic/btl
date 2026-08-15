@@ -1,6 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -331,23 +329,6 @@ describe('the address, at the moment of joining', () => {
   })
 })
 
-/** Every production source file on the portal, so a claim about what the
- *  portal can do is measured over all of it rather than over one folder. */
-function sources(): { path: string; code: string }[] {
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-      entry.isDirectory()
-        ? walk(join(dir, entry.name))
-        : entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')
-          ? [join(dir, entry.name)]
-          : [],
-    )
-
-  return walk(join(process.cwd(), 'src'))
-    .filter((path) => !path.includes('.test.'))
-    .map((path) => ({ path, code: readFileSync(path, 'utf-8') }))
-}
-
 describe('the biography, at the moment of joining', () => {
   it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
@@ -381,29 +362,40 @@ describe('the biography, at the moment of joining', () => {
 
     expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
     expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
-    /* And it stops there, because there is nowhere to send a second one. The
-       first version of this sentence went on to say the member writes another,
-       which no screen lets them do: the biography is asked for once, at joining,
-       and `pages/member/Settings.tsx` offers the picture and nothing else.
-     *
-       Held against that fact rather than against the words, and against the
-       right fact. Written as „these five words are not on the screen", a review
-       put the same promise back in different words and all 1906 tests passed.
-       Written as „one form definition has a box for a biography" it was no
-       better: the screen the owner decided on the same day does not use a form
-       definition at all, so building it would have left this green while the
-       sentence beside it stayed wrong.
-     *
-       What is asked instead is how many screens send a biography for review,
-       which is the thing the promise is about. While the answer is none, the
-       sentence must not say a member writes another; the moment one exists,
-       this fails, and that is when the promise goes back in. */
-    const screens = sources()
-      .filter(({ code }) => code.includes("kind: 'bio'"))
-      .map(({ path }) => path)
-
-    expect(screens).toEqual([])
+    /* And it stops there, because there is nowhere to send a second one: the
+       biography is asked for once, at joining, and the member area offers the
+       picture and nothing else. */
     expect(screen.queryByText(/nov tekst|ponovo|opet/)).not.toBeInTheDocument()
+  })
+
+  it('has nowhere to send a second one, which is what lets the sentence stop there', async () => {
+    /* The other half of the test above, and it has taken four attempts to
+       measure the right thing.
+     *
+       Written as „these five words are not on the screen", a review put the same
+       promise back in different words and all 1906 tests passed. Written as „one
+       form definition has a box for a biography" it was no better: the panel the
+       owner decided on the same day uses no form definition, so building it would
+       have left this green. Written as „no source file contains `kind: 'bio'`" it
+       was weaker still, and a review proved it: the same panel written as
+       `const kind = SORT`, or with double quotes, passed all thirty five tests
+       in the file. A guard that reads source text guards the spelling.
+     *
+       So it is asked of the screen. Settings is where anything a member sends
+       for approval lives, and everything sent from there is sent by a control of
+       one name. While there is exactly one of them and it belongs to the
+       picture, the sentence above may stop where it stops. The day a second
+       appears, whatever it is called and however it is written, this fails, and
+       that is when the promise goes back in. */
+    cleanup()
+    renderAt('/sr/podesavanja', 'competitor', '000001')
+
+    const sending = await screen.findAllByRole('button', { name: 'Pošalji na odobrenje' })
+
+    expect(sending).toHaveLength(1)
+    expect(must(first(sending).closest('section'), 'the panel the control belongs to')).toHaveAccessibleName(
+      'Profilna slika',
+    )
   })
 })
 

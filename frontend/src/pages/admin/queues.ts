@@ -200,8 +200,12 @@ export function canSendBack(
  * be stopped also could not arrive.
  *
  * The two sorts on the racing profile queue and nothing else. The other five
- * refuse without writing to anybody, which is a limit of the prototype rather
- * than a decision and is written down in PENDING.
+ * refuse without writing to anybody, which is where this branch leaves them and
+ * not where they stay: the owner decided on 15.08.2026 that the refusal goes out
+ * from every queue („Poruka ide sa svih redova"), and that is being built on its
+ * own branch because it needs a heading of its own for each of the five and a
+ * test each. Until it lands, the five say nothing on screen either, which is
+ * what `reasonKeptPlaceholder` is for.
  */
 export function returned(
   queue: Queue,

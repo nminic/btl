@@ -2032,13 +2032,22 @@ describe('the six queues read from the file', () => {
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
     await user.click(screen.getByRole('link', { name: /Tekst o sebi je vraćen/ }))
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Tekst o sebi je vraćen' }),
-    ).toBeVisible()
+    const subject = screen.getByRole('heading', { level: 1, name: 'Tekst o sebi je vraćen' })
+
+    expect(subject).toBeVisible()
     expect(screen.getByText(/prepisano sa tuđeg profila/)).toBeVisible()
     /* And it is not the other heading, which is the mistake the one place that
        knows both was written to stop (queues.ts, `returned`). */
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
+    /* And it says who it is from. The league writes it, never the moderator by
+       name (PDL P22: a decision is the league's, and a member who could read the
+       name of whoever refused them would write back to a person rather than to
+       the association). Held here because nothing held it: a review emptied the
+       sender and all 1906 tests passed, which left a member with a message
+       whose one line of provenance read „ · 15.08.2026." */
+    expect(must(subject.nextElementSibling, 'the line of provenance under the subject').textContent).toContain(
+      sr.app.name,
+    )
   })
 
   it('promises the message only where one is actually sent', async () => {
