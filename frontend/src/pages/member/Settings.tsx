@@ -5,6 +5,7 @@ import type { Theme } from '../../app/themeContext'
 import { useI18n } from '../../i18n/useI18n'
 import { NOTIFICATION_KEYS } from '../../session/context'
 import { useSession } from '../../session/useSession'
+import { ProfileBio } from './ProfileBio'
 import { ProfilePicture } from './ProfilePicture'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -39,7 +40,18 @@ export function Settings() {
         {(competitors) => {
           const me = competitors.find((one) => one.memberNumber === memberNumber)
 
-          return me === undefined ? null : <ProfilePicture me={me} />
+          if (me === undefined) {
+            return null
+          }
+
+          /* The picture and the words about oneself, one under the other and
+             each going for review on its own (owner, 15.08.2026). */
+          return (
+            <>
+              <ProfilePicture me={me} />
+              <ProfileBio me={me} />
+            </>
+          )
         }}
       </Resource>
 

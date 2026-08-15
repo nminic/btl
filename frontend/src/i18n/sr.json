@@ -1317,6 +1317,16 @@
     "size": "Veličina isečka",
     "share": "{share}%"
   },
+  "bio": {
+    "title": "Tekst o sebi",
+    "standing": "Ovo sada stoji na tvom profilu. Izmena ide moderatoru na odobrenje, a dok čeka, na profilu ostaje stari tekst.",
+    "none": "Još nisi napisao ništa o sebi. Kad pošalješ, moderator pregleda tekst pre nego što se pojavi na profilu.",
+    "rule": "Nekoliko rečenica o sebi. Po njima te članovi upoznaju pre nego što se sretnete na trci.",
+    "send": "Pošalji na odobrenje",
+    "writeFirst": "Napiši nešto da bi mogao da pošalješ.",
+    "changeFirst": "Izmeni tekst da bi imao šta da pošalješ.",
+    "waitingNote": "Tvoj tekst čeka odobrenje. Ako ga moderator vrati, u poruci piše šta treba da izmeniš."
+  },
   "picture": {
     "title": "Profilna slika",
     "none": "Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali. Pošalji sliku i moderator će je pregledati.",
