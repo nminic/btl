@@ -18,7 +18,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-upl-2",
@@ -39,7 +45,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-upl-3",
@@ -60,7 +72,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-lig-1",
@@ -81,7 +99,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-lig-2",
@@ -102,7 +126,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-tim-1",
@@ -123,7 +153,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-tim-2",
@@ -144,7 +180,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-bio-1",
@@ -165,7 +207,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": "bio"
+    "kind": "bio",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-bio-2",
@@ -186,7 +234,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": "bio"
+    "kind": "bio",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-sli-1",
@@ -207,7 +261,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": "photo"
+    "kind": "photo",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-sli-2",
@@ -228,7 +288,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": "photo"
+    "kind": "photo",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-kom-1",
@@ -249,7 +315,13 @@
       "value": 4,
       "ambience": 5
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-kom-2",
@@ -270,7 +342,13 @@
       "value": 2,
       "ambience": 4
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-kom-3",
@@ -291,7 +369,13 @@
       "value": 4,
       "ambience": 3
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-kom-4",
@@ -312,7 +396,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-ter-1",
@@ -333,7 +423,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-ter-2",
@@ -354,7 +450,13 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   },
   {
     "id": "ver-ter-3",
@@ -375,6 +477,12 @@
       "value": 0,
       "ambience": 0
     },
-    "kind": ""
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
   }
 ]

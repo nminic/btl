@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { RequiredNote } from '../../forms/AskedLabel'
+import { CropChooser } from '../../components/CropChooser'
+import type { Chosen } from '../../components/CropChooser'
+import { CropWindow } from '../../components/CropWindow'
 import { useI18n } from '../../i18n/useI18n'
 import { NO_RATING } from '../../data/types'
 import type { Competitor } from '../../data/types'
@@ -20,22 +23,28 @@ import { useSession } from '../../session/useSession'
  * data/types.ts), because a picture is decided differently from a text: it is
  * accepted, or handed back with an instruction saying what to change.
  *
+ * The square is chosen here too, before anything is sent (owner, 12.08.2026),
+ * and what was cut away stays visible under it: „da se nazire ispod u njegovim
+ * podešavanjima i ono što se neće videti". So a member who sent the wrong half
+ * of a photograph can see that they did, and so can the moderator looking at
+ * the very same drawing (components/CropWindow.tsx).
+ *
  * **What the prototype cannot do yet, written here rather than implied.** No
- * member record carries a picture: `Competitor` has no such field and nothing
- * uploads one, which is exactly why a circle on this portal holds initials
+ * member record carries a picture: `Competitor` has no such field, which is
+ * exactly why a circle on this portal holds initials
  * (components/Portrait.tsx). So this screen sends a picture for review and says
- * where it has got to, and taking one down arrives with the pictures themselves,
- * in F5. The first version of this file offered „Ukloni sliku" and set a flag
- * inside itself: nobody saw the picture go, nothing remembered it past the
- * screen, and the panel could say „Nemaš sliku" and „čeka odobrenje" in the same
- * breath. A control that does nothing is worse than one that is not there.
+ * where it has got to, and taking one down arrives with the pictures
+ * themselves, in F5. The first version of this file offered „Ukloni sliku" and
+ * set a flag inside itself: nobody saw the picture go, nothing remembered it
+ * past the screen, and the panel could say „Nemaš sliku" and „čeka odobrenje"
+ * in the same breath. A control that does nothing is worse than one that is not
+ * there.
  */
 export function ProfilePicture({ me }: { me: Competitor }) {
   const { t } = useI18n()
   const { propose, proposals, decisions } = useSession()
   const today = useToday()
-  const [chosen, setChosen] = useState('')
-  const [round, setRound] = useState(0)
+  const [chosen, setChosen] = useState<Chosen | null>(null)
   const [justSent, setJustSent] = useState(false)
   const said = useRef<HTMLParagraphElement>(null)
 
@@ -47,14 +56,14 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      comments nobody has approved. Reading it here downloads all of that into a
      member`s browser, which a standing guard refuses by name
      (pages/publicData.test.tsx). Privacy beats the nicety: with a database this
-     is one question about one member, and until then a member who sends a second
-     picture across two visits gives the moderator two cards. Written down rather
-     than left to be discovered (PENDING, and PDL P22).
+     is one question about one member, and until then a member who sends a
+     second picture across two visits gives the moderator two cards. Written
+     down rather than left to be discovered (PENDING, and PDL P22).
    *
      Decisions are read all the same, so approving a picture during this visit
      hands the control straight back rather than leaving somebody told to wait
      with no way out. */
-  const waiting = proposals.some(
+  const waiting = proposals.find(
     (one) =>
       one.queue === 'profiles' &&
       one.kind === 'photo' &&
@@ -73,7 +82,7 @@ export function ProfilePicture({ me }: { me: Competitor }) {
 
   const who = `${me.firstName} ${me.lastName}`
 
-  function send(): void {
+  function send(picture: Chosen): void {
     propose({
       queue: 'profiles',
       /* The one queue that holds two sorts, and this is the sort handed back
@@ -90,7 +99,9 @@ export function ProfilePicture({ me }: { me: Competitor }) {
       /* The name of the file and nothing else, which is what the seeded items on
          this queue carry too: a moderator must not be able to tell what came
          from a member from what came from the file (pages/admin/pending.ts). */
-      body: chosen,
+      body: picture.name,
+      picture: picture.picture,
+      crop: picture.crop,
       currentDate: '',
       proposedDate: '',
       rating: NO_RATING,
@@ -99,8 +110,7 @@ export function ProfilePicture({ me }: { me: Competitor }) {
       country: '',
     })
 
-    setChosen('')
-    setRound((was) => was + 1)
+    setChosen(null)
     setJustSent(true)
   }
 
@@ -110,68 +120,72 @@ export function ProfilePicture({ me }: { me: Competitor }) {
         {t('picture.title')}
       </h2>
 
-      {waiting ? (
-            /* Nothing to press while one is waiting: the member has already
-               asked, and a second ask gives a moderator two faces and no
-               question to answer. */
-            <p className="member__note" ref={said} tabIndex={-1} role="status">
-              {t('picture.waitingNote')}
+      {waiting === undefined ? (
+        <>
+          {/* What is true of this portal, rather than a guess at what the
+              member has: there are no photographs on it yet, and the circle
+              beside every name holds initials. */}
+          <p className="member__note">{t('picture.none')}</p>
+
+          <RequiredNote />
+
+          <CropChooser
+            id="picture-file"
+            label={t('picture.choose')}
+            rule={t('picture.rule')}
+            alt={t('picture.chosenAlt')}
+            chosen={chosen}
+            onChange={setChosen}
+          />
+
+          <p className="member__actions">
+            {/* Told off rather than switched off, as everywhere else on the
+                portal: `disabled` takes the button out of the tab order and
+                takes the reason it stands for with it. */}
+            <button
+              type="button"
+              className="button button--primary"
+              aria-disabled={chosen === null}
+              aria-describedby={chosen === null ? 'picture-waits' : undefined}
+              onClick={() => {
+                if (chosen === null) {
+                  return
+                }
+
+                send(chosen)
+              }}
+            >
+              {t('picture.send')}
+            </button>
+          </p>
+
+          {chosen === null && (
+            <p id="picture-waits" className="rate__hint" role="status">
+              {t('picture.chooseFirst')}
             </p>
-          ) : (
-            <>
-              {/* What is true of this portal, rather than a guess at what the
-                  member has: there are no photographs on it yet, and the circle
-                  beside every name holds initials. */}
-              <p className="member__note">{t('picture.none')}</p>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Nothing to press while one is waiting: the member has already
+              asked, and a second ask gives a moderator two faces and no
+              question to answer. */}
+          <p className="member__note" ref={said} tabIndex={-1} role="status">
+            {t('picture.waitingNote')}
+          </p>
 
-              <RequiredNote />
+          {/* What was sent, cut where the member cut it and with the rest still
+              showing under the shade. This is the „nazire se ispod" half of the
+              12.08.2026 note, and it is the same component the moderator reads
+              the picture through.
 
-              <div className="rankings__field rankings__field--wide">
-                <AskedLabel id="picture-file">{t('picture.choose')}</AskedLabel>
-                <input
-                  id="picture-file"
-                  key={round}
-                  type="file"
-                  accept="image/*"
-                  aria-required="true"
-                  onChange={(event) => {
-                    /* Read off the value rather than off `files`. The file list
-                       is nullable by type and never null in a browser, and its
-                       first entry is empty only when the field was cleared: two
-                       fallbacks for one case, neither of which anything walks.
-                       The value is a path, and empty when nothing is chosen. */
-                    setChosen(event.target.value.replace(/^.*[\\/]/, ''))
-                  }}
-                />
-                <p className="member__note">{t('picture.rule')}</p>
-              </div>
-
-              <p className="member__actions">
-                {/* Told off rather than switched off, as everywhere else on the
-                    portal: `disabled` takes the button out of the tab order and
-                    takes the reason it stands for with it. */}
-                <button
-                  type="button"
-                  className="button button--primary"
-                  aria-disabled={chosen === ''}
-                  aria-describedby={chosen === '' ? 'picture-waits' : undefined}
-                  onClick={() => {
-                    if (chosen === '') {
-                      return
-                    }
-
-                    send()
-                  }}
-                >
-                  {t('picture.send')}
-                </button>
-              </p>
-
-              {chosen === '' && (
-                <p id="picture-waits" className="rate__hint" role="status">
-                  {t('picture.chooseFirst')}
-                </p>
-              )}
+              Drawn only where there is a picture behind it. An item seeded into
+              the mock file stands for one sent before this visit, and there is
+              nowhere it could have been kept; an empty frame would say the
+              picture had been lost rather than that it was never here. */}
+          {waiting.picture !== '' && (
+            <CropWindow picture={waiting.picture} crop={waiting.crop} alt={t('picture.sentAlt')} />
+          )}
         </>
       )}
     </section>

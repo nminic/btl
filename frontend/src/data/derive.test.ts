@@ -419,6 +419,7 @@ describe('rankTeams', () => {
   const team = (id: string, sorting: { slug?: string; name?: string } = {}): Team => ({
     id,
     slug: sorting.slug ?? `tim-${id}`,
+    crop: { x: 0.5, y: 0.5, size: 1 },
     name: sorting.name ?? `Tim ${id}`,
     city: 'Beograd',
     country: 'RS',

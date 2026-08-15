@@ -4,6 +4,7 @@ import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useEvents, useRaces, useTeams } from '../../data/useResource'
+import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import { RATING_MARKS } from '../../data/types'
@@ -412,7 +413,24 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       identities.push(id)
       addresses.push(addressOf(made.name))
 
-      create(TEAMS.id, id, { ...made, organizerMemberNumber: one.memberNumber })
+      create(TEAMS.id, id, {
+        ...made,
+        organizerMemberNumber: one.memberNumber,
+        /* **The picture does not survive the approval, and that is a limit
+           rather than a decision.** What stands in for a database until F5 is an
+           overlay of text (session/context.ts): a crop is three numbers and
+           cannot go into it without being written a second way, and nothing
+           anywhere reads a created team's logo back. No public screen reads the
+           overlay at all (entityForms.ts) and the administration draws no mark,
+           so a line carrying the picture here is a line no test can reach and
+           no reader can see. A review measured exactly that: with the line in
+           place, deleting it left all 1888 tests passing.
+         *
+           So nothing about the picture crosses this point until F5, said once
+           rather than half done. The moderator still judges the square the
+           member chose, on the card above, which is what the owner asked for
+           (12.08.2026). Written down in PENDING. */
+      })
 
       notify({
         from: t('app.name'),
@@ -658,6 +676,33 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             )}
                           </div>
                         </dl>
+
+                        {/* The picture itself, where there is one to look at.
+                            Owner, 12.08.2026: „Administrator kad odobrava i
+                            timsku sliku (unutar odobravanja tima) i profilnu
+                            sliku učesnika... treba da vidi isto fokus na vidljiv
+                            deo slike i zatamnjen ali dovoljno vidljiv ostatak."
+
+                            „Isto" is the requirement and the reason this is the
+                            same component the member arranged it in: what a
+                            moderator judges has to be what the member set, and
+                            the rest of the photograph has to stay readable so
+                            that a face cut out of a crowd can be told from a
+                            face cut out of nothing.
+
+                            The file name above stays. It is what the queue is
+                            searched and talked about by, and the two seeded
+                            items carry a name with no picture behind them
+                            (data/types.ts): those stand for pictures sent before
+                            this visit, and there is nowhere they could have been
+                            kept. */}
+                        {one.picture !== '' && (
+                          <CropWindow
+                            picture={one.picture}
+                            crop={one.crop}
+                            alt={t('verification.pictureAlt', { who: one.subject })}
+                          />
+                        )}
 
                         {open === one.id ? (
                           <SendBack

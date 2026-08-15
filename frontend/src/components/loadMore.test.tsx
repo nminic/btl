@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { must } from '../test/at'
 import { intersecting, watcher } from '../test/intersection'
 import { setupUser } from '../test/user'
@@ -16,8 +18,8 @@ import { LoadMore } from './LoadMore'
  * does not have.
  */
 
-function Growing({ total, step }: { total: number; step: number }) {
-  const { shown, whole, asked, more } = useGrowing(total, step)
+function Growing({ total, step, over = '' }: { total: number; step: number; over?: string }) {
+  const { shown, whole, asked, more } = useGrowing(total, step, over)
 
   return (
     <>
@@ -36,6 +38,39 @@ function Growing({ total, step }: { total: number; step: number }) {
           whole: `To je svih ${String(total)}`,
         }}
       />
+    </>
+  )
+}
+
+/**
+ * The same list with filters over it, which is where the focus goes wrong.
+ *
+ * A filter is a control the reader is standing on when they press it, and that
+ * is the whole of what these tests measure: a rerender changes the list without
+ * anybody standing anywhere, so it can prove that the focus did not move and
+ * never that it was not stolen.
+ *
+ * `named` is whether the list says what it is of as well as how long it is,
+ * which is the difference between telling two equally long filters apart and
+ * not (components/growing.ts).
+ */
+function Filtering({ sizes, step, named = false }: { sizes: number[]; step: number; named?: boolean }) {
+  const [at, setAt] = useState(0)
+
+  return (
+    <>
+      {sizes.map((_, index) => (
+        <button
+          key={index}
+          type="button"
+          onClick={() => {
+            setAt(index)
+          }}
+        >
+          {`filter ${String(index + 1)}`}
+        </button>
+      ))}
+      <Growing total={must(sizes[at], 'the size of the chosen filter')} step={step} over={named ? `filter-${String(at)}` : ''} />
     </>
   )
 }
@@ -136,6 +171,167 @@ describe('a list that grows as it is read', () => {
     rerender(<Growing total={4} step={10} />)
 
     expect(items()).toBe(4)
+  })
+})
+
+/* Where the focus lands when a list becomes whole, which is the one thing about
+ * this mechanism that nothing on screen shows and that three attempts got
+ * wrong.
+ *
+ * The closing sentence takes the focus when a reader reaches the end, because
+ * the button they were standing on has just been replaced by it and a keyboard
+ * reader would otherwise be dropped at the top of the document (WCAG 2.2 SC
+ * 2.4.3). It must not take the focus when the list became whole by itself,
+ * which on a table with filters over it happens every time somebody presses
+ * one: the reader is standing on the filter and gets thrown to the foot of the
+ * table (SC 3.2.2).
+ *
+ * Both of the earlier attempts passed every test in this file. The first
+ * remembered a plain yes; the second remembered the length the asking was about
+ * and compared it, which is true again the moment a reader widens a filter back
+ * to where they started. So each of these presses a control and then asks where
+ * the focus is, which is the only question that separates the three.
+ */
+describe('the focus, when a list becomes whole', () => {
+  const end = (total: number) => screen.getByText(`To je svih ${String(total)}`)
+
+  it('stays on the filter that made the list whole', async () => {
+    /* The plain case, and the one that has to be measured at the moment the
+       foot of the list changes: the sentence takes the focus in an effect that
+       runs when „whole" turns true, so a test where it was already true proves
+       nothing at all. Half way down a list of forty, press a filter leaving
+       fifteen. The list becomes whole under a reader standing on the filter,
+       and the reader stays on the filter. */
+    const user = setupUser()
+
+    render(<Filtering sizes={[40, 15]} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    expect(screen.getByRole('button', { name: 'Učitaj još' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'filter 2' }))
+
+    expect(screen.getByRole('button', { name: 'filter 2' })).toHaveFocus()
+    expect(end(15)).not.toHaveFocus()
+  })
+
+  it('follows the reader who read to the end', async () => {
+    const user = setupUser()
+    render(<Growing total={15} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+    expect(end(15)).toHaveFocus()
+  })
+
+  it('stays where it is when the list becomes whole under the reader', async () => {
+    /* Nobody asked. The button was never pressed, the list simply became short
+       enough to hold in one, and taking the focus to a sentence at the foot of
+       it moves a reader who touched nothing. */
+    const user = setupUser()
+    const { rerender } = render(<Growing total={40} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    rerender(<Growing total={5} step={10} />)
+
+    expect(end(5)).not.toHaveFocus()
+  })
+
+  it('stays on the filter that was pressed, even one widened back to where it began', async () => {
+    /* The case the second attempt let through, and the reason `asked` is
+       cleared by the change rather than checked against a length. Read a table
+       of 229 to the end, narrow it to marathons, then widen it back: the total
+       is 229 again, so „I asked about 229" came back true and the focus jumped
+       to the foot of the table from a filter nobody had pressed twice.
+
+       Pressed rather than rerendered, because where the focus was before is the
+       whole of the question: a reader who reached the end is standing on the
+       closing sentence and can hardly be thrown off it, and a reader who
+       pressed a filter is standing on the filter. */
+    const user = setupUser()
+
+    render(<Filtering sizes={[25, 4, 25]} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    expect(end(25)).toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'filter 2' }))
+    await user.click(screen.getByRole('button', { name: 'filter 3' }))
+
+    expect(screen.getByRole('button', { name: 'filter 3' })).toHaveFocus()
+    expect(end(25)).not.toHaveFocus()
+  })
+
+  it('goes quiet about a filter of the same size as the last one', async () => {
+    /* Two filters of equal length cannot steal the focus from each other, since
+       nothing about the foot of the list changes: what they can do is speak. A
+       reader who pressed „Ultramaraton" and hears „Prikazano 20 od 25" has been
+       told how far they have read through a list they have not read at all
+       (WCAG 2.2 SC 4.1.3).
+
+       A length is not an identity, and on a table of results by category there
+       is nothing unusual about two of them holding the same number of races. So
+       the list is told what it is of, which is what separates the two here. */
+    const user = setupUser()
+
+    render(<Filtering sizes={[25, 25]} step={10} named />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Prikazano 20 od 25')
+
+    await user.click(screen.getByRole('button', { name: 'filter 2' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('')
+  })
+
+  it('is told what the list is of by the one screen that has filters', () => {
+    /* The argument only helps where it is actually passed, and the tests above
+       pass it themselves from a harness of their own. A review took it off the
+       real call and watched all 1888 tests pass with coverage still at 100 per
+       cent, which is the same shape of hole as every other finding this week.
+
+       Read off the source, because nothing on the profile can show it: with
+       today`s data no two of that member`s filters hold the same number of
+       races, so the screen behaves identically either way, and it is the day
+       somebody`s results happen to line up that this stops being true. */
+    const profile = readFileSync(join(process.cwd(), 'src/pages/CompetitorProfile.tsx'), 'utf-8')
+    const call = must(/useGrowing\(([^)]*)\)/.exec(profile), 'the call that grows the table')[1]
+
+    expect(call).toContain('params')
+    expect(must(call, 'the arguments').split(',')).toHaveLength(3)
+  })
+
+  it('goes on talking where it is told only how long the list is', async () => {
+    /* The limit of counting, held as a test rather than as a sentence nobody
+       would check. Told nothing but a length, two filters of equal size are one
+       list and the announcement stands. This is why `useGrowing` takes what the
+       list is of and why the profile hands it both of its filters
+       (pages/CompetitorProfile.tsx); left unproved, that argument reads as belt
+       and braces and the next tidy-up takes it out. */
+    const user = setupUser()
+
+    render(<Filtering sizes={[25, 25]} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    await user.click(screen.getByRole('button', { name: 'filter 2' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Prikazano 20 od 25')
+  })
+
+  it('says nothing about a list the reader has not asked about', async () => {
+    /* The same fact, heard rather than seen. The live region speaks only to
+       somebody who pressed the button, so a filter that quietly makes a list
+       whole must not announce how much of it is showing either. */
+    const user = setupUser()
+    const { rerender } = render(<Growing total={25} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Prikazano 20 od 25')
+
+    rerender(<Growing total={4} step={10} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('')
   })
 })
 
