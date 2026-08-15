@@ -331,6 +331,23 @@ describe('the address, at the moment of joining', () => {
   })
 })
 
+/** Every production source file on the portal, so a claim about what the
+ *  portal can do is measured over all of it rather than over one folder. */
+function sources(): { path: string; code: string }[] {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? walk(join(dir, entry.name))
+        : entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')
+          ? [join(dir, entry.name)]
+          : [],
+    )
+
+  return walk(join(process.cwd(), 'src'))
+    .filter((path) => !path.includes('.test.'))
+    .map((path) => ({ path, code: readFileSync(path, 'utf-8') }))
+}
+
 describe('the biography, at the moment of joining', () => {
   it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
@@ -369,18 +386,23 @@ describe('the biography, at the moment of joining', () => {
        which no screen lets them do: the biography is asked for once, at joining,
        and `pages/member/Settings.tsx` offers the picture and nothing else.
      *
-       Held against that fact rather than against the words. Written as „these
-       five words are not on the screen", a review put the same promise back in
-       different words and all 1906 tests passed. What this asks is how many
-       forms on the portal have a box for a biography: while the answer is one,
-       the sentence beside that box must not promise a second. Build the screen
-       and this fails, which is the moment to write the promise back. */
-    const forms = readdirSync(join(process.cwd(), 'src/forms/definitions'))
-    const asking = forms.filter((name) =>
-      readFileSync(join(process.cwd(), 'src/forms/definitions', name), 'utf-8').includes('"name": "bio"'),
-    )
+       Held against that fact rather than against the words, and against the
+       right fact. Written as „these five words are not on the screen", a review
+       put the same promise back in different words and all 1906 tests passed.
+       Written as „one form definition has a box for a biography" it was no
+       better: the screen the owner decided on the same day does not use a form
+       definition at all, so building it would have left this green while the
+       sentence beside it stayed wrong.
+     *
+       What is asked instead is how many screens send a biography for review,
+       which is the thing the promise is about. While the answer is none, the
+       sentence must not say a member writes another; the moment one exists,
+       this fails, and that is when the promise goes back in. */
+    const screens = sources()
+      .filter(({ code }) => code.includes("kind: 'bio'"))
+      .map(({ path }) => path)
 
-    expect(asking).toEqual(['registracija.form.json'])
+    expect(screens).toEqual([])
     expect(screen.queryByText(/nov tekst|ponovo|opet/)).not.toBeInTheDocument()
   })
 })
