@@ -30,14 +30,14 @@ function useDeclareMeta(): DeclareMeta {
  * recordDescription under `seo` puts the name first, ahead of a colon, where no
  * case is asked of it.
  */
-export function PageMeta({ title, description, path }: Meta) {
+export function PageMeta({ title, description }: Meta) {
   const declare = useDeclareMeta()
 
   useEffect(() => {
-    declare({ title, description, path })
+    declare({ title, description })
 
     return () => declare(null)
-  }, [declare, title, description, path])
+  }, [declare, title, description])
 
   return null
 }

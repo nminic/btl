@@ -151,6 +151,43 @@ describe('the address of a page', () => {
     expect(href('alternate', 'en')).toBeNull()
   })
 
+  it('moves a profile opened by number alone to the one address, and names it', async () => {
+    /* The centre of PDL P11, and nothing measured it: a review replaced the
+       condition on the profile's redirect with `if (false)` and all 1912 tests
+       stayed green.
+     *
+       Both halves are here, because they are one promise. The reader is moved,
+       so what they share afterwards is the canonical address; and the canonical
+       link says the same thing to a search engine. What the query carries is
+       left alone by both: it never was part of the address. */
+    const { router } = renderAt('/sr/takmicar/000007?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    expect(router.state.location.pathname).toBe('/sr/takmicar/000007-strahinja-vukicevic')
+    expect(router.state.location.search).toBe('?sezona=2019')
+
+    await waitFor(() =>
+      expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`),
+    )
+  })
+
+  it('moves the trophies of one person the same way, keeping the tail', async () => {
+    const { router } = renderAt('/sr/takmicar/000007/priznanja')
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    expect(router.state.location.pathname).toBe(
+      '/sr/takmicar/000007-strahinja-vukicevic/priznanja',
+    )
+
+    await waitFor(() =>
+      expect(href('canonical')).toBe(
+        `${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic/priznanja`,
+      ),
+    )
+  })
+
   it('canonicalises the English branch onto the Serbian one', async () => {
     renderAt('/en/kalendar')
 

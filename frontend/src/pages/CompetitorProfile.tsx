@@ -1,4 +1,4 @@
-import { addressOf, memberNumberIn, redirectTo } from './profileAddress'
+import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
@@ -435,12 +435,6 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
                   city: competitor.city,
                 })}
                 description={t('seo.competitor.recordDescription', { name })}
-                /* The one address this profile lives at, which is not always the
-                   one being read: the number alone still opens it, and so does a
-                   bookmark from before the name was in the address. Without this,
-                   both would name themselves as canonical and one person would be
-                   two pages (PDL P11, no alias). */
-                path={`takmicar/${addressOf(competitor)}`}
               />
             )}
 

@@ -1,4 +1,4 @@
-import { addressOf, memberNumberIn, redirectTo } from './profileAddress'
+import { memberNumberIn, redirectTo } from './profileAddress'
 import { categoryLabel } from '../data/categories'
 import { useMemo, useRef } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
@@ -184,9 +184,6 @@ function AwardsFor({
       <PageMeta
         title={t('seo.competitor.awardsTitle', { name })}
         description={t('seo.competitor.awardsDescription', { name })}
-        /* The same rule one level down: the trophies of one person are one
-           page, whichever form of the address opened them. */
-        path={`takmicar/${addressOf(competitor)}/priznanja`}
       />
 
       <ProfileHead competitor={competitor} team={team} seasons={seasons} season={season} />

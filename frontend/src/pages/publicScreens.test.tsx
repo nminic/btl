@@ -1825,7 +1825,7 @@ describe('the row of whoever is signed in', () => {
              of it: the address carries the name behind the number now (PDL P11),
              and this test is about whose row is marked, not about how a name is
              spelt. */
-          .some((link) => link.getAttribute('href')?.includes(`/takmicar/${ME}`) === true),
+          .some((link) => link.getAttribute('href')?.startsWith(`/sr/takmicar/${ME}`) === true),
       )
 
     /* Three boards are tables, and he is on all three of them this season. */

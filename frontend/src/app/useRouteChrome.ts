@@ -34,9 +34,17 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
 
   const title = declared?.title ?? t(`seo.${seoKey}.title`)
   const description = declared?.description ?? t(`seo.${seoKey}.description`)
-  /* The address the page says it lives at, where it says one. Everything else
-     is the address being read. */
-  const canonical = declared?.path ?? path
+  /* The address being read, always.
+   *
+     A page used to be able to declare a different one, and two screens did: the
+     profile and its trophies handed in the canonical form of the address. It
+     could never differ. Both of them send a reader arriving at any other form to
+     the canonical one before anything is drawn (`redirectTo` in
+     pages/profileAddress.ts), so by the time a declaration is made the address
+     being read is already the canonical one; a query changes nothing either,
+     because it is not part of `location.pathname`. Four mutations of that
+     machinery survived the whole suite, which is what a mechanism that cannot
+     change anything looks like from the outside. */
 
   /* What the live region announces is the wording the person just clicked, so it
    * comes from the navigation label wherever there is one. The tab and the
@@ -61,10 +69,10 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
       title,
       description,
       siteName: t('app.name'),
-      path: canonical,
+      path,
       textLocale: dictionaryLocale(locale),
     })
-  }, [title, description, canonical, locale, t])
+  }, [title, description, path, locale, t])
 
   return { pageTitle, declare: setDeclared }
 }

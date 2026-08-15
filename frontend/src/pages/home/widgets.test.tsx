@@ -1,4 +1,3 @@
-import { addressOf } from '../profileAddress'
 import { matchingMedia } from '../../test/media'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -352,13 +351,13 @@ describe('TopByCategory', () => {
 
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
-      `/sr/takmicar/${addressOf(competitor('000001'))}?sezona=2027&duzina=short`,
+      '/sr/takmicar/000001-ime-000001?sezona=2027&duzina=short',
     )
 
     await waitFor(() =>
       expect(screen.getByRole('link')).toHaveAttribute(
         'href',
-        `/sr/takmicar/${addressOf(competitor('000001'))}?sezona=2027&duzina=long`,
+        '/sr/takmicar/000001-ime-000001?sezona=2027&duzina=long',
       ),
     )
   })
