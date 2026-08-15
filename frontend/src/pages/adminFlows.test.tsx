@@ -1,3 +1,5 @@
+import { formatShortDate } from '../i18n/format'
+import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
@@ -12,7 +14,7 @@ import { setupUser } from '../test/user'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
-import { canSendBack, countFor, QUEUE, QUEUES } from './admin/queues'
+import { canSendBack, countFor, QUEUE, QUEUES, returned } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import {
@@ -505,6 +507,27 @@ describe('payment payloads', () => {
      31.07.2026). Turning the file into decisions is the server's work and the
      server does not exist yet, so what it does today is take the file and say
      so; what it can honestly refuse is a file that is not a statement at all. */
+  it('does not promise a message on the queue that sends none', async () => {
+    /* The payments queue draws the same box as the others and passes no words of
+       its own, so it takes whatever the default is. That default promised „Član
+       dobija tvoj razlog" until 15.08.2026, while `notify` is not called from
+       that screen at all: a moderator was told the member would read what they
+       were writing.
+     *
+       Read off the screen rather than off the default, because what is being
+       guarded is what a moderator sees. A review changed the default back and
+       every test passed, since nothing opened this box. */
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    await user.click(first(await screen.findAllByRole('button', { name: 'Odbij' })))
+
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonKeptPlaceholder,
+    )
+  })
+
   it('takes a statement in PDF and says what it did with it', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
@@ -735,6 +758,12 @@ describe('the queue of results', () => {
         '.field__required',
       ),
     ).not.toBeNull()
+    /* And it does not promise a message. This queue has a field of its own rather
+       than the shared box, so it carries its own words, and it kept the promising
+       ones after the shared default was corrected. Nothing measured that: a review
+       put them back and all 1905 tests passed. `notify` is never called from this
+       screen (PENDING R9b). */
+    expect(reason).toHaveAttribute('placeholder', sr.review.reasonKeptPlaceholder)
   })
 
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
@@ -1798,14 +1827,15 @@ describe('the six queues read from the file', () => {
     ).toHaveLength(1)
   })
 
-  /* Biographies go their own way too, and further: there is no second decision at
-     all. The moderator adjusts the text as they see fit and publishes what they
-     left, and it never goes back to the competitor (PDL P22, 30.07.2026). */
+
   it('holds the text and the picture in one queue, decided each its own way', async () => {
     /* Owner, 06.08.2026: the same member's profile is one thing to look at, so
        the two used to be two queues and are one. What is done with them is not
-       one thing: a biography is edited and published and never goes back, a
-       picture is accepted or handed back with an instruction to work from. */
+       quite one thing: both go back to the member when they are refused, and
+       what the moderator is asked to write differs. A biography is refused with
+       a reason and the member writes another; a picture is handed back with an
+       instruction precise enough to work from, which is what the empty box on
+       that card asks for (PDL P22). */
     await open('profiles', 'Trkački profil')
 
     const cards = within(waitingList()).getAllByRole('listitem')
@@ -1815,33 +1845,34 @@ describe('the six queues read from the file', () => {
     expect(texts).toHaveLength(2)
     expect(pictures).toHaveLength(2)
 
-    for (const one of texts) {
-      const card = within(one)
-
-      expect(card.getByRole('button', { name: 'Objavi' })).toBeVisible()
-      expect(card.queryByRole('button', { name: 'Odbij' })).toBeNull()
-      expect(card.queryByRole('button', { name: 'Odobri' })).toBeNull()
-    }
-
-    for (const one of pictures) {
+    /* The same two decisions on both sorts. „Objavi" stood on a biography
+       alone until 15.08.2026, when the code caught up with the decision that
+       took it away (PDL P22, 06.08.2026): a word that says the moderator lets
+       something out belongs to a text they may rewrite, and they may not. */
+    for (const one of [...texts, ...pictures]) {
       const card = within(one)
 
       expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
       expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
+      /* And there is no such word to draw. Asking the screen alone stopped being
+         an assertion the moment `verification.publish` left the dictionary: a
+         button nobody can name cannot appear. So the dictionary is asked as
+         well, which is where the word would have to come back first. */
       expect(card.queryByRole('button', { name: 'Objavi' })).toBeNull()
+      expect(JSON.stringify(sr.verification)).not.toContain('Objavi')
     }
   })
 
-  it('edits a biography in place and publishes what the moderator left', async () => {
+  it('refuses a biography with a reason, and hands it back to the member', async () => {
+    /* Owner, 06.08.2026, confirmed 11.08.2026 (PDL P22): „Sve što se odbije
+       vraća se članu", uz obavezan razlog, i član sme da pošalje ponovo. Until
+       15.08.2026 the code did the thing that decision replaced: the moderator
+       rewrote the text in place and published what they left, so somebody
+       else's sentences went onto a member's profile under their name. */
     const user = await open('profiles', 'Trkački profil')
 
-    /* Two biographies and two pictures, in one queue since 06.08.2026: the same
-       member's profile is looked at in one place. */
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
 
-    /* The card of a biography, found by the words that name what is on it. A
-       biography never goes back to the competitor, so its card has no button for
-       it and nothing to write; the pictures beside it do. */
     const card = within(
       must(
         within(waitingList())
@@ -1851,70 +1882,287 @@ describe('the six queues read from the file', () => {
       ),
     )
 
-    expect(card.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-    expect(card.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
+    /* The same two decisions every other queue that hands work back offers, and
+       not the one word that used to stand here alone. */
+    expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
+    expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
+    expect(card.queryByRole('button', { name: 'Objavi' })).not.toBeInTheDocument()
+    expect(JSON.stringify(sr.verification)).not.toContain('Objavi')
 
-    await user.click(card.getByRole('button', { name: 'Izmeni' }))
-    const box = card.getByRole('textbox', { name: 'Tekst biografije' })
-    await user.clear(box)
-    await user.type(box, 'Rekreativac iz Čačka, trči zbog druženja.')
-    await user.tab()
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
 
-    // What the moderator wrote is what stands on the card, before anything is
-    // published and after the box has closed.
-    expect(card.getByText('Rekreativac iz Čačka, trči zbog druženja.')).toBeVisible()
+    const reason = screen.getByLabelText('Razlog odbijanja')
 
-    await user.click(card.getByRole('button', { name: 'Objavi' }))
+    await user.type(reason, 'Napiši nešto o sebi, ovo je prepisano sa tuđeg profila.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
-    // And what was published is the edited version, not what came in.
+    /* And the reason is written down where a refusal is written down, so the
+       member can be told what to change. */
     expect(
       within(screen.getByRole('list', { name: 'session decisions' })).getByText(
-        /Rekreativac iz Čačka, trči zbog druženja\./,
+        /prepisano sa tuđeg profila/,
       ),
     ).toBeVisible()
   })
 
-  it('publishes a biography nobody touched exactly as it came in', async () => {
+  it('approves a biography exactly as it came in, and nowhere lets it be rewritten', async () => {
     const user = await open('profiles', 'Trkački profil')
 
-    const card = within(first(within(waitingList()).getAllByRole('listitem')))
-    // Two paragraphs with an empty line between them, which is what a biography
-    // looks like and what has to survive being published untouched.
-    const sent = card.getByText(/Rekreativac iz Čačka/).textContent
+    const waiting = first(within(waitingList()).getAllByRole('listitem'))
+    const card = within(waiting)
+    /* Two paragraphs with an empty line between them, which is what a biography
+       looks like and what has to survive being read untouched. */
+    const sent = must(card.getByText(/Rekreativac iz Čačka/).textContent, 'the biography')
 
-    await user.click(card.getByRole('button', { name: 'Objavi' }))
+    /* Nothing to press that would open it for editing. A moderator used to
+       adjust the text and publish what they left; the owner withdrew that on
+       06.08.2026 (PDL P22), so the words on the card are the words that go out. */
+    expect(card.queryByRole('button', { name: 'Izmeni' })).not.toBeInTheDocument()
+    expect(card.queryByRole('textbox')).not.toBeInTheDocument()
 
+    expect(sent).toContain(String.fromCharCode(10))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    /* An approval records that it happened and nothing about the text, which is
+       the difference the withdrawal made: what used to be written down here was
+       „what the profile now says", because a moderator could have changed it on
+       the way out. Nothing can change it now, so the item is the record. */
     const lines = within(screen.getByRole('list', { name: 'session decisions' }))
       .getAllByRole('listitem')
       .map((one) => String(one.textContent))
 
-    expect(lines.some((line) => line.includes(String(sent)))).toBe(true)
+    expect(lines.some((line) => line.includes('approved'))).toBe(true)
+    expect(lines.some((line) => line.includes(sent))).toBe(false)
+    expect(within(waitingList()).queryAllByRole('listitem')).not.toContain(waiting)
   })
 
-  /* Pictures are the only one of the three that still goes back to a competitor.
+  /* Both sorts go back to the member (PDL P22, 06.08.2026).
      It is the same box with the same words as every other queue that hands work
      back, because it is the same decision; what differs is what the moderator is
      asked to write, since that reason is what the member reads and changes the
      picture by (PDL P22, owner, 30.07.2026). */
-  it('asks the picture queue for a reason precise enough to work from', async () => {
-    const user = await open('profiles', 'Trkački profil')
+  it('does not promise one on the three queues in the middle either', async () => {
+    /* Leagues, teams and reported dates draw the shared box through the queue
+       screen, which chooses the words itself rather than taking the default. That
+       branch had nothing behind it: a review set it back to the promising words
+       and all 1905 tests passed, and the leagues queue is the very one the
+       promise was first measured on (PENDING R9b). */
+    const user = await open('leagues', 'Predložene lige')
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
-    // The name of the field is the one every queue uses, so a member is never
-    // told about two different things.
-    const reason = screen.getByLabelText('Razlog odbijanja')
-    expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonKeptPlaceholder,
+    )
+  })
 
-    // The empty field is where the queue says what it wants: not "no good" but
-    // what has to change for the picture to be accepted.
-    expect(reason).toHaveAttribute(
+  it('asks the picture for an instruction and the biography for a reason', async () => {
+    const user = await open('profiles', 'Trkački profil')
+
+    const cardFor = (words: string) =>
+      within(
+        must(
+          within(waitingList())
+            .getAllByRole('listitem')
+            .find((one) => within(one).queryByText(words) !== null),
+          `a card carrying ${words}`,
+        ),
+      )
+
+    await user.click(cardFor('Datoteka').getByRole('button', { name: 'Odbij' }))
+
+    /* The name of the field is the one every queue uses, so a member is never
+       told about two different things. */
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
       'placeholder',
       'Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.',
     )
-    expect(screen.getAllByRole('button', { name: 'Odbij' })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeInTheDocument()
+
+    /* And the biography beside it asks for the ordinary reason. Both go back to
+       the member since 06.08.2026 (PDL P22), and they are not the same errand:
+       a picture is handed back with an instruction to work from, a text is
+       refused and the member writes another. Until 15.08.2026 this could not be
+       compared at all, because a biography had no way back. */
+    await user.click(screen.getByRole('button', { name: 'Odustani' }))
+    await user.click(cardFor('Tekst biografije').getByRole('button', { name: 'Odbij' }))
+
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonPlaceholder,
+    )
+  })
+
+  it('leaves the reason for a returned biography in the inbox too, under its own heading', async () => {
+    /* The half that was missing. When the biography stopped being published and
+       started being refused (PDL P22, 06.08.2026), the refusal arrived without
+       the message: the empty box went on promising „Član dobija tvoj razlog"
+       and the inbox stayed exactly as it was. A review measured it, two
+       messages before and two after, and then measured the obvious repair as
+       well: handed the picture heading, a refused biography reaches the member
+       as „Profilna slika je vraćena", a message about a thing they did not
+       send. Both halves are asserted here, the arrival and the heading. */
+    const user = setupUser()
+    /* Read on a named day rather than on whatever day the machine is having, so
+       the date the refusal carries can be checked against something. */
+    const day = '2026-08-15'
+
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000011', undefined, day)
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
+
+    /* The card of the member at the keyboard, and not simply the first
+       biography in the queue: a message carries the number it was written to
+       (Message.to), so a refusal aimed at somebody else never reaches this
+       inbox and the test would fail for the wrong reason. */
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Vukašin Todorović') !== null),
+        'a waiting card carrying the biography of Vukašin Todorović',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
+    await user.type(
+      screen.getByLabelText('Razlog odbijanja'),
+      'Napiši nešto svoje, ovo je prepisano sa tuđeg profila.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(screen.getByRole('link', { name: /Tekst o sebi je vraćen/ }))
+
+    const subject = screen.getByRole('heading', { level: 1, name: 'Tekst o sebi je vraćen' })
+
+    expect(subject).toBeVisible()
+    expect(screen.getByText(/prepisano sa tuđeg profila/)).toBeVisible()
+    /* And it is not the other heading, which is the mistake the one place that
+       knows both was written to stop (queues.ts, `returned`). */
+    expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
+    /* And it says who it is from. The league writes it, never the moderator by
+       name (PDL P22: a decision is the league's, and a member who could read the
+       name of whoever refused them would write back to a person rather than to
+       the association). Held here because nothing held it: a review emptied the
+       sender and all 1906 tests passed, which left a member with a message
+       whose one line of provenance read „ · 15.08.2026." */
+    const provenance = must(
+      subject.nextElementSibling,
+      'the line of provenance under the subject',
+    ).textContent
+
+    expect(provenance).toContain(sr.app.name)
+    /* And the day it was written, which is the other half of that one line and
+       was covered without being checked: a review put 2000-01-01 in its place
+       and all 1907 tests stayed green, so a refusal could carry any date at all.
+       Read as the portal writes it, through the same formatter the screen uses,
+       so this says „today" rather than one spelling of it. */
+    expect(provenance).toContain(formatShortDate(day, 'sr'))
+  })
+
+  it('promises the message only where one is actually sent', async () => {
+    /* Owner, R10: the screen must not promise what the code does not do. The
+       empty box used to read „Član dobija tvoj razlog" everywhere a reason is
+       asked for, and a refusal writes to the member on one queue only, so on the
+       other six it was telling a moderator that words they were about to write
+       would be read by somebody who never sees them.
+     *
+       Read against `returned`, which is the one place that knows whether a
+       message goes, rather than against a list of queue names written here: a
+       queue added later gets the right words or fails this. */
+    /* `QUEUE` and not `QUEUES`, because a local list of that name shadows the
+       import inside this describe block and holds tuples rather than queues. */
+    for (const one of Object.values(QUEUE)) {
+      const sends = returned(one, { kind: 'bio' }) !== null
+
+      /* Which of the two makes the promise, and not merely that one of them
+         does. Written the loose way this passed while a review swapped the two
+         values in the dictionary, at which point every queue that sends nothing
+         promised a message and the one that sends one said it does not: exactly
+         backwards, on both screens this round had just corrected. Every other
+         test compares a placeholder against `sr.review.*`, so they all move
+         together with the values and none of them can see it. */
+      /* The queue that sends is the racing profile and only it. */
+      expect(sends, one.id).toBe(one.id === 'profiles')
+    }
+
+    /* And the words themselves, once rather than once per queue: these say
+       nothing about any single one of them.
+     *
+       **Brittle on purpose, which is worth knowing before rewriting either
+       sentence.** „Član dobija tvoj razlog" written as „Član će dobiti tvoj
+       razlog" fails this, and so does „još ne ide" written as „se još ne šalje",
+       although neither changes the meaning. Anything looser cannot see the thing
+       it exists for: a review swapped the two values in the dictionary and every
+       other test moved with them, since they all compare a placeholder against
+       `sr.review.*` rather than against words. Reword freely, and change these
+       three lines with the sentence. */
+    expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
+    expect(sr.review.reasonKeptPlaceholder).toContain('još ne ide')
+    expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
+    /* And neither of them says the member may send another. They may not: a
+       biography is written once, at joining, and there is nowhere to write a
+       second one. The promise stood in the words that now belong to the
+       biography alone, which is the one place it was false (PDL P22, PENDING
+       R10). */
+    for (const words of [sr.review.reasonPlaceholder, sr.review.reasonKeptPlaceholder]) {
+      expect(words, words).not.toContain('pošalje ponovo')
+    }
+  })
+
+  it('writes it to that member and to nobody else, least of all to everybody', async () => {
+    /* The half the two tests below cannot see. Each of them signs in as the very
+       member whose item is refused, and an inbox shows a member what was written
+       to them as well as what was written to the whole league, which is the empty
+       recipient (SessionProvider). So a refusal addressed to nobody still lands in
+       front of the one person looking, and both tests pass: a review changed the
+       recipient to an empty string and all 1902 of them did.
+     *
+       This one refuses the biography of one member and then reads the inbox of
+       another, which is the only way to tell what was written to somebody from
+       what was written to everybody. It is the fault canSendBack exists to
+       prevent, so it is worth a test that can see it. */
+    const user = setupUser()
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000013')
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
+
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Vukašin Todorović') !== null),
+        'a waiting card carrying the biography of Vukašin Todorović',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Prepisano sa tuđeg profila.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    /* The refusal really happened, said before anything is read about where it
+       went. Without this the test can pass because nothing was refused at all,
+       which is how its first two versions passed while the recipient was an
+       empty string. */
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+
+    /* Read as somebody else, in the same visit, and through the control the
+       member would press rather than by pushing an address: the two are not the
+       same screen, and the first version of this walked to one that never holds
+       messages, so the assertion could not fail either way. */
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+    /* This inbox is not simply empty, and it is not proved so by counting links:
+       the first version did that and counted the navigation, which draws „Sve
+       poruke" whether or not there is a message. A review emptied the seeded
+       messages and it still passed. What is asked for is one of those messages by
+       name, since a message written to everybody is exactly what an empty
+       recipient would be mixed up with. */
+    expect(await screen.findByText(/Dobro došao u pripremu sezone 2027/)).toBeVisible()
+    expect(screen.queryByText(/Tekst o sebi je vraćen/)).not.toBeInTheDocument()
   })
 
   it('leaves the reason for a returned picture in the inbox of the member', async () => {
@@ -1968,14 +2216,26 @@ describe('the six queues read from the file', () => {
     })
 
     it('is decided by the queue rather than by the screen that draws it', () => {
-      // Every other queue hands work back to somebody it can name, or does not
-      // hand it back at all, so only the one that instructs is asked.
+      /* Both sorts on the racing profile queue write to the member who sent the
+         thing in, so both need somebody to write to. The other five refuse
+         without sending anything, so the question does not arise there.
+       *
+         The biography answered yes until 15.08.2026, on the reasoning that it
+         was never handed back at all. It is now, and an empty recipient in this
+         portal is the whole league rather than nobody (Message.to), so a
+         refusal with no number would put a moderator words about one member on
+         the front of every member inbox. */
       expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '000013' })).toBe(true)
       expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '' })).toBe(false)
-      /* A biography on the same queue is never handed back at all, so the
-         question does not arise and the answer is yes. */
-      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '000011' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(false)
       expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(true)
+      /* And a racing profile item of no sort at all cannot go back either. The
+         empty sort belongs to the queues that hold one kind of thing and this
+         one never carries it (data/types.ts), so an item that does is a record
+         nobody understands: there is no heading it could arrive under, and the
+         first shape of `returned` called it a picture. */
+      expect(canSendBack(QUEUE.profiles, { kind: '', memberNumber: '000011' })).toBe(false)
     })
 
     it('offers no way to send it, and says why in the place the button stood', async () => {
@@ -2014,7 +2274,7 @@ describe('the six queues read from the file', () => {
 
       expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
       expect(
-        screen.getByText(/nema člana kome bi uputstvo stiglo/),
+        screen.getByText(/nema člana kome bi odgovor stigao/),
       ).toBeVisible()
       // Approving is still a decision the moderator can take; nothing is sent.
       expect(screen.getByRole('button', { name: 'Odobri' })).toBeVisible()
@@ -2036,6 +2296,58 @@ describe('the six queues read from the file', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('1'))
       .toBeVisible()
+  })
+
+  it('tells the member their team was accepted, and says who is telling them', async () => {
+    /* The other place on these screens that writes to a member, and until now
+       the only one nothing followed. A review emptied the sender here and all
+       1907 tests stayed green, so the one line of provenance on the message
+       would have read „ · 15.08.2026" with nobody's name in front of it.
+     *
+       The league writes it, never the moderator by name: a decision is the
+       league's, and a member who could read the name of whoever decided would
+       write back to a person rather than to the association (PDL P22). */
+    const user = setupUser()
+    const day = '2026-08-15'
+
+    renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin', '000007', undefined, day)
+    await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
+
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Timočka trkačka družina') !== null),
+        'the card carrying the team proposed by the member at the keyboard',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(screen.getByRole('link', { name: /Timočka trkačka družina/ }))
+
+    const subject = screen.getByRole('heading', { level: 1, name: /je prihvaćen/ })
+    const provenance = must(
+      subject.nextElementSibling,
+      'the line of provenance under the subject',
+    ).textContent
+
+    expect(provenance).toContain(sr.app.name)
+    expect(provenance).toContain(formatShortDate(day, 'sr'))
+    /* And the sentence itself, which is the only part of the message that tells
+       the member anything they did not already know: that the team exists and
+       that they are the one who runs it. Emptied, it left all 1908 tests green,
+       so a member could be told their team was accepted by a message with
+       nothing in it. And the name of the team is read here as well: emptied, it
+       left the same 1908 green, and the member would have been told „Tvoj
+       predlog tima „" je prihvaćen". The name in the subject is checked only in
+       passing, by the link the message is opened from. */
+    expect(
+      screen.getByText(
+        'Tvoj predlog tima „Timočka trkačka družina" je prihvaćen. Ti si njegov organizator.',
+      ),
+    ).toBeVisible()
   })
 
   it('leads from one queue straight to the next', async () => {
@@ -2306,10 +2618,11 @@ describe('the six queues read from the file', () => {
 
   it('keeps the focus on the card in both directions', async () => {
     const user = await open('profiles', 'Trkački profil')
-    /* The pictures, because a biography is never handed back and has no box to
-       open (queues.ts, `outcomeFor`). The second of them and not the first,
-       because the fault being held is the focus landing on the top card instead
-       of the one the moderator was working on. */
+    /* Every card carries the button since 15.08.2026, the biographies among
+       them (PDL P22), so this reads whichever ones have it rather than naming
+       a sort. The second of them and not the first, because the fault being
+       held is the focus landing on the top card instead of the one the
+       moderator was working on. */
     const cards = within(waitingList())
       .getAllByRole('listitem')
       .filter((one) => within(one).queryByRole('button', { name: 'Odbij' }) !== null)

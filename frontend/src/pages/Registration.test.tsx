@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -329,6 +331,23 @@ describe('the address, at the moment of joining', () => {
   })
 })
 
+/** Every production source file on the portal, so a claim about what the portal
+ *  can do is measured over all of it rather than over one folder. */
+function sources(): { path: string; code: string }[] {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? walk(join(dir, entry.name))
+        : entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')
+          ? [join(dir, entry.name)]
+          : [],
+    )
+
+  return walk(join(process.cwd(), 'src'))
+    .filter((path) => !path.includes('.test.'))
+    .map((path) => ({ path, code: readFileSync(path, 'utf-8') }))
+}
+
 describe('the biography, at the moment of joining', () => {
   it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
@@ -352,10 +371,63 @@ describe('the biography, at the moment of joining', () => {
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 
-  it('says what happens to it, beside the field', async () => {
+  it('says what happens to it, beside the field, refusal and all', async () => {
+    /* Both halves. It said only that a moderator reads it, which was the whole
+       story while a biography was published as the moderator left it; since
+       15.08.2026 it can come back (PDL P22), and the field beside which a member
+       writes is where they should learn that. The picture has said as much all
+       along, so the two now tell the same story. */
     renderForm()
 
-    expect(screen.getByText(/Moderator ih pregleda pre nego što se pojave/)).toBeVisible()
+    expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
+    expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
+    /* And it stops there, because there is nowhere to send a second one: the
+       biography is asked for once, at joining, and the member area offers the
+       picture and nothing else. */
+    expect(screen.queryByText(/nov tekst|ponovo|opet/)).not.toBeInTheDocument()
+  })
+
+  it('promises only what the portal does, and no more than one sentence of it', () => {
+    /* Four attempts at mechanising this, and the fourth is the reason there is
+       no fifth.
+     *
+       „These five words are not on the screen" was beaten by a review putting
+       the same promise back in different words. „One form definition has a box
+       for a biography" was beaten because the panel the owner decided on uses no
+       form definition. „No source file contains `kind: 'bio'`" was beaten by
+       `const kind = SORT`, and by double quotes: a guard that reads source text
+       guards the spelling. Counting the controls on Settings was beaten twice
+       over, because `findAllByRole` settles on the first tick with any match at
+       all; and when that was fixed by waiting for the picture and giving the
+       loop a turn, a review beat it again with a panel two turns out. That last
+       one is the one that matters: a panel whose clock starts with the picture's
+       is exactly the shape the real one has. A guard that misses the case it was
+       written for is worse than none, because it reads as cover.
+     *
+       So the promise is held as a promise, exactly: the hint is spelt out here,
+       word for word. That is a change of the dictionary nobody can make by
+       accident, and the branch that builds the panel has to come through it.
+     *
+       And the net is back beside it, because taking it away was worse than
+       keeping it. A review measured what the two actually catch: the source scan
+       catches a panel written plainly, which is the shape most likely to be
+       written, and misses one built through a variable or a second quotation
+       mark; the spelt sentence catches nobody at all, it only catches a change of
+       the words. Neither is a wall. Together they are a net with two holes rather
+       than one with all of them, and a hole named in a comment is a hole somebody
+       can step over. */
+    expect(sr.registration.bioHint).toBe(
+      'Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci.',
+    )
+
+    /* What it does not catch is named, so nobody reads it as cover: a panel that
+       builds the sort through a variable, or writes it in double quotes, walks
+       past this. What it does catch is the plain one. */
+    const sending = sources()
+      .filter(({ code }) => code.includes("kind: 'bio'") || code.includes('kind: "bio"'))
+      .map(({ path }) => path)
+
+    expect(sending).toEqual([])
   })
 })
 
