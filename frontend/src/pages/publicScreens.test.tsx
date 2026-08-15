@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
-import { fieldFor, topByCategory } from '../data/derive'
+import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
@@ -164,6 +164,16 @@ function shareOf(column: HTMLElement, name: string): number {
 
 /* The standing sits at /tabela. /top-liste is the page of Top 10 boards beside
  * it (PDL P28a), and has its own block further down. */
+/** A season the league barely raced in, so a category the chips offer can
+ *  hold nobody. Named once, because three assertions read it. */
+const SPARSE = 2022
+
+/** The standing at a season, and at a category if one is asked for. */
+const ADDRESS = (season: number, category?: string) =>
+  `/sr/tabela?sezona=${String(season)}&pol=z${
+    category === undefined ? '' : `&kategorija=${encodeURIComponent(category)}`
+  }`
+
 describe('Rankings', () => {
   it('opens on a season that has a field, with the columns from the rulebook', async () => {
     renderAt('/sr/tabela')
@@ -232,6 +242,61 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
   })
 
+  it('drops a search out of an address that still carries one', async () => {
+    /* Somebody has this bookmarked from before the search went, and nothing
+       reads `trazi` any more. Left alone it is carried into every filter
+       pressed after it and every link shared from there, so the address goes on
+       naming a control that is not on the screen. The table itself is drawn
+       from the season and the category, so it was right either way; the address
+       is what a reader copies. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/tabela?sezona=2020&trazi=nesto')
+
+    await screen.findByRole('table')
+
+    await user.click(
+      within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')[1] ??
+        screen.getByRole('button', { name: 'Sve' }),
+    )
+
+    const address = new URLSearchParams(router.state.location.search)
+
+    expect(address.get('trazi')).toBeNull()
+    expect(address.get('sezona')).toBe('2020')
+    expect(address.get('kategorija')).not.toBeNull()
+  })
+
+  it('marks the chosen category as chosen, and not only to a screen reader', async () => {
+    /* `aria-pressed` says which chip is on, and the class is what draws it: a
+       filled background and an accent edge (`rankings__category--on` in
+       Rankings.css). A review replaced both class expressions with the plain
+       one and watched all 1846 tests pass, because everything here asked only
+       after the attribute. A reader who can see the screen would have had eight
+       identical chips and no way to tell which one they had pressed.
+     *
+       Read as a pair, since the two are separate expressions on separate
+       controls: „Sve" is on when nothing is filtered, and a band is on when it
+       is the one in the address. */
+    const user = setupUser()
+    renderAt(ADDRESS(2020))
+
+    await screen.findByRole('table')
+
+    const chips = within(screen.getByRole('group', { name: 'Kategorija' }))
+    const all = chips.getByRole('button', { name: 'Sve' })
+    const one = chips.getAllByRole('button').filter((chip) => chip !== all)
+
+    expect(all.className).toContain('rankings__category--on')
+    expect(first(one).className).not.toContain('rankings__category--on')
+
+    await user.click(first(one))
+
+    expect(first(one).className).toContain('rankings__category--on')
+    expect(chips.getByRole('button', { name: 'Sve' }).className).not.toContain(
+      'rankings__category--on',
+    )
+  })
+
   it('offers no search at all, because the standing is not searched', async () => {
     /* Owner, 31.07.2026: „Pretraga po imenu na rang listama se briše." It was
        the most expensive thing on the screen, since the whole standing was
@@ -246,9 +311,18 @@ describe('Rankings', () => {
      *
        What went with it is the one case on this screen where a place and a row
        number parted: searching narrowed the view without re-ranking, so the
-       seventh stood alone reading „7". The rule that a table shows the place it
-       was given rather than counting its own rows is now held where it is
-       decided, over the ladder itself (data/derive.test.ts). */
+       seventh stood alone reading „7".
+     *
+       **Nothing on this screen holds that rule any more, and saying otherwise
+       was wrong.** The first version of this comment sent the reader to
+       data/derive.test.ts, and a review showed why that cannot be: `rankingFor`
+       now hands back exactly what `withPlaces` made, and `withPlaces` numbers
+       from one with nothing skipped (PDL P12), so in that model a place and a
+       row cannot differ. A test over the ladder cannot guard a table that
+       counts its own rows. Where the rule is still alive and still guarded is
+       the awards on a profile, which lift one row out of a standing and keep
+       the place it held (pages/profile/awards.ts, and the assertion on `[2, 3]`
+       in pages/profile/profile.test.tsx). */
     renderAt('/sr/tabela?sezona=2020')
 
     /* Waited for, and that is not a formality. Written without it this test
@@ -258,9 +332,19 @@ describe('Rankings', () => {
        thing exists is not an assertion. */
     await screen.findByRole('table')
 
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Pretraga')).not.toBeInTheDocument()
+    /* Asked of the row of filters and not of the document. Over the whole page
+       this fails on a search box put into the shared header, which is a control
+       this screen has nothing to do with: a guard that goes off at somebody
+       else's work is one that gets loosened rather than heeded. */
+    const filters = within(must(document.querySelector('.rankings__filters'), 'the row of filters'))
+
+    expect(filters.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(filters.queryByLabelText('Pretraga')).not.toBeInTheDocument()
+    /* Both words and not only the first. The label is what a reader hears and
+       the placeholder is what the box suggests typing; leaving one behind
+       leaves the next person to put the box back a sentence already written. */
     expect(Object.keys(sr.rankings)).not.toContain('search')
+    expect(Object.keys(sr.rankings)).not.toContain('searchPlaceholder')
   })
 
   it('names the beginners by their word, on the buttons and in the table alike', async () => {
@@ -319,13 +403,40 @@ describe('Rankings', () => {
   it('says so when a filter leaves nothing', async () => {
     /* A category chosen and then a season moved to, which is the way a reader
        actually empties this table: the category stays in the address while the
-       field changes under it. In 2022 one woman raced and she was 54, so the
-       band above her holds nobody. */
-    renderAt('/sr/tabela?sezona=2022&pol=z&kategorija=F55%2B')
+       field changes under it. The chips are drawn from every member of that
+       sex rather than from the ones who raced, so a band can be offered and
+       hold nobody at all in the season on screen.
+     *
+       Which band is asked of the data rather than written down. The first
+       version named `F55+`, and a review found that female codes carry a „Z"
+       and not an „F": it matched nobody of either sex in any season, so the
+       test would have stayed green whatever happened to the seed, and would
+       have passed just as well on a category nobody has ever heard of. `must`
+       is what makes this fail rather than skip if every offered band turns out
+       to hold somebody. */
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const results = await loadResource<Result[]>('results')
+    const empty = must(
+      categoriesOf(competitors, 'F', SPARSE).find(
+        (code) =>
+          rankingFor(competitors, results, { season: SPARSE, gender: 'F', categoryCode: code })
+            .length === 0,
+      ),
+      'a category the chips offer and nobody raced in',
+    )
+
+    renderAt(ADDRESS(SPARSE, empty))
 
     expect(
       await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.'),
     ).toBeVisible()
+
+    /* And the same season without that band draws a table, so what is being
+       read is the filter rather than a screen that answers this to everything. */
+    cleanup()
+    renderAt(ADDRESS(SPARSE))
+
+    expect(within(await screen.findByRole('table')).getAllByRole('row').length).toBeGreaterThan(1)
   })
 
   it('leads from a row to the profile', async () => {

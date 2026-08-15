@@ -17,15 +17,23 @@ import { join } from 'node:path'
 
 const SHEET = blanked(readFileSync(join(process.cwd(), 'src/pages/Rankings.css'), 'utf-8'))
 
+/** The screen itself, so a rule can be checked against a class something
+ *  really wears rather than only against the sheet that writes it. */
+const SOURCE = readFileSync(join(process.cwd(), 'src/pages/Rankings.tsx'), 'utf-8')
+
 /** The sheet with its comments taken out. */
 function blanked(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '')
 }
 
-/** One rule's body inside the telephone's media query, by its selector. */
+/** One rule inside the telephone's media query, from the selector it is found
+ *  by back to the brace that opens it and on to the one that closes it. The
+ *  selector may be one of several the rule carries, which is why what comes
+ *  back starts at the beginning of the whole list rather than at the match. */
 function phoneRule(selector: string): string {
   const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
-  const at = phone.indexOf(`${selector} {`)
+  const found = phone.indexOf(selector)
+  const at = found === -1 ? -1 : phone.lastIndexOf(`}`, found) + 1
 
   expect(at, `${selector} is not in the telephone's rules`).toBeGreaterThan(-1)
 
@@ -60,13 +68,40 @@ describe('the row the three filters stand in', () => {
     expect(row).toContain('align-items: start')
   })
 
-  it('gives the width that is left to the search, and lets the chips give way', () => {
-    /* "Ime, prezime ili članski broj" has to fit inside the box it is written
-       in. The chips are as wide as the chips until the row runs out, and then
-       they shrink and scroll inside themselves: unshrinkable, ten of them
-       pushed the page sideways and the row's own scroll never engaged. */
-    expect(bodyOf('.rankings__field--search')).toContain('flex: 1 1')
+  it('puts the spacing the row gives away back on its last field', () => {
+    /* On a telephone the row of filters becomes `display: contents`, which
+       throws its own box away and its `margin-block-end` with it. What stood
+       between the filters and the table has to be put back on whatever is last
+       in the row.
 
+       That was the search box until it went (owner, 31.07.2026), and taking the
+       box out took the spacing with it: a review measured the gap on a 360px
+       screen fall from 24px to 12px, which is not a thing any test on this
+       portal could see. The rule names the two fields that can be last, and
+       `:last-child` is what keeps it from spacing a field with something under
+       it. */
+    const spacing = phoneRule('.rankings__field--wide:last-child')
+
+    expect(spacing).toContain('.rankings__field--categories:last-child')
+
+    expect(spacing).toContain('margin-block-end: var(--space-12)')
+    /* And the class it names is one an element actually wears. The rule it
+       replaced named `--search`, which after the deletion no element on the
+       portal carries, so it was correct, inert and invisible all at once. */
+    expect(SOURCE).toContain('rankings__field--categories')
+  })
+
+  it('lets the chips give way rather than push the row', () => {
+    /* The chips are as wide as the chips until the row runs out, and then they
+       shrink and scroll inside themselves: unshrinkable, ten of them pushed the
+       page sideways and the row's own scroll never engaged.
+
+       This asked one more thing of a search box that took whatever was left of
+       the row, until the box went (owner, 31.07.2026). The rule outlived it by
+       a commit, and a review found the pair: a stylesheet block that no element
+       on the portal wears, held in place by a test that made it look wanted. A
+       guard over something that is not drawn is worse than no guard, because
+       whoever comes to tidy the sheet has to delete the test to do it. */
     const chips = bodyOf('.rankings__field--categories')
 
     expect(chips).toContain('flex: 0 1 auto')

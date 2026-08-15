@@ -267,6 +267,13 @@ export function Rankings() {
   function change(next: Record<string, string>) {
     const merged = new URLSearchParams(params)
 
+    /* Dropped on the way past, rather than carried for ever. Somebody has a
+       standing bookmarked with `?trazi=` in it from before the search went
+       (owner, 31.07.2026), and nothing reads it: the table draws correctly and
+       the address goes on naming a control that is not on the screen, into
+       every filter pressed after it and every link shared from there. */
+    merged.delete('trazi')
+
     for (const [key, value] of Object.entries(next)) {
       if (value === '') {
         merged.delete(key)

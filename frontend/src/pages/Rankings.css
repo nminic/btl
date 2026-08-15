@@ -198,13 +198,18 @@
   }
 
   .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories,
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--wide {
     grid-column: 1 / -1;
   }
 
-  /* The row of filters gives its own spacing away with its box, so what stood
-     between it and the table has to be put back on the last field in it. */
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--search {
+  /* The row of filters gives its own spacing away with `display: contents`, so
+     what stood between it and the table has to be put back on the last field in
+     it. That was the search box until 31.07.2026, and taking the box out took
+     the spacing with it: a review measured the gap between the filters and the
+     table fall from 24px to 12px on a 360px screen. It is the chips now, which
+     are last on every screen that has them. */
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories:last-child,
+  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--wide:last-child {
     margin-block-end: var(--space-12);
   }
 }
@@ -270,26 +275,14 @@
   padding: var(--space-8);
 }
 
-/* Still used by five other screens, whose search box does take the rest of the
-   row: a list of members is filtered by anything, and the box is the screen's
-   one control. */
+/* The field that takes what is left of a row, on the six screens whose one
+   control is a box: the competitors, three administration lists, the way back
+   on a queue, and the picture on a profile. Not this screen any more, whose
+   search went on 31.07.2026. */
 .rankings__field--wide {
   flex: 1 1 14rem;
 }
 
-/* Everything left of the row, so what the box asks for fits inside it: "Ime,
-   prezime ili članski broj" is twenty nine characters and a box narrower than
-   that reads as one that takes a word (owner, 11.08.2026). `min-inline-size: 0`
-   because a flex item will not shrink below the width its content asks for
-   without it, and an input's content width is its `size` attribute. */
-.rankings__field--search {
-  flex: 1 1 16rem;
-  min-inline-size: 0;
-}
-
-.rankings__field--search input {
-  inline-size: 100%;
-}
 
 /* The same row of buttons the results on a profile use (Profile.css), and for
    the same reason: every category worth seeing at once, one of them pressed.
