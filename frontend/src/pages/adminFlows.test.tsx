@@ -2335,6 +2335,12 @@ describe('the six queues read from the file', () => {
 
     expect(provenance).toContain(sr.app.name)
     expect(provenance).toContain(formatShortDate(day, 'sr'))
+    /* And the sentence itself, which is the only part of the message that tells
+       the member anything they did not already know: that the team exists and
+       that they are the one who runs it. Emptied, it left all 1908 tests green,
+       so a member could be told their team was accepted by a message with
+       nothing in it. */
+    expect(screen.getByText(/Ti si njegov organizator/)).toBeVisible()
   })
 
   it('leads from one queue straight to the next', async () => {

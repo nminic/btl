@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -368,52 +368,32 @@ describe('the biography, at the moment of joining', () => {
     expect(screen.queryByText(/nov tekst|ponovo|opet/)).not.toBeInTheDocument()
   })
 
-  it('has nowhere to send a second one, which is what lets the sentence stop there', async () => {
-    /* The other half of the test above, and it has taken four attempts to
-       measure the right thing.
+  it('promises only what the portal does, and no more than one sentence of it', () => {
+    /* Four attempts at mechanising this, and the fourth is the reason there is
+       no fifth.
      *
-       Written as „these five words are not on the screen", a review put the same
-       promise back in different words and all 1906 tests passed. Written as „one
-       form definition has a box for a biography" it was no better: the panel the
-       owner decided on the same day uses no form definition, so building it would
-       have left this green. Written as „no source file contains `kind: 'bio'`" it
-       was weaker still, and a review proved it: the same panel written as
-       `const kind = SORT`, or with double quotes, passed all thirty five tests
-       in the file. A guard that reads source text guards the spelling.
+       „These five words are not on the screen" was beaten by a review putting
+       the same promise back in different words. „One form definition has a box
+       for a biography" was beaten because the panel the owner decided on uses no
+       form definition. „No source file contains `kind: 'bio'`" was beaten by
+       `const kind = SORT`, and by double quotes: a guard that reads source text
+       guards the spelling. Counting the controls on Settings was beaten twice
+       over, because `findAllByRole` settles on the first tick with any match at
+       all; and when that was fixed by waiting for the picture and giving the
+       loop a turn, a review beat it again with a panel two turns out. That last
+       one is the one that matters: a panel whose clock starts with the picture's
+       is exactly the shape the real one has. A guard that misses the case it was
+       written for is worse than none, because it reads as cover.
      *
-       So it is asked of the screen. Settings is where anything a member sends
-       for approval lives, and everything sent from there is sent by a control of
-       one name. While there is exactly one of them and it belongs to the
-       picture, the sentence above may stop where it stops. The day a second
-       appears, whatever it is called and however it is written, this fails, and
-       that is when the promise goes back in. */
-    renderAt('/sr/podesavanja', 'competitor', '000001')
-
-    /* Waited for by name before anything is counted, and this is the whole
-       difference between a guard and a green light. `findAllByRole` settles on
-       the first tick that has any match at all, so counting straight away counts
-       whatever happens to be on screen first: a review built a second panel one
-       tick behind the picture and the count stayed at one, and built one a tick
-       ahead of it and the count stayed at one again, the other way round. Both
-       times two controls were on the screen a moment later. */
-    await screen.findByRole('region', { name: 'Profilna slika' })
-    /* And then the screen is let finish arriving before anything is counted.
-       Waiting for the picture is not enough on its own: a panel whose own effect
-       mounts it one tick behind the picture is not on the screen yet at the
-       moment the picture is, and a review built exactly that and watched the
-       count stay at one. A turn of the loop is what „the screen has finished
-       arriving" actually is here. */
-    await act(async () => {
-      await new Promise((settled) => {
-        setTimeout(settled, 0)
-      })
-    })
-
-    const sending = screen.getAllByRole('button', { name: 'Pošalji na odobrenje' })
-
-    expect(sending).toHaveLength(1)
-    expect(must(first(sending).closest('section'), 'the panel the control belongs to')).toHaveAccessibleName(
-      'Profilna slika',
+       So the promise is held as a promise, exactly. The hint says a moderator
+       reads the text and that a refusal comes back with a reason, and it stops
+       there, because that is all the portal does today. It must not say a member
+       writes another until one can. What connects the two is written down rather
+       than mechanised (PENDING R10): the branch that builds the panel rewrites
+       this sentence, and it cannot land without meeting this test, because this
+       test spells the sentence out. */
+    expect(sr.registration.bioHint).toBe(
+      'Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci.',
     )
   })
 })
