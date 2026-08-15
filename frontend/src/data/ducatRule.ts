@@ -1,4 +1,6 @@
 import { formatNumber } from '../i18n/format'
+import { FIRST_SEASON } from './season'
+export { FIRST_SEASON }
 import type { Gender } from './types'
 
 /* A ducat is a rule kept as data, never as code (ADL A12).
@@ -76,10 +78,10 @@ export type DucatPeriod = 'always' | 'month' | 'season'
  *  that still reads at the smallest size a ducat is drawn at. */
 export type DucatTier = 1 | 2 | 3 | 4 | 5
 
-/** The first season anything is counted for, for the families that go by month
- *  or by season. The rest read every race on a profile, including the ones run
- *  before the league existed (PDL P16). */
-export const FIRST_SEASON = 2027
+/* The first season the families that go by month or by season count anything
+   for. The rest read every race on a profile, including the ones run before the
+   league existed (PDL P16). The year itself is the league's and lives with the
+   league's own dates (data/season.ts), because a second rule reads it too. */
 
 export type DucatFamily = {
   id: string

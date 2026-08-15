@@ -1,5 +1,5 @@
 import { categoryCodeFor } from './categories'
-import { FIRST_SEASON } from './ducatRule'
+import { FIRST_SEASON } from './season'
 import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
@@ -289,9 +289,19 @@ export function totalsByMember(results: Result[]): Map<string, Totals> {
  * the portal arrives already barred from a category the league has not run once.
  *
  * **The best single season, never the sum of them.** The rule is that no
- * official season has been *finished* with twelve or more, so somebody who takes
+ * official season has been finished with twelve or more, so somebody who takes
  * four points a season for five years is still a beginner: the threshold
  * measures what was done in a season, not how long somebody has been about.
+ *
+ * **The running season is counted too, and that is deliberate.** Points never go
+ * down, so a season already over the threshold is certain to finish over it, and
+ * waiting for the year to end would leave the category open to somebody who has
+ * plainly left it. The gap is the other way round, and it is real: a member who
+ * renews in October with eleven points is told the category is open, crosses the
+ * threshold in December, and nothing asks again, because the window shuts on 31
+ * December and the choice is not kept anywhere. Nothing to fix here, and nothing
+ * that can be fixed here: it is one check at the close of a season, on a record
+ * of what was chosen, and neither exists until F5. Written down in PENDING.
  *
  * Nobody has an official season yet, so this answers zero for everybody today,
  * which is exactly what the decision says it should: in 2027 the category is

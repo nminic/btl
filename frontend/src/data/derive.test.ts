@@ -23,6 +23,7 @@ import {
   withPlaces,
   monthFrom,
 } from './derive'
+import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import type { BtlEvent, Competitor, Race, RaceCategory, Result, Team } from './types'
 
@@ -1164,5 +1165,28 @@ describe('the best of a member`s official seasons', () => {
 
   it('answers nought for somebody who has run nothing at all', () => {
     expect(bestOfficialSeason([], '000001')).toBe(0)
+  })
+
+  it('keeps the half point that decides it, and does not round to the threshold', () => {
+    /* Every other figure here is a whole number, and real points never are: one
+       member`s season in the seed comes to 49.400000000000006. A review rounded
+       the answer and all 1907 tests stayed green, which would take somebody who
+       finished a season with 11,60 and shut a category the decision leaves open
+       to them. The threshold is measured to the point, on both sides of it. */
+    const nearly = [result('000001', '2027-03-01', 7.3), result('000001', '2027-08-01', 4.3)]
+    const just = [result('000002', '2027-03-01', 7.3), result('000002', '2027-08-01', 4.7)]
+
+    expect(bestOfficialSeason(nearly, '000001')).toBeCloseTo(11.6, 10)
+    expect(firstSeasonAllowed(bestOfficialSeason(nearly, '000001'))).toBe(true)
+    expect(firstSeasonAllowed(bestOfficialSeason(just, '000002'))).toBe(false)
+  })
+
+  it('counts every season from the first official one, with no end to them', () => {
+    /* The year was pinned from below and not from above, so a mutation that
+       quietly stopped counting after 2029 passed the whole suite. The league has
+       no last season. */
+    const late = [result('000001', '2033-06-01', 12)]
+
+    expect(bestOfficialSeason(late, '000001')).toBe(12)
   })
 })

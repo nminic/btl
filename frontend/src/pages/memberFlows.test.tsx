@@ -950,7 +950,7 @@ describe('the transfer window and renewal', () => {
     await screen.findByRole('heading', { name: /Obnova članarine/ })
 
     expect(screen.getByLabelText('U početničkoj kategoriji')).toBeEnabled()
-    expect(screen.getByText(/Početnička kategorija ti je još otvorena/)).toBeVisible()
+    expect(screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/)).toBeVisible()
   })
 
   it('closes it to somebody who has finished one official season over the threshold', async () => {
@@ -967,7 +967,7 @@ describe('the transfer window and renewal', () => {
 
         expect(screen.getByLabelText('U početničkoj kategoriji')).toBeDisabled()
         expect(
-          screen.getByText(/Početnička kategorija ti je zatvorena, jer imaš najmanje 12 bodova/),
+          screen.getByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
         ).toBeVisible()
       },
     )
@@ -992,7 +992,7 @@ describe('the transfer window and renewal', () => {
     renderMembershipOn('2026-11-01', '000031')
 
     expect(await screen.findByLabelText('U početničkoj kategoriji')).toBeEnabled()
-    expect(screen.getByText(/Početnička kategorija ti je još otvorena/)).toBeVisible()
+    expect(screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/)).toBeVisible()
   })
 })
 
