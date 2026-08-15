@@ -2339,8 +2339,15 @@ describe('the six queues read from the file', () => {
        the member anything they did not already know: that the team exists and
        that they are the one who runs it. Emptied, it left all 1908 tests green,
        so a member could be told their team was accepted by a message with
-       nothing in it. */
-    expect(screen.getByText(/Ti si njegov organizator/)).toBeVisible()
+       nothing in it. And the name of the team is read here as well: emptied, it
+       left the same 1908 green, and the member would have been told „Tvoj
+       predlog tima „" je prihvaćen". The name in the subject is checked only in
+       passing, by the link the message is opened from. */
+    expect(
+      screen.getByText(
+        'Tvoj predlog tima „Timočka trkačka družina" je prihvaćen. Ti si njegov organizator.',
+      ),
+    ).toBeVisible()
   })
 
   it('leads from one queue straight to the next', async () => {

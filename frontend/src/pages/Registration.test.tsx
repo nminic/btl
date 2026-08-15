@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -329,6 +331,23 @@ describe('the address, at the moment of joining', () => {
   })
 })
 
+/** Every production source file on the portal, so a claim about what the portal
+ *  can do is measured over all of it rather than over one folder. */
+function sources(): { path: string; code: string }[] {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? walk(join(dir, entry.name))
+        : entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')
+          ? [join(dir, entry.name)]
+          : [],
+    )
+
+  return walk(join(process.cwd(), 'src'))
+    .filter((path) => !path.includes('.test.'))
+    .map((path) => ({ path, code: readFileSync(path, 'utf-8') }))
+}
+
 describe('the biography, at the moment of joining', () => {
   it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
@@ -385,16 +404,30 @@ describe('the biography, at the moment of joining', () => {
        is exactly the shape the real one has. A guard that misses the case it was
        written for is worse than none, because it reads as cover.
      *
-       So the promise is held as a promise, exactly. The hint says a moderator
-       reads the text and that a refusal comes back with a reason, and it stops
-       there, because that is all the portal does today. It must not say a member
-       writes another until one can. What connects the two is written down rather
-       than mechanised (PENDING R10): the branch that builds the panel rewrites
-       this sentence, and it cannot land without meeting this test, because this
-       test spells the sentence out. */
+       So the promise is held as a promise, exactly: the hint is spelt out here,
+       word for word. That is a change of the dictionary nobody can make by
+       accident, and the branch that builds the panel has to come through it.
+     *
+       And the net is back beside it, because taking it away was worse than
+       keeping it. A review measured what the two actually catch: the source scan
+       catches a panel written plainly, which is the shape most likely to be
+       written, and misses one built through a variable or a second quotation
+       mark; the spelt sentence catches nobody at all, it only catches a change of
+       the words. Neither is a wall. Together they are a net with two holes rather
+       than one with all of them, and a hole named in a comment is a hole somebody
+       can step over. */
     expect(sr.registration.bioHint).toBe(
       'Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci.',
     )
+
+    /* What it does not catch is named, so nobody reads it as cover: a panel that
+       builds the sort through a variable, or writes it in double quotes, walks
+       past this. What it does catch is the plain one. */
+    const sending = sources()
+      .filter(({ code }) => code.includes("kind: 'bio'") || code.includes('kind: "bio"'))
+      .map(({ path }) => path)
+
+    expect(sending).toEqual([])
   })
 })
 
