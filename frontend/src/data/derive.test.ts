@@ -9,6 +9,7 @@ import {
   monthGrid,
   eventsInMonth,
   monthsWithEvents,
+  bestOfficialSeason,
   bestSingleRaces,
   rankingFor,
   rankMembers,
@@ -1110,5 +1111,58 @@ describe('categoriesAt', () => {
 
   it('says nothing for an event whose races nobody has entered', () => {
     expect(categoriesAt(event('one'), [])).toEqual([])
+  })
+})
+
+describe('the best of a member`s official seasons', () => {
+  /* What decides whether the beginners' category is still open (PDL P7, owner
+   * 11.08.2026). Both halves of the rule are the owner's words, so both are
+   * measured here rather than left to the screen that asks the question. */
+
+  it('counts nothing run before the league`s first official season', () => {
+    /* Verbatim: „gledaju se samo zvanične BTL sezone za pravilo od 12 poena u
+       prethodnoj, tako da u prvoj sezoni u teoriji svi mogu da odu u Prvu
+       Sezonu." The history imported from 2010 to 2026 is somebody's own record
+       of their running (P26) and it disqualifies nobody. */
+    const history = [
+      result('000001', '2019-05-05', 186.41),
+      result('000001', '2024-04-04', 74.2),
+      result('000001', '2026-12-31', 40),
+    ]
+
+    expect(bestOfficialSeason(history, '000001')).toBe(0)
+  })
+
+  it('takes the best single season and never the sum of several', () => {
+    /* The rule is that no official season has been finished with twelve or
+       more, so four points a season for five years is still a beginner: the
+       threshold measures a season, not how long somebody has been about. Twenty
+       altogether here, and the best season is eight. */
+    const spread = [
+      result('000001', '2027-03-01', 5),
+      result('000001', '2027-09-01', 3),
+      result('000001', '2028-03-01', 8),
+      result('000001', '2029-03-01', 4),
+    ]
+
+    expect(bestOfficialSeason(spread, '000001')).toBe(8)
+  })
+
+  it('adds up the races within one season', () => {
+    /* A season is finished with what was taken across it, so two races of seven
+       carry that member past the threshold even though neither does alone. */
+    const one = [result('000001', '2027-03-01', 7), result('000001', '2027-08-01', 7)]
+
+    expect(bestOfficialSeason(one, '000001')).toBe(14)
+  })
+
+  it('reads only the member asked about', () => {
+    const two = [result('000001', '2027-03-01', 40), result('000002', '2027-03-01', 3)]
+
+    expect(bestOfficialSeason(two, '000002')).toBe(3)
+  })
+
+  it('answers nought for somebody who has run nothing at all', () => {
+    expect(bestOfficialSeason([], '000001')).toBe(0)
   })
 })

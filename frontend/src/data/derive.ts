@@ -1,4 +1,5 @@
 import { categoryCodeFor } from './categories'
+import { FIRST_SEASON } from './ducatRule'
 import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
@@ -270,6 +271,47 @@ export function totalsByMember(results: Result[]): Map<string, Totals> {
   }
 
   return totals
+}
+
+/**
+ * The most points a member has taken in any one official season.
+ *
+ * This is the figure the beginners' category is decided by, and both halves of
+ * it are the owner's decision rather than a way of counting (PDL P7,
+ * 11.08.2026).
+ *
+ * **Only official seasons count**, which is 2027 onwards. Verbatim: „gledaju se
+ * samo zvanične BTL sezone za pravilo od 12 poena u prethodnoj, tako da u prvoj
+ * sezoni u teoriji svi mogu da odu u Prvu Sezonu." The results imported from
+ * 2010 to 2026 are somebody's own record of their running, kept so that a
+ * profile is not empty on the day the league starts (P26), and they disqualify
+ * nobody. Counted the other way, every one of the thirty members carried into
+ * the portal arrives already barred from a category the league has not run once.
+ *
+ * **The best single season, never the sum of them.** The rule is that no
+ * official season has been *finished* with twelve or more, so somebody who takes
+ * four points a season for five years is still a beginner: the threshold
+ * measures what was done in a season, not how long somebody has been about.
+ *
+ * Nobody has an official season yet, so this answers zero for everybody today,
+ * which is exactly what the decision says it should: in 2027 the category is
+ * open to all.
+ */
+export function bestOfficialSeason(results: Result[], memberNumber: string): number {
+  const seasons = new Map<number, number>()
+
+  for (const result of results) {
+    const season = seasonOf(result)
+
+    if (result.memberNumber === memberNumber && season >= FIRST_SEASON) {
+      seasons.set(season, (seasons.get(season) ?? 0) + result.points)
+    }
+  }
+
+  /* Nought where there is nothing, rather than the smallest of no numbers: a
+     member with no official season has taken no points in one, and that is the
+     ordinary case for everybody until 2027 is over. */
+  return Math.max(0, ...seasons.values())
 }
 
 export type TeamRow = {
