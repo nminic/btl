@@ -362,6 +362,14 @@ describe('the biography, at the moment of joining', () => {
 
     expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
     expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
+    /* And it stops there. The first version of this sentence went on to say the
+       member sends a new text, which no screen on the portal lets them do: the
+       biography is written once, at joining, and there is nowhere to write it
+       again (pages/member/Settings.tsx has the picture and nothing else). A
+       review measured it, nought textarea elements on that screen. Promising it
+       is the very fault this branch went in to fix (PENDING R10), and it took a
+       round to make in the opposite direction. */
+    expect(screen.queryByText(/šalješ nov tekst/)).not.toBeInTheDocument()
   })
 })
 

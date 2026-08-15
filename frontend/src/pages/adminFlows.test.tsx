@@ -2057,13 +2057,24 @@ describe('the six queues read from the file', () => {
          backwards, on both screens this round had just corrected. Every other
          test compares a placeholder against `sr.review.*`, so they all move
          together with the values and none of them can see it. */
-      expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog')
-      expect(sr.review.reasonKeptPlaceholder).toContain('još ne ide')
-      expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
-
-      /* And the queue that sends is the racing profile and only it. */
+      /* The queue that sends is the racing profile and only it. */
       expect(sends, one.id).toBe(one.id === 'profiles')
     }
+
+    /* And the words themselves, once rather than once per queue: these say
+       nothing about any single one of them.
+     *
+       **Brittle on purpose, which is worth knowing before rewriting either
+       sentence.** „Član dobija tvoj razlog" written as „Član će dobiti tvoj
+       razlog" fails this, and so does „još ne ide" written as „se još ne šalje",
+       although neither changes the meaning. Anything looser cannot see the thing
+       it exists for: a review swapped the two values in the dictionary and every
+       other test moved with them, since they all compare a placeholder against
+       `sr.review.*` rather than against words. Reword freely, and change these
+       three lines with the sentence. */
+    expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog')
+    expect(sr.review.reasonKeptPlaceholder).toContain('još ne ide')
+    expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
   })
 
   it('writes it to that member and to nobody else, least of all to everybody', async () => {

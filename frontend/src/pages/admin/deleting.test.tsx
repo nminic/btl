@@ -260,8 +260,12 @@ describe('one decision for a whole queue', () => {
       /* The id of each waiting biography, read off the queue before the sweep so
          the assertion below can name them rather than count them. */
       const queue = JSON.parse(readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'))
+      /* Both sorts, and not the biographies alone. Written for biographies only,
+         this lost the cover the old counting assertion had for pictures by
+         accident: a review made the sweep skip every photograph and all 1906
+         tests passed. One decision for a whole queue means the whole queue. */
       const ids = queue
-        .filter((one: { queue: string; kind: string }) => one.queue === 'profiles' && one.kind === 'bio')
+        .filter((one: { queue: string }) => one.queue === 'profiles')
         .map((one: { id: string }) => one.id)
 
       const texts = cards.map((one) =>
