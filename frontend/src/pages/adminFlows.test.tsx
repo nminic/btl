@@ -1992,6 +1992,53 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
   })
 
+  it('writes it to that member and to nobody else, least of all to everybody', async () => {
+    /* The half the two tests below cannot see. Each of them signs in as the very
+       member whose item is refused, and an inbox shows a member what was written
+       to them as well as what was written to the whole league, which is the empty
+       recipient (SessionProvider). So a refusal addressed to nobody still lands in
+       front of the one person looking, and both tests pass: a review changed the
+       recipient to an empty string and all 1902 of them did.
+     *
+       This one refuses the biography of one member and then reads the inbox of
+       another, which is the only way to tell what was written to somebody from
+       what was written to everybody. It is the fault canSendBack exists to
+       prevent, so it is worth a test that can see it. */
+    const user = setupUser()
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000013')
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
+
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Vukašin Todorović') !== null),
+        'a waiting card carrying the biography of Vukašin Todorović',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Prepisano sa tuđeg profila.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    /* The refusal really happened, said before anything is read about where it
+       went. Without this the test can pass because nothing was refused at all,
+       which is how its first two versions passed while the recipient was an
+       empty string. */
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+
+    /* Read as somebody else, in the same visit, and through the control the
+       member would press rather than by pushing an address: the two are not the
+       same screen, and the first version of this walked to one that never holds
+       messages, so the assertion could not fail either way. */
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+    /* This inbox is not simply empty: the league writes to everybody, and those
+       are exactly the messages an empty recipient is mixed up with. */
+    expect((await screen.findAllByRole('link')).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Tekst o sebi je vraćen/)).not.toBeInTheDocument()
+  })
+
   it('leaves the reason for a returned picture in the inbox of the member', async () => {
     const user = setupUser()
     /* Signed in as the member whose picture is waiting, because the prototype has

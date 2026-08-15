@@ -51,8 +51,11 @@ import './Verification.css'
  */
 
 /** Whether a queue has a second decision that hands the work back to its
- *  author. Five of the seven, plus the pictures, which hand back an instruction
- *  (queues.ts). */
+ *  author. Six of the seven, and both sorts on the racing profile: a text is
+ *  refused with a reason and a picture with an instruction precise enough to
+ *  work from. The comments are the one exception, deleted rather than returned
+ *  (queues.ts). Said as "five plus the pictures" until 15.08.2026, which was
+ *  true while a biography was published rather than refused. */
 function handsBack(queue: Queue, item: PendingItem): boolean {
   const outcome = outcomeFor(queue, item)
 
@@ -671,7 +674,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNotePlaceholder'
                                 : outcomeFor(queue, one) === 'instruct'
                                   ? 'review.instructionPlaceholder'
-                                  : 'review.reasonPlaceholder'
+                                  : returned(queue, one) === null
+                                    ? 'review.reasonKeptPlaceholder'
+                                    : 'review.reasonPlaceholder'
                             }
                             optional={outcomeFor(queue, one) === 'delete'}
                             aboutKey={
