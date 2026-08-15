@@ -24,12 +24,12 @@ import { useFilterParams } from '../app/useFilterParams'
 type Filters = {
   gender: Gender
   category: string | undefined
-  search: string
   seasonParam: string | null
 }
 
-/* Split out and memoised: the standing sums thousands of results, and without
- * this it was recomputed on every keystroke in the search box. */
+/* Split out and memoised: the standing sums thousands of results, and a
+ * category pressed is a whole table counted again. It was worse: until the
+ * search box went (owner, 31.07.2026) this ran on every letter typed. */
 function Standing({
   competitors,
   results,
@@ -42,7 +42,7 @@ function Standing({
   onChange: (next: Record<string, string>) => void
 }) {
   const { locale, t } = useI18n()
-  const { gender, category, search, seasonParam } = filters
+  const { gender, category, seasonParam } = filters
   const today = useToday()
   /* Whoever is reading, so their own row is marked (owner, 05.08.2026). Null for
      a visitor, and then no row is anybody's. */
@@ -73,8 +73,8 @@ function Standing({
   const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
 
   const rows = useMemo(
-    () => rankingFor(field, results, { season, gender, categoryCode: category, search }),
-    [field, results, season, gender, category, search],
+    () => rankingFor(field, results, { season, gender, categoryCode: category }),
+    [field, results, season, gender, category],
   )
 
   /* No sentence under the heading (owner, 04.08.2026). It said that the 2027
@@ -106,10 +106,10 @@ function Standing({
         </div>
       </div>
 
-      {/* Season, categories and search in one row, their names on one line and
-          their controls on the line below it (owner, 11.08.2026). The three
-          were on two rows with the categories under the other two, which put
-          three controls of one purpose at three heights.
+      {/* Season and categories in one row, their names on one line and their
+          controls on the line below it (owner, 11.08.2026). They were on two
+          rows with the categories under the season, which put two controls of
+          one purpose at two heights.
 
           The categories are chosen by pressing one rather than out of a list
           that has to be opened first: a category is one of eight or so, all of
@@ -119,8 +119,11 @@ function Standing({
           it and lives on the width of a telephone, a label on a control is read
           on its own.
 
-          The search takes whatever is left, because what it asks for is
-          "Ime, prezime ili članski broj" and that has to fit inside it. */}
+          There were three fields here and one of them was a search box, which
+          the owner had it taken out on 31.07.2026: it was the most expensive
+          thing on the screen, since the whole standing was summed again on
+          every letter typed, and it answered a question the list of
+          competitors already answers (PDL P12). */}
       <div className="rankings__filters">
         <label className="rankings__field">
           <span>{t('rankings.season')}</span>
@@ -169,16 +172,6 @@ function Standing({
             ))}
           </div>
         </div>
-
-        <label className="rankings__field rankings__field--search">
-          <span>{t('rankings.search')}</span>
-          <input
-            type="search"
-            value={search}
-            placeholder={t('rankings.searchPlaceholder')}
-            onChange={(e) => onChange({ trazi: e.target.value })}
-          />
-        </label>
       </div>
 
       {/* Said of the people counted, not of a word that covers both (owner,
@@ -297,7 +290,6 @@ export function Rankings() {
             filters={{
               gender: params.get('pol') === 'z' ? 'F' : 'M',
               category: params.get('kategorija') ?? undefined,
-              search: params.get('trazi') ?? '',
               seasonParam: params.get('sezona'),
             }}
             onChange={change}

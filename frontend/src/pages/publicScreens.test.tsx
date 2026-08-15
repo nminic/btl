@@ -4,6 +4,7 @@ import { cleanup, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { fieldFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
+import sr from '../i18n/sr.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -217,7 +218,7 @@ describe('Rankings', () => {
     expect(screen.getByLabelText('Sezona')).toHaveValue('2019')
   })
 
-  it('narrows by category and by search, and lets both go again', async () => {
+  it('narrows by category, and lets it go again', async () => {
     const user = setupUser()
     renderAt('/sr/tabela?sezona=2020')
 
@@ -229,45 +230,37 @@ describe('Rankings', () => {
 
     await user.click(categories.getByRole('button', { name: 'Sve' }))
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
-
-    await user.type(screen.getByLabelText('Pretraga'), '000007')
-    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
   })
 
-  it('keeps the real place when the search narrows the table', async () => {
-    /* The number in the first column is the place the standing gave the row,
-       not the row it ended up drawn in. Searching narrows the view and does not
-       re-rank (PDL P12), so somebody who stands seventh is seventh in a table
-       that shows them alone.
-
-       This is the guard the whole „read the place, do not count the rows" rule
-       hangs on. Everywhere else on the portal the two happen to agree, because
-       the boards are drawn whole from the top; here they part, and a table that
-       numbered its own rows would say „1" for a member who is not first. */
-    const user = setupUser()
+  it('offers no search at all, because the standing is not searched', async () => {
+    /* Owner, 31.07.2026: „Pretraga po imenu na rang listama se briše." It was
+       the most expensive thing on the screen, since the whole standing was
+       summed again on every letter typed, and it answered a question the list
+       of competitors already answers with its own search (PDL P12).
+     *
+       A guard rather than a deletion left to speak for itself. The decision was
+       taken on 31.07.2026 and PDL P12 has read „obrisana" ever since, while the
+       box stayed on the screen for a fortnight: nothing said otherwise, because
+       nothing was looking. Both the control and the words it used are asked
+       after, since a label that comes back is a control that came back.
+     *
+       What went with it is the one case on this screen where a place and a row
+       number parted: searching narrowed the view without re-ranking, so the
+       seventh stood alone reading „7". The rule that a table shows the place it
+       was given rather than counting its own rows is now held where it is
+       decided, over the ladder itself (data/derive.test.ts). */
     renderAt('/sr/tabela?sezona=2020')
 
-    const wholeTable = within(await screen.findByRole('table'))
-    const rows = wholeTable.getAllByRole('row')
-    /* The last of them, so the place is as far from the row number as this
-       season allows. The head counts as a row, hence the two. */
-    const last = must(rows[rows.length - 1], 'the last row of the standing')
-    const place = must(
-      within(last).getAllByRole('cell')[0]?.textContent,
-      'the place in the last row',
-    )
-    const who = must(within(last).getAllByRole('cell')[1]?.textContent, 'who holds it')
+    /* Waited for, and that is not a formality. Written without it this test
+       passed while a search box was put back on the screen: the standing is
+       fetched, so nothing at all is drawn on the first tick and „there is no
+       search here" is true of an empty page. An absence asserted before the
+       thing exists is not an assertion. */
+    await screen.findByRole('table')
 
-    expect(place).not.toBe('1')
-
-    await user.type(screen.getByLabelText('Pretraga'), must(who, 'a name to search for').trim())
-
-    const narrowed = within(screen.getByRole('table')).getAllByRole('row')
-
-    expect(narrowed).toHaveLength(2)
-    expect(within(must(narrowed[1], 'the only row left')).getAllByRole('cell')[0]).toHaveTextContent(
-      place,
-    )
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Pretraga')).not.toBeInTheDocument()
+    expect(Object.keys(sr.rankings)).not.toContain('search')
   })
 
   it('names the beginners by their word, on the buttons and in the table alike', async () => {
@@ -324,7 +317,11 @@ describe('Rankings', () => {
   })
 
   it('says so when a filter leaves nothing', async () => {
-    renderAt('/sr/tabela?sezona=2020&trazi=nepostojeci')
+    /* A category chosen and then a season moved to, which is the way a reader
+       actually empties this table: the category stays in the address while the
+       field changes under it. In 2022 one woman raced and she was 54, so the
+       band above her holds nobody. */
+    renderAt('/sr/tabela?sezona=2022&pol=z&kategorija=F55%2B')
 
     expect(
       await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.'),
@@ -348,12 +345,13 @@ describe('Rankings', () => {
  * back to what it said is a change nobody would notice for a month.
  */
 describe('what the filters are called', () => {
-  it('puts the three filters in one row, each a name over its control', async () => {
-    /* Season, then categories, then search to the end of the width (owner,
-       11.08.2026). jsdom computes no layout, so what is held is the order and
-       the shape the layout is built out of: three fields in one row, each one a
-       name over a control. A row that reads right and is built some other way
-       is a row that stops reading right on the next screen that copies it. */
+  it('puts both filters in one row, each a name over its control', async () => {
+    /* Season, then categories (owner, 11.08.2026). There was a third, a search
+       box at the end of the width, until he had it taken out on 31.07.2026.
+       jsdom computes no layout, so what is held is the order and the shape the
+       layout is built out of: two fields in one row, each one a name over a
+       control. A row that reads right and is built some other way is a row that
+       stops reading right on the next screen that copies it. */
     renderAt('/sr/tabela?sezona=2020')
 
     await screen.findByRole('table')
@@ -361,10 +359,7 @@ describe('what the filters are called', () => {
     const row = must(document.querySelector('.rankings__filters'), 'the row of filters')
     const named = [...row.children].map((one) => (one.querySelector('span')?.textContent ?? ''))
 
-    expect(named).toEqual(['Sezona', 'Kategorija', 'Pretraga'])
-    /* And the search is the one that gives, so the words it suggests typing fit
-       inside it: the other two are as wide as what they hold. */
-    expect(at([...row.children], 2).className).toContain('rankings__field--search')
+    expect(named).toEqual(['Sezona', 'Kategorija'])
   })
 
   it('names the category in full, and offers all of them as Sve', async () => {
@@ -378,40 +373,44 @@ describe('what the filters are called', () => {
     expect(categories.getAllByRole('button').map((one) => one.textContent)[0]).toBe('Sve')
   })
 
-  it('calls the search Pretraga and says what it takes in the field', async () => {
-    renderAt('/sr/tabela?sezona=2019')
-
-    const search = await screen.findByLabelText('Pretraga')
-
-    expect(search).toHaveAttribute('placeholder', 'Ime, prezime ili članski broj')
-  })
-
   it('counts women as takmičarke, in the case the number asks for', async () => {
     /* One, a few and many are three different words in Serbian, and the portal
-       has `Intl.PluralRules` for exactly this. Driven through the search box,
-       because no season happens to hold all three counts. */
+       has `Intl.PluralRules` for exactly this.
+     *
+       Driven through the season, which is a control that is still there. It used
+       to be driven through the search box, on the reasoning that no season holds
+       all three counts, and that reasoning was simply wrong: 2022 holds one
+       woman, 2023 holds two and 2019 holds nine. The counts are read off the
+       data below rather than written out here, so a change in the seed says so
+       instead of passing. */
     const user = setupUser()
+    const women = (await loadResource<Competitor[]>('competitors')).filter(
+      (one) => one.gender === 'F',
+    )
+    const results = await loadResource<Result[]>('results')
+    const raced = (season: number) =>
+      new Set(
+        results
+          .filter(
+            (one) =>
+              one.date.startsWith(String(season)) &&
+              women.some((her) => her.memberNumber === one.memberNumber),
+          )
+          .map((one) => one.memberNumber),
+      ).size
+
     renderAt('/sr/tabela?sezona=2019&pol=z')
 
     const count = async () => must((await screen.findByText(/takmičar/)).textContent, 'the count')
-    const search = await screen.findByLabelText('Pretraga')
+    const seasons = await screen.findByLabelText('Sezona')
 
-    expect(await count()).toBe('9 takmičarki')
+    expect(await count()).toBe(`${String(raced(2019))} takmičarki`)
 
-    /* One, and then a few. Searching narrows the same list, so all three cases
-       are read off one season without needing a season that happens to hold
-       them: "ni" leaves one woman in 2019 and "ka" leaves two. */
-    await user.clear(search)
-    await user.type(search, 'ni')
-    expect(await count()).toBe('1 takmičarka')
+    await user.selectOptions(seasons, '2022')
+    expect(await count()).toBe(`${String(raced(2022))} takmičarka`)
 
-    await user.clear(search)
-    await user.type(search, 'ka')
-    expect(await count()).toBe('2 takmičarke')
-
-    await user.clear(search)
-    await user.type(search, 'zzzzzz')
-    expect(await count()).toBe('0 takmičarki')
+    await user.selectOptions(seasons, '2023')
+    expect(await count()).toBe(`${String(raced(2023))} takmičarke`)
   })
 
   it('counts men as takmičari, which is the other word entirely', async () => {

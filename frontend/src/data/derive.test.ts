@@ -166,28 +166,6 @@ describe('rankingFor', () => {
     expect(rows.map((row) => row.competitor.memberNumber)).toEqual(['000004'])
   })
 
-  it('searches by name and by member number, keeping the real position', () => {
-    const byName = rankingFor(competitors, results, {
-      season: 2027,
-      gender: 'M',
-      search: 'vukašin',
-    })
-    const byNumber = rankingFor(competitors, results, {
-      season: 2027,
-      gender: 'M',
-      search: '000001',
-    })
-
-    expect(byName).toHaveLength(1)
-    // Position 3 and not 1: searching narrows the view, it does not re-rank.
-    expect(first(byName).position).toBe(3)
-    expect(first(byNumber).competitor.memberNumber).toBe('000001')
-  })
-
-  it('ignores an empty search', () => {
-    expect(rankingFor(competitors, results, { season: 2027, gender: 'M', search: '  ' })).toHaveLength(3)
-  })
-
   it('settles a tie the whole ladder leaves standing by the member number', () => {
     // Identical in points, kilometres, races and vertical, so nothing in PDL P12
     // separates them until the last rung: the lower member number goes ahead and

@@ -189,7 +189,6 @@ export type RankingFilter = {
   season: number
   gender: Gender
   categoryCode?: string
-  search?: string
 }
 
 /** The ladder of the general standing (PDL P12): points, kilometres, more
@@ -221,8 +220,6 @@ export function rankingFor(
     totals.set(result.memberNumber, addToTotals(totals.get(result.memberNumber) ?? EMPTY_TOTALS, result))
   }
 
-  const search = (filter.search ?? '').trim().toLowerCase()
-
   const ranked = competitors
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
@@ -237,13 +234,7 @@ export function rankingFor(
     .filter((row) => row.races > 0)
     .sort(STANDING)
 
-  return withPlaces(ranked, STANDING, (row) => row.competitor.memberNumber).filter(
-    (row) =>
-      search === '' ||
-      `${row.competitor.firstName} ${row.competitor.lastName} ${row.competitor.memberNumber}`
-        .toLowerCase()
-        .includes(search),
-  )
+  return withPlaces(ranked, STANDING, (row) => row.competitor.memberNumber)
 }
 
 /**
