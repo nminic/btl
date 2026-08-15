@@ -634,3 +634,23 @@
 .button--cta:focus-visible {
   background: var(--gold-300);
 }
+
+/* The one control in the footer that is a button rather than a link, because it
+ * changes something instead of leading somewhere: it withdraws the agreement to
+ * be measured (consent/). A button element with a link's clothes, so the reader
+ * sees what the rest of the footer looks like and a screen reader is told what
+ * it actually is. */
+.shell__plain {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.shell__plain:hover {
+  color: var(--text);
+}

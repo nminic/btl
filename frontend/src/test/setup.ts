@@ -12,6 +12,12 @@ import { clearResourceCache } from '../data/client'
 beforeEach(() => {
   clearResourceCache()
   sessionStorage.clear()
+  /* And what a visitor is taken to have decided, which lives in `localStorage`:
+     the chosen theme, and whether measurement with cookies was agreed to
+     (consent/). Left standing, one test's agreement is the next test's starting
+     point, and a bar that only appears to somebody who has not answered stops
+     appearing halfway through the file. */
+  localStorage.clear()
 })
 
 /* The data layer fetches /mock/<name>.json, which the dev server and nginx

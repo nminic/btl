@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { routeObjects } from '../app/routeObjects'
 import { ClockProvider } from '../clock/ClockProvider'
+import { Analytics } from '../consent/Analytics'
+import { ConsentProvider } from '../consent/ConsentProvider'
 import type { Moderator } from '../data/types'
 import { DEFAULT_LOCALE, type Locale } from '../i18n/config'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -72,8 +74,14 @@ export function renderAt(
       <ClockProvider simulatedDay={today}>
         <RoleProvider initialRole={role} initialModerator={role === 'moderator' ? moderator : null}>
           <SessionProvider initialMemberNumber={memberNumber}>
-            <RouterProvider router={router} />
-            {probe}
+            {/* The same stack the application builds (app/App.tsx). The shell
+                asks whether the question about measurement is open, so a screen
+                rendered without this one throws rather than draws. */}
+            <ConsentProvider>
+              <Analytics />
+              <RouterProvider router={router} />
+              {probe}
+            </ConsentProvider>
           </SessionProvider>
         </RoleProvider>
       </ClockProvider>,

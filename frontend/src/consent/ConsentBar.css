@@ -1,0 +1,65 @@
+/* The bar that asks about measurement, at the foot of the page.
+ *
+ * It borrows `.button` and its two variants, which live in `pages/Home.css`.
+ * That is where they have always lived and it is the wrong place for them: a
+ * control used on a dozen screens is defined in the stylesheet of one. Nothing
+ * breaks, because every sheet the application imports ends in one bundle, but
+ * the rule of ADL A7 is that a sheet brings what it uses, and this one cannot
+ * without dragging the whole front page in. Written down rather than papered
+ * over; the move is its own change, with its own measurement, beside the one
+ * already waiting for `.length-dot` (PENDING).
+ */
+
+.consent {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  /* Lifted off the page rather than merely coloured, because the bar sits over
+     content that scrolls under it and a plain background leaves the two reading
+     as one column. */
+  box-shadow: 0 -6px 20px rgb(0 0 0 / 18%);
+}
+
+.consent__text {
+  flex: 1 1 22rem;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.consent__link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.consent__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+}
+
+/* On a telephone the two controls take the width rather than crowding into a
+   corner, and the text stands above them. The width is the one the whole portal
+   calls a telephone (35em, `styles/scale.test.ts`), not one chosen for this bar:
+   a second threshold a few rem away would make the bar change shape at a width
+   where nothing else does. */
+@media (width < 35em) {
+  .consent {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .consent__actions .button {
+    flex: 1 1 auto;
+  }
+}

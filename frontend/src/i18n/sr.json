@@ -1327,5 +1327,14 @@
     "chooseFirst": "Izaberi sliku da bi mogao da je pošalješ.",
     "chosenAlt": "Slika koju si izabrao, sa uokvirenim delom koji će se videti",
     "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti"
+  },
+  "consent": {
+    "title": "Kolačići i merenje",
+    "text": "Merimo koliko je puta koja strana otvorena. Za to nam kolačići ne trebaju. Google Analytics, koji ih traži, ne učitavamo dok ne pritisneš „Prihvati\".",
+    "more": "Politika privatnosti",
+    "accept": "Prihvati",
+    "close": "Zatvori traku",
+    "settings": "Podešavanja kolačića",
+    "withdrawn": "Saglasnost je povučena. Pitanje je ponovo na dnu strane."
   }
 }

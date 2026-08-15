@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { DateSwitch } from '../clock/DateSwitch'
 import { dataOr } from '../data/useResource'
+import { ConsentBar } from '../consent/ConsentBar'
+import { useConsent } from '../consent/useConsent'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
@@ -130,6 +132,7 @@ export function Shell() {
   const sections = useNavSections()
   const rest = useRestOfPath()
   const { pageTitle, declare } = useRouteChrome()
+  const { askAgain } = useConsent()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
@@ -259,6 +262,19 @@ export function Shell() {
             {t('shell.contact')}
           </a>
         </nav>
+
+        {/* Withdrawing consent, in the place the privacy policy says it is:
+            „saglasnost za kolačiće menjate u podnožju svake strane". It is a
+            button and not a link because it changes something rather than
+            leading somewhere, and it stands outside the navigation for the same
+            reason. Pressed, it forgets the agreement and puts the question back
+            on the screen, so withdrawing costs exactly as many presses as
+            agreeing did (član 15 ZZPL, član 7 GDPR). */}
+        <p className="shell__note">
+          <button type="button" className="shell__plain" onClick={askAgain}>
+            {t('consent.settings')}
+          </button>
+        </p>
         <p className="shell__note">{t('shell.footerNote')}</p>
         {/* The credit for the codebook of towns behind the place field is not
             here any more (owner, 11.08.2026). GeoNames is CC BY 4.0 and asks to
@@ -268,6 +284,10 @@ export function Shell() {
             last section of them (public/mock/pages.json, `uslovi-koriscenja`),
             which is as quiet as naming it can be without ceasing to name it. */}
       </footer>
+
+      {/* Last in the markup and drawn at the foot, so a keyboard reaches the
+          page before it reaches the question. */}
+      <ConsentBar />
     </div>
   )
 }
