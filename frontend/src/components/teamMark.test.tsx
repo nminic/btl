@@ -22,6 +22,7 @@ const aTeam = (over: Partial<Team> = {}): Team => ({
   city: 'Novi Sad',
   country: 'RS',
   organizerMemberNumber: '000001',
+  crop: { x: 0.5, y: 0.5, size: 1 },
   bio: '',
   logo: null,
   ...over,
@@ -66,7 +67,15 @@ describe('the circle before a team name', () => {
       <TeamMark team={aTeam({ logo: '/mock/logo/dunav.svg' })} />,
     )
 
-    expect(must(withLogo.querySelector('img'), 'the logo')).toHaveAttribute('aria-hidden', 'true')
+    /* On the circle rather than on the picture inside it, since the crop
+       arrived: a magnified picture has to be clipped by something that is never
+       scaled, so the mark is now a box with a picture in it, and hiding the box
+       hides everything in it. Both are still asserted, because a picture with no
+       alternative text at all is read out as its file name by some readers even
+       inside a hidden subtree. */
+    expect(must(withLogo.querySelector('[aria-hidden]'), 'the circle')).toContainElement(
+      must(withLogo.querySelector('img'), 'the logo'),
+    )
     expect(must(withLogo.querySelector('img'), 'the logo')).toHaveAttribute('alt', '')
 
     const { container: withInitials } = renderWithI18n(<TeamMark team={aTeam()} />)

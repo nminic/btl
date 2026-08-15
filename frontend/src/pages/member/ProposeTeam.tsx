@@ -2,6 +2,9 @@ import { countryName } from '../../data/countryName'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../../clock/useClock'
+import { CropChooser } from '../../components/CropChooser'
+import type { Chosen } from '../../components/CropChooser'
+import { WHOLE } from '../../components/crop'
 import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import { NO_RATING } from '../../data/types'
@@ -61,6 +64,10 @@ export function ProposeTeam() {
   const state = combinePair(useCompetitors(), useTeams())
   /** The name of the team once it has been sent, so the screen can say which. */
   const [sent, setSent] = useState<string | null>(null)
+  /** The logo, if the member has one to hand. Held here and not in the form
+   *  definition: a form field is a value typed into a box, and this is a file
+   *  read off a disc with three sliders over it. */
+  const [logo, setLogo] = useState<Chosen | null>(null)
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -130,6 +137,12 @@ export function ProposeTeam() {
                  record is built from. */
               city: String(values.city),
               country: String(values.country),
+              /* The logo and the square of it the member chose, which the
+                 approval turns into the team's own (PendingQueue.tsx). Empty
+                 where they proposed without one, and the whole picture with
+                 it: a crop over nothing is nothing to draw. */
+              picture: logo === null ? '' : logo.picture,
+              crop: logo === null ? WHOLE : logo.crop,
             })
 
             setSent(name)
@@ -138,6 +151,17 @@ export function ProposeTeam() {
           return (
             <>
               <p className="member__note">{t('teams.proposeNote2')}</p>
+              <CropChooser
+                id="team-logo"
+                label={t('teams.proposeLogo')}
+                rule={t('teams.proposeLogoRule')}
+                alt={t('teams.proposeLogoAlt')}
+                /* A team may be proposed without a logo, and most are: the
+                   league has four teams and one logo between them. */
+                asked={false}
+                chosen={logo}
+                onChange={setLogo}
+              />
               <FormRenderer
                 form={predlogTima}
                 /* By the address the name makes, which is what has to be

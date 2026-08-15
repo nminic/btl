@@ -5,6 +5,17 @@
 
 export type Gender = 'M' | 'F'
 
+/**
+ * Which square of a picture is the picture, as three fractions.
+ *
+ * Here rather than beside the arithmetic that reads it (components/crop.ts),
+ * because it is part of two records and a record cannot be described in terms
+ * of a component: a team keeps one, and so does a picture waiting for a
+ * moderator. What each number means, and why they are fractions rather than
+ * pixel edges, is written where the arithmetic is.
+ */
+export type Crop = { x: number; y: number; size: number }
+
 /** The five length categories from PDL P5. Marathon and half marathon are
  *  recognised by the exact value 42.2 and 21.1, with no tolerance. */
 /* Shortest to longest, the same order as CATEGORIES in derive.ts, which is
@@ -217,6 +228,19 @@ export type Team = {
    * that has none is not a team whose logo is the empty path.
    */
   logo: string | null
+  /**
+   * Which square of that logo the circle shows (components/crop.ts).
+   *
+   * Kept on the record rather than cut into the file, which is the same
+   * decision as on a waiting item and made for a second reason here: the file
+   * is what the team sent, and a mark drawn from it is one of the sizes it is
+   * drawn at. Cutting the file would mean a team that wanted its logo framed
+   * differently had to send the logo again.
+   *
+   * The whole picture where nobody chose, which is every team the league
+   * started with and every team an administrator enters by hand.
+   */
+  crop: Crop
 }
 
 export type League = {
@@ -425,6 +449,40 @@ export type PendingItem = {
   /** The text to read before deciding: the biography, the comment, the reason
    *  given, or the file name of a picture. */
   body: string
+  /**
+   * The picture itself, on the two queues that carry one, and empty on the
+   * other five.
+   *
+   * A profile picture and a team's logo, which are the two the owner asked to
+   * be croppable inside the site (12.08.2026). The file name in `body` is what
+   * a moderator reads; this is what they look at, and without it a decision
+   * about a photograph is made by reading its file name aloud.
+   *
+   * The picture as text, because until F5 there is nowhere to put a file. The
+   * browser reads it off the member's own disc and it travels no further than
+   * the tab it was chosen in, which is what lets the whole flow be walked before
+   * a server stores anything. What replaces it in F5 is a path, and nothing that
+   * draws it changes.
+   *
+   * Empty on the items seeded into the mock file as well, and that is not an
+   * oversight: those stand for pictures sent before this visit, and there is
+   * nowhere they could have been kept. A card with no picture says so
+   * (pages/admin/PendingQueue.tsx) rather than drawing an empty frame.
+   */
+  picture: string
+  /**
+   * Which square of that picture the member chose (components/crop.ts).
+   *
+   * Beside the picture rather than baked into it. Cutting the file down would
+   * throw away exactly what the owner asked to keep visible: „da se nazire
+   * ispod... i ono što se neće videti", and a moderator who cannot see what was
+   * cut out cannot tell a portrait from a photograph with somebody else's child
+   * in it. Kept apart, the decision is reversible and the evidence survives it.
+   *
+   * The whole picture where nothing was chosen, which is what every queue that
+   * carries no picture holds.
+   */
+  crop: Crop
   /** A reported change of date carries both dates, so the difference is the
    *  thing on screen. Empty on every other queue. */
   currentDate: string

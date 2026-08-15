@@ -4,6 +4,7 @@ import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useEvents, useRaces, useTeams } from '../../data/useResource'
+import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import { RATING_MARKS } from '../../data/types'
@@ -412,7 +413,27 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       identities.push(id)
       addresses.push(addressOf(made.name))
 
-      create(TEAMS.id, id, { ...made, organizerMemberNumber: one.memberNumber })
+      create(TEAMS.id, id, {
+        ...made,
+        organizerMemberNumber: one.memberNumber,
+        /* The logo the member sent, where they sent one. Left out entirely
+           where they did not, so the team takes the `null` its blank record
+           carries (entityForms.ts): null and an empty string would read the
+           same on screen and mean different things in a record.
+         *
+           **The square they chose does not come with it, and that is a limit
+           rather than a decision.** What stands in for a database until F5 is an
+           overlay of text (session/context.ts), and a crop is three numbers. It
+           could be packed into a string here and unpacked wherever a team is
+           drawn, and then a crop would be written two ways on one portal, which
+           is the drift that costs a day to find. So a team accepted during this
+           visit wears its logo at the largest square until there is a record
+           that can hold three numbers beside it; the moderator still judges the
+           square the member chose, on the card above, which is what the owner
+           asked to see (12.08.2026). Written down in PENDING rather than left
+           for somebody to notice. */
+        ...(one.picture === '' ? {} : { logo: one.picture }),
+      })
 
       notify({
         from: t('app.name'),
@@ -658,6 +679,33 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             )}
                           </div>
                         </dl>
+
+                        {/* The picture itself, where there is one to look at.
+                            Owner, 12.08.2026: „Administrator kad odobrava i
+                            timsku sliku (unutar odobravanja tima) i profilnu
+                            sliku učesnika... treba da vidi isto fokus na vidljiv
+                            deo slike i zatamnjen ali dovoljno vidljiv ostatak."
+
+                            „Isto" is the requirement and the reason this is the
+                            same component the member arranged it in: what a
+                            moderator judges has to be what the member set, and
+                            the rest of the photograph has to stay readable so
+                            that a face cut out of a crowd can be told from a
+                            face cut out of nothing.
+
+                            The file name above stays. It is what the queue is
+                            searched and talked about by, and the two seeded
+                            items carry a name with no picture behind them
+                            (data/types.ts): those stand for pictures sent before
+                            this visit, and there is nowhere they could have been
+                            kept. */}
+                        {one.picture !== '' && (
+                          <CropWindow
+                            picture={one.picture}
+                            crop={one.crop}
+                            alt={t('verification.pictureAlt', { who: one.subject })}
+                          />
+                        )}
 
                         {open === one.id ? (
                           <SendBack

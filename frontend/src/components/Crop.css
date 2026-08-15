@@ -1,0 +1,95 @@
+/* Cropping a picture inside the site, and showing what was cropped away.
+
+   Owner, 12.08.2026: „fokus na vidljiv deo slike i zatamnjen ali dovoljno
+   vidljiv ostatak". Both halves are a measurement rather than a taste: dimmed
+   enough that the square reads as the picture at a glance, and light enough
+   that a moderator can still make out a face, a number or a second person in
+   the part that will not be kept. That is what the shade below is set to, and
+   why it is one token rather than a figure written at each place that shades. */
+
+.crop {
+  display: grid;
+  gap: var(--space-12);
+  /* Wide enough to judge a face by and no wider: this stands inside a panel of
+     settings and inside a moderator's card, and a photograph the width of
+     either would be the screen. On a narrow phone it is the width available,
+     which is what the `min` does. */
+  inline-size: min(100%, 20rem);
+}
+
+/* The picture, whole, at whatever shape it turned out to be.
+   `aspect-ratio` is set from the file itself, so the box is the photograph and
+   percentages over it are percentages of the photograph. Without it the box
+   would be one shape and the picture another, and the lit square would sit
+   over the wrong part of it. */
+.crop__picture {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--surface-hover);
+}
+
+.crop__whole {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  /* The whole picture and not a part of it: this is the one place on the portal
+     that deliberately shows everything, including what the crop throws away. */
+  object-fit: contain;
+}
+
+/* The lit square, drawn as a hole in the shade.
+
+   One element rather than four bands around a gap, and rather than a second
+   bright copy of the picture laid over a dimmed one. Four bands is four sets of
+   arithmetic to keep in agreement; two copies is two pictures that can fall out
+   of register by a pixel and are two downloads of the same file. A shadow
+   spreading outwards from a transparent box is the shade, and what shows
+   through the box is the photograph itself.
+
+   `100vmax` and not a pixel figure: the shade has to reach the corner of the
+   picture at every size, and the picture is as wide as the panel it stands in. */
+.crop__frame {
+  position: absolute;
+  box-shadow: 0 0 0 100vmax var(--crop-shade);
+  /* The edge of what is kept, so the boundary is a line and not only a change
+     of brightness. White rather than the accent: it has to read against a
+     photograph of anything at all, and a photograph can be any colour. */
+  outline: 2px solid rgb(255 255 255 / 90%);
+  outline-offset: -1px;
+}
+
+/* The sliders under the picture. */
+.crop__choosing {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.crop__slider {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.crop__slider input {
+  /* The full width of the panel: a slider is dragged, and a short one on a
+     phone is a target a thumb covers entirely. */
+  inline-size: 100%;
+  /* Its own colour, so the handle is visible on both themes rather than the
+     browser's default blue on a dark panel. */
+  accent-color: var(--accent);
+}
+
+/* A finished crop, drawn as the picture it becomes rather than as a choice
+   being made: no shade, no frame, and everything outside the square simply not
+   there. What `fittedTo` in components/crop.ts computes, and the reason that
+   function needs no width or height at all. */
+.crop-fitted {
+  overflow: hidden;
+}
+
+.crop-fitted img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}

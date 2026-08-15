@@ -570,6 +570,8 @@ describe('commentFrom', () => {
       subject: 'Fruškogorski maraton',
       subjectId: 'evt-fruskogorski-maraton-2010-05-08',
       body: 'Reci koje je clan napisao.',
+      picture: '',
+      crop: { x: 0.5, y: 0.5, size: 1 },
       currentDate: '',
       proposedDate: '',
       email: '',
