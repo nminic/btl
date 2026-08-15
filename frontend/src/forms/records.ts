@@ -205,9 +205,11 @@ export function shownValue(
 /**
  * The limit a field carries in the definition it is defined in.
  *
- * For the two boxes that are edited outside a form. A biography is written on
- * the registration form, where it is capped, and then rewritten by a moderator
- * on the verification screen, which is a bare textarea; the rules of a
+ * For the boxes that are edited outside a form. A biography was written on the
+ * registration form, where it is capped, and then rewritten by a moderator on
+ * the verification screen in a bare textarea, until the owner withdrew that on
+ * 06.08.2026 and a biography became something refused rather than rewritten
+ * (PDL P22); the rules of a
  * competition are entered on the administration form, capped, and then rewritten
  * in place on the competition's own page. Both rewrites took as much as anybody
  * cared to paste, so a value could come back longer than the form that made it

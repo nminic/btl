@@ -2057,6 +2057,12 @@ describe('the six queues read from the file', () => {
       expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '000011' })).toBe(true)
       expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(false)
       expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(true)
+      /* And a racing profile item of no sort at all cannot go back either. The
+         empty sort belongs to the queues that hold one kind of thing and this
+         one never carries it (data/types.ts), so an item that does is a record
+         nobody understands: there is no heading it could arrive under, and the
+         first shape of `returned` called it a picture. */
+      expect(canSendBack(QUEUE.profiles, { kind: '', memberNumber: '000011' })).toBe(false)
     })
 
     it('offers no way to send it, and says why in the place the button stood', async () => {
@@ -2387,10 +2393,11 @@ describe('the six queues read from the file', () => {
 
   it('keeps the focus on the card in both directions', async () => {
     const user = await open('profiles', 'Trkački profil')
-    /* The pictures, because a biography is never handed back and has no box to
-       open (queues.ts, `outcomeFor`). The second of them and not the first,
-       because the fault being held is the focus landing on the top card instead
-       of the one the moderator was working on. */
+    /* Every card carries the button since 15.08.2026, the biographies among
+       them (PDL P22), so this reads whichever ones have it rather than naming
+       a sort. The second of them and not the first, because the fault being
+       held is the focus landing on the top card instead of the one the
+       moderator was working on. */
     const cards = within(waitingList())
       .getAllByRole('listitem')
       .filter((one) => within(one).queryByRole('button', { name: 'Odbij' }) !== null)

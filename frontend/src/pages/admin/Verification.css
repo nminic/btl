@@ -17,7 +17,6 @@
   font-size: 0.9rem;
 }
 
-
 /* Where the button that hands work back cannot be there, because there is
    nobody the instruction could reach (queues.ts). It stands in the row of
    buttons, so it is read where the missing button would have been. */

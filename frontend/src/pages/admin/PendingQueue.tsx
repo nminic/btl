@@ -42,7 +42,7 @@ import './Verification.css'
  * deleted on the spot, and a picture goes back with an instruction precise enough
  * to work from. Everything else, the biography among them since 06.08.2026, is
  * refused with a reason and handed back.
- * Which of the four a queue is comes off the queue itself, so it is one fact in
+ * Which of the three a queue is comes off the queue itself, so it is one fact in
  * one place rather than the name of a queue tested here.
  *
  * Cards rather than a table, unlike the queue of results. There the work is
@@ -122,7 +122,7 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * the member typed them and the team carries them from then on, so the moment to
  * put a lower-case name right is before the record exists rather than after.
  *
- * Written into the same overlay of edits the biography uses, keyed by the item,
+ * Written into the same overlay of edits, keyed by the item,
  * so approving reads whatever is on screen rather than what arrived.
  */
 function TeamFields({ item }: { item: PendingItem }) {
@@ -725,11 +725,24 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  a refused biography would reach the member as
                                  „Profilna slika je vraćena", which is a message
                                  about a thing they did not send. */
-                              if (returned(queue, one) !== null) {
+                              /* Bound once and narrowed, rather than asked
+                                 twice and coerced. Written as
+                                 `t(String(returned(...)))`, the guard above it
+                                 could be deleted without the compiler saying a
+                                 word: a review replaced it with `if (true)` and
+                                 all 1902 tests passed, while a refusal on any
+                                 of the other five queues then wrote „null" to
+                                 whoever `memberNumber` named, which where that
+                                 is empty is the whole league. `String()` is not
+                                 on the list ADL A14 bans, and it lies in
+                                 exactly the way that list exists to stop. */
+                              const heading = returned(queue, one)
+
+                              if (heading !== null) {
                                 notify({
                                   from: t('app.name'),
                                   to: one.memberNumber,
-                                  subject: t(String(returned(queue, one))),
+                                  subject: t(heading),
                                   body: reason,
                                   date: today,
                                 })

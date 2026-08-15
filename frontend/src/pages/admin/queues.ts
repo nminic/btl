@@ -25,11 +25,11 @@ import { PENDING_QUEUE_IDS, type ItemKind, type PendingItem, type PendingQueueId
  *   A member who is refused with no reason writes back to ask, so the reason is
  *   the cheaper of the two paths rather than politeness.
  * - `instruct`: approve, or hand the picture back with a reason. A picture is the
- *   one thing asked for in words precise enough to work from, so the reason is the
- *   that has to arrive somewhere: it goes to the member's inbox, and the member
- *   changes the picture by it. It is called a reason like everywhere else and
- *   written into the same box; what differs is that the queue asks for one
- *   precise enough to work from, which is what the empty field says (SendBack).
+ *   one thing asked for in words precise enough to work from. It is called a
+ *   reason like everywhere else and written into the same box; what differs is
+ *   that the queue asks for one somebody can act on, which is what the empty
+ *   field says (SendBack). Both sorts on that queue reach the inbox of whoever
+ *   sent them in, each under its own heading (`returned`).
  * - `delete`: accept, or delete on the spot. No reason is asked for, and nothing
  *   at all is sent to the member. A comment is not work to be improved: it goes
  *   out onto the portal or it does not, and a moderator reads them by the dozen.
@@ -180,7 +180,13 @@ export function canSendBack(
   queue: Queue,
   item: { kind: ItemKind; memberNumber: string },
 ): boolean {
-  return returned(queue, item) === null || item.memberNumber !== ''
+  if (queue.id !== 'profiles') {
+    return true
+  }
+
+  /* On this queue a refusal is written to somebody, so it can only be made
+     where there is both a heading to write under and a member to write to. */
+  return returned(queue, item) !== null && item.memberNumber !== ''
 }
 
 /**
@@ -201,7 +207,14 @@ export function returned(
   queue: Queue,
   item: { kind: ItemKind },
 ): 'verification.photoReturned' | 'verification.bioReturned' | null {
-  if (queue.id !== 'profiles') {
+  if (queue.id !== 'profiles' || item.kind === '') {
+    /* Nothing to write under. The empty sort is every queue that holds one
+       kind of thing, and the racing profile never carries it (data/types.ts);
+       an item that does is a record nobody understands, and the safe answer
+       is that it cannot be handed back rather than that it is a picture. A
+       review found the old shape treating everything that is not a biography
+       as one, which put the wrong heading in the one function written to stop
+       exactly that. */
     return null
   }
 
