@@ -22,7 +22,7 @@ import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamPropo
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
-import { canSendBack, outcomeFor, type Queue } from './queues'
+import { canSendBack, outcomeFor, returned, type Queue } from './queues'
 import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
@@ -37,10 +37,11 @@ import './Verification.css'
  * compare, and what the decision other than "yes" is, and none of those is a
  * screen.
  *
- * That last one is the only difference the moderator can feel, and there are four
+ * That last one is the only difference the moderator can feel, and there are three
  * of them (queues.ts, PDL P22). Two queues go their own way: a comment is
- * deleted on the spot, a biography is edited and published and never goes back,
- * and a picture goes back with an instruction that reaches the member's inbox.
+ * deleted on the spot, and a picture goes back with an instruction precise enough
+ * to work from. Everything else, the biography among them since 06.08.2026, is
+ * refused with a reason and handed back.
  * Which of the four a queue is comes off the queue itself, so it is one fact in
  * one place rather than the name of a queue tested here.
  *
@@ -706,15 +707,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               })
 
                               /* A reason the member never reads is a reason to
-                                 nobody, and this is the one queue where the member
-                                 is expected to act on it. The portal already has an
-                                 inbox, so it goes there in the words the moderator
-                                 wrote (PDL P22, P28a). */
-                              if (outcomeFor(queue, one) === 'instruct') {
+                                 nobody, and on this queue the member is expected to
+                                 act on it. The portal already has an inbox, so it
+                                 goes there in the words the moderator wrote (PDL
+                                 P22, P28a).
+                               *
+                                 Both sorts, since 15.08.2026. It used to be the
+                                 picture alone, because a biography was published
+                                 rather than refused and had nothing to send; when
+                                 the owner withdrew that (PDL P22, 06.08.2026) the
+                                 refusal arrived without the message, so the empty
+                                 box went on promising „Član dobija tvoj razlog" and
+                                 the member`s inbox stayed exactly as it was. A
+                                 review measured it: two messages before, two after.
+                               *
+                                 Each under its own heading. Handed the picture`s,
+                                 a refused biography would reach the member as
+                                 „Profilna slika je vraćena", which is a message
+                                 about a thing they did not send. */
+                              if (returned(queue, one) !== null) {
                                 notify({
                                   from: t('app.name'),
                                   to: one.memberNumber,
-                                  subject: t('verification.photoReturned'),
+                                  subject: t(String(returned(queue, one))),
                                   body: reason,
                                   date: today,
                                 })
@@ -789,8 +804,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             {/* The focus comes back to this button with it, on the
                                 render that brings it back and on no other: nothing
                                 is autofocused when the page first draws. A
-                                biography has no button here at all, because it
-                                never goes back. */}
+                                biography has one of these now, since 15.08.2026:
+                                the sentence that used to stand here said it never
+                                goes back, directly above the code drawing the
+                                button that hands it back. */}
                             {handsBack(queue, one) && canSendBack(queue, one) && (
                               <button
                                 type="button"

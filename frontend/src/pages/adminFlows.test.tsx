@@ -1799,9 +1799,7 @@ describe('the six queues read from the file', () => {
     ).toHaveLength(1)
   })
 
-  /* Biographies go their own way too, and further: there is no second decision at
-     all. The moderator adjusts the text as they see fit and publishes what they
-     left, and it never goes back to the competitor (PDL P22, 30.07.2026). */
+
   it('holds the text and the picture in one queue, decided each its own way', async () => {
     /* Owner, 06.08.2026: the same member's profile is one thing to look at, so
        the two used to be two queues and are one. What is done with them is not
@@ -1907,7 +1905,7 @@ describe('the six queues read from the file', () => {
     expect(within(waitingList()).queryAllByRole('listitem')).not.toContain(waiting)
   })
 
-  /* Pictures are the only one of the three that still goes back to a competitor.
+  /* Both sorts go back to the member (PDL P22, 06.08.2026).
      It is the same box with the same words as every other queue that hands work
      back, because it is the same decision; what differs is what the moderator is
      asked to write, since that reason is what the member reads and changes the
@@ -1947,6 +1945,51 @@ describe('the six queues read from the file', () => {
       'placeholder',
       sr.review.reasonPlaceholder,
     )
+  })
+
+  it('leaves the reason for a returned biography in the inbox too, under its own heading', async () => {
+    /* The half that was missing. When the biography stopped being published and
+       started being refused (PDL P22, 06.08.2026), the refusal arrived without
+       the message: the empty box went on promising „Član dobija tvoj razlog"
+       and the inbox stayed exactly as it was. A review measured it, two
+       messages before and two after, and then measured the obvious repair as
+       well: handed the picture heading, a refused biography reaches the member
+       as „Profilna slika je vraćena", a message about a thing they did not
+       send. Both halves are asserted here, the arrival and the heading. */
+    const user = setupUser()
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator', '000011')
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
+
+    /* The card of the member at the keyboard, and not simply the first
+       biography in the queue: a message carries the number it was written to
+       (Message.to), so a refusal aimed at somebody else never reaches this
+       inbox and the test would fail for the wrong reason. */
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Vukašin Todorović') !== null),
+        'a waiting card carrying the biography of Vukašin Todorović',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
+    await user.type(
+      screen.getByLabelText('Razlog odbijanja'),
+      'Napiši nešto svoje, ovo je prepisano sa tuđeg profila.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(screen.getByRole('link', { name: /Tekst o sebi je vraćen/ }))
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Tekst o sebi je vraćen' }),
+    ).toBeVisible()
+    expect(screen.getByText(/prepisano sa tuđeg profila/)).toBeVisible()
+    /* And it is not the other heading, which is the mistake the one place that
+       knows both was written to stop (queues.ts, `returned`). */
+    expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
   })
 
   it('leaves the reason for a returned picture in the inbox of the member', async () => {
@@ -2000,13 +2043,19 @@ describe('the six queues read from the file', () => {
     })
 
     it('is decided by the queue rather than by the screen that draws it', () => {
-      // Every other queue hands work back to somebody it can name, or does not
-      // hand it back at all, so only the one that instructs is asked.
+      /* Both sorts on the racing profile queue write to the member who sent the
+         thing in, so both need somebody to write to. The other five refuse
+         without sending anything, so the question does not arise there.
+       *
+         The biography answered yes until 15.08.2026, on the reasoning that it
+         was never handed back at all. It is now, and an empty recipient in this
+         portal is the whole league rather than nobody (Message.to), so a
+         refusal with no number would put a moderator words about one member on
+         the front of every member inbox. */
       expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '000013' })).toBe(true)
       expect(canSendBack(QUEUE.profiles, { kind: 'photo', memberNumber: '' })).toBe(false)
-      /* A biography on the same queue is never handed back at all, so the
-         question does not arise and the answer is yes. */
-      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '000011' })).toBe(true)
+      expect(canSendBack(QUEUE.profiles, { kind: 'bio', memberNumber: '' })).toBe(false)
       expect(canSendBack(QUEUE.teams, { kind: '', memberNumber: '' })).toBe(true)
     })
 

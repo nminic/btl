@@ -66,9 +66,10 @@ describe('every form definition in the portal', () => {
        nothing to count down from: the renderer draws no counter without a limit
        and refuses nothing at the door.
 
-       This reaches the definitions and nothing else. Two boxes are edited
-       outside a form: a biography rewritten by a moderator (PendingQueue) and
-       the rules of a competition rewritten in place (LeagueDetail). Both took
+       This reaches the definitions and nothing else. Two boxes were edited
+       outside a form: a biography rewritten by a moderator (PendingQueue, until
+       06.08.2026) and the rules of a competition rewritten in place
+       (LeagueDetail). Both took
        whatever was pasted, so a value could come back longer than the form that
        made it accepts and the next person to open that form was told their own
        text was too long. Both now read their limit off the definition through

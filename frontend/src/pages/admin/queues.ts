@@ -17,15 +17,15 @@ import { PENDING_QUEUE_IDS, type ItemKind, type PendingItem, type PendingQueueId
  * The moderator's second decision on a queue, and therefore what the first one is
  * called as well.
  *
- * Four answers rather than a yes or a no. It used to be one boolean, "does
+ * Three answers rather than a yes or a no. It used to be one boolean, "does
  * refusing ask why", and the three exceptions the owner settled on 30.07.2026
  * (PDL P22) are three different things rather than degrees of the same one:
  *
  * - `sendBack`: approve, or hand the work back with a reason. Five of the seven.
  *   A member who is refused with no reason writes back to ask, so the reason is
  *   the cheaper of the two paths rather than politeness.
- * - `instruct`: approve, or hand the picture back with a reason. Pictures are the
- *   only thing that still goes back to a competitor, so the reason is the one
+ * - `instruct`: approve, or hand the picture back with a reason. A picture is the
+ *   one thing asked for in words precise enough to work from, so the reason is the
  *   that has to arrive somewhere: it goes to the member's inbox, and the member
  *   changes the picture by it. It is called a reason like everywhere else and
  *   written into the same box; what differs is that the queue asks for one
@@ -122,10 +122,13 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
     labelKey: 'verification.profiles',
     sourceKey: 'verification.fromProfiles',
     path: `${ADDRESS}/trkacki-profil`,
-    /* The one queue whose items are not all decided the same way, so what stands
-       here is what it is for the sort that is not named: a picture is handed
-       back with an instruction, and the text is edited and published
-       (`outcomeFor`). */
+    /* The one queue whose items are not all decided the same way, so this is
+       never read: `outcomeFor` answers off the item before it ever reaches the
+       queue. It stands because the type asks every queue for one, and a review
+       measured what that costs: changed to `delete`, all 1901 tests passed,
+       because nothing can reach it. What it says is therefore the same thing
+       `outcomeFor` says for the sort that is not named, so the two cannot
+       disagree in a way anybody would notice. */
     outcome: 'instruct',
   },
   comments: {
@@ -177,7 +180,32 @@ export function canSendBack(
   queue: Queue,
   item: { kind: ItemKind; memberNumber: string },
 ): boolean {
-  return outcomeFor(queue, item) !== 'instruct' || item.memberNumber !== ''
+  return returned(queue, item) === null || item.memberNumber !== ''
+}
+
+/**
+ * The heading a refusal on this queue reaches the member under, or nothing
+ * where a refusal is not sent at all.
+ *
+ * One place, because three things read it: whether the item may be handed back
+ * without a member number, whether a message goes out, and what that message is
+ * called. Written out at each of them, the biography was added to one of the
+ * three on 15.08.2026 and left out of the other two, so a refusal that could not
+ * be stopped also could not arrive.
+ *
+ * The two sorts on the racing profile queue and nothing else. The other five
+ * refuse without writing to anybody, which is a limit of the prototype rather
+ * than a decision and is written down in PENDING.
+ */
+export function returned(
+  queue: Queue,
+  item: { kind: ItemKind },
+): 'verification.photoReturned' | 'verification.bioReturned' | null {
+  if (queue.id !== 'profiles') {
+    return null
+  }
+
+  return item.kind === 'bio' ? 'verification.bioReturned' : 'verification.photoReturned'
 }
 
 /**
@@ -186,9 +214,10 @@ export function canSendBack(
  *
  * The racing profile is that one queue (owner, 06.08.2026): a member's
  * biography and their picture are looked at together, because they are the same
- * profile, and the decision over each is not the same. The text is edited and
- * published, and never goes back; the picture is accepted or handed back with an
- * instruction the member works from.
+ * profile, and the decision over each is not quite the same. Both are refused
+ * with a reason and handed back to the member (PDL P22); what differs is what
+ * the moderator is asked to write, since a picture is changed by an instruction
+ * precise enough to work from and a text is written again.
  *
  * Read off the item and not off its shape. A biography is a paragraph and a
  * picture is a file name, and telling them apart by looking would be a rule that

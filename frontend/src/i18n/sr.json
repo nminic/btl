@@ -1251,6 +1251,7 @@
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",
     "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
+    "bioReturned": "Tekst o sebi je vraćen",
     "photoReturned": "Profilna slika je vraćena",
     "noRecipient": "Ova stavka nema člana kome bi uputstvo stiglo, pa ne može da se odbije uz razlog. Odobri je ili prijavi grešku; poruka bez primaoca ide celoj ligi.",
     "numbersGiven": "Dodeljeni članski brojevi",
