@@ -98,6 +98,13 @@ describe('moving a reader to the one address', () => {
     expect(redirectTo(someone(), '000127-staro-ime', 'sr')).toBe('/sr/takmicar/000127-nikola-minic')
   })
 
+  it('moves a reader within the language they are reading in', () => {
+    /* P18: every address on the portal carries the language in front. Hardcoding
+       `/sr/` here survived the whole suite, and it would have taken somebody
+       reading the English branch silently onto the Serbian one. */
+    expect(redirectTo(someone(), '000127', 'en')).toBe('/en/takmicar/000127-nikola-minic')
+  })
+
   it('keeps whatever hangs off the end of it', () => {
     /* The trophies are a page of their own under the profile, and they are moved
        to the same one address with their own tail still on. */

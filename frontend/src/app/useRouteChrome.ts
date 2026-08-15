@@ -38,13 +38,23 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
    *
      A page used to be able to declare a different one, and two screens did: the
      profile and its trophies handed in the canonical form of the address. It
-     could never differ. Both of them send a reader arriving at any other form to
-     the canonical one before anything is drawn (`redirectTo` in
-     pages/profileAddress.ts), so by the time a declaration is made the address
-     being read is already the canonical one; a query changes nothing either,
-     because it is not part of `location.pathname`. Four mutations of that
-     machinery survived the whole suite, which is what a mechanism that cannot
-     change anything looks like from the outside. */
+     could not differ for any address the portal itself leads to: both screens
+     send a reader arriving at another form of the address to the canonical one
+     before anything is drawn (`redirectTo` in pages/profileAddress.ts), so by
+     the time a declaration was made the address being read was already the
+     canonical one, and a query changes nothing either because it is not part of
+     `location.pathname`. Four mutations of that machinery survived the whole
+     suite, which is what a mechanism that cannot change anything looks like from
+     the outside.
+   *
+     What it did do, for two screens out of forty, was tidy an address nothing
+     links to: a trailing slash, or the section typed in capitals. Those now name
+     themselves as canonical here, as they always have on every other page of the
+     portal. That is a normalisation this file could do for all of them at once,
+     off `location.pathname`, and it is not the same job as declaring a different
+     address; doing it for two screens through a mechanism nothing else used was
+     what made it look like one. Written down rather than done here, because it
+     touches every page and belongs with its own measurement (PENDING). */
 
   /* What the live region announces is the wording the person just clicked, so it
    * comes from the navigation label wherever there is one. The tab and the

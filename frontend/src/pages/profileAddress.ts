@@ -31,8 +31,15 @@ export function profilePath(competitor: Competitor, locale: string): string {
 }
 
 /**
- * The last part of that address, for the places that build a longer one on top
- * of it: the awards page, and a board that carries a season in the query.
+ * The last part of that address: the number, and the name behind it.
+ *
+ * Used by `profilePath` and `redirectTo` above, which are what the rest of the
+ * portal calls. It was reached from outside as well, by two screens that built a
+ * canonical address on top of it; that machinery is gone, because it could not
+ * change anything (app/useRouteChrome.ts). Exported still, because it is the
+ * half of the rule the tests measure the other two against, and because a
+ * caller that needs the address without the language in front is a caller this
+ * module should answer rather than one that spells it out again.
  */
 export function addressOf(competitor: Competitor): string {
   const name = slugify(`${competitor.firstName} ${competitor.lastName}`)

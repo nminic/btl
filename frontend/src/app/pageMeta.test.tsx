@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import sr from '../i18n/sr.json'
@@ -104,6 +104,20 @@ describe('the name of a page', () => {
     // than to the person.
     await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
     await waitFor(() => expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`))
+
+    /* And it stays that, which is the half `waitFor` cannot say on its own: it
+       settles on the first tick where the title is right, and the title is right
+       before the profile has declared anything at all. A review took the guard
+       off the declaration and this test passed while the tab read „Strahinja
+       Vukićević, Banja Luka". Given a turn of the loop, the wrong name has
+       arrived if it is coming. */
+    await act(async () => {
+      await new Promise((settled) => {
+        setTimeout(settled, 0)
+      })
+    })
+
+    expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`)
   })
 
   it('never puts the subject or the body of a message in the name (PDL P23)', async () => {
@@ -170,6 +184,19 @@ describe('the address of a page', () => {
     await waitFor(() =>
       expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`),
     )
+  })
+
+  it('replaces the address rather than stacking one on top of it', async () => {
+    /* PDL P11: the reader is moved „u mestu". Without `replace` the old address
+       stays in the history, so Back returns to it and it redirects again at
+       once: a loop the reader cannot get out of by going back. Nothing held it;
+       taking `replace` off either screen passed the whole suite. */
+    const { router } = renderAt('/sr/takmicar/000007')
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    /* One entry, not two: the address arrived at replaced the one typed. */
+    expect(router.state.historyAction).toBe('REPLACE')
   })
 
   it('moves the trophies of one person the same way, keeping the tail', async () => {
