@@ -372,9 +372,18 @@ describe('the rulebook', () => {
       /Pehari u jednoj kategoriji se ne uručuju ako u toj kategoriji te sezone ima manje od tri člana/,
     )
     expect(rulebook).not.toMatch(/[Pp]laket/)
-    /* And the figure is not given for the best team on top of the trophy: that
-       is one team taking two awards by one measure. */
-    expect(rulebook).toMatch(/osim najboljeg tima, koji dobija pehar/)
+    /* And the figure is not given for the best team or the best pair on top of
+       the trophy: that is one team, or one pair, taking two awards by one
+       measure.
+     *
+       The pair was in the wrong half of this until 15.08.2026. The owner settled
+       it on 11.08.2026 (PDL P16): the trophy is for standing, „po kategorijama,
+       generalno muški i ženski, jedan timski i jedan trkačkom paru", and the
+       figure is for what is not a standing. Član 69 lists the pair among the
+       special recognitions, which the article then handed a figure, so the
+       rulebook gave the pair a figure while the decision gave them a trophy. */
+    expect(rulebook).toMatch(/najboljem trkačkom paru/)
+    expect(rulebook).toMatch(/osim najboljeg tima i najboljeg trkačkog para, koji dobijaju pehar/)
   })
 
   it('says nothing about the competitions the league runs alongside it', () => {
