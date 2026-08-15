@@ -220,10 +220,10 @@
 }
 
 /* One row: season and categories (owner, 11.08.2026; there was a search box
-   until 31.07.2026). `align-items:
-   start` and not `end`, because each field is a name over a control and the
-   both names have to sit on one line: aligned at the foot, a field whose
-   control is taller pushes its own name up and the three read as three
+   at the end of it until 31.07.2026). `align-items: start` and not `end`,
+   because each field is a name over a control and both names
+   have to sit on one line: aligned at the foot, a field whose
+   control is taller pushes its own name up and the two read as two
    heights. */
 .rankings__filters {
   display: flex;
@@ -289,7 +289,6 @@
   flex: 1 1 14rem;
 }
 
-
 /* The same row of buttons the results on a profile use (Profile.css), and for
    the same reason: every category worth seeing at once, one of them pressed.
    Scrolls sideways within itself rather than wrapping, so the row keeps its
@@ -336,7 +335,7 @@
 }
 
 /* As tall as the select and the box beside it, with the chips centred inside
-   that band: the three controls share a top and a bottom, which is what being
+   that band: both controls share a top and a bottom, which is what being
    in one row means to somebody looking at it. 2.5rem is what the select and the
    input come to from their own padding and border. */
 .rankings__field--categories .rankings__categories {

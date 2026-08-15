@@ -27,6 +27,30 @@ function blanked(css: string): string {
 }
 
 /**
+ * The telephone's media query, and nothing after it.
+ *
+ * Bounded at the closing brace, which is the part a review found missing: cut
+ * only at the front, the range ran to the end of the sheet, and `findLast`
+ * happily answered with a rule that is not in the query at all. Proved by
+ * emptying the real rule and writing a copy of it at the foot of the file: the
+ * copy then applies at every width, the desktop table becomes the telephone`s
+ * two column grid, and all seven guards passed.
+ *
+ * The query is the one block in this sheet that nests, so its end is the first
+ * brace standing alone at the start of a line.
+ */
+function phoneQuery(): string {
+  const whole = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
+  /* The brace that stands alone at the start of a line, which in this sheet
+     is the one closing the query: everything inside it is indented. */
+  const ends = whole.search(/\n\}/)
+
+  expect(ends, 'the telephone query is closed').toBeGreaterThan(-1)
+
+  return whole.slice(0, ends)
+}
+
+/**
  * One rule inside the telephone's media query, by a selector it carries.
  *
  * Matched against the whole selector, not against a piece of the text. Every
@@ -48,7 +72,7 @@ function blanked(css: string): string {
  * browser does.
  */
 function phoneRule(selector: string): string {
-  const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
+  const phone = phoneQuery()
   const rules = [...phone.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
   const found = rules.findLast((rule) =>
     must(rule[1], 'the selectors of a rule')
@@ -100,7 +124,7 @@ describe('the row the filters stand in', () => {
        That was the search box until it went (owner, 31.07.2026), and taking the
        box out took the spacing with it: a review measured the gap on a 360px
        screen fall from 24px to 12px, which is not a thing any test on this
-       portal could see. The rule names the two fields that can be last, and
+       portal could see. The rule names the one field that can be last, and
        `:last-child` is what keeps it from spacing a field with something under
        it. */
     const spacing = phoneRule(
@@ -146,7 +170,7 @@ describe('the row the filters stand in', () => {
 
   it('stands the categories as tall as the controls beside them', () => {
     /* The chips are shorter than a select, so without this they sat between the
-       top and the bottom of the row and the three controls shared neither. */
+       top and the bottom of the row and the two controls shared neither. */
     expect(bodyOf('.rankings__field--categories .rankings__categories')).toContain(
       'min-height: 2.5rem',
     )
@@ -188,9 +212,11 @@ describe('the row the filters stand in', () => {
        only the shared class is a rule that reaches all eight, and "inert on the
        other seven" is a thing that stays true only until one of them grows a
        row of filters. */
-    const phone = SHEET.slice(SHEET.indexOf('@media (max-width: 34.99875em)'))
-    const query = phone.slice(0, phone.lastIndexOf('}'))
-    const loose = [...query.matchAll(/^ {2}(\.[^{]+)\{/gm)]
+    /* `phoneQuery` already stops at the brace that closes the query. It used
+       to be cut again here with `lastIndexOf`, which on an unbounded range was
+       the last brace of the whole file, and what saved this one was the two
+       spaces of indentation in the pattern below rather than the cut. */
+    const loose = [...phoneQuery().matchAll(/^ {2}(\.[^{]+)\{/gm)]
       .map((one) => must(one[1], 'the selector the match found').trim())
       .filter((one) => !one.includes(':has(> .rankings__filters)'))
 

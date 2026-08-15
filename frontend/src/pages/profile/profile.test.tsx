@@ -5,7 +5,8 @@ import { at, first, must, selectElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
-import type { Competitor } from '../../data/types'
+import { formatPoints } from '../../i18n/format'
+import type { Competitor, Result } from '../../data/types'
 import { awardsOf } from './awards'
 import { shortBio } from './bio'
 
@@ -112,10 +113,32 @@ describe('what a competitor has won', () => {
     const rows = within(table).getAllByRole('row').slice(1)
     const places = rows.map((row) => at(within(row).getAllByRole('cell'), 2).textContent)
 
+    /* Pinned to the places the ladder actually gave, and not merely to „these
+       are not 1, 2, 3". A review moved every place up by one and that weaker
+       assertion passed: the column then read „3." where the member came second
+       and „2." where they came first, so the screen claimed a trophy nobody
+       won (PDL P16 gives one to the first three). Worked out here from the same
+       records the screen reads, so a change in the seed says so instead of
+       passing. */
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const results = await loadResource<Result[]>('results')
+    const me = must(
+      competitors.find((one) => one.memberNumber === '000001'),
+      'the member whose trophies are on screen',
+    )
+    const won = awardsOf(me, competitors, results)
+
     expect(rows.length).toBeGreaterThan(1)
-    /* Every place is the one the standing gave, which is what the sentence in
-       the cell says: „2. mesto" and not „2. red". The check that separates the
-       two is that they are not simply 1, 2, 3 down the column. */
+    expect(places).toEqual(won.map((one) => `${String(one.position)}. mesto`))
+    /* The points beside the place, for the same reason and found the same way:
+       a review moved every one of them by one and nothing noticed. A row of
+       this table is two facts about one season, and a table that gets either of
+       them wrong says the member won something they did not. */
+    expect(rows.map((row) => at(within(row).getAllByRole('cell'), 3).textContent)).toEqual(
+      won.map((one) => formatPoints(one.points, 'sr')),
+    )
+    /* And they really do differ from the row numbers, or the line above would
+       hold just as well over a table that counted itself. */
     expect(places).not.toEqual(rows.map((_, index) => `${String(index + 1)}. mesto`))
   })
 
