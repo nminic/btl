@@ -68,6 +68,11 @@ describe('the circle before a team name', () => {
 
     expect(drawn).toHaveAttribute('src', '/mock/logo/dunav.svg')
     expect(screen.queryByText('DT')).not.toBeInTheDocument()
+    /* And fetched when it comes near rather than with the page. A table of
+       teams is a request per row otherwise, none of which anybody asked for
+       yet, and a review found the attribute could be switched off with every
+       test still passing. */
+    expect(drawn).toHaveAttribute('loading', 'lazy')
   })
 
   it('cuts the logo where the team cut it', () => {

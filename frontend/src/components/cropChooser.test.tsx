@@ -5,6 +5,7 @@ import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import { CropChooser } from './CropChooser'
 import type { Chosen } from './CropChooser'
+import type { Crop } from '../data/types'
 import { CropWindow } from './CropWindow'
 
 /**
@@ -39,6 +40,19 @@ function Choosing({ asked = true }: { asked?: boolean }) {
       <p data-testid="sent">{chosen === null ? 'nista' : JSON.stringify(chosen.crop)}</p>
     </>
   )
+}
+
+/**
+ * A crop as it actually arrives: parsed out of text.
+ *
+ * Every record on this portal is read out of JSON, which is why nothing can
+ * vouch for its shape and why there is a check to read one through
+ * (components/crop.ts). Round tripping through text also drops a field that was
+ * never set, which is the case that mattered: the missing key, not the wrong
+ * value.
+ */
+function asRead(crop: unknown): Crop {
+  return JSON.parse(JSON.stringify({ crop })).crop
 }
 
 const anImage = () => new File(['slika'], 'trka.jpg', { type: 'image/jpeg' })
@@ -312,11 +326,11 @@ describe('choosing which square of a picture counts', () => {
        arrives, and which drops a key that was never set. */
     for (const crop of [undefined, { x: 5, y: -1, size: 0 }]) {
       const { container, unmount } = renderWithI18n(
-        <CropWindow
-          picture="data:image/png;base64,x"
-          alt="Slika koja čeka"
-          {...JSON.parse(JSON.stringify({ crop }))}
-        />,
+        /* Named rather than spread. Spreading the parsed record would hand the
+           element an `any`, which switches off the check on every one of its
+           properties: a new one added to `CropWindow` would go unnoticed here,
+           which is wider than the one field this is about. */
+        <CropWindow picture="data:image/png;base64,x" alt="Slika koja čeka" crop={asRead(crop)} />,
       )
 
       /* The whole picture, which is what a record nobody understands means:

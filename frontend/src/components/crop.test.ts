@@ -33,29 +33,50 @@ const portrait = { width: 400, height: 800 }
  */
 function shownBy(style: CoverStyle, shape: Shape): Frame {
   const along = style.objectPosition.split(' ').map(share)
+  /* The point the magnification turns about, read rather than assumed. The
+     first version of this took it from `object-position`, on the grounds that
+     the source writes the two the same, which is precisely what the source has
+     to be checked on: a review replaced the origin with the middle of the box
+     and this test did not notice. Read here, the two agreeing is something the
+     arithmetic depends on rather than something it takes for granted. */
+  const origin = style.transformOrigin.split(' ').map(share)
   const magnified = Number(must(/scale\(([\d.]+)\)/.exec(style.transform), 'the magnification')[1])
   /* A square box of side one, because the answer is a percentage and the size
      of the box cancels out of it. `cover` then scales the picture until its
      shorter edge is one. */
   const cover = 1 / Math.min(shape.width, shape.height)
 
-  const seen = (share: number, edge: number) => {
+  const seen = (share: number, about: number, edge: number) => {
     /* How long that edge is once the picture has been scaled to cover the box.
        One of the two is exactly 1; the other is longer, and the difference is
        the room the picture has to slide in. */
     const drawn = edge * cover
     // What the magnification leaves visible, in those same lengths.
     const window = 1 / magnified
+    /* Where the picture sits before anything is magnified: that share of the
+       room left over, which is what `object-position` in percentages means. */
+    const slid = share * (drawn - 1)
 
     return {
-      // That share of the room left over, as a fraction of the whole picture.
-      from: (100 * share * (drawn - window)) / drawn,
+      /* And then where the magnification leaves the box looking. Scaling about
+         a point `p` of the box maps `q` to `p + k(q - p)`, so what survives
+         inside the box starts `p - p / k` along it, which is `about * (1 - 1/k)`
+         written with the window rather than the scale. */
+      from: (100 * (slid + about * (1 - window))) / drawn,
       size: (100 * window) / drawn,
     }
   }
 
-  const across = seen(must(along[0], 'the horizontal share'), shape.width)
-  const down = seen(must(along[1], 'the vertical share'), shape.height)
+  const across = seen(
+    must(along[0], 'the horizontal share'),
+    must(origin[0], 'the horizontal origin'),
+    shape.width,
+  )
+  const down = seen(
+    must(along[1], 'the vertical share'),
+    must(origin[1], 'the vertical origin'),
+    shape.height,
+  )
 
   return {
     left: `${round(across.from)}%`,
