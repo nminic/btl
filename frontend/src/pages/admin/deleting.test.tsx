@@ -221,11 +221,17 @@ describe('one decision for a whole queue', () => {
     }
   })
 
-  it('carries the published text out with it, on the queue that publishes', async () => {
-    /* Biographies are the one queue where approving means publishing what the
-       moderator left, so the settled row has to carry the text rather than go
-       back for it. One decision for the whole queue must write the same thing
-       one decision at a time writes. */
+  it('settles every waiting biography, and writes down no text for any of them', async () => {
+    /* One decision for the whole queue has to write what one decision at a time
+       writes, and since 06.08.2026 that is nothing about the text (PDL P22).
+
+       It used to be the opposite. A biography was approved by publishing
+       whatever the moderator had left in the box, so the settled row had to
+       carry the text: without it, nothing would have said what actually went
+       onto the profile. There is no box now, so an approval publishes what the
+       card shows and the item is its own record. This is the same test turned
+       around, and it is worth keeping in that shape: what it guards is that a
+       sweep and a single press agree, whichever way the rule runs. */
     const user = setupUser()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
@@ -240,35 +246,40 @@ describe('one decision for a whole queue', () => {
       )
 
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
-      /* The card of a biography, which is what this is about: the queue holds
-         the pictures too since 06.08.2026, and a picture is not published, it is
-         accepted or handed back (queues.ts, `outcomeFor`).
+      const cards = within(waiting)
+        .getAllByRole('listitem')
+        .filter((one) => within(one).queryByText('Tekst biografije') !== null)
 
-         The text itself, read under the words that name it, and not the whole
-         card: the card carries the member's name above it, and a word taken from
-         there is a word the published text never had. */
-      const card = within(
+      expect(cards.length).toBeGreaterThan(0)
+
+      /* The text itself, read under the words that name it, and not the whole
+         card: the card carries the member's name above it, and a word taken
+         from there is a word the biography never had. */
+      const texts = cards.map((one) =>
         must(
-          within(waiting)
-            .getAllByRole('listitem')
-            .find((one) => within(one).queryByText('Tekst biografije') !== null),
-          'a card carrying a biography',
+          must(
+            within(one).getByText('Tekst biografije').nextElementSibling,
+            'the biography under the words that name it',
+          ).textContent,
+          'a waiting biography',
         ),
-      )
-      const first_text = must(
-        must(
-          card.getByText('Tekst biografije').nextElementSibling,
-          'the biography under the words that name it',
-        ).textContent,
-        'the first waiting biography',
       )
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
       const decided = within(screen.getByRole('list', { name: 'session decisions' }))
-      const words = must(first_text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')
+      const settled = decided.getAllByRole('listitem').map((one) => String(one.textContent))
 
-      expect(decided.getAllByText(new RegExp(words[0])).length).toBeGreaterThan(0)
+      /* Every one of them settled, and not one of them carrying its words. */
+      expect(settled.filter((line) => line.includes('approved')).length).toBeGreaterThanOrEqual(
+        cards.length,
+      )
+
+      for (const text of texts) {
+        const word = must(text.match(/[A-ZŠĐČĆŽ][a-zšđčćž]{4,}/), 'a word of the biography')
+
+        expect(decided.queryAllByText(new RegExp(word[0]))).toEqual([])
+      }
     } finally {
       confirm.mockRestore()
     }

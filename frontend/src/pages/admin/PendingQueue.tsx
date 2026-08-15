@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { registracija, tim } from '../../forms/definitions'
+import { tim } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
@@ -56,53 +56,6 @@ function handsBack(queue: Queue, item: PendingItem): boolean {
   const outcome = outcomeFor(queue, item)
 
   return outcome === 'sendBack' || outcome === 'instruct'
-}
-
-/**
- * The text of one waiting item, changed in place before it goes out.
- *
- * The biographies only. A biography never goes back to the competitor for
- * approval: the moderator adjusts it as they see fit and publishes what they
- * left (PDL P22), so the text has to be editable on the screen where it is read
- * rather than somewhere else. The shape is the one the portal already uses for
- * the long text administration rewrites in place, the rules and prizes of a
- * competition (src/pages/LeagueDetail.tsx): read it, press the button, write, and
- * leaving the box saves it.
- */
-function EditableBody({ id, label, value }: { id: string; label: string; value: string }) {
-  const { t } = useI18n()
-  const { edits, edit } = useSession()
-  const [editing, setEditing] = useState(false)
-  const current = edits[id]?.body ?? value
-
-  if (editing) {
-    return (
-      <textarea
-        className="field__control pending__editor"
-        autoFocus
-        aria-label={label}
-        defaultValue={current}
-        /* The same cap the member wrote it under. Without it a moderator could
-           leave a biography longer than the form that produced it would ever
-           accept, and the number lives in the definition rather than here so
-           the two ends cannot drift (src/forms/records.ts). */
-        maxLength={limitOf(registracija, 'bio')}
-        onBlur={(event) => {
-          edit(id, 'body', event.target.value)
-          setEditing(false)
-        }}
-      />
-    )
-  }
-
-  return (
-    <>
-      <p className="pending__body">{current}</p>
-      <button type="button" className="button button--secondary" onClick={() => setEditing(true)}>
-        {t('admin.change')}
-      </button>
-    </>
-  )
 }
 
 /**
@@ -327,10 +280,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       { key: 'verification.proposedDate', value: one.proposedDate },
     ].filter((fact) => fact.value !== '')
 
-  /* What is on screen right now, which on the biographies is not what came in:
-     the moderator has been editing it, and what is published is what they left. */
-  const textOf = (one: PendingItem) => edits[one.id]?.body ?? one.body
-
   /**
    * Approving, one item or forty, with everything the next one has to know.
    *
@@ -363,13 +312,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       settle(one.id, {
         status: 'approved',
-        /* A published biography is written down as it went out: what the
-           member's profile now says, rather than what they sent in. Nothing
-           reads it on a screen since the tables of settled items were taken away
-           (owner, 06.08.2026); it is kept because it is what the database will
-           be given when there is one, and because a decision that records
-           nothing about what it published cannot be answered for. */
-        note: outcomeFor(queue, one) === 'editAndPublish' ? textOf(one) : '',
+        /* Nothing to write down. This was what a published biography went out
+           as, back when a moderator adjusted the text and published what they
+           left; since 06.08.2026 a biography is approved as the member wrote it
+           or refused with a reason (PDL P22), so an approval publishes exactly
+           what the card showed and there is nothing an approval could record
+           that the item does not already say. */
+        note: '',
         basis: '',
         memberNumber: '',
       })
@@ -667,13 +616,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           ))}
                           <div className="pending__text">
                             <dt>{bodyLabelFor(one)}</dt>
-                            {outcomeFor(queue, one) === 'editAndPublish' ? (
-                              <dd className="pending__edit">
-                                <EditableBody id={one.id} label={bodyLabelFor(one)} value={one.body} />
-                              </dd>
-                            ) : (
-                              <dd className="pending__body">{one.body}</dd>
-                            )}
+                            {/* Read, not edited. A biography used to be
+                                changeable in place here and published as the
+                                moderator left it; the owner withdrew that on
+                                06.08.2026 (PDL P22), and what a member wrote
+                                about themselves now goes out as they wrote it
+                                or comes back with a reason. */}
+                            <dd className="pending__body">{one.body}</dd>
                           </div>
                         </dl>
 
@@ -806,9 +755,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 }
                               }}
                             >
-                              {outcomeFor(queue, one) === 'editAndPublish'
-                                ? t('verification.publish')
-                                : t('review.approve')}
+                              {t('review.approve')}
                             </button>
 
                             {/* Deleting opens the same box the refusals open,

@@ -85,8 +85,8 @@ describe('every form definition in the portal', () => {
 
   it('gives every long box written by hand a limit, from a definition', () => {
     /* The rule above reaches the definitions, and a box written by hand reaches
-       nothing. Three exist: a biography rewritten by a moderator, the rules of a
-       competition rewritten in place, and the comment beside a rating. The third
+       nothing. Two exist: the rules of a
+       competition rewritten in place, and the comment beside a rating. The second
        was written in the same week as this test with no limit at all, and every
        test on the portal passed.
 
@@ -111,13 +111,16 @@ describe('every form definition in the portal', () => {
       )
       .map(({ path }) => path)
 
-    /* The four, so the sweep is known to have found the boxes rather than an
-       empty list, and so a fifth has to be looked at rather than merely
-       counted. */
+    /* The three, so the sweep is known to have found the boxes rather than an
+       empty list, and so a fourth has to be looked at rather than merely
+       counted. There were four until 15.08.2026: a moderator used to rewrite a
+       biography in place on the verification queue and publish what they left,
+       and the owner withdrew that on 06.08.2026 (PDL P22). What a member wrote
+       about themselves is now approved as written or refused with a reason, so
+       there is no box to limit. */
     expect(drawn.map(({ path }) => path).sort()).toEqual([
       'forms/LongBox.tsx',
       'pages/LeagueDetail.tsx',
-      'pages/admin/PendingQueue.tsx',
       'pages/event/GoingToEvent.tsx',
     ])
     expect(loose).toEqual([])

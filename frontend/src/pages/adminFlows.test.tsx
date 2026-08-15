@@ -1,3 +1,4 @@
+import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
@@ -1804,8 +1805,11 @@ describe('the six queues read from the file', () => {
   it('holds the text and the picture in one queue, decided each its own way', async () => {
     /* Owner, 06.08.2026: the same member's profile is one thing to look at, so
        the two used to be two queues and are one. What is done with them is not
-       one thing: a biography is edited and published and never goes back, a
-       picture is accepted or handed back with an instruction to work from. */
+       quite one thing: both go back to the member when they are refused, and
+       what the moderator is asked to write differs. A biography is refused with
+       a reason and the member writes another; a picture is handed back with an
+       instruction precise enough to work from, which is what the empty box on
+       that card asks for (PDL P22). */
     await open('profiles', 'Trkački profil')
 
     const cards = within(waitingList()).getAllByRole('listitem')
@@ -1815,15 +1819,11 @@ describe('the six queues read from the file', () => {
     expect(texts).toHaveLength(2)
     expect(pictures).toHaveLength(2)
 
-    for (const one of texts) {
-      const card = within(one)
-
-      expect(card.getByRole('button', { name: 'Objavi' })).toBeVisible()
-      expect(card.queryByRole('button', { name: 'Odbij' })).toBeNull()
-      expect(card.queryByRole('button', { name: 'Odobri' })).toBeNull()
-    }
-
-    for (const one of pictures) {
+    /* The same two decisions on both sorts. „Objavi" stood on a biography
+       alone until 15.08.2026, when the code caught up with the decision that
+       took it away (PDL P22, 06.08.2026): a word that says the moderator lets
+       something out belongs to a text they may rewrite, and they may not. */
+    for (const one of [...texts, ...pictures]) {
       const card = within(one)
 
       expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
@@ -1832,16 +1832,16 @@ describe('the six queues read from the file', () => {
     }
   })
 
-  it('edits a biography in place and publishes what the moderator left', async () => {
+  it('refuses a biography with a reason, and hands it back to the member', async () => {
+    /* Owner, 06.08.2026, confirmed 11.08.2026 (PDL P22): „Sve što se odbije
+       vraća se članu", uz obavezan razlog, i član sme da pošalje ponovo. Until
+       15.08.2026 the code did the thing that decision replaced: the moderator
+       rewrote the text in place and published what they left, so somebody
+       else's sentences went onto a member's profile under their name. */
     const user = await open('profiles', 'Trkački profil')
 
-    /* Two biographies and two pictures, in one queue since 06.08.2026: the same
-       member's profile is looked at in one place. */
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 4' })).toBeVisible()
 
-    /* The card of a biography, found by the words that name what is on it. A
-       biography never goes back to the competitor, so its card has no button for
-       it and nothing to write; the pictures beside it do. */
     const card = within(
       must(
         within(waitingList())
@@ -1851,46 +1851,60 @@ describe('the six queues read from the file', () => {
       ),
     )
 
-    expect(card.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-    expect(card.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
+    /* The same two decisions every other queue that hands work back offers, and
+       not the one word that used to stand here alone. */
+    expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
+    expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
+    expect(card.queryByRole('button', { name: 'Objavi' })).not.toBeInTheDocument()
 
-    await user.click(card.getByRole('button', { name: 'Izmeni' }))
-    const box = card.getByRole('textbox', { name: 'Tekst biografije' })
-    await user.clear(box)
-    await user.type(box, 'Rekreativac iz Čačka, trči zbog druženja.')
-    await user.tab()
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
 
-    // What the moderator wrote is what stands on the card, before anything is
-    // published and after the box has closed.
-    expect(card.getByText('Rekreativac iz Čačka, trči zbog druženja.')).toBeVisible()
+    const reason = screen.getByLabelText('Razlog odbijanja')
 
-    await user.click(card.getByRole('button', { name: 'Objavi' }))
+    await user.type(reason, 'Napiši nešto o sebi, ovo je prepisano sa tuđeg profila.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
-    // And what was published is the edited version, not what came in.
+    /* And the reason is written down where a refusal is written down, so the
+       member can be told what to change. */
     expect(
       within(screen.getByRole('list', { name: 'session decisions' })).getByText(
-        /Rekreativac iz Čačka, trči zbog druženja\./,
+        /prepisano sa tuđeg profila/,
       ),
     ).toBeVisible()
   })
 
-  it('publishes a biography nobody touched exactly as it came in', async () => {
+  it('approves a biography exactly as it came in, and nowhere lets it be rewritten', async () => {
     const user = await open('profiles', 'Trkački profil')
 
-    const card = within(first(within(waitingList()).getAllByRole('listitem')))
-    // Two paragraphs with an empty line between them, which is what a biography
-    // looks like and what has to survive being published untouched.
-    const sent = card.getByText(/Rekreativac iz Čačka/).textContent
+    const waiting = first(within(waitingList()).getAllByRole('listitem'))
+    const card = within(waiting)
+    /* Two paragraphs with an empty line between them, which is what a biography
+       looks like and what has to survive being read untouched. */
+    const sent = must(card.getByText(/Rekreativac iz Čačka/).textContent, 'the biography')
 
-    await user.click(card.getByRole('button', { name: 'Objavi' }))
+    /* Nothing to press that would open it for editing. A moderator used to
+       adjust the text and publish what they left; the owner withdrew that on
+       06.08.2026 (PDL P22), so the words on the card are the words that go out. */
+    expect(card.queryByRole('button', { name: 'Izmeni' })).not.toBeInTheDocument()
+    expect(card.queryByRole('textbox')).not.toBeInTheDocument()
 
+    expect(sent).toContain(String.fromCharCode(10))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    /* An approval records that it happened and nothing about the text, which is
+       the difference the withdrawal made: what used to be written down here was
+       „what the profile now says", because a moderator could have changed it on
+       the way out. Nothing can change it now, so the item is the record. */
     const lines = within(screen.getByRole('list', { name: 'session decisions' }))
       .getAllByRole('listitem')
       .map((one) => String(one.textContent))
 
-    expect(lines.some((line) => line.includes(String(sent)))).toBe(true)
+    expect(lines.some((line) => line.includes('approved'))).toBe(true)
+    expect(lines.some((line) => line.includes(sent))).toBe(false)
+    expect(within(waitingList()).queryAllByRole('listitem')).not.toContain(waiting)
   })
 
   /* Pictures are the only one of the three that still goes back to a competitor.
@@ -1898,23 +1912,41 @@ describe('the six queues read from the file', () => {
      back, because it is the same decision; what differs is what the moderator is
      asked to write, since that reason is what the member reads and changes the
      picture by (PDL P22, owner, 30.07.2026). */
-  it('asks the picture queue for a reason precise enough to work from', async () => {
+  it('asks the picture for an instruction and the biography for a reason', async () => {
     const user = await open('profiles', 'Trkački profil')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    const cardFor = (words: string) =>
+      within(
+        must(
+          within(waitingList())
+            .getAllByRole('listitem')
+            .find((one) => within(one).queryByText(words) !== null),
+          `a card carrying ${words}`,
+        ),
+      )
 
-    // The name of the field is the one every queue uses, so a member is never
-    // told about two different things.
-    const reason = screen.getByLabelText('Razlog odbijanja')
-    expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeInTheDocument()
+    await user.click(cardFor('Datoteka').getByRole('button', { name: 'Odbij' }))
 
-    // The empty field is where the queue says what it wants: not "no good" but
-    // what has to change for the picture to be accepted.
-    expect(reason).toHaveAttribute(
+    /* The name of the field is the one every queue uses, so a member is never
+       told about two different things. */
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
       'placeholder',
       'Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.',
     )
-    expect(screen.getAllByRole('button', { name: 'Odbij' })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).toBeInTheDocument()
+
+    /* And the biography beside it asks for the ordinary reason. Both go back to
+       the member since 06.08.2026 (PDL P22), and they are not the same errand:
+       a picture is handed back with an instruction to work from, a text is
+       refused and the member writes another. Until 15.08.2026 this could not be
+       compared at all, because a biography had no way back. */
+    await user.click(screen.getByRole('button', { name: 'Odustani' }))
+    await user.click(cardFor('Tekst biografije').getByRole('button', { name: 'Odbij' }))
+
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonPlaceholder,
+    )
   })
 
   it('leaves the reason for a returned picture in the inbox of the member', async () => {

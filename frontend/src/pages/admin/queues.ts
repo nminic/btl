@@ -35,12 +35,18 @@ import { PENDING_QUEUE_IDS, type ItemKind, type PendingItem, type PendingQueueId
  *   out onto the portal or it does not, and a moderator reads them by the dozen.
  *   The word matters as much as the click. "Refused" suggests a refused comment
  *   is being kept somewhere and could be brought back, and none is.
- * - `editAndPublish`: there is no second decision. The moderator adjusts the text
- *   as they see fit and publishes what they left. A biography never goes back to
- *   the competitor for approval, so there is no button for it and no reason to
- *   write.
+ *
+ * There were four. `editAndPublish` was the biography: the moderator adjusted
+ * the text as they saw fit and published what they left, with no second
+ * decision and nothing going back. The owner withdrew that on 06.08.2026 and
+ * confirmed it on 11.08.2026 (PDL P22): „Sve što se odbije vraća se članu", uz
+ * obavezan razlog, i član sme da pošalje ponovo. A biography is the words a
+ * member wrote about themselves, and a moderator rewriting them and publishing
+ * the result puts somebody else`s sentences on their profile under their name.
+ * So it is `sendBack` like the other five, and the exception is the comment,
+ * which is deleted rather than returned.
  */
-export type QueueOutcome = 'sendBack' | 'instruct' | 'delete' | 'editAndPublish'
+export type QueueOutcome = 'sendBack' | 'instruct' | 'delete'
 
 /**
  * Which seven there are.
@@ -193,7 +199,11 @@ export function outcomeFor(queue: Queue, item: { kind: ItemKind }): QueueOutcome
     return queue.outcome
   }
 
-  return item.kind === 'bio' ? 'editAndPublish' : 'instruct'
+  /* Both go back to the member, and they go back differently. A biography is
+     refused with a reason and the member writes another; a picture is handed
+     back with an instruction precise enough to work from, which is what the
+     empty box on that queue asks for (SendBack.tsx, PDL P22). */
+  return item.kind === 'bio' ? 'sendBack' : 'instruct'
 }
 
 /**
