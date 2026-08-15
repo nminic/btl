@@ -70,17 +70,65 @@ export function TopByCategory({
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
 
+  /* The bars, while somebody has one of them by the keyboard.
+   *
+   * The element and not a yes or a no, and that is the whole of what a review
+   * found wrong with the first version of this. A remembered „held" has to be
+   * unremembered by somebody, and there is a case where nobody can: the chart
+   * redraws with fewer columns, the one holding the focus is taken out of the
+   * page, and React sends no `focusout` for an element that is no longer there.
+   * The chart then waited for a reader who had already gone, for ever, while the
+   * button went on offering to stop something standing still. Measured: focus
+   * fell to the body and no turn came in two thousand milliseconds.
+   *
+   * Kept apart from `turning` for a different reason, and that reason stands:
+   * one is what the reader asked for with the button, which the button's name
+   * has to go on saying; the other is a wait that ends by itself. Folded
+   * together, tabbing through the chart would rename the button and leave it
+   * renamed, so a reader would be told they had stopped something they never
+   * touched. */
+  const [bars, setBars] = useState<HTMLElement | null>(null)
+
   useEffect(() => {
     if (!turning) {
       return
     }
 
     const turn = setInterval(() => {
+      /* Asked of the page at the moment the turn is due, rather than of what was
+         remembered when the focus arrived. An element taken out of the page
+         contains nothing, so a reader who has gone stops holding anything
+         without having to be noticed leaving. */
+      if (bars !== null && bars.contains(document.activeElement)) {
+        return
+      }
+
       setCategory((current) => NEXT[current])
     }, turnMs)
 
     return () => clearInterval(turn)
-  }, [turnMs, turning])
+  }, [turnMs, turning, bars])
+
+  /* Taking hold of a column puts back a turn that had already set off.
+   *
+   * The turn is two steps: the words go out, and a third of a fade later what is
+   * counted changes. Holding only the first left the second to finish under a
+   * reader who arrived in between, which is a two hundred and ten millisecond
+   * window in every six seconds, and inside it the very thing this is written to
+   * stop still happened: the link under their finger became somebody else's.
+   * Measured by a review, and worse than a smaller window, because the redraw
+   * could take the focused column away with it.
+   *
+   * Put back rather than stopped halfway: `category` returns to what is on the
+   * screen, the pending swap is cleared by its own effect, and the words fade
+   * back in. The reader keeps the chart they tabbed into. */
+  function hold(taken: HTMLElement | null): void {
+    setBars(taken)
+
+    if (taken !== null) {
+      setCategory(shown)
+    }
+  }
 
   /* The words go out, then what is counted changes, then they come back. The
      bars need no such thing: their height is a style and a style slides, so they
@@ -123,6 +171,7 @@ export function TopByCategory({
   return (
     <ColumnChart
       columns={columns}
+      onHeld={hold}
       swapping={shown !== category}
       caption={t(`home.mostOf.${shown}`)}
       empty={t('home.noneYet')}
