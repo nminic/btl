@@ -13,7 +13,7 @@ import { setupUser } from '../test/user'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
-import { canSendBack, countFor, QUEUE, QUEUES } from './admin/queues'
+import { canSendBack, countFor, QUEUE, QUEUES, returned } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
 import { categoryOf } from '../data/raceCategory'
 import {
@@ -506,6 +506,27 @@ describe('payment payloads', () => {
      31.07.2026). Turning the file into decisions is the server's work and the
      server does not exist yet, so what it does today is take the file and say
      so; what it can honestly refuse is a file that is not a statement at all. */
+  it('does not promise a message on the queue that sends none', async () => {
+    /* The payments queue draws the same box as the others and passes no words of
+       its own, so it takes whatever the default is. That default promised „Član
+       dobija tvoj razlog" until 15.08.2026, while `notify` is not called from
+       that screen at all: a moderator was told the member would read what they
+       were writing.
+     *
+       Read off the screen rather than off the default, because what is being
+       guarded is what a moderator sees. A review changed the default back and
+       every test passed, since nothing opened this box. */
+    const user = setupUser()
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+    await user.click(first(await screen.findAllByRole('button', { name: 'Odbij' })))
+
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonKeptPlaceholder,
+    )
+  })
+
   it('takes a statement in PDF and says what it did with it', async () => {
     const user = setupUser()
     renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
@@ -1992,6 +2013,33 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
   })
 
+  it('promises the message only where one is actually sent', async () => {
+    /* Owner, R10: the screen must not promise what the code does not do. The
+       empty box used to read „Član dobija tvoj razlog" everywhere a reason is
+       asked for, and `notify` is called from one screen and for one queue, so on
+       the other six it was telling a moderator that words they were about to
+       write would be read by somebody who never sees them.
+     *
+       Read against `returned`, which is the one place that knows whether a
+       message goes, rather than against a list of queue names written here: a
+       queue added later gets the right words or fails this. */
+    /* `QUEUE` and not `QUEUES`, because a local list of that name shadows the
+       import inside this describe block and holds tuples rather than queues. */
+    for (const one of Object.values(QUEUE)) {
+      const sends = returned(one, { kind: 'bio' }) !== null
+
+      expect(
+        [sr.review.reasonPlaceholder, sr.review.reasonKeptPlaceholder].filter((words) =>
+          words.includes('Član dobija tvoj razlog'),
+        ),
+        'exactly one of the two sets of words makes the promise',
+      ).toHaveLength(1)
+
+      /* And the queue that sends is the racing profile and only it. */
+      expect(sends, one.id).toBe(one.id === 'profiles')
+    }
+  })
+
   it('writes it to that member and to nobody else, least of all to everybody', async () => {
     /* The half the two tests below cannot see. Each of them signs in as the very
        member whose item is refused, and an inbox shows a member what was written
@@ -2033,9 +2081,13 @@ describe('the six queues read from the file', () => {
        messages, so the assertion could not fail either way. */
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
-    /* This inbox is not simply empty: the league writes to everybody, and those
-       are exactly the messages an empty recipient is mixed up with. */
-    expect((await screen.findAllByRole('link')).length).toBeGreaterThan(0)
+    /* This inbox is not simply empty, and it is not proved so by counting links:
+       the first version did that and counted the navigation, which draws „Sve
+       poruke" whether or not there is a message. A review emptied the seeded
+       messages and it still passed. What is asked for is one of those messages by
+       name, since a message written to everybody is exactly what an empty
+       recipient would be mixed up with. */
+    expect(await screen.findByText(/Dobro došao u pripremu sezone 2027/)).toBeVisible()
     expect(screen.queryByText(/Tekst o sebi je vraćen/)).not.toBeInTheDocument()
   })
 
