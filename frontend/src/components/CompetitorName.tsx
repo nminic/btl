@@ -1,3 +1,4 @@
+import { profilePath } from '../pages/profileAddress'
 import { Link } from 'react-router'
 import type { Competitor } from '../data/types'
 import { useI18n } from '../i18n/useI18n'
@@ -31,7 +32,7 @@ export function CompetitorName({
   }
 
   return (
-    <Link className={className} to={`/${locale}/takmicar/${competitor.memberNumber}`}>
+    <Link className={className} to={profilePath(competitor, locale)}>
       {name}
     </Link>
   )

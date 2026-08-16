@@ -2,7 +2,7 @@ import { matchingMedia } from '../../test/media'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { first, htmlElement, must } from '../../test/at'
+import { at, first, htmlElement, must } from '../../test/at'
 import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
@@ -11,6 +11,7 @@ import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
 import { CATEGORIES } from '../../data/derive'
 import { FIRST, NEXT } from './rotation'
+import { addressOf } from '../profileAddress'
 import { TopByCategory } from './TopByCategory'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
@@ -351,13 +352,13 @@ describe('TopByCategory', () => {
 
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
-      '/sr/takmicar/000001?sezona=2027&duzina=short',
+      '/sr/takmicar/000001-ime-000001?sezona=2027&duzina=short',
     )
 
     await waitFor(() =>
       expect(screen.getByRole('link')).toHaveAttribute(
         'href',
-        '/sr/takmicar/000001?sezona=2027&duzina=long',
+        '/sr/takmicar/000001-ime-000001?sezona=2027&duzina=long',
       ),
     )
   })
@@ -483,6 +484,220 @@ describe('TopByCategory', () => {
     })
 
     expect(screen.getAllByRole('listitem')[0]).toBe(first)
+  })
+
+  it('holds still while somebody has a column by the keyboard', async () => {
+    /* A column is a link to one person's profile, and the turn changes which
+       person each column is: the elements are kept and only what is in them is
+       replaced (the test above holds that on purpose, because it is what makes
+       the fade possible). A reader who tabs onto a column and reads it is
+       therefore holding a link that becomes somebody else's under them, and
+       pressing Enter opens a profile they never chose. WCAG 2.2 SC 3.2.5: a
+       change of context nobody asked for.
+
+       Nothing is announced and nothing moves; the turn simply waits until they
+       leave, which is what a carousel does under a cursor. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={20} />,
+    )
+
+    const column = screen.getByRole('link')
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    column.focus()
+
+    expect(column).toHaveFocus()
+    expect(column).toHaveAttribute('href', `/sr/takmicar/${addressOf(competitor('000001'))}?sezona=2027&duzina=short`)
+
+    /* Five turns' worth of waiting, so „it did not turn" is not „it had not got
+       round to it yet". */
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100)
+    })
+
+    expect(screen.getByText(/^Najviše/).textContent).toBe(opening)
+    expect(column).toHaveFocus()
+    expect(column).toHaveAttribute('href', `/sr/takmicar/${addressOf(competitor('000001'))}?sezona=2027&duzina=short`)
+  })
+
+  it('goes on turning while the keyboard is on the button that stops it', async () => {
+    /* The hold is on the bars, not on the whole widget, and this is why: the
+       button means the same thing after a turn as before it, and it is the one
+       control a reader presses in order to make the chart move. Held from the
+       section, „Nastavi smenjivanje" would start nothing until they tabbed away
+       from the very button they had just pressed. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={20} />,
+    )
+
+    const button = screen.getByRole('button')
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    button.focus()
+
+    expect(button).toHaveFocus()
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
+  })
+
+  it('keeps holding while the keyboard moves from one column to the next', async () => {
+    /* Tabbing along the bars is a blur and a focus in one breath. Read as a
+       leaving, the turn would be let go of between every pair of columns and
+       the chart could turn under the reader on the way. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 11), category: 'short' as const },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={20} />,
+    )
+
+    const links = screen.getAllByRole('link')
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    at(links, 0).focus()
+    at(links, 1).focus()
+
+    expect(at(links, 1)).toHaveFocus()
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100)
+    })
+
+    expect(screen.getByText(/^Najviše/).textContent).toBe(opening)
+  })
+
+  it('puts back a turn that had already set off when a column is taken hold of', async () => {
+    /* The turn is two steps: the words go out, and a third of a fade later what
+       is counted changes. Holding only the first left the second to finish under
+       a reader who arrived in between, and inside that window the link under
+       their finger still became somebody else's. Measured by a review. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={300} />,
+    )
+
+    const chart = must(
+      screen.getByText(/^Najviše/).closest<HTMLElement>('.colchart'),
+      'the chart the band belongs to',
+    )
+
+    /* Caught in the middle of a turn, which is what the class says. */
+    await waitFor(() => {
+      expect(chart.className).toContain('colchart--swapping')
+    })
+
+    const column = screen.getByRole('link')
+    const held = column.getAttribute('href')
+
+    column.focus()
+
+    /* Long enough for the swap that was already under way to have landed. */
+    await new Promise((settled) => {
+      setTimeout(settled, 400)
+    })
+
+    expect(column).toHaveFocus()
+    expect(column).toHaveAttribute('href', held)
+    expect(chart.className).not.toContain('colchart--swapping')
+  })
+
+  it('turns again after the column it was held by is taken out of the page', async () => {
+    /* React sends no `focusout` for an element that is no longer there, so a
+       remembered „held" would never be unremembered: the chart waited for a
+       reader who had already gone, for ever, while the button went on offering
+       to stop something standing still. Measured by a review, and the reason the
+       hold is a question put to the page rather than a fact kept in a variable.
+     *
+       The same widget given new numbers, which is what happens on the front page
+       by itself: `Home.tsx` works its season and its field out of `useToday()`,
+       and the clock looks again every minute. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const two = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'short' as const },
+    ]
+    const one = [{ ...result('000001', 10), category: 'short' as const }]
+
+    const { rerender } = renderWidget(
+      <TopByCategory competitors={competitors} results={two} season={2027} turnMs={20} />,
+    )
+
+    const second = at(screen.getAllByRole('link'), 1)
+
+    second.focus()
+
+    expect(second).toHaveFocus()
+
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    rerender(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    /* Gone from the page, and with it the focus: nothing announced it and
+       nothing can, because the element that would have said so is the one that
+       left. */
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(document.activeElement).toBe(document.body)
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
+  })
+
+  it('turns again once the keyboard has left it', async () => {
+    /* The other half, and the one that says the hold is a hold and not a stop:
+       a chart that never turned again would pass the test above.
+     *
+       Letting go and taking hold again between two columns really does happen,
+       which a review measured: `onHeld` is called with the bars, then with
+       nothing, then with the bars. Nothing gets through in that gap, because
+       there is no turn of the loop in it for a timer to fire in. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <TopByCategory competitors={competitors} results={results} season={2027} turnMs={20} />,
+    )
+
+    const column = screen.getByRole('link')
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    column.focus()
+    column.blur()
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
   })
 
   it('takes the words out while it turns, and brings them back', async () => {

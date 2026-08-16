@@ -1,3 +1,4 @@
+import { profilePath } from '../profileAddress'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
@@ -163,7 +164,7 @@ function Going({
                 /* No record to lead to, so no link: the words stand alone. */
                 <span>{t('event.someMember')}</span>
               ) : (
-                <Link to={`/${locale}/takmicar/${number}`}>
+                <Link to={profilePath(who, locale)}>
                   {who.firstName} {who.lastName}
                 </Link>
               )}
