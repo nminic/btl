@@ -254,6 +254,33 @@ export function returned(queue: Queue, item: { kind: ItemKind }): string | null 
 }
 
 /**
+ * Where a refusal on this queue would arrive and under what heading, or nothing
+ * where it would arrive nowhere.
+ *
+ * The two questions asked together, because they are always asked together and
+ * the answer to one is worthless without the other: a heading with no recipient
+ * sends a member`s refusal to the whole league (an empty `Message.to` is
+ * everybody), and a recipient with no heading gives them a key instead of a
+ * sentence.
+ *
+ * Asked by the screens that write the message and by the words drawn over the
+ * box a moderator types into, so what is promised and what is done can never
+ * disagree. Written out at each of them, the payments queue promised a message
+ * while its screen never sent one, and the results queue did the same; a review
+ * measured both on 16.08.2026.
+ */
+export function refusalTo(
+  queue: Queue,
+  item: { kind: ItemKind; memberNumber: string },
+): { to: string; heading: string } | null {
+  const heading = returned(queue, item)
+
+  return heading === null || !canSendBack(queue, item)
+    ? null
+    : { to: item.memberNumber, heading }
+}
+
+/**
  * What is to be done with one item, which is what the queue says except where
  * the queue holds two sorts of thing.
  *

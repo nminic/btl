@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
 import { QueueMeta } from './QueueMeta'
-import { QUEUE } from './queues'
+import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import '../member/Member.css'
@@ -29,8 +30,13 @@ import './Verification.css'
  */
 export function ReviewQueue() {
   const { locale, t } = useI18n()
-  const { submissions, decide } = useSession()
-  const [open, setOpen] = useState<string | null>(null)
+  const { submissions, decide, notify } = useSession()
+  const today = useToday()
+  /* Which result the reason box is open on: the id the decision is written
+     under, and the member the refusal is written to. Both taken when the box is
+     opened, from the row it was opened from, so the moment of sending has
+     nothing left to look up and no case where the lookup fails. */
+  const [open, setOpen] = useState<{ id: string; memberNumber: string } | null>(null)
   const [note, setNote] = useState('')
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
@@ -155,7 +161,7 @@ export function ReviewQueue() {
                              from the row would leave it open over a result that
                              is already decided, and confirming it would refuse
                              what was just approved without saying so. */
-                          setOpen((current) => (current === one.id ? null : current))
+                          setOpen((current) => (current?.id === one.id ? null : current))
                         }}
                       >
                         {t('review.approve')}
@@ -164,7 +170,7 @@ export function ReviewQueue() {
                         type="button"
                         className="button button--secondary"
                         onClick={() => {
-                          setOpen(one.id)
+                          setOpen({ id: one.id, memberNumber: one.memberNumber })
                           setNote('')
                         }}
                       >
@@ -222,7 +228,38 @@ export function ReviewQueue() {
                   return
                 }
 
-                decide(open, 'rejected', note.trim())
+                const reason = note.trim()
+
+                decide(open.id, 'rejected', reason)
+
+                /* And the member is told, which this screen did not do until
+                   16.08.2026 while the box beside it promised they would be
+                   (owner, 15.08.2026: „Poruka ide sa svih redova"). A review
+                   measured it: `decide` was called and `notify` never was.
+                 *
+                   Read through the one place that knows whether a message goes
+                   and under what heading (queues.ts), rather than written out
+                   here, because a second copy of that rule is a second answer to
+                   the same question. A result carries no sort, so the empty one
+                   is handed in, which is what every queue but the racing profile
+                   carries.
+                 *
+                   `canSendBack` first, and it is not a formality: an empty
+                   recipient in this portal is the whole league and not nobody
+                   (Message.to), so a submission without a member number would
+                   send one person`s refusal to everybody. */
+                const going = refusalTo(QUEUE.results, { kind: '', memberNumber: open.memberNumber })
+
+                if (going !== null) {
+                  notify({
+                    from: t('app.name'),
+                    to: going.to,
+                    subject: t(going.heading),
+                    body: reason,
+                    date: today,
+                  })
+                }
+
                 setOpen(null)
                 setNote('')
               }}

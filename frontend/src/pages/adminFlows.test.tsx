@@ -4,11 +4,12 @@ import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
+import { ClockProvider } from '../clock/ClockProvider'
 import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
-import { Decided } from '../test/decided'
+import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -508,25 +509,107 @@ describe('payment payloads', () => {
      31.07.2026). Turning the file into decisions is the server's work and the
      server does not exist yet, so what it does today is take the file and say
      so; what it can honestly refuse is a file that is not a statement at all. */
-  it('does not promise a message on the queue that sends none', async () => {
-    /* The payments queue draws the same box as the others and passes no words of
-       its own, so it takes whatever the default is. That default promised „Član
-       dobija tvoj razlog" until 15.08.2026, while `notify` is not called from
-       that screen at all: a moderator was told the member would read what they
-       were writing.
+  it('promises no message where there is nobody to send one to', async () => {
+    /* The refusal is written to whoever sent the thing in, and on this queue
+       that is usually nobody: a registration waiting for its fee has no account
+       yet, so it carries no member number (PDL P8). All three waiting in the
+       data are of that kind.
      *
-       Read off the screen rather than off the default, because what is being
-       guarded is what a moderator sees. A review changed the default back and
-       every test passed, since nothing opened this box. */
+       The words over the box therefore come from the same rule that decides
+       whether the message goes at all (queues.ts), rather than from a default
+       fixed for the whole screen. Written the other way round, a moderator was
+       told the member would read what they were writing while `notify` was never
+       called from here, which a review measured on 16.08.2026.
+     *
+       Read off the screen rather than off the rule, because what is guarded is
+       what a moderator sees. */
     const user = setupUser()
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin', null, undefined, null, <Inbox />)
 
     await user.click(first(await screen.findAllByRole('button', { name: 'Odbij' })))
 
     expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
       'placeholder',
-      sr.review.reasonPlaceholder,
+      sr.review.reasonKeptPlaceholder,
     )
+
+    /* And pressed, so the promise and the deed are held together: nothing may be
+       written to the empty string, which in this portal is not nobody but the
+       whole league (Message.to). */
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije stigla.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    const inbox = within(screen.getByRole('list', { name: 'session inbox' }))
+
+    expect(inbox.queryByText(new RegExp(sr.verification.paymentReturned))).toBeNull()
+  })
+
+  it('writes the refusal to a member who is already one', async () => {
+    /* The other half of the rule, and the seed cannot reach it: everybody
+       waiting on this queue today is registering for the first time, so nobody
+       has a number (PDL P8). A member renewing does have one, and then the
+       refusal goes to them and to nobody else.
+     *
+       Handed to the data layer as one row more, the way the seed itself is read
+       (test/setup.ts serves `public/mock` off disk), so everything else on the
+       screen is still the real thing. */
+    const real = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await real(input, init)
+
+      if (!String(input).includes('verification.json')) {
+        return answer
+      }
+
+      const rows: PendingItem[] = await answer.json()
+      const first = must(
+        rows.find((one) => one.queue === 'payments'),
+        'a payment waiting in the seed',
+      )
+
+      rows.push({ ...first, id: 'ver-upl-obnova', who: 'Strahinja Vukićević', memberNumber: '000007' })
+
+      return new Response(JSON.stringify(rows), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    try {
+      const user = setupUser()
+      /* Signed in as the very member the refusal is written to, because the
+         inbox is what a member is allowed to see and that is the honest way to
+         ask „did it arrive": the store itself is not exposed to a screen
+         (SessionProvider). An administrator who is also a member is ordinary
+         here; the owner runs the league and races in it. */
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin', '000007', undefined, null, <Inbox />)
+
+      const card = must(
+        (await screen.findAllByRole('row')).find(
+          (one) => within(one).queryByText('Strahinja Vukićević') !== null,
+        ),
+        'the row of the member renewing',
+      )
+
+      await user.click(within(card).getByRole('button', { name: 'Odbij' }))
+
+      /* And the words over the box say a message goes, because for this one it
+         does: the same rule decides both (queues.ts). */
+      expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+        'placeholder',
+        sr.review.reasonPlaceholder,
+      )
+
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije stigla do roka.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      const inbox = within(screen.getByRole('list', { name: 'session inbox' }))
+
+      expect(inbox.getByText(`000007 | ${sr.verification.paymentReturned}`)).toBeInTheDocument()
+    } finally {
+      globalThis.fetch = real
+    }
   })
 
   it('takes a statement in PDF and says what it did with it', async () => {
@@ -715,25 +798,35 @@ describe('an empty queue', () => {
   })
 })
 
+/** The day the results queue is read as. Any day; what matters is that the
+ *  refusal it sends is dated from the portal's own clock and not the machine's. */
+const DAY = '2026-08-16'
+
 describe('the queue of results', () => {
   const openWith = (states: SubmissionStatus[]) => {
     const user = setupUser()
     const session = sessionWith(states)
 
     render(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          {/* The screen names the browser tab after its own queue, and outside the
-              shell there is nothing listening (src/app/PageMeta.tsx). */}
-          <PageMetaContext.Provider value={vi.fn()}>
-            <RoleProvider initialRole="moderator">
-              <SessionContext.Provider value={session}>
-                <ReviewQueue />
-              </SessionContext.Provider>
-            </RoleProvider>
-          </PageMetaContext.Provider>
-        </MemoryRouter>
-      </I18nProvider>,
+      /* The day the refusal is dated with, from the one clock the whole portal
+         reads (src/clock). This screen took it on 16.08.2026, when the refusal
+         started reaching the member, which is what every other queue already
+         did. */
+      <ClockProvider simulatedDay={DAY}>
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            {/* The screen names the browser tab after its own queue, and outside the
+                shell there is nothing listening (src/app/PageMeta.tsx). */}
+            <PageMetaContext.Provider value={vi.fn()}>
+              <RoleProvider initialRole="moderator">
+                <SessionContext.Provider value={session}>
+                  <ReviewQueue />
+                </SessionContext.Provider>
+              </RoleProvider>
+            </PageMetaContext.Provider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
     )
 
     return { user, session }
@@ -765,6 +858,67 @@ describe('the queue of results', () => {
        put them back and all 1905 tests passed. `notify` is never called from this
        screen (PENDING R9b). */
     expect(reason).toHaveAttribute('placeholder', sr.review.reasonPlaceholder)
+  })
+
+  it('writes the refusal to the member who entered the result', async () => {
+    /* Owner, 15.08.2026: „Poruka ide sa svih redova." Until 16.08.2026 this
+       screen wrote nothing at all while the box beside it promised the member
+       would read the reason, and the only test of the rule read the table in
+       `queues.ts` rather than the delivery, so it said this queue sends and the
+       queue sent nothing.
+     *
+       Held on the message itself: who it went to, under what heading, and with
+       the words the moderator wrote. The recipient matters most: the empty
+       string in this portal is not nobody but the whole league (Message.to). */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Vreme se ne poklapa.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    expect(session.notify).toHaveBeenCalledWith({
+      from: sr.app.name,
+      to: '000007',
+      subject: sr.verification.resultReturned,
+      body: 'Vreme se ne poklapa.',
+      date: DAY,
+    })
+  })
+
+  it('writes to nobody rather than to everybody where the result carries no member', async () => {
+    /* A result always carries whoever entered it, so this is a state the portal
+       does not reach today. It is guarded all the same, and the guard is worth a
+       test, because the failure is not „no message" but „a message to the whole
+       league": an empty recipient is everybody (Message.to), so one member`s
+       refusal would land in every inbox on the portal. */
+    const user = setupUser()
+    const session = sessionWith(['pending'])
+    const nobody = { ...at(session.submissions, 0), memberNumber: '' }
+
+    render(
+      <ClockProvider simulatedDay={DAY}>
+        <I18nProvider locale="sr">
+          <MemoryRouter>
+            <PageMetaContext.Provider value={vi.fn()}>
+              <RoleProvider initialRole="moderator">
+                <SessionContext.Provider value={{ ...session, submissions: [nobody] }}>
+                  <ReviewQueue />
+                </SessionContext.Provider>
+              </RoleProvider>
+            </PageMetaContext.Provider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nema ko da primi.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    /* The decision is still written down, because the moderator decided; only
+       the message is withheld. */
+    expect(session.decide).toHaveBeenCalledWith(nobody.id, 'rejected', 'Nema ko da primi.')
+    expect(session.notify).not.toHaveBeenCalled()
   })
 
   it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
