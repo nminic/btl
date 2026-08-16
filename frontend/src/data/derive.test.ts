@@ -9,6 +9,7 @@ import {
   monthGrid,
   eventsInMonth,
   monthsWithEvents,
+  bestOfficialSeason,
   bestSingleRaces,
   rankingFor,
   rankMembers,
@@ -22,6 +23,7 @@ import {
   withPlaces,
   monthFrom,
 } from './derive'
+import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import type { BtlEvent, Competitor, Race, RaceCategory, Result, Team } from './types'
 
@@ -1110,5 +1112,81 @@ describe('categoriesAt', () => {
 
   it('says nothing for an event whose races nobody has entered', () => {
     expect(categoriesAt(event('one'), [])).toEqual([])
+  })
+})
+
+describe('the best of a member`s official seasons', () => {
+  /* What decides whether the beginners' category is still open (PDL P7, owner
+   * 11.08.2026). Both halves of the rule are the owner's words, so both are
+   * measured here rather than left to the screen that asks the question. */
+
+  it('counts nothing run before the league`s first official season', () => {
+    /* Verbatim: „gledaju se samo zvanične BTL sezone za pravilo od 12 poena u
+       prethodnoj, tako da u prvoj sezoni u teoriji svi mogu da odu u Prvu
+       Sezonu." The history imported from 2010 to 2026 is somebody's own record
+       of their running (P26) and it disqualifies nobody. */
+    const history = [
+      result('000001', '2019-05-05', 186.41),
+      result('000001', '2024-04-04', 74.2),
+      result('000001', '2026-12-31', 40),
+    ]
+
+    expect(bestOfficialSeason(history, '000001')).toBe(0)
+  })
+
+  it('takes the best single season and never the sum of several', () => {
+    /* The rule is that no official season has been finished with twelve or
+       more, so four points a season for five years is still a beginner: the
+       threshold measures a season, not how long somebody has been about. Twenty
+       altogether here, and the best season is eight. */
+    const spread = [
+      result('000001', '2027-03-01', 5),
+      result('000001', '2027-09-01', 3),
+      result('000001', '2028-03-01', 8),
+      result('000001', '2029-03-01', 4),
+    ]
+
+    expect(bestOfficialSeason(spread, '000001')).toBe(8)
+  })
+
+  it('adds up the races within one season', () => {
+    /* A season is finished with what was taken across it, so two races of seven
+       carry that member past the threshold even though neither does alone. */
+    const one = [result('000001', '2027-03-01', 7), result('000001', '2027-08-01', 7)]
+
+    expect(bestOfficialSeason(one, '000001')).toBe(14)
+  })
+
+  it('reads only the member asked about', () => {
+    const two = [result('000001', '2027-03-01', 40), result('000002', '2027-03-01', 3)]
+
+    expect(bestOfficialSeason(two, '000002')).toBe(3)
+  })
+
+  it('answers nought for somebody who has run nothing at all', () => {
+    expect(bestOfficialSeason([], '000001')).toBe(0)
+  })
+
+  it('keeps the half point that decides it, and does not round to the threshold', () => {
+    /* Every other figure here is a whole number, and real points never are: one
+       member`s season in the seed comes to 49.400000000000006. A review rounded
+       the answer and all 1907 tests stayed green, which would take somebody who
+       finished a season with 11,60 and shut a category the decision leaves open
+       to them. The threshold is measured to the point, on both sides of it. */
+    const nearly = [result('000001', '2027-03-01', 7.3), result('000001', '2027-08-01', 4.3)]
+    const just = [result('000002', '2027-03-01', 7.3), result('000002', '2027-08-01', 4.7)]
+
+    expect(bestOfficialSeason(nearly, '000001')).toBeCloseTo(11.6, 10)
+    expect(firstSeasonAllowed(bestOfficialSeason(nearly, '000001'))).toBe(true)
+    expect(firstSeasonAllowed(bestOfficialSeason(just, '000002'))).toBe(false)
+  })
+
+  it('counts every season from the first official one, with no end to them', () => {
+    /* The year was pinned from below and not from above, so a mutation that
+       quietly stopped counting after 2029 passed the whole suite. The league has
+       no last season. */
+    const late = [result('000001', '2033-06-01', 12)]
+
+    expect(bestOfficialSeason(late, '000001')).toBe(12)
   })
 })

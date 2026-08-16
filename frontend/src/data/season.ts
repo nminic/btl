@@ -6,6 +6,23 @@
  * season starts with everything already settled.
  */
 
+/**
+ * The first season the league actually runs.
+ *
+ * Everything before it is the history imported so a profile is not empty on the
+ * day the league starts (PDL P26), and no rule about what somebody has done in
+ * the league counts any of it: not the ducats, and not the threshold that closes
+ * the beginners' category (P7, owner 11.08.2026).
+ *
+ * Here rather than beside either of those, because it is a fact about the league
+ * and not about ducats or about categories. It lived in `ducatRule.ts`, where its
+ * own comment called it „the first season anything is counted for, for the
+ * families that go by month or by season"; read from there by a second rule, a
+ * change made for the ducats would have moved the boundary of a competition
+ * category without anybody meaning to.
+ */
+export const FIRST_SEASON = 2027
+
 /** Renewal and the transfer window both open on this day. */
 export const WINDOW_OPENS = '10-01'
 
