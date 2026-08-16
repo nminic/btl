@@ -4,6 +4,7 @@ import { screen, within } from '@testing-library/react'
 import type { Competitor } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
+import sr from '../../i18n/sr.json'
 import { setupUser } from '../../test/user'
 
 /* Changing what a member wrote about themselves, after joining.
@@ -51,6 +52,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     const panel = await panelFor()
 
     expect(await box()).toHaveValue(withOne.bio)
+    expect(panel.getByText(sr.bio.standing)).toBeVisible()
 
     const send = panel.getByRole('button', { name: 'Pošalji na odobrenje' })
 
@@ -65,6 +67,26 @@ describe('the words a member wrote about themselves, changed later', () => {
     expect((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
   })
 
+  it('says the limit on the way into the box, not by stopping the typing', async () => {
+    /* The box cuts at 360 characters, and until 16.08.2026 that number lived
+       only in a counter drawn `aria-hidden`, with nothing pointing at it. A
+       member who cannot see the screen met the limit as a wall: the keys simply
+       stopped working. `LongBox` says in its own comment that pointing at the
+       count is the caller's business (forms/LongBox.tsx), and the comment box on
+       an event does it (pages/event/RateEvent.tsx); this panel did not.
+     *
+       Both are read on the way in now: the rule, which carries the number in
+       words, and the count, which carries what is left of it. WCAG 2.2 SC 3.3.2,
+       and SC 1.3.1 for a rule that is on the screen and tied to nothing. */
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const box = await (async () => (await panelFor()).getByLabelText(/Svojim rečima|Tekst o sebi/))()
+
+    expect(box).toHaveAttribute('aria-describedby', 'settings-bio-rule settings-bio-left')
+    expect(box).toHaveAccessibleDescription(/najviše 360 znakova/)
+    expect(box).toHaveAccessibleDescription(/Još 360 znak/)
+  })
+
   it('asks somebody with nothing on their profile to write rather than to change', async () => {
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
@@ -74,6 +96,12 @@ describe('the words a member wrote about themselves, changed later', () => {
     expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toHaveAccessibleDescription(
       'Napiši nešto da bi mogao da pošalješ.',
     )
+    /* And the sentence above the box says there is nothing yet, rather than
+       „this is what stands on your profile" over an empty box. Both sentences
+       ran and neither was read, so a review swapped one for the other and the
+       whole suite stayed green. */
+    expect(panel.getByText(sr.bio.none)).toBeVisible()
+    expect(panel.queryByText(sr.bio.standing)).not.toBeInTheDocument()
   })
 
   it('reaches the moderator as a text, under the member it belongs to', async () => {
@@ -101,10 +129,23 @@ describe('the words a member wrote about themselves, changed later', () => {
        two members of one name apart; read loosely, because the card writes it
        inside a sentence rather than on its own. */
     expect(card.getByText(new RegExp(withOne.memberNumber))).toBeVisible()
-    /* The decision offered is the one for a text: refused with a reason, never
-       rewritten by the moderator (PDL P22). */
+    /* The decision offered is the one for a text and not the one for a picture,
+       and the two are not told apart by the buttons: both are refused with a
+       reason and both carry „Odbij" and „Odobri". What differs is what the
+       moderator is asked to write, which `outcomeFor` decides (queues.ts): a
+       picture is handed back with an instruction precise enough to work from, a
+       text with a plain reason. So the words in the box are read, not the
+       buttons. A review renamed the sort on both sides at once and this test
+       stayed green while it read them. */
     expect(card.getByRole('button', { name: 'Odbij' })).toBeVisible()
     expect(card.getByRole('button', { name: 'Odobri' })).toBeVisible()
+
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
+
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonPlaceholder,
+    )
   })
 
   it('offers nothing more while one is waiting, and says what was sent', async () => {
@@ -127,6 +168,41 @@ describe('the words a member wrote about themselves, changed later', () => {
     /* And what was sent is on screen, so somebody who cannot remember what they
        wrote does not have to guess while it is out of their hands. */
     expect(panel.getByText('Nešto sasvim drugo o sebi.')).toBeVisible()
+  })
+
+  it('hands the box straight back once the text is approved in the same visit', async () => {
+    /* The panel reads decisions as well as proposals, so somebody whose text is
+       approved while they are still on the portal is not left told to wait. That
+       was written down in a comment and nothing measured it: a review made the
+       filter ignore decisions altogether and all 1935 tests stayed green.
+     *
+       Walked rather than stated: the member sends, the moderator approves on the
+       queue, the member comes back and the box is theirs again. Both roles in
+       one session, which is what the development switch is for. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'superadmin', withOne.memberNumber)
+
+    await panelFor()
+    await user.clear(await box())
+    await user.type(await box(), 'Trčim jer volim šumu.')
+    await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+
+    expect((await panelFor()).getByText(/čeka odobrenje/)).toBeVisible()
+
+    await router.navigate('/sr/administracija/verifikacija/trkacki-profil')
+
+    const heading = await screen.findByRole('heading', {
+      name: `${withOne.firstName} ${withOne.lastName}`,
+    })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+    await router.navigate('/sr/podesavanja')
+
+    const panel = await panelFor()
+
+    expect(panel.queryByText(/čeka odobrenje/)).not.toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
   })
 
   it('is not held up by a picture the same member is waiting on', async () => {

@@ -1322,7 +1322,7 @@
     "title": "Tekst o sebi",
     "standing": "Ovo sada stoji na tvom profilu. Izmena ide moderatoru na odobrenje, a dok čeka, na profilu ostaje stari tekst.",
     "none": "Još nisi napisao ništa o sebi. Kad pošalješ, moderator pregleda tekst pre nego što se pojavi na profilu.",
-    "rule": "Nekoliko rečenica o sebi. Po njima te članovi upoznaju pre nego što se sretnete na trci.",
+    "rule": "Nekoliko rečenica o sebi, najviše 360 znakova. Po njima te članovi upoznaju pre nego što se sretnete na trci.",
     "send": "Pošalji na odobrenje",
     "writeFirst": "Napiši nešto da bi mogao da pošalješ.",
     "changeFirst": "Izmeni tekst da bi imao šta da pošalješ.",
