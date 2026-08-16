@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { registracija, tim } from '../../forms/definitions'
+import { tim } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
@@ -22,7 +22,7 @@ import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamPropo
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
-import { canSendBack, outcomeFor, type Queue } from './queues'
+import { canSendBack, outcomeFor, returned, type Queue } from './queues'
 import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
@@ -37,11 +37,12 @@ import './Verification.css'
  * compare, and what the decision other than "yes" is, and none of those is a
  * screen.
  *
- * That last one is the only difference the moderator can feel, and there are four
+ * That last one is the only difference the moderator can feel, and there are three
  * of them (queues.ts, PDL P22). Two queues go their own way: a comment is
- * deleted on the spot, a biography is edited and published and never goes back,
- * and a picture goes back with an instruction that reaches the member's inbox.
- * Which of the four a queue is comes off the queue itself, so it is one fact in
+ * deleted on the spot, and a picture goes back with an instruction precise enough
+ * to work from. Everything else, the biography among them since 06.08.2026, is
+ * refused with a reason and handed back.
+ * Which of the three a queue is comes off the queue itself, so it is one fact in
  * one place rather than the name of a queue tested here.
  *
  * Cards rather than a table, unlike the queue of results. There the work is
@@ -50,59 +51,15 @@ import './Verification.css'
  */
 
 /** Whether a queue has a second decision that hands the work back to its
- *  author. Five of the seven, plus the pictures, which hand back an instruction
- *  (queues.ts). */
+ *  author. Six of the seven, and both sorts on the racing profile: a text is
+ *  refused with a reason and a picture with an instruction precise enough to
+ *  work from. The comments are the one exception, deleted rather than returned
+ *  (queues.ts). Said as "five plus the pictures" until 15.08.2026, which was
+ *  true while a biography was published rather than refused. */
 function handsBack(queue: Queue, item: PendingItem): boolean {
   const outcome = outcomeFor(queue, item)
 
   return outcome === 'sendBack' || outcome === 'instruct'
-}
-
-/**
- * The text of one waiting item, changed in place before it goes out.
- *
- * The biographies only. A biography never goes back to the competitor for
- * approval: the moderator adjusts it as they see fit and publishes what they
- * left (PDL P22), so the text has to be editable on the screen where it is read
- * rather than somewhere else. The shape is the one the portal already uses for
- * the long text administration rewrites in place, the rules and prizes of a
- * competition (src/pages/LeagueDetail.tsx): read it, press the button, write, and
- * leaving the box saves it.
- */
-function EditableBody({ id, label, value }: { id: string; label: string; value: string }) {
-  const { t } = useI18n()
-  const { edits, edit } = useSession()
-  const [editing, setEditing] = useState(false)
-  const current = edits[id]?.body ?? value
-
-  if (editing) {
-    return (
-      <textarea
-        className="field__control pending__editor"
-        autoFocus
-        aria-label={label}
-        defaultValue={current}
-        /* The same cap the member wrote it under. Without it a moderator could
-           leave a biography longer than the form that produced it would ever
-           accept, and the number lives in the definition rather than here so
-           the two ends cannot drift (src/forms/records.ts). */
-        maxLength={limitOf(registracija, 'bio')}
-        onBlur={(event) => {
-          edit(id, 'body', event.target.value)
-          setEditing(false)
-        }}
-      />
-    )
-  }
-
-  return (
-    <>
-      <p className="pending__body">{current}</p>
-      <button type="button" className="button button--secondary" onClick={() => setEditing(true)}>
-        {t('admin.change')}
-      </button>
-    </>
-  )
 }
 
 /**
@@ -168,7 +125,7 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * the member typed them and the team carries them from then on, so the moment to
  * put a lower-case name right is before the record exists rather than after.
  *
- * Written into the same overlay of edits the biography uses, keyed by the item,
+ * Written into the same overlay of edits, keyed by the item,
  * so approving reads whatever is on screen rather than what arrived.
  */
 function TeamFields({ item }: { item: PendingItem }) {
@@ -327,10 +284,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       { key: 'verification.proposedDate', value: one.proposedDate },
     ].filter((fact) => fact.value !== '')
 
-  /* What is on screen right now, which on the biographies is not what came in:
-     the moderator has been editing it, and what is published is what they left. */
-  const textOf = (one: PendingItem) => edits[one.id]?.body ?? one.body
-
   /**
    * Approving, one item or forty, with everything the next one has to know.
    *
@@ -363,13 +316,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       settle(one.id, {
         status: 'approved',
-        /* A published biography is written down as it went out: what the
-           member's profile now says, rather than what they sent in. Nothing
-           reads it on a screen since the tables of settled items were taken away
-           (owner, 06.08.2026); it is kept because it is what the database will
-           be given when there is one, and because a decision that records
-           nothing about what it published cannot be answered for. */
-        note: outcomeFor(queue, one) === 'editAndPublish' ? textOf(one) : '',
+        /* Nothing to write down. This was what a published biography went out
+           as, back when a moderator adjusted the text and published what they
+           left; since 06.08.2026 a biography is approved as the member wrote it
+           or refused with a reason (PDL P22), so an approval publishes exactly
+           what the card showed and there is nothing an approval could record
+           that the item does not already say. */
+        note: '',
         basis: '',
         memberNumber: '',
       })
@@ -667,13 +620,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           ))}
                           <div className="pending__text">
                             <dt>{bodyLabelFor(one)}</dt>
-                            {outcomeFor(queue, one) === 'editAndPublish' ? (
-                              <dd className="pending__edit">
-                                <EditableBody id={one.id} label={bodyLabelFor(one)} value={one.body} />
-                              </dd>
-                            ) : (
-                              <dd className="pending__body">{one.body}</dd>
-                            )}
+                            {/* Read, not edited. A biography used to be
+                                changeable in place here and published as the
+                                moderator left it; the owner withdrew that on
+                                06.08.2026 (PDL P22), and what a member wrote
+                                about themselves now goes out as they wrote it
+                                or comes back with a reason. */}
+                            <dd className="pending__body">{one.body}</dd>
                           </div>
                         </dl>
 
@@ -721,7 +674,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNotePlaceholder'
                                 : outcomeFor(queue, one) === 'instruct'
                                   ? 'review.instructionPlaceholder'
-                                  : 'review.reasonPlaceholder'
+                                  : returned(queue, one) === null
+                                    ? 'review.reasonKeptPlaceholder'
+                                    : 'review.reasonPlaceholder'
                             }
                             optional={outcomeFor(queue, one) === 'delete'}
                             aboutKey={
@@ -757,15 +712,42 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               })
 
                               /* A reason the member never reads is a reason to
-                                 nobody, and this is the one queue where the member
-                                 is expected to act on it. The portal already has an
-                                 inbox, so it goes there in the words the moderator
-                                 wrote (PDL P22, P28a). */
-                              if (outcomeFor(queue, one) === 'instruct') {
+                                 nobody, and on this queue the member is expected to
+                                 act on it. The portal already has an inbox, so it
+                                 goes there in the words the moderator wrote (PDL
+                                 P22, P28a).
+                               *
+                                 Both sorts, since 15.08.2026. It used to be the
+                                 picture alone, because a biography was published
+                                 rather than refused and had nothing to send; when
+                                 the owner withdrew that (PDL P22, 06.08.2026) the
+                                 refusal arrived without the message, so the empty
+                                 box went on promising „Član dobija tvoj razlog" and
+                                 the member`s inbox stayed exactly as it was. A
+                                 review measured it: two messages before, two after.
+                               *
+                                 Each under its own heading. Handed the picture`s,
+                                 a refused biography would reach the member as
+                                 „Profilna slika je vraćena", which is a message
+                                 about a thing they did not send. */
+                              /* Bound once and narrowed, rather than asked
+                                 twice and coerced. Written as
+                                 `t(String(returned(...)))`, the guard above it
+                                 could be deleted without the compiler saying a
+                                 word: a review replaced it with `if (true)` and
+                                 all 1902 tests passed, while a refusal on any
+                                 of the other five queues then wrote „null" to
+                                 whoever `memberNumber` named, which where that
+                                 is empty is the whole league. `String()` is not
+                                 on the list ADL A14 bans, and it lies in
+                                 exactly the way that list exists to stop. */
+                              const heading = returned(queue, one)
+
+                              if (heading !== null) {
                                 notify({
                                   from: t('app.name'),
                                   to: one.memberNumber,
-                                  subject: t('verification.photoReturned'),
+                                  subject: t(heading),
                                   body: reason,
                                   date: today,
                                 })
@@ -806,9 +788,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 }
                               }}
                             >
-                              {outcomeFor(queue, one) === 'editAndPublish'
-                                ? t('verification.publish')
-                                : t('review.approve')}
+                              {t('review.approve')}
                             </button>
 
                             {/* Deleting opens the same box the refusals open,
@@ -842,8 +822,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             {/* The focus comes back to this button with it, on the
                                 render that brings it back and on no other: nothing
                                 is autofocused when the page first draws. A
-                                biography has no button here at all, because it
-                                never goes back. */}
+                                biography has one of these now, since 15.08.2026:
+                                the sentence that used to stand here said it never
+                                goes back, directly above the code drawing the
+                                button that hands it back. */}
                             {handsBack(queue, one) && canSendBack(queue, one) && (
                               <button
                                 type="button"
