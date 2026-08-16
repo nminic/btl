@@ -379,7 +379,7 @@
       "few": "Dosta je, granica je {count} znaka.",
       "other": "Dosta je, granica je {count} znakova."
     },
-    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci.",
+    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci i pišeš nov tekst u Podešavanjima.",
     "photo": "Profilna slika",
     "photoHint": "Slika lica, tvoja i skorašnja. Stoji na profilu i po njoj te članovi prepoznaju na trkama. Moderator je pregleda pre objave; ako je vrati, dobijaš tačnu instrukciju šta da promeniš, a profil ti u međuvremenu radi bez slike.",
     "shirtSize": "Veličina majice",
@@ -1317,6 +1317,16 @@
     "y": "Pomeri gore i dole",
     "size": "Veličina isečka",
     "share": "{share}%"
+  },
+  "bio": {
+    "title": "Tekst o sebi",
+    "standing": "Ovo sada stoji na tvom profilu. Izmena ide moderatoru na odobrenje, a dok čeka, na profilu ostaje stari tekst.",
+    "none": "Još nisi napisao ništa o sebi. Kad pošalješ, moderator pregleda tekst pre nego što se pojavi na profilu.",
+    "rule": "Nekoliko rečenica o sebi, najviše 360 znakova. Po njima te članovi upoznaju pre nego što se sretnete na trci.",
+    "send": "Pošalji na odobrenje",
+    "writeFirst": "Napiši nešto da bi mogao da pošalješ.",
+    "changeFirst": "Izmeni tekst da bi imao šta da pošalješ.",
+    "waitingNote": "Tvoj tekst čeka odobrenje. Ako ga moderator vrati, u poruci piše šta treba da izmeniš."
   },
   "picture": {
     "title": "Profilna slika",
