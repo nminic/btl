@@ -3,20 +3,22 @@ import { Resource } from '../../components/Resource'
 import { countryName } from '../../data/countryName'
 import { combinePair, useCompetitors } from '../../data/useResource'
 import type { MembershipBasis, PendingItem } from '../../data/types'
+import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { handOutMemberNumber, handOutMemberNumbersFor } from './memberNumbers'
 import { usePending, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
-import { QUEUE } from './queues'
+import { QUEUE, refusalTo } from './queues'
 import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
 /** Whose membership the reason box is open on: the key the decision is
- *  remembered under, and the name to put on the box. */
-type Refusing = { key: string; name: string }
+ *  remembered under, the name to put on the box, and the member number the
+ *  refusal would be written to, which on this queue is usually nobody. */
+type Refusing = { key: string; name: string; memberNumber: string }
 
 /**
  * The bank statement, as the way a hundred payments are reconciled at once
@@ -116,8 +118,18 @@ function Statement() {
 export function Payments() {
   const { t } = useI18n()
   const session = useSession()
-  const { decisions, settle } = session
+  const { decisions, settle, notify } = session
+  const today = useToday()
   const [open, setOpen] = useState<Refusing | null>(null)
+
+  /* Where a refusal on this queue would actually arrive, and nothing where it
+     would arrive nowhere. Both halves come from `queues.ts`, which is the one
+     place that knows whether a message goes and under what heading; asked here
+     twice, by the words over the box and by the sending itself, so the two can
+     never say different things. */
+  function sendsTo(item: Refusing) {
+    return refusalTo(QUEUE.payments, { kind: '', memberNumber: item.memberNumber })
+  }
   /** How many the last sweep activated, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
   /* The member list is read for one reason only: a number can only be handed out
@@ -317,7 +329,7 @@ export function Payments() {
                               <button
                                 type="button"
                                 className="button button--secondary"
-                                onClick={() => setOpen({ key: one.id, name: one.who })}
+                                onClick={() => setOpen({ key: one.id, name: one.who, memberNumber: one.memberNumber })}
                               >
                                 {t('review.sendBack')}
                               </button>
@@ -337,6 +349,24 @@ export function Payments() {
               {open !== null && (
                 <SendBack
                   subject={open.name}
+                  /* What the box promises is what this item will actually do,
+                     asked of the one rule that decides it rather than fixed for
+                     the whole screen (queues.ts). The refusal is written to
+                     whoever sent the thing in, and on this queue that is usually
+                     nobody at all: a registration waiting for its fee has no
+                     account yet, so it carries no member number (PDL P8). All
+                     three waiting in the data today are of that kind.
+                   *
+                     An empty recipient in this portal is not nobody but the
+                     whole league (Message.to), so the same guard that keeps the
+                     message from going everywhere is what decides which words
+                     stand over the box. Written the other way round, this screen
+                     told a moderator their words would be read by somebody who
+                     would never see them, which is the fault a review found on
+                     16.08.2026. */
+                  placeholderKey={
+                    sendsTo(open) === null ? 'review.reasonKeptPlaceholder' : 'review.reasonPlaceholder'
+                  }
                   onConfirm={(reason) => {
                     /* Nothing is handed out on a refusal. The registration is
                        still waiting for a fee, and a number given to it here
@@ -347,6 +377,19 @@ export function Payments() {
                       basis: '',
                       memberNumber: '',
                     })
+
+                    const to = sendsTo(open)
+
+                    if (to !== null) {
+                      notify({
+                        from: t('app.name'),
+                        to: to.to,
+                        subject: t(to.heading),
+                        body: reason,
+                        date: today,
+                      })
+                    }
+
                     setOpen(null)
                   }}
                   onCancel={() => setOpen(null)}

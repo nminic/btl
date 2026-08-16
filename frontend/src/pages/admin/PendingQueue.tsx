@@ -674,9 +674,20 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNotePlaceholder'
                                 : outcomeFor(queue, one) === 'instruct'
                                   ? 'review.instructionPlaceholder'
-                                  : returned(queue, one) === null
-                                    ? 'review.reasonKeptPlaceholder'
-                                    : 'review.reasonPlaceholder'
+                                  : /* And everything else on this screen promises
+                                       the message, because everything else sends
+                                       one. There is no third case here, and that
+                                       is a fact about the screen rather than about
+                                       the rule: the box opens from a „Odbij" that
+                                       is only drawn where `canSendBack` says there
+                                       is somebody to write to, so an item with no
+                                       member never reaches this box at all. It is
+                                       told why instead, in words of its own
+                                       (`verification.noRecipient` below). The
+                                       queues whose screens are elsewhere ask
+                                       `refusalTo` for this, because there the box
+                                       does open either way (Payments.tsx). */
+                                    'review.reasonPlaceholder'
                             }
                             optional={outcomeFor(queue, one) === 'delete'}
                             aboutKey={

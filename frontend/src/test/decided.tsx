@@ -31,3 +31,26 @@ export function Decided() {
     </ul>
   )
 }
+
+/**
+ * What is in the inbox of whoever the session is, subject by subject.
+ *
+ * The one thing about a message that no administrative screen shows, and the
+ * only way to say „nothing was written" rather than „the screen did not draw
+ * it". It reads `inbox` and not the whole store on purpose: `inbox` is what a
+ * member is allowed to see, and it carries what was written to the whole league
+ * as well as what was written to them (SessionProvider). A refusal sent to the
+ * empty string is therefore visible here, which is exactly the mistake worth
+ * catching (Message.to).
+ */
+export function Inbox() {
+  const { inbox } = useSession()
+
+  return (
+    <ul aria-label="session inbox">
+      {inbox.map((one) => (
+        <li key={one.id}>{`${one.to} | ${one.subject}`}</li>
+      ))}
+    </ul>
+  )
+}
