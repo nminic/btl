@@ -2257,14 +2257,23 @@ describe('the six queues read from the file', () => {
        it exists for: a review swapped the two values in the dictionary and every
        other test moved with them, since they all compare a placeholder against
        `sr.review.*` rather than against words. Reword freely, and change these
-       three lines with the sentence. */
+       four lines with the sentence.
+     *
+       Two sentences and not one, because the portal still has both: one for a
+       queue that writes to the member, one for an item that has nobody to write
+       to. A merge dropped the two lines that held the second of them and left
+       this loop reading the first twice, so the words that withhold a message
+       could have been rewritten into words that promise one and nothing would
+       have said so. Measured: they were, and all 1940 tests passed. */
     expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
-    /* And neither of them says the member may send another. They may not: a
-       biography is written once, at joining, and there is nowhere to write a
-       second one. The promise stood in the words that now belong to the
-       biography alone, which is the one place it was false (PDL P22, PENDING
-       R10). */
-    for (const words of [sr.review.reasonPlaceholder, sr.review.reasonPlaceholder]) {
+    expect(sr.review.reasonKeptPlaceholder).toContain('poruka ne ide')
+    expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
+    /* And neither of them says the member may send another. Until 16.08.2026
+       they could not: a biography was written once, at joining. The panel in
+       Podešavanja changes that (PR94), and these words are still not the place
+       to say it, because they are about a decision on a queue rather than about
+       what the member does next. */
+    for (const words of [sr.review.reasonPlaceholder, sr.review.reasonKeptPlaceholder]) {
       expect(words, words).not.toContain('pošalje ponovo')
     }
   })

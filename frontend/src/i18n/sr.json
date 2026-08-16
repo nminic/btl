@@ -928,7 +928,7 @@
     "sendBackNamed": "Odbijanje: {name}",
     "reason": "Razlog odbijanja",
     "reasonPlaceholder": "Bez razloga se ne odbija. Član dobija tvoj razlog u poruci.",
-    "reasonKeptPlaceholder": "Bez razloga se ne odbija. Razlog se upisuje uz odluku; poruka ne ide, jer ovoj prijavi još nije dodeljen član kome bi stigla.",
+    "reasonKeptPlaceholder": "Bez razloga se ne odbija. Razlog se upisuje uz odluku; poruka ne ide, jer ovome još nije dodeljen član kome bi stigla.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",
