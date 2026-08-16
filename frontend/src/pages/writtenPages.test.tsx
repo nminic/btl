@@ -231,6 +231,46 @@ describe('the fee schedule in the terms', () => {
 })
 
 describe('the privacy policy', () => {
+  it('describes the analytics the portal has, which is none', () => {
+    /* Owner, 16.08.2026: „zelim da izbacim Google Analytics, traku, i Umami cak
+       ako je moguce. Hocu da imam svoju internu analitiku jednog dana."
+       (`ADL.md` A9). Until then this document described, in detail, a consent
+       bar, Google Analytics loaded only after „Prihvati", Umami on our own
+       server, and a control in the footer for withdrawing consent. None of the
+       four existed in the code, which is how the whole thing was found; now
+       none of them is promised either.
+     *
+       Held on the document rather than on the screen, because what is wrong
+       with a policy that describes machinery nobody built is what it says, not
+       how it renders. And held as absence, which is the only shape this claim
+       has: naming a processor the portal does not use is the fault. */
+    const policy = whole('politika-privatnosti')
+
+    for (const named of ['Google', 'Analytics', 'Umami', 'Prihvati', 'Podešavanja kolačića']) {
+      expect(policy, named).not.toContain(named)
+    }
+
+    /* And it says why there is no bar, rather than leaving a reader to notice
+       that a paragraph went missing: consent is asked for what is not necessary,
+       and the portal sets nothing of the sort. */
+    expect(policy).toContain('nema ni trake za pristanak')
+    expect(policy).toContain('Nema analitike')
+  })
+
+  it('promises no way to withdraw a consent it never asks for', () => {
+    /* The table of rights offered „saglasnost za kolačiće menjate u podnožju
+       svake strane", and there is no such control in the footer; there never
+       was. It was the first half of this same fault, found on 15.08.2026 while
+       the second half was still being built. */
+    /* Found by what it says rather than by its heading, which is what
+       `sectionOf` reads: the sections are numbered and one inserted above moves
+       the rest. */
+    const rights = sectionOf('politika-privatnosti', /polja profila menjate i brišete/)
+
+    expect(rights).not.toContain('u podnožju svake strane')
+    expect(rights).toContain('ne povlači jer se ne daje')
+  })
+
   it('names what is public and what never is', async () => {
     renderAt('/sr/politika-privatnosti')
 
