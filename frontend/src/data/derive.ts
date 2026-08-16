@@ -162,7 +162,9 @@ export type Placed<T> = T & { position: number }
  *
  * The member number is added **under** the given ladder rather than left to the
  * order the rows happened to arrive in, so the table does not shuffle on every
- * recount. `compare` is that ladder, and two rows reach the last rung only when
+ * recount. Callers therefore hand the rows in unsorted: sorting them first by
+ * the same ladder is a second pass for the same answer, and it reorders the
+ * caller's own array on the way (three of them did until 16.08.2026). `compare` is that ladder, and two rows reach the last rung only when
  * every rung above it leaves them equal.
  *
  * What identifies the row is passed in, because not every list is a list of
@@ -265,7 +267,7 @@ export function rankMembers(competitors: Competitor[], results: Result[]): Ranki
     ...(totals.get(competitor.memberNumber) ?? EMPTY_TOTALS),
   }))
 
-  return withPlaces(rows.sort(STANDING), STANDING, (row) => row.competitor.memberNumber)
+  return withPlaces(rows, STANDING, (row) => row.competitor.memberNumber)
 }
 
 /**
@@ -425,7 +427,7 @@ export function rankTeams(
     }
   })
 
-  return withPlaces(rows.sort(BY_TEAM), BY_TEAM, (row) => row.team.id)
+  return withPlaces(rows, BY_TEAM, (row) => row.team.id)
 }
 
 /** The category a member competes in for a season, derived rather than stored:
@@ -965,7 +967,7 @@ export function topByProgress(
       : []
   })
 
-  return withPlaces(rows.sort(BY_PROGRESS), BY_PROGRESS, (row) => row.competitor.memberNumber)
+  return withPlaces(rows, BY_PROGRESS, (row) => row.competitor.memberNumber)
     .slice(0, limit)
 }
 

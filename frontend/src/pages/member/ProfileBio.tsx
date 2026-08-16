@@ -166,7 +166,15 @@ export function ProfileBio({ me }: { me: Competitor }) {
         <>
           {/* Nothing to press while one is waiting: the member has already
               asked, and a second ask gives a moderator two texts of one person
-              and no question to answer. */}
+              and no question to answer.
+           *
+              Focus is moved here and the reader is therefore told by landing on
+              it; `role="status"` is the belt beside that brace, for the case
+              where focus does not arrive because something took it first. It is
+              deliberately not measured: a test that reads an attribute proves
+              the attribute is written, not that anything is announced, and the
+              thing worth measuring is where the focus goes, which
+              `profileBio.test.tsx` does hold. */}
           <p className="member__note" ref={said} tabIndex={-1} role="status">
             {t('bio.waitingNote')}
           </p>
