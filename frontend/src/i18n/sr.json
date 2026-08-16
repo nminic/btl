@@ -379,7 +379,7 @@
       "few": "Dosta je, granica je {count} znaka.",
       "other": "Dosta je, granica je {count} znakova."
     },
-    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci.",
+    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci i pišeš nov tekst u Podešavanjima.",
     "photo": "Profilna slika",
     "photoHint": "Slika lica, tvoja i skorašnja. Stoji na profilu i po njoj te članovi prepoznaju na trkama. Moderator je pregleda pre objave; ako je vrati, dobijaš tačnu instrukciju šta da promeniš, a profil ti u međuvremenu radi bez slike.",
     "shirtSize": "Veličina majice",

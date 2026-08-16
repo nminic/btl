@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -381,10 +381,12 @@ describe('the biography, at the moment of joining', () => {
 
     expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
     expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
-    /* And it stops there, because there is nowhere to send a second one: the
-       biography is asked for once, at joining, and the member area offers the
-       picture and nothing else. */
-    expect(screen.queryByText(/nov tekst|ponovo|opet/)).not.toBeInTheDocument()
+    /* And it goes on to the second half, which the portal did not have until
+       16.08.2026: a refused biography reached the member with a reason they had
+       nowhere to act on. The panel in Podešavanja is where they act on it now
+       (owner, 15.08.2026: „Panel u Podešavanjima, kao za sliku"), so the sentence
+       beside the field says so. */
+    expect(screen.getByText(/pišeš nov tekst u Podešavanjima/)).toBeVisible()
   })
 
   it('promises only what the portal does, and no more than one sentence of it', () => {
@@ -417,17 +419,28 @@ describe('the biography, at the moment of joining', () => {
        than one with all of them, and a hole named in a comment is a hole somebody
        can step over. */
     expect(sr.registration.bioHint).toBe(
-      'Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci.',
+      'Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci i pišeš nov tekst u Podešavanjima.',
     )
 
-    /* What it does not catch is named, so nobody reads it as cover: a panel that
-       builds the sort through a variable, or writes it in double quotes, walks
-       past this. What it does catch is the plain one. */
+    /* And the net now names the one screen there is, rather than none.
+     *
+       It was written to fail the day a second place could send a biography for
+       review, so that this sentence would be read again. That day was 16.08.2026
+       and it worked: the panel arrived, the net fired, and the sentence gained
+       its other half. What the net keeps saying from here on is that there is
+       exactly one such place and this is it; a third would fail again.
+     *
+       What it does not catch is still named, so nobody reads it as cover: a
+       panel that builds the sort through a variable, or writes it in double
+       quotes, walks past. What it does catch is the plain one, which is how both
+       the picture and this panel are written. */
     const sending = sources()
       .filter(({ code }) => code.includes("kind: 'bio'") || code.includes('kind: "bio"'))
-      .map(({ path }) => path)
+      .map(({ path }) => path.split(sep).join('/'))
 
-    expect(sending).toEqual([])
+    expect(sending.map((path) => path.slice(path.indexOf('/src/') + 1))).toEqual([
+      'src/pages/member/ProfileBio.tsx',
+    ])
   })
 })
 
