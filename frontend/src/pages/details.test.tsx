@@ -1,3 +1,4 @@
+import { slugify } from './rulebookToc'
 import { act, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import type { BtlEvent, Race } from '../data/types'
@@ -225,7 +226,10 @@ describe('EventDetail, the results of the league members who ran it', () => {
 
     expect(mine.length).toBeGreaterThan(0)
     for (const one of mine) {
-      expect(one).toHaveAttribute('href', '/sr/takmicar/000001')
+      /* The address carries the name now (PDL P11, pages/profileAddress.ts), and
+         the name is read off the heading like everything else in this test, so a
+         change in the generated data says so instead of quietly moving the link. */
+      expect(one).toHaveAttribute('href', `/sr/takmicar/000001-${slugify(runner)}`)
     }
   })
 })

@@ -1,3 +1,4 @@
+import { profilePath } from './profileAddress'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
@@ -199,7 +200,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                       <tr key={result.id} className={mineClass(result.memberNumber, mine)}>
                         <td>
                           {person !== undefined && person.active ? (
-                            <Link to={`/${locale}/takmicar/${result.memberNumber}`}>{name}</Link>
+                            <Link to={profilePath(person, locale)}>{name}</Link>
                           ) : (
                             name
                           )}

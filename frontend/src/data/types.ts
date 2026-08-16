@@ -107,9 +107,10 @@ export type Competitor = {
   /**
    * The racing biography, as published.
    *
-   * Written by the member and edited and published by a moderator, never handed
-   * back (PDL P11, P22), so what is here is what went out. Empty for most of
-   * them, which is the state the profile has to look right in.
+   * Written by the member, and approved as written or refused with a reason and
+   * handed back (PDL P11, P22, 06.08.2026), so what is here is what the member
+   * wrote. Empty for most of them, which is the state the profile has to look
+   * right in.
    */
   bio: string
 }
@@ -407,13 +408,16 @@ export type PendingItem = {
    *
    * The racing profile alone: a biography and a picture are the same member's
    * profile and are looked at together (owner, 06.08.2026), but the decision
-   * over them is not the same one. The text is edited and published; the
-   * picture is accepted or handed back with an instruction. Empty everywhere
-   * else, because every other queue holds one sort of thing.
+   * over them is not quite the same one. Both are approved as they stand or
+   * refused with a reason and handed back; what differs is what the moderator
+   * is asked to write, since a picture is changed by an instruction precise
+   * enough to work from and a text is written again. Empty everywhere else,
+   * because every other queue holds one sort of thing.
    *
    * A closed list and not an open string, exactly as the queues are: a value
    * outside it would be quietly treated as a picture, so a biography would be
-   * offered the button that hands it back. The empty one is every queue that
+   * refused under the heading „Profilna slika je vraćena", about a thing the
+   * member never sent (`returned` in pages/admin/queues.ts). The empty one is every queue that
    * holds a single sort of thing, and the racing profile never carries it.
    */
   kind: ItemKind

@@ -85,8 +85,12 @@ export function ProfilePicture({ me }: { me: Competitor }) {
   function send(picture: Chosen): void {
     propose({
       queue: 'profiles',
-      /* The one queue that holds two sorts, and this is the sort handed back
-         with an instruction rather than published. */
+      /* The one queue that holds two sorts. Both go back to the member when
+         they are refused (PDL P22, 06.08.2026); what differs is what the
+         moderator writes, since a picture is changed by an instruction precise
+         enough to work from and a text is written again. This comment said
+         „rather than published" until 15.08.2026, which was the withdrawn rule
+         and outlived it by nine days. */
       kind: 'photo',
       date: today,
       memberNumber: me.memberNumber,

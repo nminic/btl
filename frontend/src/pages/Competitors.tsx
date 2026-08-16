@@ -1,3 +1,4 @@
+import { profilePath } from './profileAddress'
 import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
 import { Link } from 'react-router'
@@ -70,7 +71,7 @@ function CompetitorCards({
         <ul className="cards">
           {cards.map(({ competitor, totals: own }) => (
             <li key={competitor.memberNumber} className="cards__item">
-              <Link className="card" to={`/${locale}/takmicar/${competitor.memberNumber}`}>
+              <Link className="card" to={profilePath(competitor, locale)}>
                 <span
                   className="card__face"
                   style={{ '--face-hue': hueFor(competitor.memberNumber) }}

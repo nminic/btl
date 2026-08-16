@@ -186,6 +186,7 @@ export function ColumnChart({
   label,
   control,
   swapping,
+  onHeld,
 }: {
   columns: ChartColumn[]
   /** The gold band under the bars. */
@@ -216,6 +217,26 @@ export function ColumnChart({
    * takmičara fadeuju u nove").
    */
   swapping?: boolean
+  /**
+   * Handed the bars when the keyboard enters them, and nothing when it leaves.
+   *
+   * Only the turning chart passes it, and only for one reason: a column is a
+   * link to one person's profile, and a turn changes which person each column
+   * is while keeping the elements themselves (`swapping` above is what that is
+   * for). A reader who tabs onto a column and reads it is holding a link that
+   * becomes somebody else's under them, and Enter opens a profile they never
+   * chose. The turn waits for them instead (WCAG 2.2 SC 3.2.5).
+   *
+   * The element and not a yes or a no, because a yes has to be taken back by
+   * somebody and there is a case where nobody can: an element carrying the focus
+   * that is taken out of the page sends no `focusout`, so the last word would be
+   * „held" for ever and the chart would never turn again. Handed the element,
+   * whoever asked can put the question to the page itself at the moment it
+   * matters, and an element no longer in the page contains nothing.
+   *
+   * A chart that stands still has nothing to hold and passes nothing.
+   */
+  onHeld?: (bars: HTMLElement | null) => void
 }) {
   const highest = Math.max(1, ...columns.map((one) => one.value))
   /* How wide the circle in a bar has to be, in characters, which is the longest
@@ -275,7 +296,29 @@ export function ColumnChart({
       {columns.length === 0 ? (
         <p className="card__empty">{empty}</p>
       ) : (
-        <ol className="colchart__columns">
+        <ol
+          className="colchart__columns"
+          /* The bars and not the whole chart, because it is the bars that
+             change who they lead to. The control sits in the same section and
+             is the one thing in it that means the same after a turn as before
+             it; held from the section, pressing „Nastavi smenjivanje" would
+             leave the chart standing until the reader tabbed away from the very
+             button they had just pressed to start it. */
+          onFocus={(event) => onHeld?.(event.currentTarget)}
+          /* Moving from one column to the next does let go and take hold again:
+             `onHeld` is called with the bars, then with nothing, then with the
+             bars, which a review measured. Nothing gets through in that gap
+             because there is no turn of the loop in it for a timer to fire in,
+             and because what is handed over is the element rather than a verdict:
+             asked again a moment later, the page gives the same answer.
+           *
+             A guard reading `event.relatedTarget` was written here and taken out.
+             It changes nothing that any test can tell apart, and it would not
+             have helped with the case that matters, which is an element taken out
+             of the page while it holds the focus: `focusout` is not sent for that
+             at all. */
+          onBlur={() => onHeld?.(null)}
+        >
           {columns.map((column, place) => (
             /* By the place and not by who holds it. The chart on the front
                page changes what it counts every few seconds, and a column

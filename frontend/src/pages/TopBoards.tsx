@@ -1,3 +1,4 @@
+import { profilePath } from './profileAddress'
 import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useFilterParams } from '../app/useFilterParams'
@@ -296,7 +297,7 @@ function Boards({
    * somebody changes it, so the boards are not rebuilt on every render. */
   const boards = useMemo<Widget[]>(() => {
     const profile = (who: Competitor) =>
-      who.active ? `/${locale}/takmicar/${who.memberNumber}` : undefined
+      who.active ? profilePath(who, locale) : undefined
     const noResults = t('topBoards.empty')
 
     /* One of the five lists by length, as a chart of its own. On the front page
