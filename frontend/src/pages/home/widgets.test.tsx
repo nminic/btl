@@ -11,6 +11,7 @@ import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
 import { CATEGORIES } from '../../data/derive'
 import { FIRST, NEXT } from './rotation'
+import { addressOf } from '../profileAddress'
 import { TopByCategory } from './TopByCategory'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
@@ -512,7 +513,7 @@ describe('TopByCategory', () => {
     column.focus()
 
     expect(column).toHaveFocus()
-    expect(column).toHaveAttribute('href', '/sr/takmicar/000001?sezona=2027&duzina=short')
+    expect(column).toHaveAttribute('href', `/sr/takmicar/${addressOf(competitor('000001'))}?sezona=2027&duzina=short`)
 
     /* Five turns' worth of waiting, so „it did not turn" is not „it had not got
        round to it yet". */
@@ -522,7 +523,7 @@ describe('TopByCategory', () => {
 
     expect(screen.getByText(/^Najviše/).textContent).toBe(opening)
     expect(column).toHaveFocus()
-    expect(column).toHaveAttribute('href', '/sr/takmicar/000001?sezona=2027&duzina=short')
+    expect(column).toHaveAttribute('href', `/sr/takmicar/${addressOf(competitor('000001'))}?sezona=2027&duzina=short`)
   })
 
   it('goes on turning while the keyboard is on the button that stops it', async () => {
