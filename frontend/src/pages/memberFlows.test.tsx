@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { Competitor } from '../data/types'
+import type { Competitor, Result } from '../data/types'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
 import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
@@ -862,6 +862,62 @@ describe('a result from entry to decision', () => {
   })
 })
 
+/**
+ * The data as the portal serves it, with one result added to it.
+ *
+ * The generated seed stops at 2026 because that is what the league has: the
+ * official seasons begin in 2027 (P26), so no member in it has one. Two of the
+ * rules on this screen only mean anything once somebody does, and a rule that
+ * cannot be seen refusing anybody is a rule nothing measures.
+ *
+ * Added at the door the data layer knocks on rather than by writing a fixture,
+ * so everything else on the screen is still the real seed: the member, their
+ * team, their history and the price they are shown. The cache is emptied before
+ * every test (test/setup.ts), so the row is gone again by the next one.
+ */
+async function withOneMoreResult(
+  row: { memberNumber: string; date: string; points: number },
+  run: () => Promise<void>,
+): Promise<void> {
+  const real = globalThis.fetch
+
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await real(input, init)
+
+    if (!String(input).includes('results.json')) {
+      return response
+    }
+
+    const rows: Result[] = await response.json()
+
+    rows.push({
+      id: `added-${row.memberNumber}-${row.date}`,
+      memberNumber: row.memberNumber,
+      raceId: 'race-added',
+      eventName: 'Trka',
+      eventSlug: 'trka',
+      date: row.date,
+      distanceKm: 10,
+      ascentM: 100,
+      descentM: 100,
+      seconds: 3000,
+      points: row.points,
+      category: 'short',
+    })
+
+    return new Response(JSON.stringify(rows), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  try {
+    await run()
+  } finally {
+    globalThis.fetch = real
+  }
+}
+
 describe('the transfer window and renewal', () => {
   function renderMembership(today: string) {
     renderMembershipOn(today)
@@ -876,14 +932,45 @@ describe('the transfer window and renewal', () => {
     expect(screen.getByRole('button', { name: 'Pošalji zahtev timu' })).toBeVisible()
   })
 
-  it('offers the first season category only to somebody still under the threshold', async () => {
+  it('offers the first season category to somebody whose running is all from before the league', async () => {
+    /* This used to assert the opposite, and the opposite is what the screen did:
+       it summed every result a member had, which in this portal is the history
+       imported from 2010 to 2026 (P26), and closed the category to thirty of the
+       thirty two members over races run before the league existed.
+
+       The owner settled it on 11.08.2026, verbatim: „gledaju se samo zvanične
+       BTL sezone za pravilo od 12 poena u prethodnoj, tako da u prvoj sezoni u
+       teoriji svi mogu da odu u Prvu Sezonu."
+
+       000032, whom this screen is rendered for, took 49.40 points in a single
+       imported season, four times the threshold, and not one of those seasons
+       is an official one. Under the old sum this radio was switched off. */
     renderMembership('2026-11-01')
 
     await screen.findByRole('heading', { name: /Obnova članarine/ })
 
-    // 000001 has raced for years and is far past twelve points.
-    expect(screen.getByLabelText('U početničkoj kategoriji')).toBeDisabled()
-    expect(screen.getByText(/Početnička kategorija ti je zatvorena, jer imaš najmanje 12 bodova/)).toBeVisible()
+    expect(screen.getByLabelText('U početničkoj kategoriji')).toBeEnabled()
+    expect(screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/)).toBeVisible()
+  })
+
+  it('closes it to somebody who has finished one official season over the threshold', async () => {
+    /* The one state of this screen the seed cannot reach: the generated data
+       stops at 2026 on purpose, so nobody in it has an official season at all.
+       Handed one row more, the same screen shuts the category, which is what
+       says the rule is a rule and not a way of always answering yes. */
+    await withOneMoreResult(
+      { memberNumber: '000032', date: '2027-04-15', points: 12 },
+      async () => {
+        renderMembership('2026-11-01')
+
+        await screen.findByRole('heading', { name: /Obnova članarine/ })
+
+        expect(screen.getByLabelText('U početničkoj kategoriji')).toBeDisabled()
+        expect(
+          screen.getByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
+        ).toBeVisible()
+      },
+    )
   })
 
   it('shuts both outside the window, and says when they open', async () => {
@@ -905,7 +992,7 @@ describe('the transfer window and renewal', () => {
     renderMembershipOn('2026-11-01', '000031')
 
     expect(await screen.findByLabelText('U početničkoj kategoriji')).toBeEnabled()
-    expect(screen.getByText(/Početnička kategorija ti je još otvorena/)).toBeVisible()
+    expect(screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/)).toBeVisible()
   })
 })
 

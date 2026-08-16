@@ -1,4 +1,5 @@
 import { categoryCodeFor } from './categories'
+import { FIRST_SEASON } from './season'
 import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
@@ -139,11 +140,20 @@ export type Placed<T> = T & { position: number }
  * twice.
  *
  * **There is no shared place** (PDL P12, owner 31.07.2026, confirmed
- * 11.08.2026). Every ladder ends in the member number, which no two members
- * share, so two rows can never be level all the way down: the one who joined
- * the league first goes ahead. Written this way the trophy for second place is
- * always handed to somebody, and the table and the award list can never
- * disagree in public.
+ * 11.08.2026). Every ladder ends in the member number, so where two rows belong
+ * to two members the ladder always ends: the one who joined the league first
+ * goes ahead. Written this way the trophy for second place is always handed to
+ * somebody, and the table and the award list can never disagree in public.
+ *
+ * Not that two rows can never be level all the way down, which is what this said
+ * until 15.08.2026. The last rung is a tie-break between **people**, and one
+ * board does not list people: `bestSingleRaces` lists races, and one member may
+ * hold two rows of it. Two races of one member, level on points and distance,
+ * are level on the member number as well, so the order between them is the order
+ * the results happened to arrive in. That is the one thing this function is
+ * written to avoid, and on that board it is not avoided; the date is not a rung
+ * there on purpose (see `bestSingleRaces`), so adding one is a decision and not
+ * a repair. Written down rather than patched here (PENDING).
  *
  * Until 11.08.2026 rows the ladder left level shared one number and the numbers
  * after them were skipped, so a shared first place read 1, 1, 3 and the award
@@ -270,6 +280,57 @@ export function totalsByMember(results: Result[]): Map<string, Totals> {
   }
 
   return totals
+}
+
+/**
+ * The most points a member has taken in any one official season.
+ *
+ * This is the figure the beginners' category is decided by, and both halves of
+ * it are the owner's decision rather than a way of counting (PDL P7,
+ * 11.08.2026).
+ *
+ * **Only official seasons count**, which is 2027 onwards. Verbatim: „gledaju se
+ * samo zvanične BTL sezone za pravilo od 12 poena u prethodnoj, tako da u prvoj
+ * sezoni u teoriji svi mogu da odu u Prvu Sezonu." The results imported from
+ * 2010 to 2026 are somebody's own record of their running, kept so that a
+ * profile is not empty on the day the league starts (P26), and they disqualify
+ * nobody. Counted the other way, every one of the thirty members carried into
+ * the portal arrives already barred from a category the league has not run once.
+ *
+ * **The best single season, never the sum of them.** The rule is that no
+ * official season has been finished with twelve or more, so somebody who takes
+ * four points a season for five years is still a beginner: the threshold
+ * measures what was done in a season, not how long somebody has been about.
+ *
+ * **The running season is counted too, and that is deliberate.** Points never go
+ * down, so a season already over the threshold is certain to finish over it, and
+ * waiting for the year to end would leave the category open to somebody who has
+ * plainly left it. The gap is the other way round, and it is real: a member who
+ * renews in October with eleven points is told the category is open, crosses the
+ * threshold in December, and nothing asks again, because the window shuts on 31
+ * December and the choice is not kept anywhere. Nothing to fix here, and nothing
+ * that can be fixed here: it is one check at the close of a season, on a record
+ * of what was chosen, and neither exists until F5. Written down in PENDING.
+ *
+ * Nobody has an official season yet, so this answers zero for everybody today,
+ * which is exactly what the decision says it should: in 2027 the category is
+ * open to all.
+ */
+export function bestOfficialSeason(results: Result[], memberNumber: string): number {
+  const seasons = new Map<number, number>()
+
+  for (const result of results) {
+    const season = seasonOf(result)
+
+    if (result.memberNumber === memberNumber && season >= FIRST_SEASON) {
+      seasons.set(season, (seasons.get(season) ?? 0) + result.points)
+    }
+  }
+
+  /* Nought where there is nothing, rather than the smallest of no numbers: a
+     member with no official season has taken no points in one, and that is the
+     ordinary case for everybody until 2027 is over. */
+  return Math.max(0, ...seasons.values())
 }
 
 export type TeamRow = {
