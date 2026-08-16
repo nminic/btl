@@ -1,3 +1,4 @@
+import { profilePath } from '../profileAddress'
 import { categoryLabel } from '../../data/categories'
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
@@ -111,9 +112,14 @@ export function ProfileHead({
  * The query travels with the link, so choosing a season and then looking at the
  * trophies does not lose the season on the way back.
  */
-export function ProfileParts({ memberNumber }: { memberNumber: string }) {
+export function ProfileParts({ competitor }: { competitor: Competitor }) {
   const { locale, t } = useI18n()
-  const base = `/${locale}/takmicar/${memberNumber}`
+  /* Handed the whole record rather than a number, since 15.08.2026: the
+     address carries the name now (pages/profileAddress.ts), and a nav built
+     from the number alone would send a reader from a profile at
+     `/takmicar/000127-nikola-minic` to trophies at `/takmicar/000127/priznanja`
+     and back again, which is two addresses for one person on one screen. */
+  const base = profilePath(competitor, locale)
 
   return (
     <PartsNav

@@ -1,5 +1,6 @@
+import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
@@ -233,7 +234,7 @@ function ProfileBody({
   return (
     <div className="profile profile--competitor">
       <ProfileHead competitor={competitor} team={team} seasons={options} season={season} />
-      <ProfileParts memberNumber={competitor.memberNumber} />
+      <ProfileParts competitor={competitor} />
 
       <div className="profile__row profile__row--bio">
         <Biography text={competitor.bio} gender={competitor.gender} />
@@ -383,9 +384,10 @@ function emptyText(
  * problem. It is the same answer as a number nobody has.
  */
 export function CompetitorProfile({ memberNumber: given }: { memberNumber?: string } = {}) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const params = useParams()
-  const memberNumber = given ?? params.memberNumber
+  const { search } = useLocation()
+  const memberNumber = given ?? memberNumberIn(params.memberNumber)
   const state = combineResources(useCompetitors(), useResults(), useTeams())
 
   return (
@@ -400,6 +402,20 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
         }
 
         const name = `${competitor.firstName} ${competitor.lastName}`
+
+        /* One address and no alias (PDL P11): a reader who arrived by the
+           number alone, or by a bookmark made before the name was in the
+           address, is moved to the one this profile lives at rather than being
+           left on a second one. In place, so the way back is not doubled.
+         *
+           Not inside „moj profil", where the address belongs to the member area
+           and names no competitor at all. */
+        const elsewhere =
+          given === undefined ? redirectTo(competitor, params.memberNumber, locale) : null
+
+        if (elsewhere !== null) {
+          return <Navigate to={`${elsewhere}${search}`} replace />
+        }
 
         return (
           <>

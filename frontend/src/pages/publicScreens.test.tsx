@@ -1821,7 +1821,11 @@ describe('the row of whoever is signed in', () => {
       .filter((row) =>
         within(row)
           .queryAllByRole('link')
-          .some((link) => link.getAttribute('href')?.endsWith(`/takmicar/${ME}`) === true),
+          /* By the member number in front of the address rather than by the whole
+             of it: the address carries the name behind the number now (PDL P11),
+             and this test is about whose row is marked, not about how a name is
+             spelt. */
+          .some((link) => link.getAttribute('href')?.startsWith(`/sr/takmicar/${ME}`) === true),
       )
 
     /* Three boards are tables, and he is on all three of them this season. */

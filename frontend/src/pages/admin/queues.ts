@@ -228,9 +228,16 @@ export function canSendBack(
  * three on 15.08.2026 and left out of the other two, so a refusal that could not
  * be stopped also could not arrive.
  *
- * The two sorts on the racing profile queue and nothing else. The other five
- * refuse without writing to anybody, which is a limit of the prototype rather
- * than a decision and is written down in PENDING.
+ * The racing profile is the one queue that holds two sorts, so it is the one
+ * that answers by the sort; every other queue holds one kind of thing and
+ * answers with the heading written beside it in the table above. Only the
+ * comments answer with nothing, because a comment is deleted rather than handed
+ * back and writes to nobody (PDL P22), which is what having no `returnedKey`
+ * says.
+ *
+ * Six queues out of seven, therefore, since 15.08.2026 (owner: „Poruka ide sa
+ * svih redova"). It was one until then, and the words over the reason box on the
+ * other five said so.
  */
 export function returned(queue: Queue, item: { kind: ItemKind }): string | null {
   if (queue.id === 'profiles') {

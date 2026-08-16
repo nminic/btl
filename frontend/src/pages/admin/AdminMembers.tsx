@@ -1,3 +1,4 @@
+import { profilePath } from '../profileAddress'
 import { categoryLabel } from '../../data/categories'
 import { useState } from 'react'
 import { Link } from 'react-router'
@@ -94,7 +95,7 @@ export function AdminMembers() {
                     {rows.map((one) => (
                       <tr key={one.memberNumber}>
                         <td>
-                          <Link to={`/${locale}/takmicar/${one.memberNumber}`}>
+                          <Link to={profilePath(one, locale)}>
                             {one.firstName} {one.lastName}
                           </Link>{' '}
                           <span className="table__member-number">{one.memberNumber}</span>

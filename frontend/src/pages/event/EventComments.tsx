@@ -1,3 +1,4 @@
+import { profilePath } from '../profileAddress'
 import { Link } from 'react-router'
 import { useGrowing } from '../../components/growing'
 import { LoadMore } from '../../components/LoadMore'
@@ -245,7 +246,7 @@ function Comment({
             {who === undefined || !who.active ? (
               comment.who
             ) : (
-              <Link to={`/${locale}/takmicar/${who.memberNumber}`}>
+              <Link to={profilePath(who, locale)}>
                 {who.firstName} {who.lastName}
               </Link>
             )}

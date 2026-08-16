@@ -203,7 +203,16 @@ export function ReviewQueue() {
               type="text"
               value={note}
               aria-required="true"
-              placeholder={t('review.reasonPlaceholder')}
+              /* What the box promises is what this very item will do, asked of
+                 the one rule that decides it (queues.ts) rather than written out
+                 here. Written out, the two drifted apart twice: the box promised
+                 a message while this screen never sent one, and after the sending
+                 was wired in it went on saying the message would not go. */
+              placeholder={t(
+                refusalTo(QUEUE.results, { kind: '', memberNumber: open.memberNumber }) === null
+                  ? 'review.reasonKeptPlaceholder'
+                  : 'review.reasonPlaceholder',
+              )}
               onChange={(event) => setNote(event.target.value)}
             />
           </div>

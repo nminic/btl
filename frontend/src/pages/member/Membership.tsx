@@ -4,7 +4,7 @@ import type { Competitor } from '../../data/types'
 import { useToday } from '../../clock/useClock'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
-import { totalsByMember, EMPTY_TOTALS } from '../../data/derive'
+import { bestOfficialSeason } from '../../data/derive'
 import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
 import { inYearlyWindow } from '../../data/season'
 import { useResults } from '../../data/useResource'
@@ -132,7 +132,17 @@ export function Membership() {
           return <h1>{t('profile.notFound')}</h1>
         }
 
-        const points = (totalsByMember(results).get(me.memberNumber) ?? EMPTY_TOTALS).points
+        /* What the beginners' category is decided by, and it is not what this
+           member has taken altogether.
+
+           It was: the sum of every result they have, which in this portal means
+           the history imported from 2010 to 2026. Measured against the data,
+           that closed the category to thirty of the thirty two members over
+           races run before the league existed, while the owner's decision
+           (11.08.2026) closes it to nobody until an official season has been
+           finished with twelve points. Both halves of the rule live in
+           `bestOfficialSeason`. */
+        const points = bestOfficialSeason(results, me.memberNumber)
         /* The season the renewal is for, which is never the one already
            running: in August 2027 the renewal that opens in October is for
            2028, and the heading said 2027. */

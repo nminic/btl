@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -912,6 +913,15 @@ describe('the queue of results', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Odbij' }))
+
+    /* And the box says so before a word is typed: the same rule that withholds
+       the message chooses the words over it, so a moderator is never told their
+       reason will be read by somebody who will never see it. */
+    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
+      'placeholder',
+      sr.review.reasonKeptPlaceholder,
+    )
+
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nema ko da primi.')
     await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
@@ -2450,6 +2460,58 @@ describe('the six queues read from the file', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
     expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('1'))
       .toBeVisible()
+  })
+
+  it('tells the member their team was accepted, and says who is telling them', async () => {
+    /* The other place on these screens that writes to a member, and until now
+       the only one nothing followed. A review emptied the sender here and all
+       1907 tests stayed green, so the one line of provenance on the message
+       would have read „ · 15.08.2026" with nobody's name in front of it.
+     *
+       The league writes it, never the moderator by name: a decision is the
+       league's, and a member who could read the name of whoever decided would
+       write back to a person rather than to the association (PDL P22). */
+    const user = setupUser()
+    const day = '2026-08-15'
+
+    renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin', '000007', undefined, day)
+    await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
+
+    const card = within(
+      must(
+        within(waitingList())
+          .getAllByRole('listitem')
+          .find((one) => within(one).queryByText('Timočka trkačka družina') !== null),
+        'the card carrying the team proposed by the member at the keyboard',
+      ),
+    )
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(screen.getByRole('link', { name: /Timočka trkačka družina/ }))
+
+    const subject = screen.getByRole('heading', { level: 1, name: /je prihvaćen/ })
+    const provenance = must(
+      subject.nextElementSibling,
+      'the line of provenance under the subject',
+    ).textContent
+
+    expect(provenance).toContain(sr.app.name)
+    expect(provenance).toContain(formatShortDate(day, 'sr'))
+    /* And the sentence itself, which is the only part of the message that tells
+       the member anything they did not already know: that the team exists and
+       that they are the one who runs it. Emptied, it left all 1908 tests green,
+       so a member could be told their team was accepted by a message with
+       nothing in it. And the name of the team is read here as well: emptied, it
+       left the same 1908 green, and the member would have been told „Tvoj
+       predlog tima „" je prihvaćen". The name in the subject is checked only in
+       passing, by the link the message is opened from. */
+    expect(
+      screen.getByText(
+        'Tvoj predlog tima „Timočka trkačka družina" je prihvaćen. Ti si njegov organizator.',
+      ),
+    ).toBeVisible()
   })
 
   it('leads from one queue straight to the next', async () => {
