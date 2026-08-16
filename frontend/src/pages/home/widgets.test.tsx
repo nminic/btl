@@ -671,6 +671,40 @@ describe('TopByCategory', () => {
     })
   })
 
+  it('turns again once the focus is somewhere else on the page, not only on the body', async () => {
+    /* The hold is „is the focus inside these bars", and a review found that no
+       test could tell that apart from „is the focus off the body": the weaker
+       reading passed everything, and it is the one that gets stuck, because a
+       reader whose focused column is taken away is often given the focus back
+       somewhere else rather than dropped on the body. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      { ...result('000001', 10), category: 'short' as const },
+      { ...result('000002', 10), category: 'half' as const, distanceKm: 21.1 },
+    ]
+
+    renderWidget(
+      <>
+        <TopByCategory competitors={competitors} results={results} season={2027} turnMs={20} />
+        <button type="button">negde drugde</button>
+      </>,
+    )
+
+    const column = screen.getByRole('link')
+    const opening = screen.getByText(/^Najviše/).textContent
+
+    column.focus()
+    /* Away from the bars but not off the page, which is where a reader usually
+       lands. */
+    screen.getByRole('button', { name: 'negde drugde' }).focus()
+
+    expect(document.activeElement).not.toBe(document.body)
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Najviše/).textContent).not.toBe(opening)
+    })
+  })
+
   it('turns again once the keyboard has left it', async () => {
     /* The other half, and the one that says the hold is a hold and not a stop:
        a chart that never turned again would pass the test above.

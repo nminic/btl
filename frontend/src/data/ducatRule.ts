@@ -1,6 +1,5 @@
 import { formatNumber } from '../i18n/format'
 import { FIRST_SEASON } from './season'
-export { FIRST_SEASON }
 import type { Gender } from './types'
 
 /* A ducat is a rule kept as data, never as code (ADL A12).

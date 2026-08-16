@@ -332,7 +332,10 @@ describe('the address, at the moment of joining', () => {
 })
 
 /** Every production source file on the portal, so a claim about what the portal
- *  can do is measured over all of it rather than over one folder. */
+ *  can do is measured over all of it rather than over one folder. Production
+ *  means what ships: the tests are out, and so are the helpers they are written
+ *  with. `src/dev/` stays in, because the switch of roles is built and shipped
+ *  and only hidden. */
 function sources(): { path: string; code: string }[] {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
@@ -343,8 +346,15 @@ function sources(): { path: string; code: string }[] {
           : [],
     )
 
+  /* By the folder and not by the name. Filtering on „.test." in the whole path
+     let the helpers in `src/test/` through as production code, so a plain
+     sentence in a comment there would have failed a guard about screens; and a
+     checkout into a folder whose own name carries „.test." would have swept the
+     application away. */
+  const tests = `${sep}test${sep}`
+
   return walk(join(process.cwd(), 'src'))
-    .filter((path) => !path.includes('.test.'))
+    .filter((path) => !path.includes('.test.') && !path.includes(tests))
     .map((path) => ({ path, code: readFileSync(path, 'utf-8') }))
 }
 
@@ -434,7 +444,18 @@ describe('the biography, at the moment of joining', () => {
        panel that builds the sort through a variable, or writes it in double
        quotes, walks past. What it does catch is the plain one, which is how both
        the picture and this panel are written. */
-    const sending = sources()
+    /* And the net is asked whether it caught anything at all before it is asked
+       what it caught. Narrowed to one folder by accident, it would go on passing
+       over a panel written in plain sight: measured, with the root cut to
+       `src/clock`, the guard stayed green while the panel stood there. The same
+       shape the repo already uses on its other source sweep
+       (app/filterParams.test.ts). */
+    const swept = sources()
+
+    expect(swept.length).toBeGreaterThan(150)
+    expect(swept.some(({ path }) => path.endsWith(`member${sep}ProfileBio.tsx`))).toBe(true)
+
+    const sending = swept
       .filter(({ code }) => code.includes("kind: 'bio'") || code.includes('kind: "bio"'))
       .map(({ path }) => path.split(sep).join('/'))
 
