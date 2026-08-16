@@ -1,3 +1,4 @@
+import { profilePath } from '../profileAddress'
 import { Link } from 'react-router'
 import { BOARD_PLACES, boardOfTen } from '../../data/derive'
 import type { Competitor, Gender, Result } from '../../data/types'
@@ -39,7 +40,7 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
   return (
     <Link
       className="top10__face"
-      to={`/${locale}/takmicar/${slot.memberNumber}`}
+      to={profilePath(slot, locale)}
       title={name}
       aria-label={reading}
     >

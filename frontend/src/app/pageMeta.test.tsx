@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import sr from '../i18n/sr.json'
@@ -104,6 +104,20 @@ describe('the name of a page', () => {
     // than to the person.
     await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
     await waitFor(() => expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`))
+
+    /* And it stays that, which is the half `waitFor` cannot say on its own: it
+       settles on the first tick where the title is right, and the title is right
+       before the profile has declared anything at all. A review took the guard
+       off the declaration and this test passed while the tab read „Strahinja
+       Vukićević, Banja Luka". Given a turn of the loop, the wrong name has
+       arrived if it is coming. */
+    await act(async () => {
+      await new Promise((settled) => {
+        setTimeout(settled, 0)
+      })
+    })
+
+    expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`)
   })
 
   it('never puts the subject or the body of a message in the name (PDL P23)', async () => {
@@ -151,6 +165,56 @@ describe('the address of a page', () => {
     expect(href('alternate', 'en')).toBeNull()
   })
 
+  it('moves a profile opened by number alone to the one address, and names it', async () => {
+    /* The centre of PDL P11, and nothing measured it: a review replaced the
+       condition on the profile's redirect with `if (false)` and all 1912 tests
+       stayed green.
+     *
+       Both halves are here, because they are one promise. The reader is moved,
+       so what they share afterwards is the canonical address; and the canonical
+       link says the same thing to a search engine. What the query carries is
+       left alone by both: it never was part of the address. */
+    const { router } = renderAt('/sr/takmicar/000007?sezona=2019')
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    expect(router.state.location.pathname).toBe('/sr/takmicar/000007-strahinja-vukicevic')
+    expect(router.state.location.search).toBe('?sezona=2019')
+
+    await waitFor(() =>
+      expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`),
+    )
+  })
+
+  it('replaces the address rather than stacking one on top of it', async () => {
+    /* PDL P11: the reader is moved „u mestu". Without `replace` the old address
+       stays in the history, so Back returns to it and it redirects again at
+       once: a loop the reader cannot get out of by going back. Nothing held it;
+       taking `replace` off either screen passed the whole suite. */
+    const { router } = renderAt('/sr/takmicar/000007')
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    /* One entry, not two: the address arrived at replaced the one typed. */
+    expect(router.state.historyAction).toBe('REPLACE')
+  })
+
+  it('moves the trophies of one person the same way, keeping the tail', async () => {
+    const { router } = renderAt('/sr/takmicar/000007/priznanja')
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    expect(router.state.location.pathname).toBe(
+      '/sr/takmicar/000007-strahinja-vukicevic/priznanja',
+    )
+
+    await waitFor(() =>
+      expect(href('canonical')).toBe(
+        `${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic/priznanja`,
+      ),
+    )
+  })
+
   it('canonicalises the English branch onto the Serbian one', async () => {
     renderAt('/en/kalendar')
 
@@ -192,12 +256,22 @@ describe('the address of a page', () => {
     await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr`))
   })
 
-  it('keeps a filter out of the canonical address', async () => {
+  it('keeps a filter out of the canonical address, and carries the name', async () => {
     renderAt('/sr/takmicar/000007?sezona=2027')
+
+    /* Waited on the record rather than on the address. The profile declares its
+       own canonical once it knows whose it is (PDL P11: one address, and it
+       carries the name), and until then the head holds the address being read.
+       Asked without waiting, `waitFor` catches that first state and passes: the
+       old form of this test passed against both answers, which is the same as
+       passing against none. */
+    await screen.findByRole('heading', { level: 1, name: 'Strahinja Vukićević' })
 
     // A filtered profile is the same page as the unfiltered one; two addresses
     // for it would be one page competing with itself.
-    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007`))
+    await waitFor(() =>
+      expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`),
+    )
   })
 })
 
@@ -205,10 +279,20 @@ describe('what a shared link shows', () => {
   it('carries the name, the sentence and the name of the site', async () => {
     renderAt('/sr/takmicar/000007')
 
+    /* The record first, for the same reason as above: the address a link shares
+       is the one the profile declares once it knows whose it is. */
+    await screen.findByRole('heading', { level: 1, name: 'Strahinja Vukićević' })
+
     await waitFor(() => expect(content('property', 'og:title')).toBe(document.title))
     expect(content('property', 'og:description')).toBe(content('name', 'description'))
     expect(content('property', 'og:site_name')).toBe(LEAGUE)
-    expect(content('property', 'og:url')).toBe(`${SITE_ORIGIN}/sr/takmicar/000007`)
+    /* Waited on, like the canonical it mirrors: the address a profile shares is
+       declared when the record arrives, one render after the title. */
+    await waitFor(() =>
+      expect(content('property', 'og:url')).toBe(
+        `${SITE_ORIGIN}/sr/takmicar/000007-strahinja-vukicevic`,
+      ),
+    )
     expect(content('name', 'twitter:title')).toBe(document.title)
     expect(content('name', 'twitter:description')).toBe(content('name', 'description'))
   })
