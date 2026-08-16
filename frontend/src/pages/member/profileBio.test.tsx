@@ -80,11 +80,11 @@ describe('the words a member wrote about themselves, changed later', () => {
        and SC 1.3.1 for a rule that is on the screen and tied to nothing. */
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
-    const box = await (async () => (await panelFor()).getByLabelText(/Svojim rečima|Tekst o sebi/))()
+    const field = await box()
 
-    expect(box).toHaveAttribute('aria-describedby', 'settings-bio-rule settings-bio-left')
-    expect(box).toHaveAccessibleDescription(/najviše 360 znakova/)
-    expect(box).toHaveAccessibleDescription(/Još 360 znak/)
+    expect(field).toHaveAttribute('aria-describedby', 'settings-bio-rule settings-bio-left')
+    expect(field).toHaveAccessibleDescription(/najviše 360 znakova/)
+    expect(field).toHaveAccessibleDescription(/Još 360 znak/)
   })
 
   it('asks somebody with nothing on their profile to write rather than to change', async () => {

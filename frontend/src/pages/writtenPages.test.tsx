@@ -560,7 +560,6 @@ describe('what the written pages say the fee buys', () => {
      documents already behaved that way and described it two ways, once as
      membership of an association and once as a subscription to a website. The
      terms say it plainly now, and these hold the three documents to it.
-   *
      Read off the disc, because this is about what is written rather than about
      what a screen does with it. */
   it('says membership is what gives the right to compete', () => {

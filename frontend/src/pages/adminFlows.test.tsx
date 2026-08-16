@@ -2122,12 +2122,17 @@ describe('the six queues read from the file', () => {
      back, because it is the same decision; what differs is what the moderator is
      asked to write, since that reason is what the member reads and changes the
      picture by (PDL P22, owner, 30.07.2026). */
-  it('does not promise one on the three queues in the middle either', async () => {
+  it('promises the message on the three queues in the middle, because they send one', async () => {
     /* Leagues, teams and reported dates draw the shared box through the queue
-       screen, which chooses the words itself rather than taking the default. That
-       branch had nothing behind it: a review set it back to the promising words
-       and all 1905 tests passed, and the leagues queue is the very one the
-       promise was first measured on (PENDING R9b). */
+       screen, which chooses the words itself rather than taking the default.
+     *
+       The name of this test said the opposite until 16.08.2026, and it said it
+       for a whole round after the behaviour had turned round: these three sent
+       nothing until the owner had the refusal go out from every queue
+       (15.08.2026), and the words followed. The assertion moved with the
+       behaviour and the name did not, which is worse than a wrong assertion,
+       because a reader scanning the list of tests is told the opposite of what
+       the portal does. */
     const user = await open('leagues', 'Predložene lige')
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
@@ -2220,6 +2225,64 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
   })
 
+  /* The other three queues that write to the member, each with the one card in
+     the seed that carries a member number, and the heading their refusal has to
+     arrive under.
+   *
+     Written as a table rather than as three tests because the fault it guards is
+     a heading swapped for another heading, and a table is what makes that
+     visible: the rows stand beside each other. A review swapped the league's
+     heading for the schedule's and all 1940 tests passed, so a member whose
+     league was refused would have been told „Prijava promene termina je
+     vraćena". The headings of the screens were measured; the headings of the
+     messages were not, and those are the ones a member reads. */
+  const WRITES_TO = [
+    { queue: QUEUE.leagues, who: 'Časlav Radenković', member: '000004', heading: 'Predlog lige je vraćen' },
+    { queue: QUEUE.teams, who: 'Strahinja Vukićević', member: '000007', heading: 'Predlog tima je vraćen' },
+    {
+      queue: QUEUE.schedule,
+      who: 'Borivoje Jovanović',
+      member: '000019',
+      heading: 'Prijava promene termina je vraćena',
+    },
+  ] as const
+
+  it.each(WRITES_TO)(
+    'sends the refusal on $queue.id under the heading that queue owns',
+    async ({ queue, who, member, heading }) => {
+      const user = setupUser()
+      renderAt(`/sr/${queue.path}`, 'moderator', member)
+
+      const card = within(
+        must(
+          (await within(await screen.findByRole('list', { name: /Čeka proveru/ }))
+            .findAllByRole('listitem'))
+            .find((one) => within(one).queryByText(new RegExp(who)) !== null),
+          `a waiting card carrying the item of ${who}`,
+        ),
+      )
+
+      await user.click(card.getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Ne može ovako, evo zašto.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+      await user.click(screen.getByRole('link', { name: new RegExp(heading) }))
+
+      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeVisible()
+      expect(screen.getByText(/evo zašto/)).toBeVisible()
+
+      /* And it is not one of the others, which is the whole point: the fault is
+         a heading that belongs to a different queue, and a test that only asks
+         „is there a heading" cannot see it. */
+      for (const other of WRITES_TO) {
+        if (other.heading !== heading) {
+          expect(screen.queryByText(other.heading)).not.toBeInTheDocument()
+        }
+      }
+    },
+  )
+
   it('promises the message only where one is actually sent', async () => {
     /* Owner, R10: the screen must not promise what the code does not do. The
        empty box used to read „Član dobija tvoj razlog" everywhere a reason is
@@ -2252,7 +2315,8 @@ describe('the six queues read from the file', () => {
      *
        **Brittle on purpose, which is worth knowing before rewriting either
        sentence.** „Član dobija tvoj razlog" written as „Član će dobiti tvoj
-       razlog" fails this, and so does „još ne ide" written as „se još ne šalje",
+       razlog" fails this, and so does „Poruka ne ide" written as „Poruka se ne
+       šalje",
        although neither changes the meaning. Anything looser cannot see the thing
        it exists for: a review swapped the two values in the dictionary and every
        other test moved with them, since they all compare a placeholder against
@@ -2266,7 +2330,7 @@ describe('the six queues read from the file', () => {
        could have been rewritten into words that promise one and nothing would
        have said so. Measured: they were, and all 1940 tests passed. */
     expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
-    expect(sr.review.reasonKeptPlaceholder).toContain('poruka ne ide')
+    expect(sr.review.reasonKeptPlaceholder).toContain('Poruka ne ide')
     expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
     /* And neither of them says the member may send another. Until 16.08.2026
        they could not: a biography was written once, at joining. The panel in
