@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
@@ -570,6 +571,48 @@ describe('how a written page is set', () => {
     }
   })
 
+  /** The first argument of a call, cut where the argument ends rather than at the
+   *  first comma: `setItem(makeKey(a, b), day)` hands over one key. */
+  function firstArgument(after: string): string {
+    let depth = 0
+
+    for (let index = 0; index < after.length; index += 1) {
+      const letter = after[index]
+
+      if (letter === '(') {
+        depth += 1
+      } else if (letter === ')' && depth === 0) {
+        return after.slice(0, index)
+      } else if (letter === ')') {
+        depth -= 1
+      } else if (letter === ',' && depth === 0) {
+        return after.slice(0, index)
+      }
+    }
+
+    return after
+  }
+
+  /** A name read out of a file, made safe to put inside a pattern. */
+  function escaped(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')
+  }
+
+  /**
+   * The stores the policy deliberately does not name, and why.
+   *
+   * One entry, and it is the simulated day the developer tools keep: written only
+   * where those tools are switched on (`devToolsEnabled()` in
+   * clock/ClockProvider.tsx), which is the QA site and never the portal a visitor
+   * reaches. QA is behind a password and is not indexed, so the reader of this
+   * policy is never the reader of that store. The reason is written down here
+   * because it was written down once before, in a comment, and went out with the
+   * code that comment sat in; a review then had to find it again.
+   */
+  const NOT_DISCLOSED = new Map([
+    ['btl.simulated-day', 'kept only where the developer tools are on, so never on the portal'],
+  ])
+
   it('names every store the portal actually keeps in a browser, by its own name', () => {
     /* The policy is read as a promise, and „Drugih kolačića nema" was one it did
        not keep: the portal writes the chosen theme to `localStorage`, read before
@@ -594,13 +637,18 @@ describe('how a written page is set', () => {
       readFileSync(join(process.cwd(), 'index.html'), 'utf-8'),
     ]
 
-    /* Anything handed to `setItem`, whether spelt out or named by a constant. A
-       constant is then looked up, so a key hidden behind a name is still found. */
+    /* Anything handed to `setItem` on any store, spelt out or named by a
+       constant. Three ways of getting past this were measured on the earlier
+       `localStorage.setItem(`: `const store = window.localStorage` walked past
+       the name, `sessionStorage` is a second store the reader is owed the name of
+       just the same, and a key written as `setItem(makeKey(a, b), …)` cut the
+       argument at the comma inside it and threw an unreadable error about a
+       regular expression instead of saying anything about a store. */
     const keys = new Set<string>()
 
     for (const code of everywhere) {
-      for (const found of code.matchAll(/localStorage\.setItem\(\s*([^,]+)/g)) {
-        const handed = (found[1] ?? '').trim()
+      for (const found of code.matchAll(/\.setItem\(([\s\S]*)/g)) {
+        const handed = firstArgument(found[1] ?? '').trim()
         const literal = /^['"`](.*)['"`]$/.exec(handed)
 
         if (literal !== null) {
@@ -608,13 +656,18 @@ describe('how a written page is set', () => {
           continue
         }
 
-        /* A constant: find where it is given its value, anywhere in the portal. */
-        const gives = new RegExp(`${handed}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
+        /* A constant: find where it is given its value, anywhere in the portal.
+           The name goes into the pattern escaped, because it is read out of a
+           file and this test has no say in what it looks like. */
+        const gives = new RegExp(`${escaped(handed)}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
         const named = everywhere
           .flatMap((one) => [...one.matchAll(gives)])
           .map((one) => one[1] ?? '')
 
-        expect(named, `nothing in the portal gives ${handed} a value`).not.toEqual([])
+        expect(
+          named,
+          `nothing in the portal gives \`${handed}\` a value, so the store it opens cannot be named`,
+        ).not.toEqual([])
         named.forEach((value) => keys.add(value))
       }
     }
@@ -622,11 +675,31 @@ describe('how a written page is set', () => {
     /* The sweep has to have found something, or the whole test passes over
        nothing (app/filterParams.test.ts holds its own sweep the same way). */
     expect(keys.size, 'no store was found at all, so nothing was compared').toBeGreaterThan(0)
+    /* And it has to have found the theme, which is the one every visitor gets.
+       Nought keys is not the only empty answer: one key is too, if the one it
+       found is the wrong one. */
+    expect([...keys]).toContain(THEME_STORAGE_KEY)
 
     const policy = whole('politika-privatnosti')
 
     for (const key of keys) {
-      expect(policy, `the policy does not name the store \`${key}\``).toContain(key)
+      const why = NOT_DISCLOSED.get(key)
+
+      if (why !== undefined) {
+        /* Left out on purpose, and the reason is written down beside the key. The
+           list is short and adding to it is a decision somebody makes rather than
+           a test quietly widening. */
+        expect(why, `the reason \`${key}\` is not disclosed is empty`).not.toBe('')
+        continue
+      }
+
+      /* As a whole name, not as a piece of one. Measured: read with `toContain`,
+         a store called `theme` passed on a document that names `btl-theme`, and so
+         would one called `btl`. What a policy owes the reader is the name of the
+         store, and half a name is a different store. */
+      expect(policy, `the policy does not name the store \`${key}\``).toMatch(
+        new RegExp(`(^|[^\\w.-])${escaped(key)}($|[^\\w.-])`),
+      )
     }
 
     /* And the two things the reader is owed about it: that it never reaches the
@@ -656,19 +729,44 @@ describe('how a written page is set', () => {
      *
        Read off the disc rather than off a screen, because what is guarded is what
        the documents say. The one permitted mention is the sentence that says the
-       portal does not accept one; anything that reads as an invitation fails. */
-    for (const [slug, page] of pages) {
-      for (const section of page.sections) {
-        for (const line of section.body.split(NEWLINE)) {
-          if (!/GPX|TCX/.test(line)) {
-            continue
-          }
+       portal does not accept one; anything that reads as an invitation fails.
+     *
+       **Three ways past this were measured and are closed here.** The trigger was
+       the file formats by name, so „priložite zapis staze" said the whole thing
+       without them. Only the written pages were read, so the same offer made from
+       the dictionary, on a screen rather than in a document, was not read at all.
+       And the permitted sentence was looked for anywhere in the line, so „Portal
+       ne prima zapis staze, ali možete da priložite GPX" passed with the refusal
+       serving as the pass for the invitation beside it. */
+    const OFFERED = /GPX|TCX|\bFIT\b|zapis staze/i
+    const INVITES = /priloz|priloži|prilaž|prilog|dodajte|učitaj|pošaljite|prihvata/i
+    const REFUSAL = 'Portal ne prima zapis staze'
 
-          expect(line, `${slug} still offers a track file: ${line.trim()}`).toContain(
-            'Portal ne prima zapis staze',
-          )
-        }
+    const lines: [string, string][] = [
+      ...pages.flatMap(([slug, page]) =>
+        page.sections.flatMap((section) =>
+          section.body.split(NEWLINE).map((line): [string, string] => [slug, line]),
+        ),
+      ),
+      /* The dictionary as well, because an offer printed on a screen is the same
+         offer as one written in a document, and this guard read none of it. */
+      ...JSON.stringify(sr, null, 1)
+        .split('\n')
+        .map((line): [string, string] => ['sr.json', line]),
+    ]
+
+    for (const [where, line] of lines) {
+      if (!OFFERED.test(line)) {
+        continue
       }
+
+      expect(line, `${where} still offers a track file: ${line.trim()}`).toContain(REFUSAL)
+      /* And says nothing else about it. The refusal is one sentence; a second
+         sentence on the same line that invites one is the fault this guards. */
+      expect(
+        line.replace(REFUSAL, ''),
+        `${where} refuses a track file and offers one in the same breath: ${line.trim()}`,
+      ).not.toMatch(INVITES)
     }
   })
 

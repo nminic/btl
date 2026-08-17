@@ -138,8 +138,23 @@ export function ReviewQueue() {
                         {one.eventName}
                       </a>
                     )}
-                    {one.comment !== '' && (
-                      <span className="review__said">{one.comment}</span>
+                    {one.comment !== '' && <span className="review__said">{one.comment}</span>}
+                    {/* And the proof, where there is any.
+                     *
+                        A member may attach a picture of the watch, and until now
+                        this screen was the only place that would ever have shown
+                        it and did not: the field was collected on both entry
+                        paths, kept on the record, and read by nobody. The one
+                        thing it is for is this decision, and ADL A12 has the file
+                        deleted once the decision is made, so a picture nobody is
+                        shown before then is a picture that is only ever deleted.
+                     *
+                        The name of the file, because in this prototype that is all
+                        there is: no file is uploaded anywhere and the record keeps
+                        what the field was called. When the store arrives it
+                        becomes a link, in this same place. */}
+                    {one.photo !== '' && (
+                      <span className="review__said">{t('review.proof', { file: one.photo })}</span>
                     )}
                   </td>
                   <td className="table__hide-phone">{formatNumber(one.distanceKm, locale, 2)}</td>

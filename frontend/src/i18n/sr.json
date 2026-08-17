@@ -930,6 +930,7 @@
     "reasonPlaceholder": "Bez razloga se ne odbija. Član dobija tvoj razlog u poruci.",
     "reasonKeptPlaceholder": "Bez razloga se ne odbija. Poruka ne ide, jer nema kome.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
+    "proof": "Prilog: {file}",
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",
     "cancel": "Odustani",

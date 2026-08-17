@@ -674,6 +674,11 @@ describe('a result from entry to decision', () => {
        the two doors of reporting share (PDL P9) and it has to survive the whole
        walk: to the moderator, and back into the form when a result is corrected. */
     await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao.')
+    /* And the other of the two, which nothing on the portal attached until now.
+       That is why `photo: ''` could be put into the correction and the whole suite
+       stayed green: the field went in on both entry paths, sat on the record, and
+       was read by nobody at all. */
+    await user.upload(screen.getByLabelText(/Slika kao dopuna/), new File(['sat'], 'sat.jpg', { type: 'image/jpeg' }))
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
   }
 
@@ -871,6 +876,35 @@ describe('a result from entry to decision', () => {
     expect(again.queryByText(/Link ne otvara rezultate\./)).toBeNull()
     // And the race that was never refused still says what it always said.
     expect(again.getByText('Druga trka')).toBeVisible()
+
+    /* Now what the moderator gets, which is where a correction either carries the
+       whole result over or quietly drops half of it.
+     *
+       `filledFrom` hands back eleven fields and this walk used to hold two of
+       them. Measured: nine could be replaced by a wrong value and the whole suite
+       of 1970 tests stayed green, the picture among them. So all of it is read off
+       the moderator's row here: the corrected link, the words, the proof, and the
+       figures of the race nobody was correcting. */
+    await openTheQueue(user)
+
+    const corrected = must(
+      screen.getAllByRole('row').find((one) => (one.textContent ?? '').includes('Probna trka')),
+      'the row of the corrected race',
+    )
+    const said = within(corrected)
+
+    expect(said.getByRole('link', { name: 'Probna trka' })).toHaveAttribute(
+      'href',
+      'https://primer.rs/ispravno',
+    )
+    expect(said.getByText('Sat mi je stao.')).toBeVisible()
+    expect(said.getByText('Prilog: sat.jpg')).toBeVisible()
+    /* The race itself, untouched by a correction about the link: 21,1 km, 540 up,
+       540 down, 1:52:10, and the points that follow from them. */
+    expect(said.getByText('21,10')).toBeVisible()
+    expect(said.getAllByText('540')).toHaveLength(2)
+    expect(said.getByText('1:52:10')).toBeVisible()
+    expect(said.getByText('23,55')).toBeVisible()
   })
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
