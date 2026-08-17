@@ -102,7 +102,15 @@ export function NewResult() {
       points: earned,
       category: categoryOf(distanceKm),
       link: String(values.link),
-      comment: '',
+      /* What the member wanted to say about the race, and it used to be thrown
+         away here: the field is on the form (`unos-rezultata.form.json`), the
+         rulebook lists it among what is entered from a profile (Član 41), the
+         moderator's screen draws it where there is one, and the same result
+         reported from the event page has carried it all along
+         (pages/event/ReportResult.tsx). Only this door dropped it, silently, and
+         nothing measured the difference: putting it back and taking it away both
+         left the whole suite green. */
+      comment: String(values.comment),
     }
 
     /* The same result again where one is being corrected, and a new one

@@ -738,6 +738,36 @@ describe('a result from entry to decision', () => {
     unmount()
   })
 
+  it('carries what the member said about the race to the moderator', async () => {
+    /* The form has asked for it all along (`unos-rezultata.form.json`), the
+       rulebook lists it among what is entered from a profile (Član 41), and the
+       moderator's screen draws it where there is one (admin/ReviewQueue.tsx).
+       This one door dropped it: the screen wrote an empty string into the
+       submission and the words went nowhere.
+     *
+       Nothing measured the difference. Putting it back and taking it away both
+       left the whole suite green, which is why the fault survived until a review
+       read the two doors side by side. */
+    const user = setupUser()
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka sa pričom')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText(/Dužina/), '10')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '0')
+    await user.type(screen.getByLabelText('Minuta'), '44')
+    await user.type(screen.getByLabelText('Sekundi'), '2')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao na petom kilometru.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    await openTheQueue(user)
+
+    expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
+  })
+
   it('scores nothing when the time entered is zero', async () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
