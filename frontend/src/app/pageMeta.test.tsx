@@ -219,6 +219,11 @@ describe('the address of a page', () => {
     ['/sr/kalendar/', 'a slash on the end'],
     ['/sr/KALENDAR', 'the section in capitals'],
     ['/sr/Kalendar/', 'both at once'],
+    /* Two slashes, because one `+` in the pattern is what tells them apart from
+       one, and nothing held it: `/\/+$/` written as `/\/$/` passed the whole
+       suite, and on this address the calendar then titled itself „Događaj iz
+       kalendara" again. */
+    ['/sr/kalendar//', 'two slashes on the end'],
   ])('names one canonical address for %s, %s', async (address) => {
     /* A path is case sensitive and a trailing slash is a different path, so these
        are three addresses for one page. Left alone, each of them told a search
@@ -239,7 +244,17 @@ describe('the address of a page', () => {
        /sr/kalendar as the original and then titled itself „Ove strane nema". */
     expect(document.title).toBe(`${sr.seo.calendar.title} · ${LEAGUE}`)
     expect(content('name', 'description')).toBe(sr.seo.calendar.description)
-    await screen.findByRole('heading', { level: 1, name: sr.nav.calendar })
+    /* `calendar.title` and not `nav.calendar`: the two happen to be the same word
+       today, and this is the one the screen's own heading is drawn from
+       (pages/calendar/Calendar.tsx). Held to the wrong one, a rename of either
+       would fail this test for a reason that has nothing to do with addresses. */
+    await screen.findByRole('heading', { level: 1, name: sr.calendar.title })
+    /* And what a screen reader is told the page is now, which is the wording from
+       the navigation. It comes from a second lookup off the same path
+       (`ROUTES.find` in app/useRouteChrome.ts), and that half of the
+       normalisation was not measured: taken back out, the whole suite passed and
+       the announcement said „BTL kalendar" instead of „Kalendar". */
+    expect(await screen.findByRole('status')).toHaveTextContent(sr.nav.calendar)
   })
 
   it('canonicalises the English branch onto the Serbian one', async () => {

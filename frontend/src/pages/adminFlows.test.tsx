@@ -415,6 +415,11 @@ describe('the price list', () => {
        both halves of the condition are held by a test and neither can be made
        always true without one failing. */
     expect(open).toHaveAccessibleDescription(/Iznos koji sada upišeš važi za sezonu 2027/)
+    /* And says nothing about a running season, because in 2026 there is none: the
+       first season of the league is 2027 (data/season.ts). Written
+       unconditionally, that warning was a sentence about nothing for the whole of
+       the year the portal opens in, and a review measured this screen saying it. */
+    expect(open).not.toHaveAccessibleDescription(/je u toku/)
 
     await user.click(open)
 
@@ -440,8 +445,33 @@ describe('the price list', () => {
     expect(open).toHaveAttribute('aria-disabled', 'false')
     expect(open).toHaveAccessibleDescription(/Iznos koji sada upišeš važi za sezonu 2029/)
     expect(open).toHaveAccessibleDescription(
-      /Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i ono što stoji za sezonu koja teče/,
+      /Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji/,
     )
+    /* And here there is a running season to name, which is the half that makes
+       this a warning rather than a note: 2028 began the day before and its amount
+       was settled by 1 October 2027. */
+    expect(open).toHaveAccessibleDescription(/Sezona 2028 je u toku/)
+  })
+
+  it('has one live region on the price list, not two', async () => {
+    /* The sentence about the amount is reached from the button that opens the
+       record (`aria-describedby`), so it needs no `role="status"` of its own, and
+       CLAUDE.md asks for ARIA only where the semantics are not enough. It carried
+       one while it appeared and disappeared; now that it is always on the screen
+       with static text, that role made a second polite region on the page and read
+       the whole paragraph out on arrival, after the route had already been
+       announced. Nothing held the attribute either: deleting it passed the whole
+       suite. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-09-30')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+
+    /* The one that remains is the announcement of the screen itself
+       (app/Shell.tsx), which is why this counts rather than asserting none. */
+    const live = screen.getAllByRole('status')
+
+    expect(live).toHaveLength(1)
+    expect(live[0]).toHaveTextContent('Cenovnik')
   })
 
   it('names the season by the clock, not by the constant that happens to match it', async () => {

@@ -3,7 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <!-- What the browser paints its own bar in. Written for the theme the portal
+         opens in, which is the dark one for everybody who has not chosen
+         otherwise, so this is `--bg` of `[data-theme='dark']` in tokens.css. It
+         said `#ffffff`, which put a white address bar above an almost black page
+         on every Android phone. It is kept in step with the choice from
+         app/ThemeProvider.tsx, and a guard holds it to the token. -->
+    <meta name="theme-color" content="#060b16" />
 
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />

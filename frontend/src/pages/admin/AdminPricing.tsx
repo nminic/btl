@@ -10,7 +10,7 @@ import {
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
-import { referralMayBeSet } from '../../data/season'
+import { referralMayBeSet, seasonRunning } from '../../data/season'
 import { seasonBeingRenewed } from '../../data/pricing'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
@@ -90,6 +90,10 @@ export function AdminPricing() {
      dates (data/season.ts), because the moment is the same one the renewal window
      opens on and a second copy of a date is a date that drifts. */
   const maySet = referralMayBeSet(today)
+  /* The season that is running today, where one is. Before the first season of the
+     league there is none, and „the amount for the season now running changes too"
+     is then a warning about nothing. */
+  const running = seasonRunning(today)
 
   return (
     <div className="member">
@@ -167,7 +171,7 @@ export function AdminPricing() {
                     <OpenRecord
                       name={row.label}
                       settled={!maySet}
-                      describedBy="referral-settled"
+                      describedBy="referral-season"
                       onOpen={() => setEditing({ mode: 'one', record: row })}
                     />
                   </td>
@@ -183,17 +187,24 @@ export function AdminPricing() {
             *
               Open, it says what saving does, and that is not only „sets the
               coming season": the portal keeps one amount and no history, so the
-              same save also moves the amount that has been standing for the
-              season now running, which that season's own 1 October settled. The
-              rule cannot be enforced against that until an amount can be held per
+              same save also moves the amount that is standing right now. The rule
+              cannot be enforced against that until an amount can be held per
               season, which is a table and arrives with the database (PENDING).
               Until then the admin is told, because a screen that shuts up about it
               lets the rule be broken by somebody who believes they are keeping
-              it. */}
-          <p id="referral-settled" className="rate__hint" role="status">
+              it.
+            *
+              The second half of that, „and the season now running had its own
+              amount settled by its own 1 October", is said only where a season is
+              actually running. Written unconditionally it was false for the whole
+              of 2026: the first season of the league is 2027 (data/season.ts), so
+              on 30 September 2026 there was no running season to disturb, and a
+              review measured the screen saying there was. */}
+          <p id="referral-season" className="rate__hint">
             {maySet
               ? t('admin.referralOpen', { season: seasonBeingRenewed(today) })
               : t('admin.referralSettled', { season: seasonBeingRenewed(today) })}
+            {maySet && running !== null && ` ${t('admin.referralRunning', { season: running })}`}
           </p>
         </section>
       ))}

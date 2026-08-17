@@ -54,6 +54,21 @@ export function referralMayBeSet(today: string): boolean {
   return !inYearlyWindow(today)
 }
 
+/**
+ * The season that is running on a given day, or nothing before the first one.
+ *
+ * A season is the calendar year, so this is that year, once the league has one.
+ * The league's first is 2027, so for the whole of 2026 the answer is that no
+ * season is running, and anything a screen says about „the season now running" is
+ * a sentence about nothing. The price list said exactly that, and a review
+ * measured it on 30 September 2026.
+ */
+export function seasonRunning(today: string): number | null {
+  const year = Number(today.slice(0, 4))
+
+  return year < FIRST_SEASON ? null : year
+}
+
 export function inYearlyWindow(today: string): boolean {
   const dayInYear = today.slice(5)
 
