@@ -343,55 +343,94 @@ function everyRule(): { file: string; at: string; selector: string; body: string
 }
 
 /**
- * The weight of a selector, as the cascade counts it: ids, then classes and
+ * The weight of one selector, as the cascade counts it: ids, then classes and
  * attributes and pseudo-classes, then elements and pseudo-elements.
  *
  * Written out because the whole question of this file is which rule wins, and „both
  * are written in the file" is what the first version claimed to check.
+ *
+ * The functional pseudo-classes are not counted as one class each, which is what a
+ * plain count does and what a review measured as wrong in both directions:
+ * `:where()` weighs nothing at all, `:is()`, `:not()` and `:has()` weigh as much as
+ * the heaviest thing inside them, so `.a:is(.b, #c)` outweighs a hundred classes
+ * while `.a:where(.b)` weighs one.
  */
-function specificity(selector: string): number {
-  const one = selector.split(',')[0] ?? ''
-  const ids = (one.match(/#[\w-]+/g) ?? []).length
-  const classes = (one.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length
-  const elements = (one.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length
+function specificity(one: string): number {
+  let rest = one
+  let inner = 0
 
-  return ids * 10000 + classes * 100 + elements
+  /* `:where()` contributes nothing, and the other three contribute their heaviest
+     argument. Innermost first, so a nested `:not(:is(...))` is counted once. */
+  for (;;) {
+    const found = /:(where|is|not|has)\(([^()]*)\)/i.exec(rest)
+
+    if (found === null) {
+      break
+    }
+
+    const [whole, name = '', argument = ''] = found
+
+    if ((name ?? '').toLowerCase() !== 'where') {
+      inner += Math.max(...argument.split(',').map((part) => specificity(part.trim())), 0)
+    }
+
+    rest = rest.replace(whole, ' ')
+  }
+
+  const ids = (rest.match(/#[\w-]+/g) ?? []).length
+  const classes = (rest.match(/\.[\w-]+|\[[^\]]*\]|(?<!:):[\w-]+/g) ?? []).length
+  const elements =
+    (rest.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length + (rest.match(/::[\w-]+/g) ?? []).length
+
+  return ids * 10000 + classes * 100 + elements + inner
+}
+
+/** The parts of a group, and only those that reach this element while the mouse is
+ *  over it. A part written `:not(:hover)` is not one of them: it says the opposite. */
+function partsOver(element: Element, selector: string): string[] {
+  return selector
+    .split(',')
+    .filter((one) => !/:not\(\s*:hover\s*\)/i.test(one))
+    .map((one) => one.replace(/:hover\b/gi, '').trim())
+    .filter((one) => one !== '')
+    .filter((one) => {
+      try {
+        return element.matches(one)
+      } catch {
+        /* A selector jsdom cannot parse is reported rather than skipped: a rule this
+           guard cannot read is a rule it cannot clear either. */
+        throw new Error(`selektor koji jsdom ne ume da pročita: ${one}`)
+      }
+    })
 }
 
 /**
- * Which rules of the whole portal reach this element while the mouse is over it.
+ * Which rules of the whole portal reach this element while the mouse is over it,
+ * each with the weight of the part that reaches it.
  *
- * The DOM engine answers, not a comparison of text: `:HOVER`, `[class~='…']`, an
- * escaped letter and a selector that never names the class are all the same
- * question to `element.matches`, and all four beat a guard written on spelling.
+ * The DOM engine answers whether a rule applies, not a comparison of text: `:HOVER`,
+ * `[class~='…']`, an escaped letter and a selector that never names the class are
+ * all one question to `element.matches`, and all four beat a guard written on
+ * spelling.
+ *
+ * **The weight is the reaching part's, not the group's.** A review wrote
+ * `.rate__nothing:hover, .table td .entity-open:hover { … }`: the second part reaches
+ * this button at 0,3,1 and outweighs the refusal, while the first part is light and
+ * was the only one weighed. The whole suite passed and the refused control lit up in
+ * every administrative table.
  */
-function rulesOver(element: Element, onlyHover: boolean): {
-  file: string
-  at: string
-  selector: string
-  body: string
-  weight: number
-}[] {
+function rulesOver(
+  element: Element,
+  onlyHover: boolean,
+): { file: string; at: string; selector: string; body: string; weight: number }[] {
   return everyRule()
     .filter((rule) => !onlyHover || /:hover\b/i.test(rule.selector))
-    .filter((rule) =>
-      rule.selector.split(',').some((one) => {
-        const resting = one.replace(/:hover\b/gi, '').trim()
-
-        if (resting === '') {
-          return false
-        }
-
-        try {
-          return element.matches(resting)
-        } catch {
-          /* A selector jsdom cannot parse is reported rather than skipped: a rule
-             this guard cannot read is a rule it cannot clear either. */
-          throw new Error(`selektor koji jsdom ne ume da pročita: ${one.trim()}`)
-        }
-      }),
-    )
-    .map((rule) => ({ ...rule, weight: specificity(rule.selector) }))
+    .map((rule) => ({ rule, parts: partsOver(element, rule.selector) }))
+    .filter((found) => found.parts.length > 0)
+    .map((found) => ({
+      ...found.rule,
+      weight: Math.max(...found.parts.map((part) => specificity(part))),
+    }))
 }
 
 const css = sheetText(ENTITY_CSS)
@@ -462,8 +501,11 @@ describe('a record that may no longer be opened', () => {
       ).toBe(false)
     }
 
-    // And the sweep really reached the portal, not one file that happens to be quiet.
-    expect(reaching.length).toBeGreaterThan(1)
+    /* And the sweep really reached the portal. Counting the rules that arrive is not
+       that: two arrive today and both are written in `Entity.css`, the one file this
+       design exists to stop trusting, so a sweep narrowed to that file alone would
+       have satisfied it. What is counted is how many sheets were read. */
+    expect(everySheet().length, 'the sweep read the portal, not one folder').toBeGreaterThan(30)
   })
 
   it('is the last word for every property it sets, not only among hover rules', async () => {
@@ -516,12 +558,18 @@ describe('a record that may no longer be opened', () => {
        row). Built rather than rendered, because no screen refuses a record there
        today; the point is that the refusal has to hold wherever the control is put,
        not only where it happens to stand now. */
+    /* The class names are read out of the component that draws them, not typed here.
+       Typed, they were a second home for the same fact: renaming the wrapper in
+       EntityEditor left this guard passing over markup nothing draws. */
+    const editor = readFileSync(join(process.cwd(), 'src/pages/admin/EntityEditor.tsx'), 'utf-8')
+    const wrapper = must(/className="(entity-row-[\w-]+)"/.exec(editor), 'omotač radnji u redu')[1]
+    const opener = must(/className="(entity-open)"/.exec(editor), 'dugme koje otvara zapis')[1]
     const table = document.createElement('table')
 
     table.className = 'table'
     table.innerHTML =
-      '<tbody><tr><td><span class="entity-row-actions">' +
-      '<button class="entity-open" aria-disabled="true">Otvori</button>' +
+      `<tbody><tr><td><span class="${wrapper}">` +
+      `<button class="${opener}" aria-disabled="true">Otvori</button>` +
       '</span></td></tr></tbody>'
     document.body.append(table)
 
