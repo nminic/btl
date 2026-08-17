@@ -672,11 +672,17 @@ describe('TopByCategory', () => {
   })
 
   it('turns again once the focus is somewhere else on the page, not only on the body', async () => {
-    /* The hold is „is the focus inside these bars", and a review found that no
-       test could tell that apart from „is the focus off the body": the weaker
-       reading passed everything, and it is the one that gets stuck, because a
-       reader whose focused column is taken away is often given the focus back
-       somewhere else rather than dropped on the body. */
+    /* The hold is „is the focus inside these bars", and the weaker reading of it,
+       „is the focus off the body", is the one that gets stuck: a reader whose
+       focused column is taken away is often given the focus back somewhere else
+       rather than dropped on the body.
+     *
+       This test measures that third element directly. The comment written with it
+       claimed the weaker reading „passed everything", and a later review measured
+       that it did not: it already failed the test about the button that stops the
+       turning, because in that one the bars are never focused at all. The claim
+       was wrong, the test is not; what it adds is the case where focus is inside
+       the widget and outside the bars. */
     const competitors = [competitor('000001'), competitor('000002')]
     const results = [
       { ...result('000001', 10), category: 'short' as const },

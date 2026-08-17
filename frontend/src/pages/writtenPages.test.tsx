@@ -7,6 +7,7 @@ import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
+import { sources } from '../test/sources'
 import { StaticPage } from './StaticPage'
 
 const dictionary = sr
@@ -557,6 +558,39 @@ describe('how a written page is set', () => {
         }
       }
     }
+  })
+
+  it('names every store the portal actually keeps in a browser', () => {
+    /* The policy is read as a promise, and „Drugih kolačića nema" was one it did
+       not keep: the portal writes the chosen theme to `localStorage`, read before
+       the first paint for every visitor, member or not. Under the EDPB's
+       guidelines 2/2023 and Article 147 of the electronic communications act,
+       local storage is the same thing as a cookie; the theme is exempt from
+       consent, because it is a display setting the reader asked for, but exempt
+       from consent is not exempt from being disclosed. The gap was found by a
+       review of the very PR that took the analytics out of this document.
+     *
+       Measured against the source rather than restated, so a second store added
+       tomorrow fails this until the policy says it exists. `sessionStorage` is
+       left out on purpose: the one use of it is behind the development switch
+       (clock/ClockProvider.tsx) and nothing of it ships. */
+    const stores = sources()
+      .filter(({ code }) => code.includes('localStorage.setItem'))
+      .map(({ path }) => path)
+
+    expect(stores.length, 'nothing writes to localStorage any more').toBeGreaterThan(0)
+
+    const policy = whole('politika-privatnosti')
+
+    expect(policy).toContain('lokalnom skladištu')
+    expect(policy).toContain('btl-theme')
+    /* And it says the two things the reader is owed about it: that it never
+       reaches the association, and why no consent is asked for it. */
+    expect(policy).toContain('nikada ne stiže do nas')
+    expect(policy).toMatch(/pristanak se ne traži|Za njega se pristanak ne traži/)
+    /* The claim the document used to make, and must not make again while that
+       store is there. */
+    expect(policy).not.toContain('Drugih kolačića nema')
   })
 
   it('carries no telephone number anywhere', () => {

@@ -1,5 +1,3 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join, sep } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -8,6 +6,7 @@ import { translate } from '../i18n/translate'
 import sr from '../i18n/sr.json'
 import { first, inputElement, last, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { inside, SEP, sources, WHOLE_PORTAL } from '../test/sources'
 import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
@@ -331,33 +330,6 @@ describe('the address, at the moment of joining', () => {
   })
 })
 
-/** Every production source file on the portal, so a claim about what the portal
- *  can do is measured over all of it rather than over one folder. Production
- *  means what ships: the tests are out, and so are the helpers they are written
- *  with. `src/dev/` stays in, because the switch of roles is built and shipped
- *  and only hidden. */
-function sources(): { path: string; code: string }[] {
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-      entry.isDirectory()
-        ? walk(join(dir, entry.name))
-        : entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')
-          ? [join(dir, entry.name)]
-          : [],
-    )
-
-  /* By the folder and not by the name. Filtering on „.test." in the whole path
-     let the helpers in `src/test/` through as production code, so a plain
-     sentence in a comment there would have failed a guard about screens; and a
-     checkout into a folder whose own name carries „.test." would have swept the
-     application away. */
-  const tests = `${sep}test${sep}`
-
-  return walk(join(process.cwd(), 'src'))
-    .filter((path) => !path.includes('.test.') && !path.includes(tests))
-    .map((path) => ({ path, code: readFileSync(path, 'utf-8') }))
-}
-
 describe('the biography, at the moment of joining', () => {
   it('is asked for here, and the form goes through without it', async () => {
     /* Owner, 31.07.2026: it is written when the profile is created and goes from
@@ -452,16 +424,23 @@ describe('the biography, at the moment of joining', () => {
        (app/filterParams.test.ts). */
     const swept = sources()
 
-    expect(swept.length).toBeGreaterThan(150)
-    expect(swept.some(({ path }) => path.endsWith(`member${sep}ProfileBio.tsx`))).toBe(true)
+    expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
+    expect(swept.some(({ path }) => path.endsWith(inside('member', 'ProfileBio.tsx')))).toBe(true)
+    /* And it holds no helper. Nothing under `src/test/` ships, so a sentence
+       written in one of them is not something the portal does; read as though it
+       were, a plain line in a comment there failed a guard about screens. Asked
+       of the sweep itself, because no helper carries such a line today and so no
+       ordinary test can tell the two sweeps apart. */
+    expect(swept.filter(({ path }) => path.includes(inside('src', 'test', '')))).toEqual([])
 
     const sending = swept
       .filter(({ code }) => code.includes("kind: 'bio'") || code.includes('kind: "bio"'))
-      .map(({ path }) => path.split(sep).join('/'))
+      /* Named from `src` down, and cut at the **last** `src` rather than the
+         first: a checkout into a folder that itself carries `src` would otherwise
+         make every path unrecognisable and this list impossible to read. */
+      .map(({ path }) => path.slice(path.lastIndexOf(inside('src', ''))).split(SEP).join('/'))
 
-    expect(sending.map((path) => path.slice(path.indexOf('/src/') + 1))).toEqual([
-      'src/pages/member/ProfileBio.tsx',
-    ])
+    expect(sending).toEqual(['src/pages/member/ProfileBio.tsx'])
   })
 })
 
