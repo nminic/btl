@@ -389,7 +389,24 @@ export function RowActions({
 
 /** The control in a row that opens that row's record. The name of the record is
  *  in the accessible name, so twenty of these are twenty different controls. */
-export function OpenRecord({ name, onOpen }: { name: string; onOpen: () => void }) {
+export function OpenRecord({
+  name,
+  onOpen,
+  /**
+   * Whether the record is settled and may no longer be opened.
+   *
+   * Told off rather than switched off, as everywhere else on the portal:
+   * `disabled` takes the button out of the tab order and takes with it the
+   * sentence saying why it will not open. Only the price list passes it, for the
+   * amount a referral brings once the renewal window has opened (owner,
+   * 16.08.2026).
+   */
+  settled = false,
+}: {
+  name: string
+  onOpen: () => void
+  settled?: boolean
+}) {
   const { t } = useI18n()
 
   return (
@@ -397,7 +414,18 @@ export function OpenRecord({ name, onOpen }: { name: string; onOpen: () => void 
       type="button"
       className="entity-open"
       aria-label={t('admin.form.openNamed', { name })}
-      onClick={onOpen}
+      aria-disabled={settled}
+      aria-describedby={settled ? 'referral-settled' : undefined}
+      onClick={() => {
+        /* Reachable means pressable, so the refusal lives here as well as in the
+           attribute: without it the record opened and the amount could be
+           changed after the day it was settled on. */
+        if (settled) {
+          return
+        }
+
+        onOpen()
+      }}
     >
       {t('admin.form.open')}
     </button>

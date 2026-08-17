@@ -360,6 +360,50 @@ describe('the price list', () => {
     expect(screen.getByLabelText(/^Iznos u dinarima/)).toHaveValue(600)
   })
 
+  it('will not set the referral amount once the season it belongs to is being renewed', async () => {
+    /* Owner, 16.08.2026: „administrator podešava do 1.10. u 00 po CET za
+       predstojeću godinu." That instant is the one the renewal window opens on,
+       so the amount is settled before anybody can start earning it.
+     *
+       Pressed, not merely inspected: told off rather than switched off is the
+       portal's rule everywhere, and it only holds if the refusal lives in the
+       handler as well as in the attribute. Without it, the record opened and the
+       amount could be changed after the day it was settled on. */
+    const user = setupUser()
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+
+    const open = screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' })
+
+    expect(open).toHaveAttribute('aria-disabled', 'true')
+    expect(open).not.toBeDisabled()
+    expect(open).toHaveAccessibleDescription(sr.admin.referralSettled)
+
+    await user.click(open)
+
+    /* Still the table, not the form: no field of the record is on screen. */
+    expect(screen.queryByLabelText(/^Iznos u evrima/)).not.toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Preporuka' })).toBeVisible()
+  })
+
+  it('sets the referral amount while the window is still shut', async () => {
+    /* The other side of the same rule, and the one that says it is a deadline
+       rather than a lock: on any day before 1 October the form opens. */
+    const user = setupUser()
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-09-30')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+
+    const open = screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' })
+
+    expect(open).toHaveAttribute('aria-disabled', 'false')
+
+    await user.click(open)
+
+    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
+  })
+
   it('says what a payment from abroad carries on top of the price', async () => {
     /* Whoever records a payment sees three euro more on the statement than the
        table quotes, and has to be able to tell processing from overpayment
