@@ -62,6 +62,24 @@ function ruleFor(selector: string): CSSStyleDeclaration {
   return one.style
 }
 
+
+/** One rule exactly as it is written, between its brace and the next one.
+ *
+ * For the single question the parser cannot answer: whether a declaration shouts.
+ * jsdom drops a `var()` value that carries `!important` rather than recording the
+ * priority, so asking `getPropertyPriority` about these colours always answers
+ * „no", including when every one of them shouts. Everything structural is still
+ * read from `cssRules`; only this comes from the text. */
+function written(selector: string): string {
+  const at = css.indexOf(`${selector} {`)
+
+  expect(at, `${selector} is not written in Entity.css`).toBeGreaterThan(-1)
+
+  const open = css.indexOf('{', at)
+
+  return css.slice(open + 1, css.indexOf('}', open))
+}
+
 describe('a record that may no longer be opened', () => {
   it('says so with the cursor, not only with an attribute', () => {
     /* The pointer is what a reader with a mouse reads first, and it is the one
@@ -109,5 +127,31 @@ describe('a record that may no longer be opened', () => {
       ".entity-open[aria-disabled='true']:hover",
       '.entity-open:hover',
     ])
+  })
+
+  it('is not beaten by a plain hover shouting over it', () => {
+    /* Specificity is one axis and `!important` is another, and the count above
+       reads only the first. An author's `!important` beats an author's ordinary
+       declaration whatever the selectors weigh, so three words added to the plain
+       hover put the accent back on a control that refuses every press, and the
+       count would not have moved: a review measured exactly that, and all four
+       tests stayed green.
+     *
+       **Read from the text, and only this one thing is.** The obvious way to ask
+       is `getPropertyPriority`, and it cannot answer here: jsdom drops a
+       declaration whose value is a `var()` carrying `!important`, so it reports
+       no priority for a rule that shouts every colour on this control. Measured,
+       not assumed. The parser stays in charge of everything it does know, which
+       is whether a rule is live and which rules there are; this one question goes
+       to the source, where three words are three words.
+     *
+       Both sides are asked. The refusal is left ordinary on purpose: a stylesheet
+       where both shout is one nobody can reason about, and the tighter selector
+       is enough as long as nothing shouts. */
+    for (const selector of ['.entity-open:hover', ".entity-open[aria-disabled='true']:hover"]) {
+      expect(written(selector), `${selector} shouts, and no selector outweighs that`).not.toContain(
+        '!important',
+      )
+    }
   })
 })
