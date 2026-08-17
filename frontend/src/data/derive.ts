@@ -152,8 +152,16 @@ export type Placed<T> = T & { position: number }
  * are level on the member number as well, so the order between them is the order
  * the results happened to arrive in. That is the one thing this function is
  * written to avoid, and on that board it is not avoided; the date is not a rung
- * there on purpose (see `bestSingleRaces`), so adding one is a decision and not
- * a repair. Written down rather than patched here (PENDING).
+ * there on purpose (see `bestSingleRaces`), so adding one would be a decision and
+ * not a repair.
+ *
+ * The owner made that decision on 16.08.2026, and it is that no rung is wanted:
+ * „to je zapravo lista najbolje ostvarenih pojedinačnih rezultata na trkama, a
+ * pobednik (dobitnik figure) će biti onaj koji je postigao najbolji rezultat."
+ * The board ranks races and the award goes to the first row, so which of two
+ * equally good races of one member is fifth and which sixth decides nothing.
+ * Level at the top, one of them is drawn first and the award is still one and
+ * still that member's.
  *
  * Until 11.08.2026 rows the ladder left level shared one number and the numbers
  * after them were skipped, so a shared first place read 1, 1, 3 and the award
@@ -244,7 +252,6 @@ export function rankingFor(
       ...(totals.get(competitor.memberNumber) ?? EMPTY_TOTALS),
     }))
     .filter((row) => row.races > 0)
-    .sort(STANDING)
 
   return withPlaces(ranked, STANDING, (row) => row.competitor.memberNumber)
 }
@@ -835,7 +842,7 @@ export function topByCategory(
     return own === undefined ? [] : [{ competitor, ...own.totals, reachedOn: own.reachedOn }]
   })
 
-  return withPlaces(columns.sort(BY_CATEGORY), BY_CATEGORY, (row) => row.competitor.memberNumber)
+  return withPlaces(columns, BY_CATEGORY, (row) => row.competitor.memberNumber)
     .slice(0, limit)
 }
 
@@ -865,7 +872,7 @@ export function topByKilometers(
   season: number,
   limit: number,
 ): Placed<TallyRow>[] {
-  const rows = seasonRows(competitors, results, season).sort(BY_KILOMETERS)
+  const rows = seasonRows(competitors, results, season)
 
   return withPlaces(rows, BY_KILOMETERS, (row) => row.competitor.memberNumber).slice(0, limit)
 }
@@ -885,7 +892,7 @@ export function topByTimeOnCourse(
   season: number,
   limit: number,
 ): Placed<TotalsRow>[] {
-  const rows = seasonRows(competitors, results, season).sort(BY_TIME_ON_COURSE)
+  const rows = seasonRows(competitors, results, season)
 
   return withPlaces(rows, BY_TIME_ON_COURSE, (row) => row.competitor.memberNumber).slice(0, limit)
 }
@@ -1014,5 +1021,5 @@ export function bestSingleRaces(
     (row) => row.seasonTotals.races,
   ])
 
-  return withPlaces(rows.sort(ladder), ladder, (row) => row.competitor.memberNumber).slice(0, limit)
+  return withPlaces(rows, ladder, (row) => row.competitor.memberNumber).slice(0, limit)
 }

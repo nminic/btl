@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
@@ -7,6 +9,7 @@ import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
+import { sources } from '../test/sources'
 import { StaticPage } from './StaticPage'
 
 const dictionary = sr
@@ -557,6 +560,75 @@ describe('how a written page is set', () => {
         }
       }
     }
+  })
+
+  it('names every store the portal actually keeps in a browser, by its own name', () => {
+    /* The policy is read as a promise, and „Drugih kolačića nema" was one it did
+       not keep: the portal writes the chosen theme to `localStorage`, read before
+       the first paint for every visitor, member or not. Under the EDPB's
+       guidelines 2/2023 and Article 147 of the electronic communications act,
+       local storage is the same thing as a cookie; the theme is exempt from
+       consent, because it is a display setting the reader asked for, but exempt
+       from consent is not exempt from being disclosed.
+     *
+       **The keys are read out of the code, one by one.** Written the loose way,
+       „some file writes to localStorage and the document says btl-theme
+       somewhere", a review beat it three ways in a row: a second store under a
+       different key passed, and so did renaming the key so that the document
+       named one the portal no longer uses. What a policy owes the reader is the
+       name of every store, so that is what is compared: the set of keys the code
+       writes against the set of keys the document names.
+     *
+       `index.html` is read as well as `src`, because the theme is fetched there
+       before React starts and the sweep over sources does not reach it. */
+    const everywhere = [
+      ...sources().map(({ code }) => code),
+      readFileSync(join(process.cwd(), 'index.html'), 'utf-8'),
+    ]
+
+    /* Anything handed to `setItem`, whether spelt out or named by a constant. A
+       constant is then looked up, so a key hidden behind a name is still found. */
+    const keys = new Set<string>()
+
+    for (const code of everywhere) {
+      for (const found of code.matchAll(/localStorage\.setItem\(\s*([^,]+)/g)) {
+        const handed = (found[1] ?? '').trim()
+        const literal = /^['"`](.*)['"`]$/.exec(handed)
+
+        if (literal !== null) {
+          keys.add(literal[1] ?? '')
+          continue
+        }
+
+        /* A constant: find where it is given its value, anywhere in the portal. */
+        const gives = new RegExp(`${handed}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
+        const named = everywhere
+          .flatMap((one) => [...one.matchAll(gives)])
+          .map((one) => one[1] ?? '')
+
+        expect(named, `nothing in the portal gives ${handed} a value`).not.toEqual([])
+        named.forEach((value) => keys.add(value))
+      }
+    }
+
+    /* The sweep has to have found something, or the whole test passes over
+       nothing (app/filterParams.test.ts holds its own sweep the same way). */
+    expect(keys.size, 'no store was found at all, so nothing was compared').toBeGreaterThan(0)
+
+    const policy = whole('politika-privatnosti')
+
+    for (const key of keys) {
+      expect(policy, `the policy does not name the store \`${key}\``).toContain(key)
+    }
+
+    /* And the two things the reader is owed about it: that it never reaches the
+       association, and why no consent is asked for it. */
+    expect(policy).toContain('lokalnom skladištu')
+    expect(policy).toContain('naš server ne vidi')
+    expect(policy).toMatch(/pristanak se ne traži|Za njega se pristanak ne traži/)
+    /* The claim the document used to make, and must not make again while any
+       store is there. */
+    expect(policy).not.toContain('Drugih kolačića nema')
   })
 
   it('carries no telephone number anywhere', () => {

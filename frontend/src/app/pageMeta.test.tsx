@@ -215,6 +215,25 @@ describe('the address of a page', () => {
     )
   })
 
+  it.each([
+    ['/sr/kalendar/', 'a slash on the end'],
+    ['/sr/KALENDAR', 'the section in capitals'],
+    ['/sr/Kalendar/', 'both at once'],
+  ])('names one canonical address for %s, %s', async (address) => {
+    /* A path is case sensitive and a trailing slash is a different path, so these
+       are three addresses for one page. Left alone, each of them told a search
+       engine „I am the original", which is the one thing a canonical link exists
+       to prevent (owner, 16.08.2026: do what everybody else does).
+     *
+       The reader is not moved: they typed it, they get the page they asked for at
+       the address they asked for. Only the link that names the original is
+       tidied, and it is tidied for every screen at once (app/head.ts), not for
+       the two that used to do it for themselves. */
+    renderAt(address)
+
+    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/kalendar`))
+  })
+
   it('canonicalises the English branch onto the Serbian one', async () => {
     renderAt('/en/kalendar')
 

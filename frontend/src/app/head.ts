@@ -80,9 +80,36 @@ function linkTag(rel: string, href: string, hreflang?: string): void {
   tag.setAttribute('href', href)
 }
 
-/** The full address of a screen in one language. */
+/**
+ * The full address of a screen in one language, in the one spelling a search
+ * engine should keep.
+ *
+ * **Lower case, and no slash on the end.** Both are what everybody else does and
+ * what the owner asked for (16.08.2026: „uradi kako je industrijski standard i
+ * tvoja preporuka"), and both are needed for the same reason: a path is
+ * case-sensitive and a trailing slash is a different path, so
+ * `/sr/TAKMICAR/000127-nikola-minic` and `/sr/takmicar/000127-nikola-minic/`
+ * are three addresses for one page unless something says which of them is the
+ * one. Left alone, each of them named itself as canonical, which is a page
+ * telling a search engine „I am the original" three times over.
+ *
+ * Done here rather than on the screens, because it is true of all forty of them
+ * and nothing about it belongs to any one. The profile and its trophies used to
+ * do it for themselves, through a mechanism nothing else used, and a review
+ * measured that the mechanism could not change anything else at all.
+ *
+ * Only the path, never the origin or the language: the origin is fixed and the
+ * two languages are `sr` and `en`, which are lower case to begin with. And only
+ * the canonical link, never where the reader is sent: a reader who typed capitals
+ * stays where they are and reads the page they asked for.
+ */
 export function addressOf(locale: Locale, path: string): string {
-  return `${SITE_ORIGIN}/${locale}${path === '' ? '' : `/${path}`}`
+  /* Nothing is stripped from the front, because `path` never carries a slash
+     there (useRouteChrome cuts the language off with `slice(2).join('/')`), and
+     a guard against something that cannot arrive is a line no test can defend. */
+  const one = path.toLowerCase().replace(/\/+$/, '')
+
+  return `${SITE_ORIGIN}/${locale}${one === '' ? '' : `/${one}`}`
 }
 
 export function applyHead(head: PageHead): void {
