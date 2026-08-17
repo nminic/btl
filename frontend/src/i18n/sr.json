@@ -1089,7 +1089,8 @@
     "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
     "referral": "Preporuka",
     "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu. Podešava se do 1. oktobra, za sezonu koja tada počinje da se obnavlja; od tog dana stoji.",
-    "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 1. oktobra, a iznos se podešava do tog dana."
+    "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 1. oktobra, a iznos se podešava do tog dana.",
+    "referralOpen": "Iznos koji sada upišeš važi za sezonu {season}, jer se podešava do 1. oktobra. Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i ono što stoji za sezonu koja teče. Iznos po sezonama dolazi sa bazom."
   },
   "ducats": {
     "title": "Dukati",

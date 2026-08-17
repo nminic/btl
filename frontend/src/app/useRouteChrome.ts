@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import { dictionaryLocale } from '../i18n/config'
 import { useI18n } from '../i18n/useI18n'
-import { applyHead } from './head'
+import { applyHead, canonicalPath } from './head'
 import type { DeclareMeta, PageMeta } from './pageMetaContext'
 import { ROUTES, seoKeyFor } from './routes'
 
@@ -28,7 +28,7 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
   const location = useLocation()
   const [declared, setDeclared] = useState<PageMeta | null>(null)
 
-  const path = location.pathname.split('/').slice(2).join('/')
+  const path = canonicalPath(location.pathname.split('/').slice(2).join('/'))
   const route = ROUTES.find((candidate) => candidate.path === path)
   const seoKey = seoKeyFor(path) ?? NOT_FOUND
 
@@ -48,13 +48,12 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
      the outside.
    *
      What it did do, for two screens out of forty, was tidy an address nothing
-     links to: a trailing slash, or the section typed in capitals. Those now name
-     themselves as canonical here, as they always have on every other page of the
-     portal. That is a normalisation this file could do for all of them at once,
-     off `location.pathname`, and it is not the same job as declaring a different
-     address; doing it for two screens through a mechanism nothing else used was
-     what made it look like one. Written down rather than done here, because it
-     touches every page and belongs with its own measurement (PENDING). */
+     links to: a trailing slash, or the section typed in capitals. That tidying is
+     now the first thing this file does, for all forty at once, in `canonicalPath`
+     above. It has to be here and not only in the canonical link: the same path
+     also looks up which screen this is, and while the link was being tidied and
+     the lookup was not, /sr/KALENDAR named /sr/kalendar as the original page and
+     titled itself „Ove strane nema". */
 
   /* What the live region announces is the wording the person just clicked, so it
    * comes from the navigation label wherever there is one. The tab and the

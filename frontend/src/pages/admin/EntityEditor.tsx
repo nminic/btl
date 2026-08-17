@@ -402,10 +402,18 @@ export function OpenRecord({
    * 16.08.2026).
    */
   settled = false,
+  /**
+   * The element that says what this button will and will not do, where a screen
+   * writes one. Passed in rather than named here: the sentence belongs to the
+   * screen, and a shared button that knows one screen's element by its id says
+   * nothing for the other screens and goes stale the moment that one is renamed.
+   */
+  describedBy,
 }: {
   name: string
   onOpen: () => void
   settled?: boolean
+  describedBy?: string
 }) {
   const { t } = useI18n()
 
@@ -415,7 +423,7 @@ export function OpenRecord({
       className="entity-open"
       aria-label={t('admin.form.openNamed', { name })}
       aria-disabled={settled}
-      aria-describedby={settled ? 'referral-settled' : undefined}
+      aria-describedby={describedBy}
       onClick={() => {
         /* Reachable means pressable, so the refusal lives here as well as in the
            attribute: without it the record opened and the amount could be

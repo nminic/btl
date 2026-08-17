@@ -104,12 +104,26 @@ function linkTag(rel: string, href: string, hreflang?: string): void {
  * stays where they are and reads the page they asked for.
  */
 export function addressOf(locale: Locale, path: string): string {
-  /* Nothing is stripped from the front, because `path` never carries a slash
-     there (useRouteChrome cuts the language off with `slice(2).join('/')`), and
-     a guard against something that cannot arrive is a line no test can defend. */
-  const one = path.toLowerCase().replace(/\/+$/, '')
+  const one = canonicalPath(path)
 
   return `${SITE_ORIGIN}/${locale}${one === '' ? '' : `/${one}`}`
+}
+
+/**
+ * The one form of a path this portal answers to: lower case, no slash on the end.
+ *
+ * The router matches without regard to case, so /sr/KALENDAR really is the
+ * calendar screen and not a miss. Everything that reads the address therefore has
+ * to agree about which form of it is the address, or the page ends up naming one
+ * address as the original while looking its own name up under another. It did:
+ * the canonical link said /sr/kalendar and the tab said „Ove strane nema".
+ *
+ * Nothing is stripped from the front, because `path` never carries a slash there
+ * (useRouteChrome cuts the language off with `slice(2).join('/')`), and a guard
+ * against something that cannot arrive is a line no test can defend.
+ */
+export function canonicalPath(path: string): string {
+  return path.toLowerCase().replace(/\/+$/, '')
 }
 
 export function applyHead(head: PageHead): void {

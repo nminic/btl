@@ -167,6 +167,7 @@ export function AdminPricing() {
                     <OpenRecord
                       name={row.label}
                       settled={!maySet}
+                      describedBy="referral-settled"
                       onOpen={() => setEditing({ mode: 'one', record: row })}
                     />
                   </td>
@@ -175,15 +176,25 @@ export function AdminPricing() {
             </table>
           </div>
 
-          {/* Why it will not open, and until when it would have. Said once, under
-              the table, rather than inside the cell, because it is a fact about
-              the amount and not about the button (owner, 16.08.2026: „podešava do
-              1.10. u 00 po CET za predstojeću godinu"). */}
-          {!maySet && (
-            <p id="referral-settled" className="rate__hint" role="status">
-              {t('admin.referralSettled', { season: seasonBeingRenewed(today) })}
-            </p>
-          )}
+          {/* Which season the amount belongs to, either way. Said once, under the
+              table, rather than inside the cell, because it is a fact about the
+              amount and not about the button (owner, 16.08.2026: „podešava do
+              1.10. u 00 po CET za predstojeću godinu").
+            *
+              Open, it says what saving does, and that is not only „sets the
+              coming season": the portal keeps one amount and no history, so the
+              same save also moves the amount that has been standing for the
+              season now running, which that season's own 1 October settled. The
+              rule cannot be enforced against that until an amount can be held per
+              season, which is a table and arrives with the database (PENDING).
+              Until then the admin is told, because a screen that shuts up about it
+              lets the rule be broken by somebody who believes they are keeping
+              it. */}
+          <p id="referral-settled" className="rate__hint" role="status">
+            {maySet
+              ? t('admin.referralOpen', { season: seasonBeingRenewed(today) })
+              : t('admin.referralSettled', { season: seasonBeingRenewed(today) })}
+          </p>
         </section>
       ))}
 
