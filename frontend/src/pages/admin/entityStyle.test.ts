@@ -254,7 +254,7 @@ function ruleFor(selector: string, text = css): CSSStyleDeclaration {
 
   expect(found.length, `${selector} is not an unconditional rule of the sheet`).toBe(1)
 
-  return must(found[0], `pravilo ${selector}`).style
+  return must(found[0], `rule ${selector}`).style
 }
 
 /**
@@ -395,23 +395,84 @@ function specificity(one: string): number {
   return ids * 10000 + classes * 100 + elements + inner
 }
 
-/** The parts of a group, and only those that reach this element while the mouse is
- *  over it. A part written `:not(:hover)` is not one of them: it says the opposite. */
+/**
+ * A selector with its CSS escapes spelt out, so `\\6E` is the letter it stands for.
+ *
+ * `.entity-ope\\6E:hover` and `.entity-open:hove\\72` are the same selector to a
+ * browser and two different strings to a search. A review wrote the second one and
+ * it passed everything, because the text `:hover` was not in it.
+ */
+function unescaped(selector: string): string {
+  return selector.replace(/\\([0-9a-f]{1,6})\s?/gi, (_whole, hex) =>
+    String.fromCodePoint(Number.parseInt(String(hex), 16)),
+  )
+}
+
+/** The parts of a group, split where the group really divides: a comma inside
+ *  `:is(…)` or inside an attribute value divides nothing. Split on every comma, a
+ *  perfectly ordinary rule became half a selector, jsdom refused it, and this file
+ *  blamed jsdom. */
+function groupParts(selector: string): string[] {
+  const parts: string[] = []
+  let depth = 0
+  let quote = ''
+  let head = 0
+
+  for (const [index, letter] of [...selector].entries()) {
+    if (quote !== '') {
+      quote = letter === quote ? '' : quote
+    } else if (letter === '"' || letter === "'") {
+      quote = letter
+    } else if (letter === '(' || letter === '[') {
+      depth += 1
+    } else if (letter === ')' || letter === ']') {
+      depth -= 1
+    } else if (letter === ',' && depth === 0) {
+      parts.push(selector.slice(head, index))
+      head = index + 1
+    }
+  }
+
+  parts.push(selector.slice(head))
+
+  return parts.map((one) => one.trim()).filter((one) => one !== '')
+}
+
+/**
+ * The parts of a group that reach this element while the mouse is over it.
+ *
+ * **The element is put into that state, rather than the state being cut out of the
+ * selector.** Deleting the text `:hover` is a guess about what hovering means, and a
+ * review beat it three ways: `tr:hover .entity-open:hover` lost weight the refusal
+ * kept, `:is(:hover)` became `:is()` and matched nothing, and `:hove\\72` was not
+ * recognised as hovering at all. All three reached the button in a browser.
+ *
+ * jsdom cannot hover, so hovering is modelled: `:hover` becomes an attribute, and
+ * the attribute is put on the button and on every ancestor, which is exactly who is
+ * hovered when the pointer is over the button. The weight is unchanged by the swap,
+ * since an attribute and a pseudo-class weigh the same.
+ */
 function partsOver(element: Element, selector: string): string[] {
-  return selector
-    .split(',')
-    .filter((one) => !/:not\(\s*:hover\s*\)/i.test(one))
-    .map((one) => one.replace(/:hover\b/gi, '').trim())
-    .filter((one) => one !== '')
-    .filter((one) => {
-      try {
-        return element.matches(one)
-      } catch {
-        /* A selector jsdom cannot parse is reported rather than skipped: a rule this
-           guard cannot read is a rule it cannot clear either. */
-        throw new Error(`selektor koji jsdom ne ume da pročita: ${one}`)
-      }
-    })
+  const marked: Element[] = []
+
+  for (let node: Element | null = element; node !== null; node = node.parentElement) {
+    node.setAttribute('data-hovered', '')
+    marked.push(node)
+  }
+
+  try {
+    return groupParts(unescaped(selector))
+      .map((one) => one.replace(/:hover\b/gi, '[data-hovered]'))
+      .filter((one) => {
+        try {
+          return element.matches(one)
+        } catch {
+          throw new Error(`a selector jsdom cannot read: ${one}`)
+        }
+      })
+  } finally {
+    marked.forEach((node) => node.removeAttribute('data-hovered'))
+  }
 }
 
 /**
@@ -498,7 +559,7 @@ describe('a record that may no longer be opened', () => {
       "|.entity-open[aria-disabled='true']:hover",
     ])
 
-    const strongest = must(refusal[0], 'pravilo odbijanja').weight
+    const strongest = must(refusal[0], 'the refusal rule').weight
 
     for (const rule of others) {
       expect(
@@ -572,8 +633,8 @@ describe('a record that may no longer be opened', () => {
        Typed, they were a second home for the same fact: renaming the wrapper in
        EntityEditor left this guard passing over markup nothing draws. */
     const editor = readFileSync(join(process.cwd(), 'src/pages/admin/EntityEditor.tsx'), 'utf-8')
-    const wrapper = must(/className="(entity-row-[\w-]+)"/.exec(editor), 'omotač radnji u redu')[1]
-    const opener = must(/className="(entity-open)"/.exec(editor), 'dugme koje otvara zapis')[1]
+    const wrapper = must(/className="(entity-row-[\w-]+)"/.exec(editor), 'the wrapper of the row actions')[1]
+    const opener = must(/className="(entity-open)"/.exec(editor), 'the button that opens a record')[1]
     const table = document.createElement('table')
 
     table.className = 'table'
@@ -583,10 +644,10 @@ describe('a record that may no longer be opened', () => {
       '</span></td></tr></tbody>'
     document.body.append(table)
 
-    const refused = must(table.querySelector('.entity-open'), 'dugme u redu radnji')
+    const refused = must(table.querySelector('.entity-open'), 'the button in the row of actions')
     const reaching = rulesOver(refused, true)
     const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
-    const strongest = must(refusal[0], 'pravilo odbijanja').weight
+    const strongest = must(refusal[0], 'the refusal rule').weight
 
     for (const rule of reaching.filter((one) => !one.selector.includes("aria-disabled='true'"))) {
       expect(
