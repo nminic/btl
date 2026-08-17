@@ -21,11 +21,17 @@
  * price list gives this control, in **both themes**, at rest and under a real mouse
  * whose landing is checked rather than hoped for.
  *
- * **What is not measured:** the markup below is written here rather than drawn by the
- * portal, so nothing a component puts on the element itself is seen. An inline style
- * is exactly the axis that beat the last jsdom guard, and it is answered where jsdom
- * answers it exactly: `entityStyle.test.ts` asserts that the rendered button carries no
- * `style` attribute at all. Neither check covers it alone; together they do.
+ * **What is not measured, and this list is the honest part of the file:** the markup
+ * below is written here rather than drawn by the portal, so it sees nothing a component
+ * puts on the element itself. An inline style is exactly the axis that beat the last
+ * jsdom guard, and it is answered where jsdom answers it exactly: `entityStyle.test.ts`
+ * asserts that the rendered button carries no `style` attribute at all. Neither check
+ * covers it alone; together they do.
+ *
+ * The chain of ancestors is copied from `index.html` and `Shell.tsx`, which makes it a
+ * fact with two homes and therefore a fact that can drift: a wrapper added to the shell
+ * and not added here takes any rule keyed on it out of this measurement without a word.
+ * When the shell grows an element, it belongs in the fixture on the same day.
  *
  * No new dependency. Chrome is driven over the DevTools Protocol with the WebSocket
  * built into Node.
@@ -40,9 +46,19 @@ const CHROME =
   process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = Number(process.env.BTL_CDP_PORT ?? 9333)
 const VIEWPORT = { width: 1280, height: 800 }
+/** What `background: transparent` computes to, which is what the sheet declares for
+ *  this control in both of its states. */
+const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
 /** The markup the price list gives this control, from EntityEditor and AdminPricing:
  *  a refused open button in a table cell inside the member shell, beside a live one.
+ *
+ *  **The whole chain, not the last few links.** `#root` comes from `index.html`, and
+ *  `.shell` and `main#content.shell__main` from `Shell.tsx`: every screen of the portal
+ *  hangs under those three. Left out, a rule keyed on any of them beats the refusal on
+ *  specificity alone and is measured as if it were not there, which was the shape of
+ *  this fixture until a review wrote `#root .entity-open[aria-disabled='true']:hover`
+ *  and watched it pass.
  *
  *  `data-theme` sits on `<html>` and not on `<body>`, because that is where the portal
  *  writes it (`ThemeProvider.tsx`, `index.html`) and where `tokens.css` reads it. On
@@ -50,16 +66,18 @@ const VIEWPORT = { width: 1280, height: 800 }
 const FIXTURE = (styles) => `<!doctype html>
 <html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
 <body>
-  <div class="member">
-    <section class="member__panel">
-      <div class="table-scroll">
-        <table class="table"><tbody><tr>
-          <td><button type="button" class="entity-open" aria-disabled="true" id="refused">Otvori</button></td>
-          <td><button type="button" class="entity-open" id="live">Otvori</button></td>
-        </tr></tbody></table>
-      </div>
-    </section>
-  </div>
+  <div id="root"><div class="shell"><main id="content" class="shell__main" tabindex="-1">
+    <div class="member">
+      <section class="member__panel">
+        <div class="table-scroll">
+          <table class="table"><tbody><tr>
+            <td><button type="button" class="entity-open" aria-disabled="true" id="refused">Otvori</button></td>
+            <td><button type="button" class="entity-open" id="live">Otvori</button></td>
+          </tr></tbody></table>
+        </div>
+      </section>
+    </div>
+  </main></div></div>
 </body></html>`
 
 /** What the page is asked, in both states and both themes.
@@ -226,14 +244,16 @@ function complaintsFor(theme, { resting, hovered }) {
     say(`under the mouse the refused control does not carry not-allowed (${hovered.cursor})`)
   }
 
-  if (hovered.color === hovered.theme.accent) {
-    say(`under the mouse its text is the live colour (${hovered.color})`)
+  /* Named, not merely unchanged between the two states. Asked as a difference, a
+     control painted solid in both states answers that nothing changed: a review wrote
+     `.table .entity-open { background: var(--accent) !important }` and watched the
+     refusal come out filled in the live colour, at 1.6:1 against its own text, while
+     this said it still looked refused. */
+  if (resting.background !== TRANSPARENT) {
+    say(`at rest it is filled rather than transparent (${resting.background})`)
   }
-  if (hovered.background !== resting.background) {
-    say(`under the mouse its background changes (${resting.background} to ${hovered.background})`)
-  }
-  if (hovered.borderColor !== resting.borderColor) {
-    say(`under the mouse its border changes (${resting.borderColor} to ${hovered.borderColor})`)
+  if (hovered.background !== TRANSPARENT) {
+    say(`under the mouse it is filled rather than transparent (${hovered.background})`)
   }
 
   return complaints
@@ -252,7 +272,17 @@ async function main() {
     throw new Error('no built stylesheet in dist/assets; run `npm run build` first')
   }
 
-  const page = join(dist, 'refused-control-fixture.html')
+  /* Named for this run. A browser left behind by an earlier run that never reached its
+     `finally` sits on the port showing a fixture at the very same path, so matching by
+     address matched somebody else's page holding somebody else's CSSOM: measured, it
+     reported a broken sheet as sound. With the run's own name in it, that browser can
+     no longer answer for this one, and the wait ends with the message about the port.
+     Anything an interrupted run left behind is swept here rather than accumulating. */
+  for (const stale of readdirSync(dist).filter((name) => name.startsWith('refused-control-fixture'))) {
+    rmSync(join(dist, stale), { force: true })
+  }
+
+  const page = join(dist, `refused-control-fixture-${process.pid}.html`)
 
   writeFileSync(page, FIXTURE(sheets.map((name) => `<link rel="stylesheet" href="${name}">`).join('')))
 

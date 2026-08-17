@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import { must } from '../../test/at'
@@ -147,5 +147,13 @@ describe('a record that may no longer be opened', () => {
     const header = guard.slice(0, guard.indexOf('const css'))
 
     expect(header).toContain('Who wins is a question for a browser, and it is not asked here')
+
+    /* And the browser it sends the reader to is there to be run. The path is written in
+       a comment, so nothing but this holds it: delete the script and the sentence above
+       keeps promising the axis is covered while the suite stays green. Measured, it
+       did. */
+    const asked = must(/`(scripts\/[\w-]+\.mjs)`/.exec(header), 'the header names no script')[1]
+
+    expect(existsSync(join(process.cwd(), must(asked, 'the named script')))).toBe(true)
   })
 })
