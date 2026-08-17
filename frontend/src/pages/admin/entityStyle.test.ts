@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { screen } from '@testing-library/react'
 import { must } from '../../test/at'
+import { renderAt } from '../../test/render'
 
 /**
  * What the refusal on the entity screens declares, and nothing about who wins.
@@ -94,6 +96,12 @@ describe('a record that may no longer be opened', () => {
     expect(hovered.background).toBe('transparent')
     expect(hovered.borderColor).toBe('var(--border)')
     expect(hovered.color).toBe('var(--text-muted)')
+    /* And the same two things this file asks of the resting refusal. The hover rule is
+       written later and more tightly, so whatever it declares is what a reader with a
+       mouse actually gets, and that is the one state in which the cursor is seen at
+       all. Both were unchecked here, measured. */
+    expect(hovered.cursor).toBe('')
+    expect(hovered.opacity).toBe('')
   })
 
   it('is written more tightly than the plain hover it has to beat', () => {
@@ -107,12 +115,29 @@ describe('a record that may no longer be opened', () => {
     expect(hovers).toEqual([".entity-open[aria-disabled='true']:hover", '.entity-open:hover'])
   })
 
+  it('reaches the button the screen actually draws', async () => {
+    /* The one thing jsdom answers exactly and the reduction dropped: whether the
+       selector this file asserts about is the selector the rendered control matches.
+       A review renamed the class in `EntityEditor.tsx` and the whole suite of 1990
+       tests stayed green while every refusal rule stopped reaching the button. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
+
+    const refused = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
+
+    expect(refused.matches(".entity-open[aria-disabled='true']")).toBe(true)
+    expect(refused.matches('.entity-open')).toBe(true)
+  })
+
   it('says out loud what it does not guarantee', () => {
     /* A guard believed to cover more than it does is worse than none, and this one was
        believed for nine rounds. The sentence is in the file, and this test is what
        keeps it there. */
     const guard = readFileSync(join(process.cwd(), 'src/pages/admin/entityStyle.test.ts'), 'utf-8')
+    /* The header alone, not the whole file. Read whole, this test found the sentence
+       written in its own assertion and passed over a header rewritten to claim the
+       opposite: a review measured exactly that. */
+    const header = guard.slice(0, guard.indexOf('const css'))
 
-    expect(guard).toContain('Who wins is a question for a browser, and it is not asked here')
+    expect(header).toContain('Who wins is a question for a browser, and it is not asked here')
   })
 })
