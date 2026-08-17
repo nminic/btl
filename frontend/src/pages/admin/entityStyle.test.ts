@@ -75,7 +75,47 @@ function sheetText(path: string): string {
  *  a `}` inside a comment ended a rule early, and a comment above a rule joined
  *  the selector in front of it. */
 function withoutComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, '')
+  /* Strings are respected while comments are removed, because an opening comment
+     mark written inside a string is an ordinary pair of characters and not the start
+     of a comment. Written the other way round, one such string ate every rule down
+     to the next closing mark and failed this guard over a correct sheet. */
+  let out = ''
+  let quote = ''
+  let index = 0
+
+  while (index < text.length) {
+    const letter = text[index] ?? ''
+
+    if (quote !== '') {
+      out += letter
+      if (letter === '\\') {
+        out += text[index + 1] ?? ''
+        index += 2
+        continue
+      }
+      quote = letter === quote ? '' : quote
+      index += 1
+      continue
+    }
+
+    if (letter === '"' || letter === "'") {
+      quote = letter
+      out += letter
+      index += 1
+      continue
+    }
+
+    if (letter === '/' && text[index + 1] === '*') {
+      const end = text.indexOf('*/', index + 2)
+      index = end === -1 ? text.length : end + 2
+      continue
+    }
+
+    out += letter
+    index += 1
+  }
+
+  return out
 }
 
 /**
@@ -104,8 +144,22 @@ function styleRules(text: string): { at: string; selector: string; body: string 
   let quote = ''
   let head = 0
 
+  let skip = false
+
   for (const [index, letter] of [...plain].entries()) {
+    if (skip) {
+      skip = false
+      continue
+    }
+
     if (quote !== '') {
+      /* A quote behind a backslash is an ordinary character, not the end of the
+         string. Without this the scanner closed the string on it and swallowed the
+         rest of the sheet, which passed in silence. */
+      if (letter === '\\') {
+        skip = true
+        continue
+      }
       quote = letter === quote ? '' : quote
       continue
     }
@@ -228,8 +282,32 @@ function shouting(selector: string, text = css): { at: string }[] {
   expect(rules.length, `${selector} is not written once in the sheet`).toBeGreaterThan(0)
 
   return rules
-    .filter((rule) => /!\s*important/i.test(withoutStrings(rule.body)))
+    .filter((rule) => shouts(rule.body))
     .map((rule) => ({ at: rule.at }))
+}
+
+/** Whether a rule body shouts. One place, because the same pattern written four
+ *  times is four chances for one of them to be written wrong, and one of them was:
+ *  an extra backslash made it look for a backslash instead of a space, so a rule
+ *  that shouted was reported as quiet. */
+function shouts(body: string): boolean {
+  return /!\s*important/i.test(withoutStrings(body))
+}
+
+/**
+ * Whether a rule body declares a property, read by splitting rather than by a
+ * pattern.
+ *
+ * Written this way after a pattern built inside a template literal lost its
+ * backslashes and became `[;{s]cursors*:`, which matched nothing: the guard then
+ * reported that no rule declares `cursor` and passed over the very fault it was
+ * being extended for. Splitting on the two characters CSS uses cannot lose an
+ * escape, because there is none to lose.
+ */
+function declares(body: string, property: string): boolean {
+  return withoutStrings(body)
+    .split(';')
+    .some((one) => (one.split(':')[0] ?? '').trim().toLowerCase() === property)
 }
 
 /** A rule body with its quoted strings taken out, so `content: "!important"` says
@@ -287,7 +365,7 @@ function specificity(selector: string): number {
  * escaped letter and a selector that never names the class are all the same
  * question to `element.matches`, and all four beat a guard written on spelling.
  */
-function hoverRulesOver(element: Element): {
+function rulesOver(element: Element, onlyHover: boolean): {
   file: string
   at: string
   selector: string
@@ -295,7 +373,7 @@ function hoverRulesOver(element: Element): {
   weight: number
 }[] {
   return everyRule()
-    .filter((rule) => /:hover\b/i.test(rule.selector))
+    .filter((rule) => !onlyHover || /:hover\b/i.test(rule.selector))
     .filter((rule) =>
       rule.selector.split(',').some((one) => {
         const resting = one.replace(/:hover\b/gi, '').trim()
@@ -361,7 +439,7 @@ describe('a record that may no longer be opened', () => {
 
     expect(refused).toHaveAttribute('aria-disabled', 'true')
 
-    const reaching = hoverRulesOver(refused)
+    const reaching = rulesOver(refused, true)
     const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
     const others = reaching.filter((rule) => !rule.selector.includes("aria-disabled='true'"))
 
@@ -379,13 +457,52 @@ describe('a record that may no longer be opened', () => {
         `${rule.selector} (${rule.file}) reaches this button and outweighs the refusal`,
       ).toBeLessThan(strongest)
       expect(
-        /!\s*important/i.test(withoutStrings(rule.body)),
+        shouts(rule.body),
         `${rule.selector} (${rule.file}) shouts over the refusal`,
       ).toBe(false)
     }
 
     // And the sweep really reached the portal, not one file that happens to be quiet.
     expect(reaching.length).toBeGreaterThan(1)
+  })
+
+  it('is the last word for every property it sets, not only among hover rules', async () => {
+    /* A rule needs no `:hover` at all to undo the refusal. `.entity-open { cursor:
+       pointer !important }` is one line, reaches the same button, and gives a record
+       that may no longer be opened its pointer back, which is the first half of the
+       fault this file exists for. A review wrote it and the whole suite passed,
+       because everything here looked only at rules whose selector says `:hover`.
+     *
+       So the question is asked per property instead. For each thing the refusal
+       declares, no other rule that reaches this button may shout it, and none may
+       carry at least as much weight while declaring it. At least as much, not more:
+       between two rules of equal weight the later one wins, and which file comes
+       later in the bundle is not something this file can know. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
+
+    const refused = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
+    const reaching = rulesOver(refused, false)
+    const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
+    const weight = Math.max(...refusal.map((rule) => rule.weight))
+
+    expect(refusal.length, 'the refusal reaches this button').toBeGreaterThan(0)
+
+    for (const property of ['cursor', 'color', 'border-color', 'background']) {
+      const declaring = reaching
+        .filter((rule) => !rule.selector.includes("aria-disabled='true'"))
+        .filter((rule) => declares(rule.body, property))
+
+      for (const rule of declaring) {
+        expect(
+          shouts(rule.body),
+          `${rule.selector} (${rule.file}) shouts ${property} over the refusal`,
+        ).toBe(false)
+        expect(
+          rule.weight,
+          `${rule.selector} (${rule.file}) sets ${property} and is not outweighed by the refusal`,
+        ).toBeLessThan(weight)
+      }
+    }
   })
 
   it('is the last word in the other place the same control is drawn', () => {
@@ -409,7 +526,7 @@ describe('a record that may no longer be opened', () => {
     document.body.append(table)
 
     const refused = must(table.querySelector('.entity-open'), 'dugme u redu radnji')
-    const reaching = hoverRulesOver(refused)
+    const reaching = rulesOver(refused, true)
     const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
     const strongest = must(refusal[0], 'pravilo odbijanja').weight
 
@@ -419,7 +536,7 @@ describe('a record that may no longer be opened', () => {
         `${rule.selector} (${rule.file}) reaches this button and outweighs the refusal`,
       ).toBeLessThan(strongest)
       expect(
-        /!\s*important/i.test(withoutStrings(rule.body)),
+        shouts(rule.body),
         `${rule.selector} (${rule.file}) shouts over the refusal`,
       ).toBe(false)
     }
