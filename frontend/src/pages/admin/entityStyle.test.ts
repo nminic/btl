@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import { screen } from '@testing-library/react'
 import { must } from '../../test/at'
+import { renderAt } from '../../test/render'
 
 /* What the stylesheet of the entity screens has to say, read as rules rather
  * than as text.
@@ -25,18 +27,26 @@ import { must } from '../../test/at'
  * understand nesting and Vite lowers it into a plain descendant selector, so the
  * fault shipped.
  *
- * **What this one does.** Structure comes from the parser: which rules there are,
- * which of them apply unconditionally, and how many say the same thing. Importance
- * comes from an exact scan of the sheet, and it can be exact because the sheet is
- * refused unless it is flat (`refuseNesting`) and the scan then works with the
- * comments removed, the at-rule blocks stepped over and the strings respected.
- * The parser is not asked about importance at all, because it cannot answer: it
- * drops the priority of a declaration whose value is a `var()`, and it drops it
- * again for a `background` shorthand whatever the value. Both measured.
+ * **A seventh way, and it is the one that changes the design.** Everything above
+ * asks about `Entity.css` and the sheets it imports, and asks by the spelling of
+ * the selector. The cascade is neither. Vite ships every stylesheet under `src` as
+ * one, and a review wrote the same fault six ways that all read differently and all
+ * applied: in `member/Member.css`, which the price list screen itself imports; as
+ * `:HOVER` in capitals; as `[class~='entity-open']`; as `.entity-ope\6E`, an
+ * escaped letter; through `@import url(./third.css)` without quotes; and as
+ * `.entity-row-actions > button:first-child:hover`, which never names the class at
+ * all and outweighs the refusal without shouting. All six passed in silence.
  *
- * A guard that cannot tell a live rule from a dead one is a guard on the spelling,
- * and a guard nobody has broken on purpose is a guess. So every one of the six
- * ways above is a case in `describe('the guard over that stylesheet')`.
+ * **What this one does.** It asks the rendered button, not the file. The screen is
+ * rendered on a day when the record is refused, every rule of every stylesheet in
+ * the portal is read, and the DOM engine is asked which of them would apply to that
+ * button under the mouse (`element.matches` with `:hover` stripped). Whatever comes
+ * back is then weighed by specificity, and the refusal has to be the last word.
+ * Spelling stops mattering, and so does which file the rule was written in.
+ *
+ * The text is still read for one question the parser cannot answer, whether a
+ * declaration shouts, and the sheet is still refused if it is nested, because jsdom
+ * drops a nested rule and would then be answering about a sheet it cannot see.
  */
 const ENTITY_CSS = join(process.cwd(), 'src/pages/admin/Entity.css')
 
@@ -228,6 +238,84 @@ function withoutStrings(body: string): string {
   return body.replace(/"[^"]*"|'[^']*'/g, '')
 }
 
+/** Every stylesheet the portal ships, because Vite makes them one and a rule for
+ *  this control can be written in any of them. Read straight off the disc: an
+ *  import resolved by hand is an import spelt one particular way. */
+function everySheet(): { path: string; text: string }[] {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? walk(join(dir, entry.name))
+        : entry.name.endsWith('.css')
+          ? [join(dir, entry.name)]
+          : [],
+    )
+
+  return walk(join(process.cwd(), 'src')).map((path) => ({
+    path,
+    text: readFileSync(path, 'utf-8'),
+  }))
+}
+
+/** Every style rule of the portal, with the file it lives in. */
+function everyRule(): { file: string; at: string; selector: string; body: string }[] {
+  return everySheet().flatMap((sheet) =>
+    styleRules(sheet.text).map((rule) => ({ file: sheet.path, ...rule })),
+  )
+}
+
+/**
+ * The weight of a selector, as the cascade counts it: ids, then classes and
+ * attributes and pseudo-classes, then elements and pseudo-elements.
+ *
+ * Written out because the whole question of this file is which rule wins, and „both
+ * are written in the file" is what the first version claimed to check.
+ */
+function specificity(selector: string): number {
+  const one = selector.split(',')[0] ?? ''
+  const ids = (one.match(/#[\w-]+/g) ?? []).length
+  const classes = (one.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length
+  const elements = (one.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length
+
+  return ids * 10000 + classes * 100 + elements
+}
+
+/**
+ * Which rules of the whole portal reach this element while the mouse is over it.
+ *
+ * The DOM engine answers, not a comparison of text: `:HOVER`, `[class~='…']`, an
+ * escaped letter and a selector that never names the class are all the same
+ * question to `element.matches`, and all four beat a guard written on spelling.
+ */
+function hoverRulesOver(element: Element): {
+  file: string
+  at: string
+  selector: string
+  body: string
+  weight: number
+}[] {
+  return everyRule()
+    .filter((rule) => /:hover\b/i.test(rule.selector))
+    .filter((rule) =>
+      rule.selector.split(',').some((one) => {
+        const resting = one.replace(/:hover\b/gi, '').trim()
+
+        if (resting === '') {
+          return false
+        }
+
+        try {
+          return element.matches(resting)
+        } catch {
+          /* A selector jsdom cannot parse is reported rather than skipped: a rule
+             this guard cannot read is a rule it cannot clear either. */
+          throw new Error(`selektor koji jsdom ne ume da pročita: ${one.trim()}`)
+        }
+      }),
+    )
+    .map((rule) => ({ ...rule, weight: specificity(rule.selector) }))
+}
+
 const css = sheetText(ENTITY_CSS)
 
 describe('a record that may no longer be opened', () => {
@@ -256,6 +344,89 @@ describe('a record that may no longer be opened', () => {
     expect(hovered.borderColor).toBe('var(--border)')
     expect(hovered.color).toBe('var(--text-muted)')
   })
+
+  it('is the last word for the button on the screen, whatever the rule is called', async () => {
+    /* The question asked of the rendered control instead of of a file. Every rule in
+       every stylesheet of the portal is offered to the DOM engine, which says which
+       of them reach this button under the mouse; the refusal then has to weigh more
+       than any of them, and none of them may shout.
+     *
+       This is what closes the six ways a review wrote the same fault so that it read
+       differently every time: another file, capitals, an attribute selector, an
+       escaped letter, an unquoted import, and a selector that never names the class.
+       Spelling is not the question any more. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
+
+    const refused = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
+
+    expect(refused).toHaveAttribute('aria-disabled', 'true')
+
+    const reaching = hoverRulesOver(refused)
+    const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
+    const others = reaching.filter((rule) => !rule.selector.includes("aria-disabled='true'"))
+
+    /* One refusal, and it is unconditional: a refusal inside a media query would be
+       a refusal that stops at a screen width. */
+    expect(refusal.map((rule) => `${rule.at}|${rule.selector}`)).toEqual([
+      "|.entity-open[aria-disabled='true']:hover",
+    ])
+
+    const strongest = must(refusal[0], 'pravilo odbijanja').weight
+
+    for (const rule of others) {
+      expect(
+        rule.weight,
+        `${rule.selector} (${rule.file}) reaches this button and outweighs the refusal`,
+      ).toBeLessThan(strongest)
+      expect(
+        /!\s*important/i.test(withoutStrings(rule.body)),
+        `${rule.selector} (${rule.file}) shouts over the refusal`,
+      ).toBe(false)
+    }
+
+    // And the sweep really reached the portal, not one file that happens to be quiet.
+    expect(reaching.length).toBeGreaterThan(1)
+  })
+
+  it('is the last word in the other place the same control is drawn', () => {
+    /* The price list draws this button in a plain cell, so a rule written for the
+       row of actions on the entity screens (`.entity-row-actions > button`) does not
+       reach it there and passes. A review wrote exactly that, and it outweighs the
+       refusal (0,3,1 against 0,3,0) without shouting a word.
+     *
+       So the same question is asked of the same control in the markup the entity
+       screens give it (EntityEditor.tsx: a `span.entity-row-actions` inside a table
+       row). Built rather than rendered, because no screen refuses a record there
+       today; the point is that the refusal has to hold wherever the control is put,
+       not only where it happens to stand now. */
+    const table = document.createElement('table')
+
+    table.className = 'table'
+    table.innerHTML =
+      '<tbody><tr><td><span class="entity-row-actions">' +
+      '<button class="entity-open" aria-disabled="true">Otvori</button>' +
+      '</span></td></tr></tbody>'
+    document.body.append(table)
+
+    const refused = must(table.querySelector('.entity-open'), 'dugme u redu radnji')
+    const reaching = hoverRulesOver(refused)
+    const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
+    const strongest = must(refusal[0], 'pravilo odbijanja').weight
+
+    for (const rule of reaching.filter((one) => !one.selector.includes("aria-disabled='true'"))) {
+      expect(
+        rule.weight,
+        `${rule.selector} (${rule.file}) reaches this button and outweighs the refusal`,
+      ).toBeLessThan(strongest)
+      expect(
+        /!\s*important/i.test(withoutStrings(rule.body)),
+        `${rule.selector} (${rule.file}) shouts over the refusal`,
+      ).toBe(false)
+    }
+
+    table.remove()
+  })
+
 
   it('is the last word on what that control does under the mouse', () => {
     /* Specificity is what makes the refusal win, and specificity is exactly what
