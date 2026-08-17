@@ -69,48 +69,88 @@ function withoutComments(text: string): string {
 }
 
 /**
- * Refuses a sheet written in a way the parser here cannot see.
+ * Every style rule of a sheet, with the at-rule that guards it where there is one.
  *
- * jsdom does not understand CSS nesting: a hover written as `& .entity-open:hover`
- * inside `.table { … }` disappears without a trace, so the parser answers with
- * `.table` alone and every count in this file goes on being right about a sheet
- * that no longer says what it used to. Vite lowers that nesting into a plain
- * descendant selector, so the rule reaches the browser and applies. A review
- * measured exactly that: the accent back on a refused control in every
- * administrative table, whole suite green.
+ * One scanner, because two of them over one text is two chances to be right about
+ * different things, and a review found them disagreeing: one respected quotes and
+ * the other did not. This one walks the sheet with the comments gone, respects
+ * quotes so a `}` inside `content: "}"` ends nothing, and keeps the prelude of
+ * every block it opens, so a rule inside `@media` is reported with that condition
+ * beside it rather than thrown away.
  *
- * Nesting is not guessed at, it is refused. `@media`, `@supports` and `@layer`
- * already fail loudly of their own accord, because a rule inside them is not a
- * `CSSStyleRule`; this is the same answer for the one form that was silent.
+ * **Nesting is refused, not guessed at.** jsdom does not understand CSS nesting: a
+ * hover written as `& .entity-open:hover` inside `.table { … }` disappears without
+ * a trace, while Vite lowers it into a plain descendant selector, so the rule
+ * reaches the browser and applies. A review measured that twice: once plainly, and
+ * once after switching the scanner off with a `}` inside a string and with
+ * `@layer x;`, which has no block and made the next rule look guarded.
  */
-function refuseNesting(text: string): void {
+function styleRules(text: string): { at: string; selector: string; body: string }[] {
   const plain = withoutComments(text)
-  let depth = 0
-  let inAtRule = false
+  const rules: { at: string; selector: string; body: string }[] = []
+  /* What is open right now, innermost last. `at` is the prelude of a block that
+     begins with `@`; anything else is a style rule and may not contain a block. */
+  const open: { prelude: string; from: number }[] = []
+  let quote = ''
+  let head = 0
 
   for (const [index, letter] of [...plain].entries()) {
+    if (quote !== '') {
+      quote = letter === quote ? '' : quote
+      continue
+    }
+
+    if (letter === '"' || letter === "'") {
+      quote = letter
+      continue
+    }
+
+    if (letter === ';' && open.length === 0) {
+      // An at-rule with no block (`@layer x;`) guards nothing that follows it.
+      head = index + 1
+      continue
+    }
+
     if (letter === '{') {
-      if (depth === 1 && !inAtRule) {
+      const prelude = plain.slice(head, index).trim()
+      const inside = open.at(-1)
+
+      if (inside !== undefined && !inside.prelude.startsWith('@')) {
         throw new Error(
-          `nested CSS at character ${index}: this guard reads the sheet through jsdom, which drops a nested rule, so it cannot answer for a sheet written this way`,
+          `nested CSS at character ${index}: this guard reads values through jsdom, which drops a nested rule, so it cannot answer for a sheet written this way`,
         )
       }
 
-      if (depth === 0) {
-        inAtRule = /@[a-z-]+[^{}]*$/i.test(plain.slice(0, index))
+      open.push({ prelude, from: index })
+      head = index + 1
+      continue
+    }
+
+    if (letter === '}') {
+      const closed = open.pop()
+
+      if (closed !== undefined && !closed.prelude.startsWith('@')) {
+        rules.push({
+          at: open.map((one) => one.prelude).join(' '),
+          selector: closed.prelude,
+          body: plain.slice(closed.from + 1, index),
+        })
       }
 
-      depth += 1
-    } else if (letter === '}') {
-      depth -= 1
+      head = index + 1
     }
   }
+
+  return rules
 }
 
 /** Every rule of the sheet that applies unconditionally, with its selector. A
  *  rule inside `@media` or `@supports` is not among them, which is the point. */
 function unconditional(text = css): { selector: string; style: CSSStyleDeclaration }[] {
-  refuseNesting(text)
+  /* Refuses a nested sheet before the parser is handed anything, and ties the two
+     mechanisms together below: what the scanner reads at the top level has to be
+     what the parser reads there too. */
+  const scanned = styleRules(text)
 
   const tag = document.createElement('style')
 
@@ -127,6 +167,18 @@ function unconditional(text = css): { selector: string; style: CSSStyleDeclarati
 
   tag.remove()
 
+  /* The two mechanisms have to see the same top level. A scanner that walks off
+     into a string or past an at-rule would otherwise answer confidently about a
+     sheet the browser reads differently, which is how three of the seven ways past
+     this guard worked. Compared without spaces, because the parser normalises a
+     group of selectors and the scanner does not. */
+  const bare = (one: string) => one.replace(/\s+/g, '')
+
+  expect(
+    scanned.filter((one) => one.at === '').map((one) => bare(one.selector)).sort(),
+    'the scanner and the parser do not see the same unconditional rules',
+  ).toEqual(rules.map((one) => bare(one.selector)).sort())
+
   return rules
 }
 
@@ -142,70 +194,38 @@ function ruleFor(selector: string, text = css): CSSStyleDeclaration {
 }
 
 /**
- * The body of every top-level rule of a flat sheet, with its selector.
+ * Whether any declaration for a selector shouts, anywhere in the sheet.
  *
- * Written by hand because the parser cannot answer the one question below, and it
- * can be exact: the comments are gone, an at-rule block is stepped over rather
- * than entered, a quote is respected so a `}` inside `content: "}"` ends nothing,
- * and the sheet is flat because `refuseNesting` has refused it otherwise.
+ * The parser cannot be asked. It drops the priority of a declaration whose value is
+ * a `var()`, which is every colour on this control; handed the same rule with the
+ * value replaced by `inherit`, so that nothing could be invalid, it drops the
+ * priority of a `background` shorthand as well. Both measured with a probe.
+ *
+ * **Anywhere, and that is the correction.** This used to skip the body of every
+ * at-rule, on the assumption that a conditional rule cannot do harm. A review put
+ * `@media (hover: hover) { .entity-open:hover { background: var(--accent)
+ * !important } }` into the sheet and the whole suite passed: on every device with a
+ * pointer, which is every device the hover matters on, the refused control lit up in
+ * the accent again. A condition does not make a shout quieter, so the condition is
+ * reported rather than skipped.
+ *
+ * Strings are cut out before the question is asked, because `content: "!important"`
+ * shouts nothing.
  */
-function flatRules(text: string): { selector: string; body: string }[] {
-  const plain = withoutComments(text)
-  const rules: { selector: string; body: string }[] = []
-  let opened = 0
-  let quote = ''
-  let depth = 0
+function shouting(selector: string, text = css): { at: string }[] {
+  const rules = styleRules(text).filter((rule) => rule.selector === selector)
 
-  for (const [index, letter] of [...plain].entries()) {
-    if (quote !== '') {
-      quote = letter === quote ? '' : quote
-    } else if (letter === '"' || letter === "'") {
-      quote = letter
-    } else if (letter === '{') {
-      opened = depth === 0 ? index : opened
-      depth += 1
-    } else if (letter === '}') {
-      depth -= 1
-
-      /* An at-rule holds rules and not declarations, so its own body is not one,
-         and what is inside it is deliberately not read: it does not apply
-         unconditionally, which is what every question here is about. */
-      const selector = (plain.slice(0, opened).split(/[{}]/).pop() ?? '').trim()
-
-      if (depth === 0 && !selector.startsWith('@')) {
-        rules.push({ selector, body: plain.slice(opened + 1, index) })
-      }
-    }
-  }
+  expect(rules.length, `${selector} is not written once in the sheet`).toBeGreaterThan(0)
 
   return rules
+    .filter((rule) => /!\s*important/i.test(withoutStrings(rule.body)))
+    .map((rule) => ({ at: rule.at }))
 }
 
-/**
- * Whether any declaration of a rule shouts, read off the sheet as it is written.
- *
- * The parser cannot be asked. It drops the priority of a declaration whose value
- * is a `var()`, which is every colour on this control; handed the same rule with
- * the value replaced by `inherit`, so that nothing could be invalid, it drops the
- * priority of a `background` shorthand as well. Both measured with a probe:
- * `color: var(--x) !important` came back as „", and `background: inherit
- * !important` came back as „" on all nine longhands and on the shorthand.
- *
- * So this one question goes to the text, where three words are three words. It is
- * safe there in a way it was not before: the body comes from `flatRules`, which is
- * exact for a flat sheet, and a sheet that is not flat is refused.
- */
-function shouting(selector: string, text = css): boolean {
-  const bodies = flatRules(text).filter((rule) => rule.selector === selector)
-
-  /* The same rule the parser sees, and once. Two mechanisms reading one sheet are
-     two chances to be right about different things; this ties them together, so a
-     selector this scanner cannot find is a failure rather than a quiet „no". */
-  expect(bodies.length, `${selector} is not written once in the sheet`).toBe(1)
-
-  /* Read as the cascade reads it: the keyword takes any case, and white space or
-     a comment may stand between the bang and the word. */
-  return /!\s*important/i.test(must(bodies[0], `telo pravila ${selector}`).body)
+/** A rule body with its quoted strings taken out, so `content: "!important"` says
+ *  nothing about priority. */
+function withoutStrings(body: string): string {
+  return body.replace(/"[^"]*"|'[^']*'/g, '')
 }
 
 const css = sheetText(ENTITY_CSS)
@@ -251,13 +271,18 @@ describe('a record that may no longer be opened', () => {
        needs reading, so it fails here and gets read. The count is over the sheet
        with its imports in it, so the third one cannot arrive through the shared
        table either. */
-    const hovers = unconditional().filter(
+    const hovers = styleRules(css).filter(
       (rule) => rule.selector.includes('.entity-open') && rule.selector.includes(':hover'),
     )
 
-    expect(hovers.map((rule) => rule.selector)).toEqual([
-      ".entity-open[aria-disabled='true']:hover",
-      '.entity-open:hover',
+    /* Counted off the scanner and not off the parser, so a hover written inside a
+       media query is counted too. A review put one inside `@media (hover: hover)`,
+       which is the very condition under which a hover exists at all, and the parser
+       half of this file did not see it: the whole suite passed while the refused
+       control lit up in the accent on every device with a pointer. */
+    expect(hovers.map((rule) => `${rule.at}|${rule.selector}`)).toEqual([
+      "|.entity-open[aria-disabled='true']:hover",
+      '|.entity-open:hover',
     ])
   })
 
@@ -273,7 +298,7 @@ describe('a record that may no longer be opened', () => {
        where both shout is one nobody can reason about, and the tighter selector
        is enough as long as nothing shouts. */
     for (const selector of ['.entity-open:hover', ".entity-open[aria-disabled='true']:hover"]) {
-      expect(shouting(selector), `${selector} shouts, and no selector outweighs that`).toBe(false)
+      expect(shouting(selector), `${selector} shouts, and no selector outweighs that`).toEqual([])
     }
   })
 })
@@ -310,13 +335,52 @@ describe('the guard over that stylesheet', () => {
        Replacing the whole value with `inherit` fixed those three and lost the
        `background` shorthand instead, which jsdom strips the priority from whatever
        the value is. Measured, both times. */
-    expect(shouting('.entity-open:hover', `.entity-open:hover { ${declaration}; }`)).toBe(true)
+    expect(shouting('.entity-open:hover', `.entity-open:hover { ${declaration}; }`)).not.toEqual([])
   })
 
   it('says nothing shouts where nothing does', () => {
-    expect(shouting('.entity-open:hover', '.entity-open:hover { background: var(--x); }')).toBe(
-      false,
+    expect(shouting('.entity-open:hover', '.entity-open:hover { background: var(--x); }')).toEqual(
+      [],
     )
+  })
+
+  it('does not hear a shout inside a string', () => {
+    /* `content: "!important"` shouts nothing, and the question is asked with the
+       strings cut out for exactly that reason. Glasno na obe strane: the rule below
+       carries the word and no priority. */
+    expect(shouting('.entity-open:hover', '.entity-open:hover { content: "!important"; }')).toEqual(
+      [],
+    )
+  })
+
+  it('hears a shout that a condition was hiding', () => {
+    /* The seventh way past this guard, and the one that shipped: a condition does
+       not make a shout quieter. `@media (hover: hover)` is the condition under which
+       a hover exists at all, so a shout there reaches every device the refusal
+       matters on. Reported with its condition beside it, not skipped. */
+    const conditional = `@media (hover: hover) {
+        .entity-open:hover { background: var(--accent) !important; }
+      }`
+
+    expect(shouting('.entity-open:hover', conditional)).toEqual([{ at: '@media (hover: hover)' }])
+  })
+
+  it('is not switched off by a brace in a string, or by an at-rule with no block', () => {
+    /* Two ways of turning the nesting refusal off, both measured on the previous
+       version: a `}` inside `content` threw the brace count off for the rest of the
+       file, and `@layer x;` has no block but made the next rule look guarded by it.
+       Both left plain nesting passing in silence. */
+    const quoted = `.entity-open::after { content: "}"; }
+      .table { & .entity-open:hover { background: var(--accent) !important; } }`
+    const layered = `@layer overrides;
+      .table { & .entity-open:hover { background: var(--accent) !important; } }`
+
+    expect(fails(() => styleRules(quoted))).toBe(true)
+    expect(fails(() => styleRules(layered))).toBe(true)
+    // And neither form is refused when the nesting is not there.
+    expect(fails(() => styleRules('.entity-open::after { content: "}"; }'))).toBe(false)
+    expect(fails(() => styleRules(`@layer overrides;
+${REFUSAL}`))).toBe(false)
   })
 
   it('is not silenced by a brace in a comment, or misled by one above the rule', () => {
@@ -326,7 +390,7 @@ describe('the guard over that stylesheet', () => {
         background: var(--surface-hover) !important;
       }`
 
-    expect(shouting('.entity-open:hover', awkward)).toBe(true)
+    expect(shouting('.entity-open:hover', awkward)).not.toEqual([])
   })
 
   it('is not ended early by a brace inside a string', () => {
@@ -335,7 +399,7 @@ describe('the guard over that stylesheet', () => {
         color: var(--accent) !important;
       }`
 
-    expect(shouting('.entity-open:hover', quoted)).toBe(true)
+    expect(shouting('.entity-open:hover', quoted)).not.toEqual([])
   })
 
   it('refuses a sheet whose rules are nested, rather than reading half of it', () => {
@@ -359,14 +423,18 @@ describe('the guard over that stylesheet', () => {
     expect(ruleFor(".entity-open[aria-disabled='true']:hover", `${dead} ${REFUSAL}`).color).toBe(
       'var(--text-muted)',
     )
-    /* Nor is a shout inside a dead rule counted against the live one: what is in an
-       at-rule does not apply unconditionally, which is what is being asked. */
+    /* A shout inside an at-rule is now counted, and named by its condition. It used
+       to be skipped, on the assumption that a conditional rule cannot do harm; a
+       review put one inside `@media (hover: hover)` and the whole suite passed while
+       the refused control lit up on every device with a pointer. Even `@media print`
+       is reported: a rule that shouts only on paper is still a rule somebody has to
+       read before it stays. */
     expect(
       shouting(
         '.entity-open:hover',
         '@media print { .entity-open:hover { color: red !important; } } .entity-open:hover { color: var(--x); }',
       ),
-    ).toBe(false)
+    ).toEqual([{ at: '@media print' }])
   })
 
   it.each([

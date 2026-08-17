@@ -7,6 +7,7 @@ import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
 import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
+import { formatShortDate } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
@@ -898,6 +899,12 @@ describe('a result from entry to decision', () => {
       'https://primer.rs/ispravno',
     )
     expect(said.getByText('Sat mi je stao.')).toBeVisible()
+    /* The date of the race as well, which the row prints and which the walk did not
+       read: a review put `date: fieldDate('2025-01-02')` into `filledFrom` and the
+       whole suite passed. A correction about a link would then have moved the day the
+       race was run, and with it the two day window for reporting it, and across 1
+       January the season the result belongs to. */
+    expect(said.getByText(formatShortDate('2026-05-10', 'sr'))).toBeVisible()
     expect(said.getByText('Prilog: sat.jpg')).toBeVisible()
     /* The race itself, untouched by a correction about the link: 21,1 km, 540 up,
        540 down, 1:52:10, and the points that follow from them. */

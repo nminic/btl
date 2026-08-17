@@ -272,6 +272,21 @@ describe('events', () => {
   })
 })
 
+/** The warning about a running season, as the dictionary writes it, with the season
+ *  left open. Built here rather than typed, because a hand-typed copy of a sentence
+ *  is a copy that drifts: this one drifted by one word („već") and the negative
+ *  assertion about it became unfailable. */
+function runningSeasonSentence(): RegExp {
+  /* Each half escaped on its own, so a full stop in the sentence is a full stop and
+     the season is the only thing left open. Escaping the whole sentence and then
+     replacing the placeholder inside it is how this went wrong once already: the
+     placeholder came out escaped too. */
+  const escape = (part: string) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const [before = '', after = ''] = sr.admin.referralRunning.split('{season}')
+
+  return new RegExp(`${escape(before)}\\d+${escape(after)}`)
+}
+
 describe('the price list', () => {
   it('is a period of the year rather than a date, because the list repeats', async () => {
     /* Owner, 30.07.2026: membership for 2027 is sold until 30 September 2027,
@@ -418,8 +433,14 @@ describe('the price list', () => {
     /* And says nothing about a running season, because in 2026 there is none: the
        first season of the league is 2027 (data/season.ts). Written
        unconditionally, that warning was a sentence about nothing for the whole of
-       the year the portal opens in, and a review measured this screen saying it. */
-    expect(open).not.toHaveAccessibleDescription(/je u toku/)
+       the year the portal opens in, and a review measured this screen saying it.
+     *
+       Read out of the dictionary and not typed here. Typed, it said „je u toku"
+       while the sentence says „je **već** u toku", so the negative half could never
+       match and never fail: a review switched the condition off and the whole suite
+       of 2005 tests stayed green while the screen warned about a season that does
+       not exist. */
+    expect(open).not.toHaveAccessibleDescription(runningSeasonSentence())
 
     await user.click(open)
 
@@ -450,6 +471,7 @@ describe('the price list', () => {
     /* And here there is a running season to name, which is the half that makes
        this a warning rather than a note: 2028 began the day before and its amount
        was settled by 1 October 2027. */
+    expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
     expect(open).toHaveAccessibleDescription(/zaključan 1\. oktobra prethodne godine, a ovaj upis ga ipak menja/)
   })
