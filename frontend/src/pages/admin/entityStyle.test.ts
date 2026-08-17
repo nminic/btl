@@ -37,16 +37,20 @@ import { renderAt } from '../../test/render'
  * `.entity-row-actions > button:first-child:hover`, which never names the class at
  * all and outweighs the refusal without shouting. All six passed in silence.
  *
- * **What this one does.** It asks the rendered button, not the file. The screen is
- * rendered on a day when the record is refused, every rule of every stylesheet in
- * the portal is read, and the DOM engine is asked which of them would apply to that
- * button under the mouse (, with the button put into that state). Whatever comes
- * back is then weighed by specificity, and the refusal has to be the last word.
- * Spelling stops mattering, and so does which file the rule was written in.
+ * **What this one does, after seven rounds of measurement failed.** Nobody can
+ * compute this cascade outside a browser, and every version of this file that tried
+ * was right about the axis it knew and blind to the next. So the question is
+ * inverted: not „does the refusal win", which needs the whole cascade, but „**who
+ * touches this control at all**", which can be answered exactly. Every rule of every
+ * stylesheet under `src` is collected, the button is asked in the resting state and
+ * in every state where it may not look live, and what reaches it has to be exactly
+ * the list in `ALLOWED`, each entry carrying the reason it is there. None of them may
+ * shout, apart from the one entry in `MAY_SHOUT`.
  *
- * The text is still read for one question the parser cannot answer, whether a
- * declaration shouts, and the sheet is still refused if it is nested, because jsdom
- * drops a nested rule and would then be answering about a sheet it cannot see.
+ * **What this still cannot see, said out loud.** A rule that never reaches the button
+ * but redefines a custom property on an ancestor changes the colour the refusal
+ * resolves to, and stays off the list. That is the one axis left open, and it is
+ * written here rather than discovered again.
  */
 const ENTITY_CSS = join(process.cwd(), 'src/pages/admin/Entity.css')
 
@@ -326,48 +330,6 @@ function everyRule(): { file: string; at: string; selector: string; body: string
   )
 }
 
-/**
- * The weight of one selector, as the cascade counts it: ids, then classes and
- * attributes and pseudo-classes, then elements and pseudo-elements.
- *
- * Written out because the whole question of this file is which rule wins, and „both
- * are written in the file" is what the first version claimed to check.
- *
- * The functional pseudo-classes are not counted as one class each, which is what a
- * plain count does and what a review measured as wrong in both directions:
- * `:where()` weighs nothing at all, `:is()`, `:not()` and `:has()` weigh as much as
- * the heaviest thing inside them, so `.a:is(.b, #c)` outweighs a hundred classes
- * while `.a:where(.b)` weighs one.
- */
-function specificity(one: string): number {
-  let rest = one
-  let inner = 0
-
-  /* `:where()` contributes nothing, and the other three contribute their heaviest
-     argument. Innermost first, so a nested `:not(:is(...))` is counted once. */
-  for (;;) {
-    const found = /:(where|is|not|has)\(([^()]*)\)/i.exec(rest)
-
-    if (found === null) {
-      break
-    }
-
-    const [whole, name = '', argument = ''] = found
-
-    if ((name ?? '').toLowerCase() !== 'where') {
-      inner += Math.max(...argument.split(',').map((part) => specificity(part.trim())), 0)
-    }
-
-    rest = rest.replace(whole, ' ')
-  }
-
-  const ids = (rest.match(/#[\w-]+/g) ?? []).length
-  const classes = (rest.match(/\.[\w-]+|\[[^\]]*\]|(?<!:):[\w-]+/g) ?? []).length
-  const elements =
-    (rest.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length + (rest.match(/::[\w-]+/g) ?? []).length
-
-  return ids * 10000 + classes * 100 + elements + inner
-}
 
 /**
  * A selector with its CSS escapes spelt out, so `\\6E` is the letter it stands for.
@@ -471,16 +433,16 @@ function partsOver(element: Element, selector: string): string[] {
  * all one question to `element.matches`, and all four beat a guard written on
  * spelling.
  *
- * **The weight is the reaching part's, not the group's.** A review wrote
- * `.rate__nothing:hover, .table td .entity-open:hover { … }`: the second part reaches
- * this button at 0,3,1 and outweighs the refusal, while the first part is light and
- * was the only one weighed. The whole suite passed and the refused control lit up in
- * every administrative table.
+ * **Weight is no longer computed at all.** It used to be, and a review found that
+ * membership was measured over every part of a group while weight was taken from the
+ * first: `.rate__nothing:hover, .table td .entity-open:hover` reached this button
+ * through its second part and was weighed by its first. The list of what may touch
+ * this control needs no arithmetic, so there is none to get wrong.
  */
 function rulesOver(
   element: Element,
   onlyHover: boolean,
-): { file: string; at: string; selector: string; body: string; weight: number }[] {
+): { file: string; at: string; selector: string; body: string }[] {
   return everyRule()
     /* Unescaped first: `:hove\\72` is the same selector to a browser, and asking the raw
        text left it out of every question about the state. */
@@ -489,7 +451,6 @@ function rulesOver(
     .filter((found) => found.parts.length > 0)
     .map((found) => ({
       ...found.rule,
-      weight: Math.max(...found.parts.map((part) => specificity(part))),
     }))
 }
 
@@ -502,7 +463,7 @@ function rulesOver(
  * `.entity-open:not(:hover)` fell out of both passes and reached the control in the
  * one state nobody was looking at.
  */
-function restingRulesOver(element: Element): { file: string; selector: string }[] {
+function restingRulesOver(element: Element): { file: string; at: string; selector: string; body: string }[] {
   return everyRule().filter((rule) =>
     groupParts(unescaped(rule.selector))
       .map((one) => one.replace(LIVE_STATES, '[data-live]'))
@@ -530,10 +491,45 @@ function tidy(selector: string): string {
 }
 
 function short(path: string): string {
-  return path.split(/[/\\]/).pop() ?? path
+  /* The path below `src`, not the bare file name: a second `Entity.css` in another
+     folder would otherwise inherit this one's permission. */
+  return path.split(/[/\\]/).slice(-2).join('/')
 }
 
 const css = sheetText(ENTITY_CSS)
+
+/**
+ * Everything in the portal that is allowed to reach this control, and why.
+ *
+ * Adding a line here is the only way to make the two tests below pass, so it has to
+ * be a decision rather than a reflex: the reason is written beside it, and an empty
+ * one fails. A review pointed out that adding a line looks the same in a diff whether
+ * the rule is harmless or whether it is the very fault this file exists for, so what
+ * distinguishes them is the sentence somebody has to write.
+ */
+const ALLOWED: Record<string, string> = {
+  'admin/Entity.css .entity-open': 'the control itself',
+  'admin/Entity.css .entity-open:hover': 'what it does under the mouse while it is live',
+  "admin/Entity.css .entity-open[aria-disabled='true']": 'the refusal',
+  "admin/Entity.css .entity-open[aria-disabled='true']:hover": 'the refusal under the mouse',
+  'src/index.css *, *::before, *::after': "the portal's reset, written for every element there is",
+  'src/index.css :focus-visible': "the portal's focus ring, the same everywhere",
+  'src/index.css @media (prefers-reduced-motion: reduce) *, *::before, *::after':
+    'the portal stops animating for anybody who asked it to, written for every element',
+}
+
+/**
+ * The one entry that is allowed to shout, and why.
+ *
+ * Everything else on the list may reach this control but not overrule the refusal
+ * with three words. This one is the reduced-motion block, which is the standard way
+ * of honouring somebody who asked the machine to stop animating, and it sets nothing
+ * that makes a control look live: durations and scrolling only.
+ */
+const MAY_SHOUT: Record<string, string> = {
+  'src/index.css @media (prefers-reduced-motion: reduce) *, *::before, *::after':
+    'stops animation for anybody who asked, and touches no colour, border or cursor',
+}
 
 describe('a record that may no longer be opened', () => {
   it('says so with the cursor, not only with an attribute', () => {
@@ -585,20 +581,30 @@ describe('a record that may no longer be opened', () => {
     expect(refused).toHaveAttribute('aria-disabled', 'true')
 
     const reaching = [...rulesOver(refused, false), ...restingRulesOver(refused)]
-    const seen = [...new Set(reaching.map((rule) => `${short(rule.file)} ${tidy(rule.selector)}`))].sort()
+    const seen = [
+      ...new Set(reaching.map((rule) => `${short(rule.file)} ${tidy(rule.at)} ${tidy(rule.selector)}`.replace('  ', ' '))),
+    ].sort()
 
-    /* Everything that touches this control, and nothing else may. The reset and the
-       focus ring are the portal's own, written once for every element there is; the
-       four `.entity-open` rules are the control itself and its refusal. A new rule
-       anywhere in the portal that reaches this button lands here and gets read. */
-    expect(seen).toEqual([
-      'Entity.css .entity-open',
-      'Entity.css .entity-open:hover',
-      "Entity.css .entity-open[aria-disabled='true']",
-      "Entity.css .entity-open[aria-disabled='true']:hover",
-      'index.css *, *::before, *::after',
-      'index.css :focus-visible',
-    ])
+    expect(seen, 'a rule reaches this control that is not on the list in ALLOWED').toEqual(
+      Object.keys(ALLOWED).sort(),
+    )
+
+    for (const [entry, why] of Object.entries(ALLOWED)) {
+      expect(why, `${entry} is on the list without a reason`).not.toBe('')
+    }
+
+    /* And none of them shouts. The list says who may touch the control; this says
+       that even they may not overrule the refusal with three words. A review added
+       `cursor: pointer !important` to `.entity-open`, a rule already on the list, and
+       the whole suite stayed green. */
+    for (const rule of reaching) {
+      const entry = `${short(rule.file)} ${tidy(rule.at)} ${tidy(rule.selector)}`.replace('  ', ' ')
+
+      expect(
+        shouts(rule.body) && MAY_SHOUT[entry] === undefined,
+        `${entry} shouts over the refusal`,
+      ).toBe(false)
+    }
   })
 
   it('and the same holds where the entity screens draw the same control', () => {
@@ -620,20 +626,30 @@ describe('a record that may no longer be opened', () => {
 
     const refused = must(table.querySelector('.entity-open'), 'the button in the row of actions')
     const reaching = [...rulesOver(refused, false), ...restingRulesOver(refused)]
-    const seen = [...new Set(reaching.map((rule) => `${short(rule.file)} ${tidy(rule.selector)}`))].sort()
+    const seen = [
+      ...new Set(reaching.map((rule) => `${short(rule.file)} ${tidy(rule.at)} ${tidy(rule.selector)}`.replace('  ', ' '))),
+    ].sort()
 
-    /* Everything that touches this control, and nothing else may. The reset and the
-       focus ring are the portal's own, written once for every element there is; the
-       four `.entity-open` rules are the control itself and its refusal. A new rule
-       anywhere in the portal that reaches this button lands here and gets read. */
-    expect(seen).toEqual([
-      'Entity.css .entity-open',
-      'Entity.css .entity-open:hover',
-      "Entity.css .entity-open[aria-disabled='true']",
-      "Entity.css .entity-open[aria-disabled='true']:hover",
-      'index.css *, *::before, *::after',
-      'index.css :focus-visible',
-    ])
+    expect(seen, 'a rule reaches this control that is not on the list in ALLOWED').toEqual(
+      Object.keys(ALLOWED).sort(),
+    )
+
+    for (const [entry, why] of Object.entries(ALLOWED)) {
+      expect(why, `${entry} is on the list without a reason`).not.toBe('')
+    }
+
+    /* And none of them shouts. The list says who may touch the control; this says
+       that even they may not overrule the refusal with three words. A review added
+       `cursor: pointer !important` to `.entity-open`, a rule already on the list, and
+       the whole suite stayed green. */
+    for (const rule of reaching) {
+      const entry = `${short(rule.file)} ${tidy(rule.at)} ${tidy(rule.selector)}`.replace('  ', ' ')
+
+      expect(
+        shouts(rule.body) && MAY_SHOUT[entry] === undefined,
+        `${entry} shouts over the refusal`,
+      ).toBe(false)
+    }
 
     table.remove()
   })
@@ -753,6 +769,32 @@ describe('the guard over that stylesheet', () => {
     expect(document.querySelectorAll('[data-live]')).toHaveLength(0)
 
     table.remove()
+  })
+
+  it('asks the resting state too, where a rule written against hovering lives', () => {
+    /* The same substitution with the attribute on nobody: `:hover` then matches
+       nothing and `:not(:hover)` matches everything, which is what resting means. A
+       review wrote `.entity-open:not(:hover)` and it fell out of both passes. */
+    const button = document.createElement('button')
+
+    button.className = 'entity-open'
+    document.body.append(button)
+
+    const resting = restingRulesOver(button).map((rule) => tidy(rule.selector))
+
+    expect(resting).toContain('.entity-open')
+    expect(resting).not.toContain('.entity-open:hover')
+
+    button.remove()
+  })
+
+  it('sees a rule written on a pseudo-element, which the DOM cannot be asked about', () => {
+    /* `element.matches('.entity-open::after')` answers no, so a rule painting an
+       accent over a refused button was invisible until the pseudo-element is taken
+       off before the question. */
+    expect(withoutPseudoElements('.entity-open[data-live]::after')).toBe('.entity-open[data-live]')
+    expect(withoutPseudoElements('.entity-open::first-line')).toBe('.entity-open')
+    expect(withoutPseudoElements('.entity-open')).toBe('.entity-open')
   })
 
   it('says nothing shouts where nothing does', () => {
