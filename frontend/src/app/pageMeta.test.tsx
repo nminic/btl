@@ -232,6 +232,14 @@ describe('the address of a page', () => {
     renderAt(address)
 
     await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/kalendar`))
+
+    /* And the same address under the same name everywhere else on the page. The
+       router matches without regard to case, so this really is the calendar and
+       not a miss; while only the canonical link was tidied, the page named
+       /sr/kalendar as the original and then titled itself „Ove strane nema". */
+    expect(document.title).toBe(`${sr.seo.calendar.title} · ${LEAGUE}`)
+    expect(content('name', 'description')).toBe(sr.seo.calendar.description)
+    await screen.findByRole('heading', { level: 1, name: sr.nav.calendar })
   })
 
   it('canonicalises the English branch onto the Serbian one', async () => {

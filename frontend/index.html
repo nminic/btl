@@ -58,14 +58,19 @@
     <meta name="twitter:image" content="https://balkanskatrkackaliga.net/icon-512.png" />
     <meta name="twitter:image:alt" content="Logo Balkanske trkačke lige" />
 
-    <!-- Applies the stored theme before the first paint. React sets the same
-         attribute, but it does so after mounting, which is one white flash too
-         late for someone who chose the dark theme. -->
+    <!-- Applies the theme before the first paint. React sets the same attribute,
+         but it does so after mounting, which is one flash too late.
+
+         The rule is written out rather than left to the stylesheet: dark unless
+         the stored choice is „light", which is what app/themeContext.ts answers
+         and therefore what the page ends up in. Set only for a stored value, this
+         script left a visitor with nothing stored and a light system on the light
+         palette for the first frame (tokens.css follows the system while
+         data-theme is absent) and then moved them to dark on mount, which is the
+         flash it exists to prevent. -->
     <script>
-      var btlTheme = localStorage.getItem('btl-theme')
-      if (btlTheme === 'dark' || btlTheme === 'light') {
-        document.documentElement.dataset.theme = btlTheme
-      }
+      document.documentElement.dataset.theme =
+        localStorage.getItem('btl-theme') === 'light' ? 'light' : 'dark'
     </script>
   </head>
   <body>

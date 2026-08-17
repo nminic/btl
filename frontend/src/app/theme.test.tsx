@@ -1,4 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { storedTheme, THEME_STORAGE_KEY } from './themeContext'
@@ -29,6 +32,50 @@ describe('storedTheme', () => {
 
     localStorage.setItem(THEME_STORAGE_KEY, 'nesto-trece')
     expect(storedTheme()).toBe('dark')
+  })
+})
+
+describe('the theme before the first paint', () => {
+  /* index.html carries the same decision as `storedTheme`, because it has to be
+     made before any module is fetched. Two copies of one rule drift, and this one
+     had: written for a stored value only, it left a visitor with nothing stored
+     and a light system reading the light palette for the first frame (tokens.css
+     follows the system while `data-theme` is absent) and then moved them to dark
+     on mount. That is the flash the script exists to prevent.
+   *
+     Measured by running the script the browser runs, off the file the browser is
+     served, rather than by reading it: a text comparison passes on two spellings
+     of the same wrong rule. */
+  const script = must(
+    must(
+      /<script>([\s\S]*?)<\/script>/.exec(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')),
+      'skript teme u index.html',
+    )[1],
+    'telo skripta teme',
+  )
+
+  function firstFrame(): string | undefined {
+    delete document.documentElement.dataset.theme
+    new Function(script)()
+
+    return document.documentElement.dataset.theme
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it.each([
+    ['nothing stored', null],
+    ['light stored', 'light'],
+    ['dark stored', 'dark'],
+    ['something else stored', 'nesto-trece'],
+  ])('paints what the page settles in, with %s', (_case, stored) => {
+    if (stored !== null) {
+      localStorage.setItem(THEME_STORAGE_KEY, stored)
+    }
+
+    expect(firstFrame()).toBe(storedTheme())
   })
 })
 

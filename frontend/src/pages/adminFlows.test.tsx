@@ -411,10 +411,37 @@ describe('the price list', () => {
        the words „iznos se za ovu sezonu više ne menja" would have stood beside a
        button that opens the form perfectly well. */
     expect(screen.queryByText(/Iznos preporuke za sezonu/)).not.toBeInTheDocument()
+    /* What stands there instead names the season the amount is being set for, so
+       both halves of the condition are held by a test and neither can be made
+       always true without one failing. */
+    expect(open).toHaveAccessibleDescription(/Iznos koji sada upišeš važi za sezonu 2027/)
 
     await user.click(open)
 
     expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
+  })
+
+  it('admits that setting the amount in January moves the running season too', async () => {
+    /* The rule is a deadline, so on 1 January the form opens again. What it opens
+       onto is one amount with no history behind it, and the season that began the
+       day before had its amount settled by its own 1 October. So the same save
+       that sets 2029 also moves what has been standing for 2028, and the screen
+       has to say so: the rule cannot be kept by an administrator who is not told
+       that keeping it is not what the button does.
+     *
+       Holding an amount per season is a table, and it arrives with the database
+       (PENDING). Until then this is the honest half. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2028-01-01')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+
+    const open = screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' })
+
+    expect(open).toHaveAttribute('aria-disabled', 'false')
+    expect(open).toHaveAccessibleDescription(/Iznos koji sada upišeš važi za sezonu 2029/)
+    expect(open).toHaveAccessibleDescription(
+      /Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i ono što stoji za sezonu koja teče/,
+    )
   })
 
   it('names the season by the clock, not by the constant that happens to match it', async () => {
