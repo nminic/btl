@@ -382,6 +382,10 @@ describe('the price list', () => {
        the amount being settled is the one for 2027 and not for the year they are
        standing in. */
     expect(open).toHaveAccessibleDescription(/Iznos preporuke za sezonu 2027 se više ne menja/)
+    /* Said in full, so the second half of the sentence is held too: read from the
+       dictionary on both sides, a test tells you the same string equals itself
+       and a wrong date inside it passes. */
+    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 1\. oktobra/)
 
     await user.click(open)
 
@@ -411,6 +415,24 @@ describe('the price list', () => {
     await user.click(open)
 
     expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
+  })
+
+  it('names the season by the clock, not by the constant that happens to match it', async () => {
+    /* One day is not enough to say where a number came from. In October 2026 the
+       season being renewed is 2027, which is also `SEASON`, so a review replaced
+       the whole calculation with the literal 2027 and the suite stayed green: in
+       October 2027 the screen has to say 2028 and nothing would have noticed.
+     *
+       A year on, therefore, where the three possible sources of that number part
+       company: the clock says 2028, the constant still says 2027, and dropping the
+       floor from `Math.max` would say 2028 here but 2026 in January. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2027-11-01')
+
+    await screen.findByRole('table', { name: 'Preporuka' })
+
+    expect(screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' })).toHaveAccessibleDescription(
+      /Iznos preporuke za sezonu 2028 se više ne menja/,
+    )
   })
 
   it('says what a payment from abroad carries on top of the price', async () => {

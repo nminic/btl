@@ -1,4 +1,4 @@
-import { daysBetween, PRICES, priceOn, registrationOpen } from './pricing'
+import { daysBetween, PRICES, priceOn, registrationOpen, seasonBeingRenewed } from './pricing'
 import { first, last } from '../test/at'
 
 describe('the four periods', () => {
@@ -75,3 +75,27 @@ describe('registrationOpen', () => {
  * (owner), and a function nothing calls is a function nothing can be wrong
  * about.
  */
+
+describe('the season a renewal is for', () => {
+  /* Read by the screen of prices, to name the season whose referral amount is
+   * settled, and by the membership screen, to head the renewal. Three numbers
+   * meet in it and a single day cannot tell them apart, which is how a review
+   * replaced the whole call with the literal 2027 and passed: in October 2026 the
+   * clock, the constant and the floor all answer the same thing.
+   */
+
+  it('is next year, once the portal is past the first official season', () => {
+    expect(seasonBeingRenewed('2027-11-01')).toBe(2028)
+    expect(seasonBeingRenewed('2028-01-15')).toBe(2029)
+  })
+
+  it('never answers a season before the first one the league runs', () => {
+    /* The floor, and the only place it shows. Somebody reading the portal as an
+       earlier year, which the switch of days allows, is renewing 2027 and nothing
+       earlier: there is no 2026 season to renew. Without it the screen would head
+       a renewal with a season the league never held. */
+    expect(seasonBeingRenewed('2025-11-01')).toBe(2027)
+    expect(seasonBeingRenewed('2024-01-01')).toBe(2027)
+    expect(seasonBeingRenewed('2026-11-01')).toBe(2027)
+  })
+})
