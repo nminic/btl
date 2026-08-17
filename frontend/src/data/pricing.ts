@@ -136,8 +136,14 @@ export const REFERRAL = { key: 'referral', eur: 5, rsd: 600 }
  *
  * Here and not on the screen that draws it, because two screens read it: the one
  * an administrator sets it on and the one a member is promised it on, and a
- * shape written twice is a shape that drifts. No window in the year and no
- * bearing on the right to be ranked, which is what tells it from a price.
+ * shape written twice is a shape that drifts. No period of its own in the year and
+ * no bearing on the right to be ranked, which is what tells it from a price.
+ *
+ * That it has no period of its own is not the same as being changeable whenever:
+ * since 16.08.2026 it may be set only until the renewal window opens, and it is
+ * settled for that season from then (data/season.ts, `referralMayBeSet`). The
+ * empty `from` and `to` say it is not sold in a period, not that nothing governs
+ * when it is written.
  */
 export const REFERRAL_ROW: PriceRow = { ...REFERRAL, from: '', to: '', ranking: false }
 

@@ -29,6 +29,31 @@ export const WINDOW_OPENS = '10-01'
 /** And both shut at the end of this day. Nothing is decided in January. */
 export const WINDOW_CLOSES = '12-31'
 
+/**
+ * Whether the amount one referral brings may still be set for the coming season.
+ *
+ * Owner, 16.08.2026: „administrator podešava do 1.10. u 00 po CET za predstojeću
+ * godinu." That instant is the one the renewal window opens on, so this is not a
+ * second date to keep right but the same one read the other way round: the amount
+ * is settled before anybody can start earning it, and once renewals are open it
+ * stands for that season.
+ *
+ * **What is deliberately not enforced, and cannot be here.** „It stands for that
+ * season" is a promise about the past, and nothing in this portal remembers what
+ * an amount was: the price list is a record of the current visit. So this refuses
+ * the change and says until when it was possible, which is the half a screen can
+ * do; keeping what each season was worth is a table, and that arrives with the
+ * database (PENDING).
+ *
+ * **And the hour.** The decision names 00:00 CET. The portal reads whole days off
+ * one clock with no notion of a zone (src/clock), so „the day 1 October has begun"
+ * is what it can answer, and that is the same instant as long as the day it reads
+ * turns over in CET. Written down rather than pretended away.
+ */
+export function referralMayBeSet(today: string): boolean {
+  return !inYearlyWindow(today)
+}
+
 export function inYearlyWindow(today: string): boolean {
   const dayInYear = today.slice(5)
 

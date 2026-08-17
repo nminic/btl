@@ -631,6 +631,39 @@ describe('how a written page is set', () => {
     expect(policy).not.toContain('Drugih kolačića nema')
   })
 
+  it('offers nothing the portal cannot receive', () => {
+    /* Owner, twice: „od GPX odustajem (neće biti)". The function was never in the
+       code at all, and that is what made this the purest case of a promise with
+       nothing behind it: the public rulebook had a whole article inviting a member
+       to attach a track in GPX, FIT or TCX and saying it would go for approval,
+       and the portal had nowhere to receive it. The privacy policy carried it in
+       the table of what is processed, under „Vaš pristanak", for data that never
+       arrives.
+     *
+       The article kept its number. Removing it would have renumbered forty two
+       articles, and forty seven references in these documents point at numbers
+       above it with nothing guarding them; renumbering by hand is how a public
+       rulebook ends up pointing at the wrong clause. It says what is true instead,
+       which is that the values are typed by hand and that no track is read.
+     *
+       Read off the disc rather than off a screen, because what is guarded is what
+       the documents say. The one permitted mention is the sentence that says the
+       portal does not accept one; anything that reads as an invitation fails. */
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        for (const line of section.body.split(NEWLINE)) {
+          if (!/GPX|TCX/.test(line)) {
+            continue
+          }
+
+          expect(line, `${slug} still offers a track file: ${line.trim()}`).toContain(
+            'Portal ne prima zapis staze',
+          )
+        }
+      }
+    }
+  })
+
   it('carries no telephone number anywhere', () => {
     /* Owner, 01.08.2026: the association's number is on none of these pages.
        The one a member gives at registration is collected and never shown. */

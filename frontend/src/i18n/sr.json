@@ -1057,7 +1057,7 @@
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
       "raceDate": "Podrazumevano je dan događaja. Događaj koji traje dva dana ima trke sa različitim danima; dan događaja je dan prve trke.",
-      "distanceKm": "Unosi se ručno, i kad postoji GPX. GPX sme da predloži vrednost, ali je unos pregazi.",
+      "distanceKm": "Unosi se ručno. Ako se tvoje merenje razlikuje od onoga što je objavio organizator, prednost ima podatak organizatora.",
       "ascentM": "Dok se ne unese, stoji 0. Trka bez podatka o nagibu se i dalje boduje.",
       "category": "Ne unosi se nego se izvodi iz dužine, tačno u vrednosti: 21,1 km je polumaraton, 42,2 km maraton, a svaka druga vrednost pada u jednu od preostale tri kategorije.",
       "teamName": "Naziv je slobodan. Tim je jedini entitet koji ima poredak; klub ga nema.",
@@ -1088,7 +1088,8 @@
     "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik.",
     "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
     "referral": "Preporuka",
-    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu."
+    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu. Podešava se do 1. oktobra, za sezonu koja tada počinje da se obnavlja; od tog dana stoji.",
+    "referralSettled": "Iznos preporuke se za ovu sezonu više ne menja. Obnova članarine je otvorena od 1. oktobra, a iznos se podešava do tog dana."
   },
   "ducats": {
     "title": "Dukati",

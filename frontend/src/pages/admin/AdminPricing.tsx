@@ -9,6 +9,8 @@ import {
 } from '../../data/pricing'
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useToday } from '../../clock/useClock'
+import { referralMayBeSet } from '../../data/season'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
@@ -51,6 +53,10 @@ const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
 export function AdminPricing() {
   const { locale, t } = useI18n()
   const overlay = useOverlay()
+  /* The day the portal is being read as, from the one clock it all reads
+     (src/clock). One thing on this screen depends on it: whether the amount a
+     referral brings may still be set for the season about to be renewed. */
+  const today = useToday()
   const [editing, setEditing] = useState<Editing | null>(null)
 
   if (editing !== null) {
@@ -78,6 +84,11 @@ export function AdminPricing() {
      list, the case where it is missing is the empty list and needs no guard at
      all. */
   const referral = all.filter((row) => row.key === REFERRAL.key)
+  /* Whether the amount one referral brings may still be set for the season that
+     is about to be renewed. One place decides it, beside the rest of the year's
+     dates (data/season.ts), because the moment is the same one the renewal window
+     opens on and a second copy of a date is a date that drifts. */
+  const maySet = referralMayBeSet(today)
 
   return (
     <div className="member">
@@ -149,8 +160,12 @@ export function AdminPricing() {
                   <td>{money(row.eur, locale)}</td>
                   <td>{money(row.rsd, locale)}</td>
                   <td>
+                    {/* Told off rather than switched off, as everywhere else on
+                        the portal: `disabled` takes the control out of the tab
+                        order and takes the reason it stands for with it. */}
                     <OpenRecord
                       name={row.label}
+                      settled={!maySet}
                       onOpen={() => setEditing({ mode: 'one', record: row })}
                     />
                   </td>
@@ -158,6 +173,16 @@ export function AdminPricing() {
               </tbody>
             </table>
           </div>
+
+          {/* Why it will not open, and until when it would have. Said once, under
+              the table, rather than inside the cell, because it is a fact about
+              the amount and not about the button (owner, 16.08.2026: „podešava do
+              1.10. u 00 po CET za predstojeću godinu"). */}
+          {!maySet && (
+            <p id="referral-settled" className="rate__hint" role="status">
+              {t('admin.referralSettled')}
+            </p>
+          )}
         </section>
       ))}
 
