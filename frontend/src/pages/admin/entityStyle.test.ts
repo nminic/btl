@@ -71,13 +71,19 @@ function ruleFor(selector: string): CSSStyleDeclaration {
  * „no", including when every one of them shouts. Everything structural is still
  * read from `cssRules`; only this comes from the text. */
 function written(selector: string): string {
-  const at = css.indexOf(`${selector} {`)
+  /* Every place the sheet opens a rule with exactly this selector, and there has
+     to be one. Read as whole rules rather than by the first match of the text: a
+     review put a dead `@media print { .table .entity-open:hover { ... } }` above
+     the live rule and the search stopped at it, so the guard read a body with
+     nothing in it and fell silent while the real rule shouted. A comment
+     mentioning the selector does the same for nothing. */
+  const bodies = [...css.matchAll(/(^|[\s{}])([^{}]*?)\{([^{}]*)\}/g)]
+    .filter((found) => (found[2] ?? '').trim() === selector)
+    .map((found) => found[3] ?? '')
 
-  expect(at, `${selector} is not written in Entity.css`).toBeGreaterThan(-1)
+  expect(bodies.length, `${selector} is not written once in Entity.css`).toBe(1)
 
-  const open = css.indexOf('{', at)
-
-  return css.slice(open + 1, css.indexOf('}', open))
+  return bodies.join('')
 }
 
 describe('a record that may no longer be opened', () => {
@@ -149,9 +155,14 @@ describe('a record that may no longer be opened', () => {
        where both shout is one nobody can reason about, and the tighter selector
        is enough as long as nothing shouts. */
     for (const selector of ['.entity-open:hover', ".entity-open[aria-disabled='true']:hover"]) {
-      expect(written(selector), `${selector} shouts, and no selector outweighs that`).not.toContain(
-        '!important',
-      )
+      /* Read as the cascade reads it, not as the file happens to be typed: the
+         keyword takes any case, and white space or a comment may stand between
+         the bang and the word. Measured, all of them still shout: jsdom answers
+         „important" for `! important` and for `!IMPORTANT` alike. */
+      expect(
+        written(selector),
+        `${selector} shouts, and no selector outweighs that`,
+      ).not.toMatch(/!\s*important/i)
     }
   })
 })

@@ -670,6 +670,10 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText('Minuta'), '52')
     await user.type(screen.getByLabelText('Sekundi'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
+    /* Something said about the race, because it is one of the two optional fields
+       the two doors of reporting share (PDL P9) and it has to survive the whole
+       walk: to the moderator, and back into the form when a result is corrected. */
+    await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao.')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
   }
 
@@ -736,6 +740,36 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Odobreno')).toBeVisible()
 
     unmount()
+  })
+
+  it('carries what the member said about the race to the moderator', async () => {
+    /* The form has asked for it all along (`unos-rezultata.form.json`), the
+       rulebook lists it among what is entered from a profile (Član 41), and the
+       moderator's screen draws it where there is one (admin/ReviewQueue.tsx).
+       This one door dropped it: the screen wrote an empty string into the
+       submission and the words went nowhere.
+     *
+       Nothing measured the difference. Putting it back and taking it away both
+       left the whole suite green, which is why the fault survived until a review
+       read the two doors side by side. */
+    const user = setupUser()
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka sa pričom')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText(/Dužina/), '10')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '0')
+    await user.type(screen.getByLabelText('Minuta'), '44')
+    await user.type(screen.getByLabelText('Sekundi'), '2')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao na petom kilometru.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    await openTheQueue(user)
+
+    expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
   })
 
   it('scores nothing when the time entered is zero', async () => {
@@ -811,6 +845,14 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText(/Link ne otvara rezultate\./)).toBeVisible()
     const link = screen.getByLabelText(/^Link/)
     expect(link).toHaveValue('https://primer.rs/rezultati')
+    /* And what the member said about the race comes back with it. This is the one
+       submission where those words matter most: the refusal is usually about the
+       link, and the comment is what explains it. Left out, the member reopened the
+       form, saw the sentence gone, and sending the correction wiped it from the
+       moderator's card too, because a correction is the same submission written
+       over. A review measured exactly that on the first version of this fix: the
+       link came back and the comment did not (PDL P9 binds the two as a pair). */
+    expect(screen.getByLabelText(/Komentar/)).toHaveValue('Sat mi je stao.')
 
     await user.clear(link)
     await user.type(link, 'https://primer.rs/ispravno')
