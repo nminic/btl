@@ -51,16 +51,25 @@ describe('the theme before the first paint', () => {
      Measured by running the script the browser runs, off the file the browser is
      served, rather than by reading it: a text comparison passes on two spellings
      of the same wrong rule. */
-  const script = group(
-    /<script>([\s\S]*?)<\/script>/.exec(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')),
-    'skript teme u index.html',
-  )
+  const html = readFileSync(join(process.cwd(), 'index.html'), 'utf-8')
+  const script = group(/<script>([\s\S]*?)<\/script>/.exec(html), 'skript teme u index.html')
 
-  function firstFrame(): string | undefined {
+  /** The page as it is served, so the script has the tag it writes to. */
+  function firstFrame(): { theme: string | undefined; bar: string | null } {
     delete document.documentElement.dataset.theme
+
+    const tag = document.createElement('meta')
+
+    tag.setAttribute('name', 'theme-color')
+    tag.setAttribute('content', group(/name="theme-color"\s+content="([^"]+)"/.exec(html), 'traka'))
+    document.head.append(tag)
     new Function(script)()
 
-    return document.documentElement.dataset.theme
+    const painted = { theme: document.documentElement.dataset.theme, bar: tag.getAttribute('content') }
+
+    tag.remove()
+
+    return painted
   }
 
   beforeEach(() => {
@@ -77,7 +86,14 @@ describe('the theme before the first paint', () => {
       localStorage.setItem(THEME_STORAGE_KEY, stored)
     }
 
-    expect(firstFrame()).toBe(storedTheme())
+    const painted = firstFrame()
+
+    expect(painted.theme).toBe(storedTheme())
+    /* The bar as well, and in the same breath as the palette. Written for the dark
+       theme alone, a member who chose the light one read a light page under an
+       almost black bar until React mounted, which is this flash in the other
+       direction. */
+    expect(painted.bar).toBe(BAR[storedTheme()])
   })
 
   it('tells the browser to paint its own bar in the colour of that theme', () => {
@@ -86,23 +102,26 @@ describe('the theme before the first paint', () => {
        had not chosen otherwise, so an Android phone drew a white bar above an
        almost black page from the first frame.
      *
-       Three copies of each colour have to agree: the tag in index.html, the map in
-       ThemeProvider, and the token in tokens.css. Held to the token, since that is
-       the one the page is actually painted from. */
-    const html = readFileSync(join(process.cwd(), 'index.html'), 'utf-8')
+       Four copies of the dark background have to agree, not three: the tag in
+       index.html, the map in themeContext, the token under `[data-theme='dark']`,
+       and the token under the media query, where the whole dark palette is written
+       a second time. The fourth is what a visitor with no JavaScript and a dark
+       system reads, and nothing held it: set to white, with the dark `--text`
+       beside it, the whole suite passed and that reader got white on white. */
     const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
 
     const tokenBg = (selector: string) =>
-      must(
+      group(
         new RegExp(`${selector}\\s*\\{[^}]*?--bg:\\s*(#[0-9a-f]{3,8})`, 'i').exec(tokens),
         `--bg pod ${selector}`,
-      )[1]
+      )
 
-    expect(must(/name="theme-color"\s+content="([^"]+)"/.exec(html), 'theme-color')[1]).toBe(
-      tokenBg(":root\\[data-theme='dark'\\]"),
-    )
-    expect(BAR.dark).toBe(tokenBg(":root\\[data-theme='dark'\\]"))
+    const dark = tokenBg(":root\\[data-theme='dark'\\]")
+
+    expect(group(/name="theme-color"\s+content="([^"]+)"/.exec(html), 'theme-color')).toBe(dark)
+    expect(BAR.dark).toBe(dark)
     expect(BAR.light).toBe(tokenBg(':root'))
+    expect(tokenBg(":root:not\\(\\[data-theme='light'\\]\\)")).toBe(dark)
   })
 })
 

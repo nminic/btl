@@ -450,7 +450,8 @@ describe('the price list', () => {
     /* And here there is a running season to name, which is the half that makes
        this a warning rather than a note: 2028 began the day before and its amount
        was settled by 1 October 2027. */
-    expect(open).toHaveAccessibleDescription(/Sezona 2028 je u toku/)
+    expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
+    expect(open).toHaveAccessibleDescription(/zaključan 1\. oktobra prethodne godine, a ovaj upis ga ipak menja/)
   })
 
   it('has one live region on the price list, not two', async () => {

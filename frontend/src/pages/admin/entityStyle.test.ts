@@ -12,21 +12,31 @@ import { must } from '../../test/at'
  * under the mouse, because the only rules for that attribute in the portal are
  * written for the shared button and this control is not one.
  *
- * **Parsed, not searched, and now for both questions.** Four generations of this
- * file were each beaten by the fault they were written for. Reading the text and
- * cutting each rule at the first closing brace passed two rules wrapped in
- * `@media print`, which apply to nothing, and passed `.entity-open:hover`
- * rewritten as `.table .entity-open:hover`, which outweighs the refusal in every
- * administrative table. Reading structure from the parser and importance from a
- * regular expression over the text was then beaten three more ways: a `}` inside
- * a comment cut the body short and silenced the check, a comment above the rule
- * joined the group the selector was compared against, and a copy of the rule
- * inside `@media` counted as a second one.
+ * **Six generations of this file were each beaten by the fault it was written
+ * for.** Reading the text and cutting each rule at the first closing brace passed
+ * two rules wrapped in `@media print`, which apply to nothing, and passed
+ * `.entity-open:hover` rewritten as `.table .entity-open:hover`, which outweighs
+ * the refusal in every administrative table. Reading structure from the parser and
+ * importance from a loose search over the raw file was beaten three more ways: a
+ * `}` inside a comment cut the body short, a comment above the rule joined the
+ * group compared against the selector, and a copy of the rule inside `@media`
+ * counted as a second one. Then the same rule written as `& .entity-open:hover`
+ * nested inside `.table { … }` passed everything, because jsdom does not
+ * understand nesting and Vite lowers it into a plain descendant selector, so the
+ * fault shipped.
  *
- * So everything comes from the parser, and the one thing the parser could not
- * answer is asked in a way it can (`shouting` below). A guard that cannot tell a
- * live rule from a dead one is a guard on the spelling, and a guard nobody has
- * broken on purpose is a guess.
+ * **What this one does.** Structure comes from the parser: which rules there are,
+ * which of them apply unconditionally, and how many say the same thing. Importance
+ * comes from an exact scan of the sheet, and it can be exact because the sheet is
+ * refused unless it is flat (`refuseNesting`) and the scan then works with the
+ * comments removed, the at-rule blocks stepped over and the strings respected.
+ * The parser is not asked about importance at all, because it cannot answer: it
+ * drops the priority of a declaration whose value is a `var()`, and it drops it
+ * again for a `background` shorthand whatever the value. Both measured.
+ *
+ * A guard that cannot tell a live rule from a dead one is a guard on the spelling,
+ * and a guard nobody has broken on purpose is a guess. So every one of the six
+ * ways above is a case in `describe('the guard over that stylesheet')`.
  */
 const ENTITY_CSS = join(process.cwd(), 'src/pages/admin/Entity.css')
 
@@ -37,18 +47,71 @@ const ENTITY_CSS = join(process.cwd(), 'src/pages/admin/Entity.css')
  * `Entity.css` imports the shared table, which is where a hover for a control
  * inside a table would most naturally be written, and the fault this file exists
  * for came back once already through exactly such a selector.
+ *
+ * All three ways CSS spells an import, not only the one this repo happens to use
+ * today: written for `'…'` alone, the other two left the import sitting in the
+ * text, the sheet around it parsed perfectly well, and the imported rules simply
+ * did not exist here. Nothing enforces the quoting style, so the only thing
+ * holding it was habit.
  */
 function sheetText(path: string): string {
-  return readFileSync(path, 'utf-8').replace(/@import\s+'([^']+)'\s*;/g, (_whole, target) =>
-    sheetText(resolve(dirname(path), String(target))),
+  return readFileSync(path, 'utf-8').replace(
+    /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]\s*\)?\s*;/g,
+    (_whole, target) => sheetText(resolve(dirname(path), String(target))),
   )
 }
 
-const css = sheetText(ENTITY_CSS)
+/** The sheet with its comments gone, which is where two of the six faults lived:
+ *  a `}` inside a comment ended a rule early, and a comment above a rule joined
+ *  the selector in front of it. */
+function withoutComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
+/**
+ * Refuses a sheet written in a way the parser here cannot see.
+ *
+ * jsdom does not understand CSS nesting: a hover written as `& .entity-open:hover`
+ * inside `.table { … }` disappears without a trace, so the parser answers with
+ * `.table` alone and every count in this file goes on being right about a sheet
+ * that no longer says what it used to. Vite lowers that nesting into a plain
+ * descendant selector, so the rule reaches the browser and applies. A review
+ * measured exactly that: the accent back on a refused control in every
+ * administrative table, whole suite green.
+ *
+ * Nesting is not guessed at, it is refused. `@media`, `@supports` and `@layer`
+ * already fail loudly of their own accord, because a rule inside them is not a
+ * `CSSStyleRule`; this is the same answer for the one form that was silent.
+ */
+function refuseNesting(text: string): void {
+  const plain = withoutComments(text)
+  let depth = 0
+  let inAtRule = false
+
+  for (const [index, letter] of [...plain].entries()) {
+    if (letter === '{') {
+      if (depth === 1 && !inAtRule) {
+        throw new Error(
+          `nested CSS at character ${index}: this guard reads the sheet through jsdom, which drops a nested rule, so it cannot answer for a sheet written this way`,
+        )
+      }
+
+      if (depth === 0) {
+        inAtRule = /@[a-z-]+[^{}]*$/i.test(plain.slice(0, index))
+      }
+
+      depth += 1
+    } else if (letter === '}') {
+      depth -= 1
+    }
+  }
+}
 
 /** Every rule of the sheet that applies unconditionally, with its selector. A
  *  rule inside `@media` or `@supports` is not among them, which is the point. */
 function unconditional(text = css): { selector: string; style: CSSStyleDeclaration }[] {
+  refuseNesting(text)
+
   const tag = document.createElement('style')
 
   tag.textContent = text
@@ -79,40 +142,73 @@ function ruleFor(selector: string, text = css): CSSStyleDeclaration {
 }
 
 /**
- * Which declarations of a rule shout, asked of the parser like everything else.
+ * The body of every top-level rule of a flat sheet, with its selector.
  *
- * The obvious way is `getPropertyPriority`, and on this sheet it answers „no" to
- * every colour on this control even when every one of them shouts: jsdom drops a
- * declaration whose value is a `var()` carrying `!important` rather than recording
- * the priority. Measured with a probe, not assumed: `color: red !important` comes
- * back as „important", `background: var(--x) !important` comes back as „".
- *
- * So the sheet is handed over once more with every `var(...)` replaced by a plain
- * colour. What is being read is the priority; the colour is read from the sheet
- * itself, by `ruleFor`, and is not touched here.
+ * Written by hand because the parser cannot answer the one question below, and it
+ * can be exact: the comments are gone, an at-rule block is stepped over rather
+ * than entered, a quote is respected so a `}` inside `content: "}"` ends nothing,
+ * and the sheet is flat because `refuseNesting` has refused it otherwise.
  */
-function shouting(selector: string, text = css): string[] {
-  const style = ruleFor(selector, withoutVars(text))
+function flatRules(text: string): { selector: string; body: string }[] {
+  const plain = withoutComments(text)
+  const rules: { selector: string; body: string }[] = []
+  let opened = 0
+  let quote = ''
+  let depth = 0
 
-  return Array.from({ length: style.length }, (_unused, index) => style.item(index)).filter(
-    (property) => style.getPropertyPriority(property) === 'important',
-  )
-}
+  for (const [index, letter] of [...plain].entries()) {
+    if (quote !== '') {
+      quote = letter === quote ? '' : quote
+    } else if (letter === '"' || letter === "'") {
+      quote = letter
+    } else if (letter === '{') {
+      opened = depth === 0 ? index : opened
+      depth += 1
+    } else if (letter === '}') {
+      depth -= 1
 
-/** Every `var(...)` of a sheet replaced by a plain colour, innermost first, so a
- *  fallback written as `var(--a, var(--b))` goes too. Each pass is strictly
- *  shorter than the one before it, so this ends. */
-function withoutVars(text: string): string {
-  let plain = text
-  let next = plain.replace(/var\([^()]*\)/g, 'red')
+      /* An at-rule holds rules and not declarations, so its own body is not one,
+         and what is inside it is deliberately not read: it does not apply
+         unconditionally, which is what every question here is about. */
+      const selector = (plain.slice(0, opened).split(/[{}]/).pop() ?? '').trim()
 
-  while (next !== plain) {
-    plain = next
-    next = plain.replace(/var\([^()]*\)/g, 'red')
+      if (depth === 0 && !selector.startsWith('@')) {
+        rules.push({ selector, body: plain.slice(opened + 1, index) })
+      }
+    }
   }
 
-  return plain
+  return rules
 }
+
+/**
+ * Whether any declaration of a rule shouts, read off the sheet as it is written.
+ *
+ * The parser cannot be asked. It drops the priority of a declaration whose value
+ * is a `var()`, which is every colour on this control; handed the same rule with
+ * the value replaced by `inherit`, so that nothing could be invalid, it drops the
+ * priority of a `background` shorthand as well. Both measured with a probe:
+ * `color: var(--x) !important` came back as „", and `background: inherit
+ * !important` came back as „" on all nine longhands and on the shorthand.
+ *
+ * So this one question goes to the text, where three words are three words. It is
+ * safe there in a way it was not before: the body comes from `flatRules`, which is
+ * exact for a flat sheet, and a sheet that is not flat is refused.
+ */
+function shouting(selector: string, text = css): boolean {
+  const bodies = flatRules(text).filter((rule) => rule.selector === selector)
+
+  /* The same rule the parser sees, and once. Two mechanisms reading one sheet are
+     two chances to be right about different things; this ties them together, so a
+     selector this scanner cannot find is a failure rather than a quiet „no". */
+  expect(bodies.length, `${selector} is not written once in the sheet`).toBe(1)
+
+  /* Read as the cascade reads it: the keyword takes any case, and white space or
+     a comment may stand between the bang and the word. */
+  return /!\s*important/i.test(must(bodies[0], `telo pravila ${selector}`).body)
+}
+
+const css = sheetText(ENTITY_CSS)
 
 describe('a record that may no longer be opened', () => {
   it('says so with the cursor, not only with an attribute', () => {
@@ -177,16 +273,16 @@ describe('a record that may no longer be opened', () => {
        where both shout is one nobody can reason about, and the tighter selector
        is enough as long as nothing shouts. */
     for (const selector of ['.entity-open:hover', ".entity-open[aria-disabled='true']:hover"]) {
-      expect(shouting(selector), `${selector} shouts, and no selector outweighs that`).toEqual([])
+      expect(shouting(selector), `${selector} shouts, and no selector outweighs that`).toBe(false)
     }
   })
 })
 
 describe('the guard over that stylesheet', () => {
   /* Written because the guard above is the whole protection for something jsdom
-     cannot show, and it has been beaten five times by the fault it was written
-     for. Every fault that beat it is a case here, so the sixth way has to be new.
-     Broken on purpose: what a guard does on a correct sheet says nothing. */
+     cannot show, and it has been beaten six times by the fault it was written for.
+     Every one of those six is a case here, so a seventh way has to be new. Broken
+     on purpose: what a guard does on a correct sheet says nothing. */
   const REFUSAL = ".entity-open[aria-disabled='true']:hover { color: var(--text-muted); }"
 
   function fails(what: () => unknown): boolean {
@@ -199,36 +295,60 @@ describe('the guard over that stylesheet', () => {
     }
   }
 
-  it('hears a shout that carries a var(), which the parser alone does not', () => {
-    const shouted = '.entity-open:hover { background: var(--surface-hover) !important; }'
-
-    // The measurement the whole design of `shouting` rests on: asked directly,
-    // jsdom answers nothing at all for this declaration.
-    expect(ruleFor('.entity-open:hover', shouted).getPropertyPriority('background')).toBe('')
-    /* Longhands, because `background` is a shorthand and the parser hands back
-       what it expands into. The test above asks for nothing at all, so the shape
-       of the list never matters there; here it has to be something. */
-    expect(shouting('.entity-open:hover', shouted)).toContain('background-color')
-  })
-
-  it('hears it through a comment, a brace inside that comment, and odd spacing', () => {
-    /* The three ways the text was read wrong. A `}` in a comment ended the rule
-       early and the guard fell silent; a comment above the rule was compared
-       against the selector and the rule went missing; `! IMPORTANT` is the same
-       word to the cascade and a different string to a search. */
-    const awkward = `/* a hover, with a } in the comment */
-      .entity-open:hover {
-        /* why: because } */
-        background: var(--surface-hover) ! IMPORTANT;
-      }`
-
-    expect(shouting('.entity-open:hover', awkward)).toContain('background-color')
+  it.each([
+    ['a colour', 'color: var(--accent) !important'],
+    ['a shorthand', 'background: var(--surface-hover) !important'],
+    ['a length, where a colour would be nonsense', 'padding: var(--space-4) !important'],
+    ['a custom property inside a function', 'background: rgb(var(--channels) / 80%) !important'],
+    ['one nested in a fallback', 'color: var(--a, var(--b)) !important'],
+    ['odd spacing and shouting in capitals', 'color: var(--accent) ! IMPORTANT'],
+  ])('hears a shout in %s', (_case, declaration) => {
+    /* Six shapes, because two designs before this one could hear some and not
+       others. Asking the parser after replacing each `var(...)` with a colour lost
+       the length and the one inside a function: the value became nonsense for the
+       property, so the declaration was dropped and the answer came back „silent".
+       Replacing the whole value with `inherit` fixed those three and lost the
+       `background` shorthand instead, which jsdom strips the priority from whatever
+       the value is. Measured, both times. */
+    expect(shouting('.entity-open:hover', `.entity-open:hover { ${declaration}; }`)).toBe(true)
   })
 
   it('says nothing shouts where nothing does', () => {
-    expect(shouting('.entity-open:hover', '.entity-open:hover { background: var(--x); }')).toEqual(
-      [],
+    expect(shouting('.entity-open:hover', '.entity-open:hover { background: var(--x); }')).toBe(
+      false,
     )
+  })
+
+  it('is not silenced by a brace in a comment, or misled by one above the rule', () => {
+    const awkward = `/* a hover, with a } in the comment */
+      .entity-open:hover {
+        /* why: because } */
+        background: var(--surface-hover) !important;
+      }`
+
+    expect(shouting('.entity-open:hover', awkward)).toBe(true)
+  })
+
+  it('is not ended early by a brace inside a string', () => {
+    const quoted = `.entity-open:hover {
+        content: "}";
+        color: var(--accent) !important;
+      }`
+
+    expect(shouting('.entity-open:hover', quoted)).toBe(true)
+  })
+
+  it('refuses a sheet whose rules are nested, rather than reading half of it', () => {
+    /* The sixth way, and the only one that was silent. Vite lowers this into
+       `.table .entity-open:hover`, so it applies in every administrative table;
+       jsdom drops it, so every count here would have gone on passing. */
+    const nested = '.table { & .entity-open:hover { background: var(--accent); } }'
+
+    expect(fails(() => unconditional(nested))).toBe(true)
+    // And a flat sheet is not refused, so the refusal cannot be „always".
+    expect(fails(() => unconditional(REFUSAL))).toBe(false)
+    // An at-rule is a second level of braces too, and is not nesting.
+    expect(fails(() => unconditional(`@media print { ${REFUSAL} }`))).toBe(false)
   })
 
   it('does not accept a rule that only applies inside a media query', () => {
@@ -239,16 +359,43 @@ describe('the guard over that stylesheet', () => {
     expect(ruleFor(".entity-open[aria-disabled='true']:hover", `${dead} ${REFUSAL}`).color).toBe(
       'var(--text-muted)',
     )
+    /* Nor is a shout inside a dead rule counted against the live one: what is in an
+       at-rule does not apply unconditionally, which is what is being asked. */
+    expect(
+      shouting(
+        '.entity-open:hover',
+        '@media print { .entity-open:hover { color: red !important; } } .entity-open:hover { color: var(--x); }',
+      ),
+    ).toBe(false)
   })
 
-  it('reads a rule that arrives through @import, as the browser does', () => {
-    /* `Entity.css` imports the shared table, and a hover for a control inside a
-       table is exactly what would be written there. Measured against the real
-       file: a selector that exists only in the imported sheet is among the rules
-       this guard counts. */
-    const selectors = unconditional().map((rule) => rule.selector)
+  it.each([
+    ['single quotes, as this repo writes them', "@import '../../styles/table.css';"],
+    ['double quotes', '@import "../../styles/table.css";'],
+    ['url()', '@import url("../../styles/table.css");'],
+  ])('resolves an import written with %s', (_case, written) => {
+    /* jsdom fetches nothing, so an unresolved import is a sheet this file cannot
+       see: the rules are absent and every count passes over less than it thinks.
+       Written for one quoting style, the other two were silent. Measured through
+       the same resolver, on a sheet whose import is rewritten into each form. */
+    const rewritten = readFileSync(ENTITY_CSS, 'utf-8').replace(
+      /@import\s+(?:url\(\s*)?['"][^'"]+['"]\s*\)?\s*;/,
+      written,
+    )
+    const resolved = rewritten.replace(
+      /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]\s*\)?\s*;/g,
+      (_whole, target) => sheetText(resolve(dirname(ENTITY_CSS), String(target))),
+    )
 
-    expect(selectors).toContain('.table tbody tr:hover')
-    expect(readFileSync(ENTITY_CSS, 'utf-8')).toContain("@import '../../styles/table.css';")
+    expect(unconditional(resolved).map((rule) => rule.selector)).toContain('.table tbody tr:hover')
+  })
+
+  it('reads the shared table, which the real sheet imports', () => {
+    /* Measured against the real file rather than a fixture: a selector that exists
+       only in the imported sheet is among the rules this guard counts. */
+    expect(unconditional().map((rule) => rule.selector)).toContain('.table tbody tr:hover')
+    expect(readFileSync(ENTITY_CSS, 'utf-8')).toMatch(
+      /@import\s+['"]\.\.\/\.\.\/styles\/table\.css['"]/,
+    )
   })
 })

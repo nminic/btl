@@ -571,32 +571,6 @@ describe('how a written page is set', () => {
     }
   })
 
-  /** The first argument of a call, cut where the argument ends rather than at the
-   *  first comma: `setItem(makeKey(a, b), day)` hands over one key. */
-  function firstArgument(after: string): string {
-    let depth = 0
-
-    for (let index = 0; index < after.length; index += 1) {
-      const letter = after[index]
-
-      if (letter === '(') {
-        depth += 1
-      } else if (letter === ')' && depth === 0) {
-        return after.slice(0, index)
-      } else if (letter === ')') {
-        depth -= 1
-      } else if (letter === ',' && depth === 0) {
-        return after.slice(0, index)
-      }
-    }
-
-    return after
-  }
-
-  /** A name read out of a file, made safe to put inside a pattern. */
-  function escaped(text: string): string {
-    return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')
-  }
 
   /**
    * The stores the policy deliberately does not name, and why.
@@ -647,8 +621,14 @@ describe('how a written page is set', () => {
     const keys = new Set<string>()
 
     for (const code of everywhere) {
-      for (const found of code.matchAll(/\.setItem\(([\s\S]*)/g)) {
-        const handed = firstArgument(found[1] ?? '').trim()
+      /* Every call, not the first one. Written as `matchAll(/\.setItem\(([\s\S]*)/g)`
+         the group was greedy and ate the file to its end, so `matchAll` answered
+         with exactly one match per file and every later store in the same file was
+         invisible. A review measured it: a second, undisclosed `setItem` written
+         under the theme in ThemeProvider passed the whole suite. The rest of the
+         call is taken from where the match ends instead. */
+      for (const found of code.matchAll(/\.setItem\(/g)) {
+        const handed = firstArgument(code.slice((found.index ?? 0) + found[0].length)).trim()
         const literal = /^['"`](.*)['"`]$/.exec(handed)
 
         if (literal !== null) {
@@ -679,6 +659,15 @@ describe('how a written page is set', () => {
        Nought keys is not the only empty answer: one key is too, if the one it
        found is the wrong one. */
     expect([...keys]).toContain(THEME_STORAGE_KEY)
+    /* And every store left out on purpose has to still be there to leave out.
+       Without this the map is write-only: the day the developer tools stop keeping
+       a store, the entry stays behind as a licence for a name nothing writes, and
+       the only thing said about it was that its reason is not the empty string. */
+    for (const key of NOT_DISCLOSED.keys()) {
+      expect([...keys], `nothing writes \`${key}\` any more, so the exemption is stale`).toContain(
+        key,
+      )
+    }
 
     const policy = whole('politika-privatnosti')
 
@@ -731,17 +720,24 @@ describe('how a written page is set', () => {
        the documents say. The one permitted mention is the sentence that says the
        portal does not accept one; anything that reads as an invitation fails.
      *
-       **Three ways past this were measured and are closed here.** The trigger was
+       **Four ways past this were measured and are closed here.** The trigger was
        the file formats by name, so „priložite zapis staze" said the whole thing
        without them. Only the written pages were read, so the same offer made from
        the dictionary, on a screen rather than in a document, was not read at all.
-       And the permitted sentence was looked for anywhere in the line, so „Portal
-       ne prima zapis staze, ali možete da priložite GPX" passed with the refusal
-       serving as the pass for the invitation beside it. */
-    const OFFERED = /GPX|TCX|\bFIT\b|zapis staze/i
-    const INVITES = /priloz|priloži|prilaž|prilog|dodajte|učitaj|pošaljite|prihvata/i
-    const REFUSAL = 'Portal ne prima zapis staze'
-
+       The permitted sentence was looked for anywhere in the line, so „Portal ne
+       prima zapis staze, ali možete da priložite GPX" passed with the refusal
+       serving as the pass for the invitation beside it. And „trag sa sata", which
+       is what somebody writing about a watch reaches for before they reach for
+       „GPX", was not among the triggers at all.
+     *
+       **What this cannot be, said out loud rather than implied.** The trigger is a
+       written list of ways of naming the thing, so it is complete for the ways
+       somebody has thought of and no others. It is not a proof that no offer
+       exists; it is a net with a known mesh. Hence three things: it fails loudly on
+       everything it does catch, the mesh is widened whenever a review gets through
+       it, and `offersTrack` is measured on offers written on purpose below, because
+       in `sr.json` nothing triggers it at all today and a half of a guard that
+       reads nothing looks exactly like a half that finds nothing. */
     const lines: [string, string][] = [
       ...pages.flatMap(([slug, page]) =>
         page.sections.flatMap((section) =>
@@ -755,19 +751,10 @@ describe('how a written page is set', () => {
         .map((line): [string, string] => ['sr.json', line]),
     ]
 
-    for (const [where, line] of lines) {
-      if (!OFFERED.test(line)) {
-        continue
-      }
-
-      expect(line, `${where} still offers a track file: ${line.trim()}`).toContain(REFUSAL)
-      /* And says nothing else about it. The refusal is one sentence; a second
-         sentence on the same line that invites one is the fault this guards. */
-      expect(
-        line.replace(REFUSAL, ''),
-        `${where} refuses a track file and offers one in the same breath: ${line.trim()}`,
-      ).not.toMatch(INVITES)
-    }
+    expect(offersTrack(lines)).toEqual([])
+    /* And the sweep reached the one line that is allowed to mention it, so the
+       trigger is live rather than merely quiet. */
+    expect(lines.filter(([, line]) => OFFERED.test(line)).length).toBeGreaterThan(0)
   })
 
   it('carries no telephone number anywhere', () => {
@@ -778,6 +765,104 @@ describe('how a written page is set', () => {
         expect(section.body, `${slug} prints a telephone number`).not.toMatch(/\+381[\d\s]/)
       }
     }
+  })
+})
+
+/** The first argument of a call, cut where the argument ends rather than at the
+ *  first comma: `setItem(makeKey(a, b), day)` hands over one key. */
+function firstArgument(after: string): string {
+  let depth = 0
+
+  for (let index = 0; index < after.length; index += 1) {
+    const letter = after[index]
+
+    if (letter === '(') {
+      depth += 1
+    } else if (letter === ')' && depth === 0) {
+      return after.slice(0, index)
+    } else if (letter === ')') {
+      depth -= 1
+    } else if (letter === ',' && depth === 0) {
+      return after.slice(0, index)
+    }
+  }
+
+  return after
+}
+
+/** A name read out of a file, made safe to put inside a pattern. */
+function escaped(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')
+}
+
+/** Ways of naming a track file, and what an invitation to send one sounds like. A
+ *  written list, so it is exactly as complete as the ways somebody has thought of;
+ *  the test that uses it says so, and measures itself against offers written on
+ *  purpose. */
+const OFFERED = /GPX|TCX|\bFIT\b|zapis staze|trag sa sata|GPS trag/i
+const INVITES = /priloz|priloži|prilaž|prilog|dodajte|učitaj|pošaljite|prihvata|čita/i
+const REFUSAL = 'Portal ne prima zapis staze'
+
+/**
+ * Every line that offers a track file, with where it was found.
+ *
+ * A line may mention one only to say the portal does not take it, and only that:
+ * the refusal is struck out and whatever is left must not read as an invitation, or
+ * one sentence could carry both and pass on the half that is allowed.
+ */
+function offersTrack(lines: [string, string][]): string[] {
+  return lines
+    .filter(([, line]) => OFFERED.test(line))
+    .filter(([, line]) => !line.includes(REFUSAL) || INVITES.test(line.replace(REFUSAL, '')))
+    .map(([where, line]) => `${where}: ${line.trim()}`)
+}
+
+describe('the two pieces the store sweep is made of', () => {
+  /* Neither was reachable by anything but the two calls the portal happens to make
+     today, and both exist for calls it does not make yet: a key built by a function,
+     and a name read out of a file going into a pattern. Reduced to doing nothing,
+     both passed the whole file. */
+  it('cuts the first argument where the argument ends, not at the first comma', () => {
+    expect(firstArgument("'btl-theme', next)")).toBe("'btl-theme'")
+    expect(firstArgument('makeKey(a, b), next)')).toBe('makeKey(a, b)')
+    expect(firstArgument('deep(one(a, b), c), next)')).toBe('deep(one(a, b), c)')
+    // A call with one argument ends at its own bracket, with no comma anywhere.
+    expect(firstArgument('only(a))')).toBe('only(a)')
+  })
+
+  it('makes a name read out of a file safe to put in a pattern', () => {
+    /* Without this, a name carrying a bracket or a dot built a pattern that either
+       threw something unreadable about a regular expression or quietly matched more
+       than the name. */
+    expect(new RegExp(escaped('KEY.NAME')).test('KEY.NAME')).toBe(true)
+    expect(new RegExp(escaped('KEY.NAME')).test('KEYxNAME')).toBe(false)
+    expect(() => new RegExp(escaped('makeKey(a'))).not.toThrow()
+  })
+})
+
+describe('the guard over the written pages', () => {
+  /* Each of these is a way somebody got past an earlier version of the sweep, or
+     could. Written as offers on purpose, because the real documents make none and a
+     sweep that finds nothing looks the same as a sweep that reads nothing. */
+  it.each([
+    ['the format by name', 'Priložite GPX i moderator ga proverava.'],
+    ['no format at all', 'Priložite zapis staze i moderator ga proverava.'],
+    ['a watch instead of a format', 'Pošaljite trag sa sata uz rezultat.'],
+    ['the letters GPS', 'Dodajte GPS trag, portal ga čita.'],
+    [
+      'a refusal and an offer in one breath',
+      'Portal ne prima zapis staze u obliku GPX, ali možete da priložite zapis uz komentar.',
+    ],
+  ])('catches an offer written as %s', (_case, line) => {
+    expect(offersTrack([['sr.json', line]])).toHaveLength(1)
+  })
+
+  it('lets the one sentence that refuses one through', () => {
+    expect(
+      offersTrack([
+        ['pravilnik', 'Portal ne prima zapis staze u obliku GPX, FIT ili TCX i ne izvodi te vrednosti iz njega.'],
+      ]),
+    ).toEqual([])
   })
 })
 

@@ -62,6 +62,13 @@ export function referralMayBeSet(today: string): boolean {
  * season is running, and anything a screen says about „the season now running" is
  * a sentence about nothing. The price list said exactly that, and a review
  * measured it on 30 September 2026.
+ *
+ * **Whole days, as everywhere in this file.** On 1 January two seasons stand over
+ * one another until 16:00: a result entered that morning belongs to the season that
+ * has closed, while the front page already counts the new one (PDL P9 and P14).
+ * This answers with the new one from midnight, because the portal reads whole days
+ * off one clock with no notion of an hour (src/clock). Written down rather than
+ * pretended away, as with the hour in `referralMayBeSet` above.
  */
 export function seasonRunning(today: string): number | null {
   const year = Number(today.slice(0, 4))
