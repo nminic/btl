@@ -26,11 +26,12 @@ import { renderAt } from '../../test/render'
  * everything after it; and, unanswerable in principle, an inline style, which no
  * stylesheet can outweigh and which left the whole suite green.
  *
- * **Who wins is a question for a browser, and it is not asked here.** The ninth review
- * measured it in headless Chrome, which is the only oracle that is not another
- * reimplementation of the cascade. Until such a check exists in this repo, the
- * appearance of the refused control is verified on QA by looking at it, and this file
- * does not pretend otherwise.
+ * **Who wins is a question for a browser, and it is not asked here.** It is asked by
+ * `scripts/refused-control-appearance.mjs`, which measures the built sheet in headless
+ * Chrome in both themes, at rest and under a real mouse: the only oracle that is not
+ * another reimplementation of the cascade. That script is run by hand and it writes no
+ * markup of the portal's own, so the one axis it cannot see is what a component puts on
+ * the element itself. That axis is answered below, where jsdom answers it exactly.
  *
  * **What is left is what jsdom can answer exactly:** that the refusal is written, that
  * it applies unconditionally, and that it declares what it is meant to declare. That
@@ -126,6 +127,13 @@ describe('a record that may no longer be opened', () => {
 
     expect(refused.matches(".entity-open[aria-disabled='true']")).toBe(true)
     expect(refused.matches('.entity-open')).toBe(true)
+
+    /* And it carries no style of its own. This is the axis that beat the last version
+       of this file in a browser and would beat the script in `scripts/` too, because
+       that script writes its own markup: an inline style outweighs every stylesheet
+       there is, so no sheet can be read to rule it out. Here it is not a question about
+       the cascade at all, only about the attribute, and jsdom answers that exactly. */
+    expect(refused.getAttribute('style')).toBeNull()
   })
 
   it('says out loud what it does not guarantee', () => {

@@ -3,32 +3,53 @@
  *
  * jsdom cannot answer this. Nine rounds of review on
  * `src/pages/admin/entityStyle.test.ts` proved it: every version tried to compute the
- * cascade and each was blind to the next axis, and the last one was beaten by an
- * inline style, which no stylesheet can outweigh. A browser computes the cascade
- * itself, so it is asked instead.
+ * cascade and each was blind to the next axis. A browser computes the cascade itself,
+ * so it is asked instead.
  *
  * Run by hand, not in the gate: it needs a build and a browser, and the gate must
- * stay fast. `node scripts/refused-control-appearance.mjs`
+ * stay fast.
+ *
+ *     npm run build
+ *     node scripts/refused-control-appearance.mjs
+ *
+ * Chrome is taken from `CHROME_PATH`, falling back to the usual Windows install; on
+ * Linux and macOS that variable has to be given. The debugging port is `BTL_CDP_PORT`,
+ * 9333 by default, and the browser this script talks to is the one it started, checked
+ * by the address of the page rather than assumed.
+ *
+ * **What is measured, exactly:** the built stylesheet, over the ancestor chain the
+ * price list gives this control, in **both themes**, at rest and under a real mouse
+ * whose landing is checked rather than hoped for.
+ *
+ * **What is not measured:** the markup below is written here rather than drawn by the
+ * portal, so nothing a component puts on the element itself is seen. An inline style
+ * is exactly the axis that beat the last jsdom guard, and it is answered where jsdom
+ * answers it exactly: `entityStyle.test.ts` asserts that the rendered button carries no
+ * `style` attribute at all. Neither check covers it alone; together they do.
  *
  * No new dependency. Chrome is driven over the DevTools Protocol with the WebSocket
- * built into Node, and hovering is a real mouse move rather than a guess about what
- * `:hover` means.
+ * built into Node.
  */
 import { spawn } from 'node:child_process'
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const CHROME =
   process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const PORT = 9333
+const PORT = Number(process.env.BTL_CDP_PORT ?? 9333)
+const VIEWPORT = { width: 1280, height: 800 }
 
 /** The markup the price list gives this control, from EntityEditor and AdminPricing:
- *  a refused open button in a table cell inside the member shell. */
+ *  a refused open button in a table cell inside the member shell, beside a live one.
+ *
+ *  `data-theme` sits on `<html>` and not on `<body>`, because that is where the portal
+ *  writes it (`ThemeProvider.tsx`, `index.html`) and where `tokens.css` reads it. On
+ *  `<body>` the attribute selects nothing and a fault written for a theme walks past. */
 const FIXTURE = (styles) => `<!doctype html>
-<html lang="sr"><head><meta charset="utf-8">${styles}</head>
-<body data-theme="dark">
+<html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
+<body>
   <div class="member">
     <section class="member__panel">
       <div class="table-scroll">
@@ -41,7 +62,57 @@ const FIXTURE = (styles) => `<!doctype html>
   </div>
 </body></html>`
 
-async function send(socket, id, method, params = {}) {
+/** What the page is asked, in both states and both themes.
+ *
+ *  The probe hangs on `<html>` rather than on `<body>`, so it reads the tokens the
+ *  theme defines at the root. Hung on `<body>`, it inherits whatever an ancestor
+ *  redefined along with the button, and the comparison compares a fault with itself.
+ *
+ *  `one.matches(':hover')` is the browser's own answer to whether the mouse is on the
+ *  control, and it is what turns the hover half of this measurement from a hope into a
+ *  fact. Kept out of a template literal, where a backtick would end the string. */
+const READ = `(() => {
+  const one = document.getElementById('refused')
+  const style = getComputedStyle(one)
+  const live = getComputedStyle(document.getElementById('live'))
+  const probe = document.createElement('span')
+  document.documentElement.append(probe)
+  const asColour = (token) => {
+    probe.style.color = 'var(' + token + ')'
+    return getComputedStyle(probe).color
+  }
+  const theme = {
+    muted: asColour('--text-muted'),
+    border: asColour('--border'),
+    accent: asColour('--accent'),
+  }
+  probe.remove()
+  return JSON.stringify({
+    cursor: style.cursor,
+    color: style.color,
+    borderColor: style.borderTopColor,
+    background: style.backgroundColor,
+    under: one.matches(':hover'),
+    live: { color: live.color, cursor: live.cursor },
+    theme,
+  })
+})()`
+
+const CENTRE = `(() => {
+  const box = document.getElementById('refused').getBoundingClientRect()
+  return JSON.stringify({
+    x: Math.round(box.x + box.width / 2),
+    y: Math.round(box.y + box.height / 2),
+    seen: box.width > 0 && box.height > 0,
+  })
+})()`
+
+let nextId = 0
+
+async function send(socket, method, params = {}) {
+  nextId += 1
+  const id = nextId
+
   return new Promise((resolve, reject) => {
     const onMessage = (event) => {
       const message = JSON.parse(event.data)
@@ -49,7 +120,7 @@ async function send(socket, id, method, params = {}) {
       if (message.id === id) {
         socket.removeEventListener('message', onMessage)
         if (message.error) {
-          reject(new Error(JSON.stringify(message.error)))
+          reject(new Error(`${method} failed: ${JSON.stringify(message.error)}`))
 
           return
         }
@@ -63,8 +134,118 @@ async function send(socket, id, method, params = {}) {
   })
 }
 
+/** `Runtime.evaluate` reports a thrown expression as a *successful* reply carrying
+ *  `exceptionDetails`, so without this the value arrives as `undefined` and the run
+ *  dies further along complaining about JSON instead of about the page. */
+async function evaluate(socket, expression) {
+  const answer = await send(socket, 'Runtime.evaluate', { expression, returnByValue: true })
+
+  if (answer.exceptionDetails) {
+    const thrown = answer.exceptionDetails.exception?.description ?? answer.exceptionDetails.text
+
+    throw new Error(`the page threw while being measured: ${thrown}`)
+  }
+
+  return JSON.parse(answer.result.value)
+}
+
+async function moveTo(socket, x, y) {
+  await send(socket, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, buttons: 0 })
+  await new Promise((resolve) => setTimeout(resolve, 120))
+}
+
+/** One theme, both states. The theme is pinned twice: on the root, the way the portal
+ *  writes it, and as the emulated media feature, so which theme gets measured is
+ *  decided here and not by the settings of whoever runs this. */
+async function measure(socket, theme) {
+  await send(socket, 'Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-color-scheme', value: theme }],
+  })
+  await evaluate(
+    socket,
+    `(() => { document.documentElement.dataset.theme = '${theme}'; return JSON.stringify(document.documentElement.dataset.theme) })()`,
+  )
+
+  await moveTo(socket, 4, 4)
+
+  const resting = await evaluate(socket, READ)
+
+  if (resting.under) {
+    throw new Error(`${theme}: the mouse is still on the control while the resting state is read`)
+  }
+
+  const centre = await evaluate(socket, CENTRE)
+
+  if (!centre.seen) {
+    throw new Error(`${theme}: the control has no box on the page, so nothing was measured`)
+  }
+
+  await moveTo(socket, centre.x, centre.y)
+
+  const hovered = await evaluate(socket, READ)
+
+  if (!hovered.under) {
+    throw new Error(
+      `${theme}: the mouse did not land on the control (${centre.x}, ${centre.y}), so nothing about hovering was measured`,
+    )
+  }
+
+  return { resting, hovered }
+}
+
+function complaintsFor(theme, { resting, hovered }) {
+  const complaints = []
+  const say = (text) => complaints.push(`${theme}: ${text}`)
+
+  /* The live control beside it, which nothing about this fault should touch. If it
+     stops looking live, the sheet is not reaching these buttons at all and every
+     quiet check below is quiet for the wrong reason. */
+  if (hovered.live.cursor !== 'pointer') {
+    say(`the live control beside it lost the pointer (${hovered.live.cursor}), so the sheet is not reaching these buttons`)
+  }
+
+  /* Compared with what the theme says at the root, so a token redefined anywhere on
+     the way down shows up as the refusal resolving to something else. */
+  if (resting.color !== resting.theme.muted) {
+    say(`at rest its text is not the muted colour (${resting.color}, theme says ${resting.theme.muted})`)
+  }
+  if (resting.borderColor !== resting.theme.border) {
+    say(`at rest its border is not the border colour (${resting.borderColor}, theme says ${resting.theme.border})`)
+  }
+  if (hovered.color !== hovered.theme.muted || hovered.borderColor !== hovered.theme.border) {
+    say(`under the mouse it stops being muted (${hovered.color} / ${hovered.borderColor})`)
+  }
+
+  /* Named rather than merely not-pointer. `all: revert` and a bare `cursor: auto` both
+     take the refusal off the pointer without ever reaching `pointer`, and hovering is
+     the one state in which a cursor is seen at all. */
+  if (resting.cursor !== 'not-allowed') {
+    say(`at rest the refused control does not carry not-allowed (${resting.cursor})`)
+  }
+  if (hovered.cursor !== 'not-allowed') {
+    say(`under the mouse the refused control does not carry not-allowed (${hovered.cursor})`)
+  }
+
+  if (hovered.color === hovered.theme.accent) {
+    say(`under the mouse its text is the live colour (${hovered.color})`)
+  }
+  if (hovered.background !== resting.background) {
+    say(`under the mouse its background changes (${resting.background} to ${hovered.background})`)
+  }
+  if (hovered.borderColor !== resting.borderColor) {
+    say(`under the mouse its border changes (${resting.borderColor} to ${hovered.borderColor})`)
+  }
+
+  return complaints
+}
+
 async function main() {
   const dist = join(process.cwd(), 'dist', 'assets')
+
+  if (!existsSync(dist)) {
+    throw new Error(`no ${dist}; run \`npm run build\` first`)
+  }
+
   const sheets = readdirSync(dist).filter((name) => name.endsWith('.css'))
 
   if (sheets.length === 0) {
@@ -75,14 +256,21 @@ async function main() {
 
   writeFileSync(page, FIXTURE(sheets.map((name) => `<link rel="stylesheet" href="${name}">`).join('')))
 
+  const address = pathToFileURL(page).href
   const profile = mkdtempSync(join(tmpdir(), 'btl-chrome-'))
   const chrome = spawn(CHROME, [
     '--headless=new',
     '--disable-gpu',
     `--remote-debugging-port=${PORT}`,
     `--user-data-dir=${profile}`,
-    pathToFileURL(page).href,
+    address,
   ])
+
+  chrome.on('error', (problem) => {
+    console.error(`Chrome did not start from ${CHROME}: ${problem.message}`)
+    console.error('set CHROME_PATH to the browser on this machine')
+    process.exitCode = 1
+  })
 
   try {
     let target = null
@@ -92,14 +280,20 @@ async function main() {
       try {
         const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()
 
-        target = list.find((one) => one.type === 'page') ?? null
+        /* By address, not merely the first page. A Chrome left behind on this port
+           from an interrupted run keeps it, the new one fails to bind, and without
+           this the measurement is taken of somebody else's page and reported as if
+           it were this one. */
+        target = list.find((one) => one.type === 'page' && one.url === address) ?? null
       } catch {
         target = null
       }
     }
 
     if (target === null) {
-      throw new Error('Chrome did not open a page to talk to')
+      throw new Error(
+        `nothing on port ${PORT} is showing ${address}; a browser left over from an earlier run may be holding the port (set BTL_CDP_PORT or close it)`,
+      )
     }
 
     const socket = new WebSocket(target.webSocketDebuggerUrl)
@@ -109,109 +303,31 @@ async function main() {
       socket.addEventListener('error', reject)
     })
 
-    /* The page is asked what the theme says those tokens are, read at the root where
-       the theme defines them. The refusal is written through them, so on screen it has
-       to resolve to exactly those; a rule that redefines a token on an ancestor never
-       touches the button and would pass any check that compares the button only with
-       itself. Kept out of the evaluated string, where a backtick would end it. */
-    const read = async (id, hovering) => {
-      const script = `(() => {
-        const one = document.getElementById('refused')
-        const style = getComputedStyle(one)
-        return JSON.stringify({
-          cursor: style.cursor,
-          color: style.color,
-          borderColor: style.borderTopColor,
-          background: style.backgroundColor,
-          live: (() => { const l = getComputedStyle(document.getElementById('live')); return { color: l.color, cursor: l.cursor } })(),
-          theme: (() => {
-            const root = getComputedStyle(document.documentElement)
-            const probe = document.createElement('span')
-            document.body.append(probe)
-            const asColour = (token) => {
-              probe.style.color = 'var(' + token + ')'
-              return getComputedStyle(probe).color
-            }
-            const answer = { muted: asColour('--text-muted'), border: asColour('--border'), accent: asColour('--accent') }
-            probe.remove()
-            void root
-            return answer
-          })(),
-        })
-      })()`
+    /* A size of its own, so the control has a box and the mouse has somewhere to land
+       whatever window the browser happened to open with. */
+    await send(socket, 'Emulation.setDeviceMetricsOverride', {
+      width: VIEWPORT.width,
+      height: VIEWPORT.height,
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
 
-      if (hovering) {
-        const box = await send(socket, id, 'Runtime.evaluate', {
-          expression: `JSON.stringify(document.getElementById('refused').getBoundingClientRect())`,
-          returnByValue: true,
-        })
-        const rect = JSON.parse(box.result.value)
-
-        await send(socket, id + 1, 'Input.dispatchMouseEvent', {
-          type: 'mouseMoved',
-          x: Math.round(rect.x + rect.width / 2),
-          y: Math.round(rect.y + rect.height / 2),
-          buttons: 0,
-        })
-        await new Promise((resolve) => setTimeout(resolve, 120))
-      }
-
-      const answer = await send(socket, id + 2, 'Runtime.evaluate', {
-        expression: script,
-        returnByValue: true,
-      })
-
-      return JSON.parse(answer.result.value)
+    const measured = {
+      dark: await measure(socket, 'dark'),
+      light: await measure(socket, 'light'),
     }
-
-    const resting = await read(10, false)
-    const hovered = await read(20, true)
 
     socket.close()
 
-    const complaints = []
-    const accent = (colour) => colour === hovered.theme.accent
+    const complaints = [
+      ...complaintsFor('dark', measured.dark),
+      ...complaintsFor('light', measured.light),
+    ]
 
-    /* Read at the root, so a token redefined on an ancestor shows up as the refusal
-       resolving to something the theme did not say. */
-    if (resting.color !== resting.theme.muted) {
-      complaints.push(
-        `at rest its text is not the muted colour (${resting.color}, theme says ${resting.theme.muted})`,
-      )
+    for (const theme of ['dark', 'light']) {
+      console.log(`${theme} at rest  `, measured[theme].resting)
+      console.log(`${theme} hovered  `, measured[theme].hovered)
     }
-    if (resting.borderColor !== resting.theme.border) {
-      complaints.push(
-        `at rest its border is not the border colour (${resting.borderColor}, theme says ${resting.theme.border})`,
-      )
-    }
-    if (hovered.color !== hovered.theme.muted || hovered.borderColor !== hovered.theme.border) {
-      complaints.push(
-        `under the mouse it stops being muted (${hovered.color} / ${hovered.borderColor})`,
-      )
-    }
-
-    if (hovered.cursor === 'pointer') {
-      complaints.push(`under the mouse the refused control carries the pointer (${hovered.cursor})`)
-    }
-    if (resting.cursor !== 'not-allowed') {
-      complaints.push(`at rest the refused control does not carry not-allowed (${resting.cursor})`)
-    }
-    if (accent(hovered.color)) {
-      complaints.push(`under the mouse its text is the live colour (${hovered.color})`)
-    }
-    if (hovered.background !== resting.background) {
-      complaints.push(
-        `under the mouse its background changes (${resting.background} to ${hovered.background})`,
-      )
-    }
-    if (hovered.borderColor !== resting.borderColor) {
-      complaints.push(
-        `under the mouse its border changes (${resting.borderColor} to ${hovered.borderColor})`,
-      )
-    }
-
-    console.log('at rest  ', resting)
-    console.log('hovered  ', hovered)
 
     if (complaints.length > 0) {
       console.error('\nthe refused control does not look refused:')
@@ -221,12 +337,17 @@ async function main() {
       return
     }
 
-    console.log('\nthe refused control still looks refused, measured in Chrome')
+    console.log('\nthe refused control still looks refused in both themes, measured in Chrome')
   } finally {
     chrome.kill()
-    /* The profile is left to the system's temp folder rather than removed here:
-       Chrome holds its files for a moment after the kill and Windows refuses the
-       delete, which would turn a passing measurement into a crash. */
+    try {
+      rmSync(page, { force: true })
+    } catch {
+      console.log(`fixture left behind: ${page}`)
+    }
+    /* The profile is left to the system's temp folder if Windows refuses: Chrome holds
+       its files for a moment after the kill, and a failed delete must not turn a
+       finished measurement into a crash. */
     await new Promise((resolve) => setTimeout(resolve, 300))
     try {
       rmSync(profile, { recursive: true, force: true })
