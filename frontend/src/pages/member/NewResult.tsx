@@ -33,6 +33,15 @@ function filledFrom(one: Submission): FormValues {
     seconds: String(one.seconds % 60),
     link: one.link,
     photo: one.photo,
+    /* And what they said about the race, which this left out while returning the
+       picture beside it. PDL P9 binds the two as a pair, „dva neobavezna polja,
+       ista na oba puta prijave: slika i komentar", and a correction is the one
+       submission where those words matter most: the refusal is usually about the
+       link, and the comment is what explains it. Left out, the member reopened
+       the form, saw the sentence gone, and sending the correction wiped it from
+       the moderator's card as well, because a correction is the same submission
+       written over (session/SessionProvider.tsx). */
+    comment: one.comment,
   }
 }
 

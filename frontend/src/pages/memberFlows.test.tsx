@@ -670,6 +670,10 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText('Minuta'), '52')
     await user.type(screen.getByLabelText('Sekundi'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
+    /* Something said about the race, because it is one of the two optional fields
+       the two doors of reporting share (PDL P9) and it has to survive the whole
+       walk: to the moderator, and back into the form when a result is corrected. */
+    await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao.')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
   }
 
@@ -841,6 +845,14 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText(/Link ne otvara rezultate\./)).toBeVisible()
     const link = screen.getByLabelText(/^Link/)
     expect(link).toHaveValue('https://primer.rs/rezultati')
+    /* And what the member said about the race comes back with it. This is the one
+       submission where those words matter most: the refusal is usually about the
+       link, and the comment is what explains it. Left out, the member reopened the
+       form, saw the sentence gone, and sending the correction wiped it from the
+       moderator's card too, because a correction is the same submission written
+       over. A review measured exactly that on the first version of this fix: the
+       link came back and the comment did not (PDL P9 binds the two as a pair). */
+    expect(screen.getByLabelText(/Komentar/)).toHaveValue('Sat mi je stao.')
 
     await user.clear(link)
     await user.type(link, 'https://primer.rs/ispravno')
