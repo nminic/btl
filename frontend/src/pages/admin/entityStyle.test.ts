@@ -295,19 +295,29 @@ function shouts(body: string): boolean {
 }
 
 /**
- * Whether a rule body declares a property, read by splitting rather than by a
- * pattern.
+ * Whether a rule body declares a property, or anything that covers it.
  *
- * Written this way after a pattern built inside a template literal lost its
- * backslashes and became `[;{s]cursors*:`, which matched nothing: the guard then
- * reported that no rule declares `cursor` and passed over the very fault it was
- * being extended for. Splitting on the two characters CSS uses cannot lose an
- * escape, because there is none to lose.
+ * `background-color` sets the background, and `border` sets the border colour: a
+ * guard that compares the name letter for letter reads both as „does not touch it"
+ * and lets the same fault through under a different name. So a declaration counts
+ * when it is the property, a longhand of it, or a shorthand that contains it.
+ *
+ * Read by splitting rather than by a pattern. A pattern built inside a template
+ * literal lost its backslashes once and became `[;{s]cursors*:`, which matched
+ * nothing: the guard then reported that no rule declares `cursor` and passed over
+ * the fault it was being extended for. Splitting on the two characters CSS uses
+ * cannot lose an escape, because there is none to lose.
  */
 function declares(body: string, property: string): boolean {
   return withoutStrings(body)
     .split(';')
-    .some((one) => (one.split(':')[0] ?? '').trim().toLowerCase() === property)
+    .map((one) => (one.split(':')[0] ?? '').trim().toLowerCase())
+    .some(
+      (name) =>
+        name === property ||
+        name.startsWith(`${property}-`) ||
+        property.startsWith(`${name}-`),
+    )
 }
 
 /** A rule body with its quoted strings taken out, so `content: "!important"` says
