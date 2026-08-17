@@ -294,61 +294,6 @@ function shouts(body: string): boolean {
   return /!\s*important/i.test(withoutStrings(body))
 }
 
-/**
- * Which names set the same thing as the given property.
- *
- * Written out rather than guessed from the spelling. Guessed by prefix, `border-color`
- * missed `border-block-color` and `border-top-color`, which are the same edge in
- * another word, and it read `color-scheme` as „sets the colour", which failed the
- * build over a property that cannot make a control look live. Both measured.
- */
-const FAMILY: Record<string, string[]> = {
-  cursor: ['cursor'],
-  color: ['color'],
-  'border-color': [
-    'border-color',
-    'border',
-    'border-top-color',
-    'border-right-color',
-    'border-bottom-color',
-    'border-left-color',
-    'border-block-color',
-    'border-block-start-color',
-    'border-block-end-color',
-    'border-inline-color',
-    'border-inline-start-color',
-    'border-inline-end-color',
-  ],
-  background: ['background', 'background-color', 'background-image'],
-  'text-decoration': ['text-decoration', 'text-decoration-line', 'text-decoration-color'],
-  opacity: ['opacity'],
-  outline: ['outline', 'outline-color', 'outline-style', 'outline-width'],
-  'box-shadow': ['box-shadow'],
-  filter: ['filter'],
-}
-
-/** The names a rule body declares. */
-function declared(body: string): string[] {
-  return withoutStrings(body)
-    .split(';')
-    .map((one) => (one.split(':')[0] ?? '').trim().toLowerCase())
-    .filter((name) => name !== '' && !name.startsWith('--'))
-}
-
-/**
- * Whether a rule body sets the same thing as the given property.
- *
- * Read by splitting rather than by a pattern. A pattern built inside a template
- * literal lost its backslashes once and became `[;{s]cursors*:`, which matched
- * nothing: the guard then reported that no rule declares `cursor` and passed over the
- * fault it was being extended for.
- */
-function declares(body: string, property: string): boolean {
-  const family = FAMILY[property] ?? [property]
-
-  return declared(body).some((name) => family.includes(name))
-}
-
 /** A rule body with its quoted strings taken out, so `content: "!important"` says
  *  nothing about priority. */
 function withoutStrings(body: string): string {
@@ -507,7 +452,7 @@ function partsOver(element: Element, selector: string): string[] {
       .map((one) => one.replace(LIVE_STATES, '[data-live]'))
       .filter((one) => {
         try {
-          return element.matches(one)
+          return element.matches(withoutPseudoElements(one))
         } catch {
           throw new Error(`a selector jsdom cannot read: ${one}`)
         }
@@ -548,6 +493,46 @@ function rulesOver(
     }))
 }
 
+/**
+ * Which rules reach this element while it is in none of those states.
+ *
+ * The same substitution, with the attribute set on nobody: `:hover` then matches
+ * nothing and `:not(:hover)` matches everything, which is exactly what resting means.
+ * Filtered instead by „the selector mentions a state", a rule written
+ * `.entity-open:not(:hover)` fell out of both passes and reached the control in the
+ * one state nobody was looking at.
+ */
+function restingRulesOver(element: Element): { file: string; selector: string }[] {
+  return everyRule().filter((rule) =>
+    groupParts(unescaped(rule.selector))
+      .map((one) => one.replace(LIVE_STATES, '[data-live]'))
+      .some((one) => {
+        try {
+          return element.matches(withoutPseudoElements(one))
+        } catch {
+          return false
+        }
+      }),
+  )
+}
+
+/** A selector without its pseudo-element, which the DOM cannot be asked about but
+ *  which is drawn on this control all the same: `::after` on a refused button paints
+ *  over it. */
+function withoutPseudoElements(selector: string): string {
+  return selector.replace(/::[\w-]+(\([^()]*\))?/g, '')
+}
+
+/** A selector written on one line, so the same rule spread over three lines and
+ *  the same rule on one are one entry. */
+function tidy(selector: string): string {
+  return selector.replace(/\s+/g, ' ').trim()
+}
+
+function short(path: string): string {
+  return path.split(/[/\\]/).pop() ?? path
+}
+
 const css = sheetText(ENTITY_CSS)
 
 describe('a record that may no longer be opened', () => {
@@ -577,112 +562,50 @@ describe('a record that may no longer be opened', () => {
     expect(hovered.color).toBe('var(--text-muted)')
   })
 
-  it('is the last word for the button on the screen, whatever the rule is called', async () => {
-    /* The question asked of the rendered control instead of of a file. Every rule in
-       every stylesheet of the portal is offered to the DOM engine, which says which
-       of them reach this button under the mouse; the refusal then has to weigh more
-       than any of them, and none of them may shout.
+  it('is the only thing in the portal that reaches this control', async () => {
+    /* **Zašto spisak, a ne merenje kaskade.** Sedam krugova recenzije je na ovom
+       fajlu našlo sedamnaest visokih nalaza, i svaki je bio nova osa kaskade koju
+       merenje nije pokrivalo: stanja (`:hover`, `:active`, `:focus`), mirovanje
+       (`:not(:hover)`), težina po delu grupe, `!important`, skraćenice svojstava,
+       pseudo-elementi, slojevi, tokeni, i `all: revert`. Svako merenje je bilo
+       tačno za osu koju je znalo i slepo za sledeću.
      *
-       This is what closes the six ways a review wrote the same fault so that it read
-       differently every time: another file, capitals, an attribute selector, an
-       escaped letter, an unquoted import, and a selector that never names the class.
-       Spelling is not the question any more. */
+       Kaskadu ovde niko ne može da izračuna tačno, jer je to posao pregledača. Ono
+       što se može izračunati tačno jeste **ko uopšte dodiruje ovu kontrolu**. Zato
+       je pitanje okrenuto: nijedno pravilo u celom portalu ne sme da stigne do
+       odbijene kontrole, osim onih koja su ovde imenovana. Novo pravilo koje je
+       dodirne obara ovaj test i mora da bude pročitano, što je jedino što je kroz
+       sedam krugova stvarno radilo.
+     *
+       Pita se i u mirovanju i u svakom stanju u kom kontrola sme da izgleda živa. */
     renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
 
     const refused = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
 
     expect(refused).toHaveAttribute('aria-disabled', 'true')
 
-    const reaching = rulesOver(refused, true)
-    const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
-    const others = reaching.filter((rule) => !rule.selector.includes("aria-disabled='true'"))
+    const reaching = [...rulesOver(refused, false), ...restingRulesOver(refused)]
+    const seen = [...new Set(reaching.map((rule) => `${short(rule.file)} ${tidy(rule.selector)}`))].sort()
 
-    /* One refusal, and it is unconditional: a refusal inside a media query would be
-       a refusal that stops at a screen width. */
-    expect(refusal.map((rule) => `${rule.at}|${rule.selector}`)).toEqual([
-      "|.entity-open[aria-disabled='true']:hover",
+    /* Everything that touches this control, and nothing else may. The reset and the
+       focus ring are the portal's own, written once for every element there is; the
+       four `.entity-open` rules are the control itself and its refusal. A new rule
+       anywhere in the portal that reaches this button lands here and gets read. */
+    expect(seen).toEqual([
+      'Entity.css .entity-open',
+      'Entity.css .entity-open:hover',
+      "Entity.css .entity-open[aria-disabled='true']",
+      "Entity.css .entity-open[aria-disabled='true']:hover",
+      'index.css *, *::before, *::after',
+      'index.css :focus-visible',
     ])
-
-    const strongest = must(refusal[0], 'the refusal rule').weight
-
-    for (const rule of others) {
-      expect(
-        rule.weight,
-        `${rule.selector} (${rule.file}) reaches this button and outweighs the refusal`,
-      ).toBeLessThan(strongest)
-      expect(
-        shouts(rule.body),
-        `${rule.selector} (${rule.file}) shouts over the refusal`,
-      ).toBe(false)
-    }
-
-    /* And the sweep really reached the portal. Counting the rules that arrive is not
-       that: two arrive today and both are written in `Entity.css`, the one file this
-       design exists to stop trusting, so a sweep narrowed to that file alone would
-       have satisfied it. What is counted is how many sheets were read. */
-    expect(everySheet().length, 'the sweep read the portal, not one folder').toBeGreaterThan(30)
   })
 
-  it('is the last word for every property it sets, not only among hover rules', async () => {
-    /* A rule needs no `:hover` at all to undo the refusal. `.entity-open { cursor:
-       pointer !important }` is one line, reaches the same button, and gives a record
-       that may no longer be opened its pointer back, which is the first half of the
-       fault this file exists for. A review wrote it and the whole suite passed,
-       because everything here looked only at rules whose selector says `:hover`.
-     *
-       So the question is asked per property instead. For each thing the refusal
-       declares, no other rule that reaches this button may shout it, and none may
-       carry at least as much weight while declaring it. At least as much, not more:
-       between two rules of equal weight the later one wins, and which file comes
-       later in the bundle is not something this file can know. */
-    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
-
-    const refused = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
-    const reaching = rulesOver(refused, false)
-    const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
-    const weight = Math.max(...refusal.map((rule) => rule.weight))
-
-    expect(refusal.length, 'the refusal reaches this button').toBeGreaterThan(0)
-
-    /* Which properties, read out of the refusal itself. Typed here, the list was a
-       second home for a fact that lives in `Entity.css`: a fifth declaration added to
-       the refusal stayed unguarded and nothing said so. */
-    const guarded = [...new Set(refusal.flatMap((rule) => declared(rule.body)))]
-
-    expect(guarded.length, 'the refusal declares something').toBeGreaterThan(2)
-
-    for (const property of guarded) {
-      const declaring = reaching
-        .filter((rule) => !rule.selector.includes("aria-disabled='true'"))
-        .filter((rule) => declares(rule.body, property))
-
-      for (const rule of declaring) {
-        expect(
-          shouts(rule.body),
-          `${rule.selector} (${rule.file}) shouts ${property} over the refusal`,
-        ).toBe(false)
-        expect(
-          rule.weight,
-          `${rule.selector} (${rule.file}) sets ${property} and is not outweighed by the refusal`,
-        ).toBeLessThan(weight)
-      }
-    }
-  })
-
-  it('is the last word in the other place the same control is drawn', () => {
-    /* The price list draws this button in a plain cell, so a rule written for the
-       row of actions on the entity screens (`.entity-row-actions > button`) does not
-       reach it there and passes. A review wrote exactly that, and it outweighs the
-       refusal (0,3,1 against 0,3,0) without shouting a word.
-     *
-       So the same question is asked of the same control in the markup the entity
-       screens give it (EntityEditor.tsx: a `span.entity-row-actions` inside a table
-       row). Built rather than rendered, because no screen refuses a record there
-       today; the point is that the refusal has to hold wherever the control is put,
-       not only where it happens to stand now. */
-    /* The class names are read out of the component that draws them, not typed here.
-       Typed, they were a second home for the same fact: renaming the wrapper in
-       EntityEditor left this guard passing over markup nothing draws. */
+  it('and the same holds where the entity screens draw the same control', () => {
+    /* The price list draws this button in a plain cell; the entity screens wrap it
+       in a row of actions. A rule written for that wrapper never reaches it here, so
+       the same question is asked there too. The class names are read out of the
+       component that draws them. */
     const editor = readFileSync(join(process.cwd(), 'src/pages/admin/EntityEditor.tsx'), 'utf-8')
     const wrapper = must(/className="(entity-row-[\w-]+)"/.exec(editor), 'the wrapper of the row actions')[1]
     const opener = must(/className="(entity-open)"/.exec(editor), 'the button that opens a record')[1]
@@ -696,24 +619,24 @@ describe('a record that may no longer be opened', () => {
     document.body.append(table)
 
     const refused = must(table.querySelector('.entity-open'), 'the button in the row of actions')
-    const reaching = rulesOver(refused, true)
-    const refusal = reaching.filter((rule) => rule.selector.includes("aria-disabled='true'"))
-    const strongest = must(refusal[0], 'the refusal rule').weight
+    const reaching = [...rulesOver(refused, false), ...restingRulesOver(refused)]
+    const seen = [...new Set(reaching.map((rule) => `${short(rule.file)} ${tidy(rule.selector)}`))].sort()
 
-    for (const rule of reaching.filter((one) => !one.selector.includes("aria-disabled='true'"))) {
-      expect(
-        rule.weight,
-        `${rule.selector} (${rule.file}) reaches this button and outweighs the refusal`,
-      ).toBeLessThan(strongest)
-      expect(
-        shouts(rule.body),
-        `${rule.selector} (${rule.file}) shouts over the refusal`,
-      ).toBe(false)
-    }
+    /* Everything that touches this control, and nothing else may. The reset and the
+       focus ring are the portal's own, written once for every element there is; the
+       four `.entity-open` rules are the control itself and its refusal. A new rule
+       anywhere in the portal that reaches this button lands here and gets read. */
+    expect(seen).toEqual([
+      'Entity.css .entity-open',
+      'Entity.css .entity-open:hover',
+      "Entity.css .entity-open[aria-disabled='true']",
+      "Entity.css .entity-open[aria-disabled='true']:hover",
+      'index.css *, *::before, *::after',
+      'index.css :focus-visible',
+    ])
 
     table.remove()
   })
-
 
   it('is the last word on what that control does under the mouse', () => {
     /* Specificity is what makes the refusal win, and specificity is exactly what
