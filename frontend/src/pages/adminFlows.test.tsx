@@ -378,7 +378,10 @@ describe('the price list', () => {
 
     expect(open).toHaveAttribute('aria-disabled', 'true')
     expect(open).not.toBeDisabled()
-    expect(open).toHaveAccessibleDescription(sr.admin.referralSettled)
+    /* And it names the season, so a moderator reading it in October 2026 knows
+       the amount being settled is the one for 2027 and not for the year they are
+       standing in. */
+    expect(open).toHaveAccessibleDescription(/Iznos preporuke za sezonu 2027 se više ne menja/)
 
     await user.click(open)
 
@@ -398,6 +401,12 @@ describe('the price list', () => {
     const open = screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' })
 
     expect(open).toHaveAttribute('aria-disabled', 'false')
+    /* And the sentence explaining why it will not open is not on the screen. It
+       is drawn under its own condition, and nothing held that: a review made the
+       condition always true and the whole suite stayed green, so on 30 September
+       the words „iznos se za ovu sezonu više ne menja" would have stood beside a
+       button that opens the form perfectly well. */
+    expect(screen.queryByText(/Iznos preporuke za sezonu/)).not.toBeInTheDocument()
 
     await user.click(open)
 

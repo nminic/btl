@@ -11,6 +11,7 @@ import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { referralMayBeSet } from '../../data/season'
+import { seasonBeingRenewed } from '../../data/pricing'
 import { EntityEditor, OpenRecord } from './EntityEditor'
 import { PRICING, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
@@ -180,7 +181,7 @@ export function AdminPricing() {
               1.10. u 00 po CET za predstojeću godinu"). */}
           {!maySet && (
             <p id="referral-settled" className="rate__hint" role="status">
-              {t('admin.referralSettled')}
+              {t('admin.referralSettled', { season: seasonBeingRenewed(today) })}
             </p>
           )}
         </section>
