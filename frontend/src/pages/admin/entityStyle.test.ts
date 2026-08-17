@@ -40,7 +40,7 @@ import { renderAt } from '../../test/render'
  * **What this one does.** It asks the rendered button, not the file. The screen is
  * rendered on a day when the record is refused, every rule of every stylesheet in
  * the portal is read, and the DOM engine is asked which of them would apply to that
- * button under the mouse (`element.matches` with `:hover` stripped). Whatever comes
+ * button under the mouse (, with the button put into that state). Whatever comes
  * back is then weighed by specificity, and the refusal has to be the last word.
  * Spelling stops mattering, and so does which file the rule was written in.
  *
@@ -295,29 +295,58 @@ function shouts(body: string): boolean {
 }
 
 /**
- * Whether a rule body declares a property, or anything that covers it.
+ * Which names set the same thing as the given property.
  *
- * `background-color` sets the background, and `border` sets the border colour: a
- * guard that compares the name letter for letter reads both as „does not touch it"
- * and lets the same fault through under a different name. So a declaration counts
- * when it is the property, a longhand of it, or a shorthand that contains it.
- *
- * Read by splitting rather than by a pattern. A pattern built inside a template
- * literal lost its backslashes once and became `[;{s]cursors*:`, which matched
- * nothing: the guard then reported that no rule declares `cursor` and passed over
- * the fault it was being extended for. Splitting on the two characters CSS uses
- * cannot lose an escape, because there is none to lose.
+ * Written out rather than guessed from the spelling. Guessed by prefix, `border-color`
+ * missed `border-block-color` and `border-top-color`, which are the same edge in
+ * another word, and it read `color-scheme` as „sets the colour", which failed the
+ * build over a property that cannot make a control look live. Both measured.
  */
-function declares(body: string, property: string): boolean {
+const FAMILY: Record<string, string[]> = {
+  cursor: ['cursor'],
+  color: ['color'],
+  'border-color': [
+    'border-color',
+    'border',
+    'border-top-color',
+    'border-right-color',
+    'border-bottom-color',
+    'border-left-color',
+    'border-block-color',
+    'border-block-start-color',
+    'border-block-end-color',
+    'border-inline-color',
+    'border-inline-start-color',
+    'border-inline-end-color',
+  ],
+  background: ['background', 'background-color', 'background-image'],
+  'text-decoration': ['text-decoration', 'text-decoration-line', 'text-decoration-color'],
+  opacity: ['opacity'],
+  outline: ['outline', 'outline-color', 'outline-style', 'outline-width'],
+  'box-shadow': ['box-shadow'],
+  filter: ['filter'],
+}
+
+/** The names a rule body declares. */
+function declared(body: string): string[] {
   return withoutStrings(body)
     .split(';')
     .map((one) => (one.split(':')[0] ?? '').trim().toLowerCase())
-    .some(
-      (name) =>
-        name === property ||
-        name.startsWith(`${property}-`) ||
-        property.startsWith(`${name}-`),
-    )
+    .filter((name) => name !== '' && !name.startsWith('--'))
+}
+
+/**
+ * Whether a rule body sets the same thing as the given property.
+ *
+ * Read by splitting rather than by a pattern. A pattern built inside a template
+ * literal lost its backslashes once and became `[;{s]cursors*:`, which matched
+ * nothing: the guard then reported that no rule declares `cursor` and passed over the
+ * fault it was being extended for.
+ */
+function declares(body: string, property: string): boolean {
+  const family = FAMILY[property] ?? [property]
+
+  return declared(body).some((name) => family.includes(name))
 }
 
 /** A rule body with its quoted strings taken out, so `content: "!important"` says
@@ -439,30 +468,43 @@ function groupParts(selector: string): string[] {
 }
 
 /**
- * The parts of a group that reach this element while the mouse is over it.
+ * The states in which this control has to keep looking refused.
  *
- * **The element is put into that state, rather than the state being cut out of the
- * selector.** Deleting the text `:hover` is a guess about what hovering means, and a
- * review beat it three ways: `tr:hover .entity-open:hover` lost weight the refusal
+ * Hovering is not the only one. `:active` is the pointer held down on it, and
+ * `:focus` and `:focus-visible` are the keyboard standing on it, which is exactly
+ * where a refused control must not look live. A review wrote all three at weight 301
+ * and every one of them passed, because only hovering was being modelled.
+ */
+/* Longest first: written , the alternation matched 
+   inside  and left  behind, so that state was silently
+   not modelled at all. Measured. */
+const LIVE_STATES = /:(focus-visible|focus-within|hover|active|focus)\b/gi
+
+/**
+ * The parts of a group that reach this element in any of those states.
+ *
+ * **The element is put into the state, rather than the state being cut out of the
+ * selector.** Deleting the text was a guess about what the state means, and a review
+ * beat the guess three ways: `tr:hover .entity-open:hover` lost weight the refusal
  * kept, `:is(:hover)` became `:is()` and matched nothing, and `:hove\\72` was not
- * recognised as hovering at all. All three reached the button in a browser.
+ * recognised at all.
  *
- * jsdom cannot hover, so hovering is modelled: `:hover` becomes an attribute, and
- * the attribute is put on the button and on every ancestor, which is exactly who is
- * hovered when the pointer is over the button. The weight is unchanged by the swap,
- * since an attribute and a pseudo-class weigh the same.
+ * jsdom holds no state, so the state is modelled: it becomes an attribute, and the
+ * attribute is set on the button and on every ancestor, which is who is in that state
+ * when the pointer or the focus is on the button. The weight is unchanged by the
+ * swap, since an attribute and a pseudo-class weigh the same.
  */
 function partsOver(element: Element, selector: string): string[] {
   const marked: Element[] = []
 
   for (let node: Element | null = element; node !== null; node = node.parentElement) {
-    node.setAttribute('data-hovered', '')
+    node.setAttribute('data-live', '')
     marked.push(node)
   }
 
   try {
     return groupParts(unescaped(selector))
-      .map((one) => one.replace(/:hover\b/gi, '[data-hovered]'))
+      .map((one) => one.replace(LIVE_STATES, '[data-live]'))
       .filter((one) => {
         try {
           return element.matches(one)
@@ -471,7 +513,7 @@ function partsOver(element: Element, selector: string): string[] {
         }
       })
   } finally {
-    marked.forEach((node) => node.removeAttribute('data-hovered'))
+    marked.forEach((node) => node.removeAttribute('data-live'))
   }
 }
 
@@ -495,7 +537,9 @@ function rulesOver(
   onlyHover: boolean,
 ): { file: string; at: string; selector: string; body: string; weight: number }[] {
   return everyRule()
-    .filter((rule) => !onlyHover || /:hover\b/i.test(rule.selector))
+    /* Unescaped first: `:hove\\72` is the same selector to a browser, and asking the raw
+       text left it out of every question about the state. */
+    .filter((rule) => !onlyHover || new RegExp(LIVE_STATES.source, 'i').test(unescaped(rule.selector)))
     .map((rule) => ({ rule, parts: partsOver(element, rule.selector) }))
     .filter((found) => found.parts.length > 0)
     .map((found) => ({
@@ -600,7 +644,14 @@ describe('a record that may no longer be opened', () => {
 
     expect(refusal.length, 'the refusal reaches this button').toBeGreaterThan(0)
 
-    for (const property of ['cursor', 'color', 'border-color', 'background']) {
+    /* Which properties, read out of the refusal itself. Typed here, the list was a
+       second home for a fact that lives in `Entity.css`: a fifth declaration added to
+       the refusal stayed unguarded and nothing said so. */
+    const guarded = [...new Set(refusal.flatMap((rule) => declared(rule.body)))]
+
+    expect(guarded.length, 'the refusal declares something').toBeGreaterThan(2)
+
+    for (const property of guarded) {
       const declaring = reaching
         .filter((rule) => !rule.selector.includes("aria-disabled='true'"))
         .filter((rule) => declares(rule.body, property))
@@ -745,6 +796,42 @@ describe('the guard over that stylesheet', () => {
     expect(shouting('.entity-open:hover', `.entity-open:hover { ${declaration}; }`)).not.toEqual([])
   })
 
+  it('spells out a CSS escape, so the same selector is one selector', () => {
+    /* `.entity-ope\\6E` is `.entity-open` to a browser and another string to a search. A
+       review wrote the state that way and it walked past every question. */
+    expect(unescaped('.entity-ope\\6E:hove\\72')).toBe('.entity-open:hover')
+    expect(unescaped('.entity-open:hover')).toBe('.entity-open:hover')
+  })
+
+  it('divides a group only where the group really divides', () => {
+    /* A comma inside `:is(…)` or inside an attribute value divides nothing. Split on
+       every comma, an ordinary rule became half a selector, jsdom refused it, and this
+       file blamed jsdom for a selector it reads perfectly well. */
+    expect(groupParts('.a:is(.b, .c), .d')).toEqual(['.a:is(.b, .c)', '.d'])
+    expect(groupParts('a[href="x,y"], .z')).toEqual(['a[href="x,y"]', '.z'])
+    expect(groupParts('.only')).toEqual(['.only'])
+  })
+
+  it('puts the ancestors into the state as well, which is who is hovered', () => {
+    /* `.table:hover .entity-open` reaches this button when the pointer is on it,
+       because hovering the button hovers everything it sits in. Marked only on the
+       button itself, that rule was invisible and passed at equal weight. */
+    const table = document.createElement('table')
+
+    table.className = 'table'
+    table.innerHTML = '<tbody><tr><td><button class="entity-open">Otvori</button></td></tr></tbody>'
+    document.body.append(table)
+
+    const button = must(table.querySelector('.entity-open'), 'the button in the table')
+
+    expect(partsOver(button, '.table:hover .entity-open')).toEqual(['.table[data-live] .entity-open'])
+    expect(partsOver(button, '.entity-open:focus-visible')).toEqual(['.entity-open[data-live]'])
+    // And nothing of the marking is left behind on the document.
+    expect(document.querySelectorAll('[data-live]')).toHaveLength(0)
+
+    table.remove()
+  })
+
   it('says nothing shouts where nothing does', () => {
     expect(shouting('.entity-open:hover', '.entity-open:hover { background: var(--x); }')).toEqual(
       [],
@@ -753,7 +840,7 @@ describe('the guard over that stylesheet', () => {
 
   it('does not hear a shout inside a string', () => {
     /* `content: "!important"` shouts nothing, and the question is asked with the
-       strings cut out for exactly that reason. Glasno na obe strane: the rule below
+       strings cut out for exactly that reason. Loud on both sides: the rule below
        carries the word and no priority. */
     expect(shouting('.entity-open:hover', '.entity-open:hover { content: "!important"; }')).toEqual(
       [],
