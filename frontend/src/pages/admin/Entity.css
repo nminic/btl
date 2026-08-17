@@ -52,6 +52,28 @@
   white-space: nowrap;
 }
 
+/* A record that may no longer be opened looks it, which it did not until
+   16.08.2026: refused by `aria-disabled` and still carrying the pointer and the
+   accent on hover, so it read as a live control that simply did nothing. The
+   shared `.button` already had this and `.entity-open` is not one of those, so
+   the same rule is written for it here.
+
+   The colours and not `opacity`, for the reason `Home.css` gives: opacity dims
+   the focus ring with everything else, and a control kept in the order of focus
+   is one somebody lands on, so the ring keeps its full strength (WCAG 2.2
+   SC 1.4.11). */
+.entity-open[aria-disabled='true'] {
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.entity-open[aria-disabled='true']:hover {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
 .entity-open:hover {
   background: var(--surface-hover);
   border-color: var(--accent);

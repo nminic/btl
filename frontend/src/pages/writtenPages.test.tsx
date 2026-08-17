@@ -325,6 +325,9 @@ describe('the rulebook', () => {
       [11, /Pravo rangiranja/],
       [14, /Cena i rokovi/],
       [17, /Šta članstvo donosi/],
+      /* Where the climb comes from, pointed at by the article that says the
+         values are typed rather than read out of a track file (16.08.2026). */
+      [31, /Uspon i spust/],
       [41, /Ko prijavljuje i šta/],
       [42, /^Rok$/],
       [55, /Top liste/],
@@ -345,8 +348,13 @@ describe('the rulebook', () => {
     /* The headings themselves are not references to anything, so they are taken
        out before the references are read; left in, every article counted as a
        reference to itself and the count below could never fail. */
+    /* Read whichever way the letter is written, and this is not a nicety.
+       Written „(član 31)" with a small letter, a reference was invisible to this
+       guard while looking exactly like every other one to a reader, so it went
+       into the rulebook on 16.08.2026 without ever being checked. A guard that a
+       lower-case letter walks past is a guard on the spelling. */
     const referenced = [
-      ...(rulebook ?? '').replace(/### Član \d+\.[^\n]*/g, '').matchAll(/Član[a-z]* (\d+)/g),
+      ...(rulebook ?? '').replace(/### Član \d+\.[^\n]*/g, '').matchAll(/[Čč]lan[a-zA-Z]* (\d+)/g),
     ].map((found) => Number(found[1]))
 
     /* Every article referred to, each once, since two paragraphs point at the
