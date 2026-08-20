@@ -105,8 +105,20 @@ function nameOf(one: Element, withId: boolean): string {
     .sort()
     .map((cls) => `.${cls}`)
     .join('')
+  /* The names of its attributes as well, because a rule can be keyed on any of them and
+     an attribute selector weighs exactly as much as a class. The fixture had drifted
+     already: the portal writes `aria-describedby` on this button and `aria-labelledby`
+     on the panel, the fixture wrote neither, and a review keyed a rule on the first and
+     watched the refusal lose in a browser while both guards stayed green.
+     Names and not values: the values are Serbian labels and generated ids, which differ
+     for good reasons. `id` and `class` are left out because they are said above. */
+  const attributes = [...one.attributes]
+    .map((attribute) => attribute.name)
+    .filter((attribute) => attribute !== 'id' && attribute !== 'class')
+    .sort()
+    .join(' ')
 
-  return `${one.tagName.toLowerCase()}${named}${classes}`
+  return `${one.tagName.toLowerCase()}${named}${classes}[${attributes}]`
 }
 
 describe('a record that may no longer be opened', () => {
@@ -247,8 +259,8 @@ describe('a record that may no longer be opened', () => {
     const onScreen = chainToShell(drawn)
 
     /* Both have to get there, or two chains that stop early could agree about nothing. */
-    expect(inFixture.at(-1), 'the fixture does not reach the shell').toBe('div.shell')
-    expect(onScreen.at(-1), 'the screen does not reach the shell').toBe('div.shell')
+    expect(inFixture.at(-1), 'the fixture does not reach the shell').toContain('div.shell')
+    expect(onScreen.at(-1), 'the screen does not reach the shell').toContain('div.shell')
     expect(inFixture).toEqual(onScreen)
 
     /* Above the shell the two documents cannot agree and should not be asked to: under
@@ -265,7 +277,7 @@ describe('a record that may no longer be opened', () => {
     const home = document.createElement('div')
 
     home.innerHTML = must(
-      /<div id="root"[^>]*>\s*<\/div>/.exec(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')),
+      /<div[^>]*\bid="root"[^>]*>\s*<\/div>/.exec(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')),
       'the mount point in index.html',
     )[0]
 

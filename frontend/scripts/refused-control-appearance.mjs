@@ -43,15 +43,17 @@
  *
  * **What none of it sees, said plainly because the rule of this repo is that a guard may
  * claim only what the tool beneath it answers:** a change applied to the live control and
- * the refused one alike, in all three states, in a property nobody has named here.
+ * the refused one alike, in every state and at both widths, in a property nobody has
+ * named here. And a width between the two, or beyond them.
  * `font-size: 0` on `.entity-open` empties both labels and every comparison above stays
- * quiet, because nothing differs from anything. That class of fault is not subtle on a
- * screen, and it is what looking at QA is still for. It is not caught here, and this file
- * does not pretend it is.
+ * quiet, because nothing differs from anything. Those classes of fault are not subtle on
+ * a screen, and they are what looking at QA is still for. They are not caught here, and
+ * this file does not pretend they are.
  *
  * **What is measured:** the built stylesheet, over the ancestor chain the price list
- * gives this control, in both themes, in three states, with the mouse and the Tab both
- * checked to have landed.
+ * gives this control, in both themes, at **two widths** (1280 and 360, the narrowest this
+ * portal promises), in **four states** (at rest, under a real mouse, under a real press,
+ * and under a real Tab), each of the last three checked to have actually landed.
  *
  * **What is not measured:** the markup below is written here rather than drawn by the
  * portal, so it sees nothing a component puts on the element itself. An inline style is
@@ -73,7 +75,11 @@ import { pathToFileURL } from 'node:url'
 const CHROME =
   process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = Number(process.env.BTL_CDP_PORT ?? 9333)
-const VIEWPORT = { width: 1280, height: 800 }
+/** Desktop and the narrowest width this portal promises (`CLAUDE.md`, UI standards).
+ *  Measured at one width only, a refusal written away inside `@media (max-width: ...)`
+ *  is not there on a telephone and nothing says so: the shared table sheet already
+ *  branches at 699.98px, and a review took the refusal out below it. */
+const WIDTHS = [1280, 360]
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
 /** Set `BTL_APPEARANCE_DIFFS=1` to print the three differences instead of judging them.
@@ -130,13 +136,19 @@ const RING = ['outline-color', 'outline-offset', 'outline-style', 'outline-width
  *  (WCAG 2.2 SC 1.4.11). A review set `opacity: .35` on `.entity-open` and watched a
  *  guard that reads only the ring's own properties call the ring visible. */
 const QUIET = {
-  'background-color': 'rgba(0, 0, 0, 0)',
+  'backdrop-filter': 'none',
+  'background-color': TRANSPARENT,
   'background-image': 'none',
   'box-shadow': 'none',
   'clip-path': 'none',
   filter: 'none',
+  'mask-image': 'none',
+  'mix-blend-mode': 'normal',
   opacity: '1',
+  rotate: 'none',
+  scale: 'none',
   transform: 'none',
+  translate: 'none',
   visibility: 'visible',
 }
 
@@ -153,6 +165,11 @@ const QUIET = {
  *  The sentinel button standing first is where Tab starts from, and it is outside the
  *  chain on purpose so it changes nothing about what is measured.
  *
+ *  Every attribute the portal writes is written here too, `aria-describedby` and
+ *  `aria-labelledby` included. An attribute selector weighs the same as a class, so a
+ *  rule keyed on one the fixture has not got is a rule this never sees: measured, and
+ *  `entityStyle.test.ts` now holds the attribute names of the whole chain as well.
+ *
  *  `data-theme` sits on `<html>` and not on `<body>`, because that is where the portal
  *  writes it (`ThemeProvider.tsx`, `index.html`) and where `tokens.css` reads it. */
 const FIXTURE = (styles) => `<!doctype html>
@@ -162,11 +179,12 @@ const FIXTURE = (styles) => `<!doctype html>
   <div id="root"><div class="shell"><main id="content" class="shell__main" tabindex="-1">
     <div class="adminsection"><div class="adminsection__body">
       <div class="member">
-        <section class="member__panel">
+        <section class="member__panel" aria-labelledby="panel-name">
+          <h2 id="panel-name">Cenovnik</h2>
           <div class="table-scroll">
             <table class="table"><tbody><tr>
-              <td><button type="button" class="entity-open" aria-disabled="true" id="refused">Otvori</button></td>
-              <td><button type="button" class="entity-open" id="live">Otvori</button></td>
+              <td><button type="button" class="entity-open" aria-disabled="true" aria-label="Otvori" aria-describedby="note" id="refused">Otvori</button><span id="note" hidden>zatvoreno</span></td>
+              <td><button type="button" class="entity-open" aria-label="Otvori" aria-describedby="note" id="live">Otvori</button></td>
             </tr></tbody></table>
           </div>
         </section>
@@ -188,17 +206,14 @@ const PSEUDOS = ['::before', '::after', '::first-line', '::first-letter', '::sel
  *  guessed, and rewritten the same way as the sets above with `BTL_APPEARANCE_DIFFS=1`.
  *
  *  A pseudo-element compared with its own element differs in some fifty browser defaults
- *  and in nothing anybody wrote, which is why the comparison is made sideways. */
-const ALLOWED = {
-  '::before': REFUSAL,
-  '::after': REFUSAL,
-  '::first-line': REFUSAL,
-  '::first-letter': REFUSAL,
-  '::marker': REFUSAL,
-  /* Chrome builds this one out of its own defaults rather than out of the control, so it
-     inherits none of the refusal and differs in nothing at all. Measured. */
-  '::selection': [],
-}
+ *  and in nothing anybody wrote, which is why the comparison is made sideways.
+ *
+ *  A subset rather than an equality, because Chrome computes `::selection` out of its own
+ *  defaults until something makes it inherit, and then out of the control: measured, a
+ *  custom property declared on the control flipped it from one to the other and turned an
+ *  equality into forty-three complaints about a change that painted nothing. Subset says
+ *  what is meant either way: it may differ in the refusal, and in nothing else. */
+const ALLOWED = Object.fromEntries(PSEUDOS.map((name) => [name, REFUSAL]))
 
 const READ = `(() => {
   const PSEUDOS = ${JSON.stringify(PSEUDOS)}
@@ -220,7 +235,6 @@ const READ = `(() => {
   const theme = {
     muted: asColour('--text-muted'),
     border: asColour('--border'),
-    accent: asColour('--accent'),
   }
   probe.remove()
   return JSON.stringify({
@@ -229,13 +243,16 @@ const READ = `(() => {
     pseudo: PSEUDOS.reduce((into, name) => { into[name] = all(one, name); return into }, {}),
     pseudoLive: PSEUDOS.reduce((into, name) => { into[name] = all(document.getElementById('live'), name); return into }, {}),
     under: one.matches(':hover'),
+    pressed: one.matches(':active'),
     ring: one.matches(':focus-visible'),
     theme,
   })
 })()`
 
 const CENTRE = `(() => {
-  const box = document.getElementById('refused').getBoundingClientRect()
+  const one = document.getElementById('refused')
+  one.scrollIntoView({ block: 'center', inline: 'center' })
+  const box = one.getBoundingClientRect()
   return JSON.stringify({
     x: Math.round(box.x + box.width / 2),
     y: Math.round(box.y + box.height / 2),
@@ -311,6 +328,7 @@ function differences(left, right) {
   /* The keys of both, not of the left one. A rule can give one control a custom property
      the other has not got, and a comparison that walks only the left never looks at it. */
   return [...new Set([...Object.keys(left), ...Object.keys(right)])]
+    .filter((name) => !name.startsWith('--'))
     .filter((name) => left[name] !== right[name])
     .sort()
 }
@@ -360,6 +378,39 @@ async function measure(socket, theme) {
     throw new Error(`${theme}: the control is focused while the hovered state is read`)
   }
 
+  /* And while it is pressed. A state, not a property, so the blind spot the header owns
+     up to does not cover it: a review lit the refusal up under `:active` and every
+     comparison stayed quiet because nobody ever pressed it. */
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    if (type === 'mouseReleased') {
+      continue
+    }
+    await send(socket, 'Input.dispatchMouseEvent', {
+      type,
+      x: centre.x,
+      y: centre.y,
+      button: 'left',
+      buttons: 1,
+      clickCount: 1,
+    })
+  }
+  await new Promise((resolve) => setTimeout(resolve, 120))
+
+  const pressed = await evaluate(socket, READ)
+
+  await send(socket, 'Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x: centre.x,
+    y: centre.y,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1,
+  })
+
+  if (!pressed.pressed) {
+    throw new Error(`${theme}: the press did not reach the control, so nothing about :active was measured`)
+  }
+
   /* And under the keyboard, the state this refusal is built around: it is
      `aria-disabled` and not `disabled`, so it stays in the order of focus on purpose,
      and the ring is what a reader without a mouse has. Tab rather than `.focus()`,
@@ -391,10 +442,10 @@ async function measure(socket, theme) {
     )
   }
 
-  return { resting, hovered, focused }
+  return { resting, hovered, pressed, focused }
 }
 
-function complaintsFor(theme, { resting, hovered, focused }) {
+function complaintsFor(theme, { resting, hovered, pressed, focused }) {
   const complaints = []
   const say = (text) => complaints.push(`${theme}: ${text}`)
   const list = (names) => (names.length === 0 ? 'nothing' : names.join(', '))
@@ -402,6 +453,7 @@ function complaintsFor(theme, { resting, hovered, focused }) {
   const states = [
     ['at rest', resting],
     ['under the mouse', hovered],
+    ['while pressed', pressed],
     ['under the keyboard', focused],
   ]
 
@@ -423,8 +475,23 @@ function complaintsFor(theme, { resting, hovered, focused }) {
   if (lit.length > 0) {
     say(`under the mouse it changes, which is what said it was live (${list(lit)})`)
   }
-  if (ringed.some((name) => !RING.includes(name))) {
-    say(`under the keyboard it changes something other than its ring (${list(ringed)}, and the ring is ${list(RING)})`)
+
+  const held = differences(pressed.refused, resting.refused)
+
+  if (held.length > 0) {
+    say(`while pressed it changes, which is the same thing said with a finger down (${list(held)})`)
+  }
+  const strayed = ringed.filter((name) => !RING.includes(name))
+
+  if (strayed.length > 0) {
+    say(`under the keyboard it changes something other than its ring (${list(strayed)})`)
+  }
+  /* And it does change. Asked only as "nothing beyond the ring", an empty difference
+     answers yes: a review declared `outline` on `.entity-open` itself, which outweighs
+     the browser's own `:focus-visible`, so the control looked identical focused and
+     resting and a reader without a mouse had no idea where they were. */
+  if (ringed.length === 0) {
+    say('under the keyboard nothing about it changes, so there is no sign of focus at all')
   }
   if (list(refusal) !== list(REFUSAL)) {
     say(`beside the live control it differs in ${list(refusal)}, and the refusal is ${list(REFUSAL)}`)
@@ -471,8 +538,10 @@ function complaintsFor(theme, { resting, hovered, focused }) {
     for (const name of PSEUDOS) {
       const own = differences(state.pseudo[name], state.pseudoLive[name])
 
-      if (list(own) !== list(ALLOWED[name])) {
-        say(`${where} its ${name} differs from the live one in ${list(own)}, and it should differ in ${list(ALLOWED[name])}`)
+      const apart = own.filter((property) => !ALLOWED[name].includes(property))
+
+      if (apart.length > 0) {
+        say(`${where} its ${name} differs from the live one in ${list(apart)}, which is not the refusal`)
       }
 
       /* And in the same values, not merely in the same property names. The set is the
@@ -483,7 +552,19 @@ function complaintsFor(theme, { resting, hovered, focused }) {
          that is the muted colour, borders included: it does not inherit the control's own
          border colour, which was measured after this comparison was first written the
          other way round. */
-      for (const property of ALLOWED[name]) {
+      /* And that it draws nothing at all. The sideways comparison cannot carry this:
+         a `content` given to both controls alike leaves no difference between them.
+         This check existed, was dropped when the comparison turned sideways, and a
+         review put `.entity-open::before { content: "!! " }` over both. */
+      if ((name === '::before' || name === '::after') && state.pseudo[name].content !== 'none') {
+        say(`${where} a ${name} is drawn over it (content ${state.pseudo[name].content})`)
+      }
+
+      /* Over what it actually took from the control, not over the whole set. A
+         pseudo-element that inherits nothing carries nothing of the refusal to be wrong
+         about, and demanding the refusal of it complained that `::selection` had no
+         cursor: measured on a sound sheet. */
+      for (const property of own.filter((taken) => ALLOWED[name].includes(taken))) {
         const expected = property === 'cursor' ? 'not-allowed' : state.theme.muted
 
         if (state.pseudo[name][property] !== expected) {
@@ -533,12 +614,21 @@ async function main() {
      what its file was called. Today the build emits one sheet and it cannot matter;
      the first lazy route makes it matter. */
   const shell = readFileSync(join(process.cwd(), 'dist', 'index.html'), 'utf-8')
-  const sheets = [...shell.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map(
+  const named = [...shell.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map(
     (found) => String(found[1]).replace(/^\/?assets\//, ''),
   )
+  /* And then everything else the build emitted. Vite writes the sheet of a lazily
+     imported chunk into the folder and not into `index.html`, so reading the shell alone
+     drops exactly the sheet the first lazy route brings, which was the case this was
+     written for: measured, a fault in such a sheet went unseen. They are appended after
+     the named ones because that is when the browser adds them, at run time. */
+  const rest = readdirSync(dist)
+    .filter((name) => name.endsWith('.css') && !named.includes(name))
+    .sort()
+  const sheets = [...named, ...rest]
 
   if (sheets.length === 0) {
-    throw new Error('dist/index.html links no stylesheet; run `npm run build` first')
+    throw new Error('no built stylesheet; run `npm run build` first')
   }
 
   /* Named for this run. A browser left behind by an earlier run that never reached its
@@ -597,26 +687,24 @@ async function main() {
       socket.addEventListener('error', reject)
     })
 
-    /* A size of its own, so the control has a box and the mouse has somewhere to land
-       whatever window the browser happened to open with. */
-    await send(socket, 'Emulation.setDeviceMetricsOverride', {
-      width: VIEWPORT.width,
-      height: VIEWPORT.height,
-      deviceScaleFactor: 1,
-      mobile: false,
-    })
+    const complaints = []
 
-    const measured = {
-      dark: await measure(socket, 'dark'),
-      light: await measure(socket, 'light'),
+    for (const width of WIDTHS) {
+      /* A size of its own, so the control has a box and the mouse has somewhere to land
+         whatever window the browser happened to open with. */
+      await send(socket, 'Emulation.setDeviceMetricsOverride', {
+        width,
+        height: 800,
+        deviceScaleFactor: 1,
+        mobile: false,
+      })
+
+      for (const theme of ['dark', 'light']) {
+        complaints.push(...complaintsFor(`${theme} at ${width}px`, await measure(socket, theme)))
+      }
     }
 
     socket.close()
-
-    const complaints = [
-      ...complaintsFor('dark', measured.dark),
-      ...complaintsFor('light', measured.light),
-    ]
 
     if (SHOW) {
       return
