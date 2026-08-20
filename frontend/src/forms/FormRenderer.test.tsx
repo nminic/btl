@@ -926,3 +926,49 @@ describe('a field the form has taken back off the screen', () => {
     expect(sent[0]).not.toHaveProperty('country')
   })
 })
+
+describe('a field asked of everybody and demanded of some', () => {
+  const asking: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [
+      { name: 'datum', type: 'date', labelKey: 'proba.datum', required: true },
+      {
+        name: 'dokument',
+        type: 'text',
+        labelKey: 'proba.dopisano',
+        required: true,
+        optionalWhenYoungerThan: { field: 'datum', years: 16 },
+      },
+    ],
+  }
+
+  it('takes the star off the field it will not demand, and puts it back', async () => {
+    /* The screen half of the rule, which nothing measured: removing `asAsked` from the
+       renderer left the whole suite green while a fifteen year old saw a star and
+       `aria-required` on a document they cannot have. The star is precisely what makes a
+       parent type their own number, which is the harm the rule exists to prevent, so the
+       screen and the validation saying different things is not a cosmetic difference. */
+    const user = setupUser()
+
+    renderWithI18n(<FormRenderer form={asking} onSubmit={() => {}} />)
+
+    const birth = screen.getByLabelText(/proba.datum/)
+    const document_ = () => screen.getByLabelText(/proba.dopisano/)
+
+    expect(document_(), 'demanded while the date says nothing').toHaveAttribute(
+      'aria-required',
+      'true',
+    )
+
+    await user.type(birth, '01012015')
+
+    expect(document_(), 'still demanded of a child').not.toHaveAttribute('aria-required')
+
+    await user.clear(birth)
+    await user.type(birth, '01011990')
+
+    expect(document_(), 'no longer demanded of an adult').toHaveAttribute('aria-required', 'true')
+  })
+})

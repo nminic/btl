@@ -1,8 +1,9 @@
 import {
-  JUNIOR,
+  JUNIOR_ROW,
   PRICES,
   PROCESSING_FEE_EUR,
   type PriceRow,
+  ranksByPeriod,
 } from '../data/pricing'
 import { applyChanges } from '../forms/records'
 import { money } from '../i18n/format'
@@ -25,24 +26,16 @@ import '../pages/member/Member.css'
  * copy that drifts.
  */
 
-/** The junior price is the one row with no period: it holds whenever it is paid,
- *  so it sits in the same table without pretending to have dates.
- *
- *  `ranking` is false here and never read, because this row has no answer of its own to
- *  give that column: see `ranks` below. */
-const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: false }
-
 /**
  * What the ranking column says for a band.
  *
- * The junior fee is a price level and not a period, so whether the season is ranked
- * follows the day the fee is paid, for a junior exactly as for anybody else (Član 11 of
- * the rulebook, two sections above this table). This row used to answer `Da` outright: a
- * thirteen year old joining in June read that they would be ranked, directly under the
- * article saying they would not.
+ * The row that has no answer of its own points at the periods above it; see
+ * `ranksByPeriod` in `data/pricing.ts`, which both this table and the administrator's
+ * read, so the page that publishes a price and the screen that sets it cannot say
+ * different things about it.
  */
 function ranks(row: PriceRow, say: (key: string) => string): string {
-  if (row.key === JUNIOR.key) {
+  if (ranksByPeriod(row)) {
     return say('pricing.rankingByPeriod')
   }
 

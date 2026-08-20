@@ -116,6 +116,24 @@ export type FieldDef = {
    * day: asked of minors as well, but not required of them.
    */
   optionalWhenYoungerThan?: { field: string; years: number }
+  /**
+   * The row of the privacy policy that describes what is done with this answer.
+   *
+   * The first column of that row, word for word. A field is a thing the portal collects
+   * about a person, and a thing collected about a person has to be declared; written as
+   * a property of the field, the declaration cannot be forgotten when the field is added,
+   * because a field without one fails the gate.
+   *
+   * It was a guard over two words in a hint before, which held exactly as long as nobody
+   * reworded a hint: a review reworded one, deleted the row, and the whole suite stayed
+   * green while the portal went on asking. Before that, `firstSeason2027` was collected
+   * for weeks with no row at all.
+   *
+   * Optional on the type and demanded of the registration form by its own guard: the
+   * other forms of the portal ask about a race or an event, not about a person, and a
+   * property every form had to carry would say the opposite.
+   */
+  policyRow?: string
 }
 
 export type FormDef = {

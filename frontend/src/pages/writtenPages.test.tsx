@@ -6,6 +6,7 @@ import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
+import registration from '../forms/definitions/registracija.form.json'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
@@ -348,33 +349,33 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
-  it('declares every field the register of members demands, with the obligation as its basis', () => {
-    /* Not a list of field names, which would be one more thing to keep: the fields are
-       found by what their own hint says about them. A field whose hint tells the reader
-       that the register of members demands it is a field the portal collects under a
-       legal obligation, and every one of those has to stand in this table with that
-       obligation named beside it.
-       Written because two such fields arrived at once, both required, and neither had a
-       guard: removing both rows from the policy left all 1994 tests green. The one new
-       field that did have a guard was the telephone, the only optional one of the three.
-       Add a fourth field of this kind and this test asks for its row without being
-       touched. */
-    const demanded = Object.entries(dictionary.registration)
-      .filter(([key, said]) => key.endsWith('Hint') && String(said).includes('evidencija članova'))
-      .map(([key]) => key.slice(0, -'Hint'.length))
+  it('declares every field the registration form asks for, in the table of what is collected', () => {
+    /* Every field, not the ones whose hint happens to use two particular words. That was
+       the first shape of this guard and a review took it apart in one move: reword a hint,
+       delete the row, and the portal goes on asking while the whole suite stays green. It
+       also saw two of the four facts the register of members needs, because the other two
+       are read out of the town and the address.
+       So the field names its own row of the policy, in `registracija.form.json`, and this
+       reads the form rather than the dictionary. A field added without a row fails here,
+       which is the only moment anybody is thinking about that field at all. `firstSeason2027`
+       was collected for weeks with no row, and nothing said so.
+       The row is matched on the cell rather than on the line, so a table reflowed by hand
+       does not read as a policy that lost a row. */
+    const asked = registration.fields
 
-    expect(demanded.length, 'no field says the register of members demands it').toBeGreaterThan(0)
+    expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)
 
-    const policy = whole('politika-privatnosti').split(NEWLINE)
+    const policy = whole('politika-privatnosti')
+    const rows = policy
+      .split(NEWLINE)
+      .filter((line) => line.startsWith('|'))
+      .map((line) => (line.split('|')[1] ?? '').trim())
 
-    for (const field of demanded) {
-      const label = translate(dictionary, 'sr', `registration.${field}`)
-      const row = policy.find((line) => line.startsWith(`| ${label} |`))
+    for (const field of asked) {
+      const row = field.policyRow
 
-      expect(row, `${label} is asked for and the policy does not carry it`).toBeDefined()
-      expect(row, `${label} stands in the policy without the obligation as its basis`).toContain(
-        'Pravna obaveza',
-      )
+      expect(row, `${field.name} is asked for and names no row of the privacy policy`).toBeDefined()
+      expect(rows, `${field.name} names a row the privacy policy does not carry: ${String(row)}`).toContain(row)
     }
   })
 
@@ -387,13 +388,24 @@ describe('the privacy policy', () => {
   })
 
   it('keeps an unactivated account as long as the year it was opened to buy', () => {
-    /* Registration opens on 1 October (`REGISTRATION_OPENS`) and the portal sells that
-       season through December and the next one until 30 September, so an account is
-       opened to buy something up to a year away. This row said thirty days: somebody
-       opening an account on 2 October to pay in the December band would have been told
-       their account is deleted on 1 November, a month before the band they were buying.
-       Read off the document and compared with the selling year rather than with a number
-       typed twice, so moving the calendar moves this too. */
+    /* The selling year read off `pricing.ts` rather than typed here: it opens on the day
+       the first band opens and closes on the last day of the last one, today 1 October to
+       30 September. This row said thirty days, so somebody opening an account on 2 October
+       to pay in the December band was told it goes on 1 November, a month before the band
+       they were buying.
+       Bounded from above too, by the number this same document keeps for somebody who
+       actually was a member: an account that never became one must not be held longer than
+       one that did. Both bounds come out of things already written down, so neither is a
+       number invented in a test, which the first version of this was. */
+    const first = must(PRICES[0], 'the first price band').from
+    const last = must(PRICES.at(-1), 'the last price band').to
+    const monthOf = (dayOfYear: string): number => Number(dayOfYear.slice(0, 2))
+    /* The last band closes in the year after the first one opens, which is how the list
+       is written and what its own comment says, so the closing month is counted a year
+       on. Taken modulo twelve instead, a season still on sale in the opening month reads
+       as one month rather than thirteen: measured, and the first version of this said the
+       longer year was fine. */
+    const sellingYear = monthOf(last) + 12 - monthOf(first) + 1
     const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
     const said = /Nalog nikad nije aktiviran \| (\d+) (dana|meseci|godine)/.exec(kept)
 
@@ -403,9 +415,18 @@ describe('the privacy policy', () => {
     const unit = must(said, 'what the policy says')[2]
     const months = unit === 'dana' ? amount / 30 : unit === 'godine' ? amount * 12 : amount
 
-    /* Twelve, because the selling year is twelve months long: from the day registration
-       opens to the last day the season before the next one is on sale. */
-    expect(months, `${amount} ${unit} is shorter than the year the account was opened to buy`).toBeGreaterThanOrEqual(12)
+    expect(
+      months,
+      `${amount} ${unit} is shorter than the ${sellingYear} months the account was opened to buy`,
+    ).toBeGreaterThanOrEqual(sellingYear)
+
+    const asMember = /Prestanete da budete član \| Pet godina/.test(kept)
+
+    expect(asMember, 'the policy no longer says how long a former member is kept').toBe(true)
+    expect(
+      months,
+      'an account that never became a membership is held longer than one that did',
+    ).toBeLessThanOrEqual(5 * 12)
   })
 })
 

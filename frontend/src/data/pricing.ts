@@ -86,6 +86,29 @@ export const REFERRAL_CODE = /^[0-9a-f]{16}$/
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 
 /**
+ * The junior price as a row of the price list: a level and not a period.
+ *
+ * It holds whenever it is paid, so it carries no dates, and `ranking` is false here and
+ * never read: see `ranksByPeriod`. Written once and read by both tables, because the
+ * screen that sets prices and the page that publishes them saying different things is
+ * the fault this file exists to prevent.
+ */
+export const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: false }
+
+/**
+ * Whether a row has no answer of its own to the ranking column.
+ *
+ * Whether a season is ranked follows the day the fee is paid (Član 11 of the rulebook),
+ * for a junior exactly as for anybody else, so the junior row points at the periods
+ * rather than answering. Both tables said `Da` outright: the public one until 20.08.2026
+ * and the administrator's one after it, which is worse, because that is the screen where
+ * somebody decides.
+ */
+export function ranksByPeriod(row: PriceRow): boolean {
+  return row.key === JUNIOR.key
+}
+
+/**
  * Whether a member pays the junior fee for a season.
  *
  * PDL P8, and it is the one price measured across the whole season rather than

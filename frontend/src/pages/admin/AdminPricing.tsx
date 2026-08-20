@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import {
-  JUNIOR,
+  JUNIOR_ROW,
   PRICES,
   PROCESSING_FEE_EUR,
   REFERRAL,
   REFERRAL_ROW,
   type PriceRow,
+  ranksByPeriod,
 } from '../../data/pricing'
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -34,9 +35,7 @@ import '../member/Member.css'
  *  show and the form something to change. */
 type PriceListRow = PriceRow & { label: string }
 
-/** The junior price is the one row with no period: twenty euro whenever it is
- *  paid, so it sits in the same list without pretending to have dates. */
-const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
+
 
 /* And the referral, which is a number an administrator sets on this screen
    (owner, 12.08.2026) and not a price of membership at all: nobody pays it, it
@@ -123,7 +122,10 @@ export function AdminPricing() {
                 <td>{period(row, t('admin.everyPayment'))}</td>
                 <td>{money(row.eur, locale)}</td>
                 <td>{money(row.rsd, locale)}</td>
-                <td>{row.ranking ? t('admin.yes') : t('admin.no')}</td>
+                <td>
+                  {ranksByPeriod(row) ? t('admin.rankingByPeriod') : null}
+                  {ranksByPeriod(row) ? null : row.ranking ? t('admin.yes') : t('admin.no')}
+                </td>
                 <td>
                   <OpenRecord
                     name={row.label}

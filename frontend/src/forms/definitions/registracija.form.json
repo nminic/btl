@@ -10,7 +10,8 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "hintKey": "registration.firstNameHint"
+      "hintKey": "registration.firstNameHint",
+      "policyRow": "Ime i prezime"
     },
     {
       "name": "lastName",
@@ -19,7 +20,8 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "hintKey": "registration.lastNameHint"
+      "hintKey": "registration.lastNameHint",
+      "policyRow": "Ime i prezime"
     },
     {
       "name": "fatherName",
@@ -28,7 +30,8 @@
       "hintKey": "registration.fatherNameHint",
       "required": true,
       "maxLength": 60,
-      "row": 1
+      "row": 1,
+      "policyRow": "Ime oca"
     },
     {
       "name": "birthDate",
@@ -36,7 +39,8 @@
       "labelKey": "registration.birthDate",
       "hintKey": "registration.birthDateHint",
       "required": true,
-      "row": 2
+      "row": 2,
+      "policyRow": "Datum rođenja"
     },
     {
       "name": "gender",
@@ -54,7 +58,8 @@
           "value": "F",
           "labelKey": "registration.genderFemale"
         }
-      ]
+      ],
+      "policyRow": "Pol"
     },
     {
       "name": "firstSeason2027",
@@ -72,7 +77,8 @@
           "value": "no",
           "labelKey": "registration.categoryByAge"
         }
-      ]
+      ],
+      "policyRow": "Izbor kategorije, početnička ili starosna"
     },
     {
       "name": "email",
@@ -80,7 +86,8 @@
       "labelKey": "registration.email",
       "hintKey": "registration.emailHint",
       "required": true,
-      "row": 3
+      "row": 3,
+      "policyRow": "Adresa elektronske pošte"
     },
     {
       "name": "password",
@@ -89,7 +96,8 @@
       "hintKey": "registration.passwordHint",
       "required": true,
       "minLength": 10,
-      "row": 3
+      "row": 3,
+      "policyRow": "Lozinka"
     },
     {
       "name": "passwordRepeat",
@@ -98,7 +106,8 @@
       "required": true,
       "matches": "password",
       "row": 3,
-      "hintKey": "registration.passwordRepeatHint"
+      "hintKey": "registration.passwordRepeatHint",
+      "policyRow": "Lozinka"
     },
     {
       "name": "address",
@@ -107,7 +116,8 @@
       "hintKey": "registration.addressHint",
       "required": true,
       "maxLength": 120,
-      "row": 4
+      "row": 4,
+      "policyRow": "Adresa"
     },
     {
       "name": "city",
@@ -116,7 +126,8 @@
       "hintKey": "registration.cityHint",
       "required": true,
       "maxLength": 80,
-      "row": 4
+      "row": 4,
+      "policyRow": "Mesto i zemlja"
     },
     {
       "name": "idNumber",
@@ -129,7 +140,8 @@
       "optionalWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
-      }
+      },
+      "policyRow": "Broj ličnog dokumenta"
     },
     {
       "name": "phone",
@@ -137,7 +149,8 @@
       "labelKey": "registration.phone",
       "hintKey": "registration.phoneHint",
       "maxLength": 30,
-      "row": 5
+      "row": 5,
+      "policyRow": "Telefon, neobavezno"
     },
     {
       "name": "shirtSize",
@@ -175,7 +188,8 @@
           "value": "XXXL",
           "labelKey": "shirt.XXXL"
         }
-      ]
+      ],
+      "policyRow": "Veličina majice"
     },
     {
       "name": "photo",
@@ -183,7 +197,8 @@
       "labelKey": "registration.photo",
       "hintKey": "registration.photoHint",
       "required": true,
-      "row": 6
+      "row": 6,
+      "policyRow": "Profilna fotografija"
     },
     {
       "name": "bio",
@@ -191,7 +206,8 @@
       "labelKey": "profile.bio",
       "hintKey": "registration.bioHint",
       "maxLength": 360,
-      "row": 6
+      "row": 6,
+      "policyRow": "Biografija, tekst o sebi, linkovi na Stravu i Instagram"
     },
     {
       "name": "healthStatement",
@@ -200,7 +216,8 @@
       "linkKey": "registration.healthStatementLink",
       "linkTo": "pravilnik",
       "required": true,
-      "hintKey": "registration.healthStatementHint"
+      "hintKey": "registration.healthStatementHint",
+      "policyRow": "Izjava da ste upoznati sa pravilnikom i zdravstveno sposobni"
     },
     {
       "name": "parentConsent",
@@ -212,7 +229,8 @@
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
-      }
+      },
+      "policyRow": "Za maloletne: ime i prezime roditelja ili staratelja, srodstvo, i datum, vreme i IP adresa sa koje je saglasnost data"
     },
     {
       "name": "parentRelation",
@@ -237,7 +255,8 @@
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
-      }
+      },
+      "policyRow": "Za maloletne: ime i prezime roditelja ili staratelja, srodstvo, i datum, vreme i IP adresa sa koje je saglasnost data"
     }
   ]
 }
