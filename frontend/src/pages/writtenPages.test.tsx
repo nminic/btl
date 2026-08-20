@@ -95,6 +95,42 @@ describe('the fee schedule in the rulebook', () => {
       .filter((line) => line !== '')
   }
 
+  /** The table itself, so a cell can be read under the column that names it. */
+  async function priceTable() {
+    const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
+    const section = heading.closest('section')
+
+    if (section === null) {
+      throw new Error('the fee heading stands outside a section')
+    }
+
+    return within(section).getByRole('table')
+  }
+
+  /** What the band holds in the column with that header. The currency is printed
+   *  once, at the top of its column, so tying an amount to it means walking the
+   *  header row for the position and then the band's row for that position. */
+  async function cellUnder(band: { key: string }, currency: string) {
+    const table = await priceTable()
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent ?? '')
+    const column = headers.indexOf(currency)
+
+    expect(column, `no column of the table is headed "${currency}"`).toBeGreaterThan(-1)
+
+    const name = translate(dictionary, 'sr', `pricing.rows.${band.key}`)
+    const row = within(table)
+      .getAllByRole('row')
+      .find((one) => (one.textContent ?? '').includes(name))
+
+    if (row === undefined) {
+      throw new Error(`no row of the table is the band "${name}"`)
+    }
+
+    return within(row).getAllByRole('cell')[column]?.textContent
+  }
+
   it('holds the price bands in the order the table prints them', () => {
     /* Looking a band up by name is what makes the test above readable, and it is
        also what stopped it noticing a reordering: before the lookup, the rows
@@ -120,8 +156,14 @@ describe('the fee schedule in the rulebook', () => {
       const row = rows.find((line) => line.includes(bandName))
 
       expect(row, `no row of the table is the band "${bandName}"`).toBeDefined()
-      expect(row).toContain(money(price.eur, 'sr'))
-      expect(row).toContain(money(price.rsd, 'sr'))
+      /* Under the column that names the currency, not merely somewhere in the
+         row. The table prints the currency once, in the header, so a row read on
+         its own says 35 and 4.200 and nothing about which is which: the columns
+         could be swapped, or the header renamed, and the figures would still be
+         found. Two of the four bands cost 40 EUR, which is the very confusion
+         this guard exists for. */
+      expect(await cellUnder(price, 'EUR')).toBe(money(price.eur, 'sr'))
+      expect(await cellUnder(price, 'RSD')).toBe(money(price.rsd, 'sr'))
     }
   })
 
@@ -132,8 +174,8 @@ describe('the fee schedule in the rulebook', () => {
     const row = rows.find((line) => line.includes(name))
 
     expect(row, `no row of the table is the junior band`).toBeDefined()
-    expect(row).toContain(money(JUNIOR.eur, 'sr'))
-    expect(row).toContain(money(JUNIOR.rsd, 'sr'))
+    expect(await cellUnder(JUNIOR, 'EUR')).toBe(money(JUNIOR.eur, 'sr'))
+    expect(await cellUnder(JUNIOR, 'RSD')).toBe(money(JUNIOR.rsd, 'sr'))
   })
 
   it('carries the referral programme, its amount and the moment it is credited', async () => {
@@ -197,7 +239,10 @@ describe('the fee schedule in the rulebook', () => {
     /* What each reference is about, taken from the sentence that makes it. One
        entry per reference the terms carry; a new one that nobody writes here
        fails the count below rather than passing unread. */
-    const meant = [{ from: 'Mere prema članu', to: 'Pravila ponašanja' }]
+    const meant = [
+      { from: 'razlog za meru', to: 'Pravila ponašanja' },
+      { from: 'Mere prema članu', to: 'Pravila ponašanja' },
+    ]
     /* Every case of the word and not only the genitive: written as „sekcije"
        alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
        passed unread through the very test written to catch it. */
@@ -476,10 +521,9 @@ describe('how a written page is set', () => {
   const pages = Object.entries(WRITTEN)
 
   it('reads every written page there is', () => {
-    /* Without this the two below pass on an empty list. Five since 17.08.2026,
-       when the statute joined them: the rulebook, the terms, the privacy policy,
-       the statute and the address of the president. */
-    expect(pages.length).toBe(5)
+    /* Without this the two below pass on an empty list. Four: the rulebook, the
+       terms, the privacy policy and the address of the president. */
+    expect(pages.length).toBe(4)
     expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
   })
 
@@ -988,13 +1032,18 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
-  it('does not ask for a telephone anywhere, and says nothing about one', () => {
-    /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na
-       portalu čak ni neobavezno." A privacy policy that describes the handling
-       of a number nobody is asked for is a policy that describes somebody
-       else's portal, and the consent it names is a consent nothing collects.
-       It was obligatory on 01.08, optional again on 03.08, and is now gone. */
-    for (const slug of ['politika-privatnosti', 'uslovi-koriscenja', 'pravilnik'] as const) {
+  it('describes the telephone as the optional thing the form asks for', () => {
+    /* Obligatory on 01.08.2026, optional on 03.08, gone on 11.08, and back as
+       something optional on 20.08. A policy that describes the handling of a
+       number nobody is asked for describes somebody else's portal; so does one
+       that is silent about a field the form has. The ground has to be consent,
+       because a field nobody has to fill cannot be necessary for the contract. */
+    expect(whole('politika-privatnosti')).toMatch(/Telefon, neobavezno/)
+    expect(whole('politika-privatnosti')).toMatch(/Telefon, neobavezno \|[^|]*\|[^|]*[Pp]ristanak/)
+
+    /* And nowhere else: the terms and the rulebook are about the league, not
+       about the fields of one form. */
+    for (const slug of ['uslovi-koriscenja', 'pravilnik'] as const) {
       expect(whole(slug)).not.toMatch(/telefon/i)
     }
   })

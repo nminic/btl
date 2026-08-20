@@ -773,16 +773,18 @@ describe('a form laid out in rows', () => {
       'the row the first name stands in',
     )
 
-    /* Five rows of thirds (owner, 12.08.2026: „Podeli je racionalno na trećine
+    /* Six rows of thirds (owner, 12.08.2026: „Podeli je racionalno na trećine
        horizontalno"): who you are; how you are classed; the way in; where you
-       live; and the picture with the words beside it. The confirmation and the
-       parent's signature stand at the foot, outside the rows, because they need
-       the whole width and because opening the signature must not shuffle the
-       three columns above it. */
-    expect(document.querySelectorAll('.form__row')).toHaveLength(5)
+       live; what the register of members asks for; and the picture with the
+       words beside it. It was five until 20.08.2026, when the father's name, the
+       number of an identity document and an optional telephone joined the form.
+       The confirmation and the parent's signature stand at the foot, outside the
+       rows, because they need the whole width and because opening the signature
+       must not shuffle the three columns above it. */
+    expect(document.querySelectorAll('.form__row')).toHaveLength(6)
     expect(within(first).getByLabelText(/^Ime$/)).toBeInTheDocument()
     expect(within(first).getByLabelText(/^Prezime$/)).toBeInTheDocument()
-    expect(within(first).getByLabelText(/Datum rođenja/)).toBeInTheDocument()
+    expect(within(first).getByLabelText(/^Ime oca$/)).toBeInTheDocument()
     /* And what a row of three is, said to the stylesheet rather than written
        into it: the renderer counts the columns. */
     expect(first).toHaveStyle({ '--columns': '3' })

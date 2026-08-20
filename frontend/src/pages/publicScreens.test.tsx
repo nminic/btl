@@ -1560,7 +1560,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByText('Oslobodi članarine')).not.toBeInTheDocument()
+    expect(screen.queryByText('Oslobođen članarine')).not.toBeInTheDocument()
   })
 
   it('names itself on a profile too, in the one shape the portal has', async () => {

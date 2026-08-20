@@ -39,16 +39,22 @@ async function fillEverythingExceptBirthDate(
   { picture = true }: { picture?: boolean } = {},
 ) {
   await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
-  await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+  await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
+  /* Obligatory since 20.08.2026: the register of members the association keeps
+     by law asks for the father's name and for the number of an identity
+     document, and neither is shown anywhere on the portal. */
+  await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
+  await user.type(screen.getByLabelText(/^Broj ličnog dokumenta$/), '123456789')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
   await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
   await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
   /* Buttons since 11.08.2026, not a list: two answers worth seeing at once. */
   await user.click(screen.getByRole('radio', { name: 'Muški' }))
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
-     together once a member reaches twelve points, and a parcel needs an
-     address. The telephone is gone entirely (owner, 11.08.2026): the portal does
-     not ask for it, not even as something optional. */
+     together once a member reaches twelve points, and a parcel needs an address.
+     The same field is the address of residence in the register of members
+     (owner, 20.08.2026). The telephone stands beside it and is optional, so
+     nothing here fills it. */
   await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
   /* The town carries the country: picked out of the codebook, which is what
      fills the one beside it (forms/PlaceField.tsx). */
@@ -496,7 +502,9 @@ describe('the country a member lives in', () => {
     renderForm()
 
     await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
-    await user.type(screen.getByLabelText(/Prezime/), 'Đurišić')
+    await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
+    await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
+    await user.type(screen.getByLabelText(/^Broj ličnog dokumenta$/), '123456789')
     await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
     await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
     await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
@@ -637,18 +645,21 @@ describe('a town the codebook does know', () => {
 })
 
 describe('the telephone', () => {
-  it('is not asked for at all, and no longer exists on the form', async () => {
-    /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na
-       portalu čak ni neobavezno." It was obligatory on 01.08, optional again on
-       03.08, and now it is gone: there is no field, no rule beside one, and no
-       word for it in the dictionary. Written as a walk through the form rather
-       than as a look at the JSON, because the JSON is what would be changed
-       back. */
+  it('is asked for, optional, and the form goes through without it', async () => {
+    /* Obligatory on 01.08.2026, optional on 03.08, gone on 11.08, and back as
+       something optional on 20.08. What holds it here is that it is genuinely
+       optional: the walk below never touches the field and the form still goes
+       through. Written as a walk rather than as a look at the JSON, because the
+       JSON is what would be changed back. */
     const user = setupUser()
     renderForm()
 
-    expect(screen.queryByLabelText(/[Tt]elefon/)).toBeNull()
-    expect(screen.queryByText(/[Tt]elefon/)).toBeNull()
+    /* The word beside the name is what makes it optional to a reader, and every
+       field on the portal that may be left alone carries it (FormRenderer). */
+    const phone = screen.getByLabelText(/^Telefon \(neobavezno\)$/)
+
+    expect(phone).toBeVisible()
+    expect(phone).not.toBeRequired()
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')

@@ -22,12 +22,21 @@
       "hintKey": "registration.lastNameHint"
     },
     {
+      "name": "fatherName",
+      "type": "text",
+      "labelKey": "registration.fatherName",
+      "hintKey": "registration.fatherNameHint",
+      "required": true,
+      "maxLength": 60,
+      "row": 1
+    },
+    {
       "name": "birthDate",
       "type": "date",
       "labelKey": "registration.birthDate",
       "hintKey": "registration.birthDateHint",
       "required": true,
-      "row": 1
+      "row": 2
     },
     {
       "name": "gender",
@@ -62,44 +71,6 @@
         {
           "value": "no",
           "labelKey": "registration.categoryByAge"
-        }
-      ]
-    },
-    {
-      "name": "shirtSize",
-      "type": "select",
-      "labelKey": "registration.shirtSize",
-      "hintKey": "registration.shirtSizeHint",
-      "required": true,
-      "row": 2,
-      "options": [
-        {
-          "value": "XS",
-          "labelKey": "shirt.XS"
-        },
-        {
-          "value": "S",
-          "labelKey": "shirt.S"
-        },
-        {
-          "value": "M",
-          "labelKey": "shirt.M"
-        },
-        {
-          "value": "L",
-          "labelKey": "shirt.L"
-        },
-        {
-          "value": "XL",
-          "labelKey": "shirt.XL"
-        },
-        {
-          "value": "XXL",
-          "labelKey": "shirt.XXL"
-        },
-        {
-          "value": "XXXL",
-          "labelKey": "shirt.XXXL"
         }
       ]
     },
@@ -148,12 +119,67 @@
       "row": 4
     },
     {
+      "name": "idNumber",
+      "type": "text",
+      "labelKey": "registration.idNumber",
+      "hintKey": "registration.idNumberHint",
+      "required": true,
+      "maxLength": 20,
+      "row": 5
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "labelKey": "registration.phone",
+      "hintKey": "registration.phoneHint",
+      "maxLength": 30,
+      "row": 5
+    },
+    {
+      "name": "shirtSize",
+      "type": "select",
+      "labelKey": "registration.shirtSize",
+      "hintKey": "registration.shirtSizeHint",
+      "required": true,
+      "row": 5,
+      "options": [
+        {
+          "value": "XS",
+          "labelKey": "shirt.XS"
+        },
+        {
+          "value": "S",
+          "labelKey": "shirt.S"
+        },
+        {
+          "value": "M",
+          "labelKey": "shirt.M"
+        },
+        {
+          "value": "L",
+          "labelKey": "shirt.L"
+        },
+        {
+          "value": "XL",
+          "labelKey": "shirt.XL"
+        },
+        {
+          "value": "XXL",
+          "labelKey": "shirt.XXL"
+        },
+        {
+          "value": "XXXL",
+          "labelKey": "shirt.XXXL"
+        }
+      ]
+    },
+    {
       "name": "photo",
       "type": "photo",
       "labelKey": "registration.photo",
       "hintKey": "registration.photoHint",
       "required": true,
-      "row": 5
+      "row": 6
     },
     {
       "name": "bio",
@@ -161,7 +187,7 @@
       "labelKey": "profile.bio",
       "hintKey": "registration.bioHint",
       "maxLength": 360,
-      "row": 5
+      "row": 6
     },
     {
       "name": "healthStatement",

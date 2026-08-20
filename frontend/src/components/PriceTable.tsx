@@ -47,11 +47,11 @@ export function PriceTable() {
   const rows = [...PRICES, JUNIOR_ROW].map((row) => applyChanges(row, edits[row.key]))
 
   return (
-    <div className="price-table">
+    <div>
       <p className="member__note">{t('pricing.setBy')}</p>
 
       <div className="table-scroll">
-        <table className="table">
+        <table className="table markdown__table">
           <caption className="visually-hidden">{t('pricing.title')}</caption>
           <thead>
             <tr>

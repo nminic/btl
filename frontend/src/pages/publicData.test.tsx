@@ -101,12 +101,6 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
     '',
   ],
   ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
-  [
-    '/sr/statut',
-    'Statut Sportskog udruženja BTL',
-    'Statut Sportskog udruženja BTL',
-    'O ovom dokumentu',
-  ],
   ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
   ['/sr/uslovi-koriscenja', 'Uslovi korišćenja', 'Uslovi korišćenja'],
   /* Read on a fixed day, because this heading changes on 01.10.2026 when
