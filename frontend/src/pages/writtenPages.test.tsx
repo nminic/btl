@@ -11,6 +11,7 @@ import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
+import { must } from '../test/at'
 import { sources } from '../test/sources'
 import { StaticPage } from './StaticPage'
 
@@ -178,6 +179,25 @@ describe('the fee schedule in the rulebook', () => {
     expect(await cellUnder(JUNIOR, 'RSD')).toBe(money(JUNIOR.rsd, 'sr'))
   })
 
+  it('promises a junior no place in the standing the rulebook refuses them', async () => {
+    /* The junior fee is a price level and not a period: whether the season is ranked
+       follows the day it is paid, the same for a junior as for anybody else. This cell
+       said `Da` outright, so a thirteen year old joining in June read that they would be
+       ranked, two sections under the article of this same rulebook saying they would not.
+       Held on the cell rather than on the constant, because the constant is what was
+       wrong and a test written against it would have agreed with it. */
+    renderAt('/sr/pravilnik')
+
+    const column = translate(dictionary, 'sr', 'pricing.ranking')
+    const said = await cellUnder(JUNIOR, column)
+
+    expect(said).toBe(translate(dictionary, 'sr', 'pricing.rankingByPeriod'))
+    expect(said, 'the junior band answers the ranking column with a word of its own').not.toBe(
+      translate(dictionary, 'sr', 'pricing.yes'),
+    )
+    expect(said).not.toBe(translate(dictionary, 'sr', 'pricing.no'))
+  })
+
   it('carries the referral programme, its amount and the moment it is credited', async () => {
     /* Owner, 12.08.2026. A member is promised money on „Moja članarina", so the
        terms have to say what that promise is: how much, in both currencies, and
@@ -334,6 +354,28 @@ describe('the privacy policy', () => {
     const page = await screen.findByRole('article')
     expect(within(page).getByRole('heading', { name: /javno, a šta nikada nije/ })).toBeVisible()
     expect(within(page).getByRole('heading', { name: /Maloletni članovi/ })).toBeVisible()
+  })
+
+  it('keeps an unactivated account as long as the year it was opened to buy', () => {
+    /* Registration opens on 1 October (`REGISTRATION_OPENS`) and the portal sells that
+       season through December and the next one until 30 September, so an account is
+       opened to buy something up to a year away. This row said thirty days: somebody
+       opening an account on 2 October to pay in the December band would have been told
+       their account is deleted on 1 November, a month before the band they were buying.
+       Read off the document and compared with the selling year rather than with a number
+       typed twice, so moving the calendar moves this too. */
+    const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
+    const said = /Nalog nikad nije aktiviran \| (\d+) (dana|meseci|godine)/.exec(kept)
+
+    expect(said, 'the policy does not say how long an unactivated account is kept').not.toBeNull()
+
+    const amount = Number(must(said, 'what the policy says')[1])
+    const unit = must(said, 'what the policy says')[2]
+    const months = unit === 'dana' ? amount / 30 : unit === 'godine' ? amount * 12 : amount
+
+    /* Twelve, because the selling year is twelve months long: from the day registration
+       opens to the last day the season before the next one is on sale. */
+    expect(months, `${amount} ${unit} is shorter than the year the account was opened to buy`).toBeGreaterThanOrEqual(12)
   })
 })
 

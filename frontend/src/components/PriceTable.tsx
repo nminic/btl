@@ -26,8 +26,28 @@ import '../pages/member/Member.css'
  */
 
 /** The junior price is the one row with no period: it holds whenever it is paid,
- *  so it sits in the same table without pretending to have dates. */
-const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
+ *  so it sits in the same table without pretending to have dates.
+ *
+ *  `ranking` is false here and never read, because this row has no answer of its own to
+ *  give that column: see `ranks` below. */
+const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: false }
+
+/**
+ * What the ranking column says for a band.
+ *
+ * The junior fee is a price level and not a period, so whether the season is ranked
+ * follows the day the fee is paid, for a junior exactly as for anybody else (Član 11 of
+ * the rulebook, two sections above this table). This row used to answer `Da` outright: a
+ * thirteen year old joining in June read that they would be ranked, directly under the
+ * article saying they would not.
+ */
+function ranks(row: PriceRow, say: (key: string) => string): string {
+  if (row.key === JUNIOR.key) {
+    return say('pricing.rankingByPeriod')
+  }
+
+  return row.ranking ? say('pricing.yes') : say('pricing.no')
+}
 
 /** mm-dd as a day is read: 10-05 is the fifth of October. */
 function day(monthDay: string): string {
@@ -69,7 +89,7 @@ export function PriceTable() {
                 <td>{period(row, t('pricing.everyPayment'))}</td>
                 <td>{money(row.eur, locale)}</td>
                 <td>{money(row.rsd, locale)}</td>
-                <td>{row.ranking ? t('pricing.yes') : t('pricing.no')}</td>
+                <td>{ranks(row, t)}</td>
               </tr>
             ))}
           </tbody>
