@@ -33,11 +33,21 @@
  *   new painting it shows up as a property nobody put in that set; the refusal going
  *   missing shows up as one of them absent.
  *
- * Those three close the open question. On top of them sit a few named facts no
- * comparison can carry, because a fault that paints both controls the same way, or both
- * states the same way, leaves no difference behind: the refusal is transparent, carries
- * no image, keeps a real border, is drawn in the muted colour the theme names, and its
- * ring is genuinely visible rather than merely declared.
+ * Those three carry most of it, and each of them is asked again of every pseudo-element
+ * the specification gives this control, sideways against the same pseudo-element of the
+ * live one. On top sit the values: every one of the eighteen has to hold the colour the
+ * theme names, because a member of the set changing its value is as much a fault as a
+ * member appearing, and a review proved it by drawing the label through
+ * `-webkit-text-fill-color` while `color` stayed muted. And on top of those sit the
+ * decisions this portal has already written down, `opacity` first among them.
+ *
+ * **What none of it sees, said plainly because the rule of this repo is that a guard may
+ * claim only what the tool beneath it answers:** a change applied to the live control and
+ * the refused one alike, in all three states, in a property nobody has named here.
+ * `font-size: 0` on `.entity-open` empties both labels and every comparison above stays
+ * quiet, because nothing differs from anything. That class of fault is not subtle on a
+ * screen, and it is what looking at QA is still for. It is not caught here, and this file
+ * does not pretend it is.
  *
  * **What is measured:** the built stylesheet, over the ancestor chain the price list
  * gives this control, in both themes, in three states, with the mouse and the Tab both
@@ -55,7 +65,7 @@
  */
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -71,11 +81,27 @@ const TRANSPARENT = 'rgba(0, 0, 0, 0)'
  *  the portal's own styling of these buttons legitimately changes. */
 const SHOW = process.env.BTL_APPEARANCE_DIFFS === '1'
 
-/** The refusal, said as the exact set of properties in which it differs from the live
- *  control standing beside it. Written from a measurement, not from the stylesheet. */
-const REFUSAL = [
+/** The refusal, said twice over: as the exact set of properties in which it differs
+ *  from the live control standing beside it, and as the value each of them must have.
+ *
+ *  Membership alone is not enough, and a review measured why: `-webkit-text-fill-color`
+ *  is what Chrome actually draws letters with, so a rule setting it to the accent left
+ *  the set of eighteen untouched, left `color` muted, and put a live-coloured word on a
+ *  refused control. Every member now has to hold a named value, so a member changing is
+ *  the same event as a member appearing. */
+const TEXT = [
   '-webkit-text-fill-color',
   '-webkit-text-stroke-color',
+  'caret-color',
+  'color',
+  'column-rule-color',
+  'outline-color',
+  'row-rule-color',
+  'text-decoration-color',
+  'text-emphasis-color',
+]
+
+const EDGE = [
   'border-block-end-color',
   'border-block-start-color',
   'border-bottom-color',
@@ -84,18 +110,35 @@ const REFUSAL = [
   'border-left-color',
   'border-right-color',
   'border-top-color',
-  'caret-color',
-  'color',
-  'column-rule-color',
-  'cursor',
-  'outline-color',
-  'row-rule-color',
-  'text-decoration-color',
-  'text-emphasis-color',
 ]
 
-/** What the focus ring is allowed to change, and nothing else. */
+const REFUSAL = [...TEXT, ...EDGE, 'cursor'].sort()
+
+/** What the focus ring may change, and nothing else. A subset rather than an equality:
+ *  a ring declared at the width the resting state already has drops out of the
+ *  difference, and demanding all four turned a thicker, more visible ring into a
+ *  complaint that there was no ring at all. */
 const RING = ['outline-color', 'outline-offset', 'outline-style', 'outline-width']
+
+/** Decisions this portal has already written down about this control, which no
+ *  comparison can carry: a fault that paints the live control the same way leaves no
+ *  difference behind, and one that paints every state alike leaves none either.
+ *
+ *  `opacity` is the oldest of them. `Entity.css` says in its own words that the refusal
+ *  is written in colours and never in `opacity`, because opacity dims the focus ring
+ *  along with everything else and this control stays in the order of focus on purpose
+ *  (WCAG 2.2 SC 1.4.11). A review set `opacity: .35` on `.entity-open` and watched a
+ *  guard that reads only the ring's own properties call the ring visible. */
+const QUIET = {
+  'background-color': 'rgba(0, 0, 0, 0)',
+  'background-image': 'none',
+  'box-shadow': 'none',
+  'clip-path': 'none',
+  filter: 'none',
+  opacity: '1',
+  transform: 'none',
+  visibility: 'visible',
+}
 
 /** The markup the price list gives this control, from EntityEditor and AdminPricing:
  *  a refused open button in a table cell inside the member shell, beside a live one.
@@ -138,7 +181,27 @@ const FIXTURE = (styles) => `<!doctype html>
  *  The token probe hangs on `<html>`, so it reads what the theme says at the root. Hung
  *  on `<body>` it inherits whatever an ancestor redefined along with the button, and the
  *  comparison compares a fault with itself. */
+const PSEUDOS = ['::before', '::after', '::first-line', '::first-letter', '::selection', '::marker']
+
+/** What each pseudo-element of the refused control may differ from the same
+ *  pseudo-element of the live one in: the refusal, and nothing else. Measured, not
+ *  guessed, and rewritten the same way as the sets above with `BTL_APPEARANCE_DIFFS=1`.
+ *
+ *  A pseudo-element compared with its own element differs in some fifty browser defaults
+ *  and in nothing anybody wrote, which is why the comparison is made sideways. */
+const ALLOWED = {
+  '::before': REFUSAL,
+  '::after': REFUSAL,
+  '::first-line': REFUSAL,
+  '::first-letter': REFUSAL,
+  '::marker': REFUSAL,
+  /* Chrome builds this one out of its own defaults rather than out of the control, so it
+     inherits none of the refusal and differs in nothing at all. Measured. */
+  '::selection': [],
+}
+
 const READ = `(() => {
+  const PSEUDOS = ${JSON.stringify(PSEUDOS)}
   const one = document.getElementById('refused')
   const all = (element, pseudo) => {
     const style = getComputedStyle(element, pseudo)
@@ -163,8 +226,8 @@ const READ = `(() => {
   return JSON.stringify({
     refused: all(one, null),
     live: all(document.getElementById('live'), null),
-    before: all(one, '::before'),
-    after: all(one, '::after'),
+    pseudo: PSEUDOS.reduce((into, name) => { into[name] = all(one, name); return into }, {}),
+    pseudoLive: PSEUDOS.reduce((into, name) => { into[name] = all(document.getElementById('live'), name); return into }, {}),
     under: one.matches(':hover'),
     ring: one.matches(':focus-visible'),
     theme,
@@ -245,7 +308,9 @@ async function moveTo(socket, x, y) {
 
 /** Every property in which two computed styles disagree. */
 function differences(left, right) {
-  return Object.keys(left)
+  /* The keys of both, not of the left one. A rule can give one control a custom property
+     the other has not got, and a comparison that walks only the left never looks at it. */
+  return [...new Set([...Object.keys(left), ...Object.keys(right)])]
     .filter((name) => left[name] !== right[name])
     .sort()
 }
@@ -334,6 +399,12 @@ function complaintsFor(theme, { resting, hovered, focused }) {
   const say = (text) => complaints.push(`${theme}: ${text}`)
   const list = (names) => (names.length === 0 ? 'nothing' : names.join(', '))
 
+  const states = [
+    ['at rest', resting],
+    ['under the mouse', hovered],
+    ['under the keyboard', focused],
+  ]
+
   const lit = differences(hovered.refused, resting.refused)
   const ringed = differences(focused.refused, resting.refused)
   const refusal = differences(resting.refused, resting.live)
@@ -342,6 +413,9 @@ function complaintsFor(theme, { resting, hovered, focused }) {
     console.log(`${theme} hovered vs resting :`, list(lit))
     console.log(`${theme} focused vs resting :`, list(ringed))
     console.log(`${theme} refused vs live    :`, list(refusal))
+    for (const name of PSEUDOS) {
+      console.log(`${theme} ${name.padEnd(15)} :`, list(differences(resting.pseudo[name], resting.pseudoLive[name])))
+    }
 
     return []
   }
@@ -349,36 +423,36 @@ function complaintsFor(theme, { resting, hovered, focused }) {
   if (lit.length > 0) {
     say(`under the mouse it changes, which is what said it was live (${list(lit)})`)
   }
-  if (list(ringed) !== list(RING)) {
+  if (ringed.some((name) => !RING.includes(name))) {
     say(`under the keyboard it changes something other than its ring (${list(ringed)}, and the ring is ${list(RING)})`)
   }
   if (list(refusal) !== list(REFUSAL)) {
     say(`beside the live control it differs in ${list(refusal)}, and the refusal is ${list(REFUSAL)}`)
   }
 
-  /* And the few facts no difference can carry, because a fault that paints both controls
-     or both states the same way leaves no difference behind. */
-  for (const [where, state] of [
-    ['at rest', resting],
-    ['under the mouse', hovered],
-    ['under the keyboard', focused],
-  ]) {
+  for (const [where, state] of states) {
     const one = state.refused
+    /* The ring is allowed to take the focus state off the muted colour, and only there. */
+    const spoken = where === 'under the keyboard' ? TEXT.filter((name) => !RING.includes(name)) : TEXT
 
-    if (one['background-color'] !== TRANSPARENT) {
-      say(`${where} it is filled rather than transparent (${one['background-color']})`)
+    for (const name of spoken) {
+      if (one[name] !== state.theme.muted) {
+        say(`${where} its ${name} is not the muted colour (${one[name]}, theme says ${state.theme.muted})`)
+      }
     }
-    if (one['background-image'] !== 'none') {
-      say(`${where} something is painted behind it (${one['background-image']})`)
-    }
-    if (one.color !== state.theme.muted) {
-      say(`${where} its text is not the muted colour (${one.color}, theme says ${state.theme.muted})`)
-    }
-    if (one['border-top-color'] !== state.theme.border) {
-      say(`${where} its border is not the border colour (${one['border-top-color']}, theme says ${state.theme.border})`)
+    for (const name of EDGE) {
+      if (one[name] !== state.theme.border) {
+        say(`${where} its ${name} is not the border colour (${one[name]}, theme says ${state.theme.border})`)
+      }
     }
     if (one.cursor !== 'not-allowed') {
       say(`${where} it does not carry not-allowed (${one.cursor})`)
+    }
+
+    for (const [name, expected] of Object.entries(QUIET)) {
+      if (one[name] !== expected) {
+        say(`${where} its ${name} is ${one[name]} rather than ${expected}`)
+      }
     }
 
     for (const side of ['top', 'right', 'bottom', 'left']) {
@@ -387,12 +461,34 @@ function complaintsFor(theme, { resting, hovered, focused }) {
       }
     }
 
-    for (const [side, pseudo] of [
-      ['before', state.before],
-      ['after', state.after],
-    ]) {
-      if (pseudo.content !== 'none') {
-        say(`${where} a ::${side} is drawn over it (content ${pseudo.content})`)
+    /* Every pseudo-element the specification gives this control, not the two that were
+       thought of first: a review painted the label through `::first-line` and nothing
+       here looked.
+       Each is held against the same pseudo-element of the live control rather than
+       against the control itself, because a pseudo-element differs from its element in
+       fifty browser defaults and in nothing anybody wrote. Beside its twin it differs in
+       the refusal and nothing else, which is the same closed question asked once more. */
+    for (const name of PSEUDOS) {
+      const own = differences(state.pseudo[name], state.pseudoLive[name])
+
+      if (list(own) !== list(ALLOWED[name])) {
+        say(`${where} its ${name} differs from the live one in ${list(own)}, and it should differ in ${list(ALLOWED[name])}`)
+      }
+
+      /* And in the same values, not merely in the same property names. The set is the
+         same eighteen whether the pseudo-element inherits the refusal or is painted over
+         it: a review wrote `::first-line { color: var(--accent) }`, the names never
+         moved, and the label came out in the live colour.
+         A pseudo-element takes `currentColor` for every one of them, and on this control
+         that is the muted colour, borders included: it does not inherit the control's own
+         border colour, which was measured after this comparison was first written the
+         other way round. */
+      for (const property of ALLOWED[name]) {
+        const expected = property === 'cursor' ? 'not-allowed' : state.theme.muted
+
+        if (state.pseudo[name][property] !== expected) {
+          say(`${where} its ${name} takes a ${property} of its own (${state.pseudo[name][property]}, and the refusal is ${expected})`)
+        }
       }
     }
   }
@@ -431,10 +527,18 @@ async function main() {
     throw new Error(`no ${dist}; run \`npm run build\` first`)
   }
 
-  const sheets = readdirSync(dist).filter((name) => name.endsWith('.css'))
+  /* In the order `dist/index.html` names them, which is the order the browser cascades
+     them in. Read off the folder instead, they come alphabetically by a hashed name,
+     which is no order at all: measured, the same rule won or lost depending only on
+     what its file was called. Today the build emits one sheet and it cannot matter;
+     the first lazy route makes it matter. */
+  const shell = readFileSync(join(process.cwd(), 'dist', 'index.html'), 'utf-8')
+  const sheets = [...shell.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map(
+    (found) => String(found[1]).replace(/^\/?assets\//, ''),
+  )
 
   if (sheets.length === 0) {
-    throw new Error('no built stylesheet in dist/assets; run `npm run build` first')
+    throw new Error('dist/index.html links no stylesheet; run `npm run build` first')
   }
 
   /* Named for this run. A browser left behind by an earlier run that never reached its

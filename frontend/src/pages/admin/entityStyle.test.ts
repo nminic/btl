@@ -94,15 +94,19 @@ function chainToShell(from: Element): string[] {
 
   const shell = walk.map((one) => one.classList.contains('shell')).lastIndexOf(true)
 
-  return walk.slice(0, shell + 1).map((one, index) => {
-    const named = one.id === '' || index === 0 ? '' : `#${one.id}`
-    const classes = [...one.classList]
-      .sort()
-      .map((cls) => `.${cls}`)
-      .join('')
+  return walk.slice(0, shell + 1).map((one, index) => nameOf(one, index > 0))
+}
 
-    return `${one.tagName.toLowerCase()}${named}${classes}`
-  })
+/** An element said the same way in either document: its tag, its id where that is a fact
+ *  both documents share, and its classes in a fixed order. */
+function nameOf(one: Element, withId: boolean): string {
+  const named = one.id === '' || !withId ? '' : `#${one.id}`
+  const classes = [...one.classList]
+    .sort()
+    .map((cls) => `.${cls}`)
+    .join('')
+
+  return `${one.tagName.toLowerCase()}${named}${classes}`
 }
 
 describe('a record that may no longer be opened', () => {
@@ -255,8 +259,20 @@ describe('a record that may no longer be opened', () => {
       'what the fixture puts above the shell',
     )
 
-    expect(`${above.tagName.toLowerCase()}#${above.id}`).toBe('div#root')
-    expect(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')).toContain('id="root"')
+    /* The whole element, classes and all, against the whole element `index.html` writes.
+       Held only by its id, a class added on either side drifts unseen in both
+       directions: a review put one on each in turn and watched this stay green. */
+    const home = document.createElement('div')
+
+    home.innerHTML = must(
+      /<div id="root"[^>]*>\s*<\/div>/.exec(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')),
+      'the mount point in index.html',
+    )[0]
+
+    expect(nameOf(above, true)).toBe(
+      nameOf(must(home.firstElementChild, 'the mount point in index.html'), true),
+    )
+    expect(nameOf(above, true)).toContain('#root')
 
     const mount = must(
       must(drawn.closest('.shell'), 'the shell on the screen').parentElement,
