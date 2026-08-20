@@ -101,6 +101,21 @@ export type FieldDef = {
    * programming language, and those grow teeth.
    */
   showWhenYoungerThan?: { field: string; years: number }
+  /**
+   * Asked of everybody, and required of everybody except somebody younger than
+   * `years`, who may leave it empty.
+   *
+   * The mirror of the rule above, named rather than general for the same reason.
+   * The one case is the number of an identity document. The register of members
+   * asks for it, and an identity card is issued at sixteen, voluntarily from
+   * ten, so a child usually has neither card nor passport. Demanded of them, the
+   * only way to send the form is for a parent to type their own number, and the
+   * association ends up holding the document number of somebody who is not a
+   * member: no row in the privacy policy, no basis, no retention. A security
+   * review measured exactly that on 20.08.2026, and the owner decided the same
+   * day: asked of minors as well, but not required of them.
+   */
+  optionalWhenYoungerThan?: { field: string; years: number }
 }
 
 export type FormDef = {

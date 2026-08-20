@@ -23,7 +23,7 @@ import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
 import { optionsFor } from './records'
-import { emptyValues, isVisible, trimValues, validateForm } from './validate'
+import { asAsked, emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
 
 type Props = {
@@ -528,7 +528,11 @@ export function FormRenderer({
      `values` is what has been typed and `filled` is that read through the
      definition, and the two differ only for a caller that hands the form another
      definition without remounting it. */
-  const visible = form.fields.filter((field) => isVisible(field, filled, today))
+  /* Through `asAsked`, so the star and `aria-required` say the same thing the
+     validation will demand of this reader. */
+  const visible = form.fields
+    .filter((field) => isVisible(field, filled, today))
+    .map((field) => asAsked(field, filled, today))
   /* Each visible field beside its own value, rather than each field looking its
      value up by name. `filled` is built from the definition, so the pairing is
      total and the value that comes out is a value: no fallback, and so no branch

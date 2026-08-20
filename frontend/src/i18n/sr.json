@@ -423,7 +423,7 @@
     "fatherName": "Ime oca",
     "fatherNameHint": "Traži ga evidencija članova koju udruženje vodi po zakonu. Nigde se ne prikazuje.",
     "idNumber": "Broj ličnog dokumenta",
-    "idNumberHint": "Lična karta ili pasoš. Traži ga evidencija članova koju udruženje vodi po zakonu. Vidi ga samo administracija i nigde se ne prikazuje.",
+    "idNumberHint": "Lična karta ili pasoš člana, ne roditelja. Traži ga evidencija članova koju udruženje vodi po zakonu. Ko još nema svoj dokument ostavlja prazno. Vidi ga samo administracija i nigde se ne prikazuje.",
     "phone": "Telefon",
     "phoneHint": "Neobavezno. Služi samo ako oko uplate, nagrade ili nejasnog rezultata treba brzo doći do tebe. Nigde se ne prikazuje."
   },

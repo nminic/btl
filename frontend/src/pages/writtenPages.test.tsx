@@ -73,10 +73,10 @@ describe('the fee schedule in the rulebook', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
-  /** The price table, one string per row of cells. Written pages render their
-   *  Markdown as a real table (src/components/Markdown.tsx), so this reads the
-   *  rows a screen reader would, not the pipes the source is written in. The
-   *  header row has no cells, only column headers, so it falls out by itself. */
+  /** The price table, one string per row of cells. The rulebook draws it out of
+   *  `pricing.ts` through `src/components/PriceTable.tsx` rather than writing it
+   *  as Markdown, so this reads the rows a screen reader would. The header row
+   *  has no cells, only column headers, so it falls out by itself. */
   async function priceTableRows() {
     const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
     const section = heading.closest('section')
@@ -1022,7 +1022,7 @@ describe('what the written pages say the fee buys', () => {
      terms say it plainly now, and these hold the three documents to it.
      Read off the disc, because this is about what is written rather than about
      what a screen does with it. */
-  it('says membership is what gives the right to compete', () => {
+  it('says the fee is not paid for the website but for membership in the league', () => {
     expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
       /ne plaća za pristup sajtu nego za članstvo u ligi/,
     )

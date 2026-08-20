@@ -97,6 +97,33 @@ export function isVisible(field: FieldDef, values: FormValues, today: Date): boo
   return birth !== null && ageOn(birth, today) < rule.years
 }
 
+/**
+ * The field as it is actually asked, which is not always as it is written.
+ *
+ * Whether an answer is demanded is a property of the field for everybody but one
+ * reader: see `optionalWhenYoungerThan` in `types.ts`. Applied in one place and
+ * handed to everything downstream, so what the screen marks and what the
+ * validation demands cannot drift apart.
+ *
+ * A date that will not parse leaves the field required, which is the safe side:
+ * an empty date is an unanswered question, not an answer of `young`.
+ */
+export function asAsked(field: FieldDef, values: FormValues, today: Date): FieldDef {
+  const rule = field.optionalWhenYoungerThan
+
+  if (rule === undefined || field.required !== true) {
+    return field
+  }
+
+  const birth = parseDate(String(values[rule.field] ?? ''))
+
+  if (birth === null || ageOn(birth, today) >= rule.years) {
+    return field
+  }
+
+  return { ...field, required: false }
+}
+
 /* The day is handed in rather than read here. A rule that decides whether a
  * parent's signature is needed must decide it from the same day the field
  * appeared on, and the portal has one clock (src/clock). */
@@ -107,11 +134,12 @@ export function validateForm(
 ): Record<string, FieldError> {
   const errors: Record<string, FieldError> = {}
 
-  for (const field of form.fields) {
-    if (!isVisible(field, values, today)) {
+  for (const written of form.fields) {
+    if (!isVisible(written, values, today)) {
       continue
     }
 
+    const field = asAsked(written, values, today)
     const value = values[field.name] ?? ''
     let error = validateField(field, value)
 

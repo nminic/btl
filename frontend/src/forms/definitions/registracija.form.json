@@ -125,7 +125,11 @@
       "hintKey": "registration.idNumberHint",
       "required": true,
       "maxLength": 20,
-      "row": 5
+      "row": 5,
+      "optionalWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      }
     },
     {
       "name": "phone",
