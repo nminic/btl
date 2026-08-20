@@ -5,6 +5,7 @@ import { loadResource } from '../data/client'
 import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
+import { translate } from '../i18n/translate'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -173,6 +174,10 @@ const ADDRESS = (season: number, category?: string) =>
   `/sr/tabela?sezona=${String(season)}&pol=z${
     category === undefined ? '' : `&kategorija=${encodeURIComponent(category)}`
   }`
+
+/** The Serbian dictionary, so a word the screen must never show is read from
+ *  where it is written rather than typed here a second time. */
+const dictionary = sr
 
 describe('Rankings', () => {
   it('opens on a season that has a field, with the columns from the rulebook', async () => {
@@ -1560,7 +1565,13 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByText('Oslobođen članarine')).not.toBeInTheDocument()
+    /* Read out of the dictionary rather than typed here. The word has already
+       been renamed once, on 17.08.2026, from „počasni" to „oslobođen": typed
+       here, the next rename would leave this looking for a string nothing draws
+       while the profile printed the new one. */
+    expect(
+      screen.queryByText(translate(dictionary, 'sr', 'profile.feeExempt')),
+    ).not.toBeInTheDocument()
   })
 
   it('names itself on a profile too, in the one shape the portal has', async () => {

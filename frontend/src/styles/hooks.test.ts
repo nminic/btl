@@ -1,4 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
+import type { MembershipBasis } from '../data/types'
+import { SUBMISSION_STATUSES } from '../session/context'
 import { join } from 'node:path'
 
 /**
@@ -228,3 +230,34 @@ function properties(pattern: RegExp): Set<string> {
 
   return found
 }
+
+/* The pill whose class name is worked out from a value rather than written:
+ * `tag--${one.membershipBasis}` (pages/admin/AdminMembers.tsx), and the same
+ * shape for the state of a submission and of an event.
+ *
+ * The ground of membership was renamed once, on 17.08.2026, and the rule that
+ * colours it stayed behind under the old name: the pill lost its colour, the
+ * rule became unreachable, and nothing said so.
+ *
+ * Asked the way round that can fail. Not „every value has a rule", since a
+ * value drawn in the plain colour needs none, but „every rule names a value",
+ * which is exactly what a rename breaks. */
+describe('the pill whose name is worked out from a value', () => {
+  /** Every value that may stand after `tag--`, off the sources that define them.
+   *  `confirmed` and `cancelled` are the states an event is in (data/types.ts,
+   *  `EventState`), which share the shape. */
+  const NAMED: string[] = [
+    ...(['payment', 'feeExempt'] satisfies MembershipBasis[]),
+    ...SUBMISSION_STATUSES,
+    'confirmed',
+    'cancelled',
+  ]
+
+  it('has no rule left behind under a name nothing draws any more', () => {
+    const styles = readFileSync(join(SRC, 'pages/member/Member.css'), 'utf8')
+    const named = [...styles.matchAll(/\.tag--([A-Za-z]+)/g)].map((found) => String(found[1]))
+
+    expect(named.length, 'no rule of the pill is written at all').toBeGreaterThan(0)
+    expect(named.filter((one) => !NAMED.includes(one))).toEqual([])
+  })
+})

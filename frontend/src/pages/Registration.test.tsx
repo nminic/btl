@@ -645,6 +645,23 @@ describe('a town the codebook does know', () => {
 })
 
 describe('the telephone', () => {
+  it('never shows what the register of members asks for, once the form is sent', async () => {
+    /* The father's name and the number of an identity document are collected for
+       the register the association keeps by law, and the policy promises they
+       are shown nowhere. The confirmation is the first screen that could break
+       that promise, since it is the one holding what was just typed. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(screen.queryByText(/123456789/)).toBeNull()
+    expect(screen.queryByText(/Milan/)).toBeNull()
+  })
+
   it('is asked for, optional, and the form goes through without it', async () => {
     /* Obligatory on 01.08.2026, optional on 03.08, gone on 11.08, and back as
        something optional on 20.08. What holds it here is that it is genuinely

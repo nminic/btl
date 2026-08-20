@@ -789,6 +789,28 @@ describe('a form laid out in rows', () => {
        into it: the renderer counts the columns. */
     expect(first).toHaveStyle({ '--columns': '3' })
 
+    /* The row that classes a member: when they were born, which they are, and
+       which category they run in. */
+    const second = must(
+      screen.getByLabelText(/Datum rođenja/).closest<HTMLElement>('.form__row'),
+      'the row the date of birth stands in',
+    )
+
+    expect(within(second).getByLabelText(/^Pol$/)).toBeInTheDocument()
+    expect(second).toHaveStyle({ '--columns': '3' })
+
+    /* And the row the register of members asks for, beside the size of a shirt:
+       three fields, one of them the only optional field of the five rows above
+       the foot. */
+    const fifthRow = must(
+      screen.getByLabelText(/^Broj ličnog dokumenta$/).closest<HTMLElement>('.form__row'),
+      'the row the number of the document stands in',
+    )
+
+    expect(within(fifthRow).getByLabelText(/^Telefon \(neobavezno\)$/)).toBeInTheDocument()
+    expect(within(fifthRow).getByLabelText(/Veličina majice/)).toBeInTheDocument()
+    expect(fifthRow).toHaveStyle({ '--columns': '3' })
+
     /* The row of the address is two fields and three columns, because the town
        carries the country beside it. */
     const third = must(
