@@ -348,6 +348,36 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
+  it('declares every field the register of members demands, with the obligation as its basis', () => {
+    /* Not a list of field names, which would be one more thing to keep: the fields are
+       found by what their own hint says about them. A field whose hint tells the reader
+       that the register of members demands it is a field the portal collects under a
+       legal obligation, and every one of those has to stand in this table with that
+       obligation named beside it.
+       Written because two such fields arrived at once, both required, and neither had a
+       guard: removing both rows from the policy left all 1994 tests green. The one new
+       field that did have a guard was the telephone, the only optional one of the three.
+       Add a fourth field of this kind and this test asks for its row without being
+       touched. */
+    const demanded = Object.entries(dictionary.registration)
+      .filter(([key, said]) => key.endsWith('Hint') && String(said).includes('evidencija članova'))
+      .map(([key]) => key.slice(0, -'Hint'.length))
+
+    expect(demanded.length, 'no field says the register of members demands it').toBeGreaterThan(0)
+
+    const policy = whole('politika-privatnosti').split(NEWLINE)
+
+    for (const field of demanded) {
+      const label = translate(dictionary, 'sr', `registration.${field}`)
+      const row = policy.find((line) => line.startsWith(`| ${label} |`))
+
+      expect(row, `${label} is asked for and the policy does not carry it`).toBeDefined()
+      expect(row, `${label} stands in the policy without the obligation as its basis`).toContain(
+        'Pravna obaveza',
+      )
+    }
+  })
+
   it('names what is public and what never is', async () => {
     renderAt('/sr/politika-privatnosti')
 
