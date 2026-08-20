@@ -28,10 +28,12 @@ import { renderAt } from '../../test/render'
  *
  * **Who wins is a question for a browser, and it is not asked here.** It is asked by
  * `scripts/refused-control-appearance.mjs`, which measures the built sheet in headless
- * Chrome in both themes, at rest and under a real mouse: the only oracle that is not
- * another reimplementation of the cascade. That script is run by hand and it writes no
- * markup of the portal's own, so the one axis it cannot see is what a component puts on
- * the element itself. That axis is answered below, where jsdom answers it exactly.
+ * Chrome in both themes and in three states, at rest and under a real mouse and a real
+ * Tab: the only oracle that is not another reimplementation of the cascade. That script
+ * is run by hand and it writes no markup of the portal's own, so two things it cannot
+ * see are answered below, where jsdom answers them exactly: what a component puts on the
+ * element itself, and whether the ancestors it writes out are the ancestors the portal
+ * draws.
  *
  * **What is left is what jsdom can answer exactly:** that the refusal is written, that
  * it applies unconditionally, and that it declares what it is meant to declare. That
@@ -70,6 +72,32 @@ function ruleFor(selector: string): CSSStyleDeclaration {
   expect(found.length, `${selector} is not an unconditional rule of Entity.css`).toBe(1)
 
   return must(found[0], `the rule ${selector}`).style
+}
+
+/** Every ancestor from here up to the shell, named the same way whichever document it
+ *  is walked in. Classes are sorted, because two homes for one chain must not disagree
+ *  over the order somebody wrote them in. */
+function chainToShell(from: Element): string[] {
+  const links: string[] = []
+  let step: Element | null = from
+
+  while (step !== null) {
+    const named = step.id === '' ? '' : `#${step.id}`
+    const classes = [...step.classList]
+      .sort()
+      .map((one) => `.${one}`)
+      .join('')
+
+    links.push(`${step.tagName.toLowerCase()}${named}${classes}`)
+
+    if (step.classList.contains('shell')) {
+      return links
+    }
+
+    step = step.parentElement
+  }
+
+  return links
 }
 
 describe('a record that may no longer be opened', () => {
@@ -152,8 +180,56 @@ describe('a record that may no longer be opened', () => {
        a comment, so nothing but this holds it: delete the script and the sentence above
        keeps promising the axis is covered while the suite stays green. Measured, it
        did. */
-    const asked = must(/`(scripts\/[\w-]+\.mjs)`/.exec(header), 'the header names no script')[1]
+    const asked = [...header.matchAll(/`(scripts\/[\w-]+\.mjs)`/g)].map((found) => found[1])
 
-    expect(existsSync(join(process.cwd(), must(asked, 'the named script')))).toBe(true)
+    expect(asked.length, 'the header names no script at all').toBeGreaterThan(0)
+
+    /* Every name, not the first. A review added a sentence saying the measurement had
+       moved to a second file, which does not exist, and the first name still did, so a
+       check on one match passed while the reader was sent nowhere. */
+    for (const one of asked) {
+      const where = join(process.cwd(), must(one, 'a script named in the header'))
+
+      expect(existsSync(where), `${one} is named in the header and is not there`).toBe(true)
+      expect(readFileSync(where, 'utf-8').length, `${one} is empty`).toBeGreaterThan(0)
+    }
+  })
+
+  it('is measured in a browser over the chain the portal actually draws', async () => {
+    /* The one fact that lives in two places: the ancestors of this control. The script
+       cannot render the portal, so it writes the chain out by hand, and a rule keyed on
+       a link it is missing beats the refusal on specificity alone and is measured as
+       though it were not there. It drifted twice, caught both times by a review and not
+       by anything here: first `#root`, `.shell` and `.shell__main`, then `.adminsection`
+       and `.adminsection__body`.
+
+       So the fixture is read out of the script and put beside the chain this render
+       produces. Neither home is the authority; they have to agree. */
+    const script = readFileSync(
+      join(process.cwd(), 'scripts/refused-control-appearance.mjs'),
+      'utf-8',
+    )
+    const opens = script.indexOf('<body>')
+    const closes = script.indexOf('</body>')
+
+    expect(opens, 'the script has no fixture body').toBeGreaterThan(-1)
+
+    const holder = document.createElement('div')
+
+    holder.innerHTML = script.slice(opens + '<body>'.length, closes)
+
+    const written = must(holder.querySelector('#refused'), 'the refused control in the fixture')
+
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-11-01')
+
+    const drawn = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
+
+    const inFixture = chainToShell(must(written.parentElement, 'the fixture cell'))
+    const onScreen = chainToShell(must(drawn.parentElement, 'the drawn cell'))
+
+    /* Both have to get there, or two chains that stop early could agree about nothing. */
+    expect(inFixture.at(-1), 'the fixture does not reach the shell').toBe('div.shell')
+    expect(onScreen.at(-1), 'the screen does not reach the shell').toBe('div.shell')
+    expect(inFixture).toEqual(onScreen)
   })
 })

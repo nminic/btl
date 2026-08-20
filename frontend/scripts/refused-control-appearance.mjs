@@ -10,7 +10,7 @@
  * stay fast.
  *
  *     npm run build
- *     node scripts/refused-control-appearance.mjs
+ *     npm run appearance
  *
  * Chrome is taken from `CHROME_PATH`, falling back to the usual Windows install; on
  * Linux and macOS that variable has to be given. The debugging port is `BTL_CDP_PORT`,
@@ -18,8 +18,16 @@
  * by the address of the page rather than assumed.
  *
  * **What is measured, exactly:** the built stylesheet, over the ancestor chain the
- * price list gives this control, in **both themes**, at rest and under a real mouse
- * whose landing is checked rather than hoped for.
+ * price list gives this control, in **both themes**, in **three states** (at rest,
+ * under a real mouse whose landing is checked, and under a real Tab whose landing is
+ * checked), on every property that can paint the thing: colour, border, background,
+ * cursor, shadow, opacity, visibility, filter, text decoration, and the focus ring.
+ *
+ * Each is compared with a **named** expectation rather than with itself in another
+ * state. Two rounds of review were lost to that difference: a control painted in both
+ * states answers a question about change with "nothing changed", and an inset shadow
+ * filled the refusal with the accent at 1.4:1 against its own text while a check on the
+ * background alone called it refused.
  *
  * **What is not measured, and this list is the honest part of the file:** the markup
  * below is written here rather than drawn by the portal, so it sees nothing a component
@@ -28,15 +36,18 @@
  * asserts that the rendered button carries no `style` attribute at all. Neither check
  * covers it alone; together they do.
  *
- * The chain of ancestors is copied from `index.html` and `Shell.tsx`, which makes it a
- * fact with two homes and therefore a fact that can drift: a wrapper added to the shell
- * and not added here takes any rule keyed on it out of this measurement without a word.
- * When the shell grows an element, it belongs in the fixture on the same day.
+ * The chain of ancestors below is a fact with two homes, here and in the portal, and it
+ * drifted twice: `#root`, `.shell` and `.shell__main` were missing, and then
+ * `.adminsection` and `.adminsection__body` were, and each time a rule keyed on the
+ * missing link walked past this measurement. It is no longer left to care: the same
+ * `entityStyle.test.ts` reads this fixture, walks the chain the portal actually renders,
+ * and fails the gate when the two stop agreeing.
  *
  * No new dependency. Chrome is driven over the DevTools Protocol with the WebSocket
  * built into Node.
  */
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -53,12 +64,17 @@ const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 /** The markup the price list gives this control, from EntityEditor and AdminPricing:
  *  a refused open button in a table cell inside the member shell, beside a live one.
  *
- *  **The whole chain, not the last few links.** `#root` comes from `index.html`, and
- *  `.shell` and `main#content.shell__main` from `Shell.tsx`: every screen of the portal
- *  hangs under those three. Left out, a rule keyed on any of them beats the refusal on
- *  specificity alone and is measured as if it were not there, which was the shape of
- *  this fixture until a review wrote `#root .entity-open[aria-disabled='true']:hover`
- *  and watched it pass.
+ *  **The whole chain, not the last few links.** `#root` comes from `index.html`,
+ *  `.shell` and `main#content.shell__main` from `Shell.tsx`, and `.adminsection` with
+ *  `.adminsection__body` from `SectionNav.tsx`, which the route table wraps around every
+ *  `administracija/*` screen. Left out, a rule keyed on any of them beats the refusal on
+ *  specificity alone and is measured as if it were not there: reviews wrote
+ *  `#root .entity-open[aria-disabled='true']:hover` and then
+ *  `.adminsection__body .entity-open[aria-disabled='true']:hover`, and watched both pass.
+ *  `entityStyle.test.ts` now holds this chain against the rendered one.
+ *
+ *  The sentinel button before it all is where Tab starts from, and it is outside the
+ *  chain on purpose so it changes nothing about what is measured.
  *
  *  `data-theme` sits on `<html>` and not on `<body>`, because that is where the portal
  *  writes it (`ThemeProvider.tsx`, `index.html`) and where `tokens.css` reads it. On
@@ -66,17 +82,20 @@ const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 const FIXTURE = (styles) => `<!doctype html>
 <html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
 <body>
+  <button type="button" id="before">start</button>
   <div id="root"><div class="shell"><main id="content" class="shell__main" tabindex="-1">
-    <div class="member">
-      <section class="member__panel">
-        <div class="table-scroll">
-          <table class="table"><tbody><tr>
-            <td><button type="button" class="entity-open" aria-disabled="true" id="refused">Otvori</button></td>
-            <td><button type="button" class="entity-open" id="live">Otvori</button></td>
-          </tr></tbody></table>
-        </div>
-      </section>
-    </div>
+    <div class="adminsection"><div class="adminsection__body">
+      <div class="member">
+        <section class="member__panel">
+          <div class="table-scroll">
+            <table class="table"><tbody><tr>
+              <td><button type="button" class="entity-open" aria-disabled="true" id="refused">Otvori</button></td>
+              <td><button type="button" class="entity-open" id="live">Otvori</button></td>
+            </tr></tbody></table>
+          </div>
+        </section>
+      </div>
+    </div></div>
   </main></div></div>
 </body></html>`
 
@@ -110,10 +129,29 @@ const READ = `(() => {
     color: style.color,
     borderColor: style.borderTopColor,
     background: style.backgroundColor,
+    shadow: style.boxShadow,
+    opacity: style.opacity,
+    visibility: style.visibility,
+    filter: style.filter,
+    decoration: style.textDecorationLine,
+    outline: style.outlineStyle + ' ' + style.outlineWidth,
     under: one.matches(':hover'),
+    ring: one.matches(':focus-visible'),
     live: { color: live.color, cursor: live.cursor },
     theme,
   })
+})()`
+
+/** Put the reader one step before the control, so the next Tab lands on it.
+ *
+ *  Not `blur()`: blurring empties `activeElement` but leaves the sequential focus
+ *  navigation starting point where it was, so on the second theme Tab walked past the
+ *  refused control to the live one and the run stopped, saying the ring was never
+ *  measured. `focus()` moves that starting point, which is what the sentinel button
+ *  standing first in the fixture is for. */
+const START = `(() => {
+  document.getElementById('before').focus()
+  return JSON.stringify(document.activeElement === null ? 'none' : document.activeElement.id)
 })()`
 
 const CENTRE = `(() => {
@@ -208,10 +246,41 @@ async function measure(socket, theme) {
     )
   }
 
-  return { resting, hovered }
+  /* And under the keyboard, which is the state this refusal is built around: it is
+     `aria-disabled` and not `disabled`, so it stays in the order of focus on purpose,
+     and the ring is what a reader without a mouse has. Tab rather than `.focus()`,
+     because `:focus-visible` is the browser's own judgement about how focus arrived. */
+  await moveTo(socket, 4, 4)
+
+  const from = await evaluate(socket, START)
+
+  if (from !== 'before') {
+    throw new Error(`${theme}: the sentinel before the control would not take focus (${from})`)
+  }
+
+  for (const type of ['rawKeyDown', 'keyUp']) {
+    await send(socket, 'Input.dispatchKeyEvent', {
+      type,
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    })
+  }
+  await new Promise((resolve) => setTimeout(resolve, 120))
+
+  const focused = await evaluate(socket, READ)
+
+  if (!focused.ring) {
+    throw new Error(
+      `${theme}: Tab did not leave the control focus-visible, so nothing about the focus ring was measured`,
+    )
+  }
+
+  return { resting, hovered, focused }
 }
 
-function complaintsFor(theme, { resting, hovered }) {
+function complaintsFor(theme, { resting, hovered, focused }) {
   const complaints = []
   const say = (text) => complaints.push(`${theme}: ${text}`)
 
@@ -222,38 +291,55 @@ function complaintsFor(theme, { resting, hovered }) {
     say(`the live control beside it lost the pointer (${hovered.live.cursor}), so the sheet is not reaching these buttons`)
   }
 
-  /* Compared with what the theme says at the root, so a token redefined anywhere on
-     the way down shows up as the refusal resolving to something else. */
-  if (resting.color !== resting.theme.muted) {
-    say(`at rest its text is not the muted colour (${resting.color}, theme says ${resting.theme.muted})`)
-  }
-  if (resting.borderColor !== resting.theme.border) {
-    say(`at rest its border is not the border colour (${resting.borderColor}, theme says ${resting.theme.border})`)
-  }
-  if (hovered.color !== hovered.theme.muted || hovered.borderColor !== hovered.theme.border) {
-    say(`under the mouse it stops being muted (${hovered.color} / ${hovered.borderColor})`)
+  /* Every state, and every property that can paint this control, each named rather than
+     compared with itself somewhere else. Asked as a difference between two states, a
+     control painted in both answers that nothing changed: measured, an inset shadow
+     filled the refusal with the accent while a check on the background alone called it
+     refused. The portal paints with inset shadows itself (`styles/table.css`), so that
+     is a house idiom and not an exotic way to break this. */
+  for (const [where, state] of [
+    ['at rest', resting],
+    ['under the mouse', hovered],
+    ['under the keyboard', focused],
+  ]) {
+    /* Compared with what the theme says at the root, so a token redefined anywhere on
+       the way down shows up as the refusal resolving to something else. */
+    if (state.color !== state.theme.muted) {
+      say(`${where} its text is not the muted colour (${state.color}, theme says ${state.theme.muted})`)
+    }
+    if (state.borderColor !== state.theme.border) {
+      say(`${where} its border is not the border colour (${state.borderColor}, theme says ${state.theme.border})`)
+    }
+    if (state.background !== TRANSPARENT) {
+      say(`${where} it is filled rather than transparent (${state.background})`)
+    }
+    /* Named rather than merely not-pointer: `all: revert` and a bare `cursor: auto` both
+       take the refusal off the pointer without ever reaching `pointer`. */
+    if (state.cursor !== 'not-allowed') {
+      say(`${where} it does not carry not-allowed (${state.cursor})`)
+    }
+    if (state.shadow !== 'none') {
+      say(`${where} it is painted with a shadow (${state.shadow})`)
+    }
+    if (state.opacity !== '1') {
+      say(`${where} it is dimmed rather than quiet (opacity ${state.opacity})`)
+    }
+    if (state.visibility !== 'visible') {
+      say(`${where} it is not visible (${state.visibility})`)
+    }
+    if (state.filter !== 'none') {
+      say(`${where} a filter is on it (${state.filter})`)
+    }
+    if (state.decoration !== 'none') {
+      say(`${where} its text is decorated (${state.decoration})`)
+    }
   }
 
-  /* Named rather than merely not-pointer. `all: revert` and a bare `cursor: auto` both
-     take the refusal off the pointer without ever reaching `pointer`, and hovering is
-     the one state in which a cursor is seen at all. */
-  if (resting.cursor !== 'not-allowed') {
-    say(`at rest the refused control does not carry not-allowed (${resting.cursor})`)
-  }
-  if (hovered.cursor !== 'not-allowed') {
-    say(`under the mouse the refused control does not carry not-allowed (${hovered.cursor})`)
-  }
-
-  /* Named, not merely unchanged between the two states. Asked as a difference, a
-     control painted solid in both states answers that nothing changed: a review wrote
-     `.table .entity-open { background: var(--accent) !important }` and watched the
-     refusal come out filled in the live colour, at 1.6:1 against its own text, while
-     this said it still looked refused. */
-  if (resting.background !== TRANSPARENT) {
-    say(`at rest it is filled rather than transparent (${resting.background})`)
-  }
-  if (hovered.background !== TRANSPARENT) {
-    say(`under the mouse it is filled rather than transparent (${hovered.background})`)
+  /* The ring is the whole reason the refusal is written in colours and not in
+     `opacity`, and until now nothing measured it: `outline: none` on this control took
+     it away in silence while every other check stayed quiet (WCAG 2.2 SC 1.4.11). */
+  if (focused.outline.startsWith('none') || focused.outline.endsWith('0px')) {
+    say(`under the keyboard it has no focus ring (${focused.outline})`)
   }
 
   return complaints
@@ -279,10 +365,12 @@ async function main() {
      no longer answer for this one, and the wait ends with the message about the port.
      Anything an interrupted run left behind is swept here rather than accumulating. */
   for (const stale of readdirSync(dist).filter((name) => name.startsWith('refused-control-fixture'))) {
-    rmSync(join(dist, stale), { force: true })
+    rmSync(join(dist, stale), { recursive: true, force: true })
   }
 
-  const page = join(dist, `refused-control-fixture-${process.pid}.html`)
+  /* A pid alone is not enough: Windows hands them back out, so a leftover browser could
+     one day be showing the very name this run picks. */
+  const page = join(dist, `refused-control-fixture-${process.pid}-${randomUUID()}.html`)
 
   writeFileSync(page, FIXTURE(sheets.map((name) => `<link rel="stylesheet" href="${name}">`).join('')))
 
@@ -357,6 +445,7 @@ async function main() {
     for (const theme of ['dark', 'light']) {
       console.log(`${theme} at rest  `, measured[theme].resting)
       console.log(`${theme} hovered  `, measured[theme].hovered)
+      console.log(`${theme} focused  `, measured[theme].focused)
     }
 
     if (complaints.length > 0) {
