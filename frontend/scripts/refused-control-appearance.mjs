@@ -75,11 +75,12 @@ import { pathToFileURL } from 'node:url'
 const CHROME =
   process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = Number(process.env.BTL_CDP_PORT ?? 9333)
-/** Desktop and the narrowest width this portal promises (`CLAUDE.md`, UI standards).
+/** The three widths this portal promises (`CLAUDE.md`, UI standards): desktop, tablet,
+ *  and the narrowest of them.
  *  Measured at one width only, a refusal written away inside `@media (max-width: ...)`
  *  is not there on a telephone and nothing says so: the shared table sheet already
  *  branches at 699.98px, and a review took the refusal out below it. */
-const WIDTHS = [1280, 360]
+const WIDTHS = [1280, 768, 360]
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
 /** Set `BTL_APPEARANCE_DIFFS=1` to print the three differences instead of judging them.
@@ -165,8 +166,11 @@ const QUIET = {
  *  The sentinel button standing first is where Tab starts from, and it is outside the
  *  chain on purpose so it changes nothing about what is measured.
  *
- *  Every attribute the portal writes is written here too, `aria-describedby` and
- *  `aria-labelledby` included. An attribute selector weighs the same as a class, so a
+ *  Every attribute the portal writes is written here too, on **both** controls:
+ *  `aria-describedby` and `aria-labelledby` on the refused one, and `aria-disabled=false`
+ *  on the live one, which React always writes and this fixture once left out. A rule
+ *  keyed on `[aria-disabled='false']` turned every live button in the price list into a
+ *  copy of the refusal, so there was no difference left to find, and nothing said a word. An attribute selector weighs the same as a class, so a
  *  rule keyed on one the fixture has not got is a rule this never sees: measured, and
  *  `entityStyle.test.ts` now holds the attribute names of the whole chain as well.
  *
@@ -184,7 +188,7 @@ const FIXTURE = (styles) => `<!doctype html>
           <div class="table-scroll">
             <table class="table"><tbody><tr>
               <td><button type="button" class="entity-open" aria-disabled="true" aria-label="Otvori" aria-describedby="note" id="refused">Otvori</button><span id="note" hidden>zatvoreno</span></td>
-              <td><button type="button" class="entity-open" aria-label="Otvori" aria-describedby="note" id="live">Otvori</button></td>
+              <td><button type="button" class="entity-open" aria-disabled="false" aria-label="Otvori" id="live">Otvori</button></td>
             </tr></tbody></table>
           </div>
         </section>
@@ -214,6 +218,12 @@ const PSEUDOS = ['::before', '::after', '::first-line', '::first-letter', '::sel
  *  equality into forty-three complaints about a change that painted nothing. Subset says
  *  what is meant either way: it may differ in the refusal, and in nothing else. */
 const ALLOWED = Object.fromEntries(PSEUDOS.map((name) => [name, REFUSAL]))
+
+/** The one pseudo-element Chrome computes out of its own defaults until something makes
+ *  it inherit, and out of the control after that: a custom property declared on the
+ *  control flipped it from one mode to the other. It is the only one asked loosely, and
+ *  loosening the rest to suit it cost every value check they had. */
+const LOOSE = '::selection'
 
 const READ = `(() => {
   const PSEUDOS = ${JSON.stringify(PSEUDOS)}
@@ -381,19 +391,14 @@ async function measure(socket, theme) {
   /* And while it is pressed. A state, not a property, so the blind spot the header owns
      up to does not cover it: a review lit the refusal up under `:active` and every
      comparison stayed quiet because nobody ever pressed it. */
-  for (const type of ['mousePressed', 'mouseReleased']) {
-    if (type === 'mouseReleased') {
-      continue
-    }
-    await send(socket, 'Input.dispatchMouseEvent', {
-      type,
-      x: centre.x,
-      y: centre.y,
-      button: 'left',
-      buttons: 1,
-      clickCount: 1,
-    })
-  }
+  await send(socket, 'Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    x: centre.x,
+    y: centre.y,
+    button: 'left',
+    buttons: 1,
+    clickCount: 1,
+  })
   await new Promise((resolve) => setTimeout(resolve, 120))
 
   const pressed = await evaluate(socket, READ)
@@ -543,6 +548,9 @@ function complaintsFor(theme, { resting, hovered, pressed, focused }) {
       if (apart.length > 0) {
         say(`${where} its ${name} differs from the live one in ${list(apart)}, which is not the refusal`)
       }
+      if (name !== LOOSE && list(own) !== list(ALLOWED[name])) {
+        say(`${where} its ${name} carries ${list(own)} of the refusal, and the refusal is ${list(ALLOWED[name])}`)
+      }
 
       /* And in the same values, not merely in the same property names. The set is the
          same eighteen whether the pseudo-element inherits the refusal or is painted over
@@ -560,11 +568,14 @@ function complaintsFor(theme, { resting, hovered, pressed, focused }) {
         say(`${where} a ${name} is drawn over it (content ${state.pseudo[name].content})`)
       }
 
-      /* Over what it actually took from the control, not over the whole set. A
-         pseudo-element that inherits nothing carries nothing of the refusal to be wrong
-         about, and demanding the refusal of it complained that `::selection` had no
-         cursor: measured on a sound sheet. */
-      for (const property of own.filter((taken) => ALLOWED[name].includes(taken))) {
+      /* The whole set, not only what still differs from the live control. Asked over the
+         difference, a rule that puts the live colour back on the refused label takes that
+         property out of the difference and out of the checking with it: measured, and the
+         label came out in the live colour with nothing said. Only `::selection` is asked
+         over the difference, because it is the one that sometimes inherits nothing. */
+      const asked = name === LOOSE ? own.filter((taken) => ALLOWED[name].includes(taken)) : ALLOWED[name]
+
+      for (const property of asked) {
         const expected = property === 'cursor' ? 'not-allowed' : state.theme.muted
 
         if (state.pseudo[name][property] !== expected) {

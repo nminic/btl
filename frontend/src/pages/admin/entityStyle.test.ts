@@ -28,8 +28,9 @@ import { renderAt } from '../../test/render'
  *
  * **Who wins is a question for a browser, and it is not asked here.** It is asked by
  * `scripts/refused-control-appearance.mjs`, which measures the built sheet in headless
- * Chrome in both themes and in three states, at rest and under a real mouse and a real
- * Tab: the only oracle that is not another reimplementation of the cascade. That script
+ * Chrome in both themes, at the three widths this portal promises, and in four states:
+ * at rest, under a real mouse, under a real press, and under a real Tab. It is the only
+ * oracle that is not another reimplementation of the cascade. That script
  * is run by hand and it writes no markup of the portal's own, so two things it cannot
  * see are answered below, where jsdom answers them exactly: what a component puts on the
  * element itself, and whether the ancestors it writes out are the ancestors the portal
@@ -262,6 +263,23 @@ describe('a record that may no longer be opened', () => {
     expect(inFixture.at(-1), 'the fixture does not reach the shell').toContain('div.shell')
     expect(onScreen.at(-1), 'the screen does not reach the shell').toContain('div.shell')
     expect(inFixture).toEqual(onScreen)
+
+    /* And the live control standing beside it, which the walk above never reaches because
+       it walks upward from the refused one. The fixture wrote `aria-describedby` on it,
+       which the portal never does, and left out `aria-disabled="false"`, which React
+       always writes: a rule keyed on that attribute turned every live button in the price
+       list into a copy of the refusal, leaving no difference for the browser check to
+       find, and neither guard said a word. */
+    const beside = must(
+      (await screen.findAllByRole('button', { name: /^Otvori: / })).find(
+        (one) => one.getAttribute('aria-disabled') === 'false',
+      ),
+      'a live open button on the screen',
+    )
+
+    expect(nameOf(must(holder.querySelector('#live'), 'the live control in the fixture'), false)).toBe(
+      nameOf(beside, false),
+    )
 
     /* Above the shell the two documents cannot agree and should not be asked to: under
        test the app is mounted in a container of the test library's own, and in the
