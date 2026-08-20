@@ -243,14 +243,18 @@ function properties(pattern: RegExp): Set<string> {
  * value drawn in the plain colour needs none, but „every rule names a value",
  * which is exactly what a rename breaks. */
 describe('the pill whose name is worked out from a value', () => {
-  /** Every value that may stand after `tag--`, off the sources that define them.
-   *  `confirmed` and `cancelled` are the states an event is in (data/types.ts,
-   *  `EventState`), which share the shape. */
+  /** Every value that may stand after `tag--`, off the sources that define them, and
+   *  nothing written by hand beside them.
+   *
+   *  Two names used to stand here as exceptions, `confirmed` and `cancelled`, with a
+   *  comment sending the reader to a type called `EventState`. No such type exists: the
+   *  only mention of that name in the whole repository was the comment itself, and the
+   *  two rules it kept alive were drawn by nobody. A list of exceptions is a way to make
+   *  a guard agree with whatever it finds, so both the rules and the exceptions are gone
+   *  and the guard is again what its own name says. */
   const NAMED: string[] = [
     ...(['payment', 'feeExempt'] satisfies MembershipBasis[]),
     ...SUBMISSION_STATUSES,
-    'confirmed',
-    'cancelled',
   ]
 
   it('has no rule left behind under a name nothing draws any more', () => {

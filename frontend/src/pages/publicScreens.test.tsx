@@ -5,7 +5,6 @@ import { loadResource } from '../data/client'
 import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
-import { translate } from '../i18n/translate'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -178,6 +177,32 @@ const ADDRESS = (season: number, category?: string) =>
 /** The Serbian dictionary, so a word the screen must never show is read from
  *  where it is written rather than typed here a second time. */
 const dictionary = sr
+
+/** Every phrase the dictionary carries under a key that names this fact, as pairs of
+ *  key and words. Found by the key rather than listed, so a fourth wording added
+ *  tomorrow is asked about without this file being touched. */
+function everySaying(inKey: string): [string, string][] {
+  const found: [string, string][] = []
+  const walk = (node: unknown, path: string): void => {
+    if (typeof node === 'string') {
+      if (path.toLowerCase().includes(inKey)) {
+        found.push([path, node])
+      }
+
+      return
+    }
+
+    if (typeof node === 'object' && node !== null) {
+      for (const [key, value] of Object.entries(node)) {
+        walk(value, path === '' ? key : `${path}.${key}`)
+      }
+    }
+  }
+
+  walk(dictionary, '')
+
+  return found
+}
 
 describe('Rankings', () => {
   it('opens on a season that has a field, with the columns from the rulebook', async () => {
@@ -1565,13 +1590,25 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    /* Read out of the dictionary rather than typed here. The word has already
-       been renamed once, on 17.08.2026, from „počasni" to „oslobođen": typed
-       here, the next rename would leave this looking for a string nothing draws
-       while the profile printed the new one. */
-    expect(
-      screen.queryByText(translate(dictionary, 'sr', 'profile.feeExempt')),
-    ).not.toBeInTheDocument()
+
+    /* Every way the portal has of saying it, found by its key rather than typed here,
+       and read off the whole page rather than out of one element.
+       Both halves were wrong before. Asked as the exact text of a single node, this
+       passed while the profile printed the fact in plain words: `profile__meta` writes
+       the category, the town and „U ligi od" as bare text in one paragraph, and a fourth
+       phrase among them is invisible to `queryByText`. Measured, a review put it there
+       and this stayed green. And asked about one key, it watched the one key no
+       component draws, while the portal says the same thing in three others. */
+    const shown = document.body.textContent ?? ''
+    const sayings = everySaying('feeexempt')
+
+    expect(sayings.length, 'the dictionary has no way of saying the fee is waived').toBeGreaterThan(
+      1,
+    )
+
+    for (const [key, said] of sayings) {
+      expect(shown, `${key} stands on a public profile`).not.toContain(said)
+    }
   })
 
   it('names itself on a profile too, in the one shape the portal has', async () => {
