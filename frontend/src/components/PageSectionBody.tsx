@@ -1,5 +1,6 @@
 import type { PageSection } from '../data/types'
 import { DucatGallery } from './DucatGallery'
+import { PriceTable } from './PriceTable'
 import { Markdown } from './Markdown'
 
 /**
@@ -23,6 +24,7 @@ export function PageSectionBody({ section }: { section: PageSection }) {
     <>
       <Markdown text={section.body} />
       {section.gallery === 'ducats' && <DucatGallery />}
+      {section.gallery === 'prices' && <PriceTable />}
     </>
   )
 }

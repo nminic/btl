@@ -141,7 +141,7 @@ export type Decision = {
    */
   note: string
   /** The payments queue only: on what basis the membership was activated, paid
-   *  or honorary (PDL P8). Empty on every other queue, and never shown
+   *  or an exemption from the fee (PDL P8). Empty on every other queue, and never shown
    *  publicly. */
   basis: MembershipBasis | ''
   /**

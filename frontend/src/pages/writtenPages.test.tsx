@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
+import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
@@ -22,7 +24,7 @@ const WRITTEN: Record<string, { title: string; sections: { heading: string; body
 
 describe('the written pages', () => {
   it.each([
-    ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027'],
+    ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
     // Contact left the written pages: it is a mail address in the footer now,
     // and the history of the league took its place (PDL P28a).
     ['/sr/politika-privatnosti', 'Politika privatnosti'],
@@ -57,11 +59,16 @@ describe('the written pages', () => {
   })
 })
 
-/* The fee schedule exists twice in the portal: as data in pricing.ts, which the
- * screens read, and as prose in the terms, which is written by hand. Nothing
- * tied the two together, so the prose drifted a whole price band behind the
- * data and no build failed. These tests are that tie. */
-describe('the fee schedule in the terms', () => {
+/* The fee schedule used to exist twice in the portal: as data in pricing.ts,
+ * which the screens read, and as prose in the terms, written by hand. It drifted
+ * a whole price band behind the data and no build failed.
+ *
+ * Since 17.08.2026 there is one of it. The statute puts the amount of the fee
+ * with the management board (član 24), so the rulebook names that decision and
+ * draws the table under it out of pricing.ts (`gallery: 'prices'`), and the
+ * terms link to the rulebook instead of carrying a copy. These tests read the
+ * table where it is now drawn, so they still tie the figures to the data. */
+describe('the fee schedule in the rulebook', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
@@ -70,7 +77,7 @@ describe('the fee schedule in the terms', () => {
    *  rows a screen reader would, not the pipes the source is written in. The
    *  header row has no cells, only column headers, so it falls out by itself. */
   async function priceTableRows() {
-    const heading = await screen.findByRole('heading', { name: /Članarina/ })
+    const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
     const section = heading.closest('section')
 
     if (section === null) {
@@ -98,7 +105,7 @@ describe('the fee schedule in the terms', () => {
   })
 
   it('quotes every price band that pricing.ts holds, by its own name', async () => {
-    renderAt('/sr/uslovi-koriscenja')
+    renderAt('/sr/pravilnik')
     const rows = await priceTableRows()
 
     for (const price of PRICES) {
@@ -113,18 +120,20 @@ describe('the fee schedule in the terms', () => {
       const row = rows.find((line) => line.includes(bandName))
 
       expect(row, `no row of the table is the band "${bandName}"`).toBeDefined()
-      expect(row).toContain(`${price.eur} EUR`)
-      expect(row).toContain(`${price.rsd.toLocaleString('sr-Latn')} RSD`)
+      expect(row).toContain(money(price.eur, 'sr'))
+      expect(row).toContain(money(price.rsd, 'sr'))
     }
   })
 
   it('quotes the junior price', async () => {
-    renderAt('/sr/uslovi-koriscenja')
+    renderAt('/sr/pravilnik')
     const rows = await priceTableRows()
-    const row = rows.find((line) => line.includes(`${JUNIOR.eur} EUR`))
+    const name = translate(dictionary, 'sr', `pricing.rows.${JUNIOR.key}`)
+    const row = rows.find((line) => line.includes(name))
 
-    expect(row, `no row of the table quotes ${JUNIOR.eur} EUR`).toBeDefined()
-    expect(row).toContain(`${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD`)
+    expect(row, `no row of the table is the junior band`).toBeDefined()
+    expect(row).toContain(money(JUNIOR.eur, 'sr'))
+    expect(row).toContain(money(JUNIOR.rsd, 'sr'))
   })
 
   it('carries the referral programme, its amount and the moment it is credited', async () => {
@@ -188,7 +197,7 @@ describe('the fee schedule in the terms', () => {
     /* What each reference is about, taken from the sentence that makes it. One
        entry per reference the terms carry; a new one that nobody writes here
        fails the count below rather than passing unread. */
-    const meant = [{ from: 'diskvalifikacijom', to: 'Pravila ponašanja' }]
+    const meant = [{ from: 'Mere prema članu', to: 'Pravila ponašanja' }]
     /* Every case of the word and not only the genitive: written as „sekcije"
        alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
        passed unread through the very test written to catch it. */
@@ -391,13 +400,13 @@ describe('the rulebook', () => {
     expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
   })
 
-  it('knows an honorary member, and says the fee from abroad is not membership', () => {
-    expect(rulebook).toMatch(/počasno članstvo, bez plaćanja članarine/)
+  it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
+    expect(rulebook).toMatch(/oslobodi plaćanja članarine/)
     /* Membership is measured by activation, and the deadline for the right to
        be ranked is measured by the day of payment. Two questions, and they read
        as a contradiction unless each says which one it answers. */
     expect(rulebook).toMatch(
-      /meri se aktiviranim članstvom na portalu: počasni član nikad nema uplatu/,
+      /meri se aktiviranim statusom na portalu: član oslobođen članarine nikad nema uplatu/,
     )
     expect(rulebook).toMatch(/Rok se meri po danu uplate, a ne po danu kada je liga uplatu/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
@@ -467,10 +476,10 @@ describe('how a written page is set', () => {
   const pages = Object.entries(WRITTEN)
 
   it('reads every written page there is', () => {
-    /* Without this the two below pass on an empty list. Four since 04.08.2026,
-       when "O ligi" was deleted: the rulebook, the terms, the privacy policy and
-       the address of the president. */
-    expect(pages.length).toBe(4)
+    /* Without this the two below pass on an empty list. Five since 17.08.2026,
+       when the statute joined them: the rulebook, the terms, the privacy policy,
+       the statute and the address of the president. */
+    expect(pages.length).toBe(5)
     expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
   })
 
@@ -570,6 +579,22 @@ describe('how a written page is set', () => {
     }
   })
 
+
+  /**
+   * The stores the policy deliberately does not name, and why.
+   *
+   * One entry, and it is the simulated day the developer tools keep: written only
+   * where those tools are switched on (`devToolsEnabled()` in
+   * clock/ClockProvider.tsx), which is the QA site and never the portal a visitor
+   * reaches. QA is behind a password and is not indexed, so the reader of this
+   * policy is never the reader of that store. The reason is written down here
+   * because it was written down once before, in a comment, and went out with the
+   * code that comment sat in; a review then had to find it again.
+   */
+  const NOT_DISCLOSED = new Map([
+    ['btl.simulated-day', 'kept only where the developer tools are on, so never on the portal'],
+  ])
+
   it('names every store the portal actually keeps in a browser, by its own name', () => {
     /* The policy is read as a promise, and „Drugih kolačića nema" was one it did
        not keep: the portal writes the chosen theme to `localStorage`, read before
@@ -594,13 +619,24 @@ describe('how a written page is set', () => {
       readFileSync(join(process.cwd(), 'index.html'), 'utf-8'),
     ]
 
-    /* Anything handed to `setItem`, whether spelt out or named by a constant. A
-       constant is then looked up, so a key hidden behind a name is still found. */
+    /* Anything handed to `setItem` on any store, spelt out or named by a
+       constant. Three ways of getting past this were measured on the earlier
+       `localStorage.setItem(`: `const store = window.localStorage` walked past
+       the name, `sessionStorage` is a second store the reader is owed the name of
+       just the same, and a key written as `setItem(makeKey(a, b), …)` cut the
+       argument at the comma inside it and threw an unreadable error about a
+       regular expression instead of saying anything about a store. */
     const keys = new Set<string>()
 
     for (const code of everywhere) {
-      for (const found of code.matchAll(/localStorage\.setItem\(\s*([^,]+)/g)) {
-        const handed = (found[1] ?? '').trim()
+      /* Every call, not the first one. Written as `matchAll(/\.setItem\(([\s\S]*)/g)`
+         the group was greedy and ate the file to its end, so `matchAll` answered
+         with exactly one match per file and every later store in the same file was
+         invisible. A review measured it: a second, undisclosed `setItem` written
+         under the theme in ThemeProvider passed the whole suite. The rest of the
+         call is taken from where the match ends instead. */
+      for (const found of code.matchAll(/\.setItem\(/g)) {
+        const handed = firstArgument(code.slice((found.index ?? 0) + found[0].length)).trim()
         const literal = /^['"`](.*)['"`]$/.exec(handed)
 
         if (literal !== null) {
@@ -608,13 +644,18 @@ describe('how a written page is set', () => {
           continue
         }
 
-        /* A constant: find where it is given its value, anywhere in the portal. */
-        const gives = new RegExp(`${handed}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
+        /* A constant: find where it is given its value, anywhere in the portal.
+           The name goes into the pattern escaped, because it is read out of a
+           file and this test has no say in what it looks like. */
+        const gives = new RegExp(`${escaped(handed)}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
         const named = everywhere
           .flatMap((one) => [...one.matchAll(gives)])
           .map((one) => one[1] ?? '')
 
-        expect(named, `nothing in the portal gives ${handed} a value`).not.toEqual([])
+        expect(
+          named,
+          `nothing in the portal gives \`${handed}\` a value, so the store it opens cannot be named`,
+        ).not.toEqual([])
         named.forEach((value) => keys.add(value))
       }
     }
@@ -622,11 +663,40 @@ describe('how a written page is set', () => {
     /* The sweep has to have found something, or the whole test passes over
        nothing (app/filterParams.test.ts holds its own sweep the same way). */
     expect(keys.size, 'no store was found at all, so nothing was compared').toBeGreaterThan(0)
+    /* And it has to have found the theme, which is the one every visitor gets.
+       Nought keys is not the only empty answer: one key is too, if the one it
+       found is the wrong one. */
+    expect([...keys]).toContain(THEME_STORAGE_KEY)
+    /* And every store left out on purpose has to still be there to leave out.
+       Without this the map is write-only: the day the developer tools stop keeping
+       a store, the entry stays behind as a licence for a name nothing writes, and
+       the only thing said about it was that its reason is not the empty string. */
+    for (const key of NOT_DISCLOSED.keys()) {
+      expect([...keys], `nothing writes \`${key}\` any more, so the exemption is stale`).toContain(
+        key,
+      )
+    }
 
     const policy = whole('politika-privatnosti')
 
     for (const key of keys) {
-      expect(policy, `the policy does not name the store \`${key}\``).toContain(key)
+      const why = NOT_DISCLOSED.get(key)
+
+      if (why !== undefined) {
+        /* Left out on purpose, and the reason is written down beside the key. The
+           list is short and adding to it is a decision somebody makes rather than
+           a test quietly widening. */
+        expect(why, `the reason \`${key}\` is not disclosed is empty`).not.toBe('')
+        continue
+      }
+
+      /* As a whole name, not as a piece of one. Measured: read with `toContain`,
+         a store called `theme` passed on a document that names `btl-theme`, and so
+         would one called `btl`. What a policy owes the reader is the name of the
+         store, and half a name is a different store. */
+      expect(policy, `the policy does not name the store \`${key}\``).toMatch(
+        new RegExp(`(^|[^\\w.-])${escaped(key)}($|[^\\w.-])`),
+      )
     }
 
     /* And the two things the reader is owed about it: that it never reaches the
@@ -656,20 +726,43 @@ describe('how a written page is set', () => {
      *
        Read off the disc rather than off a screen, because what is guarded is what
        the documents say. The one permitted mention is the sentence that says the
-       portal does not accept one; anything that reads as an invitation fails. */
-    for (const [slug, page] of pages) {
-      for (const section of page.sections) {
-        for (const line of section.body.split(NEWLINE)) {
-          if (!/GPX|TCX/.test(line)) {
-            continue
-          }
+       portal does not accept one; anything that reads as an invitation fails.
+     *
+       **Four ways past this were measured and are closed here.** The trigger was
+       the file formats by name, so „priložite zapis staze" said the whole thing
+       without them. Only the written pages were read, so the same offer made from
+       the dictionary, on a screen rather than in a document, was not read at all.
+       The permitted sentence was looked for anywhere in the line, so „Portal ne
+       prima zapis staze, ali možete da priložite GPX" passed with the refusal
+       serving as the pass for the invitation beside it. And „trag sa sata", which
+       is what somebody writing about a watch reaches for before they reach for
+       „GPX", was not among the triggers at all.
+     *
+       **What this cannot be, said out loud rather than implied.** The trigger is a
+       written list of ways of naming the thing, so it is complete for the ways
+       somebody has thought of and no others. It is not a proof that no offer
+       exists; it is a net with a known mesh. Hence three things: it fails loudly on
+       everything it does catch, the mesh is widened whenever a review gets through
+       it, and `offersTrack` is measured on offers written on purpose below, because
+       in `sr.json` nothing triggers it at all today and a half of a guard that
+       reads nothing looks exactly like a half that finds nothing. */
+    const lines: [string, string][] = [
+      ...pages.flatMap(([slug, page]) =>
+        page.sections.flatMap((section) =>
+          section.body.split(NEWLINE).map((line): [string, string] => [slug, line]),
+        ),
+      ),
+      /* The dictionary as well, because an offer printed on a screen is the same
+         offer as one written in a document, and this guard read none of it. */
+      ...JSON.stringify(sr, null, 1)
+        .split('\n')
+        .map((line): [string, string] => ['sr.json', line]),
+    ]
 
-          expect(line, `${slug} still offers a track file: ${line.trim()}`).toContain(
-            'Portal ne prima zapis staze',
-          )
-        }
-      }
-    }
+    expect(offersTrack(lines)).toEqual([])
+    /* And the sweep reached the one line that is allowed to mention it, so the
+       trigger is live rather than merely quiet. */
+    expect(lines.filter(([, line]) => OFFERED.test(line)).length).toBeGreaterThan(0)
   })
 
   it('carries no telephone number anywhere', () => {
@@ -680,6 +773,104 @@ describe('how a written page is set', () => {
         expect(section.body, `${slug} prints a telephone number`).not.toMatch(/\+381[\d\s]/)
       }
     }
+  })
+})
+
+/** The first argument of a call, cut where the argument ends rather than at the
+ *  first comma: `setItem(makeKey(a, b), day)` hands over one key. */
+function firstArgument(after: string): string {
+  let depth = 0
+
+  for (let index = 0; index < after.length; index += 1) {
+    const letter = after[index]
+
+    if (letter === '(') {
+      depth += 1
+    } else if (letter === ')' && depth === 0) {
+      return after.slice(0, index)
+    } else if (letter === ')') {
+      depth -= 1
+    } else if (letter === ',' && depth === 0) {
+      return after.slice(0, index)
+    }
+  }
+
+  return after
+}
+
+/** A name read out of a file, made safe to put inside a pattern. */
+function escaped(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')
+}
+
+/** Ways of naming a track file, and what an invitation to send one sounds like. A
+ *  written list, so it is exactly as complete as the ways somebody has thought of;
+ *  the test that uses it says so, and measures itself against offers written on
+ *  purpose. */
+const OFFERED = /GPX|TCX|\bFIT\b|zapis staze|trag sa sata|GPS trag/i
+const INVITES = /priloz|priloži|prilaž|prilog|dodajte|učitaj|pošaljite|prihvata|čita/i
+const REFUSAL = 'Portal ne prima zapis staze'
+
+/**
+ * Every line that offers a track file, with where it was found.
+ *
+ * A line may mention one only to say the portal does not take it, and only that:
+ * the refusal is struck out and whatever is left must not read as an invitation, or
+ * one sentence could carry both and pass on the half that is allowed.
+ */
+function offersTrack(lines: [string, string][]): string[] {
+  return lines
+    .filter(([, line]) => OFFERED.test(line))
+    .filter(([, line]) => !line.includes(REFUSAL) || INVITES.test(line.replace(REFUSAL, '')))
+    .map(([where, line]) => `${where}: ${line.trim()}`)
+}
+
+describe('the two pieces the store sweep is made of', () => {
+  /* Neither was reachable by anything but the two calls the portal happens to make
+     today, and both exist for calls it does not make yet: a key built by a function,
+     and a name read out of a file going into a pattern. Reduced to doing nothing,
+     both passed the whole file. */
+  it('cuts the first argument where the argument ends, not at the first comma', () => {
+    expect(firstArgument("'btl-theme', next)")).toBe("'btl-theme'")
+    expect(firstArgument('makeKey(a, b), next)')).toBe('makeKey(a, b)')
+    expect(firstArgument('deep(one(a, b), c), next)')).toBe('deep(one(a, b), c)')
+    // A call with one argument ends at its own bracket, with no comma anywhere.
+    expect(firstArgument('only(a))')).toBe('only(a)')
+  })
+
+  it('makes a name read out of a file safe to put in a pattern', () => {
+    /* Without this, a name carrying a bracket or a dot built a pattern that either
+       threw something unreadable about a regular expression or quietly matched more
+       than the name. */
+    expect(new RegExp(escaped('KEY.NAME')).test('KEY.NAME')).toBe(true)
+    expect(new RegExp(escaped('KEY.NAME')).test('KEYxNAME')).toBe(false)
+    expect(() => new RegExp(escaped('makeKey(a'))).not.toThrow()
+  })
+})
+
+describe('the guard over the written pages', () => {
+  /* Each of these is a way somebody got past an earlier version of the sweep, or
+     could. Written as offers on purpose, because the real documents make none and a
+     sweep that finds nothing looks the same as a sweep that reads nothing. */
+  it.each([
+    ['the format by name', 'Priložite GPX i moderator ga proverava.'],
+    ['no format at all', 'Priložite zapis staze i moderator ga proverava.'],
+    ['a watch instead of a format', 'Pošaljite trag sa sata uz rezultat.'],
+    ['the letters GPS', 'Dodajte GPS trag, portal ga čita.'],
+    [
+      'a refusal and an offer in one breath',
+      'Portal ne prima zapis staze u obliku GPX, ali možete da priložite zapis uz komentar.',
+    ],
+  ])('catches an offer written as %s', (_case, line) => {
+    expect(offersTrack([['sr.json', line]])).toHaveLength(1)
+  })
+
+  it('lets the one sentence that refuses one through', () => {
+    expect(
+      offersTrack([
+        ['pravilnik', 'Portal ne prima zapis staze u obliku GPX, FIT ili TCX i ne izvodi te vrednosti iz njega.'],
+      ]),
+    ).toEqual([])
   })
 })
 
@@ -716,7 +907,7 @@ describe('what the written pages say the fee buys', () => {
      Read off the disc, because this is about what is written rather than about
      what a screen does with it. */
   it('says membership is what gives the right to compete', () => {
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
       /ne plaća za pristup sajtu nego za članstvo u ligi/,
     )
   })
@@ -728,19 +919,19 @@ describe('what the written pages say the fee buys', () => {
        anything, and it would not have caught the description P32 names as the
        wrong one, a subscription to a website. */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /registrovao na portalu i kome je liga aktivirala članstvo/,
+      /primljen u članstvo Udruženja i kome je aktiviran takmičarski status/,
     )
     /* And activation is what carries it, since one member in the league has
-       never paid anything: an honorary one. Written as three conditions with
+       never paid anything: one freed of the fee. Written as three conditions with
        the fee among them, the definition gave rights in one article and took
        them back in another (owner, 03.08.2026). */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /aktivira po evidentiranoj uplati članarine ili po odluci lige o počasnom članstvu/,
+      /aktivira po evidentiranoj uplati članarine ili po odluci Upravnog odbora kojom je član oslobođen/,
     )
   })
 
   it('says what stops when the fee runs out, which is what makes it a ticket', () => {
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
       /se rezultati ne unose, ne rangiraju i ne ulaze u tabele, a profil se ne prikazuje/,
     )
   })
@@ -748,21 +939,23 @@ describe('what the written pages say the fee buys', () => {
   it('measures membership by activation in the terms as well, not only in the rulebook', () => {
     /* The terms are the document the rulebook itself makes authoritative for the
        fee (article 3), and they went on defining a member as somebody who has
-       paid. One honorary member reads both and is told in one that they are a
+       paid. One member freed of the fee reads both and is told in one that they are a
        member with every right and in the other that their profile is not shown
        (owner, 03.08.2026). */
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
-      /kome liga aktivira članstvo, po evidentiranoj uplati članarine ili po odluci o počasnom članstvu/,
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
+      /Članstvo proizvodi dejstvo po evidentiranoj uplati članarine, ako je članarina za to lice utvrđena/,
     )
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(/Bez aktiviranog članstva/)
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
+      /Dok takmičarski status nije aktivan/,
+    )
     /* And the section that walks through registration, which described the same
-       thing as a queue of steps ending in a payment. An honorary member never
+       thing as a queue of steps ending in a payment. A member freed of the fee never
        walks two of those steps. */
-    expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
-      /Dok vam članstvo ne bude aktivirano niste vidljivi/,
+    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
+      /Dok nije, niste vidljivi na portalu/,
     )
-    expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
-      /Počasnog člana aktiviramo bez koraka 4, odlukom lige; članski broj i sva prava dobija/,
+    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
+      /oslobodio plaćanja članarine prolazi bez koraka 4; članski broj i sva prava dobija/,
     )
   })
 

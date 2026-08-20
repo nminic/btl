@@ -64,6 +64,11 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
 
 /** Only these three, and Contact is a mailto rather than a screen (PDL P28a). */
 export const FOOTER_ROUTES: RouteDef[] = [
+  /* The statute joined them on 17.08.2026, when the assembly adopted a new one.
+     It is the act the other two hang off: član 34 of it puts the general acts of
+     the association on the internet page, and član 34 stav 5 makes it the one
+     that wins wherever an act of the association says something else. */
+  { path: 'statut', labelKey: 'nav.statute', seoKey: 'statute' },
   { path: 'politika-privatnosti', labelKey: 'nav.privacy', seoKey: 'privacy' },
   { path: 'uslovi-koriscenja', labelKey: 'nav.terms', seoKey: 'terms' },
 ]

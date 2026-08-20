@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "appearance": "node scripts/refused-control-appearance.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

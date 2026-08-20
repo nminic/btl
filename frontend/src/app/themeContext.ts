@@ -9,6 +9,16 @@ export type ThemeValue = {
   choose: (theme: Theme) => void
 }
 
+/**
+ * What the browser paints its own bar in, per theme: `--bg` of each one.
+ *
+ * Written out rather than read from the stylesheet, because a `<meta>` tag takes
+ * a colour and not a custom property, and because the value has to be in
+ * index.html before any stylesheet is fetched. A guard holds all three copies of
+ * each colour to one another (app/theme.test.tsx).
+ */
+export const BAR: Record<Theme, string> = { dark: '#060b16', light: '#f4f6fa' }
+
 export const ThemeContext = createContext<ThemeValue | null>(null)
 
 /* Dark is the default and the system preference no longer decides (PDL P28a).

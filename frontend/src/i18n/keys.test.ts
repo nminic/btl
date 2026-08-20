@@ -171,7 +171,7 @@ describe('the names the portal composes out of a list', () => {
     /* The role switch, which is a thing of the workshop rather than of the
        portal, and still a select somebody reads. */
     { of: 'role', each: ROLES },
-    { of: 'admin.basisValue', each: ['payment', 'honorary'] },
+    { of: 'admin.basisValue', each: ['payment', 'feeExempt'] },
     { of: 'status', each: SUBMISSION_STATUSES },
     { of: 'topBoards.byLength', each: CATEGORIES },
     { of: 'event.rating', each: RATING_MARKS },
