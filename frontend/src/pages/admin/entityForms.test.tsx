@@ -216,7 +216,7 @@ describe('a record that is entered rather than changed', () => {
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
     await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
     await user.click(form.getByLabelText(labelled(t('admin.field.firstSeason2027'))))
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'honorary')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'feeExempt')
 
     /* The form used to carry a box saying the membership was active, with a note
        that an unpaid member has an account but is visible nowhere. Nothing reads
@@ -234,7 +234,7 @@ describe('a record that is entered rather than changed', () => {
     // The country is named rather than shown as a code, and a box reads yes.
     expect(within(saved).getByText('Srbija')).toBeVisible()
     expect(within(saved).getAllByText(t('admin.yes')).length).toBeGreaterThan(0)
-    expect(within(saved).getByText(t('admin.basisValue.honorary'))).toBeVisible()
+    expect(within(saved).getByText(t('admin.basisValue.feeExempt'))).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
@@ -246,7 +246,7 @@ describe('a record that is entered rather than changed', () => {
     // The year of birth is on this screen and on no other (PDL P11, P23).
     expect(row.getByText('1991')).toBeVisible()
     expect(row.getByText('Kraljevo')).toBeVisible()
-    expect(row.getByText(t('admin.basisValue.honorary'))).toBeVisible()
+    expect(row.getByText(t('admin.basisValue.feeExempt'))).toBeVisible()
   })
 
   it('carries every field the record has, including the ones no field asks for', () => {

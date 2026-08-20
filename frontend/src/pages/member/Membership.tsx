@@ -87,7 +87,7 @@ function inTheirCurrency(
  *
  * Activation and not payment, decided by the owner on 13.08.2026 after a review
  * asked: „OK je da se za preporuku dobije balans čak i ako je preporučen član
- * dobio počasnu aktivaciju." So an honorary member counts. What the referrer is
+ * oslobođen članarine." So a member freed of the fee counts. What the referrer is
  * paid for is bringing somebody into the league, and the league deciding to
  * waive that person's fee is the league's own business, not a reason to withhold
  * it (PDL P16).
@@ -157,9 +157,9 @@ export function Membership() {
            has to be enough. */
         const price = applyChanges(priceOn(today), edits[priceOn(today).key])
         const junior = applyChanges(JUNIOR, edits[JUNIOR.key])
-        /* An honorary member owes nothing at all (Pravilnik član 15, PDL P16),
-           and twenty nine of the thirty two members in the data are honorary. */
-        const honorary = me.membershipBasis === 'honorary'
+        /* A member freed of the fee owes nothing at all (Pravilnik član 15, PDL P16),
+           and twenty nine of the thirty two members in the data are freed of the fee. */
+        const feeExempt = me.membershipBasis === 'feeExempt'
         /* The members as administration has them, not as the file has them.
            Counted straight off the file, somebody an administrator had deleted
            went on earning their referrer six hundred dinars: they were gone from
@@ -193,8 +193,8 @@ export function Membership() {
                 {t('membership.status')}
               </h2>
               <p className="membership__state">
-                {honorary
-                  ? t('membership.honorary')
+                {feeExempt
+                  ? t('membership.feeExempt')
                   : t('membership.active', { season: me.firstSeason })}
               </p>
               {/* Both amounts, side by side, and no choice between them (PDL
@@ -203,11 +203,11 @@ export function Membership() {
                   forbade was reading one as a conversion of the other. The ban
                   on showing them together was replaced by a ban on picking. */}
               {/* Nothing about a price to somebody who owes none. The slip was
-                  taken away from an honorary member and these three sentences
+                  taken away from a member freed of the fee and these three sentences
                   were not, so the screen still quoted the fee, the processing
                   charge and the junior rate to somebody it had just told they
                   pay nothing. */}
-              {!honorary && (
+              {!feeExempt && (
               <>
               <p className="member__note">
                 {registrationOpen(today)
@@ -246,15 +246,15 @@ export function Membership() {
                 {t('membership.renewal', { season: nextSeason })}
               </h2>
 
-              {/* An honorary member owes nothing, ever (Pravilnik član 15, PDL
+              {/* A member freed of the fee owes nothing, ever (Pravilnik član 15, PDL
                   P16). Only the line about their status said so, while the
                   whole of the renewal underneath went on being drawn: a price,
                   „Uplati sada", the recipient, a reference number and a QR code
                   for 4.800 RSD they do not owe. Twenty nine of the thirty
-                  members in the data are honorary, so that was very nearly the
+                  members in the data are freed of the fee, so that was very nearly the
                   only thing this screen ever showed. */}
-              {honorary ? (
-                <p className="member__note">{t('membership.honoraryNoRenewal')}</p>
+              {feeExempt ? (
+                <p className="member__note">{t('membership.feeExemptNoRenewal')}</p>
               ) : windowOpen ? (
                 <>
                   <p className="member__note">{t('membership.renewalOpen')}</p>

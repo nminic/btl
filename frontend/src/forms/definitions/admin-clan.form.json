@@ -73,7 +73,7 @@
       "required": true,
       "options": [
         { "value": "payment", "labelKey": "admin.basisValue.payment" },
-        { "value": "honorary", "labelKey": "admin.basisValue.honorary" }
+        { "value": "feeExempt", "labelKey": "admin.basisValue.feeExempt" }
       ]
     }
   ]

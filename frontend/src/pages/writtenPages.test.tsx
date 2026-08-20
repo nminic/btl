@@ -4,6 +4,7 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
+import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
@@ -23,7 +24,7 @@ const WRITTEN: Record<string, { title: string; sections: { heading: string; body
 
 describe('the written pages', () => {
   it.each([
-    ['/sr/pravilnik', 'Pravilnik takmičenja BTL 2027'],
+    ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
     // Contact left the written pages: it is a mail address in the footer now,
     // and the history of the league took its place (PDL P28a).
     ['/sr/politika-privatnosti', 'Politika privatnosti'],
@@ -58,11 +59,16 @@ describe('the written pages', () => {
   })
 })
 
-/* The fee schedule exists twice in the portal: as data in pricing.ts, which the
- * screens read, and as prose in the terms, which is written by hand. Nothing
- * tied the two together, so the prose drifted a whole price band behind the
- * data and no build failed. These tests are that tie. */
-describe('the fee schedule in the terms', () => {
+/* The fee schedule used to exist twice in the portal: as data in pricing.ts,
+ * which the screens read, and as prose in the terms, written by hand. It drifted
+ * a whole price band behind the data and no build failed.
+ *
+ * Since 17.08.2026 there is one of it. The statute puts the amount of the fee
+ * with the management board (član 24), so the rulebook names that decision and
+ * draws the table under it out of pricing.ts (`gallery: 'prices'`), and the
+ * terms link to the rulebook instead of carrying a copy. These tests read the
+ * table where it is now drawn, so they still tie the figures to the data. */
+describe('the fee schedule in the rulebook', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
@@ -71,7 +77,7 @@ describe('the fee schedule in the terms', () => {
    *  rows a screen reader would, not the pipes the source is written in. The
    *  header row has no cells, only column headers, so it falls out by itself. */
   async function priceTableRows() {
-    const heading = await screen.findByRole('heading', { name: /Članarina/ })
+    const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
     const section = heading.closest('section')
 
     if (section === null) {
@@ -99,7 +105,7 @@ describe('the fee schedule in the terms', () => {
   })
 
   it('quotes every price band that pricing.ts holds, by its own name', async () => {
-    renderAt('/sr/uslovi-koriscenja')
+    renderAt('/sr/pravilnik')
     const rows = await priceTableRows()
 
     for (const price of PRICES) {
@@ -114,18 +120,20 @@ describe('the fee schedule in the terms', () => {
       const row = rows.find((line) => line.includes(bandName))
 
       expect(row, `no row of the table is the band "${bandName}"`).toBeDefined()
-      expect(row).toContain(`${price.eur} EUR`)
-      expect(row).toContain(`${price.rsd.toLocaleString('sr-Latn')} RSD`)
+      expect(row).toContain(money(price.eur, 'sr'))
+      expect(row).toContain(money(price.rsd, 'sr'))
     }
   })
 
   it('quotes the junior price', async () => {
-    renderAt('/sr/uslovi-koriscenja')
+    renderAt('/sr/pravilnik')
     const rows = await priceTableRows()
-    const row = rows.find((line) => line.includes(`${JUNIOR.eur} EUR`))
+    const name = translate(dictionary, 'sr', `pricing.rows.${JUNIOR.key}`)
+    const row = rows.find((line) => line.includes(name))
 
-    expect(row, `no row of the table quotes ${JUNIOR.eur} EUR`).toBeDefined()
-    expect(row).toContain(`${JUNIOR.rsd.toLocaleString('sr-Latn')} RSD`)
+    expect(row, `no row of the table is the junior band`).toBeDefined()
+    expect(row).toContain(money(JUNIOR.eur, 'sr'))
+    expect(row).toContain(money(JUNIOR.rsd, 'sr'))
   })
 
   it('carries the referral programme, its amount and the moment it is credited', async () => {
@@ -189,7 +197,7 @@ describe('the fee schedule in the terms', () => {
     /* What each reference is about, taken from the sentence that makes it. One
        entry per reference the terms carry; a new one that nobody writes here
        fails the count below rather than passing unread. */
-    const meant = [{ from: 'diskvalifikacijom', to: 'Pravila ponašanja' }]
+    const meant = [{ from: 'Mere prema članu', to: 'Pravila ponašanja' }]
     /* Every case of the word and not only the genitive: written as „sekcije"
        alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
        passed unread through the very test written to catch it. */
@@ -392,13 +400,13 @@ describe('the rulebook', () => {
     expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
   })
 
-  it('knows an honorary member, and says the fee from abroad is not membership', () => {
-    expect(rulebook).toMatch(/počasno članstvo, bez plaćanja članarine/)
+  it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
+    expect(rulebook).toMatch(/oslobodi plaćanja članarine/)
     /* Membership is measured by activation, and the deadline for the right to
        be ranked is measured by the day of payment. Two questions, and they read
        as a contradiction unless each says which one it answers. */
     expect(rulebook).toMatch(
-      /meri se aktiviranim članstvom na portalu: počasni član nikad nema uplatu/,
+      /meri se aktiviranim statusom na portalu: član oslobođen članarine nikad nema uplatu/,
     )
     expect(rulebook).toMatch(/Rok se meri po danu uplate, a ne po danu kada je liga uplatu/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
@@ -468,10 +476,10 @@ describe('how a written page is set', () => {
   const pages = Object.entries(WRITTEN)
 
   it('reads every written page there is', () => {
-    /* Without this the two below pass on an empty list. Four since 04.08.2026,
-       when "O ligi" was deleted: the rulebook, the terms, the privacy policy and
-       the address of the president. */
-    expect(pages.length).toBe(4)
+    /* Without this the two below pass on an empty list. Five since 17.08.2026,
+       when the statute joined them: the rulebook, the terms, the privacy policy,
+       the statute and the address of the president. */
+    expect(pages.length).toBe(5)
     expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
   })
 
@@ -899,7 +907,7 @@ describe('what the written pages say the fee buys', () => {
      Read off the disc, because this is about what is written rather than about
      what a screen does with it. */
   it('says membership is what gives the right to compete', () => {
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
       /ne plaća za pristup sajtu nego za članstvo u ligi/,
     )
   })
@@ -911,19 +919,19 @@ describe('what the written pages say the fee buys', () => {
        anything, and it would not have caught the description P32 names as the
        wrong one, a subscription to a website. */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /registrovao na portalu i kome je liga aktivirala članstvo/,
+      /primljen u članstvo Udruženja i kome je aktiviran takmičarski status/,
     )
     /* And activation is what carries it, since one member in the league has
-       never paid anything: an honorary one. Written as three conditions with
+       never paid anything: one freed of the fee. Written as three conditions with
        the fee among them, the definition gave rights in one article and took
        them back in another (owner, 03.08.2026). */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /aktivira po evidentiranoj uplati članarine ili po odluci lige o počasnom članstvu/,
+      /aktivira po evidentiranoj uplati članarine ili po odluci Upravnog odbora kojom je član oslobođen/,
     )
   })
 
   it('says what stops when the fee runs out, which is what makes it a ticket', () => {
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
       /se rezultati ne unose, ne rangiraju i ne ulaze u tabele, a profil se ne prikazuje/,
     )
   })
@@ -931,21 +939,23 @@ describe('what the written pages say the fee buys', () => {
   it('measures membership by activation in the terms as well, not only in the rulebook', () => {
     /* The terms are the document the rulebook itself makes authoritative for the
        fee (article 3), and they went on defining a member as somebody who has
-       paid. One honorary member reads both and is told in one that they are a
+       paid. One member freed of the fee reads both and is told in one that they are a
        member with every right and in the other that their profile is not shown
        (owner, 03.08.2026). */
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(
-      /kome liga aktivira članstvo, po evidentiranoj uplati članarine ili po odluci o počasnom članstvu/,
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
+      /Članstvo proizvodi dejstvo po evidentiranoj uplati članarine, ako je članarina za to lice utvrđena/,
     )
-    expect(sectionOf('uslovi-koriscenja', /pravo takmičenja/)).toMatch(/Bez aktiviranog članstva/)
+    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
+      /Dok takmičarski status nije aktivan/,
+    )
     /* And the section that walks through registration, which described the same
-       thing as a queue of steps ending in a payment. An honorary member never
+       thing as a queue of steps ending in a payment. A member freed of the fee never
        walks two of those steps. */
-    expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
-      /Dok vam članstvo ne bude aktivirano niste vidljivi/,
+    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
+      /Dok nije, niste vidljivi na portalu/,
     )
-    expect(sectionOf('uslovi-koriscenja', /Registracija se radi/)).toMatch(
-      /Počasnog člana aktiviramo bez koraka 4, odlukom lige; članski broj i sva prava dobija/,
+    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
+      /oslobodio plaćanja članarine prolazi bez koraka 4; članski broj i sva prava dobija/,
     )
   })
 

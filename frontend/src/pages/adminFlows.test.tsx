@@ -216,7 +216,7 @@ describe('members', () => {
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
-    expect(within(table).getAllByText('Počasno').length).toBeGreaterThan(0)
+    expect(within(table).getAllByText('Oslobođen članarine').length).toBeGreaterThan(0)
   })
 
   it('searches', async () => {
@@ -1553,13 +1553,13 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(table.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
   })
 
-  it('activates on a recorded payment, and on honorary membership', async () => {
+  it('activates on a recorded payment, and on exemption from the fee', async () => {
     const user = await openPayments()
 
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Počasno članstvo' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Oslobodi članarine' })))
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
 
     /* Both grounds exist because the fortnight before registration opens is
@@ -1568,7 +1568,7 @@ describe('the queue of memberships waiting to be activated', () => {
     const lines = decidedLines()
 
     expect(lines.filter((line) => line.includes('| payment |'))).toHaveLength(1)
-    expect(lines.filter((line) => line.includes('| honorary |'))).toHaveLength(1)
+    expect(lines.filter((line) => line.includes('| feeExempt |'))).toHaveLength(1)
   })
 
   it('shows the number it handed out on screen, beside who it went to', async () => {
@@ -1580,7 +1580,7 @@ describe('the queue of memberships waiting to be activated', () => {
        moment it is given (PDL P8, 30.07.2026). Two of them, because one number
        twice is the fault this is here to catch. */
     await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Počasno članstvo' })))
+    await user.click(first(screen.getAllByRole('button', { name: 'Oslobodi članarine' })))
 
     /* On the screen and not only in the session: a member number is the first
        thing the administrator passes on to whoever paid (PDL P8), and the table

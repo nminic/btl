@@ -1555,12 +1555,12 @@ describe('CompetitorProfile', () => {
     )
   })
 
-  it('never tells a visitor who is an honorary member', async () => {
+  it('never tells a visitor who is a member freed of the fee', async () => {
     // It is a fact about money, not about running, and it is nobody's business.
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByText('Počasno članstvo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Oslobodi članarine')).not.toBeInTheDocument()
   })
 
   it('names itself on a profile too, in the one shape the portal has', async () => {

@@ -81,6 +81,7 @@ const SCREENS: Record<string, ReactElement> = {
   pravilnik: <Rulebook />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
+  statut: <StaticPage slug="statut" />,
 }
 
 /**

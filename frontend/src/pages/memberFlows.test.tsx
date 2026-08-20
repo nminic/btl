@@ -69,7 +69,7 @@ function Administration({
   )
 }
 
-/* 000032 by default and not 000001: an honorary member owes nothing and is shown
+/* 000032 by default and not 000001: a member freed of the fee owes nothing and is shown
    no renewal at all (Pravilnik član 15, PDL P16), so every test about renewal
    needs somebody who actually pays. Of the thirty, three do, and this is the
    grown one of them living in Serbia. His membership is not active, which this
@@ -215,17 +215,17 @@ describe('membership', () => {
      level below it (PDL P28a puts the slip inside renewal). As third level
      headings they read as four more sections of the renewal, which they are
      not. */
-  it('asks an honorary member for nothing at all', async () => {
-    /* Pravilnik član 15 and PDL P16: an honorary member never has a payment.
+  it('asks a member freed of the fee for nothing at all', async () => {
+    /* Pravilnik član 15 and PDL P16: a member freed of the fee never has a payment.
        Only the line about their status said so, while the whole of the renewal
        underneath went on being drawn: a price, „Uplati sada", the recipient, a
        reference number and a QR code for 4.800 RSD they do not owe. Twenty nine
-       of the thirty members in the data are honorary, so that was very nearly
+       of the thirty members in the data are freed of the fee, so that was very nearly
        the only thing this screen ever showed. */
     renderFor('000001')
 
-    expect(await screen.findByText(/Počasno članstvo\. Za sezonu/)).toBeVisible()
-    expect(screen.getByText(/Počasno članstvo se ne obnavlja/)).toBeVisible()
+    expect(await screen.findByText(/Oslobođen si plaćanja članarine za sezonu/)).toBeVisible()
+    expect(screen.getByText(/Oslobođen si plaćanja članarine, pa nema/)).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Uplati sada' })).not.toBeInTheDocument()
@@ -383,7 +383,7 @@ describe('membership', () => {
   it('offers a member abroad PayPal and a card, and no code at all', async () => {
     /* 000010 is the one member abroad who pays rather than being honoured, and
        the generator says why one had to exist: with every foreign member
-       honorary, this screen would have nobody to show and the rule about the
+       freed of the fee, this screen would have nobody to show and the rule about the
        processing fee could not be checked. */
     renderFor('000010')
 
@@ -484,16 +484,16 @@ describe('membership', () => {
        „prvi naredni put" half of the rule. Written out as the string „0 RSD"
        for everybody, no arrangement of the data could ever have shown this.
 
-       All four of the four are honorary, and that is the point of choosing them:
+       All four of the four are freed of the fee, and that is the point of choosing them:
        a review proposed that the credit should require the fee to have been paid,
        and the owner decided otherwise on 13.08.2026, doslovno „OK je da se za
-       preporuku dobije balans čak i ako je preporučen član dobio počasnu
+       preporuku dobije balans čak i ako je preporučen član oslobođen
        aktivaciju". Read the data rather than trust the sentence: if somebody
        later makes those members payers, this test stops proving the decision and
        says so. */
     const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
 
-    expect(brought.filter((one) => one.active && one.membershipBasis === 'honorary')).toHaveLength(4)
+    expect(brought.filter((one) => one.active && one.membershipBasis === 'feeExempt')).toHaveLength(4)
     expect(screen.getByText('2.400 RSD')).toBeVisible()
     /* And when it lands, which is the half that keeps anybody from being paid
        for an account that was opened and left. */

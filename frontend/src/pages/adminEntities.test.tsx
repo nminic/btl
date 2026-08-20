@@ -1274,7 +1274,7 @@ describe('the written pages', () => {
     renderAt('/sr/administracija/strane', 'superadmin')
 
     const rows = await table('Statične strane')
-    await user.click(rows.getByRole('button', { name: /^Naslov: Pravilnik/ }))
+    await user.click(rows.getByRole('button', { name: /^Naslov: Opšti pravilnik/ }))
     const field = rows.getByRole('textbox', { name: 'Naslov' })
     await user.clear(field)
     await user.type(field, 'Pravilnik 2027')

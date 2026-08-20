@@ -35,14 +35,19 @@ const ABOUT_A_PARENT = BODIES.filter((one) =>
 describe('what the written pages say about age', () => {
   it('names the same threshold the registration form uses', () => {
     expect(YEARS).toBe(16)
-    /* Four passages: the privacy policy, the terms twice, and the rulebook.
-       Without this the loop below passes on an empty list. */
-    expect(ABOUT_A_PARENT.length).toBeGreaterThanOrEqual(4)
+    /* Three passages: the privacy policy, the terms and the rulebook. Without
+       this the loop below passes on an empty list. */
+    expect(ABOUT_A_PARENT.length).toBeGreaterThanOrEqual(3)
 
     for (const one of ABOUT_A_PARENT) {
       expect(one.body, `${one.slug} / ${one.heading}`).toMatch(
         new RegExp(`mlađ[ie] od ${YEARS} godina`),
       )
+      /* And the other boundary beside it, which the statute of 17.08.2026 put at
+         fourteen (član 9): under fourteen a parent consents to the membership
+         itself, under sixteen a parent holds the account. Two rules, and a page
+         that names one of them reads as if it were the only one. */
+      expect(one.body, `${one.slug} / ${one.heading}`).toMatch(/mlađeg od 14 godina/)
     }
   })
 

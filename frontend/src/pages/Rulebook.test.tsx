@@ -4,7 +4,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
-const TITLE = 'Pravilnik takmičenja BTL 2027'
+const TITLE = 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'
 
 async function openRulebook() {
   const view = renderAt('/sr/pravilnik')

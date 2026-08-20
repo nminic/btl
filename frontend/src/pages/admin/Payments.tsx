@@ -103,10 +103,11 @@ function Statement() {
  * else that wants a decision, and go by their name and their address until the
  * number exists.
  *
- * Activation has two grounds, not one. A paid fee is the usual one, and honorary
- * is the second: during the fortnight before registration opens the owner enters
- * the competitors of earlier seasons himself and does not charge them for 2027.
- * An honorary member is a full member, ranked like anybody else, and the ground
+ * Activation has two grounds, not one. A paid fee is the usual one, and a
+ * decision of the board freeing the member of the fee is the second: during the
+ * fortnight before registration opens the owner enters the competitors of
+ * earlier seasons himself and does not charge them for 2027.
+ * A member freed of the fee is a full member, ranked like anybody else, and the ground
  * is only ever a line in the books. It is never shown publicly, anywhere, because
  * it is a fact about money rather than about running. The number, on the other
  * hand, is the first thing the administrator passes on, so it is on screen the
@@ -231,7 +232,7 @@ export function Payments() {
 
                 {/* One decision for the whole queue, as everywhere else (owner,
                     01.08.2026), and on this queue that decision has a ground.
-                    Only the fee: honorary membership is entered person by person
+                    Only the fee: exemption from the fee is entered person by person
                     during the fortnight before registration opens, against a
                     list the owner is reading, so there is nothing to sweep.
 
@@ -322,9 +323,9 @@ export function Payments() {
                               <button
                                 type="button"
                                 className="button button--secondary"
-                                onClick={() => activate(one, 'honorary')}
+                                onClick={() => activate(one, 'feeExempt')}
                               >
-                                {t('verification.activateHonorary')}
+                                {t('verification.activateFeeExempt')}
                               </button>
                               <button
                                 type="button"

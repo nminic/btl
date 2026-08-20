@@ -51,7 +51,7 @@ describe('navigation', () => {
     renderAt('/sr')
 
     const wanted: [string, string][] = [
-      ['Pravilnik', 'Pravilnik takmičenja BTL 2027'],
+      ['Pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
       ['Takmičari', 'Takmičari'],
       ['BTL tabele', 'BTL tabele'],
       ['Top liste', 'Top liste'],

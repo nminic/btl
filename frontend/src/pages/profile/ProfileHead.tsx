@@ -61,7 +61,13 @@ export function ProfileHead({
       </div>
 
       <p className="profile__meta">
-        <span className="profile__number">{competitor.memberNumber}</span>
+        {/* The public page of a competitor is the digital membership card, so the
+            number is named rather than left to stand on its own between a name
+            and a category (owner, 17.08.2026). Nothing else is added here: a
+            date of birth or anything else private has no place on a card. */}
+        <span className="profile__number">
+          {t('profile.memberNumberLabel', { number: competitor.memberNumber })}
+        </span>
         {' · '}
         {categoryLabel(categoryOfMember(competitor, SEASON), t)}
         {' · '}

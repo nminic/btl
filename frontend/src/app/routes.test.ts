@@ -139,6 +139,7 @@ describe('ROUTES', () => {
   it('has no screen for contact, because contact is an address', () => {
     expect(ROUTES.map((route) => route.path)).not.toContain('kontakt')
     expect(FOOTER_ROUTES.map((route) => route.path)).toEqual([
+      'statut',
       'politika-privatnosti',
       'uslovi-koriscenja',
     ])

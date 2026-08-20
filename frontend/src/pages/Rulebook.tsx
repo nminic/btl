@@ -4,12 +4,18 @@ import { Resource } from '../components/Resource'
 import { livePage, sectionsOf } from '../data/pages'
 import { usePages } from '../data/useResource'
 import type { StaticPage } from '../data/types'
+import { useToday } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
 import { withIds } from './rulebookToc'
 import './Rulebook.css'
 
 const SLUG = 'pravilnik'
+
+/* The day the assembly adopts the rulebook for 2027 (Statut član 22 tačka 11).
+ * Until then the text on the portal is a draft and says so, because a document
+ * that reads as adopted before it is adopted is the one a member acts on. */
+const ADOPTED_ON = '2026-08-31'
 
 /* The band the reader is actually looking at: everything under the top of the
  * window and above the last third of it. Without it the section that is barely
@@ -87,12 +93,24 @@ function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page
      section drawn third took the id of the third entry of the contents and
      nothing said the two lists were the same length. */
   const sections = useMemo(() => withIds(sectionsOf(pages, page)), [pages, page])
+  const today = useToday()
+  const draft = today < ADOPTED_ON
   const ids = useMemo(() => sections.map((section) => section.id), [sections])
   const current = useCurrentSection(ids)
 
   return (
     <article className="rulebook">
       <h1>{page.title}</h1>
+
+      {/* Beside the title rather than inside it: the mark is about the state of
+          the document, and folding it into the heading would rename the heading
+          for anyone reading the page by its headings. */}
+      {draft && (
+        <p className="rulebook__draft-note">
+          <span className="rulebook__draft">{t('rulebook.draft')}</span>{' '}
+          {t('rulebook.draftNote')}
+        </p>
+      )}
 
       <div className="rulebook__layout">
         {/* On a phone the list of sections would push the text off the first
