@@ -134,6 +134,15 @@ export type FieldDef = {
    * property every form had to carry would say the opposite.
    */
   policyRow?: string
+  /**
+   * The legal basis that same row names, word for word.
+   *
+   * The row alone was not enough. A guard that only asks whether the row exists lets the
+   * basis be rewritten under it: a review moved `Ime oca` from a legal obligation to
+   * consent and nothing failed, which would tell a member they may withdraw a consent
+   * that was never the ground, over data the association cannot delete on request.
+   */
+  policyBasis?: string
 }
 
 export type FormDef = {

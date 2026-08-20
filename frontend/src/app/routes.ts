@@ -63,8 +63,13 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
 ]
 
 /** Only these three, and Contact is a mailto rather than a screen (PDL P28a).
- *  The statute is not among them (owner, 20.08.2026): it stands in the register
- *  of the Agency, and the portal does not put it in front of members. */
+ *
+ *  The statute is not among them, and it is not absent from the footer either: it is a
+ *  file rather than a screen, so `Shell.tsx` links it beside Contact for the same reason.
+ *  It was a page of twenty sections until 20.08.2026, when the owner asked that it not be
+ *  put in front of members; a review then found that taking it off the portal breaks
+ *  član 34 stav 6 of the statute itself, and on 21.08.2026 the owner asked for the
+ *  document to be published under its own name. */
 export const FOOTER_ROUTES: RouteDef[] = [
   { path: 'politika-privatnosti', labelKey: 'nav.privacy', seoKey: 'privacy' },
   { path: 'uslovi-koriscenja', labelKey: 'nav.terms', seoKey: 'terms' },

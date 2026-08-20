@@ -1599,7 +1599,11 @@ describe('CompetitorProfile', () => {
        phrase among them is invisible to `queryByText`. Measured, a review put it there
        and this stayed green. And asked about one key, it watched the one key no
        component draws, while the portal says the same thing in three others. */
-    const shown = document.body.textContent ?? ''
+    /* The markup and not only the words in it: `textContent` carries no attribute, so
+       the same phrase put in a `title` or an `aria-label` was shown to anybody hovering
+       the member number and read aloud to every screen reader, with nothing failing.
+       Measured. */
+    const shown = `${document.body.textContent ?? ''} ${document.body.innerHTML}`
     const sayings = everySaying('feeexempt')
 
     expect(sayings.length, 'the dictionary has no way of saying the fee is waived').toBeGreaterThan(

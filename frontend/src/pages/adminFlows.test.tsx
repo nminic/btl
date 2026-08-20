@@ -304,6 +304,27 @@ describe('the price list', () => {
     expect(within(table).getAllByText('Ne')).toHaveLength(1)
   })
 
+  it('tells the administrator the junior fee answers no ranking question of its own', async () => {
+    /* The screen where somebody decides, which is the worse of the two to be wrong on.
+       The public list stopped saying `Da` for the junior band on 20.08.2026 and this one
+       went on saying it, read rather than ignored, for another day: an administrator
+       entering a June payment for a thirteen year old read that they are ranked, against
+       član 11 of the rulebook. Held on the cell, because the constant was what was wrong
+       and both tables now read it from `data/pricing.ts`. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Cenovnik' })
+    const row = within(table)
+      .getAllByRole('row')
+      .find((one) => (one.textContent ?? '').includes('Uzrast do 14 godina'))
+
+    expect(row, 'no row of the administrator table is the junior band').toBeDefined()
+    expect(row?.textContent).toContain('Prema periodu uplate')
+    expect(row?.textContent, 'the junior band answers the ranking column with a word of its own').not.toContain(
+      'Da',
+    )
+  })
+
   it('writes both currencies the same way, in the language of the page', async () => {
     /* The dinar figure went through a formatter and the euro one went out raw
        beside it, so a Serbian sentence read „35.5 EUR, a iz Srbije 4.200 RSD":

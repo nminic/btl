@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
@@ -254,7 +254,16 @@ describe('navigation', () => {
     const served = join(process.cwd(), 'public', decodeURIComponent('BTL%20Statut.pdf'))
 
     expect(existsSync(served), `${served} is linked and is not there`).toBe(true)
-    expect(statSync(served).size, 'the statute served is empty').toBeGreaterThan(1024)
+
+    /* A PDF, and one the size of a statute. Asked as „a file over a kilobyte", a review
+       copied a photograph over it and the portal published a JPEG under the name of the
+       statute with the gate green. */
+    const carried = readFileSync(served)
+
+    expect(carried.subarray(0, 5).toString('latin1'), 'what is served is not a PDF').toBe('%PDF-')
+    expect(carried.length, 'what is served is too small to be the statute').toBeGreaterThan(
+      100 * 1024,
+    )
   })
 
   it('offers the skip link as the first thing in the page', async () => {

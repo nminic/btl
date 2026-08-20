@@ -349,6 +349,31 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
+  it('says the same age in the words as the rule keeps in the form', () => {
+    /* Sixteen stood in three places by hand: the rule in the form, the hint under the
+       field and the row of the policy. Moved in the rule alone, a seventeen year old was
+       shown a field marked optional under a sentence saying only somebody younger than
+       sixteen may leave it empty, and a policy saying the same. Read out of the rule and
+       looked for in both texts, so the number moves in one place. */
+    const ruled = registration.fields.filter((field) => field.optionalWhenYoungerThan !== undefined)
+
+    expect(ruled.length, 'no field of the form is optional by age').toBeGreaterThan(0)
+
+    for (const field of ruled) {
+      const years = String(must(field.optionalWhenYoungerThan, `${field.name} rule`).years)
+      const hint = translate(dictionary, 'sr', String(field.hintKey))
+
+      expect(hint, `the hint under ${field.name} does not say ${years}`).toContain(years)
+
+      const row = whole('politika-privatnosti')
+        .split(NEWLINE)
+        .find((line) => line.startsWith(`| ${String(field.policyRow)} |`))
+
+      expect(row, `the policy carries no row for ${field.name}`).toBeDefined()
+      expect(String(row), `the policy does not say ${years} where the form does`).toContain(years)
+    }
+  })
+
   it('declares every field the registration form asks for, in the table of what is collected', () => {
     /* Every field, not the ones whose hint happens to use two particular words. That was
        the first shape of this guard and a review took it apart in one move: reword a hint,
@@ -365,17 +390,39 @@ describe('the privacy policy', () => {
 
     expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)
 
-    const policy = whole('politika-privatnosti')
-    const rows = policy
-      .split(NEWLINE)
-      .filter((line) => line.startsWith('|'))
-      .map((line) => (line.split('|')[1] ?? '').trim())
+    /* Rows of four cells, which is what a row of these tables is: what, why, on what
+       ground, and for how long. Read as „the first cell of any line beginning with a
+       pipe", the list also holds the empty string, the dashes under the header and the
+       header itself, so `policyRow: ""` passed the gate: measured. That is exactly what
+       somebody writes to make a complaint go away. */
+    const rows = new Map(
+      whole('politika-privatnosti')
+        .split(NEWLINE)
+        .filter((line) => line.startsWith('|'))
+        .map((line) => line.split('|').map((cell) => cell.trim()))
+        .map((cells) => [String(cells[1] ?? ''), String(cells[3] ?? '')] as const)
+        .filter(([name]) => name !== '' && !name.startsWith('---'))
+
+    )
 
     for (const field of asked) {
       const row = field.policyRow
+      const basis = field.policyBasis
 
-      expect(row, `${field.name} is asked for and names no row of the privacy policy`).toBeDefined()
-      expect(rows, `${field.name} names a row the privacy policy does not carry: ${String(row)}`).toContain(row)
+      expect(row, `${field.name} is asked for and names no row of the privacy policy`).toBeTruthy()
+      expect(
+        [...rows.keys()],
+        `${field.name} names a row the privacy policy does not carry: ${String(row)}`,
+      ).toContain(row)
+
+      /* And on the ground it says it is on. The row existing is not enough: the ground
+         can be rewritten under it, and a member told they consented to something they
+         cannot withdraw is worse off than one told nothing. */
+      expect(basis, `${field.name} names no legal basis`).toBeTruthy()
+      expect(
+        rows.get(String(row)),
+        `${field.name} says it is collected on ${String(basis)} and the policy says otherwise`,
+      ).toBe(basis)
     }
   })
 

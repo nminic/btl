@@ -956,19 +956,32 @@ describe('a field asked of everybody and demanded of some', () => {
 
     const birth = screen.getByLabelText(/proba.datum/)
     const document_ = () => screen.getByLabelText(/proba.dopisano/)
+    /* And the star itself, not only what a screen reader is told. The first version of
+       this test asked for `aria-required` alone, under a name about the star and a
+       comment saying the star is what makes a parent type their own number: a review
+       drew the star from the written definition instead of from `asAsked`, and the test
+       stayed green while a fifteen year old saw it. */
+    const star = () =>
+      must(
+        screen.getByText('proba.dopisano').closest<HTMLElement>('.field'),
+        'the field asked about',
+      ).querySelector('.field__required')
 
     expect(document_(), 'demanded while the date says nothing').toHaveAttribute(
       'aria-required',
       'true',
     )
+    expect(star(), 'no star while the date says nothing').not.toBeNull()
 
     await user.type(birth, '01012015')
 
     expect(document_(), 'still demanded of a child').not.toHaveAttribute('aria-required')
+    expect(star(), 'a child is still shown the star').toBeNull()
 
     await user.clear(birth)
     await user.type(birth, '01011990')
 
     expect(document_(), 'no longer demanded of an adult').toHaveAttribute('aria-required', 'true')
+    expect(star(), 'an adult is no longer shown the star').not.toBeNull()
   })
 })
