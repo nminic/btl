@@ -124,6 +124,11 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
   )
 }
 
+/** The statute as it is served, named the way the owner named it (21.08.2026).
+ *  The space is written out, because a browser asks for it that way and a link that
+ *  differs from the file by one character is a link to nothing. */
+const STATUTE_FILE = '/BTL%20Statut.pdf'
+
 export function Shell() {
   const main = useRef<HTMLElement>(null)
   const { locale, t } = useI18n()
@@ -257,6 +262,16 @@ export function Shell() {
               question a mail client already answers. */}
           <a className="shell__link" href={`mailto:${CONTACT_ADDRESS}`}>
             {t('shell.contact')}
+          </a>
+          {/* The statute itself, as the document it is. Član 34 stav 6 of it puts the
+              statute and the general acts of the association on the internet page, and
+              član 39 stav 2 gives three days from the day it was adopted to do it. It
+              used to be a page of twenty sections; the owner asked on 20.08.2026 that it
+              not be pushed at members and visitors, and on 21.08.2026 that the document
+              itself be published instead. A link in the footer to the signed file is both
+              things at once: published, and not in anybody's way. */}
+          <a className="shell__link" href={STATUTE_FILE}>
+            {t('shell.statute')}
           </a>
         </nav>
         <p className="shell__note">{t('shell.footerNote')}</p>

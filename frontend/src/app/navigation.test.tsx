@@ -1,3 +1,5 @@
+import { existsSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -232,6 +234,27 @@ describe('navigation', () => {
       'href',
       'mailto:info@balkanskatrkackaliga.net',
     )
+  })
+
+  it('publishes the statute as the document it is, and the document is there', async () => {
+    /* Član 34 stav 6 of the statute adopted on 17.08.2026 puts the statute on the
+       internet page of the association, and član 39 stav 2 gives three days from the day
+       it was adopted. It was a page of twenty sections until 20.08.2026; the owner asked
+       that it not be pushed at anybody, and then that the document itself be published,
+       under that name. A link in the footer is both: published, and out of the way.
+       The file is checked to exist, because a link to a missing document reads as
+       published while publishing nothing, and that is worse than no link at all: the
+       obligation would look met. */
+    renderAt('/sr')
+
+    const link = await screen.findByRole('link', { name: 'Statut' })
+
+    expect(link).toHaveAttribute('href', '/BTL%20Statut.pdf')
+
+    const served = join(process.cwd(), 'public', decodeURIComponent('BTL%20Statut.pdf'))
+
+    expect(existsSync(served), `${served} is linked and is not there`).toBe(true)
+    expect(statSync(served).size, 'the statute served is empty').toBeGreaterThan(1024)
   })
 
   it('offers the skip link as the first thing in the page', async () => {
