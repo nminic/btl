@@ -74,30 +74,35 @@ function ruleFor(selector: string): CSSStyleDeclaration {
   return must(found[0], `the rule ${selector}`).style
 }
 
-/** Every ancestor from here up to the shell, named the same way whichever document it
- *  is walked in. Classes are sorted, because two homes for one chain must not disagree
- *  over the order somebody wrote them in. */
+/** Every ancestor from the control up to the outermost shell, named the same way
+ *  whichever document it is walked in. Classes are sorted, because two homes for one
+ *  chain must not disagree over the order somebody wrote them in. The control's own id
+ *  is left out of its name: the fixture needs one to find the button by and the portal
+ *  has none, while the classes of that same button are exactly what has to agree.
+ *
+ *  The cut is at the outermost `.shell`, not the first one met walking up. Cut at the
+ *  first, a second `.shell` wrapped around the app leaves everything above it
+ *  uncompared: a review wrapped one and watched the guard stay green. */
 function chainToShell(from: Element): string[] {
-  const links: string[] = []
+  const walk: Element[] = []
   let step: Element | null = from
 
   while (step !== null) {
-    const named = step.id === '' ? '' : `#${step.id}`
-    const classes = [...step.classList]
-      .sort()
-      .map((one) => `.${one}`)
-      .join('')
-
-    links.push(`${step.tagName.toLowerCase()}${named}${classes}`)
-
-    if (step.classList.contains('shell')) {
-      return links
-    }
-
+    walk.push(step)
     step = step.parentElement
   }
 
-  return links
+  const shell = walk.map((one) => one.classList.contains('shell')).lastIndexOf(true)
+
+  return walk.slice(0, shell + 1).map((one, index) => {
+    const named = one.id === '' || index === 0 ? '' : `#${one.id}`
+    const classes = [...one.classList]
+      .sort()
+      .map((cls) => `.${cls}`)
+      .join('')
+
+    return `${one.tagName.toLowerCase()}${named}${classes}`
+  })
 }
 
 describe('a record that may no longer be opened', () => {
@@ -180,7 +185,7 @@ describe('a record that may no longer be opened', () => {
        a comment, so nothing but this holds it: delete the script and the sentence above
        keeps promising the axis is covered while the suite stays green. Measured, it
        did. */
-    const asked = [...header.matchAll(/`(scripts\/[\w-]+\.mjs)`/g)].map((found) => found[1])
+    const asked = [...header.matchAll(/`(scripts\/[\w/-]+\.mjs)`/g)].map((found) => found[1])
 
     expect(asked.length, 'the header names no script at all').toBeGreaterThan(0)
 
@@ -209,10 +214,18 @@ describe('a record that may no longer be opened', () => {
       join(process.cwd(), 'scripts/refused-control-appearance.mjs'),
       'utf-8',
     )
-    const opens = script.indexOf('<body>')
-    const closes = script.indexOf('</body>')
+    /* From the fixture, not from the first `<body>` in the file: the sentence above it
+       says the word too, and a boundary that lands in prose is one nobody notices until
+       it moves. */
+    const starts = script.indexOf('const FIXTURE')
 
-    expect(opens, 'the script has no fixture body').toBeGreaterThan(-1)
+    expect(starts, 'the script has no fixture').toBeGreaterThan(-1)
+
+    const opens = script.indexOf('<body>', starts)
+    const closes = script.indexOf('</body>', starts)
+
+    expect(opens, 'the fixture has no body').toBeGreaterThan(-1)
+    expect(closes, 'the fixture body is never closed').toBeGreaterThan(opens)
 
     const holder = document.createElement('div')
 
@@ -224,12 +237,34 @@ describe('a record that may no longer be opened', () => {
 
     const drawn = await screen.findByRole('button', { name: 'Otvori: Preporuka novog člana' })
 
-    const inFixture = chainToShell(must(written.parentElement, 'the fixture cell'))
-    const onScreen = chainToShell(must(drawn.parentElement, 'the drawn cell'))
+    /* From the button itself, so its own classes are in the comparison: a review added
+       one to `EntityEditor.tsx`, wrote a rule for it, and both guards stayed green. */
+    const inFixture = chainToShell(written)
+    const onScreen = chainToShell(drawn)
 
     /* Both have to get there, or two chains that stop early could agree about nothing. */
     expect(inFixture.at(-1), 'the fixture does not reach the shell').toBe('div.shell')
     expect(onScreen.at(-1), 'the screen does not reach the shell').toBe('div.shell')
     expect(inFixture).toEqual(onScreen)
+
+    /* Above the shell the two documents cannot agree and should not be asked to: under
+       test the app is mounted in a container of the test library's own, and in the
+       portal it is `#root` from `index.html`. So each is held against its own home. */
+    const above = must(
+      must(holder.querySelector('.shell'), 'the shell in the fixture').parentElement,
+      'what the fixture puts above the shell',
+    )
+
+    expect(`${above.tagName.toLowerCase()}#${above.id}`).toBe('div#root')
+    expect(readFileSync(join(process.cwd(), 'index.html'), 'utf-8')).toContain('id="root"')
+
+    const mount = must(
+      must(drawn.closest('.shell'), 'the shell on the screen').parentElement,
+      'what the screen puts above the shell',
+    )
+
+    expect(mount.id, 'something stands between the mount point and the shell').toBe('')
+    expect(mount.className, 'something stands between the mount point and the shell').toBe('')
+    expect(must(mount.parentElement, 'above the mount point').tagName.toLowerCase()).toBe('body')
   })
 })
