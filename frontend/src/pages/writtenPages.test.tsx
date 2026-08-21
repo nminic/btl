@@ -1184,18 +1184,24 @@ describe('the rulebook', () => {
       [11, /Pravo rangiranja/],
       [14, /Cena i rokovi/],
       [17, /Šta članstvo donosi/],
+      /* The article the ethics section points at for what a race has to be.
+         It pointed at a section until 21.08.2026, and that section is gone:
+         the owner struck the article on official timing and the one on who
+         verifies, and what was left of the section is one article, which now
+         closes the section on what is scored. */
+      [25, /Zvaničan događaj/],
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
-      [31, /Uspon i spust/],
-      [41, /Ko prijavljuje i šta/],
-      [42, /^Rok$/],
-      [55, /Top liste/],
-      [69, /Posebna priznanja/],
+      [29, /Uspon i spust/],
+      [39, /Ko prijavljuje i šta/],
+      [40, /^Rok$/],
+      [53, /Top liste/],
+      [67, /Posebna priznanja/],
       /* The section that draws the wall of ducats points at the article that
          awards them (owner, 04.08.2026): the section describes, the article
          rules, and the reader has to be able to get from one to the other. */
-      [72, /Dukati/],
-      [79, /Postupak/],
+      [70, /Dukati/],
+      [77, /Postupak/],
     ]
 
     const titles = new Map(
@@ -1236,18 +1242,23 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/Talasasto|Brdovito|Planinsko/)
   })
 
-  it('says when a race counts, in three conditions and one discretion', () => {
+  it('says when an event counts, in three conditions and one discretion', () => {
     /* The open question PDL P17 called the most damaging hole in the old
        league, closed by the owner on 03.08.2026. Read together: all three, and
-       the league may still take a race that misses one of them. */
+       the league may still take an event that misses one of them.
+
+       Rewritten by the owner on 21.08.2026, and the change is in the subject:
+       the conditions are about an **event** now, not a race. The sentence that
+       used to explain that the third one is counted over the event rather than
+       the race is gone with it, and nothing is lost, because there is no race
+       left in the sentence to mistake it for. */
+    expect(rulebook).toMatch(/Događaj je zvaničan ako ispunjava sva tri uslova/)
     expect(rulebook).toMatch(/najkasnije mesec dana pre dana održavanja/)
-    expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle trke/)
+    expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle događaja/)
     expect(rulebook).toMatch(/Na događaju je učestvovalo najmanje 50 učesnika/)
-    /* Counted over the event rather than the race (owner, 04.08.2026): three
-       races of twenty runners is an event of sixty, and a trail event splits
-       its field across distances by definition. */
-    expect(rulebook).toMatch(/meri na nivou događaja, a ne po pojedinačnoj trci/)
-    expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
+    expect(rulebook).toMatch(
+      /zadržava diskreciono pravo da prizna i događaj koji ne ispunjava jedan/,
+    )
   })
 
   it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
@@ -1305,7 +1316,7 @@ describe('the rulebook', () => {
        rulebook is not where a competition beside the main one is described. What
        a league is, and that the league itself runs two of its own, stays. */
     expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
-    expect(rulebook).toMatch(/### Član 64\. Liga kao pojam/)
+    expect(rulebook).toMatch(/### Član 62\. Liga kao pojam/)
   })
 
   it('cannot be changed inside a season', () => {
