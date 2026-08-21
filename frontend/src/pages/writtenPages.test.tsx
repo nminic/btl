@@ -86,6 +86,46 @@ function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   })
 }
 
+/** A period written in words or figures, in months, or null when the sentence does not
+ *  say one.
+ *
+ *  The numerals are the ones this document uses. A numeral it does not know returns null
+ *  and the caller fails loudly, which is the safe side: a period nobody can read must stop
+ *  the gate rather than pass through it as „no bound". */
+const NUMERALS = new Map([
+  ['jedan', 1],
+  ['dva', 2],
+  ['tri', 3],
+  ['četiri', 4],
+  ['pet', 5],
+  ['šest', 6],
+  ['sedam', 7],
+  ['osam', 8],
+  ['devet', 9],
+  ['deset', 10],
+  ['jedanaest', 11],
+  ['dvanaest', 12],
+])
+
+function monthsIn(said: string): number | null {
+  const found = /(\S+)\s+(dan|dana|mesec|meseci|godin\w*)/i.exec(said)
+
+  if (found === null) {
+    return null
+  }
+
+  const word = String(found[1]).toLowerCase()
+  const many = /^\d+$/.test(word) ? Number(word) : NUMERALS.get(word)
+
+  if (many === undefined) {
+    return null
+  }
+
+  const unit = String(found[2]).toLowerCase()
+
+  return unit.startsWith('dan') ? many / 30 : unit.startsWith('mesec') ? many : many * 12
+}
+
 /** What the policy says happens in each situation, read as a table: the column is found
  *  by its name, and the table of who the data is passed to, which sits in the same
  *  section, is left where it is. */
@@ -594,9 +634,20 @@ describe('the privacy policy', () => {
        sezone, ali to važi samo za ime oca. Broj ličnog dokumenta brišemo čim članstvo
        prestane" passed, and that is the very sentence this decision removed. */
     expect(
-      String(register).trim(),
+      String(register).trim().startsWith(String(must(howLong, 'the period')[1]).trim()),
       'the register of members is kept for a different time than the profile it belongs to',
-    ).toMatch(new RegExp(`^${String(must(howLong, 'the period')[1]).trim()}`))
+    ).toBe(true)
+
+    /* And does not take it back further along. Asked only as „begins with the period", the
+       sentence this very comment used to cite as the reason for the check passed it, because
+       that sentence begins with the period too: „Pet godina od poslednje sezone, ali to važi
+       samo za ime oca. Broj ličnog dokumenta brišemo čim članstvo prestane". Measured.
+       What is forbidden is named rather than guessed at, because it is the decision itself:
+       the owner removed deletion on the day membership ends, so the row may not say it. */
+    expect(
+      String(register),
+      'the register of members is promised a period and then deleted when membership ends',
+    ).not.toMatch(/čim članstvo prestane/i)
 
     /* And the other home of the same fact. This row was changed by the same decision, from
        „Dok traje članstvo" to a pointer at the section below, and nothing held it: measured,
@@ -660,16 +711,21 @@ describe('the privacy policy', () => {
       `${amount} ${unit} is shorter than the ${sellingYear} months the account was opened to buy`,
     ).toBeGreaterThanOrEqual(sellingYear)
 
-    /* And that the document still says how long a former member is kept, which is what the
-       bound above is measured against. Written as a pattern over the whole section with
-       the word for five inside it, this failed on both rows moving together. */
-    const asMember = String(kept.get('Prestanete da budete član')).trim() !== 'undefined'
+    /* The ceiling read out of the document, not typed here. It was `5 * 12` under a comment
+       saying it is „what the bound above is measured against", and the row it claimed to be
+       measured against was only checked for existing: both rows moved to three months and
+       the policy then said an account that never became a membership outlives one that did,
+       with the suite green. Measured. */
+    const asMember = monthsIn(String(kept.get('Prestanete da budete član')))
 
-    expect(asMember, 'the policy no longer says how long a former member is kept').toBe(true)
+    expect(
+      asMember,
+      'the policy no longer says in months how long a former member is kept',
+    ).not.toBeNull()
     expect(
       months,
       'an account that never became a membership is held longer than one that did',
-    ).toBeLessThanOrEqual(5 * 12)
+    ).toBeLessThanOrEqual(Number(asMember))
   })
 })
 
