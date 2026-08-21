@@ -349,6 +349,22 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
+  /** The header of the table this line belongs to: the row standing directly above the
+   *  dashes. Remembered as a word instead, it was a word this file knew and the document
+   *  did not have to keep. */
+  function header(line: string, table: string): string {
+    const lines = table.split(NEWLINE)
+    const at = lines.indexOf(line)
+    const dashes = lines.findIndex((one, index) => index > at && /^\|\s*---/.test(one))
+    const above = dashes === -1 ? -1 : dashes - 1
+
+    if (above !== at) {
+      return ''
+    }
+
+    return String(line.split('|').map((cell) => cell.trim())[1] ?? '')
+  }
+
   /** The one section that says what the portal collects, which both guards below read. */
   const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
 
@@ -410,24 +426,48 @@ describe('the privacy policy', () => {
        was not there at all. Worse, a `Map` keeps the last of a repeated name, so the
        retention table shadowed the collection table for anything named in both: measured,
        and `Interne beleške administracije` was already shadowed today. */
-    const collected = collectedRows()
     const rows = new Map<string, string>()
+    /* The two tables about the person, and not the two beside them in the same section.
+       Read as one section, `photo` could name `Zapisi servera` from the table of what
+       arises from a visit, and be declared a server log kept thirty days while the table
+       of what is collected said nothing about it: measured, and it is the same shape as
+       the field that was collected for weeks with no row at all. */
+    const about = collectedRows()
+      .split('###')
+      .filter((block) => /Podaci koje unosite|Podaci koji nastaju dok ste/.test(block))
 
-    for (const line of collected.split(NEWLINE)) {
+    expect(about.length, 'the policy no longer has the two tables about the member').toBe(2)
+
+    for (const line of about.join(NEWLINE).split(NEWLINE)) {
+      if (!line.startsWith('|')) {
+        continue
+      }
+
       const cells = line.split('|').map((cell) => cell.trim())
+      const name = String(cells[1] ?? '')
 
-      if (cells.length !== 6 || cells[0] !== '' || cells[5] !== '') {
+      if (name.startsWith('---')) {
         continue
       }
 
-      const name = String(cells[1])
+      /* A row of four cells, and a line that is not one fails rather than being passed
+         over. Skipped in silence, a cell holding a `|` took its row out of the list and
+         the complaint then said the policy does not carry a row that is plainly there. */
+      expect(
+        cells.length,
+        `this line of the policy is not a row of four cells: ${line}`,
+      ).toBe(6)
 
-      if (name === '' || name.startsWith('---') || name === 'Podatak') {
+      /* The header is the row above the dashes, not a word remembered here. Renamed in
+         one table only, `Podatak` became a row a field could name; renamed in all four,
+         which is an ordinary edit, the guard complained that a row it invented stood
+         there twice. */
+      if (String(cells[1]) === header(line, about.join(NEWLINE))) {
         continue
       }
 
-      expect(rows.has(name), `the table of what is collected carries ${name} twice`).toBe(false)
-      rows.set(name, String(cells[3]))
+      expect(rows.has(name), `the tables about the member carry ${name} twice`).toBe(false)
+      rows.set(name, String(cells[3] ?? ''))
     }
 
     expect(rows.size, 'the policy says nothing about what is collected').toBeGreaterThan(0)
