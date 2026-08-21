@@ -349,13 +349,24 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
+  /** How many parts a row of the table this line belongs to splits into, counted off its
+   *  own header row. */
+  function width(line: string, table: string): number {
+    const lines = table.split(NEWLINE).map((one) => one.trim())
+    const at = lines.indexOf(line)
+    const above = lines.slice(0, at + 1).reverse()
+    const head = above.find((_row, index) => index > 0 && /^\|\s*:?-{2,}/.test(above[index - 1] ?? ''))
+
+    return (head ?? line).split('|').length
+  }
+
   /** The header of the table this line belongs to: the row standing directly above the
    *  dashes. Remembered as a word instead, it was a word this file knew and the document
    *  did not have to keep. */
   function header(line: string, table: string): string {
-    const lines = table.split(NEWLINE)
+    const lines = table.split(NEWLINE).map((one) => one.trim())
     const at = lines.indexOf(line)
-    const dashes = lines.findIndex((one, index) => index > at && /^\|\s*---/.test(one))
+    const dashes = lines.findIndex((one, index) => index > at && /^\|\s*:?-{2,}/.test(one))
     const above = dashes === -1 ? -1 : dashes - 1
 
     if (above !== at) {
@@ -438,7 +449,14 @@ describe('the privacy policy', () => {
 
     expect(about.length, 'the policy no longer has the two tables about the member').toBe(2)
 
-    for (const line of about.join(NEWLINE).split(NEWLINE)) {
+    /* Trimmed first, the way the portal reads its own Markdown (`Markdown.tsx` trims the
+       page and then matches `^\|.*\|$`). Asked of the raw line, a row indented by one
+       space fell out of the list in silence and the complaint then denied a row that is
+       plainly in the document and plainly drawn on the screen: measured, and `main` did
+       not have that fault. */
+    for (const raw of about.join(NEWLINE).split(NEWLINE)) {
+      const line = raw.trim()
+
       if (!line.startsWith('|')) {
         continue
       }
@@ -446,17 +464,21 @@ describe('the privacy policy', () => {
       const cells = line.split('|').map((cell) => cell.trim())
       const name = String(cells[1] ?? '')
 
-      if (name.startsWith('---')) {
+      /* Including the forms that carry an alignment, which the portal accepts and this
+         used to read as a row named `:---` standing there twice. */
+      if (/^:?-{2,}:?$/.test(name)) {
         continue
       }
 
-      /* A row of four cells, and a line that is not one fails rather than being passed
-         over. Skipped in silence, a cell holding a `|` took its row out of the list and
-         the complaint then said the policy does not carry a row that is plainly there. */
+      /* As wide as its own header row, and a line that is not fails rather than being
+         passed over. Skipped in silence, a cell holding a `|` took its row out of the
+         list and the complaint then said the policy does not carry a row that is plainly
+         there. The width is counted off the table rather than written here, so a column
+         added to the policy is not a hundred complaints about rows that are correct. */
       expect(
         cells.length,
-        `this line of the policy is not a row of four cells: ${line}`,
-      ).toBe(6)
+        `this row of the policy is not as wide as its header: ${line}`,
+      ).toBe(width(line, about.join(NEWLINE)))
 
       /* The header is the row above the dashes, not a word remembered here. Renamed in
          one table only, `Podatak` became a row a field could name; renamed in all four,

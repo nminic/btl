@@ -270,17 +270,33 @@ describe('navigation', () => {
       100 * 1024,
     )
 
+    /* And whole, which a size cannot say. A copy cut off at any length under the whole
+       one is over that threshold and still unreadable: a PDF ends with its own mark, and
+       a stump does not have it. */
+    expect(
+      carried.subarray(-1024).toString('latin1'),
+      'what is served is not a whole PDF',
+    ).toContain('%%EOF')
+
     /* The name in both alphabets a word processor writes. Word keeps a title of plain
        letters as it is and writes one with any letter outside them as UTF-16, which this
        very file already does for `/Creator` because of a ®. The document is transliterated
        today; the day its diacritics are put back and it is exported again, a guard that
        knows only the first form fails on a statute that is perfectly correct. */
-    const named = 'Statut Sportskog udruzenja BTL'
-    const asWritten = carried.toString('latin1').includes(`/Title(${named}`)
-    const asWide = carried.includes(Buffer.from(`﻿Statut Sportskog udru`, 'utf16le').swap16())
+    const named = 'Statut Sportskog udru'
+    const plain = Buffer.from(`/Title(${named}`, 'latin1')
+    /* Anchored to `/Title(` in this alphabet too. Looked for as bare bytes, the name
+       counted wherever it stood, so a document whose title says it is the minutes and
+       whose `/Subject` happens to carry the name of the statute passed all three
+       questions: measured. The mark before it is the byte order mark Word writes at the
+       front of such a string, and it is why the wide form is recognisable at all. */
+    const wide = Buffer.concat([
+      Buffer.from('/Title(', 'latin1'),
+      Buffer.from(`﻿${named}`, 'utf16le').swap16(),
+    ])
 
     expect(
-      asWritten || asWide,
+      carried.includes(plain) || carried.includes(wide),
       'what is served does not call itself the statute, in either alphabet',
     ).toBe(true)
   })
