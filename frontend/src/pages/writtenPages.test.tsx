@@ -24,6 +24,71 @@ const dictionary = sr
 const WRITTEN: Record<string, { title: string; sections: { heading: string; body: string }[] }> =
   written
 
+/**
+ * Every table of one block of the policy, each read as a table: its header, and the
+ * rows under it.
+ *
+ * Every, and not the first. Reading a block as one table, the second table's header and
+ * its line of dashes fell in among the rows, so a field could name `Podatak` with a
+ * basis of `Pravni osnov` and be declared published while the policy said nothing about
+ * it. That is the very fault the version before this closed for a table with no dashes
+ * at all, reopened one shape along: measured, and `main` did not have it.
+ *
+ * A table ends where a line that is not a row ends it, which is how the portal reads
+ * one too: a blank line closes the block in `Markdown.tsx`.
+ *
+ * A table with no line of dashes is a fault and not a table with no header: without
+ * one, its header row went into the list as a row a field may name, and an obligatory
+ * personal field could then be declared published while the policy said nothing about
+ * it. Measured.
+ */
+function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
+  const cellsOf = (line: string) => line.split('|').map((cell) => cell.trim())
+  const dashes = (line: string) =>
+    cellsOf(line)
+      .slice(1, -1)
+      .every((cell) => /^:?-{2,}:?$/.test(cell))
+  const tables: string[][] = []
+  let table: string[] = []
+
+  /* Matched whole, the way the portal matches a row. Asked as „begins and ends with a
+     pipe", a lone `|` answered yes to both and, having no cells at all, answered yes to
+     being a line of dashes as well, so the search for the dashes stopped on a line the
+     portal draws as a paragraph. */
+  for (const raw of block.split(NEWLINE)) {
+    const line = raw.trim()
+
+    if (/^\|.*\|$/.test(line)) {
+      table.push(line)
+
+      continue
+    }
+
+    if (table.length > 0) {
+      tables.push(table)
+      table = []
+    }
+  }
+
+  if (table.length > 0) {
+    tables.push(table)
+  }
+
+  return tables.map((lines) => {
+    const at = lines.findIndex(dashes)
+
+    expect(
+      at,
+      `a table of the policy has no line of dashes: ${lines[0] ?? '(empty)'}`,
+    ).toBeGreaterThan(0)
+
+    return { head: cellsOf(String(lines[at - 1])), rows: lines.slice(at + 1).map(cellsOf) }
+  })
+}
+
+/** The one section that says what the portal collects, which both guards below read. */
+const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
+
 describe('the written pages', () => {
   it.each([
     ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
@@ -349,46 +414,6 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
-  /**
-   * One table of the policy, read as a table: its header, and the rows under it.
-   *
-   * Walking a joined text and looking upward for the nearest line of dashes answered with
-   * the header of the table *above* the line whenever the line was itself a header, so a
-   * column added to one of the two tables and not the other was reported as a row that is
-   * too narrow while the document was right. Read one table at a time, that question
-   * cannot be asked of the wrong table.
-   *
-   * A table with no line of dashes is a fault and not a table with no header: without
-   * one, its header row went into the list as a row a field may name, and an obligatory
-   * personal field could then be declared published while the policy said nothing about
-   * it. Measured.
-   */
-  function tableOf(block: string): { head: string[]; rows: string[][] } {
-    /* Both ends, the way the portal matches a row (`Markdown.tsx`, `^\|.*\|$`). Only the
-       first was asked for, so a line of prose beginning with a pipe read as a broken row
-       while the portal drew it as a paragraph. */
-    const lines = block
-      .split(NEWLINE)
-      .map((one) => one.trim())
-      .filter((one) => one.startsWith('|') && one.endsWith('|'))
-    const cellsOf = (line: string) => line.split('|').map((cell) => cell.trim())
-    const dashes = lines.findIndex((one) =>
-      cellsOf(one)
-        .slice(1, -1)
-        .every((cell) => /^:?-{2,}:?$/.test(cell)),
-    )
-
-    expect(dashes, `a table of the policy has no line of dashes: ${lines[0] ?? '(empty)'}`).toBeGreaterThan(0)
-
-    return {
-      head: cellsOf(String(lines[dashes - 1])),
-      rows: lines.slice(dashes + 1).map(cellsOf),
-    }
-  }
-
-  /** The one section that says what the portal collects, which both guards below read. */
-  const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
-
   it('says the same age in the words as the rule keeps in the form', () => {
     /* Sixteen stood in three places by hand: the rule in the form, the hint under the
        field and the row of the policy. Moved in the rule alone, a seventeen year old was
@@ -460,8 +485,7 @@ describe('the privacy policy', () => {
 
     const rows = new Map<string, string>()
 
-    for (const block of about) {
-      const table = tableOf(block)
+    for (const table of about.flatMap(tablesOf)) {
       /* The column that names the ground, found by its name. The width came off the
          header and the position of this one was still a number written here, so a column
          inserted before it moved the ground and the guard read that as the policy
@@ -1257,8 +1281,25 @@ describe('what the written pages say the fee buys', () => {
        number nobody is asked for describes somebody else's portal; so does one
        that is silent about a field the form has. The ground has to be consent,
        because a field nobody has to fill cannot be necessary for the contract. */
-    expect(whole('politika-privatnosti')).toMatch(/Telefon, neobavezno/)
-    expect(whole('politika-privatnosti')).toMatch(/Telefon, neobavezno \|[^|]*\|[^|]*[Pp]ristanak/)
+    /* The ground read out of the table rather than counted in columns. Written as a
+       pattern that steps over exactly two cells, this was the last place holding the
+       position of that column by hand, and a column inserted before it broke a test named
+       after the telephone while the document was right. */
+    const rows = new Map(
+      collectedRows()
+        .split('###')
+        .flatMap(tablesOf)
+        .flatMap((table) => {
+          const ground = table.head.indexOf('Pravni osnov')
+
+          return table.rows.map((cells) => [String(cells[1] ?? ''), String(cells[ground] ?? '')])
+        }),
+    )
+
+    expect([...rows.keys()], 'the policy says nothing about the telephone').toContain(
+      'Telefon, neobavezno',
+    )
+    expect(rows.get('Telefon, neobavezno')).toMatch(/[Pp]ristanak/)
 
     /* And nowhere else: the terms and the rulebook are about the league, not
        about the fields of one form. */
