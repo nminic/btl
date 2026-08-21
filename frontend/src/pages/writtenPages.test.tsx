@@ -86,6 +86,27 @@ function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   })
 }
 
+/** What the policy says happens in each situation, read as a table: the column is found
+ *  by its name, and the table of who the data is passed to, which sits in the same
+ *  section, is left where it is. */
+function howLongKept(): Map<string, string> {
+  const rows = tablesOf(sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)).flatMap(
+    (table) => {
+      const what = table.head.indexOf('Šta se dešava')
+
+      return what === -1
+        ? []
+        : table.rows.map(
+            (cells) => [String(cells[1] ?? ''), String(cells[what] ?? '')] as [string, string],
+          )
+    },
+  )
+
+  expect(rows.length, 'the policy no longer says how long anything is kept').toBeGreaterThan(0)
+
+  return new Map(rows)
+}
+
 /** The one section that says what the portal collects, which both guards below read. */
 const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
 
@@ -545,15 +566,13 @@ describe('the privacy policy', () => {
        21.08.2026: the same five years as the rest of the profile.
        Read as two rows of one document that have to agree, rather than as a number typed
        twice: what is promised for a former member is what is promised for these. */
-    const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
-    const rowOf = (name: RegExp) =>
-      kept
-        .split(NEWLINE)
-        .map((line) => line.trim())
-        .find((line) => name.test(line.split('|').map((cell) => cell.trim())[1] ?? ''))
-
-    const profile = rowOf(/^Prestanete da budete član$/)
-    const register = rowOf(/^Broj ličnog dokumenta i ime oca$/)
+    /* Read through the same reader as the tables above, so the column is found by its
+       name rather than counted: this guard was written with the cell at index two, in a
+       file that a hundred lines up says in its own words why that is wrong, and a column
+       added before it turned the check into a check on the wrong cell. */
+    const said = howLongKept()
+    const profile = said.get('Prestanete da budete član')
+    const register = said.get('Broj ličnog dokumenta i ime oca')
 
     expect(profile, 'the policy no longer says how long a former member is kept').toBeDefined()
     expect(register, 'the policy no longer says how long the register of members is kept').toBeDefined()
@@ -562,15 +581,41 @@ describe('the privacy policy', () => {
        number this file recognises. Written as „a figure or the word for five", the guard
        understood only the wording of the day: both rows moved to seven together, which is
        the one change that must not alarm, and it complained. */
-    const howLong = /^([^,|]+)/.exec(
-      String(String(profile).split('|').map((cell) => cell.trim())[2] ?? ''),
-    )
+    const howLong = /^([^,]+)/.exec(String(profile))
 
     expect(howLong, 'what a former member is kept for is not said as a period').not.toBeNull()
+
+    /* And the register's cell has to *begin* with it. Asked as „contains it somewhere in
+       the row", the same row could go on to say the opposite: „Pet godina od poslednje
+       sezone, ali to važi samo za ime oca. Broj ličnog dokumenta brišemo čim članstvo
+       prestane" passed, and that is the very sentence this decision removed. */
     expect(
-      String(register),
+      String(register).trim(),
       'the register of members is kept for a different time than the profile it belongs to',
-    ).toContain(String(must(howLong, 'the period')[1]).trim())
+    ).toMatch(new RegExp(`^${String(must(howLong, 'the period')[1]).trim()}`))
+
+    /* And the other home of the same fact. This row was changed by the same decision, from
+       „Dok traje članstvo" to a pointer at the section below, and nothing held it: measured,
+       putting it back left the whole suite green while the document said two different
+       things about one field. */
+    const collecting = tablesOf(collectedRows())
+      .flatMap((table) => {
+        const long = table.head.indexOf('Koliko čuvamo')
+
+        return long === -1
+          ? []
+          : table.rows.map(
+              (cells) => [String(cells[1] ?? ''), String(cells[long] ?? '')] as [string, string],
+            )
+      })
+    const where = new Map(collecting)
+
+    for (const field of ['Broj ličnog dokumenta', 'Ime oca']) {
+      expect(
+        where.get(field),
+        `${field} says in one table how long it is kept and in the other something else`,
+      ).toBe('Sekcija 5')
+    }
   })
 
   it('keeps an unactivated account as long as the year it was opened to buy', () => {
@@ -592,8 +637,11 @@ describe('the privacy policy', () => {
        as one month rather than thirteen: measured, and the first version of this said the
        longer year was fine. */
     const sellingYear = monthOf(last) + 12 - monthOf(first) + 1
-    const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
-    const said = /Nalog nikad nije aktiviran \| (\d+) (dana|meseci|godine)/.exec(kept)
+    /* Through the table rather than through a pattern that steps over a fixed number of
+       cells: a column added to that table broke this while the document was right, and
+       the guard below it, written the same week, already reads the column by its name. */
+    const kept = howLongKept()
+    const said = /^(\d+) (dana|meseci|godine)/.exec(String(kept.get('Nalog nikad nije aktiviran')))
 
     expect(said, 'the policy does not say how long an unactivated account is kept').not.toBeNull()
 
@@ -606,7 +654,10 @@ describe('the privacy policy', () => {
       `${amount} ${unit} is shorter than the ${sellingYear} months the account was opened to buy`,
     ).toBeGreaterThanOrEqual(sellingYear)
 
-    const asMember = /Prestanete da budete član \| Pet godina/.test(kept)
+    /* And that the document still says how long a former member is kept, which is what the
+       bound above is measured against. Written as a pattern over the whole section with
+       the word for five inside it, this failed on both rows moving together. */
+    const asMember = String(kept.get('Prestanete da budete član')).trim() !== 'undefined'
 
     expect(asMember, 'the policy no longer says how long a former member is kept').toBe(true)
     expect(

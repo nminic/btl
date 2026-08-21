@@ -1468,6 +1468,13 @@ describe('CompetitorProfile', () => {
     ).toBeVisible()
   })
 
+  /* Its own limit, and not the whole suite's: `ADL.md` A2 keeps `testTimeout` at the
+     Vitest default because that number is a performance budget rather than a guard
+     against hanging, and „test koji zaista čeka da vreme prođe nosi sopstveni rok, ne ceo
+     paket". This one presses „load more" up to twenty times and redraws a table that
+     grows each time, so it is slow by construction rather than by accident: 3237 ms here,
+     and the machine that decides is about half again slower, which put it over five
+     seconds and failed a branch that had nothing to do with it. */
   it('names on the ring only the lengths this person has run', async () => {
     /* It used to draw all five whatever the counts were, so most profiles
        carried three rows reading nought (owner, 31.07.2026). Checked against the
@@ -1534,7 +1541,7 @@ describe('CompetitorProfile', () => {
 
     expect(new Set(dots).size).toBe(new Set(kinds).size)
     expect(dots.every((one) => one !== undefined)).toBe(true)
-  })
+  }, 15_000)
 
   it('says which of the four kinds of nothing it is', async () => {
     /* Never raced at all is a different fact from raced but not this season, and
