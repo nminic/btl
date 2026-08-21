@@ -1423,7 +1423,28 @@ describe('how a written page is set', () => {
   it('sends a reader to the section it names', () => {
     /* Deleting a section moves every number after it, and a sentence that names
        one does not move with it. Both of the terms' own references pointed at
-       the awards clause after the first section went. */
+       the awards clause after the first section went.
+
+       Read against what each section is **about**, not against whether the
+       number exists. A stale reference lands on a real section and says the
+       wrong thing, so an existence check passes exactly when it should fail:
+       measured on 21.08.2026, moving „priznanja po broju trka iz sekcije 14" to
+       15, from the awards onto the code of ethics, left the whole suite green.
+
+       Pinned by the words in front of the reference, so a reference that has to
+       move and does not arrives somewhere that no longer matches. */
+    const expected: [string, string, RegExp][] = [
+      ['politika-privatnosti', 'pristanak ne traži', /Kolačići/],
+      ['uslovi-koriscenja', 'razlog za meru', /Pravila ponašanja i mere/],
+      ['uslovi-koriscenja', 'po postupku', /Pravila ponašanja i mere/],
+      ['pravilnik', 'Detalji su', /Timovi, trkački parovi i klubovi/],
+      ['pravilnik', 'sopstvena takmičenja lige', /Prateća takmičenja i lige/],
+      ['pravilnik', 'priznanja po broju trka', /Nagrade i priznanja/],
+      ['pravilnik', 'može dovesti do mera', /Sankcije i diskvalifikacija/],
+    ]
+
+    const landed: [string, string, string][] = []
+
     for (const [slug, page] of pages) {
       const numbered = new Map(
         page.sections
@@ -1433,14 +1454,33 @@ describe('how a written page is set', () => {
       )
 
       for (const section of page.sections) {
-        for (const found of section.body.matchAll(/sekcij\w+ (\d+)/g)) {
+        for (const found of section.body.matchAll(/([^.]{0,60})sekcij\w+ (\d+)/g)) {
+          const before = String(found[1]).trim()
+          const heading = numbered.get(Number(found[2]))
+
           expect(
-            numbered.has(Number(found[1])),
-            `${slug} names section ${found[1]}, which it does not have`,
-          ).toBe(true)
+            heading,
+            `${slug} names section ${found[2]}, which it does not have`,
+          ).toBeDefined()
+
+          landed.push([slug, before, heading ?? ''])
         }
       }
     }
+
+    /* Every reference is accounted for, and each lands where its words say it
+       should. A reference added without a line here fails the first of the two,
+       which is the point: a new one has to say what it is about. */
+    expect(landed.length).toBe(expected.length)
+    expect(
+      landed.filter(
+        ([slug, before, heading], at) =>
+          slug !== expected[at]?.[0] ||
+          !before.includes(expected[at]?.[1] ?? '') ||
+          !(expected[at]?.[2] ?? /$^/).test(heading),
+      ),
+      'a reference that no longer lands where its words say',
+    ).toEqual([])
   })
 
 

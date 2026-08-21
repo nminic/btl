@@ -50,7 +50,7 @@ export type ChartColumn = {
    * page, where the chart is a widget and not a standing.
    *
    * Until 11.08.2026 the reason was a different one: a place nothing separated
-   * was shared, so a board could read 1, 1, 3 (Član 57 of the rulebook). There
+   * was shared, so a board could read 1, 1, 3 (Član 55 of the rulebook). There
    * is no shared place any more (PDL P12), and the reading is still not the
    * row number.
    */

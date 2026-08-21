@@ -113,7 +113,7 @@ export function NewResult() {
       link: String(values.link),
       /* What the member wanted to say about the race, and it used to be thrown
          away here: the field is on the form (`unos-rezultata.form.json`), the
-         rulebook lists it among what is entered from a profile (Član 41), the
+         rulebook lists it among what is entered from a profile (Član 39), the
          moderator's screen draws it where there is one, and the same result
          reported from the event page has carried it all along
          (pages/event/ReportResult.tsx). Only this door dropped it, silently, and

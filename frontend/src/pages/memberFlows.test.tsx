@@ -750,7 +750,7 @@ describe('a result from entry to decision', () => {
 
   it('carries what the member said about the race to the moderator', async () => {
     /* The form has asked for it all along (`unos-rezultata.form.json`), the
-       rulebook lists it among what is entered from a profile (Član 41), and the
+       rulebook lists it among what is entered from a profile (Član 39), and the
        moderator's screen draws it where there is one (admin/ReviewQueue.tsx).
        This one door dropped it: the screen wrote an empty string into the
        submission and the words went nowhere.

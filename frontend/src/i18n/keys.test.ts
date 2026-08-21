@@ -215,7 +215,7 @@ describe('the words the search engine is given', () => {
 
   it('calls the boards what the rulebook and the navigation call them', () => {
     /* "Rang liste" is not a second name for the page: it is the Top liste, in
-       the navigation, on the page itself and in Article 55 alike (PDL P28a; the
+       the navigation, on the page itself and in Article 53 alike (PDL P28a; the
        owner shortened it from "Top 10 liste" on 04.08.2026). The description of
        the home page once counted the boards among the "rang liste", which puts
        a retired name in front of every visitor and in every search result. */
