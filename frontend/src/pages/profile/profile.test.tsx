@@ -71,7 +71,9 @@ describe('what a competitor has won', () => {
     renderAt('/sr/takmicar/000031/priznanja')
 
     /* Named for what the screen actually holds. P16 also gives a medal for
-       twelve points and figures for the boards of Article 25, and neither is
+       twelve points and figures for the boards of Article 25 of the old rulebook (2017
+       through 2021, whose Article 25 hands out the figures; this rulebook is
+       numbered differently and was never meant here), and neither is
        here yet, so "no award at all" would have been a claim the screen cannot
        make. */
     expect(await screen.findByText('Ovaj takmičar još nema nijedan pehar.')).toBeVisible()

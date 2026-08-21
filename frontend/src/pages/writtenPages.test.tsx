@@ -999,6 +999,13 @@ describe('the privacy policy', () => {
 
 const NEWLINE = String.fromCharCode(10)
 
+/** Every written page as one piece of text. A page names an article of the
+ *  rulebook as often as the rulebook names one of its own, and a guard that
+ *  reads one page is a guard over a third of them. */
+const WRITTEN_PAGES = Object.values(WRITTEN).map((page) =>
+  [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
+)
+
 describe('the rulebook', () => {
   /** The whole of it as one piece of text, which is how a rule that has to be in
    *  it is looked for: an article moved from one section to another is still in
@@ -1167,7 +1174,11 @@ describe('the rulebook', () => {
       Number(found[1]),
     )
 
-    expect(numbers.length).toBeGreaterThan(80)
+    /* A floor and not a count, so striking an article does not fail this on its
+       own: what it catches is a rulebook that has lost most of itself. It stood
+       at eighty while there were eighty-seven articles; the owner has since
+       struck nine, and seventy-eight remain. */
+    expect(numbers.length).toBeGreaterThan(70)
     expect(numbers).toEqual(numbers.map((_, index) => index + 1))
   })
 
@@ -1193,15 +1204,17 @@ describe('the rulebook', () => {
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
       [29, /Uspon i spust/],
-      [39, /Ko prijavljuje i šta/],
-      [40, /^Rok$/],
-      [53, /Top liste/],
-      [67, /Posebna priznanja/],
-      /* The section that draws the wall of ducats points at the article that
-         awards them (owner, 04.08.2026): the section describes, the article
-         rules, and the reader has to be able to get from one to the other. */
-      [70, /Dukati/],
-      [77, /Postupak/],
+      [37, /Ko prijavljuje i šta/],
+      [38, /^Rok$/],
+      [48, /Top liste/],
+      [62, /Posebna priznanja/],
+      [71, /Postupak/],
+      /* Named from the privacy policy and not from the rulebook: the
+         exception for a birthday published on purpose. It is the only
+         reference to the rulebook written on another page, and reading
+         only the rulebook left it on 80 until the article stopped
+         existing. */
+      [74, /Šta nikada nije javno/],
     ]
 
     const titles = new Map(
@@ -1218,9 +1231,15 @@ describe('the rulebook', () => {
        guard while looking exactly like every other one to a reader, so it went
        into the rulebook on 16.08.2026 without ever being checked. A guard that a
        lower-case letter walks past is a guard on the spelling. */
-    const referenced = [
-      ...(rulebook ?? '').replace(/### Član \d+\.[^\n]*/g, '').matchAll(/[Čč]lan[a-zA-Z]* (\d+)/g),
-    ].map((found) => Number(found[1]))
+    /* Read over every written page and not only over the rulebook. A written
+       page names an article of the rulebook as „Član 80 Pravilnika", and the
+       privacy policy did: reading only the rulebook, the guard could not see
+       it, and the number stayed on 80 through two renumberings until the
+       article stopped existing. Measured on 21.08.2026, with 78 articles in
+       the book and a published page pointing at the eightieth. */
+    const referenced = WRITTEN_PAGES.flatMap((text) => [
+      ...text.replace(/### Član \d+\.[^\n]*/g, '').matchAll(/[Čč]lan[a-zA-Z]* (\d+)/g),
+    ]).map((found) => Number(found[1]))
 
     /* Every article referred to, each once, since two paragraphs point at the
        right to be ranked. A reference to an article nobody expected fails here
@@ -1327,7 +1346,7 @@ describe('the rulebook', () => {
        The pair was in the wrong half of this until 15.08.2026. The owner settled
        it on 11.08.2026 (PDL P16): the trophy is for standing, „po kategorijama,
        generalno muški i ženski, jedan timski i jedan trkačkom paru", and the
-       figure is for what is not a standing. Član 69 lists the pair among the
+       figure is for what is not a standing. Član 62 lists the pair among the
        special recognitions, which the article then handed a figure, so the
        rulebook gave the pair a figure while the decision gave them a trophy. */
     expect(rulebook).toMatch(/najboljem trkačkom paru/)
@@ -1339,7 +1358,7 @@ describe('the rulebook', () => {
        rulebook is not where a competition beside the main one is described. What
        a league is, and that the league itself runs two of its own, stays. */
     expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
-    expect(rulebook).toMatch(/### Član 62\. Liga kao pojam/)
+    expect(rulebook).toMatch(/### Član 57\. Liga kao pojam/)
   })
 
   it('cannot be changed inside a season', () => {
@@ -1454,19 +1473,25 @@ describe('how a written page is set', () => {
        measured on 21.08.2026, moving „priznanja po broju trka iz sekcije 14" to
        15, from the awards onto the code of ethics, left the whole suite green.
 
-       Pinned by the words in front of the reference, so a reference that has to
-       move and does not arrives somewhere that no longer matches. */
-    const expected: [string, string, RegExp][] = [
-      ['politika-privatnosti', 'pristanak ne traži', /Kolačići/],
-      ['uslovi-koriscenja', 'razlog za meru', /Pravila ponašanja i mere/],
-      ['uslovi-koriscenja', 'po postupku', /Pravila ponašanja i mere/],
-      ['pravilnik', 'Detalji su', /Timovi, trkački parovi i klubovi/],
-      ['pravilnik', 'sopstvena takmičenja lige', /Prateća takmičenja i lige/],
-      ['pravilnik', 'priznanja po broju trka', /Nagrade i priznanja/],
-      ['pravilnik', 'može dovesti do mera', /Sankcije i diskvalifikacija/],
+       Both cases of the word, because the guard read only the small one and the
+       privacy policy names a section twenty-two times with a capital, in the
+       column of legal bases. Twenty-two of twenty-nine references were invisible
+       to it, and the article guard beside it had learnt the same lesson twice
+       already.
+
+       Pinned per page and number rather than per occurrence: what matters is
+       that a number, wherever it is written, still means the section it meant. */
+    const expected: [string, number, RegExp][] = [
+      ['politika-privatnosti', 4, /Kolačići/],
+      ['politika-privatnosti', 5, /Koliko čuvamo/],
+      ['uslovi-koriscenja', 7, /Pravila ponašanja i mere/],
+      ['pravilnik', 12, /Timovi, trkački parovi i klubovi/],
+      ['pravilnik', 13, /Prateća takmičenja i lige/],
+      ['pravilnik', 14, /Nagrade i priznanja/],
+      ['pravilnik', 16, /Sankcije i diskvalifikacija/],
     ]
 
-    const landed: [string, string, string][] = []
+    const named = new Set<string>()
 
     for (const [slug, page] of pages) {
       const numbered = new Map(
@@ -1477,33 +1502,47 @@ describe('how a written page is set', () => {
       )
 
       for (const section of page.sections) {
-        for (const found of section.body.matchAll(/([^.]{0,60})sekcij\w+ (\d+)/g)) {
-          const before = String(found[1]).trim()
-          const heading = numbered.get(Number(found[2]))
+        for (const found of section.body.matchAll(/[Ss]ekcij\w+ (\d+)/g)) {
+          const number = Number(found[1])
+          const heading = numbered.get(number)
 
+          expect(heading, `${slug} names section ${number}, which it does not have`).toBeDefined()
+
+          const rule = expected.find((one) => one[0] === slug && one[1] === number)
+
+          expect(rule, `${slug} names section ${number}, which nothing here accounts for`).toBeDefined()
           expect(
-            heading,
-            `${slug} names section ${found[2]}, which it does not have`,
-          ).toBeDefined()
+            rule?.[2].test(heading ?? ''),
+            `${slug} sends a reader to section ${number}, which is now "${heading}"`,
+          ).toBe(true)
 
-          landed.push([slug, before, heading ?? ''])
+          named.add(`${slug} ${number}`)
         }
       }
     }
 
-    /* Every reference is accounted for, and each lands where its words say it
-       should. A reference added without a line here fails the first of the two,
-       which is the point: a new one has to say what it is about. */
-    expect(landed.length).toBe(expected.length)
-    expect(
-      landed.filter(
-        ([slug, before, heading], at) =>
-          slug !== expected[at]?.[0] ||
-          !before.includes(expected[at]?.[1] ?? '') ||
-          !(expected[at]?.[2] ?? /$^/).test(heading),
-      ),
-      'a reference that no longer lands where its words say',
-    ).toEqual([])
+    /* And every line here is still used, so a reference that leaves takes its
+       line with it rather than sitting here proving nothing. */
+    expect([...named].sort()).toEqual(expected.map(([slug, number]) => `${slug} ${number}`).sort())
+
+    /* And where one page names the same section many times, they all have to
+       name the same one. The column of legal bases in the privacy policy points
+       twenty-two rows at where each datum's retention is written; pinned per
+       page and number, moving one row to another number that the page also uses
+       passes, because both numbers are accounted for. Measured: a row moved from
+       5 to 4 said the retention of a member's sex is written among the cookies. */
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        const inTable = [
+          ...section.body.matchAll(/\|[^|\n]*[Ss]ekcij\w+ (\d+)[^|\n]*\|/g),
+        ].map((found) => Number(found[1]))
+
+        expect(
+          [...new Set(inTable)].length,
+          `${slug}, ${section.heading}: the rows of one table name more than one section`,
+        ).toBeLessThan(2)
+      }
+    }
   })
 
 

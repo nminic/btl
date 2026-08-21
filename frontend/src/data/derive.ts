@@ -378,7 +378,7 @@ const BY_TEAM = byLadder<TeamRow>([
  * than by a member number, because a team has no member number. What that id
  * promises is one thing only: that it is the same tomorrow, so the table does
  * not shuffle between two recounts of the same data. It promises nothing about
- * when the team joined, and the rulebook no longer says it does (Article 55):
+ * when the team joined, and the rulebook no longer says it does (Article 50):
  * the prototype hands out `team-dunav` from the seed and `teams-nov-N` from the
  * panel, and `localeCompare` puts `teams-nov-10` ahead of `teams-nov-2`. So
  * here too there is no shared place, and which of two teams nothing separates
@@ -739,7 +739,7 @@ export function activeOnly(competitors: Competitor[]): Competitor[] {
  * only archive the league has, and would never hide anybody from 2028.
  *
  * Written once because it was being kept in one place out of four. The standing
- * kept it; the front page and the boards of Article 56 are the same season's
+ * kept it; the front page and the boards of Article 48 are the same season's
  * standing in another shape and did not, and nothing said so, because the data
  * has one member this is true of and they are in none of those lists.
  */
@@ -773,7 +773,7 @@ type Tally = { totals: Totals; reachedOn: string }
  * completed the count and the day needs no comparing of its own.
  *
  * The day matters because "reached earlier wins" is a rung on two of the boards
- * (PDL P12, and Article 54 of the rulebook), so both are counted here rather than
+ * (PDL P12, and Article 49 of the rulebook), so both are counted here rather than
  * one of them keeping the day to itself.
  */
 function tallyOf(results: Result[]): Map<string, Tally> {
@@ -850,7 +850,7 @@ export function topByCategory(
  * Most kilometres in a season. Ladder: kilometres, more races, vertical, points,
  * then reached earlier, then the member number.
  *
- * The fifth rung is in P12 and in Article 54 of the rulebook, and it was missing
+ * The fifth rung is in P12 and in Article 49 of the rulebook, and it was missing
  * here while the board of races by length already had it: two members level on
  * all four of the others were left in whatever order they happened to be in, and
  * the one who got there in March shared a place with the one who got there in
