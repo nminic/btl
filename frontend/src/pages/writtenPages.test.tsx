@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
@@ -21,8 +21,16 @@ const dictionary = sr
 /* The written pages as the portal itself reads them. Annotated and not asserted:
    an annotation is a claim the compiler has to agree with, and this one holds
    the file to the type every screen reads it through (ADL A14). */
-const WRITTEN: Record<string, { title: string; sections: { heading: string; body: string }[] }> =
-  written
+const WRITTEN: Record<
+  string,
+  { title: string; sections: { heading: string; body: string; gallery?: string }[] }
+> = written
+
+/* The mark a body carries to say where its drawing goes (Markdown.tsx). Written
+   out here rather than imported: a test that reads the same constant as the code
+   agrees with it whatever it is changed to, and what this holds is the content
+   and the code saying the same word. */
+const PLACE = '[[gallery]]'
 
 /**
  * Every table of one block of the policy, each read as a table: its header, and the
@@ -438,6 +446,91 @@ describe('the fee schedule in the rulebook', () => {
   })
 })
 
+describe('a drawing a written section names', () => {
+  const sections = Object.values(WRITTEN).flatMap((page) => page.sections)
+  const places = (body: string) => body.split(PLACE).length - 1
+
+  it('has exactly one place marked for it, and nothing else marks a place', () => {
+    /* The two halves of one rule, and both are needed. A section that names a
+       drawing and marks no place for it draws nothing at all, which is the very
+       silence PageSectionBody was written to end; a section that marks a place
+       and names no drawing leaves a gap in the middle of its text. Two marks
+       would draw the table twice.
+
+       Held over every written page and not over the two that have a drawing
+       today, so a third one added tomorrow is held to the same rule. */
+    const named = sections.filter((section) => section.gallery !== undefined)
+
+    expect(named.length).toBeGreaterThan(0)
+    expect(named.map((section) => `${section.heading}: ${places(section.body)}`)).toEqual(
+      named.map((section) => `${section.heading}: 1`),
+    )
+    expect(
+      sections
+        .filter((section) => section.gallery === undefined && places(section.body) > 0)
+        .map((section) => section.heading),
+    ).toEqual([])
+  })
+
+  it('is drawn where the mark stood, and the mark itself never reaches the reader', async () => {
+    /* Owner, 21.08.2026: the fee schedule moves out of the foot of the section
+       and up under „...posebnom odlukom", the sentence that names the decision
+       of the board that sets it.
+
+       Read as the order of the whole section rather than as "the table is
+       somewhere in it": at the foot of the section it was also somewhere in it,
+       and that is the arrangement this replaces. The last line of it is the
+       other half of what the owner asked for the same day, that nothing stand
+       after the list in Član 17. */
+    renderAt('/sr/pravilnik')
+
+    const heading = await screen.findByRole('heading', { name: /^4. Članarina$/ })
+    const section = must(heading.closest('section'), 'the section around that heading')
+    const order = [...section.querySelectorAll('h3, table')].map((part) =>
+      part.tagName === 'TABLE' ? 'the price table' : (part.textContent ?? ''),
+    )
+
+    expect(order).toEqual([
+      'Član 14. Cena i rokovi',
+      'the price table',
+      'Član 15. Dinarska cena i oslobađanje od članarine',
+      'Član 16. Povraćaj',
+      'Član 17. Šta članstvo donosi',
+    ])
+
+    /* And the mark is not words. Read over the whole document rather than by
+       asking for an element holding it: rendered as part of a longer paragraph
+       it would not be an element of its own, and a search by exact text would
+       walk past the fault it exists to catch. */
+    expect(document.body.textContent ?? '').not.toContain(PLACE)
+  })
+
+  it('stands beside the words and never inside them', async () => {
+    /* A drawing inside `.markdown` is dressed by the rules that dress prose, and
+       those rules win: measured in the browser on 21.08.2026, `.markdown ul`
+       and `.ducats` weigh the same, the tie went by load order, and the grid of
+       fifteen coins became one column of fifteen with a list indent, 3.635
+       pixels tall. Nothing failed, because jsdom computes no styles.
+
+       So the guard is over the shape and not over the paint: which rule could
+       reach which drawing is a question with no end to it, and standing outside
+       them there is nothing to enumerate. Both drawings the portal has are read,
+       and a third would be added here. */
+    renderAt('/sr/pravilnik')
+
+    const fee = await screen.findByRole('heading', { name: /^4. Članarina$/ })
+    const section = must(fee.closest('section'), 'the section around that heading')
+
+    expect(within(section).getByRole('table').closest('.markdown')).toBeNull()
+
+    /* The coins arrive on a request of their own, so the wall is waited for
+       rather than looked for once. */
+    const wall = await waitFor(() => must(document.querySelector('.ducats'), 'the wall of ducats'))
+
+    expect(wall.closest('.markdown')).toBeNull()
+  })
+})
+
 describe('the privacy policy', () => {
   it('describes the analytics the portal has, which is none', () => {
     /* Owner, 16.08.2026: „zelim da izbacim Google Analytics, traku, i Umami cak
@@ -745,6 +838,37 @@ describe('the rulebook', () => {
     ?.sections.map((section) => section.body)
     .join(NEWLINE)
 
+  it('has none of the sentences the owner struck on 21.08.2026, and both of the rewrites', () => {
+    /* Five sentences went out on one reading. Each said something the article
+       around it already says, or something the portal no longer does:
+
+       - the age of the junior fee, said in Član 12 about the two ages that need
+         a parent, where the two rules have nothing to do with each other and
+         saying so invited the reader to look for a connection;
+       - "whoever that may be" after the organiser of a race, in Član 13;
+       - "the price list is published at the end of this section", in Član 14,
+         which stopped being true the moment the table moved up under it;
+       - what the portal does before payments open, in Član 14, which is a
+         sentence about a date that has passed by the time anybody reads it;
+       - and the clause about a member freed of the fee never having a payment,
+         in Član 15.
+
+       Held here so that a rulebook rewritten for the next season cannot quietly
+       take them back. */
+    expect(rulebook).not.toMatch(/juniorska članarina nemaju veze/)
+    expect(rulebook).not.toMatch(/ko god to bio/)
+    expect(rulebook).not.toMatch(/Važeći cenovnik objavljuje se/)
+    expect(rulebook).not.toMatch(/Portal radi i pre tog datuma/)
+    expect(rulebook).not.toMatch(/nikad nema uplatu/)
+
+    /* And the two the owner had written differently rather than removed: the
+       figure in numerals and the sentence shorter by one word, and the name of
+       the league's own winter competition as a name. */
+    expect(rulebook).toMatch(/Onaj ko puni 15 u toku te sezone, još plaća juniorsku/)
+    expect(rulebook).not.toMatch(/puni petnaest/)
+    expect(rulebook).toMatch(/ultramaraton i Zimski dezorijentiring/)
+  })
+
   it('numbers its articles from one, with nothing missing in between', () => {
     /* An article was taken out of the middle of it (the terrain profile, owner
        03.08.2026), so everything after it moved up by one. A rulebook that
@@ -842,9 +966,13 @@ describe('the rulebook', () => {
     /* Membership is measured by activation, and the deadline for the right to
        be ranked is measured by the day of payment. Two questions, and they read
        as a contradiction unless each says which one it answers. */
-    expect(rulebook).toMatch(
-      /meri se aktiviranim statusom na portalu: član oslobođen članarine nikad nema uplatu/,
-    )
+    /* The clause that used to close this sentence, spelling out that a member
+       freed of the fee never has a payment and is a full member all the same,
+       was struck by the owner on 21.08.2026. The sentence before it already says
+       they have the same rights as anybody else. What has to survive is that the
+       two questions stay apart, so the next sentence is read along with it. */
+    expect(rulebook).toMatch(/meri se aktiviranim statusom na portalu. Do kada se plaća/)
+    expect(rulebook).not.toMatch(/nikad nema uplatu/)
     expect(rulebook).toMatch(/Rok se meri po danu uplate, a ne po danu kada je liga uplatu/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
     expect(rulebook).toMatch(/nije deo članarine/)

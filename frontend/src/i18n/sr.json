@@ -290,6 +290,7 @@
     "minutes": "Minuti",
     "seconds": "Sekunde",
     "calcWaiting": "Unesi dužinu i vreme.",
+    "calcReset": "Reset",
     "news": "Vesti",
     "sponsorOfTheDay": "Sponzor dana",
     "partners": "Sponzori i partneri",
@@ -803,16 +804,13 @@
       "referral": "Preporuka novog člana"
     },
     "title": "Cenovnik članarine",
-    "setBy": "Visinu članarine i rokove plaćanja utvrđuje Upravni odbor posebnom odlukom.",
     "periodName": "Period",
     "period": "Važi",
     "ranking": "Pravo rangiranja",
     "rankingByPeriod": "Prema periodu uplate",
     "everyPayment": "Svaka uplata",
     "yes": "Da",
-    "no": "Ne",
-    "fee": "Uz uplatu u evrima naplaćuje se taksa za obradu plaćanja od {fee} EUR. Uplata u dinarima je nema.",
-    "exempt": "Upravni odbor može odlukom osloboditi redovnog člana plaćanja članarine."
+    "no": "Ne"
   },
   "error": {
     "title": "Nešto je puklo",

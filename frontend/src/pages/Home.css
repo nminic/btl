@@ -438,11 +438,28 @@
   min-width: 0;
 }
 
+/* The answer and the way back to an empty widget on one line (owner,
+   21.08.2026). Laid along the bottom, because that is where the figure already
+   sits and the button has to sit level with it. The row wraps rather than
+   squeezing: on the narrowest card, or with larger text, the button takes a
+   line of its own and keeps the far end of it. */
+.calc__answer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
 /* The label is always there and the number arrives beside it, and the line
    keeps the height of the taller of the two answers, so the card does not grow
    and shrink as somebody types (owner, 31.07.2026). */
 .calc__result {
   margin: 0;
+  /* The answer takes the room the button leaves and wraps inside itself, rather
+     than pushing the button out of the card. */
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   /* Along the bottom rather than along the first line of text (owner,
      01.08.2026). "BTL poeni:" is small and the figure is large, so on a shared
@@ -508,6 +525,13 @@
   color: var(--text-muted);
   font-size: 0.85rem;
   font-style: italic;
+}
+
+/* It undoes typing rather than doing anything, so it stays the quiet control of
+   the pair: secondary, at the compact size the header uses, and never wider than
+   its own word. */
+.calc__reset {
+  flex: 0 0 auto;
 }
 
 /* News and sponsor */

@@ -173,6 +173,54 @@ describe('Home', () => {
     expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
   })
 
+  it('empties the six boxes on Reset and hands the cursor back to the first', async () => {
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    const reset = within(calc).getByRole('button', { name: 'Reset' })
+    const length = within(calc).getByLabelText('Dužina (km)')
+
+    /* Nothing typed, so there is nothing to undo and the button says so. It is
+       refused rather than switched off, so it can still be pressed, and pressing
+       it has to leave the widget exactly as it was. */
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    await user.click(reset)
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    /* Nothing happened, and the cursor is the half of that which can be seen: a
+       refused Reset that still threw the cursor into the first box would be
+       doing something. */
+    expect(length).not.toHaveFocus()
+
+    /* Any one of the six brings it to life, and the one tried here is the last
+       of them: a check that reads the length alone would call a widget with a
+       time typed into it empty. */
+    await user.type(within(calc).getByLabelText('Sekunde'), '31')
+    expect(reset).toHaveAttribute('aria-disabled', 'false')
+
+    await user.type(length, '62.07')
+    await user.type(within(calc).getByLabelText('Uspon (m)'), '3456')
+    await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
+    await user.type(within(calc).getByLabelText('Sati'), '7')
+    await user.type(within(calc).getByLabelText('Minuti'), '28')
+    expect(within(calc).getByText('79,03')).toBeVisible()
+
+    await user.click(reset)
+
+    for (const label of ['Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Sati', 'Minuti', 'Sekunde']) {
+      expect(within(calc).getByLabelText(label)).toHaveValue(null)
+    }
+
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
+    // And the cursor is where the next race is typed, not where it was pressed.
+    expect(length).toHaveFocus()
+  })
+
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {
     renderAt('/sr')
 
