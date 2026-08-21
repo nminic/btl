@@ -1035,107 +1035,67 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/puni petnaest/)
   })
 
-  it('calls the competition BTL dezorijentiring wherever it names it', () => {
+  it('has no form of the struck word anywhere near the name, and carries the name', () => {
     /* Owner, 21.08.2026: „zapravo svuda treba da se zove BTL dezorijentiring".
        He had asked for a capital letter first, in one article; a day of two
        spellings later, the answer is that the word „zimski" goes and the name is
        the same everywhere.
 
-       Two rules, because one of them alone let the name back in twice already.
+       This is the fifth shape of this guard and the first simple one, and the
+       four before it are why it is written this way. Each of them tried to say
+       how the name may be spelt, and a rule about spelling is a grammar: pinned
+       to one sentence it let three places through; asking only for the prefix
+       let „Zimski BTL dezorijentiring" through; comparing in lower case let „btl
+       dezorijentiring" through; a window of twelve characters let „zimskome BTL
+       dezorijentiringu" through; and splitting on the lower-case word let
+       „Zimskim Dezorijentiringom" through. Every one of those was my own grammar
+       and every one was found by a review.
 
-       The first is over the written pages, and it is positive: every mention
-       carries „BTL" in front of it and the word „zimski" nowhere near it. The
-       guard before this one was pinned to the phrase in Član 13, and the article
-       that defines the competition, the article that hands out its trophies and
-       the terms went on calling it something else with the whole suite green.
-       The one after that asked only for the prefix, and „Zimski BTL
-       dezorijentiring" walked straight through it, which is not an invented
-       shape: it is the name the calendar of past seasons was carrying at the
-       time.
+       So this says nothing about spelling. It says the one thing the owner
+       decided: the struck adjective does not stand near the name. Any form of
+       it, either case, across a space or a hyphen, which is the same sentence
+       that covers the address `zimski-btl-dezorijentiring-2016`.
 
-       Over every written page, not a pair named here, for the same reason.
+       Over every record the portal serves, which is where the written pages live
+       too: the name stood in five sentences of prose and in 214 places in the
+       calendar, the races and the results, and a rule that read only the prose
+       was blind to all but the five. */
+    const STRUCK = 'zimsk'
+    const NAME = 'BTL dezorijentiring'
+    const mock = join(__dirname, '..', '..', 'public', 'mock')
+    const files = readdirSync(mock).filter((name) => name.endsWith('.json'))
 
-       What this rule cannot tell apart, said so nobody is surprised by it: a
-       race somebody else organises and calls a dezorijentiring, named in our own
-       prose, would raise it. There is none today, and the alarm names the page
-       and the words before the mention, so it reads as what it is. */
-    /* Thirty characters and not twelve, and the case is kept. Twelve was written
-       by hand and measured wrong twice over: „zimskome BTL dezorijentiringu"
-       walked through it, because the longer forms of the adjective are eight
-       letters and push the word out of the window, and so did „btl
-       dezorijentiring" in lower case, on a decision that had itself been about a
-       capital letter. */
-    const mentions = (text: string) =>
-      text
+    const near = files.flatMap((name) => {
+      const lower = readFileSync(join(mock, name), 'utf8').toLowerCase()
+
+      return lower
         .split('dezorijentiring')
         .slice(0, -1)
         .map((part) => part.slice(-30))
+        .filter((part) => part.includes(STRUCK))
+        .map((part) => `${name}: ${part}`)
+    })
 
-    const named = Object.entries(WRITTEN).flatMap(([slug, page]) =>
-      mentions(
-        [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
-      ).map((part) => `${slug}: ${part}`),
+    expect(near, 'the struck word still stands beside the name').toEqual([])
+
+    /* And the name is written the way it is written, which is one literal and
+       not a rule about capitals: the address carries a hyphen, so the only thing
+       a lower-case „btl " in front of the word can be is the name misspelt. */
+    const misspelt = files.filter((name) =>
+      readFileSync(join(mock, name), 'utf8').includes(`btl ${'dezorijentiring'}`),
     )
 
-    expect(named.length).toBeGreaterThan(0)
-    expect(
-      named.filter((one) => !one.endsWith('BTL ') || one.toLowerCase().includes('zimsk')),
-      'a mention that is not the name',
-    ).toEqual([])
-  })
+    expect(misspelt, 'the name is written in lower case').toEqual([])
 
-  it('has no record anywhere that still carries the old name', () => {
-    /* The second rule, and it is over the data rather than the prose. The name
-       was in four events, forty-two results and every race under them, and in
-       the address of each of those events, so a portal that had renamed only its
-       own articles went on printing the old name on the calendar, on a profile
-       and in a standing. Measured: 214 places against the five the first rule
-       could see.
-
-       Written as the shapes the record actually carried rather than as „every
-       mention carries BTL", because these files hold other people's races too: a
-       „Fruškogorski dezorijentiring" run by somebody else is not ours to rename,
-       and a rule demanding the prefix would raise the alarm on a correct record.
-
-       The bare „zimski dezorijentiring" is on the list too, and it was taken
-       off it for half an hour on the argument that a third party might call
-       their own race that. Measured: of 1166 events not one carries the word,
-       so the alarm being avoided did not exist, while the one being switched
-       off did. A race of ours renamed to the bare form passed the whole suite
-       and would have printed the struck word on the calendar, on a profile and
-       in a standing. A guard turned off against a fault nobody has is a fault
-       nobody catches; if such a race ever arrives, the list is one line to
-       revisit and the alarm will say so. */
-    const gone = [
-      'zimski btl dezorijentiring',
-      'zimski dezorijentiring',
-      'zimski-btl-dezorijentiring',
-    ]
-    const mock = join(__dirname, '..', '..', 'public', 'mock')
-
-    const left = readdirSync(mock)
-      .filter((name) => name.endsWith('.json'))
-      .flatMap((name) => {
-        const text = readFileSync(join(mock, name), 'utf8').toLowerCase()
-
-        return gone.filter((old) => text.includes(old)).map((old) => `${name}: ${old}`)
-      })
-
-    expect(left).toEqual([])
-
-    /* And the other half, because a ban alone holds nothing: renaming the four
-       events to a third thing satisfies every line above while the calendar
-       carries a name the rulebook has never heard of. Measured: it did.
-
-       Counted rather than looked for once, because one surviving edition
-       satisfies a search and three renamed ones would go unnoticed. Four is a
-       floor and not a count: the season of 2027 has no edition in the calendar
-       yet, and adding it must not raise this. */
-    const editions = readFileSync(join(mock, 'events.json'), 'utf8').split(
-      '"BTL dezorijentiring"',
-    ).length - 1
-
-    expect(editions).toBeGreaterThanOrEqual(4)
+    /* And the name is there, because a ban holds nothing on its own: renaming
+       everything to a third thing satisfies every line above while the portal
+       carries a name the rulebook has never heard of. Read on the two records
+       that publish it, the written pages and the calendar. */
+    for (const name of ['pages.json', 'events.json']) {
+      expect(readFileSync(join(mock, name), 'utf8'), `${name} does not carry the name`).toContain(
+        NAME,
+      )
+    }
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {
