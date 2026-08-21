@@ -174,6 +174,36 @@ const ADDRESS = (season: number, category?: string) =>
     category === undefined ? '' : `&kategorija=${encodeURIComponent(category)}`
   }`
 
+/** The Serbian dictionary, so a word the screen must never show is read from
+ *  where it is written rather than typed here a second time. */
+const dictionary = sr
+
+/** Every phrase the dictionary carries under a key that names this fact, as pairs of
+ *  key and words. Found by the key rather than listed, so a fourth wording added
+ *  tomorrow is asked about without this file being touched. */
+function everySaying(inKey: string): [string, string][] {
+  const found: [string, string][] = []
+  const walk = (node: unknown, path: string): void => {
+    if (typeof node === 'string') {
+      if (path.toLowerCase().includes(inKey)) {
+        found.push([path, node])
+      }
+
+      return
+    }
+
+    if (typeof node === 'object' && node !== null) {
+      for (const [key, value] of Object.entries(node)) {
+        walk(value, path === '' ? key : `${path}.${key}`)
+      }
+    }
+  }
+
+  walk(dictionary, '')
+
+  return found
+}
+
 describe('Rankings', () => {
   it('opens on a season that has a field, with the columns from the rulebook', async () => {
     renderAt('/sr/tabela')
@@ -1560,7 +1590,29 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByText('Oslobodi članarine')).not.toBeInTheDocument()
+
+    /* Every way the portal has of saying it, found by its key rather than typed here,
+       and read off the whole page rather than out of one element.
+       Both halves were wrong before. Asked as the exact text of a single node, this
+       passed while the profile printed the fact in plain words: `profile__meta` writes
+       the category, the town and „U ligi od" as bare text in one paragraph, and a fourth
+       phrase among them is invisible to `queryByText`. Measured, a review put it there
+       and this stayed green. And asked about one key, it watched the one key no
+       component draws, while the portal says the same thing in three others. */
+    /* The markup and not only the words in it: `textContent` carries no attribute, so
+       the same phrase put in a `title` or an `aria-label` was shown to anybody hovering
+       the member number and read aloud to every screen reader, with nothing failing.
+       Measured. */
+    const shown = `${document.body.textContent ?? ''} ${document.body.innerHTML}`
+    const sayings = everySaying('feeexempt')
+
+    expect(sayings.length, 'the dictionary has no way of saying the fee is waived').toBeGreaterThan(
+      1,
+    )
+
+    for (const [key, said] of sayings) {
+      expect(shown, `${key} stands on a public profile`).not.toContain(said)
+    }
   })
 
   it('names itself on a profile too, in the one shape the portal has', async () => {

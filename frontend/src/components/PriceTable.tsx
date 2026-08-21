@@ -1,8 +1,9 @@
 import {
-  JUNIOR,
+  JUNIOR_ROW,
   PRICES,
   PROCESSING_FEE_EUR,
   type PriceRow,
+  ranksByPeriod,
 } from '../data/pricing'
 import { applyChanges } from '../forms/records'
 import { money } from '../i18n/format'
@@ -25,9 +26,21 @@ import '../pages/member/Member.css'
  * copy that drifts.
  */
 
-/** The junior price is the one row with no period: it holds whenever it is paid,
- *  so it sits in the same table without pretending to have dates. */
-const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: true }
+/**
+ * What the ranking column says for a band.
+ *
+ * The row that has no answer of its own points at the periods above it; see
+ * `ranksByPeriod` in `data/pricing.ts`, which both this table and the administrator's
+ * read, so the page that publishes a price and the screen that sets it cannot say
+ * different things about it.
+ */
+function ranks(row: PriceRow, say: (key: string) => string): string {
+  if (ranksByPeriod(row)) {
+    return say('pricing.rankingByPeriod')
+  }
+
+  return row.ranking ? say('pricing.yes') : say('pricing.no')
+}
 
 /** mm-dd as a day is read: 10-05 is the fifth of October. */
 function day(monthDay: string): string {
@@ -47,11 +60,11 @@ export function PriceTable() {
   const rows = [...PRICES, JUNIOR_ROW].map((row) => applyChanges(row, edits[row.key]))
 
   return (
-    <div className="price-table">
+    <div>
       <p className="member__note">{t('pricing.setBy')}</p>
 
       <div className="table-scroll">
-        <table className="table">
+        <table className="table markdown__table">
           <caption className="visually-hidden">{t('pricing.title')}</caption>
           <thead>
             <tr>
@@ -69,7 +82,7 @@ export function PriceTable() {
                 <td>{period(row, t('pricing.everyPayment'))}</td>
                 <td>{money(row.eur, locale)}</td>
                 <td>{money(row.rsd, locale)}</td>
-                <td>{row.ranking ? t('pricing.yes') : t('pricing.no')}</td>
+                <td>{ranks(row, t)}</td>
               </tr>
             ))}
           </tbody>

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -232,6 +234,43 @@ describe('navigation', () => {
       'href',
       'mailto:info@balkanskatrkackaliga.net',
     )
+  })
+
+  it('publishes the statute as the document it is, and the document is there', async () => {
+    /* Član 34 stav 6 of the statute adopted on 17.08.2026 puts the statute on the
+       internet page of the association, and član 39 stav 2 gives three days from the day
+       it was adopted. It was a page of twenty sections until 20.08.2026; the owner asked
+       that it not be pushed at anybody, and then that the document itself be published,
+       under that name. A link in the footer is both: published, and out of the way.
+       The file is checked to exist, because a link to a missing document reads as
+       published while publishing nothing, and that is worse than no link at all: the
+       obligation would look met. */
+    renderAt('/sr')
+
+    const link = await screen.findByRole('link', { name: 'Statut' })
+
+    expect(link).toHaveAttribute('href', '/BTL%20Statut.pdf')
+
+    const served = join(process.cwd(), 'public', decodeURIComponent('BTL%20Statut.pdf'))
+
+    expect(existsSync(served), `${served} is linked and is not there`).toBe(true)
+
+    /* A PDF, and one the size of a statute. Asked as „a file over a kilobyte", a review
+       copied a photograph over it and the portal published a JPEG under the name of the
+       statute with the gate green. */
+    const carried = readFileSync(served)
+
+    expect(carried.subarray(0, 5).toString('latin1'), 'what is served is not a PDF').toBe('%PDF-')
+
+    /* And that it is this document. Asked as „a PDF over a hundred kilobytes", a review
+       wrote five bytes of `%PDF-` over a photograph and the portal published it under the
+       name of the statute with the gate green. The title is in the file in plain bytes,
+       so no library is needed to read it, and it is the only fact in there that says what
+       the document is. */
+    expect(
+      carried.toString('latin1'),
+      'what is served does not call itself the statute',
+    ).toContain('/Title(Statut Sportskog udruzenja BTL')
   })
 
   it('offers the skip link as the first thing in the page', async () => {

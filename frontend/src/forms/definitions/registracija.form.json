@@ -10,7 +10,9 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "hintKey": "registration.firstNameHint"
+      "hintKey": "registration.firstNameHint",
+      "policyRow": "Ime i prezime",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "lastName",
@@ -19,7 +21,20 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "hintKey": "registration.lastNameHint"
+      "hintKey": "registration.lastNameHint",
+      "policyRow": "Ime i prezime",
+      "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "fatherName",
+      "type": "text",
+      "labelKey": "registration.fatherName",
+      "hintKey": "registration.fatherNameHint",
+      "required": true,
+      "maxLength": 60,
+      "row": 1,
+      "policyRow": "Ime oca",
+      "policyBasis": "Pravna obaveza"
     },
     {
       "name": "birthDate",
@@ -27,7 +42,9 @@
       "labelKey": "registration.birthDate",
       "hintKey": "registration.birthDateHint",
       "required": true,
-      "row": 1
+      "row": 2,
+      "policyRow": "Datum rođenja",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "gender",
@@ -45,7 +62,9 @@
           "value": "F",
           "labelKey": "registration.genderFemale"
         }
-      ]
+      ],
+      "policyRow": "Pol",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "firstSeason2027",
@@ -63,7 +82,88 @@
           "value": "no",
           "labelKey": "registration.categoryByAge"
         }
-      ]
+      ],
+      "policyRow": "Izbor kategorije, početnička ili starosna",
+      "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "email",
+      "type": "email",
+      "labelKey": "registration.email",
+      "hintKey": "registration.emailHint",
+      "required": true,
+      "row": 3,
+      "policyRow": "Adresa elektronske pošte",
+      "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "labelKey": "registration.password",
+      "hintKey": "registration.passwordHint",
+      "required": true,
+      "minLength": 10,
+      "row": 3,
+      "policyRow": "Lozinka",
+      "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "passwordRepeat",
+      "type": "password",
+      "labelKey": "registration.passwordRepeat",
+      "required": true,
+      "matches": "password",
+      "row": 3,
+      "hintKey": "registration.passwordRepeatHint",
+      "policyRow": "Lozinka",
+      "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "address",
+      "type": "text",
+      "labelKey": "registration.address",
+      "hintKey": "registration.addressHint",
+      "required": true,
+      "maxLength": 120,
+      "row": 4,
+      "policyRow": "Adresa",
+      "policyBasis": "Izvršenje ugovora i pravna obaveza"
+    },
+    {
+      "name": "city",
+      "type": "place",
+      "labelKey": "registration.city",
+      "hintKey": "registration.cityHint",
+      "required": true,
+      "maxLength": 80,
+      "row": 4,
+      "policyRow": "Mesto i zemlja",
+      "policyBasis": "Izvršenje ugovora i pravna obaveza"
+    },
+    {
+      "name": "idNumber",
+      "type": "text",
+      "labelKey": "registration.idNumber",
+      "hintKey": "registration.idNumberHint",
+      "required": true,
+      "maxLength": 20,
+      "row": 5,
+      "optionalWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      },
+      "policyRow": "Broj ličnog dokumenta",
+      "policyBasis": "Pravna obaveza"
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "labelKey": "registration.phone",
+      "hintKey": "registration.phoneHint",
+      "maxLength": 30,
+      "row": 5,
+      "policyRow": "Telefon, neobavezno",
+      "policyBasis": "Vaš pristanak"
     },
     {
       "name": "shirtSize",
@@ -71,7 +171,7 @@
       "labelKey": "registration.shirtSize",
       "hintKey": "registration.shirtSizeHint",
       "required": true,
-      "row": 2,
+      "row": 5,
       "options": [
         {
           "value": "XS",
@@ -101,51 +201,9 @@
           "value": "XXXL",
           "labelKey": "shirt.XXXL"
         }
-      ]
-    },
-    {
-      "name": "email",
-      "type": "email",
-      "labelKey": "registration.email",
-      "hintKey": "registration.emailHint",
-      "required": true,
-      "row": 3
-    },
-    {
-      "name": "password",
-      "type": "password",
-      "labelKey": "registration.password",
-      "hintKey": "registration.passwordHint",
-      "required": true,
-      "minLength": 10,
-      "row": 3
-    },
-    {
-      "name": "passwordRepeat",
-      "type": "password",
-      "labelKey": "registration.passwordRepeat",
-      "required": true,
-      "matches": "password",
-      "row": 3,
-      "hintKey": "registration.passwordRepeatHint"
-    },
-    {
-      "name": "address",
-      "type": "text",
-      "labelKey": "registration.address",
-      "hintKey": "registration.addressHint",
-      "required": true,
-      "maxLength": 120,
-      "row": 4
-    },
-    {
-      "name": "city",
-      "type": "place",
-      "labelKey": "registration.city",
-      "hintKey": "registration.cityHint",
-      "required": true,
-      "maxLength": 80,
-      "row": 4
+      ],
+      "policyRow": "Veličina majice",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "photo",
@@ -153,7 +211,9 @@
       "labelKey": "registration.photo",
       "hintKey": "registration.photoHint",
       "required": true,
-      "row": 5
+      "row": 6,
+      "policyRow": "Profilna fotografija",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "bio",
@@ -161,7 +221,9 @@
       "labelKey": "profile.bio",
       "hintKey": "registration.bioHint",
       "maxLength": 360,
-      "row": 5
+      "row": 6,
+      "policyRow": "Biografija, tekst o sebi, linkovi na Stravu i Instagram",
+      "policyBasis": "Vaš pristanak"
     },
     {
       "name": "healthStatement",
@@ -170,7 +232,9 @@
       "linkKey": "registration.healthStatementLink",
       "linkTo": "pravilnik",
       "required": true,
-      "hintKey": "registration.healthStatementHint"
+      "hintKey": "registration.healthStatementHint",
+      "policyRow": "Izjava da ste upoznati sa pravilnikom i zdravstveno sposobni",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "parentConsent",
@@ -182,7 +246,9 @@
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
-      }
+      },
+      "policyRow": "Za maloletne: ime i prezime roditelja ili staratelja, srodstvo, i datum, vreme i IP adresa sa koje je saglasnost data",
+      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "parentRelation",
@@ -207,7 +273,9 @@
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
-      }
+      },
+      "policyRow": "Za maloletne: ime i prezime roditelja ili staratelja, srodstvo, i datum, vreme i IP adresa sa koje je saglasnost data",
+      "policyBasis": "Izvršenje ugovora"
     }
   ]
 }

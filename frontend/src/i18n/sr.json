@@ -184,10 +184,6 @@
     "rateEvent": {
       "title": "Ocena događaja",
       "description": "Oceni organizaciju, vrednost za novac i ambijent, i ostavi komentar drugim članovima. Moderator odobrava svaku ocenu pre objave."
-    },
-    "statute": {
-      "title": "Statut Sportskog udruženja BTL",
-      "description": "Najviši akt udruženja: članstvo, organi, imovina i opšti akti. Usvojen 17.08.2026, broj akta 1-03/2026."
     }
   },
   "shell": {
@@ -212,6 +208,7 @@
     "settings": "Podešavanja",
     "signIn": "Prijavi se",
     "contact": "Kontakt",
+    "statute": "Statut",
     "home": "Naslovna strana",
     "join": "Učlani se",
     "openAccount": "Otvori nalog"
@@ -237,8 +234,7 @@
     "entities": "Podaci",
     "verification": "Verifikacija",
     "settings": "Podešavanja",
-    "table": "BTL tabele",
-    "statute": "Statut"
+    "table": "BTL tabele"
   },
   "language": {
     "label": "Jezik",
@@ -424,7 +420,13 @@
     "firstNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
     "lastNameHint": "Onako kako stoji u dokumentu, najviše 60 znakova.",
     "passwordRepeatHint": "Mora da se poklopi sa lozinkom iznad.",
-    "doneReferral": "Prijava je zabeležena kao preporuka. Član koji te je pozvao dobija zaslugu kad tvoja članarina bude aktivirana."
+    "doneReferral": "Prijava je zabeležena kao preporuka. Član koji te je pozvao dobija zaslugu kad tvoja članarina bude aktivirana.",
+    "fatherName": "Ime oca",
+    "fatherNameHint": "Traži ga evidencija članova koju udruženje vodi po zakonu. Nigde se ne prikazuje.",
+    "idNumber": "Broj ličnog dokumenta",
+    "idNumberHint": "Lična karta ili pasoš člana, ne roditelja. Traži ga evidencija članova koju udruženje vodi po zakonu. Ko je mlađi od 16 godina i još nema svoj dokument, ostavlja prazno. Vidi ga samo administracija i nigde se ne prikazuje.",
+    "phone": "Telefon",
+    "phoneHint": "Neobavezno. Služi samo ako oko uplate, nagrade ili nejasnog rezultata treba brzo doći do tebe. Nigde se ne prikazuje."
   },
   "shirt": {
     "XS": "XS",
@@ -805,6 +807,7 @@
     "periodName": "Period",
     "period": "Važi",
     "ranking": "Pravo rangiranja",
+    "rankingByPeriod": "Prema periodu uplate",
     "everyPayment": "Svaka uplata",
     "yes": "Da",
     "no": "Ne",
@@ -971,6 +974,7 @@
     },
     "pricing": "Cenovnik",
     "ranking": "Pravo rangiranja",
+    "rankingByPeriod": "Prema periodu uplate",
     "yes": "Da",
     "no": "Ne",
     "eventTaken": "Događaj sa tim nazivom već postoji te godine. Promenite naziv ili godinu: adresa se pravi od naziva i godine.",
@@ -1300,9 +1304,7 @@
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",
-    "openSections": "Sekcije pravilnika",
-    "draft": "Nacrt",
-    "draftNote": "Ovo je nacrt. Opšti pravilnik za sezonu 2027. donosi Skupština 31.08.2026."
+    "openSections": "Sekcije pravilnika"
   },
   "awards": {
     "trophies": "Pehari",

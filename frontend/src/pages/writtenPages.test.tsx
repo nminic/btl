@@ -6,11 +6,13 @@ import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
+import registration from '../forms/definitions/registracija.form.json'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
+import { must } from '../test/at'
 import { sources } from '../test/sources'
 import { StaticPage } from './StaticPage'
 
@@ -72,10 +74,10 @@ describe('the fee schedule in the rulebook', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
-  /** The price table, one string per row of cells. Written pages render their
-   *  Markdown as a real table (src/components/Markdown.tsx), so this reads the
-   *  rows a screen reader would, not the pipes the source is written in. The
-   *  header row has no cells, only column headers, so it falls out by itself. */
+  /** The price table, one string per row of cells. The rulebook draws it out of
+   *  `pricing.ts` through `src/components/PriceTable.tsx` rather than writing it
+   *  as Markdown, so this reads the rows a screen reader would. The header row
+   *  has no cells, only column headers, so it falls out by itself. */
   async function priceTableRows() {
     const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
     const section = heading.closest('section')
@@ -93,6 +95,42 @@ describe('the fee schedule in the rulebook', () => {
           .join(' | '),
       )
       .filter((line) => line !== '')
+  }
+
+  /** The table itself, so a cell can be read under the column that names it. */
+  async function priceTable() {
+    const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
+    const section = heading.closest('section')
+
+    if (section === null) {
+      throw new Error('the fee heading stands outside a section')
+    }
+
+    return within(section).getByRole('table')
+  }
+
+  /** What the band holds in the column with that header. The currency is printed
+   *  once, at the top of its column, so tying an amount to it means walking the
+   *  header row for the position and then the band's row for that position. */
+  async function cellUnder(band: { key: string }, currency: string) {
+    const table = await priceTable()
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent ?? '')
+    const column = headers.indexOf(currency)
+
+    expect(column, `no column of the table is headed "${currency}"`).toBeGreaterThan(-1)
+
+    const name = translate(dictionary, 'sr', `pricing.rows.${band.key}`)
+    const row = within(table)
+      .getAllByRole('row')
+      .find((one) => (one.textContent ?? '').includes(name))
+
+    if (row === undefined) {
+      throw new Error(`no row of the table is the band "${name}"`)
+    }
+
+    return within(row).getAllByRole('cell')[column]?.textContent
   }
 
   it('holds the price bands in the order the table prints them', () => {
@@ -120,8 +158,14 @@ describe('the fee schedule in the rulebook', () => {
       const row = rows.find((line) => line.includes(bandName))
 
       expect(row, `no row of the table is the band "${bandName}"`).toBeDefined()
-      expect(row).toContain(money(price.eur, 'sr'))
-      expect(row).toContain(money(price.rsd, 'sr'))
+      /* Under the column that names the currency, not merely somewhere in the
+         row. The table prints the currency once, in the header, so a row read on
+         its own says 35 and 4.200 and nothing about which is which: the columns
+         could be swapped, or the header renamed, and the figures would still be
+         found. Two of the four bands cost 40 EUR, which is the very confusion
+         this guard exists for. */
+      expect(await cellUnder(price, 'EUR')).toBe(money(price.eur, 'sr'))
+      expect(await cellUnder(price, 'RSD')).toBe(money(price.rsd, 'sr'))
     }
   })
 
@@ -132,8 +176,27 @@ describe('the fee schedule in the rulebook', () => {
     const row = rows.find((line) => line.includes(name))
 
     expect(row, `no row of the table is the junior band`).toBeDefined()
-    expect(row).toContain(money(JUNIOR.eur, 'sr'))
-    expect(row).toContain(money(JUNIOR.rsd, 'sr'))
+    expect(await cellUnder(JUNIOR, 'EUR')).toBe(money(JUNIOR.eur, 'sr'))
+    expect(await cellUnder(JUNIOR, 'RSD')).toBe(money(JUNIOR.rsd, 'sr'))
+  })
+
+  it('promises a junior no place in the standing the rulebook refuses them', async () => {
+    /* The junior fee is a price level and not a period: whether the season is ranked
+       follows the day it is paid, the same for a junior as for anybody else. This cell
+       said `Da` outright, so a thirteen year old joining in June read that they would be
+       ranked, two sections under the article of this same rulebook saying they would not.
+       Held on the cell rather than on the constant, because the constant is what was
+       wrong and a test written against it would have agreed with it. */
+    renderAt('/sr/pravilnik')
+
+    const column = translate(dictionary, 'sr', 'pricing.ranking')
+    const said = await cellUnder(JUNIOR, column)
+
+    expect(said).toBe(translate(dictionary, 'sr', 'pricing.rankingByPeriod'))
+    expect(said, 'the junior band answers the ranking column with a word of its own').not.toBe(
+      translate(dictionary, 'sr', 'pricing.yes'),
+    )
+    expect(said).not.toBe(translate(dictionary, 'sr', 'pricing.no'))
   })
 
   it('carries the referral programme, its amount and the moment it is credited', async () => {
@@ -197,7 +260,10 @@ describe('the fee schedule in the rulebook', () => {
     /* What each reference is about, taken from the sentence that makes it. One
        entry per reference the terms carry; a new one that nobody writes here
        fails the count below rather than passing unread. */
-    const meant = [{ from: 'Mere prema članu', to: 'Pravila ponašanja' }]
+    const meant = [
+      { from: 'razlog za meru', to: 'Pravila ponašanja' },
+      { from: 'Mere prema članu', to: 'Pravila ponašanja' },
+    ]
     /* Every case of the word and not only the genitive: written as „sekcije"
        alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
        passed unread through the very test written to catch it. */
@@ -283,12 +349,158 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
+  /** The one section that says what the portal collects, which both guards below read. */
+  const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
+
+  it('says the same age in the words as the rule keeps in the form', () => {
+    /* Sixteen stood in three places by hand: the rule in the form, the hint under the
+       field and the row of the policy. Moved in the rule alone, a seventeen year old was
+       shown a field marked optional under a sentence saying only somebody younger than
+       sixteen may leave it empty, and a policy saying the same. Read out of the rule and
+       looked for in both texts, so the number moves in one place. */
+    const ruled = registration.fields.filter((field) => field.optionalWhenYoungerThan !== undefined)
+
+    expect(ruled.length, 'no field of the form is optional by age').toBeGreaterThan(0)
+
+    for (const field of ruled) {
+      const years = String(must(field.optionalWhenYoungerThan, `${field.name} rule`).years)
+      const hint = translate(dictionary, 'sr', String(field.hintKey))
+      /* As a number and not as a piece of text. `toContain` finds `6` inside `16`, so a
+         rule mistyped from sixteen to six left both texts still saying sixteen while the
+         portal demanded a document of every seven year old: measured. */
+      const saysIt = new RegExp(`(^|\\D)${years}(\\D|$)`)
+
+      expect(saysIt.test(hint), `the hint under ${field.name} does not say ${years}`).toBe(true)
+
+      /* By the cell, like the guard below, so a table reflowed by hand does not read as a
+         policy that lost a row. */
+      const row = collectedRows()
+        .split(NEWLINE)
+        .find((line) => line.split('|').map((cell) => cell.trim())[1] === String(field.policyRow))
+
+      expect(row, `the policy carries no row for ${field.name}`).toBeDefined()
+      expect(
+        saysIt.test(String(row)),
+        `the policy does not say ${years} where the form does`,
+      ).toBe(true)
+    }
+  })
+
+  it('declares every field the registration form asks for, in the table of what is collected', () => {
+    /* Every field, not the ones whose hint happens to use two particular words. That was
+       the first shape of this guard and a review took it apart in one move: reword a hint,
+       delete the row, and the portal goes on asking while the whole suite stays green. It
+       also saw two of the four facts the register of members needs, because the other two
+       are read out of the town and the address.
+       So the field names its own row of the policy, in `registracija.form.json`, and this
+       reads the form rather than the dictionary. A field added without a row fails here,
+       which is the only moment anybody is thinking about that field at all. `firstSeason2027`
+       was collected for weeks with no row, and nothing said so.
+       The row is matched on the cell rather than on the line, so a table reflowed by hand
+       does not read as a policy that lost a row. */
+    const asked = registration.fields
+
+    expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)
+
+    /* Out of the one section that says what is collected, and only rows of four cells:
+       what, why, on what ground, for how long. Read off the whole document instead, the
+       list also held the header, the dashes, the seat of the association and the table of
+       processors, so a field could name `Podatak` with a basis of `Pravni osnov`, or
+       `Cloudflare` with a basis of `SAD i EU`, and the gate stayed shut about a row that
+       was not there at all. Worse, a `Map` keeps the last of a repeated name, so the
+       retention table shadowed the collection table for anything named in both: measured,
+       and `Interne beleške administracije` was already shadowed today. */
+    const collected = collectedRows()
+    const rows = new Map<string, string>()
+
+    for (const line of collected.split(NEWLINE)) {
+      const cells = line.split('|').map((cell) => cell.trim())
+
+      if (cells.length !== 6 || cells[0] !== '' || cells[5] !== '') {
+        continue
+      }
+
+      const name = String(cells[1])
+
+      if (name === '' || name.startsWith('---') || name === 'Podatak') {
+        continue
+      }
+
+      expect(rows.has(name), `the table of what is collected carries ${name} twice`).toBe(false)
+      rows.set(name, String(cells[3]))
+    }
+
+    expect(rows.size, 'the policy says nothing about what is collected').toBeGreaterThan(0)
+
+    for (const field of asked) {
+      const row = field.policyRow
+      const basis = field.policyBasis
+
+      expect(row, `${field.name} is asked for and names no row of the privacy policy`).toBeTruthy()
+      expect(
+        [...rows.keys()],
+        `${field.name} names a row the privacy policy does not carry: ${String(row)}`,
+      ).toContain(row)
+
+      /* And on the ground it says it is on. The row existing is not enough: the ground
+         can be rewritten under it, and a member told they consented to something they
+         cannot withdraw is worse off than one told nothing. */
+      expect(basis, `${field.name} names no legal basis`).toBeTruthy()
+      expect(
+        rows.get(String(row)),
+        `${field.name} says it is collected on ${String(basis)} and the policy says otherwise`,
+      ).toBe(basis)
+    }
+  })
+
   it('names what is public and what never is', async () => {
     renderAt('/sr/politika-privatnosti')
 
     const page = await screen.findByRole('article')
     expect(within(page).getByRole('heading', { name: /javno, a šta nikada nije/ })).toBeVisible()
     expect(within(page).getByRole('heading', { name: /Maloletni članovi/ })).toBeVisible()
+  })
+
+  it('keeps an unactivated account as long as the year it was opened to buy', () => {
+    /* The selling year read off `pricing.ts` rather than typed here: it opens on the day
+       the first band opens and closes on the last day of the last one, today 1 October to
+       30 September. This row said thirty days, so somebody opening an account on 2 October
+       to pay in the December band was told it goes on 1 November, a month before the band
+       they were buying.
+       Bounded from above too, by the number this same document keeps for somebody who
+       actually was a member: an account that never became one must not be held longer than
+       one that did. Both bounds come out of things already written down, so neither is a
+       number invented in a test, which the first version of this was. */
+    const first = must(PRICES[0], 'the first price band').from
+    const last = must(PRICES.at(-1), 'the last price band').to
+    const monthOf = (dayOfYear: string): number => Number(dayOfYear.slice(0, 2))
+    /* The last band closes in the year after the first one opens, which is how the list
+       is written and what its own comment says, so the closing month is counted a year
+       on. Taken modulo twelve instead, a season still on sale in the opening month reads
+       as one month rather than thirteen: measured, and the first version of this said the
+       longer year was fine. */
+    const sellingYear = monthOf(last) + 12 - monthOf(first) + 1
+    const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
+    const said = /Nalog nikad nije aktiviran \| (\d+) (dana|meseci|godine)/.exec(kept)
+
+    expect(said, 'the policy does not say how long an unactivated account is kept').not.toBeNull()
+
+    const amount = Number(must(said, 'what the policy says')[1])
+    const unit = must(said, 'what the policy says')[2]
+    const months = unit === 'dana' ? amount / 30 : unit === 'godine' ? amount * 12 : amount
+
+    expect(
+      months,
+      `${amount} ${unit} is shorter than the ${sellingYear} months the account was opened to buy`,
+    ).toBeGreaterThanOrEqual(sellingYear)
+
+    const asMember = /Prestanete da budete član \| Pet godina/.test(kept)
+
+    expect(asMember, 'the policy no longer says how long a former member is kept').toBe(true)
+    expect(
+      months,
+      'an account that never became a membership is held longer than one that did',
+    ).toBeLessThanOrEqual(5 * 12)
   })
 })
 
@@ -476,10 +688,9 @@ describe('how a written page is set', () => {
   const pages = Object.entries(WRITTEN)
 
   it('reads every written page there is', () => {
-    /* Without this the two below pass on an empty list. Five since 17.08.2026,
-       when the statute joined them: the rulebook, the terms, the privacy policy,
-       the statute and the address of the president. */
-    expect(pages.length).toBe(5)
+    /* Without this the two below pass on an empty list. Four: the rulebook, the
+       terms, the privacy policy and the address of the president. */
+    expect(pages.length).toBe(4)
     expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
   })
 
@@ -906,7 +1117,7 @@ describe('what the written pages say the fee buys', () => {
      terms say it plainly now, and these hold the three documents to it.
      Read off the disc, because this is about what is written rather than about
      what a screen does with it. */
-  it('says membership is what gives the right to compete', () => {
+  it('says the fee is not paid for the website but for membership in the league', () => {
     expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
       /ne plaća za pristup sajtu nego za članstvo u ligi/,
     )
@@ -988,13 +1199,18 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
-  it('does not ask for a telephone anywhere, and says nothing about one', () => {
-    /* Owner, 11.08.2026: „broj telefona brišemo i nećemo ga više tražiti na
-       portalu čak ni neobavezno." A privacy policy that describes the handling
-       of a number nobody is asked for is a policy that describes somebody
-       else's portal, and the consent it names is a consent nothing collects.
-       It was obligatory on 01.08, optional again on 03.08, and is now gone. */
-    for (const slug of ['politika-privatnosti', 'uslovi-koriscenja', 'pravilnik'] as const) {
+  it('describes the telephone as the optional thing the form asks for', () => {
+    /* Obligatory on 01.08.2026, optional on 03.08, gone on 11.08, and back as
+       something optional on 20.08. A policy that describes the handling of a
+       number nobody is asked for describes somebody else's portal; so does one
+       that is silent about a field the form has. The ground has to be consent,
+       because a field nobody has to fill cannot be necessary for the contract. */
+    expect(whole('politika-privatnosti')).toMatch(/Telefon, neobavezno/)
+    expect(whole('politika-privatnosti')).toMatch(/Telefon, neobavezno \|[^|]*\|[^|]*[Pp]ristanak/)
+
+    /* And nowhere else: the terms and the rulebook are about the league, not
+       about the fields of one form. */
+    for (const slug of ['uslovi-koriscenja', 'pravilnik'] as const) {
       expect(whole(slug)).not.toMatch(/telefon/i)
     }
   })

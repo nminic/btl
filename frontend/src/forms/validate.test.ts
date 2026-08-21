@@ -159,6 +159,63 @@ describe('conditional fields', () => {
   })
 })
 
+describe('a field asked of everybody and demanded of some', () => {
+  const document_: FieldDef = {
+    name: 'idNumber',
+    type: 'text',
+    labelKey: 'x',
+    required: true,
+    optionalWhenYoungerThan: { field: 'birthDate', years: 16 },
+  }
+  const form: FormDef = { id: 'p', titleKey: 't', submitKey: 's', fields: [document_] }
+  const today = new Date(Date.UTC(2026, 6, 28))
+
+  it('is still on the screen for the reader it is not demanded of', () => {
+    /* Asked and not demanded, which is a different thing from hidden: a fifteen
+       year old who does have a passport should be able to give it. */
+    expect(isVisible(document_, { birthDate: '01/01/2015' }, today)).toBe(true)
+  })
+
+  it('is demanded of an adult and left to a child', () => {
+    /* An identity card is issued at sixteen, so a child usually has neither card
+       nor passport. Demanded of them, the only way to send the form is for a
+       parent to type their own number, and the association ends up holding the
+       document number of somebody who is not a member. Owner, 20.08.2026. */
+    expect(validateForm(form, { birthDate: '01/01/1990', idNumber: '' }, today)).toEqual({
+      idNumber: { key: 'form.errors.required' },
+    })
+    expect(validateForm(form, { birthDate: '01/01/2015', idNumber: '' }, today)).toEqual({})
+  })
+
+  it('is demanded while the date says nothing, which is not the same as saying young', () => {
+    /* Three ways of saying nothing: no date, an empty one, and one that will not
+       parse. A form hands in a value for every field it defines, so the first is
+       the shape a caller writes by hand rather than one the screen produces. */
+    expect(validateForm(form, {}, today)).toEqual({
+      idNumber: { key: 'form.errors.required' },
+    })
+    expect(validateForm(form, { birthDate: '', idNumber: '' }, today)).toEqual({
+      idNumber: { key: 'form.errors.required' },
+    })
+    expect(validateForm(form, { birthDate: 'nije datum', idNumber: '' }, today)).toEqual({
+      idNumber: { key: 'form.errors.required' },
+    })
+  })
+
+  it('still checks what is written in it when a child does write one', () => {
+    const short: FormDef = {
+      id: 'p',
+      titleKey: 't',
+      submitKey: 's',
+      fields: [{ ...document_, maxLength: 5 }],
+    }
+
+    expect(validateForm(short, { birthDate: '01/01/2015', idNumber: 'predugacko' }, today)).toEqual({
+      idNumber: { key: 'form.errors.maxLength', params: { max: 5 } },
+    })
+  })
+})
+
 describe('matching fields', () => {
   const form: FormDef = {
     id: 'p',

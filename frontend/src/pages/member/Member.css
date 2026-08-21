@@ -132,17 +132,15 @@
   white-space: nowrap;
 }
 
-.tag--approved,
-.tag--confirmed {
+.tag--approved {
   color: var(--up);
 }
 
-.tag--rejected,
-.tag--cancelled {
+.tag--rejected {
   color: var(--down);
 }
 
-.tag--honorary {
+.tag--feeExempt {
   color: var(--gold-text);
 }
 

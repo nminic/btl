@@ -101,6 +101,48 @@ export type FieldDef = {
    * programming language, and those grow teeth.
    */
   showWhenYoungerThan?: { field: string; years: number }
+  /**
+   * Asked of everybody, and required of everybody except somebody younger than
+   * `years`, who may leave it empty.
+   *
+   * The mirror of the rule above, named rather than general for the same reason.
+   * The one case is the number of an identity document. The register of members
+   * asks for it, and an identity card is issued at sixteen, voluntarily from
+   * ten, so a child usually has neither card nor passport. Demanded of them, the
+   * only way to send the form is for a parent to type their own number, and the
+   * association ends up holding the document number of somebody who is not a
+   * member: no row in the privacy policy, no basis, no retention. A security
+   * review measured exactly that on 20.08.2026, and the owner decided the same
+   * day: asked of minors as well, but not required of them.
+   */
+  optionalWhenYoungerThan?: { field: string; years: number }
+  /**
+   * The row of the privacy policy that describes what is done with this answer.
+   *
+   * The first column of that row, word for word. A field is a thing the portal collects
+   * about a person, and a thing collected about a person has to be declared; written as
+   * a property of the field, the declaration cannot be forgotten when the field is added,
+   * because a field without one fails the gate.
+   *
+   * It was a guard over two words in a hint before, which held exactly as long as nobody
+   * reworded a hint: a review reworded one, deleted the row, and the whole suite stayed
+   * green while the portal went on asking. Before that, `firstSeason2027` was collected
+   * for weeks with no row at all.
+   *
+   * Optional on the type and demanded of the registration form by its own guard: the
+   * other forms of the portal ask about a race or an event, not about a person, and a
+   * property every form had to carry would say the opposite.
+   */
+  policyRow?: string
+  /**
+   * The legal basis that same row names, word for word.
+   *
+   * The row alone was not enough. A guard that only asks whether the row exists lets the
+   * basis be rewritten under it: a review moved `Ime oca` from a legal obligation to
+   * consent and nothing failed, which would tell a member they may withdraw a consent
+   * that was never the ground, over data the association cannot delete on request.
+   */
+  policyBasis?: string
 }
 
 export type FormDef = {

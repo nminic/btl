@@ -145,23 +145,3 @@
   }
 }
 
-/* The rulebook before the assembly adopts it. The mark sits beside the title
-   rather than in a banner over the page: the text is the real text, it is
-   simply not in force yet, and a reader who lands on a section from a link has
-   to see it there too, which the title does and a strip at the very top of a
-   long document does not. */
-.rulebook__draft {
-  margin-left: var(--space-12);
-  padding: var(--space-2) var(--space-8);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-4);
-  font-size: 0.75rem;
-  font-weight: 600;
-  vertical-align: middle;
-  color: var(--text-muted);
-}
-
-.rulebook__draft-note {
-  margin: 0 0 var(--space-16);
-  color: var(--text-muted);
-}
