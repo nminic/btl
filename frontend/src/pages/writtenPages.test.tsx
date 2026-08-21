@@ -999,6 +999,13 @@ describe('the privacy policy', () => {
 
 const NEWLINE = String.fromCharCode(10)
 
+/** Every written page as one piece of text. A page names an article of the
+ *  rulebook as often as the rulebook names one of its own, and a guard that
+ *  reads one page is a guard over a third of them. */
+const WRITTEN_PAGES = Object.values(WRITTEN).map((page) =>
+  [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
+)
+
 describe('the rulebook', () => {
   /** The whole of it as one piece of text, which is how a rule that has to be in
    *  it is looked for: an article moved from one section to another is still in
@@ -1202,6 +1209,12 @@ describe('the rulebook', () => {
       [48, /Top liste/],
       [62, /Posebna priznanja/],
       [71, /Postupak/],
+      /* Named from the privacy policy and not from the rulebook: the
+         exception for a birthday published on purpose. It is the only
+         reference to the rulebook written on another page, and reading
+         only the rulebook left it on 80 until the article stopped
+         existing. */
+      [74, /Šta nikada nije javno/],
     ]
 
     const titles = new Map(
@@ -1218,9 +1231,15 @@ describe('the rulebook', () => {
        guard while looking exactly like every other one to a reader, so it went
        into the rulebook on 16.08.2026 without ever being checked. A guard that a
        lower-case letter walks past is a guard on the spelling. */
-    const referenced = [
-      ...(rulebook ?? '').replace(/### Član \d+\.[^\n]*/g, '').matchAll(/[Čč]lan[a-zA-Z]* (\d+)/g),
-    ].map((found) => Number(found[1]))
+    /* Read over every written page and not only over the rulebook. A written
+       page names an article of the rulebook as „Član 80 Pravilnika", and the
+       privacy policy did: reading only the rulebook, the guard could not see
+       it, and the number stayed on 80 through two renumberings until the
+       article stopped existing. Measured on 21.08.2026, with 78 articles in
+       the book and a published page pointing at the eightieth. */
+    const referenced = WRITTEN_PAGES.flatMap((text) => [
+      ...text.replace(/### Član \d+\.[^\n]*/g, '').matchAll(/[Čč]lan[a-zA-Z]* (\d+)/g),
+    ]).map((found) => Number(found[1]))
 
     /* Every article referred to, each once, since two paragraphs point at the
        right to be ranked. A reference to an article nobody expected fails here
@@ -1327,7 +1346,7 @@ describe('the rulebook', () => {
        The pair was in the wrong half of this until 15.08.2026. The owner settled
        it on 11.08.2026 (PDL P16): the trophy is for standing, „po kategorijama,
        generalno muški i ženski, jedan timski i jedan trkačkom paru", and the
-       figure is for what is not a standing. Član 69 lists the pair among the
+       figure is for what is not a standing. Član 62 lists the pair among the
        special recognitions, which the article then handed a figure, so the
        rulebook gave the pair a figure while the decision gave them a trophy. */
     expect(rulebook).toMatch(/najboljem trkačkom paru/)
@@ -1505,6 +1524,25 @@ describe('how a written page is set', () => {
     /* And every line here is still used, so a reference that leaves takes its
        line with it rather than sitting here proving nothing. */
     expect([...named].sort()).toEqual(expected.map(([slug, number]) => `${slug} ${number}`).sort())
+
+    /* And where one page names the same section many times, they all have to
+       name the same one. The column of legal bases in the privacy policy points
+       twenty-two rows at where each datum's retention is written; pinned per
+       page and number, moving one row to another number that the page also uses
+       passes, because both numbers are accounted for. Measured: a row moved from
+       5 to 4 said the retention of a member's sex is written among the cookies. */
+    for (const [slug, page] of pages) {
+      for (const section of page.sections) {
+        const inTable = [
+          ...section.body.matchAll(/\|[^|\n]*[Ss]ekcij\w+ (\d+)[^|\n]*\|/g),
+        ].map((found) => Number(found[1]))
+
+        expect(
+          [...new Set(inTable)].length,
+          `${slug}, ${section.heading}: the rows of one table name more than one section`,
+        ).toBeLessThan(2)
+      }
+    }
   })
 
 
