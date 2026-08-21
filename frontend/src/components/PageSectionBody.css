@@ -4,8 +4,11 @@
  * The drawing is a sibling of the text and never a child of it. Inside
  * `.markdown` it would be dressed by the rules that dress the text, and those
  * rules are written for prose: measured on the wall of ducats, `.markdown ul`
- * beat `.ducats` on the same weight and by load order, so the grid of fifteen
- * coins became one column of fifteen with a list indent, 3.635 pixels tall.
+ * beat `.ducats` outright, a class and an element against a class alone, so the
+ * grid of fifteen coins became one column of fifteen with a list indent, 3.635
+ * pixels tall. Not a tie settled by load order, which is what stood here first
+ * and is worth writing down as wrong: a review put `.ducats` last in the head
+ * and measured it losing all the same. Moving an import would not have helped.
  * Which of those rules could reach which drawing is a question with no end to
  * it; standing outside them, none can.
  *

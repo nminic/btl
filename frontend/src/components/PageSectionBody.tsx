@@ -41,9 +41,19 @@ function around(body: string): { before: string; after: string } {
     return { before: body, after: '' }
   }
 
+  /* Every further mark is dropped rather than drawn or printed. The drawing
+     goes where the first one stands, and a body that marks a second place is
+     a mistake in the content: drawn twice it would be a table nobody asked
+     for, and left alone it would put the characters `[[gallery]]` in front of
+     the reader, which is the one thing the mark must never do. The content in
+     this repository cannot carry a second mark, because a test forbids it;
+     what a moderator types into a page is not under that test. */
   return {
     before: lines.slice(0, at).join('\n'),
-    after: lines.slice(at + 1).join('\n'),
+    after: lines
+      .slice(at + 1)
+      .filter((line) => line.trim() !== MARKER)
+      .join('\n'),
   }
 }
 

@@ -541,10 +541,12 @@ describe('a drawing a written section names', () => {
 
   it('stands beside the words and never inside them', async () => {
     /* A drawing inside `.markdown` is dressed by the rules that dress prose, and
-       those rules win: measured in the browser on 21.08.2026, `.markdown ul`
-       and `.ducats` weigh the same, the tie went by load order, and the grid of
-       fifteen coins became one column of fifteen with a list indent, 3.635
-       pixels tall. Nothing failed, because jsdom computes no styles.
+       those rules win outright: measured in the browser on 21.08.2026,
+       `.markdown ul` is a class and an element against the single class of
+       `.ducats`, so the grid of fifteen coins became one column of fifteen with
+       a list indent, 3.635 pixels tall. Not a tie settled by load order, which
+       is what stood here first: put last in the head, `.ducats` still lost.
+       Nothing failed, because jsdom computes no styles.
 
        So the guard is over the shape and not over the paint: which rule could
        reach which drawing is a question with no end to it, and standing outside
@@ -664,6 +666,35 @@ describe('one written section, drawn on its own', () => {
     const { container } = draw({ heading: 'Bez crteža', body: 'Samo reči.' })
 
     expect(shape(container)).toEqual(['words(Samo reči.)'])
+  })
+
+  it('drops a second mark rather than drawing twice or printing it', () => {
+    /* The content of this repository cannot carry a second mark, because the
+       test above forbids it. What a moderator types into a page is not under
+       that test, and of the two ways a second mark could go wrong the printed
+       one is the worse: `[[gallery]]` in front of the reader is the one thing
+       the mark must never do. */
+    const { container } = draw({
+      heading: 'Dve oznake',
+      body: ['Pre.', '', '[[gallery]]', '', 'Sredina.', '', '[[gallery]]', '', 'Posle.'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual([
+      'words(Pre.)',
+      'the drawing',
+      'words(Sredina.Posle.)',
+    ])
+    expect(container.textContent ?? '').not.toContain(PLACE)
+  })
+
+  it('says the same word to the moderator who types it', () => {
+    /* The mark has three homes: the code, the content, and the sentence under
+       the box a moderator writes a page in. The first two are held together by
+       the test above; without this the third would go on naming a mark the
+       portal had stopped reading, and what the moderator typed would be printed
+       to the reader as words. */
+    expect(translate(dictionary, 'sr', 'admin.hint.sectionBody')).toContain(PLACE)
   })
 })
 
@@ -997,12 +1028,36 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/Portal radi i pre tog datuma/)
     expect(rulebook).not.toMatch(/nikad nema uplatu/)
 
-    /* And the two the owner had written differently rather than removed: the
-       figure in numerals and the sentence shorter by one word, and the name of
-       the league's own winter competition as a name. */
+    /* And the one the owner had written differently rather than removed: the
+       figure in numerals and the sentence shorter by one word. */
     expect(rulebook).toMatch(/Onaj ko puni 15 u toku te sezone, još plaća juniorsku/)
     expect(rulebook).not.toMatch(/puni petnaest/)
-    expect(rulebook).toMatch(/ultramaraton i Zimski dezorijentiring/)
+  })
+
+  it('calls the competition BTL dezorijentiring wherever it names it', () => {
+    /* Owner, 21.08.2026: „zapravo svuda treba da se zove BTL dezorijentiring".
+       He had asked for a capital letter first, in one article; a day of two
+       spellings later, the answer is that the word „zimski" goes and the name is
+       the same everywhere.
+
+       Held as a rule over the word rather than as one sentence. The first guard
+       here was pinned to the phrase in Član 13, and the article that defines the
+       competition, the one that hands out its trophies, and the terms went on
+       calling it something else with the whole suite green. It is named four
+       times across two written pages, and this reads all four. */
+    const named = (text: string) =>
+      text
+        .toLowerCase()
+        .split('dezorijentiring')
+        .slice(0, -1)
+        .map((part) => part.slice(-4))
+
+    for (const page of ['pravilnik', 'uslovi-koriscenja'] as const) {
+      const mentions = named(whole(page))
+
+      expect(mentions.length, `${page} never names the competition`).toBeGreaterThan(0)
+      expect(mentions).toEqual(mentions.map(() => 'btl '))
+    }
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {
