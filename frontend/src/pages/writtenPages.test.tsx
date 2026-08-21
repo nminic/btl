@@ -86,6 +86,71 @@ function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   })
 }
 
+/** A period written in words or figures, in months, or null when the sentence does not
+ *  say one.
+ *
+ *  The numerals are the ones this document uses. A numeral it does not know returns null
+ *  and the caller fails loudly, which is the safe side: a period nobody can read must stop
+ *  the gate rather than pass through it as „no bound". */
+const NUMERALS = new Map([
+  ['jedan', 1],
+  ['dva', 2],
+  ['tri', 3],
+  ['četiri', 4],
+  ['pet', 5],
+  ['šest', 6],
+  ['sedam', 7],
+  ['osam', 8],
+  ['devet', 9],
+  ['deset', 10],
+  ['jedanaest', 11],
+  ['dvanaest', 12],
+])
+
+function monthsIn(said: string): number | null {
+  const found = /(\S+)\s+(dan|dana|mesec|meseci|godin\w*)/i.exec(said)
+
+  if (found === null) {
+    return null
+  }
+
+  const word = String(found[1]).toLowerCase()
+  const many = /^\d+$/.test(word) ? Number(word) : NUMERALS.get(word)
+
+  if (many === undefined) {
+    return null
+  }
+
+  const unit = String(found[2]).toLowerCase()
+
+  return unit.startsWith('dan') ? many / 30 : unit.startsWith('mesec') ? many : many * 12
+}
+
+/** What the policy says happens in each situation, read as a table: the column is found
+ *  by its name, and the table of who the data is passed to, which sits in the same
+ *  section, is left where it is. */
+function howLongKept(): Map<string, string> {
+  const said = new Map<string, string>()
+
+  /* Filled by hand rather than built out of pairs, because a pair has to be told it is a
+     pair and this repository does not write `as` (ADL A14). */
+  for (const table of tablesOf(sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/))) {
+    const what = table.head.indexOf('Šta se dešava')
+
+    if (what === -1) {
+      continue
+    }
+
+    for (const cells of table.rows) {
+      said.set(String(cells[1] ?? ''), String(cells[what] ?? ''))
+    }
+  }
+
+  expect(said.size, 'the policy no longer says how long anything is kept').toBeGreaterThan(0)
+
+  return said
+}
+
 /** The one section that says what the portal collects, which both guards below read. */
 const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
 
@@ -537,6 +602,79 @@ describe('the privacy policy', () => {
     expect(within(page).getByRole('heading', { name: /Maloletni članovi/ })).toBeVisible()
   })
 
+  it('keeps what the register of members needs as long as it keeps the rest of a profile', () => {
+    /* It said the number of an identity document and a father's name are deleted the day
+       membership ends, which was decided by a session rather than by the owner and was
+       marked at the time as legally doubtful: the register of members is kept under the
+       law on sport and does not stop existing on the day a membership does. Owner,
+       21.08.2026: the same five years as the rest of the profile.
+       Read as two rows of one document that have to agree, rather than as a number typed
+       twice: what is promised for a former member is what is promised for these. */
+    /* Read through the same reader as the tables above, so the column is found by its
+       name rather than counted: this guard was written with the cell at index two, in a
+       file that a hundred lines up says in its own words why that is wrong, and a column
+       added before it turned the check into a check on the wrong cell. */
+    const said = howLongKept()
+    const profile = said.get('Prestanete da budete član')
+    const register = said.get('Broj ličnog dokumenta i ime oca')
+
+    expect(profile, 'the policy no longer says how long a former member is kept').toBeDefined()
+    expect(register, 'the policy no longer says how long the register of members is kept').toBeDefined()
+
+    /* The words the document itself uses for that period, up to the comma, rather than a
+       number this file recognises. Written as „a figure or the word for five", the guard
+       understood only the wording of the day: both rows moved to seven together, which is
+       the one change that must not alarm, and it complained. */
+    const howLong = /^([^,]+)/.exec(String(profile))
+
+    expect(howLong, 'what a former member is kept for is not said as a period').not.toBeNull()
+
+    /* And the register's cell has to *begin* with it. Asked as „contains it somewhere in
+       the row", the same row could go on to say the opposite: „Pet godina od poslednje
+       sezone, ali to važi samo za ime oca. Broj ličnog dokumenta brišemo čim članstvo
+       prestane" passed, and that is the very sentence this decision removed. */
+    expect(
+      String(register).trim().startsWith(String(must(howLong, 'the period')[1]).trim()),
+      'the register of members is kept for a different time than the profile it belongs to',
+    ).toBe(true)
+
+    /* And does not take it back further along. Asked only as „begins with the period", the
+       sentence this very comment used to cite as the reason for the check passed it, because
+       that sentence begins with the period too: „Pet godina od poslednje sezone, ali to važi
+       samo za ime oca. Broj ličnog dokumenta brišemo čim članstvo prestane". Measured.
+       What is forbidden is named rather than guessed at, because it is the decision itself:
+       the owner removed deletion on the day membership ends, so the row may not say it. */
+    expect(
+      String(register),
+      'the register of members is promised a period and then deleted when membership ends',
+    ).not.toMatch(/čim članstvo prestane/i)
+
+    /* And the other home of the same fact. This row was changed by the same decision, from
+       „Dok traje članstvo" to a pointer at the section below, and nothing held it: measured,
+       putting it back left the whole suite green while the document said two different
+       things about one field. */
+    const where = new Map<string, string>()
+
+    for (const table of tablesOf(collectedRows())) {
+      const long = table.head.indexOf('Koliko čuvamo')
+
+      if (long === -1) {
+        continue
+      }
+
+      for (const cells of table.rows) {
+        where.set(String(cells[1] ?? ''), String(cells[long] ?? ''))
+      }
+    }
+
+    for (const field of ['Broj ličnog dokumenta', 'Ime oca']) {
+      expect(
+        where.get(field),
+        `${field} says in one table how long it is kept and in the other something else`,
+      ).toBe('Sekcija 5')
+    }
+  })
+
   it('keeps an unactivated account as long as the year it was opened to buy', () => {
     /* The selling year read off `pricing.ts` rather than typed here: it opens on the day
        the first band opens and closes on the last day of the last one, today 1 October to
@@ -556,8 +694,11 @@ describe('the privacy policy', () => {
        as one month rather than thirteen: measured, and the first version of this said the
        longer year was fine. */
     const sellingYear = monthOf(last) + 12 - monthOf(first) + 1
-    const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
-    const said = /Nalog nikad nije aktiviran \| (\d+) (dana|meseci|godine)/.exec(kept)
+    /* Through the table rather than through a pattern that steps over a fixed number of
+       cells: a column added to that table broke this while the document was right, and
+       the guard below it, written the same week, already reads the column by its name. */
+    const kept = howLongKept()
+    const said = /^(\d+) (dana|meseci|godine)/.exec(String(kept.get('Nalog nikad nije aktiviran')))
 
     expect(said, 'the policy does not say how long an unactivated account is kept').not.toBeNull()
 
@@ -570,13 +711,21 @@ describe('the privacy policy', () => {
       `${amount} ${unit} is shorter than the ${sellingYear} months the account was opened to buy`,
     ).toBeGreaterThanOrEqual(sellingYear)
 
-    const asMember = /Prestanete da budete član \| Pet godina/.test(kept)
+    /* The ceiling read out of the document, not typed here. It was `5 * 12` under a comment
+       saying it is „what the bound above is measured against", and the row it claimed to be
+       measured against was only checked for existing: both rows moved to three months and
+       the policy then said an account that never became a membership outlives one that did,
+       with the suite green. Measured. */
+    const asMember = monthsIn(String(kept.get('Prestanete da budete član')))
 
-    expect(asMember, 'the policy no longer says how long a former member is kept').toBe(true)
+    expect(
+      asMember,
+      'the policy no longer says in months how long a former member is kept',
+    ).not.toBeNull()
     expect(
       months,
       'an account that never became a membership is held longer than one that did',
-    ).toBeLessThanOrEqual(5 * 12)
+    ).toBeLessThanOrEqual(Number(asMember))
   })
 })
 
