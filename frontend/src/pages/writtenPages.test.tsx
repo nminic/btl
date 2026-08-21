@@ -1184,18 +1184,24 @@ describe('the rulebook', () => {
       [11, /Pravo rangiranja/],
       [14, /Cena i rokovi/],
       [17, /Šta članstvo donosi/],
+      /* The article the ethics section points at for what a race has to be.
+         It pointed at a section until 21.08.2026, and that section is gone:
+         the owner struck the article on official timing and the one on who
+         verifies, and what was left of the section is one article, which now
+         closes the section on what is scored. */
+      [25, /Zvaničan događaj/],
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
-      [31, /Uspon i spust/],
-      [41, /Ko prijavljuje i šta/],
-      [42, /^Rok$/],
-      [55, /Top liste/],
-      [69, /Posebna priznanja/],
+      [29, /Uspon i spust/],
+      [39, /Ko prijavljuje i šta/],
+      [40, /^Rok$/],
+      [53, /Top liste/],
+      [67, /Posebna priznanja/],
       /* The section that draws the wall of ducats points at the article that
          awards them (owner, 04.08.2026): the section describes, the article
          rules, and the reader has to be able to get from one to the other. */
-      [72, /Dukati/],
-      [79, /Postupak/],
+      [70, /Dukati/],
+      [77, /Postupak/],
     ]
 
     const titles = new Map(
@@ -1236,18 +1242,46 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/Talasasto|Brdovito|Planinsko/)
   })
 
-  it('says when a race counts, in three conditions and one discretion', () => {
+  it('rests the whole criterion on the official list of results', () => {
+    /* Owner, 21.08.2026: „Ako se nađe na listi rezultata ništa me drugo ne
+       zanima", confirming that striking the article on official timing was
+       deliberate.
+
+       That article said the same thing from the other side: it forbade a time
+       taken with a watch or an app. What carries the rule now is the article on
+       proof, and it carries it better, because it says what is required rather
+       than what is forbidden: somebody who runs the course alone, a day early
+       or on a watch, is not on the official list and has nothing to file.
+
+       Held here because the criterion is what PDL P17 calls the most damaging
+       hole the old league ever had, and because it now stands on two sentences
+       rather than on an article of its own. */
+    expect(rulebook).toMatch(
+      /Link ka zvaničnim rezultatima je jedini dokaz koji tražimo, i sam po sebi je dovoljan/,
+    )
+    expect(rulebook).toMatch(/Slika je neobavezna dopuna, nikad zamena za link/)
+    expect(rulebook).toMatch(
+      /ni diploma ni snimak sa sata, ne dokazuje rezultat sama za sebe/,
+    )
+  })
+
+  it('says when an event counts, in three conditions and one discretion', () => {
     /* The open question PDL P17 called the most damaging hole in the old
        league, closed by the owner on 03.08.2026. Read together: all three, and
-       the league may still take a race that misses one of them. */
+       the league may still take an event that misses one of them.
+
+       Rewritten by the owner on 21.08.2026, and the change is in the subject:
+       the conditions are about an **event** now, not a race. The sentence that
+       used to explain that the third one is counted over the event rather than
+       the race is gone with it, and nothing is lost, because there is no race
+       left in the sentence to mistake it for. */
+    expect(rulebook).toMatch(/Događaj je zvaničan ako ispunjava sva tri uslova/)
     expect(rulebook).toMatch(/najkasnije mesec dana pre dana održavanja/)
-    expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle trke/)
+    expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle događaja/)
     expect(rulebook).toMatch(/Na događaju je učestvovalo najmanje 50 učesnika/)
-    /* Counted over the event rather than the race (owner, 04.08.2026): three
-       races of twenty runners is an event of sixty, and a trail event splits
-       its field across distances by definition. */
-    expect(rulebook).toMatch(/meri na nivou događaja, a ne po pojedinačnoj trci/)
-    expect(rulebook).toMatch(/zadržava pravo da prizna i trku koja ne ispunjava jedan/)
+    expect(rulebook).toMatch(
+      /zadržava diskreciono pravo da prizna i događaj koji ne ispunjava jedan/,
+    )
   })
 
   it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
@@ -1305,7 +1339,7 @@ describe('the rulebook', () => {
        rulebook is not where a competition beside the main one is described. What
        a league is, and that the league itself runs two of its own, stays. */
     expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
-    expect(rulebook).toMatch(/### Član 64\. Liga kao pojam/)
+    expect(rulebook).toMatch(/### Član 62\. Liga kao pojam/)
   })
 
   it('cannot be changed inside a season', () => {
@@ -1412,7 +1446,28 @@ describe('how a written page is set', () => {
   it('sends a reader to the section it names', () => {
     /* Deleting a section moves every number after it, and a sentence that names
        one does not move with it. Both of the terms' own references pointed at
-       the awards clause after the first section went. */
+       the awards clause after the first section went.
+
+       Read against what each section is **about**, not against whether the
+       number exists. A stale reference lands on a real section and says the
+       wrong thing, so an existence check passes exactly when it should fail:
+       measured on 21.08.2026, moving „priznanja po broju trka iz sekcije 14" to
+       15, from the awards onto the code of ethics, left the whole suite green.
+
+       Pinned by the words in front of the reference, so a reference that has to
+       move and does not arrives somewhere that no longer matches. */
+    const expected: [string, string, RegExp][] = [
+      ['politika-privatnosti', 'pristanak ne traži', /Kolačići/],
+      ['uslovi-koriscenja', 'razlog za meru', /Pravila ponašanja i mere/],
+      ['uslovi-koriscenja', 'po postupku', /Pravila ponašanja i mere/],
+      ['pravilnik', 'Detalji su', /Timovi, trkački parovi i klubovi/],
+      ['pravilnik', 'sopstvena takmičenja lige', /Prateća takmičenja i lige/],
+      ['pravilnik', 'priznanja po broju trka', /Nagrade i priznanja/],
+      ['pravilnik', 'može dovesti do mera', /Sankcije i diskvalifikacija/],
+    ]
+
+    const landed: [string, string, string][] = []
+
     for (const [slug, page] of pages) {
       const numbered = new Map(
         page.sections
@@ -1422,14 +1477,33 @@ describe('how a written page is set', () => {
       )
 
       for (const section of page.sections) {
-        for (const found of section.body.matchAll(/sekcij\w+ (\d+)/g)) {
+        for (const found of section.body.matchAll(/([^.]{0,60})sekcij\w+ (\d+)/g)) {
+          const before = String(found[1]).trim()
+          const heading = numbered.get(Number(found[2]))
+
           expect(
-            numbered.has(Number(found[1])),
-            `${slug} names section ${found[1]}, which it does not have`,
-          ).toBe(true)
+            heading,
+            `${slug} names section ${found[2]}, which it does not have`,
+          ).toBeDefined()
+
+          landed.push([slug, before, heading ?? ''])
         }
       }
     }
+
+    /* Every reference is accounted for, and each lands where its words say it
+       should. A reference added without a line here fails the first of the two,
+       which is the point: a new one has to say what it is about. */
+    expect(landed.length).toBe(expected.length)
+    expect(
+      landed.filter(
+        ([slug, before, heading], at) =>
+          slug !== expected[at]?.[0] ||
+          !before.includes(expected[at]?.[1] ?? '') ||
+          !(expected[at]?.[2] ?? /$^/).test(heading),
+      ),
+      'a reference that no longer lands where its words say',
+    ).toEqual([])
   })
 
 

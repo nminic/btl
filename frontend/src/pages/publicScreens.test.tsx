@@ -611,7 +611,7 @@ describe('TopBoards', () => {
 
   it('leaves the best team to the page the teams have of their own', async () => {
     /* Owner, 04.08.2026: "Top timove ne prezentovati uopšte, jer timovi imaju
-       svoju zasebnu stranu." It is still one of the lists of Article 55 and
+       svoju zasebnu stranu." It is still one of the lists of Article 53 and
        still worked out; it is not drawn here. */
     renderAt('/sr/top-liste?sezona=2019')
 

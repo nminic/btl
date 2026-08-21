@@ -32,8 +32,8 @@ describe('the wall of ducats in the rulebook', () => {
       (heading) => heading.textContent ?? '',
     )
 
-    expect(headings.at(-2)).toBe('19. Dukati')
-    expect(headings.at(-1)).toBe('20. Izmene pravilnika i završne odredbe')
+    expect(headings.at(-2)).toBe('18. Dukati')
+    expect(headings.at(-1)).toBe('19. Izmene pravilnika i završne odredbe')
   })
 
   it('draws one coin per family, fifteen of them, three to a row and five rows', async () => {

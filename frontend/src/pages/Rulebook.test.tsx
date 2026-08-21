@@ -22,7 +22,7 @@ describe('the rulebook', () => {
     await openRulebook()
 
     expect(screen.getByRole('heading', { level: 2, name: '5. Šta se boduje' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: /Član 28. Bodovanje/ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: /Član 26. Bodovanje/ })).toBeVisible()
   })
 
   /* What is left in the rulebook is what the scoring does, in words: longer and
@@ -85,13 +85,13 @@ describe('the rulebook', () => {
   it('leads from a link to the section it names', async () => {
     await openRulebook()
 
-    const link = within(sideNavigation()).getByRole('link', { name: '9. Takmičarske kategorije' })
-    const target = document.getElementById('9-takmicarske-kategorije')
+    const link = within(sideNavigation()).getByRole('link', { name: '8. Takmičarske kategorije' })
+    const target = document.getElementById('8-takmicarske-kategorije')
 
-    expect(link).toHaveAttribute('href', '#9-takmicarske-kategorije')
+    expect(link).toHaveAttribute('href', '#8-takmicarske-kategorije')
     expect(target).not.toBeNull()
     expect(within(htmlElement(target)).getByRole('heading', { level: 2 })).toHaveTextContent(
-      '9. Takmičarske kategorije',
+      '8. Takmičarske kategorije',
     )
   })
 
