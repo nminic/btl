@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -544,7 +544,8 @@ describe('a drawing a written section names', () => {
        those rules win outright: measured in the browser on 21.08.2026,
        `.markdown ul` is a class and an element against the single class of
        `.ducats`, so the grid of fifteen coins became one column of fifteen with
-       a list indent, 3.635 pixels tall. Not a tie settled by load order, which
+       a list indent, 3635 pixels tall against the 1240 it should be. Not a tie
+       settled by load order, which
        is what stood here first: put last in the head, `.ducats` still lost.
        Nothing failed, because jsdom computes no styles.
 
@@ -1040,24 +1041,64 @@ describe('the rulebook', () => {
        spellings later, the answer is that the word „zimski" goes and the name is
        the same everywhere.
 
-       Held as a rule over the word rather than as one sentence. The first guard
-       here was pinned to the phrase in Član 13, and the article that defines the
-       competition, the one that hands out its trophies, and the terms went on
-       calling it something else with the whole suite green. It is named four
-       times across two written pages, and this reads all four. */
-    const named = (text: string) =>
+       Two rules, because one of them alone let the name back in twice already.
+
+       The first is over the written pages, and it is positive: every mention
+       carries „BTL" in front of it and the word „zimski" nowhere near it. The
+       guard before this one was pinned to the phrase in Član 13, and the article
+       that defines the competition, the article that hands out its trophies and
+       the terms went on calling it something else with the whole suite green.
+       The one after that asked only for the prefix, and „Zimski BTL
+       dezorijentiring" walked straight through it, which is not an invented
+       shape: it is the name the calendar of past seasons was carrying at the
+       time.
+
+       Over every written page, not a pair named here, for the same reason. */
+    const mentions = (text: string) =>
       text
         .toLowerCase()
         .split('dezorijentiring')
         .slice(0, -1)
-        .map((part) => part.slice(-4))
+        .map((part) => part.slice(-12))
 
-    for (const page of ['pravilnik', 'uslovi-koriscenja'] as const) {
-      const mentions = named(whole(page))
+    const named = Object.entries(WRITTEN).flatMap(([slug, page]) =>
+      mentions(
+        [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
+      ).map((part) => `${slug}: ${part}`),
+    )
 
-      expect(mentions.length, `${page} never names the competition`).toBeGreaterThan(0)
-      expect(mentions).toEqual(mentions.map(() => 'btl '))
-    }
+    expect(named.length).toBeGreaterThan(0)
+    expect(
+      named.filter((one) => !one.endsWith('btl ') || one.includes('zimsk')),
+      'a mention that is not the name',
+    ).toEqual([])
+  })
+
+  it('has no record anywhere that still carries the old name', () => {
+    /* The second rule, and it is over the data rather than the prose. The name
+       was in four events, forty-two results and every race under them, and in
+       the address of each of those events, so a portal that had renamed only its
+       own articles went on printing the old name on the calendar, on a profile
+       and in a standing. Measured: 214 places against the four the first rule
+       could see.
+
+       Written as the three shapes the owner struck rather than as „every mention
+       carries BTL", because these files hold other people's races too: a
+       „Fruškogorski dezorijentiring" run by somebody else is not ours to rename,
+       and a rule demanding the prefix would raise the alarm on a correct
+       record. */
+    const gone = ['zimski btl dezorijentiring', 'zimski dezorijentiring', 'zimski-btl-dezorijentiring']
+    const mock = join(__dirname, '..', '..', 'public', 'mock')
+
+    const left = readdirSync(mock)
+      .filter((name) => name.endsWith('.json'))
+      .flatMap((name) => {
+        const text = readFileSync(join(mock, name), 'utf8').toLowerCase()
+
+        return gone.filter((old) => text.includes(old)).map((old) => `${name}: ${old}`)
+      })
+
+    expect(left).toEqual([])
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {

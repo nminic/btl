@@ -5,8 +5,8 @@
  * `.markdown` it would be dressed by the rules that dress the text, and those
  * rules are written for prose: measured on the wall of ducats, `.markdown ul`
  * beat `.ducats` outright, a class and an element against a class alone, so the
- * grid of fifteen coins became one column of fifteen with a list indent, 3.635
- * pixels tall. Not a tie settled by load order, which is what stood here first
+ * grid of fifteen coins became one column of fifteen with a list indent, 3635
+ * pixels tall against the 1240 it should be. Not a tie settled by load order, which is what stood here first
  * and is worth writing down as wrong: a review put `.ducats` last in the head
  * and measured it losing all the same. Moving an import would not have helped.
  * Which of those rules could reach which drawing is a question with no end to
@@ -18,6 +18,6 @@
 .section-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
+  gap: var(--section-rhythm);
   min-width: 0;
 }
