@@ -1087,7 +1087,7 @@
       "rsd": "Dinarski iznos je zaseban i ne preračunava se po kursu na dan. Kod članarine je fiksiran za celu sezonu.",
       "slug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa strane.",
       "leagueSlug": "Samo mala latinična slova, cifre i crtica. Ovo postaje adresa lige, na primer vojvodjanska-2027. Ne izvodi se iz naziva, jer bi promena naziva odnela adresu koju je neko već podelio.",
-      "sectionBody": "Ostale sekcije se uređuju kad stigne baza.",
+      "sectionBody": "Ostale sekcije se uređuju kad stigne baza. Red koji nosi samo [[gallery]] je mesto na kom stoji crtež te sekcije, cenovnik ili zid dukata; sekcija koja crtež nema taj red ne prikazuje.",
       "moderatorEmail": "Njome se moderator prijavljuje na portal i na nju stiže poziv. Lozinku postavlja sam; niko je ne kuca umesto njega.",
       "eventFromScreen": "Trka pripada događaju na kom se unosi, pa se ne bira.",
       "eventSlug": "Portal je pravi sam, od naziva i godine. Ne unosi se i ne menja.",

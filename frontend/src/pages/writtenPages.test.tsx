@@ -14,6 +14,8 @@ import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
 import { must } from '../test/at'
 import { sources } from '../test/sources'
+import { PageSectionBody } from '../components/PageSectionBody'
+import type { PageSection } from '../data/types'
 import { StaticPage } from './StaticPage'
 
 const dictionary = sr
@@ -26,10 +28,10 @@ const WRITTEN: Record<
   { title: string; sections: { heading: string; body: string; gallery?: string }[] }
 > = written
 
-/* The mark a body carries to say where its drawing goes (Markdown.tsx). Written
-   out here rather than imported: a test that reads the same constant as the code
-   agrees with it whatever it is changed to, and what this holds is the content
-   and the code saying the same word. */
+/* The mark a body carries to say where its drawing goes (PageSectionBody.tsx).
+   Written out here rather than imported: a test that reads the same constant as
+   the code agrees with it whatever it is changed to, and what this holds is the
+   content and the code saying the same word. */
 const PLACE = '[[gallery]]'
 
 /**
@@ -448,28 +450,51 @@ describe('the fee schedule in the rulebook', () => {
 
 describe('a drawing a written section names', () => {
   const sections = Object.values(WRITTEN).flatMap((page) => page.sections)
-  const places = (body: string) => body.split(PLACE).length - 1
+  const LINE_BREAK = String.fromCharCode(10)
 
-  it('has exactly one place marked for it, and nothing else marks a place', () => {
-    /* The two halves of one rule, and both are needed. A section that names a
-       drawing and marks no place for it draws nothing at all, which is the very
-       silence PageSectionBody was written to end; a section that marks a place
-       and names no drawing leaves a gap in the middle of its text. Two marks
-       would draw the table twice.
+  /** Places marked: lines holding nothing but the mark, which is what the portal
+   *  reads (`PageSectionBody.tsx`). */
+  const placed = (body: string) =>
+    body.split(LINE_BREAK).filter((line) => line.trim() === PLACE).length
 
-       Held over every written page and not over the two that have a drawing
-       today, so a third one added tomorrow is held to the same rule. */
+  /** The mark as a piece of text, wherever it stands. */
+  const written = (body: string) => body.split(PLACE).length - 1
+
+  it('marks one place for it, and the mark is never anything but a line of its own', () => {
+    /* Three claims in one comparison, because two of them used to be one and the
+       one that was missing is the one that mattered.
+
+       The first two: a section that names a drawing marks a place for it, and a
+       section that names none marks nothing. A drawing whose place is not marked
+       is not lost from the screen; it goes back under all of the words, which is
+       the arrangement the owner moved the fee schedule out of on 21.08.2026, and
+       it goes back with nothing saying so.
+
+       The third, and it is why both counts are read: the mark is a mark only
+       while it is a line of its own. `[[gallery]]` inside a sentence, in a cell,
+       in a heading, or on its own line behind a zero width space, raises the
+       count of the text and not the count of the places, and it does two things
+       at once: the drawing falls to the foot of the section, and the reader is
+       shown the characters `[[gallery]]`. Measured on ten such shapes. The one
+       that matters most carries U+200B in front of the mark, which in an editor
+       and in a diff looks exactly like the good line.
+
+       Held over every section of every written page, so the third page to carry
+       a drawing is held to the same rule as the two that carry one today. */
     const named = sections.filter((section) => section.gallery !== undefined)
+    const count = (section: { heading: string; body: string }) =>
+      `${section.heading}: ${placed(section.body)} marked, ${written(section.body)} written`
 
     expect(named.length).toBeGreaterThan(0)
-    expect(named.map((section) => `${section.heading}: ${places(section.body)}`)).toEqual(
-      named.map((section) => `${section.heading}: 1`),
+    expect(named.map(count)).toEqual(
+      named.map((section) => `${section.heading}: 1 marked, 1 written`),
     )
-    expect(
-      sections
-        .filter((section) => section.gallery === undefined && places(section.body) > 0)
-        .map((section) => section.heading),
-    ).toEqual([])
+
+    const unnamed = sections.filter((section) => section.gallery === undefined)
+
+    expect(unnamed.map(count)).toEqual(
+      unnamed.map((section) => `${section.heading}: 0 marked, 0 written`),
+    )
   })
 
   it('is drawn where the mark stood, and the mark itself never reaches the reader', async () => {
@@ -497,6 +522,15 @@ describe('a drawing a written section names', () => {
       'Član 16. Povraćaj',
       'Član 17. Šta članstvo donosi',
     ])
+
+    /* And nothing at all after the list in Član 17, which is the other half of
+       what the owner asked for. Read as the last words of the section rather
+       than off the order above: that order is headings and tables, so a sentence
+       added under the list would not appear in it and the claim would have been
+       a comment over a check that could not see it. */
+    expect((section.textContent ?? '').trimEnd()).toMatch(
+      /Virtuelni balans iz programa preporuke, koji se nikada ne isplaćuje u novcu.$/,
+    )
 
     /* And the mark is not words. Read over the whole document rather than by
        asking for an element holding it: rendered as part of a longer paragraph
@@ -528,6 +562,94 @@ describe('a drawing a written section names', () => {
     const wall = await waitFor(() => must(document.querySelector('.ducats'), 'the wall of ducats'))
 
     expect(wall.closest('.markdown')).toBeNull()
+  })
+})
+
+describe('one written section, drawn on its own', () => {
+  const NL = String.fromCharCode(10)
+  const CRLF = String.fromCharCode(13) + String.fromCharCode(10)
+
+  /* Drawn away from any page, so the shapes no written page carries today can
+     still be measured. Four of the five below are shapes the content happens not
+     to have: without them the guards around them are executed and nothing reads
+     what they did, which is how three of these lines could be deleted with the
+     whole suite staying green. */
+  function draw(section: PageSection) {
+    return render(
+      <I18nProvider locale="sr">
+        <SessionProvider>
+          <MemoryRouter>
+            <PageSectionBody section={section} />
+          </MemoryRouter>
+        </SessionProvider>
+      </I18nProvider>,
+    )
+  }
+
+  /** What was drawn: each block of the column, in the order it stands in. */
+  function shape(container: HTMLElement): string[] {
+    const column = must(container.querySelector('.section-body'), 'the column of the section')
+
+    return [...column.children].map((block) =>
+      block.classList.contains('markdown') ? `words(${block.textContent ?? ''})` : 'the drawing',
+    )
+  }
+
+  it('takes the mark with spaces around it, and never prints it', () => {
+    /* The trimming, which nothing else reads. A mark written with a space in
+       front of it is still a line holding nothing but the mark, and a portal
+       that read the line as it stands would drop the drawing to the foot of the
+       section and print `[[gallery]]` to the reader. */
+    const { container } = draw({
+      heading: 'Proba',
+      body: ['Pre.', '', '   [[gallery]]  ', '', 'Posle.'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual(['words(Pre.)', 'the drawing', 'words(Posle.)'])
+    expect(container.textContent ?? '').not.toContain(PLACE)
+  })
+
+  it('reads a body written with CRLF as it reads one written with LF', () => {
+    /* Where the two used to part: the body is split on the newline, so every
+       line of a CRLF document keeps a carriage return, and a half that is one
+       blank line is not the empty string. It drew an empty block and a second
+       full gap above the drawing. The day the body comes out of a `textarea` is
+       the day it arrives written with CRLF, because that is what a browser
+       sends. */
+    const lines = ['', '[[gallery]]', '', 'Posle.']
+    const asLf = draw({ heading: 'LF', body: lines.join(NL), gallery: 'prices' })
+    const asCrlf = draw({ heading: 'CRLF', body: lines.join(CRLF), gallery: 'prices' })
+
+    expect(shape(asLf.container)).toEqual(['the drawing', 'words(Posle.)'])
+    expect(shape(asCrlf.container)).toEqual(shape(asLf.container))
+  })
+
+  it('ends with the drawing when the mark is the last line', () => {
+    const { container } = draw({
+      heading: 'Na kraju',
+      body: ['Pre.', '', '[[gallery]]'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual(['words(Pre.)', 'the drawing'])
+  })
+
+  it('puts the drawing under all of it when nothing marks a place, rather than dropping it', () => {
+    /* Said out loud because a comment used to say the opposite. A section that
+       names a drawing and marks no place for it does not lose the drawing; it
+       gets it back at the foot of the section, which is the arrangement the
+       owner moved the fee schedule out of. That is what the guard over the
+       content is for: the failure is quiet, not visible. */
+    const { container } = draw({ heading: 'Bez oznake', body: 'Samo reči.', gallery: 'prices' })
+
+    expect(shape(container)).toEqual(['words(Samo reči.)', 'the drawing'])
+  })
+
+  it('draws the words alone when the section names no drawing', () => {
+    const { container } = draw({ heading: 'Bez crteža', body: 'Samo reči.' })
+
+    expect(shape(container)).toEqual(['words(Samo reči.)'])
   })
 })
 

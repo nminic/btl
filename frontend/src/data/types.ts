@@ -285,7 +285,7 @@ export type PageSection = {
    * A drawing the section carries, named rather than written.
    *
    * Where it stands is the body's to say: a line holding nothing but
-   * `[[gallery]]` is the place it goes (src/components/Markdown.tsx). The name
+   * `[[gallery]]` is the place it goes (src/components/PageSectionBody.tsx). The name
    * is here and the place is there, so neither is written twice, and a section
    * that names a drawing has to mark a place for it.
    *

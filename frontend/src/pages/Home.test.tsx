@@ -1,6 +1,6 @@
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
@@ -209,6 +209,28 @@ describe('Home', () => {
     await user.type(within(calc).getByLabelText('Minuti'), '28')
     expect(within(calc).getByText('79,03')).toBeVisible()
 
+    /* And one box written behind React's back, which is what a box holding
+       writing the browser will not read as a number amounts to: React believes
+       the value it last wrote, sees no change on the way to empty, and leaves
+       the box alone. Emptying the widget's own record is therefore not enough,
+       and this is the half that says so.
+
+       In Chrome the writing is a lone minus sign, which the box reports as an
+       empty value. jsdom does not sanitise the value of a number box, so here it
+       is a number React has not been told about. Different writing, same
+       mechanism, same box left full under an emptied widget. */
+    const seconds = within(calc).getByLabelText('Sekunde')
+
+    /* Emptied through the widget, so the record holds nothing for it, and then
+       written to directly, so the box does. React now believes the box is empty
+       and will not write to it again. */
+    await user.clear(seconds)
+    ;[seconds]
+      .filter((node): node is HTMLInputElement => node instanceof HTMLInputElement)
+      .forEach((box) => {
+        box.value = '31'
+      })
+
     await user.click(reset)
 
     for (const label of ['Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Sati', 'Minuti', 'Sekunde']) {
@@ -219,6 +241,45 @@ describe('Home', () => {
     expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
     // And the cursor is where the next race is typed, not where it was pressed.
     expect(length).toHaveFocus()
+  })
+
+  it('counts a box that holds writing the browser will not read as a number', async () => {
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    const reset = within(calc).getByRole('button', { name: 'Reset' })
+    const length = within(calc).getByLabelText('Dužina (km)')
+
+    /* What the browser does and jsdom does not. A box of type number reports an
+       empty value for writing it refuses to read as a number, a lone minus sign
+       or `1e`, while the characters stand in the box where anybody can see them.
+       jsdom does not sanitise the value of a number box, so no typing produces
+       that state here; the browser's own answer is put on the node instead.
+       Measured in Chrome on 21.08.2026, where typing „-" into the length does
+       exactly this. */
+    const emptied = (bad: boolean) => {
+      Object.defineProperty(length, 'validity', { configurable: true, value: { badInput: bad } })
+      fireEvent.input(length, { target: { value: '' } })
+    }
+
+    await user.type(length, '5')
+    expect(reset).toHaveAttribute('aria-disabled', 'false')
+
+    // Empty, and nothing wrong with it: the widget is back where it started.
+    emptied(false)
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+
+    /* The same empty value, this time because the browser will not read what is
+       written in the box. The writing is there, so the button has to be. Both
+       directions, because the second assertion alone would pass on a widget that
+       had simply never noticed the box was emptied. */
+    emptied(true)
+    expect(reset).toHaveAttribute('aria-disabled', 'false')
   })
 
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {

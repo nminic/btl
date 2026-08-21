@@ -13,6 +13,21 @@ import './PageSectionBody.css'
  * page cannot name an element of its own. */
 const MARKER = '[[gallery]]'
 
+/**
+ * Whether a half of the body has anything in it to draw.
+ *
+ * Asked of the words and not of the characters. The body is split on the
+ * newline, so a document written with CRLF leaves the carriage return on the end
+ * of every line: a half that is one blank line is `''` written with LF and
+ * `'\r'` written with CRLF, and `!== ''` called the second one words and drew an
+ * empty block with a full gap above the drawing. Measured, and the day the body
+ * comes out of a `textarea` is the day it is written with CRLF, because that is
+ * what a browser sends.
+ */
+function hasWords(half: string): boolean {
+  return half.trim() !== ''
+}
+
 /** The words before the drawing and the words after it. */
 function around(body: string): { before: string; after: string } {
   const lines = body.split('\n')
@@ -67,9 +82,17 @@ function drawing(gallery: PageSection['gallery']): ReactNode {
  * fee schedule belongs under the sentence naming the decision that sets it
  * (Član 14 of the rulebook, owner) and not at the foot of the whole section,
  * three articles below it. A section that names a drawing marks a place for it,
- * and a test holds the two together (writtenPages.test.tsx): a drawing with
- * nowhere to go would otherwise be dropped in silence, which is the fault the
- * paragraph above describes arriving by the other door.
+ * and a test holds the two together (writtenPages.test.tsx).
+ *
+ * What that test is for, said exactly: a drawing whose place is not marked is
+ * **not** dropped. `drawing()` is called whatever the body says, so it stands
+ * under all of the words, which is where the fee schedule used to stand and
+ * where the owner moved it from. That is the quiet failure worth a guard: not a
+ * blank on the screen, which somebody would report, but the old arrangement
+ * back with nothing saying so. The mark can be lost without being deleted,
+ * because a mark is only a mark while it is a line of its own: `[[gallery]]`
+ * with a zero width space in front of it reads as ordinary text, and in an
+ * editor and in a diff it looks exactly like the good line.
  *
  */
 export function PageSectionBody({ section }: { section: PageSection }) {
@@ -77,9 +100,9 @@ export function PageSectionBody({ section }: { section: PageSection }) {
 
   return (
     <div className="section-body">
-      {before !== '' && <Markdown text={before} />}
+      {hasWords(before) && <Markdown text={before} />}
       {drawing(section.gallery)}
-      {after !== '' && <Markdown text={after} />}
+      {hasWords(after) && <Markdown text={after} />}
     </div>
   )
 }

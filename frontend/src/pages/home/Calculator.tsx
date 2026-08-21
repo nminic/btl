@@ -1,13 +1,12 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 
 /* The six boxes, as one record rather than six separate pieces of state.
- * Emptying them and asking whether any of them has been filled in are then
- * questions about the record itself, and not two lists that have to be kept in
- * step with it by hand: a seventh box would be cleared by Reset and counted by
- * the button the moment it is added here, without either being touched. */
+ * Emptying them is then a question about the record itself and not a list that
+ * has to be kept in step with it by hand: a seventh box is emptied by Reset the
+ * moment it is added here, without Reset being touched. */
 type Values = {
   length: string
   ascent: string
@@ -30,6 +29,20 @@ function onCourse({ hours, minutes, seconds }: Values): number {
   return Number(hours || 0) * 3600 + Number(minutes || 0) * 60 + Number(seconds || 0)
 }
 
+/**
+ * Whether a box has anything in it, which is not the same question as what it is
+ * worth.
+ *
+ * A box of type number answers with an **empty value** for writing it refuses to
+ * read as a number: a lone minus sign, `1e`, `1-2`. The characters stand in the
+ * box where anybody can see them, and the value is the empty string.
+ * `validity.badInput` is the browser saying so out loud, and it is the whole of
+ * the difference rather than one case among several.
+ */
+function anythingIn(box: HTMLInputElement): boolean {
+  return box.value !== '' || box.validity.badInput
+}
+
 /* The calculator is the same one the old portal had, and it is mostly a toy.
  * It is also the only explanation of the scoring there is: the formula is public
  * and the rulebook does not set it out, so this is where somebody sees how it
@@ -43,6 +56,10 @@ function onCourse({ hours, minutes, seconds }: Values): number {
 export function Calculator() {
   const { locale, t } = useI18n()
   const [values, setValues] = useState(NOTHING)
+  /* Whether there is writing in any of the boxes. A separate question from what
+     they are worth, with a separate answer, and the effect below says why. */
+  const [written, setWritten] = useState(false)
+  const widget = useRef<HTMLElement>(null)
   const first = useRef<HTMLInputElement>(null)
 
   const points = btlPoints(
@@ -52,12 +69,35 @@ export function Calculator() {
     onCourse(values),
   )
 
-  const untouched = Object.values(values).every((value) => value === '')
+  /* Asked of the boxes themselves and not only of React, and there is one reason
+     for it: React calls `onChange` only when the value it last wrote has
+     changed, and a number box answers with the same empty value for a lone minus
+     sign as for nothing at all. Measured in Chrome on 21.08.2026: the browser
+     fires `input`, React swallows it, and the widget never learned there was
+     writing in the box, so Reset stood refused over characters the reader could
+     see. A listener of our own is not swallowed.
+
+     It asks one question of the whole widget rather than of a box, so it has
+     nothing to know about which box fired, or how many of them there are. */
+  useEffect(() => {
+    /* At most one node, walked rather than tested for null: a ref is set by the
+       time an effect runs, and an unreachable branch is a claim nothing checks
+       (`Rulebook.tsx` keeps the same rule). */
+    const widgets = [widget.current].filter((node): node is HTMLElement => node !== null)
+
+    const look = () => {
+      widgets.forEach((node) => setWritten([...node.querySelectorAll('input')].some(anythingIn)))
+    }
+
+    widgets.forEach((node) => node.addEventListener('input', look))
+
+    return () => widgets.forEach((node) => node.removeEventListener('input', look))
+  }, [])
 
   const write = (field: keyof Values) => (event: ChangeEvent<HTMLInputElement>) => {
-    const written = event.target.value
+    const typed = event.target.value
 
-    setValues((current) => ({ ...current, [field]: written }))
+    setValues((current) => ({ ...current, [field]: typed }))
   }
 
   /* Empties the six boxes and puts the cursor back in the first of them (owner,
@@ -68,16 +108,32 @@ export function Calculator() {
        the order of focus rather than leaving it, the way every refused control
        on the portal does (Pager.tsx, Home.css), so the guard is here and not on
        the browser. */
-    if (untouched) {
+    if (!written) {
       return
     }
 
     setValues(NOTHING)
+    setWritten(false)
+
+    /* And the boxes themselves, which state alone does not reach. A box holding
+       writing the browser will not read as a number already reports its value as
+       empty, so emptying the state changes nothing React can see and it leaves
+       the box alone: the minus sign somebody typed went on sitting there under
+       an emptied widget, and the button, refused by then, could not be pressed
+       again to shift it. Measured in Chrome, and not reproducible in jsdom,
+       which does not sanitise the value of a number box.
+
+       Written over every box inside the widget rather than over a list of six,
+       so the seventh is emptied the day it is added. */
+    widget.current?.querySelectorAll('input').forEach((box) => {
+      box.value = ''
+    })
+
     first.current?.focus()
   }
 
   return (
-    <section className="card" aria-labelledby="calculator-heading">
+    <section className="card" aria-labelledby="calculator-heading" ref={widget}>
       <h2 className="card__title" id="calculator-heading">
         {t('home.calculator')}
       </h2>
@@ -167,7 +223,7 @@ export function Calculator() {
         <button
           type="button"
           className="button button--secondary button--compact calc__reset"
-          aria-disabled={untouched}
+          aria-disabled={!written}
           onClick={reset}
         >
           {t('home.calcReset')}

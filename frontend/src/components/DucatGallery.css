@@ -14,7 +14,12 @@
 
 .ducats {
   list-style: none;
-  margin: var(--space-16) 0 0;
+  /* No margin of its own. Since 21.08.2026 the wall is one block in the column a
+     written section draws (`PageSectionBody.css`), and that column sets the space
+     between its blocks; a margin here added to it, and the wall stood 28 pixels
+     under the words while every paragraph stood 12 under the one above it. One
+     home for one piece of spacing. */
+  margin: 0;
   padding: 0;
   display: grid;
   gap: var(--space-14);
