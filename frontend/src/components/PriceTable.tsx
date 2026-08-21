@@ -3,12 +3,19 @@ import { applyChanges } from '../forms/records'
 import { money } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useOverlay } from '../pages/admin/overlay'
-/* The sheet this table's own classes come from. It used to arrive by way of
-   `member/Member.css`, for the notes that stood around the table until
-   21.08.2026; with those gone the only classes left here are the shared table
-   ones, and a component that names a class asks for the sheet that defines it
-   rather than hoping a neighbour on the same screen imported it. */
-import '../styles/table.css'
+/* The sheets this table's own classes come from, and both are needed. `table`
+   and `table-scroll` are the shared ones; `markdown__table` is what dresses a
+   table as part of a document rather than as a standing, and it lives in
+   `Markdown.css`, which pulls the shared sheet in itself.
+ *
+   It used to arrive by way of `member/Member.css`, for the notes that stood
+   around the table until 21.08.2026. With those gone that import was wrong, and
+   naming only the shared sheet was wrong the other way: a screen that drew this
+   table without any prose on it would have got a table dressed as a standing,
+   capitals that do not wrap, on a page where the rulebook says they should. A
+   component that names a class asks for the sheet that defines it rather than
+   hoping a neighbour on the same screen imported it. */
+import './Markdown.css'
 
 /**
  * The price list, in one place and drawn where the rulebook says it belongs.

@@ -79,7 +79,9 @@
 /* What stands in place of the wall when the file yields nothing at all. The
    section of the rulebook is drawn whether or not the list arrives. */
 .ducats__empty {
-  margin: var(--space-16) 0 0;
+  /* No margin of its own, for the reason the wall above has none: the column a
+     written section draws sets the space between its blocks. */
+  margin: 0;
   color: var(--text-muted);
   font-size: 0.85rem;
 }

@@ -209,28 +209,6 @@ describe('Home', () => {
     await user.type(within(calc).getByLabelText('Minuti'), '28')
     expect(within(calc).getByText('79,03')).toBeVisible()
 
-    /* And one box written behind React's back, which is what a box holding
-       writing the browser will not read as a number amounts to: React believes
-       the value it last wrote, sees no change on the way to empty, and leaves
-       the box alone. Emptying the widget's own record is therefore not enough,
-       and this is the half that says so.
-
-       In Chrome the writing is a lone minus sign, which the box reports as an
-       empty value. jsdom does not sanitise the value of a number box, so here it
-       is a number React has not been told about. Different writing, same
-       mechanism, same box left full under an emptied widget. */
-    const seconds = within(calc).getByLabelText('Sekunde')
-
-    /* Emptied through the widget, so the record holds nothing for it, and then
-       written to directly, so the box does. React now believes the box is empty
-       and will not write to it again. */
-    await user.clear(seconds)
-    ;[seconds]
-      .filter((node): node is HTMLInputElement => node instanceof HTMLInputElement)
-      .forEach((box) => {
-        box.value = '31'
-      })
-
     await user.click(reset)
 
     for (const label of ['Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Sati', 'Minuti', 'Sekunde']) {
@@ -241,6 +219,41 @@ describe('Home', () => {
     expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
     // And the cursor is where the next race is typed, not where it was pressed.
     expect(length).toHaveFocus()
+  })
+
+  it('leaves the boxes to the browser, so nothing of ours can wipe what is typed', async () => {
+    /* The browser keeps the writing and the widget copies it, never the other
+       way round. One box is written to directly and another is typed into, which
+       makes the widget draw again: a box React held would be back to whatever
+       React last believed, and this one is not, because React holds none of
+       them.
+
+       What this does **not** measure, said plainly so nobody trusts it for more
+       than it is worth: the fault that cost the round. A listener of ours
+       setting state beside a box React writes to made React redraw that box from
+       the value it still believed, and the character went out from under the
+       cursor. Measured in Chrome on 21.08.2026, typing `62.07` left the box
+       empty and the answer unwritten while all 2.017 tests stayed green, because
+       jsdom does not flush state between two listeners on one event. What is
+       held here is the shape that fault needs, not the fault. */
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    ;[within(calc).getByLabelText('Uspon (m)')]
+      .filter((node): node is HTMLInputElement => node instanceof HTMLInputElement)
+      .forEach((box) => {
+        box.value = '900'
+      })
+
+    // Somewhere else, which is what makes the widget draw again.
+    await user.type(within(calc).getByLabelText('Dužina (km)'), '5')
+
+    expect(within(calc).getByLabelText('Uspon (m)')).toHaveValue(900)
   })
 
   it('counts a box that holds writing the browser will not read as a number', async () => {

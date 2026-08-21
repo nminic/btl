@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 
 /* The six boxes, as one record rather than six separate pieces of state.
  * Emptying them is then a question about the record itself and not a list that
- * has to be kept in step with it by hand: a seventh box is emptied by Reset the
- * moment it is added here, without Reset being touched. */
+ * has to be kept in step with it by hand. */
 type Values = {
   length: string
   ascent: string
@@ -24,6 +23,11 @@ const NOTHING: Values = {
   minutes: '',
   seconds: '',
 }
+
+/** Everything the widget holds: what is in the boxes, and whether anything is. */
+type Held = { values: Values; written: boolean }
+
+const EMPTY: Held = { values: NOTHING, written: false }
 
 function onCourse({ hours, minutes, seconds }: Values): number {
   return Number(hours || 0) * 3600 + Number(minutes || 0) * 60 + Number(seconds || 0)
@@ -43,6 +47,47 @@ function anythingIn(box: HTMLInputElement): boolean {
   return box.value !== '' || box.validity.badInput
 }
 
+/**
+ * Everything the widget holds, read off the boxes themselves.
+ *
+ * The boxes are the record and this is the copy, not the other way round. That
+ * is not a preference, it is what a box of type number leaves as the only
+ * arrangement that works:
+ *
+ * - React calls `onChange` only when the value it last wrote has changed, and
+ *   such a box answers with the same empty value for a lone minus sign as for
+ *   nothing at all, so the widget was never told there was writing in it;
+ * - and a listener of our own, set beside a box React writes to, is worse than
+ *   the fault it was fixing. Measured in Chrome on 21.08.2026: typing `62.07`
+ *   left the box **empty** and the answer unwritten, because the state it set
+ *   flushed between the two listeners and React redrew the box from the value it
+ *   still believed, wiping the character out from under the cursor.
+ *
+ * With no `value` on the box there is nothing for React to redraw and nothing to
+ * fight over: the browser keeps the writing, one listener copies it here, and
+ * Reset empties the boxes and this together.
+ *
+ * Read by name rather than by position, so a box moved on the screen is still
+ * the box it was.
+ */
+function heldBy(widget: HTMLElement): Held {
+  const boxes = [...widget.querySelectorAll('input')]
+  const value = (field: keyof Values): string =>
+    boxes.filter((box) => box.name === field).reduce((_, box) => box.value, '')
+
+  return {
+    values: {
+      length: value('length'),
+      ascent: value('ascent'),
+      descent: value('descent'),
+      hours: value('hours'),
+      minutes: value('minutes'),
+      seconds: value('seconds'),
+    },
+    written: boxes.some(anythingIn),
+  }
+}
+
 /* The calculator is the same one the old portal had, and it is mostly a toy.
  * It is also the only explanation of the scoring there is: the formula is public
  * and the rulebook does not set it out, so this is where somebody sees how it
@@ -55,10 +100,7 @@ function anythingIn(box: HTMLInputElement): boolean {
  */
 export function Calculator() {
   const { locale, t } = useI18n()
-  const [values, setValues] = useState(NOTHING)
-  /* Whether there is writing in any of the boxes. A separate question from what
-     they are worth, with a separate answer, and the effect below says why. */
-  const [written, setWritten] = useState(false)
+  const [{ values, written }, setHeld] = useState(EMPTY)
   const widget = useRef<HTMLElement>(null)
   const first = useRef<HTMLInputElement>(null)
 
@@ -69,16 +111,6 @@ export function Calculator() {
     onCourse(values),
   )
 
-  /* Asked of the boxes themselves and not only of React, and there is one reason
-     for it: React calls `onChange` only when the value it last wrote has
-     changed, and a number box answers with the same empty value for a lone minus
-     sign as for nothing at all. Measured in Chrome on 21.08.2026: the browser
-     fires `input`, React swallows it, and the widget never learned there was
-     writing in the box, so Reset stood refused over characters the reader could
-     see. A listener of our own is not swallowed.
-
-     It asks one question of the whole widget rather than of a box, so it has
-     nothing to know about which box fired, or how many of them there are. */
   useEffect(() => {
     /* At most one node, walked rather than tested for null: a ref is set by the
        time an effect runs, and an unreachable branch is a claim nothing checks
@@ -86,19 +118,13 @@ export function Calculator() {
     const widgets = [widget.current].filter((node): node is HTMLElement => node !== null)
 
     const look = () => {
-      widgets.forEach((node) => setWritten([...node.querySelectorAll('input')].some(anythingIn)))
+      widgets.forEach((node) => setHeld(heldBy(node)))
     }
 
     widgets.forEach((node) => node.addEventListener('input', look))
 
     return () => widgets.forEach((node) => node.removeEventListener('input', look))
   }, [])
-
-  const write = (field: keyof Values) => (event: ChangeEvent<HTMLInputElement>) => {
-    const typed = event.target.value
-
-    setValues((current) => ({ ...current, [field]: typed }))
-  }
 
   /* Empties the six boxes and puts the cursor back in the first of them (owner,
      21.08.2026), so the next race can be typed straight away rather than after
@@ -112,23 +138,14 @@ export function Calculator() {
       return
     }
 
-    setValues(NOTHING)
-    setWritten(false)
-
-    /* And the boxes themselves, which state alone does not reach. A box holding
-       writing the browser will not read as a number already reports its value as
-       empty, so emptying the state changes nothing React can see and it leaves
-       the box alone: the minus sign somebody typed went on sitting there under
-       an emptied widget, and the button, refused by then, could not be pressed
-       again to shift it. Measured in Chrome, and not reproducible in jsdom,
-       which does not sanitise the value of a number box.
-
-       Written over every box inside the widget rather than over a list of six,
-       so the seventh is emptied the day it is added. */
+    /* The boxes first, because the boxes are where the writing is. Written over
+       every box inside the widget rather than over a list of six, so the seventh
+       is emptied the day it is added. */
     widget.current?.querySelectorAll('input').forEach((box) => {
       box.value = ''
     })
 
+    setHeld(EMPTY)
     first.current?.focus()
   }
 
@@ -141,35 +158,15 @@ export function Calculator() {
       <div className="calc calc--grid">
         <label className="calc__field">
           <span>{t('home.calcLength')}</span>
-          <input
-            ref={first}
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
-            value={values.length}
-            onChange={write('length')}
-          />
+          <input ref={first} name="length" type="number" inputMode="decimal" min="0" step="0.01" />
         </label>
         <label className="calc__field">
           <span>{t('home.calcAscent')}</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            value={values.ascent}
-            onChange={write('ascent')}
-          />
+          <input name="ascent" type="number" inputMode="numeric" min="0" />
         </label>
         <label className="calc__field">
           <span>{t('home.calcDescent')}</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            value={values.descent}
-            onChange={write('descent')}
-          />
+          <input name="descent" type="number" inputMode="numeric" min="0" />
         </label>
       </div>
 
@@ -177,27 +174,15 @@ export function Calculator() {
         <legend className="visually-hidden">{t('home.calcTime')}</legend>
         <label className="calc__field">
           <span>{t('home.hours')}</span>
-          <input type="number" min="0" value={values.hours} onChange={write('hours')} />
+          <input name="hours" type="number" min="0" />
         </label>
         <label className="calc__field">
           <span>{t('home.minutes')}</span>
-          <input
-            type="number"
-            min="0"
-            max="59"
-            value={values.minutes}
-            onChange={write('minutes')}
-          />
+          <input name="minutes" type="number" min="0" max="59" />
         </label>
         <label className="calc__field">
           <span>{t('home.seconds')}</span>
-          <input
-            type="number"
-            min="0"
-            max="59"
-            value={values.seconds}
-            onChange={write('seconds')}
-          />
+          <input name="seconds" type="number" min="0" max="59" />
         </label>
       </fieldset>
 

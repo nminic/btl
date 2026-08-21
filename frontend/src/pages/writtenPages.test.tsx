@@ -635,6 +635,20 @@ describe('one written section, drawn on its own', () => {
     expect(shape(container)).toEqual(['words(Pre.)', 'the drawing'])
   })
 
+  it('ends with the drawing when nothing but blank lines follows the mark', () => {
+    /* The other half of the same question, and the half the content happens not
+       to ask: written with CRLF, the lines after the mark are not empty strings
+       but carriage returns, so a check for the empty string called them words
+       and drew a blank block with a full gap under the drawing. */
+    const { container } = draw({
+      heading: 'Prazni redovi',
+      body: ['Pre.', '', '[[gallery]]', '', ''].join(CRLF),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual(['words(Pre.)', 'the drawing'])
+  })
+
   it('puts the drawing under all of it when nothing marks a place, rather than dropping it', () => {
     /* Said out loud because a comment used to say the opposite. A section that
        names a drawing and marks no place for it does not lose the drawing; it
