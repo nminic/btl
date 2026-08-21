@@ -338,9 +338,12 @@ describe('the price list', () => {
 
     const said = within(must(row, 'the junior row')).getAllByRole('cell')[column]?.textContent
 
-    expect(said).toBe(translate(dictionary, 'sr', 'admin.rankingByPeriod'))
-    expect(said, 'the junior band answers the ranking column with a word of its own').not.toBe(
-      translate(dictionary, 'sr', 'admin.yes'),
+    /* One assertion and not two: the second asked that the cell not be the word for yes,
+       and it could be reached only after the first had settled that it says something
+       else, so the sentence explaining why hung on a check that cannot fail. It is on
+       the live one now. */
+    expect(said, 'the junior band answers the ranking column with a word of its own').toBe(
+      translate(dictionary, 'sr', 'admin.rankingByPeriod'),
     )
   })
 

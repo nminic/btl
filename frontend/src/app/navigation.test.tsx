@@ -255,22 +255,50 @@ describe('navigation', () => {
 
     expect(existsSync(served), `${served} is linked and is not there`).toBe(true)
 
-    /* A PDF, and one the size of a statute. Asked as „a file over a kilobyte", a review
-       copied a photograph over it and the portal published a JPEG under the name of the
-       statute with the gate green. */
     const carried = readFileSync(served)
 
     expect(carried.subarray(0, 5).toString('latin1'), 'what is served is not a PDF').toBe('%PDF-')
 
-    /* And that it is this document. Asked as „a PDF over a hundred kilobytes", a review
-       wrote five bytes of `%PDF-` over a photograph and the portal published it under the
-       name of the statute with the gate green. The title is in the file in plain bytes,
-       so no library is needed to read it, and it is the only fact in there that says what
-       the document is. */
+    /* Three questions and not one of them instead of another, which is the mistake this
+       guard has already made twice. „Over a kilobyte" let a photograph through with five
+       bytes written over it. „Says it is the statute" was then put in its place rather
+       than beside it, and a document cut short at a kilobyte still carries both the
+       header and the title, which sits on byte 928 of 184715: an interrupted copy or a
+       one-page export publishes a stump and the gate stays green. So: a PDF, the size of
+       this document, and calling itself by its name. */
+    expect(carried.length, 'what is served is too small to be the statute').toBeGreaterThan(
+      100 * 1024,
+    )
+
+    /* And whole, which a size cannot say. A copy cut off at any length under the whole
+       one is over that threshold and still unreadable: a PDF ends with its own mark, and
+       a stump does not have it. */
     expect(
-      carried.toString('latin1'),
-      'what is served does not call itself the statute',
-    ).toContain('/Title(Statut Sportskog udruzenja BTL')
+      carried.subarray(-1024).toString('latin1'),
+      'what is served is not a whole PDF',
+    ).toContain('%%EOF')
+
+    /* The name in both alphabets a word processor writes. Word keeps a title of plain
+       letters as it is and writes one with any letter outside them as UTF-16, which this
+       very file already does for `/Creator` because of a ®. The document is transliterated
+       today; the day its diacritics are put back and it is exported again, a guard that
+       knows only the first form fails on a statute that is perfectly correct. */
+    const named = 'Statut Sportskog udru'
+    const plain = Buffer.from(`/Title(${named}`, 'latin1')
+    /* Anchored to `/Title(` in this alphabet too. Looked for as bare bytes, the name
+       counted wherever it stood, so a document whose title says it is the minutes and
+       whose `/Subject` happens to carry the name of the statute passed all three
+       questions: measured. The mark before it is the byte order mark Word writes at the
+       front of such a string, and it is why the wide form is recognisable at all. */
+    const wide = Buffer.concat([
+      Buffer.from('/Title(', 'latin1'),
+      Buffer.from(`﻿${named}`, 'utf16le').swap16(),
+    ])
+
+    expect(
+      carried.includes(plain) || carried.includes(wide),
+      'what is served does not call itself the statute, in either alphabet',
+    ).toBe(true)
   })
 
   it('offers the skip link as the first thing in the page', async () => {
