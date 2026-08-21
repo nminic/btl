@@ -1242,6 +1242,29 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/Talasasto|Brdovito|Planinsko/)
   })
 
+  it('rests the whole criterion on the official list of results', () => {
+    /* Owner, 21.08.2026: „Ako se nađe na listi rezultata ništa me drugo ne
+       zanima", confirming that striking the article on official timing was
+       deliberate.
+
+       That article said the same thing from the other side: it forbade a time
+       taken with a watch or an app. What carries the rule now is the article on
+       proof, and it carries it better, because it says what is required rather
+       than what is forbidden: somebody who runs the course alone, a day early
+       or on a watch, is not on the official list and has nothing to file.
+
+       Held here because the criterion is what PDL P17 calls the most damaging
+       hole the old league ever had, and because it now stands on two sentences
+       rather than on an article of its own. */
+    expect(rulebook).toMatch(
+      /Link ka zvaničnim rezultatima je jedini dokaz koji tražimo, i sam po sebi je dovoljan/,
+    )
+    expect(rulebook).toMatch(/Slika je neobavezna dopuna, nikad zamena za link/)
+    expect(rulebook).toMatch(
+      /ni diploma ni snimak sa sata, ne dokazuje rezultat sama za sebe/,
+    )
+  })
+
   it('says when an event counts, in three conditions and one discretion', () => {
     /* The open question PDL P17 called the most damaging hole in the old
        league, closed by the owner on 03.08.2026. Read together: all three, and
