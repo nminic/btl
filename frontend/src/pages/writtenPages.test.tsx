@@ -349,31 +349,41 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
-  /** How many parts a row of the table this line belongs to splits into, counted off its
-   *  own header row. */
-  function width(line: string, table: string): number {
-    const lines = table.split(NEWLINE).map((one) => one.trim())
-    const at = lines.indexOf(line)
-    const above = lines.slice(0, at + 1).reverse()
-    const head = above.find((_row, index) => index > 0 && /^\|\s*:?-{2,}/.test(above[index - 1] ?? ''))
+  /**
+   * One table of the policy, read as a table: its header, and the rows under it.
+   *
+   * Walking a joined text and looking upward for the nearest line of dashes answered with
+   * the header of the table *above* the line whenever the line was itself a header, so a
+   * column added to one of the two tables and not the other was reported as a row that is
+   * too narrow while the document was right. Read one table at a time, that question
+   * cannot be asked of the wrong table.
+   *
+   * A table with no line of dashes is a fault and not a table with no header: without
+   * one, its header row went into the list as a row a field may name, and an obligatory
+   * personal field could then be declared published while the policy said nothing about
+   * it. Measured.
+   */
+  function tableOf(block: string): { head: string[]; rows: string[][] } {
+    /* Both ends, the way the portal matches a row (`Markdown.tsx`, `^\|.*\|$`). Only the
+       first was asked for, so a line of prose beginning with a pipe read as a broken row
+       while the portal drew it as a paragraph. */
+    const lines = block
+      .split(NEWLINE)
+      .map((one) => one.trim())
+      .filter((one) => one.startsWith('|') && one.endsWith('|'))
+    const cellsOf = (line: string) => line.split('|').map((cell) => cell.trim())
+    const dashes = lines.findIndex((one) =>
+      cellsOf(one)
+        .slice(1, -1)
+        .every((cell) => /^:?-{2,}:?$/.test(cell)),
+    )
 
-    return (head ?? line).split('|').length
-  }
+    expect(dashes, `a table of the policy has no line of dashes: ${lines[0] ?? '(empty)'}`).toBeGreaterThan(0)
 
-  /** The header of the table this line belongs to: the row standing directly above the
-   *  dashes. Remembered as a word instead, it was a word this file knew and the document
-   *  did not have to keep. */
-  function header(line: string, table: string): string {
-    const lines = table.split(NEWLINE).map((one) => one.trim())
-    const at = lines.indexOf(line)
-    const dashes = lines.findIndex((one, index) => index > at && /^\|\s*:?-{2,}/.test(one))
-    const above = dashes === -1 ? -1 : dashes - 1
-
-    if (above !== at) {
-      return ''
+    return {
+      head: cellsOf(String(lines[dashes - 1])),
+      rows: lines.slice(dashes + 1).map(cellsOf),
     }
-
-    return String(line.split('|').map((cell) => cell.trim())[1] ?? '')
   }
 
   /** The one section that says what the portal collects, which both guards below read. */
@@ -437,7 +447,6 @@ describe('the privacy policy', () => {
        was not there at all. Worse, a `Map` keeps the last of a repeated name, so the
        retention table shadowed the collection table for anything named in both: measured,
        and `Interne beleške administracije` was already shadowed today. */
-    const rows = new Map<string, string>()
     /* The two tables about the person, and not the two beside them in the same section.
        Read as one section, `photo` could name `Zapisi servera` from the table of what
        arises from a visit, and be declared a server log kept thirty days while the table
@@ -449,47 +458,28 @@ describe('the privacy policy', () => {
 
     expect(about.length, 'the policy no longer has the two tables about the member').toBe(2)
 
-    /* Trimmed first, the way the portal reads its own Markdown (`Markdown.tsx` trims the
-       page and then matches `^\|.*\|$`). Asked of the raw line, a row indented by one
-       space fell out of the list in silence and the complaint then denied a row that is
-       plainly in the document and plainly drawn on the screen: measured, and `main` did
-       not have that fault. */
-    for (const raw of about.join(NEWLINE).split(NEWLINE)) {
-      const line = raw.trim()
+    const rows = new Map<string, string>()
 
-      if (!line.startsWith('|')) {
-        continue
+    for (const block of about) {
+      const table = tableOf(block)
+      /* The column that names the ground, found by its name. The width came off the
+         header and the position of this one was still a number written here, so a column
+         inserted before it moved the ground and the guard read that as the policy
+         disagreeing with the form. */
+      const ground = table.head.indexOf('Pravni osnov')
+
+      expect(ground, `a table about the member names no legal basis: ${table.head.join(' | ')}`).toBeGreaterThan(0)
+
+      for (const cells of table.rows) {
+        const name = String(cells[1] ?? '')
+
+        expect(
+          cells.length,
+          `this row of the policy is not as wide as its header: ${cells.join(' | ')}`,
+        ).toBe(table.head.length)
+        expect(rows.has(name), `the tables about the member carry ${name} twice`).toBe(false)
+        rows.set(name, String(cells[ground] ?? ''))
       }
-
-      const cells = line.split('|').map((cell) => cell.trim())
-      const name = String(cells[1] ?? '')
-
-      /* Including the forms that carry an alignment, which the portal accepts and this
-         used to read as a row named `:---` standing there twice. */
-      if (/^:?-{2,}:?$/.test(name)) {
-        continue
-      }
-
-      /* As wide as its own header row, and a line that is not fails rather than being
-         passed over. Skipped in silence, a cell holding a `|` took its row out of the
-         list and the complaint then said the policy does not carry a row that is plainly
-         there. The width is counted off the table rather than written here, so a column
-         added to the policy is not a hundred complaints about rows that are correct. */
-      expect(
-        cells.length,
-        `this row of the policy is not as wide as its header: ${line}`,
-      ).toBe(width(line, about.join(NEWLINE)))
-
-      /* The header is the row above the dashes, not a word remembered here. Renamed in
-         one table only, `Podatak` became a row a field could name; renamed in all four,
-         which is an ordinary edit, the guard complained that a row it invented stood
-         there twice. */
-      if (String(cells[1]) === header(line, about.join(NEWLINE))) {
-        continue
-      }
-
-      expect(rows.has(name), `the tables about the member carry ${name} twice`).toBe(false)
-      rows.set(name, String(cells[3] ?? ''))
     }
 
     expect(rows.size, 'the policy says nothing about what is collected').toBeGreaterThan(0)
