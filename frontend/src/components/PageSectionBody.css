@@ -1,0 +1,20 @@
+/* One column for everything a written section shows: its words, and the drawing
+   standing among them.
+ *
+ * The drawing is a sibling of the text and never a child of it. Inside
+ * `.markdown` it would be dressed by the rules that dress the text, and those
+ * rules are written for prose: measured on the wall of ducats, `.markdown ul`
+ * beat `.ducats` on the same weight and by load order, so the grid of fifteen
+ * coins became one column of fifteen with a list indent, 3.635 pixels tall.
+ * Which of those rules could reach which drawing is a question with no end to
+ * it; standing outside them, none can.
+ *
+ * The gap is the one the paragraphs keep among themselves (Markdown.css), so a
+ * drawing in the middle of an article is spaced like the paragraph it stands
+ * between rather than tighter or looser than one. */
+.section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}

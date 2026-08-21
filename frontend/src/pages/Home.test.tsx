@@ -1,6 +1,6 @@
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
@@ -171,6 +171,128 @@ describe('Home', () => {
     expect(within(calc).getByText('BTL poeni:')).toBeVisible()
     expect(within(calc).getByText('79,03')).toBeVisible()
     expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
+  })
+
+  it('empties the six boxes on Reset and hands the cursor back to the first', async () => {
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    const reset = within(calc).getByRole('button', { name: 'Reset' })
+    const length = within(calc).getByLabelText('Dužina (km)')
+
+    /* Nothing typed, so there is nothing to undo and the button says so. It is
+       refused rather than switched off, so it can still be pressed, and pressing
+       it has to leave the widget exactly as it was. */
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    await user.click(reset)
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    /* Nothing happened, and the cursor is the half of that which can be seen: a
+       refused Reset that still threw the cursor into the first box would be
+       doing something. */
+    expect(length).not.toHaveFocus()
+
+    /* Any one of the six brings it to life, and the one tried here is the last
+       of them: a check that reads the length alone would call a widget with a
+       time typed into it empty. */
+    await user.type(within(calc).getByLabelText('Sekunde'), '31')
+    expect(reset).toHaveAttribute('aria-disabled', 'false')
+
+    await user.type(length, '62.07')
+    await user.type(within(calc).getByLabelText('Uspon (m)'), '3456')
+    await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
+    await user.type(within(calc).getByLabelText('Sati'), '7')
+    await user.type(within(calc).getByLabelText('Minuti'), '28')
+    expect(within(calc).getByText('79,03')).toBeVisible()
+
+    await user.click(reset)
+
+    for (const label of ['Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Sati', 'Minuti', 'Sekunde']) {
+      expect(within(calc).getByLabelText(label)).toHaveValue(null)
+    }
+
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
+    // And the cursor is where the next race is typed, not where it was pressed.
+    expect(length).toHaveFocus()
+  })
+
+  it('leaves the boxes to the browser, so nothing of ours can wipe what is typed', async () => {
+    /* The browser keeps the writing and the widget copies it, never the other
+       way round. One box is written to directly and another is typed into, which
+       makes the widget draw again: a box React held would be back to whatever
+       React last believed, and this one is not, because React holds none of
+       them.
+
+       What this does **not** measure, said plainly so nobody trusts it for more
+       than it is worth: the fault that cost the round. A listener of ours
+       setting state beside a box React writes to made React redraw that box from
+       the value it still believed, and the character went out from under the
+       cursor. Measured in Chrome on 21.08.2026, typing `62.07` left the box
+       empty and the answer unwritten while all 2.017 tests stayed green, because
+       jsdom does not flush state between two listeners on one event. What is
+       held here is the shape that fault needs, not the fault. */
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    ;[within(calc).getByLabelText('Uspon (m)')]
+      .filter((node): node is HTMLInputElement => node instanceof HTMLInputElement)
+      .forEach((box) => {
+        box.value = '900'
+      })
+
+    // Somewhere else, which is what makes the widget draw again.
+    await user.type(within(calc).getByLabelText('Dužina (km)'), '5')
+
+    expect(within(calc).getByLabelText('Uspon (m)')).toHaveValue(900)
+  })
+
+  it('counts a box that holds writing the browser will not read as a number', async () => {
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    const reset = within(calc).getByRole('button', { name: 'Reset' })
+    const length = within(calc).getByLabelText('Dužina (km)')
+
+    /* What the browser does and jsdom does not. A box of type number reports an
+       empty value for writing it refuses to read as a number, a lone minus sign
+       or `1e`, while the characters stand in the box where anybody can see them.
+       jsdom does not sanitise the value of a number box, so no typing produces
+       that state here; the browser's own answer is put on the node instead.
+       Measured in Chrome on 21.08.2026, where typing „-" into the length does
+       exactly this. */
+    const emptied = (bad: boolean) => {
+      Object.defineProperty(length, 'validity', { configurable: true, value: { badInput: bad } })
+      fireEvent.input(length, { target: { value: '' } })
+    }
+
+    await user.type(length, '5')
+    expect(reset).toHaveAttribute('aria-disabled', 'false')
+
+    // Empty, and nothing wrong with it: the widget is back where it started.
+    emptied(false)
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+
+    /* The same empty value, this time because the browser will not read what is
+       written in the box. The writing is there, so the button has to be. Both
+       directions, because the second assertion alone would pass on a widget that
+       had simply never noticed the box was emptied. */
+    emptied(true)
+    expect(reset).toHaveAttribute('aria-disabled', 'false')
   })
 
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {

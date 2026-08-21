@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
@@ -14,6 +14,8 @@ import { SessionProvider } from '../session/SessionProvider'
 import { renderAt } from '../test/render'
 import { must } from '../test/at'
 import { sources } from '../test/sources'
+import { PageSectionBody } from '../components/PageSectionBody'
+import type { PageSection } from '../data/types'
 import { StaticPage } from './StaticPage'
 
 const dictionary = sr
@@ -21,8 +23,16 @@ const dictionary = sr
 /* The written pages as the portal itself reads them. Annotated and not asserted:
    an annotation is a claim the compiler has to agree with, and this one holds
    the file to the type every screen reads it through (ADL A14). */
-const WRITTEN: Record<string, { title: string; sections: { heading: string; body: string }[] }> =
-  written
+const WRITTEN: Record<
+  string,
+  { title: string; sections: { heading: string; body: string; gallery?: string }[] }
+> = written
+
+/* The mark a body carries to say where its drawing goes (PageSectionBody.tsx).
+   Written out here rather than imported: a test that reads the same constant as
+   the code agrees with it whatever it is changed to, and what this holds is the
+   content and the code saying the same word. */
+const PLACE = '[[gallery]]'
 
 /**
  * Every table of one block of the policy, each read as a table: its header, and the
@@ -438,6 +448,225 @@ describe('the fee schedule in the rulebook', () => {
   })
 })
 
+describe('a drawing a written section names', () => {
+  const sections = Object.values(WRITTEN).flatMap((page) => page.sections)
+  const LINE_BREAK = String.fromCharCode(10)
+
+  /** Places marked: lines holding nothing but the mark, which is what the portal
+   *  reads (`PageSectionBody.tsx`). */
+  const placed = (body: string) =>
+    body.split(LINE_BREAK).filter((line) => line.trim() === PLACE).length
+
+  /** The mark as a piece of text, wherever it stands. */
+  const written = (body: string) => body.split(PLACE).length - 1
+
+  it('marks one place for it, and the mark is never anything but a line of its own', () => {
+    /* Three claims in one comparison, because two of them used to be one and the
+       one that was missing is the one that mattered.
+
+       The first two: a section that names a drawing marks a place for it, and a
+       section that names none marks nothing. A drawing whose place is not marked
+       is not lost from the screen; it goes back under all of the words, which is
+       the arrangement the owner moved the fee schedule out of on 21.08.2026, and
+       it goes back with nothing saying so.
+
+       The third, and it is why both counts are read: the mark is a mark only
+       while it is a line of its own. `[[gallery]]` inside a sentence, in a cell,
+       in a heading, or on its own line behind a zero width space, raises the
+       count of the text and not the count of the places, and it does two things
+       at once: the drawing falls to the foot of the section, and the reader is
+       shown the characters `[[gallery]]`. Measured on ten such shapes. The one
+       that matters most carries U+200B in front of the mark, which in an editor
+       and in a diff looks exactly like the good line.
+
+       Held over every section of every written page, so the third page to carry
+       a drawing is held to the same rule as the two that carry one today. */
+    const named = sections.filter((section) => section.gallery !== undefined)
+    const count = (section: { heading: string; body: string }) =>
+      `${section.heading}: ${placed(section.body)} marked, ${written(section.body)} written`
+
+    expect(named.length).toBeGreaterThan(0)
+    expect(named.map(count)).toEqual(
+      named.map((section) => `${section.heading}: 1 marked, 1 written`),
+    )
+
+    const unnamed = sections.filter((section) => section.gallery === undefined)
+
+    expect(unnamed.map(count)).toEqual(
+      unnamed.map((section) => `${section.heading}: 0 marked, 0 written`),
+    )
+  })
+
+  it('is drawn where the mark stood, and the mark itself never reaches the reader', async () => {
+    /* Owner, 21.08.2026: the fee schedule moves out of the foot of the section
+       and up under „...posebnom odlukom", the sentence that names the decision
+       of the board that sets it.
+
+       Read as the order of the whole section rather than as "the table is
+       somewhere in it": at the foot of the section it was also somewhere in it,
+       and that is the arrangement this replaces. The last line of it is the
+       other half of what the owner asked for the same day, that nothing stand
+       after the list in Član 17. */
+    renderAt('/sr/pravilnik')
+
+    const heading = await screen.findByRole('heading', { name: /^4. Članarina$/ })
+    const section = must(heading.closest('section'), 'the section around that heading')
+    const order = [...section.querySelectorAll('h3, table')].map((part) =>
+      part.tagName === 'TABLE' ? 'the price table' : (part.textContent ?? ''),
+    )
+
+    expect(order).toEqual([
+      'Član 14. Cena i rokovi',
+      'the price table',
+      'Član 15. Dinarska cena i oslobađanje od članarine',
+      'Član 16. Povraćaj',
+      'Član 17. Šta članstvo donosi',
+    ])
+
+    /* And nothing at all after the list in Član 17, which is the other half of
+       what the owner asked for. Read as the last words of the section rather
+       than off the order above: that order is headings and tables, so a sentence
+       added under the list would not appear in it and the claim would have been
+       a comment over a check that could not see it. */
+    expect((section.textContent ?? '').trimEnd()).toMatch(
+      /Virtuelni balans iz programa preporuke, koji se nikada ne isplaćuje u novcu.$/,
+    )
+
+    /* And the mark is not words. Read over the whole document rather than by
+       asking for an element holding it: rendered as part of a longer paragraph
+       it would not be an element of its own, and a search by exact text would
+       walk past the fault it exists to catch. */
+    expect(document.body.textContent ?? '').not.toContain(PLACE)
+  })
+
+  it('stands beside the words and never inside them', async () => {
+    /* A drawing inside `.markdown` is dressed by the rules that dress prose, and
+       those rules win: measured in the browser on 21.08.2026, `.markdown ul`
+       and `.ducats` weigh the same, the tie went by load order, and the grid of
+       fifteen coins became one column of fifteen with a list indent, 3.635
+       pixels tall. Nothing failed, because jsdom computes no styles.
+
+       So the guard is over the shape and not over the paint: which rule could
+       reach which drawing is a question with no end to it, and standing outside
+       them there is nothing to enumerate. Both drawings the portal has are read,
+       and a third would be added here. */
+    renderAt('/sr/pravilnik')
+
+    const fee = await screen.findByRole('heading', { name: /^4. Članarina$/ })
+    const section = must(fee.closest('section'), 'the section around that heading')
+
+    expect(within(section).getByRole('table').closest('.markdown')).toBeNull()
+
+    /* The coins arrive on a request of their own, so the wall is waited for
+       rather than looked for once. */
+    const wall = await waitFor(() => must(document.querySelector('.ducats'), 'the wall of ducats'))
+
+    expect(wall.closest('.markdown')).toBeNull()
+  })
+})
+
+describe('one written section, drawn on its own', () => {
+  const NL = String.fromCharCode(10)
+  const CRLF = String.fromCharCode(13) + String.fromCharCode(10)
+
+  /* Drawn away from any page, so the shapes no written page carries today can
+     still be measured. Four of the five below are shapes the content happens not
+     to have: without them the guards around them are executed and nothing reads
+     what they did, which is how three of these lines could be deleted with the
+     whole suite staying green. */
+  function draw(section: PageSection) {
+    return render(
+      <I18nProvider locale="sr">
+        <SessionProvider>
+          <MemoryRouter>
+            <PageSectionBody section={section} />
+          </MemoryRouter>
+        </SessionProvider>
+      </I18nProvider>,
+    )
+  }
+
+  /** What was drawn: each block of the column, in the order it stands in. */
+  function shape(container: HTMLElement): string[] {
+    const column = must(container.querySelector('.section-body'), 'the column of the section')
+
+    return [...column.children].map((block) =>
+      block.classList.contains('markdown') ? `words(${block.textContent ?? ''})` : 'the drawing',
+    )
+  }
+
+  it('takes the mark with spaces around it, and never prints it', () => {
+    /* The trimming, which nothing else reads. A mark written with a space in
+       front of it is still a line holding nothing but the mark, and a portal
+       that read the line as it stands would drop the drawing to the foot of the
+       section and print `[[gallery]]` to the reader. */
+    const { container } = draw({
+      heading: 'Proba',
+      body: ['Pre.', '', '   [[gallery]]  ', '', 'Posle.'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual(['words(Pre.)', 'the drawing', 'words(Posle.)'])
+    expect(container.textContent ?? '').not.toContain(PLACE)
+  })
+
+  it('reads a body written with CRLF as it reads one written with LF', () => {
+    /* Where the two used to part: the body is split on the newline, so every
+       line of a CRLF document keeps a carriage return, and a half that is one
+       blank line is not the empty string. It drew an empty block and a second
+       full gap above the drawing. The day the body comes out of a `textarea` is
+       the day it arrives written with CRLF, because that is what a browser
+       sends. */
+    const lines = ['', '[[gallery]]', '', 'Posle.']
+    const asLf = draw({ heading: 'LF', body: lines.join(NL), gallery: 'prices' })
+    const asCrlf = draw({ heading: 'CRLF', body: lines.join(CRLF), gallery: 'prices' })
+
+    expect(shape(asLf.container)).toEqual(['the drawing', 'words(Posle.)'])
+    expect(shape(asCrlf.container)).toEqual(shape(asLf.container))
+  })
+
+  it('ends with the drawing when the mark is the last line', () => {
+    const { container } = draw({
+      heading: 'Na kraju',
+      body: ['Pre.', '', '[[gallery]]'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual(['words(Pre.)', 'the drawing'])
+  })
+
+  it('ends with the drawing when nothing but blank lines follows the mark', () => {
+    /* The other half of the same question, and the half the content happens not
+       to ask: written with CRLF, the lines after the mark are not empty strings
+       but carriage returns, so a check for the empty string called them words
+       and drew a blank block with a full gap under the drawing. */
+    const { container } = draw({
+      heading: 'Prazni redovi',
+      body: ['Pre.', '', '[[gallery]]', '', ''].join(CRLF),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual(['words(Pre.)', 'the drawing'])
+  })
+
+  it('puts the drawing under all of it when nothing marks a place, rather than dropping it', () => {
+    /* Said out loud because a comment used to say the opposite. A section that
+       names a drawing and marks no place for it does not lose the drawing; it
+       gets it back at the foot of the section, which is the arrangement the
+       owner moved the fee schedule out of. That is what the guard over the
+       content is for: the failure is quiet, not visible. */
+    const { container } = draw({ heading: 'Bez oznake', body: 'Samo reči.', gallery: 'prices' })
+
+    expect(shape(container)).toEqual(['words(Samo reči.)', 'the drawing'])
+  })
+
+  it('draws the words alone when the section names no drawing', () => {
+    const { container } = draw({ heading: 'Bez crteža', body: 'Samo reči.' })
+
+    expect(shape(container)).toEqual(['words(Samo reči.)'])
+  })
+})
+
 describe('the privacy policy', () => {
   it('describes the analytics the portal has, which is none', () => {
     /* Owner, 16.08.2026: „zelim da izbacim Google Analytics, traku, i Umami cak
@@ -745,6 +974,37 @@ describe('the rulebook', () => {
     ?.sections.map((section) => section.body)
     .join(NEWLINE)
 
+  it('has none of the sentences the owner struck on 21.08.2026, and both of the rewrites', () => {
+    /* Five sentences went out on one reading. Each said something the article
+       around it already says, or something the portal no longer does:
+
+       - the age of the junior fee, said in Član 12 about the two ages that need
+         a parent, where the two rules have nothing to do with each other and
+         saying so invited the reader to look for a connection;
+       - "whoever that may be" after the organiser of a race, in Član 13;
+       - "the price list is published at the end of this section", in Član 14,
+         which stopped being true the moment the table moved up under it;
+       - what the portal does before payments open, in Član 14, which is a
+         sentence about a date that has passed by the time anybody reads it;
+       - and the clause about a member freed of the fee never having a payment,
+         in Član 15.
+
+       Held here so that a rulebook rewritten for the next season cannot quietly
+       take them back. */
+    expect(rulebook).not.toMatch(/juniorska članarina nemaju veze/)
+    expect(rulebook).not.toMatch(/ko god to bio/)
+    expect(rulebook).not.toMatch(/Važeći cenovnik objavljuje se/)
+    expect(rulebook).not.toMatch(/Portal radi i pre tog datuma/)
+    expect(rulebook).not.toMatch(/nikad nema uplatu/)
+
+    /* And the two the owner had written differently rather than removed: the
+       figure in numerals and the sentence shorter by one word, and the name of
+       the league's own winter competition as a name. */
+    expect(rulebook).toMatch(/Onaj ko puni 15 u toku te sezone, još plaća juniorsku/)
+    expect(rulebook).not.toMatch(/puni petnaest/)
+    expect(rulebook).toMatch(/ultramaraton i Zimski dezorijentiring/)
+  })
+
   it('numbers its articles from one, with nothing missing in between', () => {
     /* An article was taken out of the middle of it (the terrain profile, owner
        03.08.2026), so everything after it moved up by one. A rulebook that
@@ -842,9 +1102,13 @@ describe('the rulebook', () => {
     /* Membership is measured by activation, and the deadline for the right to
        be ranked is measured by the day of payment. Two questions, and they read
        as a contradiction unless each says which one it answers. */
-    expect(rulebook).toMatch(
-      /meri se aktiviranim statusom na portalu: član oslobođen članarine nikad nema uplatu/,
-    )
+    /* The clause that used to close this sentence, spelling out that a member
+       freed of the fee never has a payment and is a full member all the same,
+       was struck by the owner on 21.08.2026. The sentence before it already says
+       they have the same rights as anybody else. What has to survive is that the
+       two questions stay apart, so the next sentence is read along with it. */
+    expect(rulebook).toMatch(/meri se aktiviranim statusom na portalu. Do kada se plaća/)
+    expect(rulebook).not.toMatch(/nikad nema uplatu/)
     expect(rulebook).toMatch(/Rok se meri po danu uplate, a ne po danu kada je liga uplatu/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
     expect(rulebook).toMatch(/nije deo članarine/)

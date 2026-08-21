@@ -282,7 +282,12 @@ export type PageSection = {
   heading: string
   body: string
   /**
-   * A drawing the section carries under its text, named rather than written.
+   * A drawing the section carries, named rather than written.
+   *
+   * Where it stands is the body's to say: a line holding nothing but
+   * `[[gallery]]` is the place it goes (src/components/PageSectionBody.tsx). The name
+   * is here and the place is there, so neither is written twice, and a section
+   * that names a drawing has to mark a place for it.
    *
    * The renderer of written pages is a deliberately small subset of Markdown and
    * has no pictures in it (ADL A7), which is right: an administrator writes these
