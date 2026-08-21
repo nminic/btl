@@ -545,8 +545,8 @@ describe('a drawing a written section names', () => {
        `.markdown ul` is a class and an element against the single class of
        `.ducats`, so the grid of fifteen coins became one column of fifteen with
        a list indent, 3635 pixels tall against the 1240 it should be. Not a tie
-       settled by load order, which
-       is what stood here first: put last in the head, `.ducats` still lost.
+       settled by load order, which is what stood here first: put last in the
+       head, `.ducats` still lost.
        Nothing failed, because jsdom computes no styles.
 
        So the guard is over the shape and not over the paint: which rule could
@@ -1059,12 +1059,17 @@ describe('the rulebook', () => {
        race somebody else organises and calls a dezorijentiring, named in our own
        prose, would raise it. There is none today, and the alarm names the page
        and the words before the mention, so it reads as what it is. */
+    /* Thirty characters and not twelve, and the case is kept. Twelve was written
+       by hand and measured wrong twice over: „zimskome BTL dezorijentiringu"
+       walked through it, because the longer forms of the adjective are eight
+       letters and push the word out of the window, and so did „btl
+       dezorijentiring" in lower case, on a decision that had itself been about a
+       capital letter. */
     const mentions = (text: string) =>
       text
-        .toLowerCase()
         .split('dezorijentiring')
         .slice(0, -1)
-        .map((part) => part.slice(-12))
+        .map((part) => part.slice(-30))
 
     const named = Object.entries(WRITTEN).flatMap(([slug, page]) =>
       mentions(
@@ -1074,7 +1079,7 @@ describe('the rulebook', () => {
 
     expect(named.length).toBeGreaterThan(0)
     expect(
-      named.filter((one) => !one.endsWith('btl ') || one.includes('zimsk')),
+      named.filter((one) => !one.endsWith('BTL ') || one.toLowerCase().includes('zimsk')),
       'a mention that is not the name',
     ).toEqual([])
   })
@@ -1084,7 +1089,7 @@ describe('the rulebook', () => {
        was in four events, forty-two results and every race under them, and in
        the address of each of those events, so a portal that had renamed only its
        own articles went on printing the old name on the calendar, on a profile
-       and in a standing. Measured: 214 places against the four the first rule
+       and in a standing. Measured: 214 places against the five the first rule
        could see.
 
        Written as the shapes the record actually carried rather than as „every
@@ -1092,11 +1097,20 @@ describe('the rulebook', () => {
        „Fruškogorski dezorijentiring" run by somebody else is not ours to rename,
        and a rule demanding the prefix would raise the alarm on a correct record.
 
-       For the same reason the bare „zimski dezorijentiring" is not on the list,
-       though the prose carried it: the records never did, and a third party
-       calling their own race that is entitled to. What is banned here is what
-       stood in these files and what its address was. */
-    const gone = ['zimski btl dezorijentiring', 'zimski-btl-dezorijentiring']
+       The bare „zimski dezorijentiring" is on the list too, and it was taken
+       off it for half an hour on the argument that a third party might call
+       their own race that. Measured: of 1166 events not one carries the word,
+       so the alarm being avoided did not exist, while the one being switched
+       off did. A race of ours renamed to the bare form passed the whole suite
+       and would have printed the struck word on the calendar, on a profile and
+       in a standing. A guard turned off against a fault nobody has is a fault
+       nobody catches; if such a race ever arrives, the list is one line to
+       revisit and the alarm will say so. */
+    const gone = [
+      'zimski btl dezorijentiring',
+      'zimski dezorijentiring',
+      'zimski-btl-dezorijentiring',
+    ]
     const mock = join(__dirname, '..', '..', 'public', 'mock')
 
     const left = readdirSync(mock)
@@ -1111,8 +1125,17 @@ describe('the rulebook', () => {
 
     /* And the other half, because a ban alone holds nothing: renaming the four
        events to a third thing satisfies every line above while the calendar
-       carries a name the rulebook has never heard of. Measured: it did. */
-    expect(readFileSync(join(mock, 'events.json'), 'utf8')).toContain('BTL dezorijentiring')
+       carries a name the rulebook has never heard of. Measured: it did.
+
+       Counted rather than looked for once, because one surviving edition
+       satisfies a search and three renamed ones would go unnoticed. Four is a
+       floor and not a count: the season of 2027 has no edition in the calendar
+       yet, and adding it must not raise this. */
+    const editions = readFileSync(join(mock, 'events.json'), 'utf8').split(
+      '"BTL dezorijentiring"',
+    ).length - 1
+
+    expect(editions).toBeGreaterThanOrEqual(4)
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {
