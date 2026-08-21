@@ -1035,67 +1035,97 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/puni petnaest/)
   })
 
-  it('has no form of the struck word anywhere near the name, and carries the name', () => {
+  it('holds the name the owner chose, and keeps the word he struck away from it', () => {
     /* Owner, 21.08.2026: „zapravo svuda treba da se zove BTL dezorijentiring".
        He had asked for a capital letter first, in one article; a day of two
        spellings later, the answer is that the word „zimski" goes and the name is
        the same everywhere.
 
-       This is the fifth shape of this guard and the first simple one, and the
-       four before it are why it is written this way. Each of them tried to say
-       how the name may be spelt, and a rule about spelling is a grammar: pinned
-       to one sentence it let three places through; asking only for the prefix
-       let „Zimski BTL dezorijentiring" through; comparing in lower case let „btl
-       dezorijentiring" through; a window of twelve characters let „zimskome BTL
-       dezorijentiringu" through; and splitting on the lower-case word let
-       „Zimskim Dezorijentiringom" through. Every one of those was my own grammar
-       and every one was found by a review.
+       Four checks, each of them one literal or one slice, and every one of them
+       is here because something walked past a cleverer version of it. The
+       cleverer versions were all the same mistake: a rule about how the name may
+       be spelt is a grammar, and the grammar was mine.
 
-       So this says nothing about spelling. It says the one thing the owner
-       decided: the struck adjective does not stand near the name. Any form of
-       it, either case, across a space or a hyphen, which is the same sentence
-       that covers the address `zimski-btl-dezorijentiring-2016`.
+       Then the opposite mistake, which cost a round of its own: the fifth
+       version threw the grammar out and took the name with it, so for one commit
+       nothing held the owner's decision at all and „sa dezorijentiringom",
+       without the name, passed. Simple is not the same as absent.
 
-       Over every record the portal serves, which is where the written pages live
-       too: the name stood in five sentences of prose and in 214 places in the
-       calendar, the races and the results, and a rule that read only the prose
-       was blind to all but the five. */
-    const STRUCK = 'zimsk'
-    const NAME = 'BTL dezorijentiring'
+       Read over every record the portal serves, which is where the written pages
+       live too: the name stood in five sentences of prose and in 214 places in
+       the calendar, the races and the results. */
+    const WORD = 'dezorijentiring'
+    const NAME = `BTL ${WORD}`
     const mock = join(__dirname, '..', '..', 'public', 'mock')
     const files = readdirSync(mock).filter((name) => name.endsWith('.json'))
+    const contents = (name: string) => readFileSync(join(mock, name), 'utf8')
 
-    const near = files.flatMap((name) => {
-      const lower = readFileSync(join(mock, name), 'utf8').toLowerCase()
-
-      return lower
-        .split('dezorijentiring')
+    /* Whatever stands in front of each mention, however it is written. Thirty
+       characters because the longest form that has to fit is „zimskome BTL ",
+       which is thirteen; the rest is room. Backwards only: „BTL dezorijentiring
+       zimski" is not caught, and the name of this test says „in front of" rather
+       than „near" so that nobody reads it as more. */
+    const inFrontOf = (text: string) =>
+      text
+        .split(new RegExp(WORD, 'i'))
         .slice(0, -1)
         .map((part) => part.slice(-30))
-        .filter((part) => part.includes(STRUCK))
-        .map((part) => `${name}: ${part}`)
-    })
 
-    expect(near, 'the struck word still stands beside the name').toEqual([])
+    /* One: the struck word does not stand in front of the name, in any form and
+       either case. This is what „zimski", „Zimski BTL", „zimskome BTL" and
+       „Zimskim" all have in common, and saying it once is what four spelling
+       rules failed to do.
 
-    /* And the name is written the way it is written, which is one literal and
-       not a rule about capitals: the address carries a hyphen, so the only thing
-       a lower-case „btl " in front of the word can be is the name misspelt. */
-    const misspelt = files.filter((name) =>
-      readFileSync(join(mock, name), 'utf8').includes(`btl ${'dezorijentiring'}`),
+       Its known false alarm, which the data can produce today: another
+       organiser's „Zimski polumaraton" named in the same sentence as ours, 25
+       characters away, would raise it. There are eight editions of that race in
+       the calendar and no sentence names them together; if one is written, this
+       is the line to revisit, and the alarm quotes the sentence. */
+    const near = files.flatMap((name) =>
+      inFrontOf(contents(name).toLowerCase())
+        .filter((part) => part.includes('zimsk'))
+        .map((part) => `${name}: ${part}`),
     )
 
-    expect(misspelt, 'the name is written in lower case').toEqual([])
+    expect(near, 'the struck word still stands in front of the name').toEqual([])
 
-    /* And the name is there, because a ban holds nothing on its own: renaming
-       everything to a third thing satisfies every line above while the portal
-       carries a name the rulebook has never heard of. Read on the two records
-       that publish it, the written pages and the calendar. */
-    for (const name of ['pages.json', 'events.json']) {
-      expect(readFileSync(join(mock, name), 'utf8'), `${name} does not carry the name`).toContain(
-        NAME,
-      )
-    }
+    /* Two: every mention carries the name. A ban holds nothing on its own, and
+       this is the check the fifth version dropped: without it the four published
+       sentences can call the competition „dezorijentiring" and nothing objects.
+       Case kept, so „btl " is not the name either.
+
+       Over the prose and not over the records, because a record writes the name
+       into an address as well, `btl-dezorijentiring-2016`, and a hyphen is not a
+       space. What holds the records is the ban above and the count below.
+
+       Its known false alarm: a race somebody else organises and calls a
+       dezorijentiring, named in our own pages. There is none. */
+    const mentions = Object.entries(WRITTEN).flatMap(([slug, page]) =>
+      inFrontOf(
+        [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
+      ).map((part) => `${slug}: ${part}`),
+    )
+
+    expect(mentions.length).toBeGreaterThan(0)
+    expect(
+      mentions.filter((one) => !one.endsWith('BTL ')),
+      'a mention that does not carry the name',
+    ).toEqual([])
+
+    /* Three: the word is never capitalised, so „BTL Dezorijentiringom" is not a
+       second way of writing it. A literal and not a rule about capitals, and its
+       false alarm is a sentence that begins with the word; there is none. */
+    const capitalised = files.filter((name) => contents(name).includes(`D${WORD.slice(1)}`))
+
+    expect(capitalised, 'the name is written a second way').toEqual([])
+
+    /* Four: all four editions still carry it. Counted rather than looked for,
+       because one surviving edition satisfies a search while three renamed ones
+       go unnoticed. Four is a floor and not a count: the season of 2027 has no
+       edition in the calendar yet, and adding it must not raise this. */
+    const editions = contents('events.json').split(`"${NAME}"`).length - 1
+
+    expect(editions, 'an edition of the competition has lost the name').toBeGreaterThanOrEqual(4)
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {
