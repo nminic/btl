@@ -175,18 +175,19 @@ const bothWays: FormDef = {
   ],
 }
 
-describe('the star of an obligatory field', () => {
-  /* Found through the words rather than through the control, because the three
-     places draw three different controls and one of them, the group of buttons,
-     has no control the name belongs to at all. */
-  const starOn = (key: string) => {
-    const field = must(
-      screen.getByText(key).closest<HTMLElement>('.field'),
-      `the field named ${key}`,
-    )
+/* Found through the words rather than through the control, because the three
+   places draw three different controls and one of them, the group of buttons,
+   has no control the name belongs to at all.
 
-    return field.querySelector('.field__required')
-  }
+   At the top of the file rather than inside one `describe`, because a second copy grew
+   in another one and the name of the class then had two homes in a single file. */
+const starOn = (key: string) => {
+  const field = must(screen.getByText(key).closest<HTMLElement>('.field'), `the field named ${key}`)
+
+  return field.querySelector('.field__required')
+}
+
+describe('the star of an obligatory field', () => {
 
   it('stands beside the name of every field that has to be answered', () => {
     renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
@@ -961,11 +962,7 @@ describe('a field asked of everybody and demanded of some', () => {
        comment saying the star is what makes a parent type their own number: a review
        drew the star from the written definition instead of from `asAsked`, and the test
        stayed green while a fifteen year old saw it. */
-    const star = () =>
-      must(
-        screen.getByText('proba.dopisano').closest<HTMLElement>('.field'),
-        'the field asked about',
-      ).querySelector('.field__required')
+    const star = () => starOn('proba.dopisano')
 
     expect(document_(), 'demanded while the date says nothing').toHaveAttribute(
       'aria-required',

@@ -6,8 +6,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { ClockProvider } from '../clock/ClockProvider'
-import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
+import { translate } from '../i18n/translate'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
 import { Decided, Inbox } from '../test/decided'
@@ -83,6 +84,8 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     publish: vi.fn(),
   }
 }
+
+const dictionary = sr
 
 describe('administration is closed to everyone else', () => {
   it.each([
@@ -314,14 +317,30 @@ describe('the price list', () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
+    /* Under the column that names it, not anywhere in the row. Asked of the whole row,
+       the claim says nothing about which column the answer stands in: a review deleted
+       the header of that column and the table went out with six cells under five
+       headings while this stayed green. It is also two letters over a whole row, so a
+       column headed `Datum` would have failed it without a fault. */
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent ?? '')
+    const column = headers.indexOf(translate(dictionary, 'sr', 'admin.ranking'))
+
+    expect(column, 'no column of the administrator table is the ranking one').toBeGreaterThan(-1)
+
+    const junior = translate(dictionary, 'sr', `pricing.rows.${JUNIOR.key}`)
     const row = within(table)
       .getAllByRole('row')
-      .find((one) => (one.textContent ?? '').includes('Uzrast do 14 godina'))
+      .find((one) => (one.textContent ?? '').includes(junior))
 
     expect(row, 'no row of the administrator table is the junior band').toBeDefined()
-    expect(row?.textContent).toContain('Prema periodu uplate')
-    expect(row?.textContent, 'the junior band answers the ranking column with a word of its own').not.toContain(
-      'Da',
+
+    const said = within(must(row, 'the junior row')).getAllByRole('cell')[column]?.textContent
+
+    expect(said).toBe(translate(dictionary, 'sr', 'admin.rankingByPeriod'))
+    expect(said, 'the junior band answers the ranking column with a word of its own').not.toBe(
+      translate(dictionary, 'sr', 'admin.yes'),
     )
   })
 

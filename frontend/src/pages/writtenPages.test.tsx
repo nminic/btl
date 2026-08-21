@@ -349,6 +349,9 @@ describe('the privacy policy', () => {
     expect(rights).toContain('ne povlači jer se ne daje')
   })
 
+  /** The one section that says what the portal collects, which both guards below read. */
+  const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
+
   it('says the same age in the words as the rule keeps in the form', () => {
     /* Sixteen stood in three places by hand: the rule in the form, the hint under the
        field and the row of the policy. Moved in the rule alone, a seventeen year old was
@@ -362,15 +365,24 @@ describe('the privacy policy', () => {
     for (const field of ruled) {
       const years = String(must(field.optionalWhenYoungerThan, `${field.name} rule`).years)
       const hint = translate(dictionary, 'sr', String(field.hintKey))
+      /* As a number and not as a piece of text. `toContain` finds `6` inside `16`, so a
+         rule mistyped from sixteen to six left both texts still saying sixteen while the
+         portal demanded a document of every seven year old: measured. */
+      const saysIt = new RegExp(`(^|\\D)${years}(\\D|$)`)
 
-      expect(hint, `the hint under ${field.name} does not say ${years}`).toContain(years)
+      expect(saysIt.test(hint), `the hint under ${field.name} does not say ${years}`).toBe(true)
 
-      const row = whole('politika-privatnosti')
+      /* By the cell, like the guard below, so a table reflowed by hand does not read as a
+         policy that lost a row. */
+      const row = collectedRows()
         .split(NEWLINE)
-        .find((line) => line.startsWith(`| ${String(field.policyRow)} |`))
+        .find((line) => line.split('|').map((cell) => cell.trim())[1] === String(field.policyRow))
 
       expect(row, `the policy carries no row for ${field.name}`).toBeDefined()
-      expect(String(row), `the policy does not say ${years} where the form does`).toContain(years)
+      expect(
+        saysIt.test(String(row)),
+        `the policy does not say ${years} where the form does`,
+      ).toBe(true)
     }
   })
 
@@ -390,20 +402,35 @@ describe('the privacy policy', () => {
 
     expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)
 
-    /* Rows of four cells, which is what a row of these tables is: what, why, on what
-       ground, and for how long. Read as „the first cell of any line beginning with a
-       pipe", the list also holds the empty string, the dashes under the header and the
-       header itself, so `policyRow: ""` passed the gate: measured. That is exactly what
-       somebody writes to make a complaint go away. */
-    const rows = new Map(
-      whole('politika-privatnosti')
-        .split(NEWLINE)
-        .filter((line) => line.startsWith('|'))
-        .map((line) => line.split('|').map((cell) => cell.trim()))
-        .map((cells) => [String(cells[1] ?? ''), String(cells[3] ?? '')] as const)
-        .filter(([name]) => name !== '' && !name.startsWith('---'))
+    /* Out of the one section that says what is collected, and only rows of four cells:
+       what, why, on what ground, for how long. Read off the whole document instead, the
+       list also held the header, the dashes, the seat of the association and the table of
+       processors, so a field could name `Podatak` with a basis of `Pravni osnov`, or
+       `Cloudflare` with a basis of `SAD i EU`, and the gate stayed shut about a row that
+       was not there at all. Worse, a `Map` keeps the last of a repeated name, so the
+       retention table shadowed the collection table for anything named in both: measured,
+       and `Interne beleške administracije` was already shadowed today. */
+    const collected = collectedRows()
+    const rows = new Map<string, string>()
 
-    )
+    for (const line of collected.split(NEWLINE)) {
+      const cells = line.split('|').map((cell) => cell.trim())
+
+      if (cells.length !== 6 || cells[0] !== '' || cells[5] !== '') {
+        continue
+      }
+
+      const name = String(cells[1])
+
+      if (name === '' || name.startsWith('---') || name === 'Podatak') {
+        continue
+      }
+
+      expect(rows.has(name), `the table of what is collected carries ${name} twice`).toBe(false)
+      rows.set(name, String(cells[3]))
+    }
+
+    expect(rows.size, 'the policy says nothing about what is collected').toBeGreaterThan(0)
 
     for (const field of asked) {
       const row = field.policyRow
