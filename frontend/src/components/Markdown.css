@@ -3,7 +3,8 @@
 .markdown {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
+  /* One decision with one home, in styles/tokens.css. */
+  gap: var(--section-rhythm);
   min-width: 0;
 }
 

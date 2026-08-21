@@ -11,11 +11,12 @@ import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
+import { RESOURCE_NAMES } from '../data/client'
 import { renderAt } from '../test/render'
 import { must } from '../test/at'
 import { sources } from '../test/sources'
 import { PageSectionBody } from '../components/PageSectionBody'
-import type { PageSection } from '../data/types'
+import type { BtlEvent, PageSection, Result } from '../data/types'
 import { StaticPage } from './StaticPage'
 
 const dictionary = sr
@@ -541,10 +542,13 @@ describe('a drawing a written section names', () => {
 
   it('stands beside the words and never inside them', async () => {
     /* A drawing inside `.markdown` is dressed by the rules that dress prose, and
-       those rules win: measured in the browser on 21.08.2026, `.markdown ul`
-       and `.ducats` weigh the same, the tie went by load order, and the grid of
-       fifteen coins became one column of fifteen with a list indent, 3.635
-       pixels tall. Nothing failed, because jsdom computes no styles.
+       those rules win outright: measured in the browser on 21.08.2026,
+       `.markdown ul` is a class and an element against the single class of
+       `.ducats`, so the grid of fifteen coins became one column of fifteen with
+       a list indent, 3635 pixels tall against the 1240 it should be. Not a tie
+       settled by load order, which is what stood here first: put last in the
+       head, `.ducats` still lost.
+       Nothing failed, because jsdom computes no styles.
 
        So the guard is over the shape and not over the paint: which rule could
        reach which drawing is a question with no end to it, and standing outside
@@ -664,6 +668,35 @@ describe('one written section, drawn on its own', () => {
     const { container } = draw({ heading: 'Bez crteža', body: 'Samo reči.' })
 
     expect(shape(container)).toEqual(['words(Samo reči.)'])
+  })
+
+  it('drops a second mark rather than drawing twice or printing it', () => {
+    /* The content of this repository cannot carry a second mark, because the
+       test above forbids it. What a moderator types into a page is not under
+       that test, and of the two ways a second mark could go wrong the printed
+       one is the worse: `[[gallery]]` in front of the reader is the one thing
+       the mark must never do. */
+    const { container } = draw({
+      heading: 'Dve oznake',
+      body: ['Pre.', '', '[[gallery]]', '', 'Sredina.', '', '[[gallery]]', '', 'Posle.'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(shape(container)).toEqual([
+      'words(Pre.)',
+      'the drawing',
+      'words(Sredina.Posle.)',
+    ])
+    expect(container.textContent ?? '').not.toContain(PLACE)
+  })
+
+  it('says the same word to the moderator who types it', () => {
+    /* The mark has three homes: the code, the content, and the sentence under
+       the box a moderator writes a page in. The first two are held together by
+       the test above; without this the third would go on naming a mark the
+       portal had stopped reading, and what the moderator typed would be printed
+       to the reader as words. */
+    expect(translate(dictionary, 'sr', 'admin.hint.sectionBody')).toContain(PLACE)
   })
 })
 
@@ -997,12 +1030,132 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/Portal radi i pre tog datuma/)
     expect(rulebook).not.toMatch(/nikad nema uplatu/)
 
-    /* And the two the owner had written differently rather than removed: the
-       figure in numerals and the sentence shorter by one word, and the name of
-       the league's own winter competition as a name. */
+    /* And the one the owner had written differently rather than removed: the
+       figure in numerals and the sentence shorter by one word. */
     expect(rulebook).toMatch(/Onaj ko puni 15 u toku te sezone, još plaća juniorsku/)
     expect(rulebook).not.toMatch(/puni petnaest/)
-    expect(rulebook).toMatch(/ultramaraton i Zimski dezorijentiring/)
+  })
+
+  it('has the struck word out of the prose, and the name on every record that carries it', () => {
+    /* Owner, 21.08.2026: „zapravo svuda treba da se zove BTL dezorijentiring".
+       He had asked for a capital letter first, in one article; a day of two
+       spellings later, the answer is that the word „zimski" goes and the name is
+       the same everywhere.
+
+       Nine shapes of this guard before this one, and the tenth is shorter than
+       any of them, because the ninth review handed over the measurement that
+       makes it possible: the prose does not contain „zimsk" **at all**. Not once
+       in four written pages. So the prose does not need a rule about distance,
+       or about inflection, or about what stands near what. It needs a ban.
+
+       That ban catches the one thing every clever version missed, which is a
+       sentence that names the competition **without using its name**: „spojenoj
+       sa zimskim takmičenjem lige" carries no `dezorijentiring` for a rule to
+       find, and it is the sentence the first shape of this guard let stand for
+       half a day.
+
+       Its false alarm, and it is a real one: prose that says „zimsk" about
+       anything at all. The competition is held in winter, so a sentence about
+       winter conditions would raise it. There is none today, this is one line to
+       revisit, and the alarm quotes the page. */
+    const WORD = 'dezorijentiring'
+    const NAME = `BTL ${WORD}`
+    const mock = join(__dirname, '..', '..', 'public', 'mock')
+    const contents = (name: string) => readFileSync(join(mock, name), 'utf8')
+
+    /* The prose, page by page, with the target of a link taken out. The shape is
+       the portal's own (`Markdown.tsx`, LINK): a target holds no space and is
+       not empty, so a looser one would swallow text the portal draws literally.
+
+       Nothing else is normalised. A line break inside a paragraph is drawn as a
+       line break (`Markdown.css`, `white-space: pre-line`), so „BTL" at the end
+       of one line and the word at the start of the next is a broken name on the
+       screen and has to read as one here. */
+    const prose = Object.entries(WRITTEN).map(([slug, page]): [string, string] => [
+      slug,
+      [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])]
+        .join(NEWLINE)
+        .replace(/\]\([^)\s]+\)/g, ']'),
+    ])
+
+    expect(
+      prose.filter(([, text]) => /zimsk/i.test(text)).map(([slug]) => slug),
+      'the struck word is back in the prose',
+    ).toEqual([])
+
+    /* And the name is there, whole and written the one way. The ban above says
+       nothing about a sentence that drops „BTL" without saying „zimski". */
+    const mentions = prose.flatMap(([slug, text]) =>
+      text
+        .split(new RegExp(WORD, 'i'))
+        .slice(0, -1)
+        .map((part) => `${slug}: ${part.slice(-30)}`),
+    )
+
+    expect(mentions.length, 'the prose has stopped naming the competition').toBeGreaterThanOrEqual(
+      5,
+    )
+    expect(
+      mentions.filter((one) => !one.endsWith('BTL ')),
+      'a mention in the prose that does not carry the name',
+    ).toEqual([])
+
+    /* Counted rather than matched, because what stands in front of a mention
+       says nothing about how the mention itself is written: „BTL
+       Dezorijentiringom" carries „BTL " and is still a second spelling. */
+    expect(
+      prose
+        .filter(([, text]) => text.split(new RegExp(WORD, 'i')).length !== text.split(WORD).length)
+        .map(([slug]) => slug),
+      'the word is written with a capital in the prose',
+    ).toEqual([])
+
+    /* The records cannot take the same ban: other organisers really do run a
+       „Zimski polumaraton", and eight editions of it are in this calendar. So
+       there the struck word is only kept away from ours, thirty characters
+       because the longest form that has to fit is „zimskome BTL ", thirteen.
+
+       Every record the portal serves except the one members write themselves: a
+       comment saying „zimski uslovi, ali dezorijentiring je bio odličan" is not
+       a portal that has forgotten the name. Derived from the list the data layer
+       reads (`data/client.ts`), so a record added tomorrow is asked too. */
+    const files = RESOURCE_NAMES.filter((name) => name !== 'comments').map((name) => `${name}.json`)
+
+    expect(
+      files.flatMap((name) =>
+        contents(name)
+          .toLowerCase()
+          .split(WORD)
+          .slice(0, -1)
+          .map((part) => part.slice(-30))
+          .filter((part) => part.includes('zimsk'))
+          .map((part) => `${name}: ${part}`),
+      ),
+      'the struck word still stands in front of the name',
+    ).toEqual([])
+
+    /* And what carries the word is this competition, whatever it has been
+       renamed to: deciding by the address let an edition named `Dezorijentiring`
+       through, because the portal gives that name the address
+       `dezorijentiring-2027`. The display name is what a calendar, a profile and
+       a standing print, and it is written once in the event and again in every
+       result. */
+    const events: BtlEvent[] = JSON.parse(contents('events.json'))
+    const results: Result[] = JSON.parse(contents('results.json'))
+
+    const named = (text: string) => text.toLowerCase().includes(WORD)
+    const editions = events.filter((one) => named(one.name) || named(one.slug))
+    const rows = results.filter((one) => named(one.eventName) || named(one.eventSlug))
+
+    /* Floors and not counts: the season of 2027 has no edition in the calendar
+       yet, and adding it must not raise this. Four editions and the forty-two
+       results under them are what stands there today. */
+    expect(editions.length, 'an edition of the competition has gone missing').toBeGreaterThanOrEqual(
+      4,
+    )
+    expect(rows.length, 'the results have stopped naming it').toBeGreaterThanOrEqual(42)
+    expect(editions.map((one) => one.name)).toEqual(editions.map(() => NAME))
+    expect(rows.map((one) => one.eventName)).toEqual(rows.map(() => NAME))
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {

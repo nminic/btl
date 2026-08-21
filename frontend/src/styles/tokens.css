@@ -181,6 +181,20 @@
   --space-32: 2rem;
   --space-40: 2.5rem;
   --space-48: 3rem;
+
+  /* The space between the blocks of a written section: between two paragraphs
+     (`components/Markdown.css`), and between the words and the drawing standing
+     among them (`components/PageSectionBody.css`). Two rules on two elements,
+     one decision, and it is that they are the same: a fee schedule in the middle
+     of an article is spaced like the paragraph it stands between, rather than
+     tighter or looser than one.
+
+     Named here rather than written twice and held together by a test, which is
+     what stood for half a day. A test over two stylesheets read as text is the
+     shape `ADL.md` A18 forbids, and it earned that: a review wrapped one of the
+     two rules in `@media print` and the test went on passing. A token has no
+     such gap in it, because there is only one of it. */
+  --section-rhythm: var(--space-12);
   /* Corners, on the same grid of two pixels and named the same way.
    *
    * Four rungs were tried first, and they were wrong: they moved ten of the

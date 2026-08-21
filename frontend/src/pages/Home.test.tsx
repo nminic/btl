@@ -268,13 +268,17 @@ describe('Home', () => {
     const reset = within(calc).getByRole('button', { name: 'Reset' })
     const length = within(calc).getByLabelText('Dužina (km)')
 
-    /* What the browser does and jsdom does not. A box of type number reports an
+    /* What the browser says and jsdom does not. A box of type number reports an
        empty value for writing it refuses to read as a number, a lone minus sign
-       or `1e`, while the characters stand in the box where anybody can see them.
-       jsdom does not sanitise the value of a number box, so no typing produces
-       that state here; the browser's own answer is put on the node instead.
-       Measured in Chrome on 21.08.2026, where typing „-" into the length does
-       exactly this. */
+       or `1e`, while the characters stand in the box where anybody can see them,
+       and it says which of the two by setting `validity.badInput`.
+
+       jsdom empties the value the same way; what it does not do is set that
+       flag, so typing a minus here produces a box that is empty and content, and
+       the state the widget has to answer for cannot be reached by typing. The
+       browser's own answer is put on the node instead. Measured both ways on
+       21.08.2026: in Chrome, typing „-" gives an empty value with the flag set;
+       in jsdom, the same typing gives an empty value with the flag clear. */
     const emptied = (bad: boolean) => {
       Object.defineProperty(length, 'validity', { configurable: true, value: { badInput: bad } })
       fireEvent.input(length, { target: { value: '' } })
