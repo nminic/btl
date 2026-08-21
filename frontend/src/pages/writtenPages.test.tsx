@@ -11,6 +11,7 @@ import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
+import { RESOURCE_NAMES } from '../data/client'
 import { renderAt } from '../test/render'
 import { must } from '../test/at'
 import { sources } from '../test/sources'
@@ -1035,70 +1036,55 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/puni petnaest/)
   })
 
-  it('lets nothing that names the competition name it any other way', () => {
+  it('has the struck word out of the prose, and the name on every record that carries it', () => {
     /* Owner, 21.08.2026: „zapravo svuda treba da se zove BTL dezorijentiring".
        He had asked for a capital letter first, in one article; a day of two
        spellings later, the answer is that the word „zimski" goes and the name is
        the same everywhere.
 
-       Eight shapes of this guard before this one, and the last of them failed on
-       the definition rather than on the rule: it decided what was ours by the
-       address, and an edition named `Dezorijentiring` is given the address
-       `dezorijentiring-2027` by the portal's own rule, so it fell outside the
-       question and nothing asked it anything.
+       Nine shapes of this guard before this one, and the tenth is shorter than
+       any of them, because the ninth review handed over the measurement that
+       makes it possible: the prose does not contain „zimsk" **at all**. Not once
+       in four written pages. So the prose does not need a rule about distance,
+       or about inflection, or about what stands near what. It needs a ban.
 
-       So the definition is the word itself. Anything that carries
-       `dezorijentiring` is this competition, and this competition is called
-       `BTL dezorijentiring`. There is no filter left to slip past.
+       That ban catches the one thing every clever version missed, which is a
+       sentence that names the competition **without using its name**: „spojenoj
+       sa zimskim takmičenjem lige" carries no `dezorijentiring` for a rule to
+       find, and it is the sentence the first shape of this guard let stand for
+       half a day.
 
-       Its one false alarm, and it is the price of that definition: a race
-       somebody else organises and calls a dezorijentiring. Of 1166 events in the
-       calendar, the four that carry the word are ours; if a fifth ever arrives
-       that is not, this is the line to revisit and the alarm quotes the name. */
+       Its false alarm, and it is a real one: prose that says „zimsk" about
+       anything at all. The competition is held in winter, so a sentence about
+       winter conditions would raise it. There is none today, this is one line to
+       revisit, and the alarm quotes the page. */
     const WORD = 'dezorijentiring'
     const NAME = `BTL ${WORD}`
     const mock = join(__dirname, '..', '..', 'public', 'mock')
     const contents = (name: string) => readFileSync(join(mock, name), 'utf8')
 
-    /* Where the league writes its own words. `comments.json` and
-       `verification.json` are left out on purpose: what a member types about a
-       race is theirs, and „Zimski uslovi, ali dezorijentiring je bio odličan"
-       is not a portal that has forgotten the name. */
-    const OURS = ['pages.json', 'events.json', 'races.json', 'results.json']
+    /* The prose, page by page, with the target of a link taken out. The shape is
+       the portal's own (`Markdown.tsx`, LINK): a target holds no space and is
+       not empty, so a looser one would swallow text the portal draws literally.
 
-    /* One: the struck word does not stand in the thirty characters before the
-       name, in any form and either case. Thirty because the longest form that
-       has to fit is „zimskome BTL ", which is thirteen. Backwards only, so
-       „BTL dezorijentiring zimski" is not caught. */
-    const struck = OURS.flatMap((name) =>
-      contents(name)
-        .toLowerCase()
-        .split(WORD)
-        .slice(0, -1)
-        .map((part) => part.slice(-30))
-        .filter((part) => part.includes('zimsk'))
-        .map((part) => `${name}: ${part}`),
-    )
-
-    expect(struck, 'the struck word still stands in front of the name').toEqual([])
-
-    /* Two, over the prose: every mention carries the name in front of it, and
-       the word is never written with a capital. The address inside a link is the
-       same name in the shape a link needs, so link targets are taken out before
-       the question is asked rather than allowed wherever they appear: `btl-`
-       let through as a blanket permission made „spojenoj sa btl-dezorijentiringom"
-       a legal sentence, which is the lower-case name in a costume.
-
-       Whitespace is collapsed first, so a line break between „BTL" and the word
-       reads as what it draws on the screen. */
+       Nothing else is normalised. A line break inside a paragraph is drawn as a
+       line break (`Markdown.css`, `white-space: pre-line`), so „BTL" at the end
+       of one line and the word at the start of the next is a broken name on the
+       screen and has to read as one here. */
     const prose = Object.entries(WRITTEN).map(([slug, page]): [string, string] => [
       slug,
       [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])]
         .join(NEWLINE)
-        .replace(/\]\([^)]*\)/g, ']')
-        .replace(/\s+/g, ' '),
+        .replace(/\]\([^)\s]+\)/g, ']'),
     ])
 
+    expect(
+      prose.filter(([, text]) => /zimsk/i.test(text)).map(([slug]) => slug),
+      'the struck word is back in the prose',
+    ).toEqual([])
+
+    /* And the name is there, whole and written the one way. The ban above says
+       nothing about a sentence that drops „BTL" without saying „zimski". */
     const mentions = prose.flatMap(([slug, text]) =>
       text
         .split(new RegExp(WORD, 'i'))
@@ -1106,7 +1092,9 @@ describe('the rulebook', () => {
         .map((part) => `${slug}: ${part.slice(-30)}`),
     )
 
-    expect(mentions.length).toBeGreaterThan(0)
+    expect(mentions.length, 'the prose has stopped naming the competition').toBeGreaterThanOrEqual(
+      5,
+    )
     expect(
       mentions.filter((one) => !one.endsWith('BTL ')),
       'a mention in the prose that does not carry the name',
@@ -1122,11 +1110,36 @@ describe('the rulebook', () => {
       'the word is written with a capital in the prose',
     ).toEqual([])
 
-    /* Three, over the records, read as records. Ours are the ones that carry the
-       word, not the ones that carry our address: deciding by the address is what
-       let an edition named `Dezorijentiring` through. The display name is what a
-       calendar, a profile and a standing print, and it is written once in the
-       event and again in every result. */
+    /* The records cannot take the same ban: other organisers really do run a
+       „Zimski polumaraton", and eight editions of it are in this calendar. So
+       there the struck word is only kept away from ours, thirty characters
+       because the longest form that has to fit is „zimskome BTL ", thirteen.
+
+       Every record the portal serves except the one members write themselves: a
+       comment saying „zimski uslovi, ali dezorijentiring je bio odličan" is not
+       a portal that has forgotten the name. Derived from the list the data layer
+       reads (`data/client.ts`), so a record added tomorrow is asked too. */
+    const files = RESOURCE_NAMES.filter((name) => name !== 'comments').map((name) => `${name}.json`)
+
+    expect(
+      files.flatMap((name) =>
+        contents(name)
+          .toLowerCase()
+          .split(WORD)
+          .slice(0, -1)
+          .map((part) => part.slice(-30))
+          .filter((part) => part.includes('zimsk'))
+          .map((part) => `${name}: ${part}`),
+      ),
+      'the struck word still stands in front of the name',
+    ).toEqual([])
+
+    /* And what carries the word is this competition, whatever it has been
+       renamed to: deciding by the address let an edition named `Dezorijentiring`
+       through, because the portal gives that name the address
+       `dezorijentiring-2027`. The display name is what a calendar, a profile and
+       a standing print, and it is written once in the event and again in every
+       result. */
     const events: BtlEvent[] = JSON.parse(contents('events.json'))
     const results: Result[] = JSON.parse(contents('results.json'))
 
@@ -1134,16 +1147,15 @@ describe('the rulebook', () => {
     const editions = events.filter((one) => named(one.name) || named(one.slug))
     const rows = results.filter((one) => named(one.eventName) || named(one.eventSlug))
 
-    /* Four is a floor and not a count: the season of 2027 has no edition in the
-       calendar yet, and adding it under this name must not raise this. */
-    expect(editions.length, 'an edition of the competition has gone missing').toBeGreaterThanOrEqual(4)
-    expect(rows.length).toBeGreaterThan(0)
+    /* Floors and not counts: the season of 2027 has no edition in the calendar
+       yet, and adding it must not raise this. Four editions and the forty-two
+       results under them are what stands there today. */
+    expect(editions.length, 'an edition of the competition has gone missing').toBeGreaterThanOrEqual(
+      4,
+    )
+    expect(rows.length, 'the results have stopped naming it').toBeGreaterThanOrEqual(42)
     expect(editions.map((one) => one.name)).toEqual(editions.map(() => NAME))
     expect(rows.map((one) => one.eventName)).toEqual(rows.map(() => NAME))
-    expect(
-      editions.filter((one) => !one.slug.startsWith(`btl-${WORD}`)).map((one) => one.slug),
-      'an edition carries the name and not the address',
-    ).toEqual([])
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {
