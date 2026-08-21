@@ -1053,7 +1053,12 @@ describe('the rulebook', () => {
        shape: it is the name the calendar of past seasons was carrying at the
        time.
 
-       Over every written page, not a pair named here, for the same reason. */
+       Over every written page, not a pair named here, for the same reason.
+
+       What this rule cannot tell apart, said so nobody is surprised by it: a
+       race somebody else organises and calls a dezorijentiring, named in our own
+       prose, would raise it. There is none today, and the alarm names the page
+       and the words before the mention, so it reads as what it is. */
     const mentions = (text: string) =>
       text
         .toLowerCase()
@@ -1082,12 +1087,16 @@ describe('the rulebook', () => {
        and in a standing. Measured: 214 places against the four the first rule
        could see.
 
-       Written as the three shapes the owner struck rather than as „every mention
-       carries BTL", because these files hold other people's races too: a
+       Written as the shapes the record actually carried rather than as „every
+       mention carries BTL", because these files hold other people's races too: a
        „Fruškogorski dezorijentiring" run by somebody else is not ours to rename,
-       and a rule demanding the prefix would raise the alarm on a correct
-       record. */
-    const gone = ['zimski btl dezorijentiring', 'zimski dezorijentiring', 'zimski-btl-dezorijentiring']
+       and a rule demanding the prefix would raise the alarm on a correct record.
+
+       For the same reason the bare „zimski dezorijentiring" is not on the list,
+       though the prose carried it: the records never did, and a third party
+       calling their own race that is entitled to. What is banned here is what
+       stood in these files and what its address was. */
+    const gone = ['zimski btl dezorijentiring', 'zimski-btl-dezorijentiring']
     const mock = join(__dirname, '..', '..', 'public', 'mock')
 
     const left = readdirSync(mock)
@@ -1099,6 +1108,11 @@ describe('the rulebook', () => {
       })
 
     expect(left).toEqual([])
+
+    /* And the other half, because a ban alone holds nothing: renaming the four
+       events to a third thing satisfies every line above while the calendar
+       carries a name the rulebook has never heard of. Measured: it did. */
+    expect(readFileSync(join(mock, 'events.json'), 'utf8')).toContain('BTL dezorijentiring')
   })
 
   it('numbers its articles from one, with nothing missing in between', () => {
