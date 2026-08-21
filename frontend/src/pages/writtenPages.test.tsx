@@ -1031,10 +1031,19 @@ function wordsBefore(before: string): string {
  *  a Serbian letter `\w` does not reach, „član 74 pravilnika" in lower case. Ahead
  *  is read first, and inside three words that is also the nearer one. */
 function documentOf(before: string, after: string): string {
-  const named = /pravilnik|statut|zakon|kodeks/i
-  const nearest = (words: string[]): string => words.filter(Boolean).join(' ')
-  const ahead = named.exec(nearest(after.split(/\s+/).slice(0, 3)))
-  const behind = named.exec(nearest(before.split(/\s+/).slice(-3)))
+  /* The code of ethics is deliberately not on this list. It looks like another
+     document and is not one: the terms say in so many words „To je etički kodeks
+     lige i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz
+     Člana 99" walked out of the check on a page where a bare number is a fault,
+     and Član 99 does not exist. Measured. */
+  const named = /pravilnik|statut|zakon/i
+  /* Emptied of blanks before the three are taken, not after. The words behind a
+     number open with the space that separates them from it, so counted with the
+     blank in hand only two of them were ever read, and „(Član 74 stav 2
+     Pravilnika)" failed as a reference that does not say of what. */
+  const words = (text: string): string[] => text.split(/\s+/).filter(Boolean)
+  const ahead = named.exec(words(after).slice(0, 3).join(' '))
+  const behind = named.exec(words(before).slice(-3).join(' '))
 
   return (ahead?.[0] ?? behind?.[0] ?? '').toLowerCase()
 }
