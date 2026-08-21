@@ -289,10 +289,14 @@ describe('navigation', () => {
        counted wherever it stood, so a document whose title says it is the minutes and
        whose `/Subject` happens to carry the name of the statute passed all three
        questions: measured. The mark before it is the byte order mark Word writes at the
-       front of such a string, and it is why the wide form is recognisable at all. */
+       front of such a string, and it is why the wide form is recognisable at all.
+       Written as an escape and not as the character itself: as a character it is
+       invisible in the source and in a diff, it sits on a branch that does not run while
+       the document has no diacritics, and deleting it turns the guard loose without a
+       single test going red. Measured. */
     const wide = Buffer.concat([
       Buffer.from('/Title(', 'latin1'),
-      Buffer.from(`﻿${named}`, 'utf16le').swap16(),
+      Buffer.from(`\uFEFF${named}`, 'utf16le').swap16(),
     ])
 
     expect(
