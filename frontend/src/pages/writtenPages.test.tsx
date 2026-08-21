@@ -90,21 +90,25 @@ function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
  *  by its name, and the table of who the data is passed to, which sits in the same
  *  section, is left where it is. */
 function howLongKept(): Map<string, string> {
-  const rows = tablesOf(sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)).flatMap(
-    (table) => {
-      const what = table.head.indexOf('Šta se dešava')
+  const said = new Map<string, string>()
 
-      return what === -1
-        ? []
-        : table.rows.map(
-            (cells) => [String(cells[1] ?? ''), String(cells[what] ?? '')] as [string, string],
-          )
-    },
-  )
+  /* Filled by hand rather than built out of pairs, because a pair has to be told it is a
+     pair and this repository does not write `as` (ADL A14). */
+  for (const table of tablesOf(sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/))) {
+    const what = table.head.indexOf('Šta se dešava')
 
-  expect(rows.length, 'the policy no longer says how long anything is kept').toBeGreaterThan(0)
+    if (what === -1) {
+      continue
+    }
 
-  return new Map(rows)
+    for (const cells of table.rows) {
+      said.set(String(cells[1] ?? ''), String(cells[what] ?? ''))
+    }
+  }
+
+  expect(said.size, 'the policy no longer says how long anything is kept').toBeGreaterThan(0)
+
+  return said
 }
 
 /** The one section that says what the portal collects, which both guards below read. */
@@ -598,17 +602,19 @@ describe('the privacy policy', () => {
        „Dok traje članstvo" to a pointer at the section below, and nothing held it: measured,
        putting it back left the whole suite green while the document said two different
        things about one field. */
-    const collecting = tablesOf(collectedRows())
-      .flatMap((table) => {
-        const long = table.head.indexOf('Koliko čuvamo')
+    const where = new Map<string, string>()
 
-        return long === -1
-          ? []
-          : table.rows.map(
-              (cells) => [String(cells[1] ?? ''), String(cells[long] ?? '')] as [string, string],
-            )
-      })
-    const where = new Map(collecting)
+    for (const table of tablesOf(collectedRows())) {
+      const long = table.head.indexOf('Koliko čuvamo')
+
+      if (long === -1) {
+        continue
+      }
+
+      for (const cells of table.rows) {
+        where.set(String(cells[1] ?? ''), String(cells[long] ?? ''))
+      }
+    }
 
     for (const field of ['Broj ličnog dokumenta', 'Ime oca']) {
       expect(
