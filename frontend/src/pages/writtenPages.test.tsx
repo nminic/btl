@@ -537,6 +537,42 @@ describe('the privacy policy', () => {
     expect(within(page).getByRole('heading', { name: /Maloletni članovi/ })).toBeVisible()
   })
 
+  it('keeps what the register of members needs as long as it keeps the rest of a profile', () => {
+    /* It said the number of an identity document and a father's name are deleted the day
+       membership ends, which was decided by a session rather than by the owner and was
+       marked at the time as legally doubtful: the register of members is kept under the
+       law on sport and does not stop existing on the day a membership does. Owner,
+       21.08.2026: the same five years as the rest of the profile.
+       Read as two rows of one document that have to agree, rather than as a number typed
+       twice: what is promised for a former member is what is promised for these. */
+    const kept = sectionOf('politika-privatnosti', /Nalog nikad nije aktiviran/)
+    const rowOf = (name: RegExp) =>
+      kept
+        .split(NEWLINE)
+        .map((line) => line.trim())
+        .find((line) => name.test(line.split('|').map((cell) => cell.trim())[1] ?? ''))
+
+    const profile = rowOf(/^Prestanete da budete član$/)
+    const register = rowOf(/^Broj ličnog dokumenta i ime oca$/)
+
+    expect(profile, 'the policy no longer says how long a former member is kept').toBeDefined()
+    expect(register, 'the policy no longer says how long the register of members is kept').toBeDefined()
+
+    /* The words the document itself uses for that period, up to the comma, rather than a
+       number this file recognises. Written as „a figure or the word for five", the guard
+       understood only the wording of the day: both rows moved to seven together, which is
+       the one change that must not alarm, and it complained. */
+    const howLong = /^([^,|]+)/.exec(
+      String(String(profile).split('|').map((cell) => cell.trim())[2] ?? ''),
+    )
+
+    expect(howLong, 'what a former member is kept for is not said as a period').not.toBeNull()
+    expect(
+      String(register),
+      'the register of members is kept for a different time than the profile it belongs to',
+    ).toContain(String(must(howLong, 'the period')[1]).trim())
+  })
+
   it('keeps an unactivated account as long as the year it was opened to buy', () => {
     /* The selling year read off `pricing.ts` rather than typed here: it opens on the day
        the first band opens and closes on the last day of the last one, today 1 October to
