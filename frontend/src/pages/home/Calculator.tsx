@@ -128,17 +128,6 @@ export function Calculator() {
 
     widgets.forEach((node) => node.addEventListener('input', look))
 
-    /* And once at the start, because the boxes can already hold something before
-       anybody types into them: a browser puts back what was in an unmanaged box
-       when somebody comes back to the page, and the widget would otherwise show
-       a length with no answer beside it and a Reset that refuses to clear it.
-
-       No test holds this line, and there is no honest one to write: a box in
-       jsdom is made empty by the render that makes it, so the state it guards
-       against cannot be reached from here. It is one call, it runs on every
-       mount, and what it does is read. */
-    look()
-
     return () => widgets.forEach((node) => node.removeEventListener('input', look))
   }, [])
 
