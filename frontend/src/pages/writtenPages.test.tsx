@@ -1167,7 +1167,11 @@ describe('the rulebook', () => {
       Number(found[1]),
     )
 
-    expect(numbers.length).toBeGreaterThan(80)
+    /* A floor and not a count, so striking an article does not fail this on its
+       own: what it catches is a rulebook that has lost most of itself. It stood
+       at eighty while there were eighty-seven articles; the owner has since
+       struck nine, and seventy-eight remain. */
+    expect(numbers.length).toBeGreaterThan(70)
     expect(numbers).toEqual(numbers.map((_, index) => index + 1))
   })
 
@@ -1193,15 +1197,11 @@ describe('the rulebook', () => {
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
       [29, /Uspon i spust/],
-      [39, /Ko prijavljuje i šta/],
-      [40, /^Rok$/],
-      [53, /Top liste/],
-      [67, /Posebna priznanja/],
-      /* The section that draws the wall of ducats points at the article that
-         awards them (owner, 04.08.2026): the section describes, the article
-         rules, and the reader has to be able to get from one to the other. */
-      [70, /Dukati/],
-      [77, /Postupak/],
+      [37, /Ko prijavljuje i šta/],
+      [38, /^Rok$/],
+      [48, /Top liste/],
+      [62, /Posebna priznanja/],
+      [71, /Postupak/],
     ]
 
     const titles = new Map(
@@ -1339,7 +1339,7 @@ describe('the rulebook', () => {
        rulebook is not where a competition beside the main one is described. What
        a league is, and that the league itself runs two of its own, stays. */
     expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
-    expect(rulebook).toMatch(/### Član 62\. Liga kao pojam/)
+    expect(rulebook).toMatch(/### Član 57\. Liga kao pojam/)
   })
 
   it('cannot be changed inside a season', () => {
@@ -1454,19 +1454,25 @@ describe('how a written page is set', () => {
        measured on 21.08.2026, moving „priznanja po broju trka iz sekcije 14" to
        15, from the awards onto the code of ethics, left the whole suite green.
 
-       Pinned by the words in front of the reference, so a reference that has to
-       move and does not arrives somewhere that no longer matches. */
-    const expected: [string, string, RegExp][] = [
-      ['politika-privatnosti', 'pristanak ne traži', /Kolačići/],
-      ['uslovi-koriscenja', 'razlog za meru', /Pravila ponašanja i mere/],
-      ['uslovi-koriscenja', 'po postupku', /Pravila ponašanja i mere/],
-      ['pravilnik', 'Detalji su', /Timovi, trkački parovi i klubovi/],
-      ['pravilnik', 'sopstvena takmičenja lige', /Prateća takmičenja i lige/],
-      ['pravilnik', 'priznanja po broju trka', /Nagrade i priznanja/],
-      ['pravilnik', 'može dovesti do mera', /Sankcije i diskvalifikacija/],
+       Both cases of the word, because the guard read only the small one and the
+       privacy policy names a section twenty-two times with a capital, in the
+       column of legal bases. Twenty-two of twenty-nine references were invisible
+       to it, and the article guard beside it had learnt the same lesson twice
+       already.
+
+       Pinned per page and number rather than per occurrence: what matters is
+       that a number, wherever it is written, still means the section it meant. */
+    const expected: [string, number, RegExp][] = [
+      ['politika-privatnosti', 4, /Kolačići/],
+      ['politika-privatnosti', 5, /Koliko čuvamo/],
+      ['uslovi-koriscenja', 7, /Pravila ponašanja i mere/],
+      ['pravilnik', 12, /Timovi, trkački parovi i klubovi/],
+      ['pravilnik', 13, /Prateća takmičenja i lige/],
+      ['pravilnik', 14, /Nagrade i priznanja/],
+      ['pravilnik', 16, /Sankcije i diskvalifikacija/],
     ]
 
-    const landed: [string, string, string][] = []
+    const named = new Set<string>()
 
     for (const [slug, page] of pages) {
       const numbered = new Map(
@@ -1477,33 +1483,28 @@ describe('how a written page is set', () => {
       )
 
       for (const section of page.sections) {
-        for (const found of section.body.matchAll(/([^.]{0,60})sekcij\w+ (\d+)/g)) {
-          const before = String(found[1]).trim()
-          const heading = numbered.get(Number(found[2]))
+        for (const found of section.body.matchAll(/[Ss]ekcij\w+ (\d+)/g)) {
+          const number = Number(found[1])
+          const heading = numbered.get(number)
 
+          expect(heading, `${slug} names section ${number}, which it does not have`).toBeDefined()
+
+          const rule = expected.find((one) => one[0] === slug && one[1] === number)
+
+          expect(rule, `${slug} names section ${number}, which nothing here accounts for`).toBeDefined()
           expect(
-            heading,
-            `${slug} names section ${found[2]}, which it does not have`,
-          ).toBeDefined()
+            rule?.[2].test(heading ?? ''),
+            `${slug} sends a reader to section ${number}, which is now "${heading}"`,
+          ).toBe(true)
 
-          landed.push([slug, before, heading ?? ''])
+          named.add(`${slug} ${number}`)
         }
       }
     }
 
-    /* Every reference is accounted for, and each lands where its words say it
-       should. A reference added without a line here fails the first of the two,
-       which is the point: a new one has to say what it is about. */
-    expect(landed.length).toBe(expected.length)
-    expect(
-      landed.filter(
-        ([slug, before, heading], at) =>
-          slug !== expected[at]?.[0] ||
-          !before.includes(expected[at]?.[1] ?? '') ||
-          !(expected[at]?.[2] ?? /$^/).test(heading),
-      ),
-      'a reference that no longer lands where its words say',
-    ).toEqual([])
+    /* And every line here is still used, so a reference that leaves takes its
+       line with it rather than sitting here proving nothing. */
+    expect([...named].sort()).toEqual(expected.map(([slug, number]) => `${slug} ${number}`).sort())
   })
 
 

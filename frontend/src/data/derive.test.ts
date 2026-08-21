@@ -877,7 +877,7 @@ describe('topByKilometers', () => {
   })
 
   it('gives the place to whoever got there first, before sharing it', () => {
-    /* The fifth rung, from PDL P12 and Article 54 of the rulebook: two rows level
+    /* The fifth rung, from PDL P12 and Article 49 of the rulebook: two rows level
        on kilometres, races, vertical and points are settled by who reached the
        count earlier. The board of races by length already had it and this one did
        not, so the two were left in whatever order they came in and shared a place

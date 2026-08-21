@@ -59,17 +59,21 @@ describe('the rulebook', () => {
      Kept after the formula stopped being called a secret, for a different
      reason: a rulebook that hands over enough to reconstruct the arithmetic is
      presenting it, and the owner asked that it not be presented. */
-  it('gives an example that cannot be solved backwards', async () => {
+  it('gives no worked example at all, so there is nothing to solve backwards', async () => {
+    /* The rulebook does not set the formula out (PDL P11), and it used to carry
+       one worked example, trimmed to a single pair of time and points so the
+       weights could not be read back out of it. The owner struck that article on
+       21.08.2026, so the surface is smaller still: there is no example left.
+
+       The four numbers are the ones that would give the weights away, and the
+       effective length is the one that hands them over on its own. */
     await openRulebook()
 
     const printed = document.body.textContent ?? ''
 
-    // The effective length is the one number that hands over the weights.
-    expect(printed).not.toContain('95,41875')
-    // And one pair of time and points, not four.
-    expect(printed).toContain('79,03')
-    expect(printed).not.toContain('46,78')
-    expect(printed).not.toContain('38,94')
+    for (const number of ['95,41875', '79,03', '46,78', '38,94']) {
+      expect(printed, `the rulebook prints ${number}`).not.toContain(number)
+    }
   })
 
   it('lists every section beside the text', async () => {
