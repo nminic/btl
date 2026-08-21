@@ -68,7 +68,10 @@ function anythingIn(box: HTMLInputElement): boolean {
  * Reset empties the boxes and this together.
  *
  * Read by name rather than by position, so a box moved on the screen is still
- * the box it was.
+ * the box it was. The name is what the widget reads them by and nothing else, so
+ * each box also says `autocomplete="off"`: a name is what a browser looks at when
+ * it decides whether to offer a saved value, and there is nothing to remember
+ * about the length of somebody's last race.
  */
 function heldBy(widget: HTMLElement): Held {
   const boxes = [...widget.querySelectorAll('input')]
@@ -158,15 +161,23 @@ export function Calculator() {
       <div className="calc calc--grid">
         <label className="calc__field">
           <span>{t('home.calcLength')}</span>
-          <input ref={first} name="length" type="number" inputMode="decimal" min="0" step="0.01" />
+          <input
+            ref={first}
+            name="length"
+            autoComplete="off"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+          />
         </label>
         <label className="calc__field">
           <span>{t('home.calcAscent')}</span>
-          <input name="ascent" type="number" inputMode="numeric" min="0" />
+          <input name="ascent" autoComplete="off" type="number" inputMode="numeric" min="0" />
         </label>
         <label className="calc__field">
           <span>{t('home.calcDescent')}</span>
-          <input name="descent" type="number" inputMode="numeric" min="0" />
+          <input name="descent" autoComplete="off" type="number" inputMode="numeric" min="0" />
         </label>
       </div>
 
@@ -174,15 +185,15 @@ export function Calculator() {
         <legend className="visually-hidden">{t('home.calcTime')}</legend>
         <label className="calc__field">
           <span>{t('home.hours')}</span>
-          <input name="hours" type="number" min="0" />
+          <input name="hours" autoComplete="off" type="number" min="0" />
         </label>
         <label className="calc__field">
           <span>{t('home.minutes')}</span>
-          <input name="minutes" type="number" min="0" max="59" />
+          <input name="minutes" autoComplete="off" type="number" min="0" max="59" />
         </label>
         <label className="calc__field">
           <span>{t('home.seconds')}</span>
-          <input name="seconds" type="number" min="0" max="59" />
+          <input name="seconds" autoComplete="off" type="number" min="0" max="59" />
         </label>
       </fieldset>
 
