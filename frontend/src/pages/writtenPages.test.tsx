@@ -999,9 +999,6 @@ describe('the privacy policy', () => {
 
 const NEWLINE = String.fromCharCode(10)
 
-/** Every written page as one piece of text. A page names an article of the
- *  rulebook as often as the rulebook names one of its own, and a guard that
- *  reads one page is a guard over a third of them. */
 /** The words standing immediately in front of a numbered reference, with the
  *  punctuation that separates them from it taken off.
  *
@@ -1010,49 +1007,87 @@ const NEWLINE = String.fromCharCode(10)
  *  something else while the words stay where they were. Measured 21.08.2026,
  *  „prednost ima podatak organizatora (Član 29)" rewritten to „prednost ima podatak
  *  organizatora, a rok je iz (Član 29)" passed, and the sentence then said the
- *  deadline comes out of „Uspon i spust". */
+ *  deadline comes out of „Uspon i spust".
+ *
+ *  The square bracket is taken off with the round one, because a reference inside a
+ *  markdown link is a reference: „[Član 74 Pravilnika](/pravilnik)" left the words
+ *  ending on „[" and the pin refused a sentence this guard is meant to read. */
 function wordsBefore(before: string): string {
-  return before.replace(/[\s(„”"'—-]+$/u, '')
+  return before.replace(/[\s([„”"'—-]+$/u, '')
 }
 
-/** Which document a numbered reference says it belongs to, read from the words on
- *  either side of it and in lower case, or the empty string when it names none.
+/** Which document a numbered reference says it belongs to, in lower case, or the
+ *  empty string when it names none.
  *
- *  Not the one word behind the number, which is how this was first written and how
- *  it refused three sentences that do name their document: „Pravilnik lige, Član 74"
- *  names it in front, „[Član 74 opšteg pravilnika lige]" names it with a Serbian
- *  letter that `\w` does not reach, and „član 74 pravilnika" names it in lower case.
- *  The word nearest the number wins, ahead of it first. */
+ *  Read from the words of the reference itself, three on either side, and not from
+ *  the sentence around it. A legal text names the law in passing all the time:
+ *  measured over sixty characters, „Prema Članu 99 postupa se u skladu sa zakonom"
+ *  handed a number nobody accounts for to another document and walked past it, and
+ *  a row of the policy reading „vodi po zakonu" did the same for the number beside
+ *  it. Three words is the reference; the rest of the sentence is not.
+ *
+ *  Both sides, because a sentence names its document on whichever side it likes:
+ *  „Pravilnik lige, Član 74" in front, „Član 74 opšteg pravilnika lige" behind with
+ *  a Serbian letter `\w` does not reach, „član 74 pravilnika" in lower case. Ahead
+ *  is read first, and inside three words that is also the nearer one. */
 function documentOf(before: string, after: string): string {
   const named = /pravilnik|statut|zakon|kodeks/i
-  const ahead = named.exec(after)
-  const behind = [...before.matchAll(/pravilnik|statut|zakon|kodeks/gi)].pop()
+  const nearest = (words: string[]): string => words.filter(Boolean).join(' ')
+  const ahead = named.exec(nearest(after.split(/\s+/).slice(0, 3)))
+  const behind = named.exec(nearest(before.split(/\s+/).slice(-3)))
 
   return (ahead?.[0] ?? behind?.[0] ?? '').toLowerCase()
 }
 
-/** Every place a text names an article by number: the words in front of it, the
- *  number, and the words behind it.
+/** An article named by number, and a section named by number.
  *
  *  „čl. 46" is read too. Written that way a reference was invisible here while
  *  looking to a reader exactly like „Član 46", which is the same lesson a lower-case
  *  „član" taught this guard once already: a guard a spelling walks past is a guard on
- *  the spelling. */
-function articlesIn(text: string): { before: string; number: number; after: string }[] {
-  return [
-    /* The words behind are looked at and not eaten: consumed, the window of one
-       reference would swallow the words in front of the next, and two references
-       a line apart would each be pinned by half of the other. They stop at the
-       end of the sentence, and the full stop is deliberately left unread: eaten,
-       the window of „po članu 67." reached into the sentence after it, found the
-       word Statut there, and let a bare number pass as somebody else's. */
-    ...text.matchAll(/([^.\n]{0,60})(?:[Čč]lan\w*|[Čč]l\.)\s*(\d+)(?=([^.\n]{0,60}))/g),
-  ].map((found) => ({
-    before: wordsBefore(String(found[1])),
-    number: Number(found[2]),
-    after: String(found[3] ?? ''),
-  }))
+ *  the spelling.
+ *
+ *  One space and not `\s*`, which reaches across a line break. A page is read as one
+ *  piece of text, and on three of the four every section heading opens with a
+ *  figure, so a paragraph ending on the ordinary word „člana" borrowed the number of
+ *  the heading below it and this guard reported a reference that is not written
+ *  anywhere.
+ *
+ *  At most three figures and never a leading zero, because a member number is
+ *  written `000001` and the terms describe that very shape: read as a number, „član
+ *  000001" became a reference to Član 1. */
+const ARTICLE = /(?:[Čč]lan\w*|[Čč]l\.) *(?!0)(\d{1,3})(?!\d)/g
+const SECTION = /[Ss]ekcij\w+ *(?!0)(\d{1,3})(?!\d)/g
+
+/** Every place a text names one of those: the words in front of it, the number, and
+ *  the words behind it, each taken from the sentence the number stands in.
+ *
+ *  The words in front are read **from the position of the number** and not matched
+ *  in front of it. Matched, the sixty characters are greedy, so of two references a
+ *  clause apart the pattern takes the later one and eats the earlier as part of its
+ *  own words: „Prema Članu 99 to ne donosi nikakvo pravo iz Člana 17" reported one
+ *  reference where a reader sees two, and Član 99 does not exist. Measured, whole
+ *  suite green. */
+function mentionsIn(
+  text: string,
+  what: RegExp,
+): { before: string; number: number; after: string }[] {
+  return [...text.matchAll(what)].map((found) => {
+    const at = found.index ?? 0
+    const behind = text.slice(0, at)
+    const ahead = text.slice(at + found[0].length)
+
+    return {
+      before: wordsBefore(/[^.\n]{0,60}$/.exec(behind)?.[0] ?? ''),
+      number: Number(found[1]),
+      after: /^[^.\n]{0,60}/.exec(ahead)?.[0] ?? '',
+    }
+  })
 }
+
+/** Every written page as one piece of text, under its own name. A page other than
+ *  the rulebook names an article of it too, and a guard that reads only the rulebook
+ *  is blind to exactly those: the privacy policy held one, and it stood on a number
+ *  that had stopped existing. */
 
 const WRITTEN_PAGES: [string, string][] = Object.entries(WRITTEN).map(([slug, page]) => [
   slug,
@@ -1305,7 +1340,10 @@ describe('the rulebook', () => {
        article stopped existing. Measured on 21.08.2026, with 78 articles in
        the book and a published page pointing at the eightieth. */
     const referenced = WRITTEN_PAGES.flatMap(([slug, text]) =>
-      articlesIn(text.replace(/### Član \d+\.[^\n]*/g, '')).map((one) => ({ ...one, slug })),
+      mentionsIn(text.replace(/### Član \d+\.[^\n]*/g, ''), ARTICLE).map((one) => ({
+        ...one,
+        slug,
+      })),
     )
 
     /* A number alone does not say which document it belongs to, and that is the
@@ -1644,9 +1682,7 @@ describe('how a written page is set', () => {
           .filter((line) => !line.trimStart().startsWith('|'))
           .join(NEWLINE)
 
-        for (const found of prose.matchAll(/([^.\n]{0,60})[Ss]ekcij\w+ (\d+)/g)) {
-          const before = wordsBefore(String(found[1]))
-          const number = Number(found[2])
+        for (const { before, number } of mentionsIn(prose, SECTION)) {
           const rule = inProse.find(
             (one) => one[0] === slug && before.endsWith(one[1]) && one[2] === number,
           )
@@ -1665,7 +1701,7 @@ describe('how a written page is set', () => {
 
         for (const table of tablesOf(section.body)) {
           const named = table.rows.map((cells) =>
-            cells.flatMap((cell) => [...cell.matchAll(/[Ss]ekcij\w+ (\d+)/g)].map((found) => found[1])),
+            cells.flatMap((cell) => [...cell.matchAll(SECTION)].map((found) => found[1])),
           )
 
           if (named.every((row) => row.length === 0)) {
