@@ -1002,9 +1002,10 @@ const NEWLINE = String.fromCharCode(10)
 /** Every written page as one piece of text. A page names an article of the
  *  rulebook as often as the rulebook names one of its own, and a guard that
  *  reads one page is a guard over a third of them. */
-const WRITTEN_PAGES = Object.values(WRITTEN).map((page) =>
+const WRITTEN_PAGES: [string, string][] = Object.entries(WRITTEN).map(([slug, page]) => [
+  slug,
   [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
-)
+])
 
 describe('the rulebook', () => {
   /** The whole of it as one piece of text, which is how a rule that has to be in
@@ -1169,7 +1170,10 @@ describe('the rulebook', () => {
     /* An article was taken out of the middle of it (the terrain profile, owner
        03.08.2026), so everything after it moved up by one. A rulebook that
        skips a number is a rulebook whose cross-references cannot be trusted,
-       and it carries eight of them. */
+       and it is full of them. The count is deliberately not written here: it
+       said eight while there were twelve, because it was copied from memory
+       instead of read out of the page, and the guard below counts them itself
+       every run. */
     const numbers = [...(rulebook ?? '').matchAll(/### Član (\d+)\./g)].map((found) =>
       Number(found[1]),
     )
@@ -1189,32 +1193,43 @@ describe('the rulebook', () => {
        checked is what each reference is about, against the heading of the
        article it lands on.
 
-       The headings are the pin. A reference that has to move and does not
-       arrives at an article about something else, and the pair stops matching. */
-    const expected: [number, RegExp][] = [
-      [11, /Pravo rangiranja/],
-      [14, /Cena i rokovi/],
-      [17, /Šta članstvo donosi/],
+       Pinned by the words in front of each occurrence, and not by the set of
+       numbers. Read as a set, „Pravo rangiranja pod uslovima iz Člana 11"
+       rewritten to 14 left the set unchanged, because some other paragraph
+       names 14 anyway: the rulebook then tied the right to be ranked to „Cena
+       i rokovi", and all 2023 tests stayed green. Measured 21.08.2026. */
+    /* The documents a written page is allowed to quote by article. Not a
+       nicety: whichever is missing here fails loudly with the name in the
+       message, which is the safe direction. A reference that names nothing at
+       all fails the same way, and that is the one that matters, because a bare
+       number off the rulebook is the shape that gets quietly counted as ours. */
+    const DOCUMENTS = ['Pravilnika', 'Statuta', 'Zakona']
+
+    const expected: [string, number, RegExp][] = [
+      ['rangiranja pod uslovima iz', 11, /Pravo rangiranja/],
+      ['steklo pravo rangiranja govori', 11, /Pravo rangiranja/],
+      ['taksa za obradu plaćanja iz', 14, /Cena i rokovi/],
+      ['ne donosi nikakvo pravo iz', 17, /Šta članstvo donosi/],
       /* The article the ethics section points at for what a race has to be.
          It pointed at a section until 21.08.2026, and that section is gone:
          the owner struck the article on official timing and the one on who
          verifies, and what was left of the section is one article, which now
          closes the section on what is scored. */
-      [25, /Zvaničan događaj/],
+      ['Prijava trke koja ne ispunjava uslove iz', 25, /Zvaničan događaj/],
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
-      [29, /Uspon i spust/],
-      [37, /Ko prijavljuje i šta/],
-      [38, /^Rok$/],
-      [48, /Top liste/],
-      [62, /Posebna priznanja/],
-      [71, /Postupak/],
+      ['prednost ima podatak organizatora', 29, /Uspon i spust/],
+      ['portal uzima iz same trke', 37, /Ko prijavljuje i šta/],
+      ['Prijava rezultata posle roka iz', 38, /^Rok$/],
+      ['Top liste iz', 48, /Top liste/],
+      ['posebna priznanja iz', 62, /Posebna priznanja/],
+      ['može pokrenuti postupak iz', 71, /Postupak/],
       /* Named from the privacy policy and not from the rulebook: the
          exception for a birthday published on purpose. It is the only
          reference to the rulebook written on another page, and reading
          only the rulebook left it on 80 until the article stopped
          existing. */
-      [74, /Šta nikada nije javno/],
+      ['sa godinom ili bez nje', 74, /Šta nikada nije javno/],
     ]
 
     const titles = new Map(
@@ -1237,20 +1252,61 @@ describe('the rulebook', () => {
        it, and the number stayed on 80 through two renumberings until the
        article stopped existing. Measured on 21.08.2026, with 78 articles in
        the book and a published page pointing at the eightieth. */
-    const referenced = WRITTEN_PAGES.flatMap((text) => [
-      ...text.replace(/### Član \d+\.[^\n]*/g, '').matchAll(/[Čč]lan[a-zA-Z]* (\d+)/g),
-    ]).map((found) => Number(found[1]))
-
-    /* Every article referred to, each once, since two paragraphs point at the
-       right to be ranked. A reference to an article nobody expected fails here
-       before it reaches the headings below. */
-    expect([...new Set(referenced)].sort((left, right) => left - right)).toEqual(
-      expected.map(([number]) => number).sort((left, right) => left - right),
+    const referenced = WRITTEN_PAGES.flatMap(([slug, text]) =>
+      [
+        ...text
+          .replace(/### Član \d+\.[^\n]*/g, '')
+          .matchAll(/([^.\n]{0,60})[Čč]lan\w* (\d+)\.?\s*(\w+)?/g),
+      ].map((found) => ({
+        slug,
+        before: String(found[1]).trim(),
+        number: Number(found[2]),
+        after: String(found[3] ?? ''),
+      })),
     )
-    expect(referenced.length).toBeGreaterThanOrEqual(expected.length)
 
-    for (const [number, heading] of expected) {
-      expect(titles.get(number), `Član ${number} ne postoji`).toMatch(heading)
+    /* A number alone does not say which document it belongs to, and away from
+       the rulebook that is the whole difficulty: the terms and the privacy
+       policy quote the statute and the law beside it. So off the rulebook a
+       reference has to name its document, and only „Pravilnika" is read here.
+       Left unchecked, the guard would have demanded a Član 67 of the rulebook
+       for a sentence quoting Član 67 of the statute, and the only way to green
+       would have been to pin the statute's article to a rulebook heading. */
+    const ours = referenced.filter((one) => {
+      if (one.slug === 'pravilnik') {
+        return true
+      }
+
+      expect(
+        DOCUMENTS,
+        `${one.slug} names an article ${one.number} without saying of what document`,
+      ).toContain(one.after)
+
+      return one.after === 'Pravilnika'
+    })
+
+    for (const one of ours) {
+      const rule = expected.find(
+        (line) => one.before.includes(line[0]) && line[1] === one.number,
+      )
+
+      expect(
+        rule,
+        `${one.slug}: „${one.before} Član ${one.number}" is not what is written here`,
+      ).toBeDefined()
+      expect(
+        titles.get(one.number),
+        `${one.slug} sends a reader to Član ${one.number}, which is now "${titles.get(one.number)}"`,
+      ).toMatch(rule?.[2] ?? /$^/)
+    }
+
+    /* And every line here is still used, so a reference that leaves takes its
+       line with it rather than sitting here proving nothing. */
+    for (const [before, number] of expected) {
+      expect(
+        ours.some((one) => one.before.includes(before) && one.number === number),
+        `nothing names Član ${number} after "${before}" any more`,
+      ).toBe(true)
     }
   })
 
@@ -1473,25 +1529,36 @@ describe('how a written page is set', () => {
        measured on 21.08.2026, moving „priznanja po broju trka iz sekcije 14" to
        15, from the awards onto the code of ethics, left the whole suite green.
 
-       Both cases of the word, because the guard read only the small one and the
-       privacy policy names a section twenty-two times with a capital, in the
-       column of legal bases. Twenty-two of twenty-nine references were invisible
-       to it, and the article guard beside it had learnt the same lesson twice
-       already.
-
-       Pinned per page and number rather than per occurrence: what matters is
-       that a number, wherever it is written, still means the section it meant. */
-    const expected: [string, number, RegExp][] = [
-      ['politika-privatnosti', 4, /Kolačići/],
-      ['politika-privatnosti', 5, /Koliko čuvamo/],
-      ['uslovi-koriscenja', 7, /Pravila ponašanja i mere/],
-      ['pravilnik', 12, /Timovi, trkački parovi i klubovi/],
-      ['pravilnik', 13, /Prateća takmičenja i lige/],
-      ['pravilnik', 14, /Nagrade i priznanja/],
-      ['pravilnik', 16, /Sankcije i diskvalifikacija/],
+       In prose, pinned by the words in front of each occurrence. Pinned per
+       page and number instead, two sentences on one page could swap their
+       numbers and both still pass: „Detalji su u sekciji 12" and „sopstvena
+       takmičenja lige iz sekcije 13" swapped sends the reader after teams to
+       the accompanying competitions and the other way round, and the suite
+       stayed green. Measured 21.08.2026. */
+    const inProse: [string, string, number, RegExp][] = [
+      ['politika-privatnosti', 'pristanak ne traži', 4, /Kolačići/],
+      ['uslovi-koriscenja', 'razlog za meru iz', 7, /Pravila ponašanja i mere/],
+      ['uslovi-koriscenja', 'izriču se po postupku iz', 7, /Pravila ponašanja i mere/],
+      ['pravilnik', 'Detalji su u', 12, /Timovi, trkački parovi i klubovi/],
+      ['pravilnik', 'sopstvena takmičenja lige iz', 13, /Prateća takmičenja i lige/],
+      ['pravilnik', 'priznanja po broju trka iz', 14, /Nagrade i priznanja/],
+      ['pravilnik', 'može dovesti do mera iz', 16, /Sankcije i diskvalifikacija/],
     ]
 
-    const named = new Set<string>()
+    /* A table is not prose and is not read as prose. The column of legal bases
+       in the privacy policy points twenty-two rows at where each datum's
+       retention is written, and all twenty-two say the same thing; pinning each
+       row by the words in front of it would be pinning it by the row above.
+       They are held as a group instead: the rows of one table name one section,
+       and that section is this one. Both cases of the word, because the guard
+       read only the small one and these twenty-two carry a capital, which left
+       twenty-two of twenty-nine references invisible to it. */
+    const inTables: [string, number, RegExp][] = [
+      ['politika-privatnosti', 5, /Koliko čuvamo/],
+    ]
+
+    const seenInProse = new Set<string>()
+    const seenInTables = new Set<string>()
 
     for (const [slug, page] of pages) {
       const numbered = new Map(
@@ -1501,48 +1568,81 @@ describe('how a written page is set', () => {
           .map((found) => [Number(found[1]), found[2] ?? '']),
       )
 
+      const heading = (number: number): string => {
+        const title = numbered.get(number)
+
+        expect(title, `${slug} names section ${number}, which it does not have`).toBeDefined()
+
+        return title ?? ''
+      }
+
       for (const section of page.sections) {
-        for (const found of section.body.matchAll(/[Ss]ekcij\w+ (\d+)/g)) {
-          const number = Number(found[1])
-          const heading = numbered.get(number)
+        const rows = section.body
+          .split(NEWLINE)
+          .filter((line) => line.trimStart().startsWith('|'))
+        const prose = section.body
+          .split(NEWLINE)
+          .filter((line) => !line.trimStart().startsWith('|'))
 
-          expect(heading, `${slug} names section ${number}, which it does not have`).toBeDefined()
+        for (const found of prose.join(NEWLINE).matchAll(/([^.\n]{0,60})[Ss]ekcij\w+ (\d+)/g)) {
+          const before = String(found[1]).trim()
+          const number = Number(found[2])
+          const rule = inProse.find(
+            (one) => one[0] === slug && before.includes(one[1]) && one[2] === number,
+          )
 
-          const rule = expected.find((one) => one[0] === slug && one[1] === number)
-
-          expect(rule, `${slug} names section ${number}, which nothing here accounts for`).toBeDefined()
           expect(
-            rule?.[2].test(heading ?? ''),
-            `${slug} sends a reader to section ${number}, which is now "${heading}"`,
+            rule,
+            `${slug}: „${before} sekcija ${number}" is not what is written here`,
+          ).toBeDefined()
+          expect(
+            rule?.[3].test(heading(number)),
+            `${slug} sends a reader to section ${number}, which is now "${heading(number)}"`,
           ).toBe(true)
 
-          named.add(`${slug} ${number}`)
+          seenInProse.add(`${slug} ${before} ${number}`)
+        }
+
+        const inThisTable = [
+          ...new Set(
+            [...rows.join(NEWLINE).matchAll(/[Ss]ekcij\w+ (\d+)/g)].map((found) =>
+              Number(found[1]),
+            ),
+          ),
+        ]
+
+        expect(
+          inThisTable.length,
+          `${slug}, ${section.heading}: the rows of one table name more than one section`,
+        ).toBeLessThan(2)
+
+        for (const number of inThisTable) {
+          const rule = inTables.find((one) => one[0] === slug && one[1] === number)
+
+          expect(
+            rule,
+            `${slug} sends a table to section ${number}, which nothing here accounts for`,
+          ).toBeDefined()
+          expect(
+            rule?.[2].test(heading(number)),
+            `${slug} sends a table to section ${number}, which is now "${heading(number)}"`,
+          ).toBe(true)
+
+          seenInTables.add(`${slug} ${number}`)
         }
       }
     }
 
     /* And every line here is still used, so a reference that leaves takes its
        line with it rather than sitting here proving nothing. */
-    expect([...named].sort()).toEqual(expected.map(([slug, number]) => `${slug} ${number}`).sort())
-
-    /* And where one page names the same section many times, they all have to
-       name the same one. The column of legal bases in the privacy policy points
-       twenty-two rows at where each datum's retention is written; pinned per
-       page and number, moving one row to another number that the page also uses
-       passes, because both numbers are accounted for. Measured: a row moved from
-       5 to 4 said the retention of a member's sex is written among the cookies. */
-    for (const [slug, page] of pages) {
-      for (const section of page.sections) {
-        const inTable = [
-          ...section.body.matchAll(/\|[^|\n]*[Ss]ekcij\w+ (\d+)[^|\n]*\|/g),
-        ].map((found) => Number(found[1]))
-
-        expect(
-          [...new Set(inTable)].length,
-          `${slug}, ${section.heading}: the rows of one table name more than one section`,
-        ).toBeLessThan(2)
-      }
+    for (const [slug, before, number] of inProse) {
+      expect(
+        [...seenInProse].some((one) => one.startsWith(slug) && one.endsWith(` ${number}`) && one.includes(before)),
+        `${slug} no longer says "${before} sekcija ${number}"`,
+      ).toBe(true)
     }
+
+    expect([...seenInTables].sort()).toEqual(inTables.map(([slug, number]) => `${slug} ${number}`).sort())
   })
 
 
