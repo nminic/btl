@@ -20,9 +20,9 @@ const MARKER = '[[gallery]]'
  * newline, so a document written with CRLF leaves the carriage return on the end
  * of every line: a half that is one blank line is `''` written with LF and
  * `'\r'` written with CRLF, and `!== ''` called the second one words and drew an
- * empty block with a full gap above the drawing. Measured, and the day the body
- * comes out of a `textarea` is the day it is written with CRLF, because that is
- * what a browser sends.
+ * empty block with a full gap beside the drawing, above it or below it depending
+ * on which half it was. Measured, and the day the body comes out of a `textarea`
+ * is the day it is written with CRLF, because that is what a browser sends.
  */
 function hasWords(half: string): boolean {
   return half.trim() !== ''
