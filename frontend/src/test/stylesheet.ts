@@ -11,6 +11,14 @@
  *
  * `expect` is used inside `bodyOf`, so this belongs to the test tree and nowhere
  * near what ships.
+ *
+ * **Its tests are in `styles/goldBand.test.ts`**, in the block „reading a rule
+ * out of a stylesheet", and they stayed there when the readers moved: they are
+ * written against stylesheets typed inside that file, and every awkward shape
+ * they try is a shape one of those guards met. The house habit in `src/test/` is
+ * a helper with its test beside it (`at.ts`, `at.test.ts`), so somebody looking
+ * for `stylesheet.test.ts` and not finding one would conclude this is unmeasured.
+ * It is not.
  */
 /**
  * A copy of the stylesheet with the inside of every comment blanked out, and the

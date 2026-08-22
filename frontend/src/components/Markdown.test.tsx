@@ -127,6 +127,35 @@ describe('Markdown', () => {
     expect(screen.getByRole('link', { name: 'pravilnik' })).toHaveAttribute('href', '/sr/pravilnik')
   })
 
+  it('carries a file served beside the portal as a file, not as a page of it', () => {
+    /* A file is not a route. The statute is linked from the first section of the
+       terms as `/BTL%20Statut.pdf` (owner, 22.08.2026), and read as a page it
+       became `/sr/BTL%20Statut.pdf`, which `nginx` answers with the application
+       shell: the reader would open the portal again instead of the document, and
+       nothing on the screen would say why.
+
+       Told apart by the extension at the end, which is the whole of what makes a
+       path a file here. It is still this host: two slashes are refused above. */
+    render(<Markdown text="Primenjuje se [Statut](/BTL%20Statut.pdf) udruženja." />)
+
+    expect(screen.getByRole('link', { name: 'Statut' })).toHaveAttribute(
+      'href',
+      '/BTL%20Statut.pdf',
+    )
+  })
+
+  it('still reads a page whose name merely has a dot in it as a page', () => {
+    /* The other side of the rule, so „ends in a dot and letters" does not eat a
+       page. Two to four letters after the last dot is a file extension; a
+       longer tail is a word. */
+    render(<Markdown text="Vidi [ligu](/liga/beograd.trka.velika)." />)
+
+    expect(screen.getByRole('link', { name: 'ligu' })).toHaveAttribute(
+      'href',
+      '/sr/liga/beograd.trka.velika',
+    )
+  })
+
   it('carries an address of electronic mail as something to write to', () => {
     render(<Markdown text="Pišite nam na [info@primer.rs](mailto:info@primer.rs)." />)
 

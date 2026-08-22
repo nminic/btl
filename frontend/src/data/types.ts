@@ -297,8 +297,12 @@ export type PageSection = {
    * section of it rather than a screen of their own (04.08.2026).
    *
    * The list is closed and it is this: `ducats`, the wall of every ducat the
-   * league awards, `prices`, the price list of the membership fee, and
-   * `statute`, the statute offered for download at the foot of the rulebook.
+   * league awards, and `prices`, the price list of the membership fee.
+   *
+   * `statute` was a third value for one day, 22.08.2026: the owner asked for the
+   * statute at the foot of the rulebook in the morning and, on reading the terms
+   * the same evening, asked for it to be a link in their first section instead.
+   * A link in prose needs no drawing and no third value.
    *
    * `prices` is here for the same reason `ducats` is. The statute puts the
    * amount of the fee with the management board (član 24), so the rulebook names
@@ -306,7 +310,7 @@ export type PageSection = {
    * a third copy of figures that already live in `data/pricing.ts`, and the copy
    * that drifts is the one a member reads.
    */
-  gallery?: 'ducats' | 'prices' | 'statute'
+  gallery?: 'ducats' | 'prices'
 }
 
 /** A page of written text: the rulebook, the terms, the page about the league.

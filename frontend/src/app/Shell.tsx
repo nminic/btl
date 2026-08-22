@@ -124,11 +124,6 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
   )
 }
 
-/** The statute as it is served, named the way the owner named it (21.08.2026).
- *  The space is written out, because a browser asks for it that way and a link that
- *  differs from the file by one character is a link to nothing. */
-const STATUTE_FILE = '/BTL%20Statut.pdf'
-
 export function Shell() {
   const main = useRef<HTMLElement>(null)
   const { locale, t } = useI18n()
@@ -263,17 +258,14 @@ export function Shell() {
           <a className="shell__link" href={`mailto:${CONTACT_ADDRESS}`}>
             {t('shell.contact')}
           </a>
-          {/* The statute itself, as the document it is. Član 34 stav 6 of it puts the
-              statute and the general acts of the association on the internet page, and
-              član 39 stav 2 gives three days from the day it was adopted to do it. It
-              used to be a page of twenty sections; the owner asked on 20.08.2026 that it
-              not be pushed at members and visitors, and on 21.08.2026 that the document
-              itself be published instead. A link in the footer to the signed file is both
-              things at once: published, and not in anybody's way. */}
-          <a className="shell__link" href={STATUTE_FILE}>
-            {t('shell.statute')}
-          </a>
         </nav>
+        {/* The statute is not linked from here any more (owner, 22.08.2026: „izbaci
+            i dugme Statut iz footera sajta, ne želim ga tu"). Član 34 stav 6 of the
+            statute puts it on the internet page of the association and član 39 stav 2
+            gives three days to do it, and that obligation is met by the link in the
+            first section of the terms of use, which is where a reader looking for the
+            document would go. It was a page of twenty sections until 20.08.2026, then a
+            file linked from here; the file stays, the button goes. */}
         <p className="shell__note">{t('shell.footerNote')}</p>
         {/* The credit for the codebook of towns behind the place field is not
             here any more (owner, 11.08.2026). GeoNames is CC BY 4.0 and asks to

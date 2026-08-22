@@ -51,11 +51,18 @@ const LINK = /^\[[^\]]+\]\([^)\s]+\)$/
  * page somebody else typed is a script on the portal. Anything outside this list
  * stays literal text, so nothing is silently swallowed either. */
 function addressOf(url: string): { inside: boolean; href: string } | undefined {
-  /* One slash is a page of this portal. Two is another host, which a browser
-     reads as a scheme-relative address and the router would turn into a path of
-     ours; neither is what somebody writing a page meant. */
+  /* One slash is this portal. Two is another host, which a browser reads as a
+     scheme-relative address and the router would turn into a path of ours;
+     neither is what somebody writing a page meant. */
   if (url.startsWith('/') && !url.startsWith('//')) {
-    return { inside: true, href: url }
+    /* A file served beside the application is not a route of it. The statute is
+       linked from the terms as `/BTL%20Statut.pdf` (owner, 22.08.2026), and read
+       as a page it became `/sr/BTL%20Statut.pdf`, which the router answers with
+       the application shell: the reader would open the portal again instead of
+       the document. An address that ends in a file extension is therefore served
+       as it is written. It is still this host, because the two slashes are
+       already refused above. */
+    return { inside: !/\.[a-z0-9]{2,4}$/i.test(url), href: url }
   }
 
   if (url.startsWith('mailto:') || url.startsWith('https://') || url.startsWith('http://')) {

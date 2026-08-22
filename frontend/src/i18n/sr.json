@@ -208,7 +208,6 @@
     "settings": "Podešavanja",
     "signIn": "Prijavi se",
     "contact": "Kontakt",
-    "statute": "Statut",
     "home": "Naslovna strana",
     "join": "Učlani se",
     "openAccount": "Otvori nalog"
@@ -1302,8 +1301,7 @@
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",
-    "openSections": "Sekcije pravilnika",
-    "statuteFile": "BTL Statut"
+    "openSections": "Sekcije pravilnika"
   },
   "awards": {
     "trophies": "Pehari",

@@ -69,10 +69,16 @@ describe('what the written pages say about age', () => {
        season and an age together": the junior price genuinely is a ceiling over
        the season, and a later tidy-up that made these two consistent by pulling
        the price onto the day of payment would be a different mistake. Which day
-       the price is measured on is still open in PDL P7. */
+       the price is measured on is still open in PDL P7.
+
+       One page and not two since 22.08.2026: the owner struck the paragraph from
+       the terms of use, where it stood beside the sentence saying the age of the
+       price has nothing to do with the two ages a parent is asked about. The
+       rulebook keeps it, which is where a price belongs, and the count is held
+       so the rule cannot quietly acquire a second home again. */
     const junior = BODIES.filter((one) => one.body.includes('plaća juniorsku cenu'))
 
-    expect(junior).toHaveLength(2)
+    expect(junior.map((one) => one.slug)).toEqual(['pravilnik'])
     for (const one of junior) {
       expect(one.body, `${one.slug} / ${one.heading}`).toMatch(
         /bar jedan dan ima 14 godina ili manje/,

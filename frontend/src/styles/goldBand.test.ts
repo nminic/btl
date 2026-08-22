@@ -36,9 +36,9 @@ function read(path: string): string {
   return readFileSync(join(process.cwd(), path), 'utf-8')
 }
 
-
-/* The two readers above, on stylesheets written here rather than on the real
- * ones.
+/* The readers in `test/stylesheet.ts`, on stylesheets written here rather than
+ * on the real ones. They lived in this file until 22.08.2026 and their tests
+ * stayed behind when they moved, which is why this says where they are.
  *
  * Everything else in this file leans on them, so a mistake in either is a dozen
  * guards quietly reporting that a rule is where it is not. The real sheets prove

@@ -600,39 +600,6 @@ describe('one written section, drawn on its own', () => {
     )
   }
 
-  it('wraps a sign-off as one row, and leaves every other drawing in the column', () => {
-    /* The statute stands **beside** the name of the association and not above it
-       (owner, 22.08.2026: „sa desne strane u liniji sa potpisom"). That is the
-       one drawing wrapped rather than stacked, and nothing measured it: turning
-       the branch off dropped the statute into the ordinary column, full width
-       and over the signature, and the whole suite stayed green.
-
-       Both halves are held. A row for the sign-off, and no row for the two
-       drawings that were here first, because the wrapper would put the wall of
-       ducats and the price list beside the words they belong under. */
-    const { container } = draw({
-      heading: 'Proba',
-      body: ['---', '', '[[gallery]]', '', 'Sportsko udruženje BTL'].join(NL),
-      gallery: 'statute',
-    })
-
-    const row = must(
-      container.querySelector('.section-body__signoff'),
-      'the row the sign-off is wrapped in',
-    )
-
-    expect(shape(container)).toEqual(['words()', 'the drawing'])
-    expect([...row.children].map((block) => block.className)).toEqual(['markdown', 'statute'])
-
-    const plain = draw({
-      heading: 'Proba',
-      body: ['Pre.', '', '[[gallery]]', '', 'Posle.'].join(NL),
-      gallery: 'prices',
-    })
-
-    expect(plain.container.querySelector('.section-body__signoff')).toBeNull()
-  })
-
   it('takes the mark with spaces around it, and never prints it', () => {
     /* The trimming, which nothing else reads. A mark written with a space in
        front of it is still a line holding nothing but the mark, and a portal
@@ -1491,9 +1458,21 @@ describe('the rulebook', () => {
       expect(whole(page)).not.toMatch(/nikad zamena za link/)
       /* The picture, not any picture at all: „Slika bez komentara se ne prihvata
          kao dokaz" is the rule that stayed, said the other way round, and a ban
-         on the bare phrase failed it. Measured. */
-      expect(whole(page)).not.toMatch(/[Ss]lika [a-zčćžšđ]+ se ne prihvata kao dokaz/)
-      expect(whole(page)).not.toMatch(/slika diplome se ne prihvata/)
+         on the bare phrase failed it.
+       *
+         Written as „everything of that shape except the one that stayed" rather
+         than as a list of the shapes that must not appear. Listed, three plain
+         restatements walked past it, all measured: „Slika se ne prihvata kao
+         dokaz." with no word between, the same with „Fotografija", and „Slika
+         diplome se ne prihvata." with a capital and no „kao dokaz" at the end.
+         A ban that has to enumerate its subject is a ban on the wording. */
+      for (const said of whole(page).split(/(?<=\.)\s+/)) {
+        if (/ne prihvata/.test(said) && !/(bez|osim|jedino|samo)/i.test(said)) {
+          expect(said, `${page} refuses a picture as proof again`).not.toMatch(
+            /[Ss]lik|[Ff]otografij|[Dd]iplom/,
+          )
+        }
+      }
     }
   })
 
@@ -2372,16 +2351,23 @@ describe('what the written pages say the fee buys', () => {
     expect(sectionOf('uslovi-koriscenja', /Pehare ne šaljemo poštom/)).toMatch(sentence)
   })
 
-  it('quotes the processing fee in the terms as the number the portal charges', () => {
-    /* The terms are the binding document for the fee, and they carried the
-       three euro as a typed number while every screen reads it from
-       `pricing.ts`. Changing the constant would have left the one document a
-       member can hold us to saying the old amount. */
-    const terms = sectionOf('uslovi-koriscenja', /taksa za obradu plaćanja/)
+  it('quotes the processing fee as the number the portal charges, in its one home', () => {
+    /* A written document carried the three euro as a typed number while every
+       screen reads it from `pricing.ts`. Changing the constant would have left
+       the document a member can hold us to saying the old amount.
 
-    expect(terms).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
-    expect(sectionOf('uslovi-koriscenja', /prema udruženju/)).toMatch(
-      new RegExp(`taksu za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`),
+       That home was the terms of use until 22.08.2026, in two places. The owner
+       struck both — the fee is the rulebook's business, and the rulebook says it
+       under the article on the price. So the guard follows the sentence to where
+       it now lives, and holds that it lives in one place: two homes for one
+       number is how the drift started. */
+    const carrying = Object.entries(WRITTEN).filter(([, page]) =>
+      page.sections.some((section) => /taksa za obradu plaćanja/.test(section.body)),
+    )
+
+    expect(carrying.map(([slug]) => slug)).toEqual(['pravilnik'])
+    expect(sectionOf('pravilnik', /taksa za obradu plaćanja/)).toMatch(
+      new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`),
     )
   })
 
