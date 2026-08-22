@@ -109,6 +109,40 @@ export function isVisible(field: FieldDef, values: FormValues, today: Date): boo
  * an empty date is an unanswered question, not an answer of `young`.
  */
 export function asAsked(field: FieldDef, values: FormValues, today: Date): FieldDef {
+  return byAge(byAnswer(field, values), values, today)
+}
+
+/** Whether a field has been answered at all. A picture is held as the name of
+ *  the chosen file (FormRenderer.tsx), so an unanswered one is the empty
+ *  string, like every other field on the form. */
+function answered(values: FormValues, name: string): boolean {
+  return String(values[name] ?? '').trim() !== ''
+}
+
+/**
+ * The field as another field's answer makes it: the link the picture lets go,
+ * and the comment the picture demands (Član 37, owner 22.08.2026).
+ *
+ * One pass and not two rules chained, because no field carries both and a field
+ * that did would be a question about what wins.
+ */
+function byAnswer(field: FieldDef, values: FormValues): FieldDef {
+  const loosened = field.optionalWhenFilled
+
+  if (loosened !== undefined && answered(values, loosened.field)) {
+    return { ...field, required: false }
+  }
+
+  const tightened = field.requiredWhenFilled
+
+  if (tightened !== undefined && answered(values, tightened.field)) {
+    return { ...field, required: true }
+  }
+
+  return field
+}
+
+function byAge(field: FieldDef, values: FormValues, today: Date): FieldDef {
   const rule = field.optionalWhenYoungerThan
 
   if (rule === undefined || field.required !== true) {

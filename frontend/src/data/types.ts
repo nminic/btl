@@ -297,7 +297,8 @@ export type PageSection = {
    * section of it rather than a screen of their own (04.08.2026).
    *
    * The list is closed and it is this: `ducats`, the wall of every ducat the
-   * league awards, and `prices`, the price list of the membership fee.
+   * league awards, `prices`, the price list of the membership fee, and
+   * `statute`, the statute offered for download at the foot of the rulebook.
    *
    * `prices` is here for the same reason `ducats` is. The statute puts the
    * amount of the fee with the management board (član 24), so the rulebook names
@@ -305,7 +306,7 @@ export type PageSection = {
    * a third copy of figures that already live in `data/pricing.ts`, and the copy
    * that drifts is the one a member reads.
    */
-  gallery?: 'ducats' | 'prices'
+  gallery?: 'ducats' | 'prices' | 'statute'
 }
 
 /** A page of written text: the rulebook, the terms, the page about the league.

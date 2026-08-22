@@ -159,6 +159,68 @@ describe('conditional fields', () => {
   })
 })
 
+describe('a picture that lets one field go and demands another', () => {
+  /* Član 37, owner 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim
+     rezultatima postaje neobavezan, ali polje Komentar postaje obavezno."
+
+     Two fields and one answer between them, so both directions are measured
+     here: the link with a picture and without, and the comment with a picture
+     and without. Held on `validateForm` rather than on the flag, because what
+     the member meets is whether the form goes through. */
+  const link: FieldDef = {
+    name: 'link',
+    type: 'text',
+    labelKey: 'x',
+    required: true,
+    optionalWhenFilled: { field: 'photo' },
+  }
+  const comment: FieldDef = {
+    name: 'comment',
+    type: 'textarea',
+    labelKey: 'x',
+    requiredWhenFilled: { field: 'photo' },
+  }
+  const photo: FieldDef = { name: 'photo', type: 'photo', labelKey: 'x' }
+  const form: FormDef = { id: 'r', titleKey: 't', submitKey: 's', fields: [link, comment, photo] }
+  const today = new Date(Date.UTC(2026, 7, 22))
+
+  it('demands the link and leaves the comment alone while there is no picture', () => {
+    expect(validateForm(form, { link: '', comment: '', photo: '' }, today)).toEqual({
+      link: { key: 'form.errors.required' },
+    })
+  })
+
+  it('lets the link go and demands the comment once the picture is there', () => {
+    expect(validateForm(form, { link: '', comment: '', photo: 'sat.jpg' }, today)).toEqual({
+      comment: { key: 'form.errors.required' },
+    })
+    expect(
+      validateForm(form, { link: '', comment: 'Sat pokazuje 3:41', photo: 'sat.jpg' }, today),
+    ).toEqual({})
+  })
+
+  it('reads a picture of blanks as no picture', () => {
+    /* A file whose name is spaces is not a file. Trimmed rather than compared to
+       the empty string, so a value that looks answered and is not cannot let the
+       link go. */
+    expect(validateForm(form, { link: '', comment: '', photo: '   ' }, today)).toEqual({
+      link: { key: 'form.errors.required' },
+    })
+
+    /* And no key at all reads the same way. A form hands in a value for every
+       field it defines, so this is the shape a caller writes by hand rather
+       than one the screen produces; read as an answer it would let the link go
+       for a picture nobody chose. */
+    expect(validateForm(form, { link: '', comment: '' }, today)).toEqual({
+      link: { key: 'form.errors.required' },
+    })
+  })
+
+  it('leaves a field with neither rule as it is written', () => {
+    expect(validateForm(form, { link: 'https://x.rs', comment: '', photo: '' }, today)).toEqual({})
+  })
+})
+
 describe('a field asked of everybody and demanded of some', () => {
   const document_: FieldDef = {
     name: 'idNumber',

@@ -1317,9 +1317,17 @@ describe('the rulebook', () => {
       ['pravilnik', 'prednost ima podatak organizatora', 29, /Uspon i spust/],
       ['pravilnik', 'portal uzima iz same trke', 37, /Ko prijavljuje i šta/],
       ['pravilnik', 'Prijava rezultata posle roka iz', 38, /^Rok$/],
-      ['pravilnik', 'Top liste iz', 48, /Top liste/],
+      /* „Top liste iz Člana 48" stood in the list of what is kept per sex until
+         22.08.2026, and the owner struck it: the top boards are combined and the
+         code has always built them that way, with no gender filter anywhere in
+         `topByKilometers`, `topByTimeOnCourse`, `topByCategory` or the progress
+         board. The article named a reference that the portal did not honour. */
       ['pravilnik', 'posebna priznanja iz', 62, /Posebna priznanja/],
       ['pravilnik', 'može pokrenuti postupak iz', 71, /Postupak/],
+      /* The one exception to a rulebook that does not change inside a season,
+         added by the owner on 22.08.2026: the article on sponsors' prizes, which
+         is filled in as sponsorship is secured. */
+      ['pravilnik', 'U toku sezone se ne menja, osim', 65, /Sponzorske nagrade/],
       /* Named from the privacy policy and not from the rulebook: the
          exception for a birthday published on purpose. It is the only
          reference to the rulebook written on another page, and reading
@@ -1450,9 +1458,12 @@ describe('the rulebook', () => {
     expect(rulebook).toMatch(/najkasnije mesec dana pre dana održavanja/)
     expect(rulebook).toMatch(/Zvanični rezultati su objavljeni posle događaja/)
     expect(rulebook).toMatch(/Na događaju je učestvovalo najmanje 50 učesnika/)
+    /* „neki od ova tri" od 22.08.2026, ne „jedan": diskrecija nije bila
+       ograničena na tačno jedan propušten uslov, a rečenica je tako čitana. */
     expect(rulebook).toMatch(
-      /zadržava diskreciono pravo da prizna i događaj koji ne ispunjava jedan/,
+      /zadržava diskreciono pravo da prizna i događaj koji ne ispunjava neki/,
     )
+    expect(rulebook).not.toMatch(/koji ne ispunjava jedan od ova tri/)
   })
 
   it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
@@ -1474,8 +1485,17 @@ describe('the rulebook', () => {
 
   it('keeps a first season member in one category and only one', () => {
     /* Owner, 03.08.2026: no crossing into the age band mid-year and no running
-       in both at once. It closed the one question the article had left open. */
-    expect(rulebook).toMatch(/ne konkuriše u generalnom plasmanu i ne konkuriše u uzrasnoj kategoriji/)
+       in both at once. It closed the one question the article had left open.
+
+       And a beginner **does** run in the general standing. The article said the
+       opposite until 22.08.2026, and the code never did: `rankingFor` with no
+       category asked for takes everybody of that gender who has raced, beginners
+       among them. The owner: „Početnici i početnice učestvuju u generalnom
+       plasmanu, ali je mala šansa da je osvoje." So the rulebook was the wrong
+       one of the two, and the sentence is held here in the negative as well, so
+       it cannot come back without this failing. */
+    expect(rulebook).not.toMatch(/ne konkuriše u generalnom plasmanu/)
+    expect(rulebook).toMatch(/Početnik ne konkuriše u uzrasnoj kategoriji/)
     expect(rulebook).toMatch(/Nastupa u dve kategorije istovremeno nema/)
     expect(rulebook).toMatch(/promena stupa na snagu od naredne sezone/)
   })
@@ -1517,7 +1537,9 @@ describe('the rulebook', () => {
     /* The last of the blanks the rulebook was carrying, answered by the owner on
        04.08.2026: the article that asked the question is gone and the answer is
        one sentence in the article about writing a new one each season. */
-    expect(rulebook).toMatch(/U toku sezone se ne menja\./)
+    expect(rulebook).toMatch(
+      /U toku sezone se ne menja, osim člana 65 koji objavljuje specifikaciju/,
+    )
     expect(rulebook).not.toMatch(/Izmene u toku sezone/)
   })
 

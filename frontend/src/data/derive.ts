@@ -847,20 +847,24 @@ export function topByCategory(
 }
 
 /**
- * Most kilometres in a season. Ladder: kilometres, more races, vertical, points,
+ * Most kilometres in a season. Ladder: kilometres, points, more races, vertical,
  * then reached earlier, then the member number.
  *
- * The fifth rung is in P12 and in Article 49 of the rulebook, and it was missing
- * here while the board of races by length already had it: two members level on
- * all four of the others were left in whatever order they happened to be in, and
- * the one who got there in March shared a place with the one who got there in
- * December.
+ * Points sit on the second rung and not the fourth since the owner's fourth
+ * reading of the rulebook, 22.08.2026 (Article 49): between two members level on
+ * kilometres, what they took for those kilometres separates them before the
+ * count of races does.
+ *
+ * The day is the rung below all of them, and it was missing here while the board
+ * of races by length already had it: two members level on everything above were
+ * left in whatever order they happened to be in, and the one who got there in
+ * March shared a place with the one who got there in December.
  */
 const BY_KILOMETERS = byLadder<TallyRow>([
   (row) => row.kilometers,
+  (row) => row.points,
   (row) => row.races,
   VERTICAL,
-  (row) => row.points,
   // byLadder always puts the larger number first, so the earlier day is fed to
   // it negated.
   (row) => -Date.parse(row.reachedOn),
@@ -877,10 +881,13 @@ export function topByKilometers(
   return withPlaces(rows, BY_KILOMETERS, (row) => row.competitor.memberNumber).slice(0, limit)
 }
 
-/** Longest on the course in a season. Ladder: time, kilometres, more races,
- *  vertical. The day is not a rung on this one (PDL P12). */
+/** Longest on the course in a season. Ladder: time, points, kilometres, more
+ *  races, vertical. Points were not a rung here at all until the owner's fourth
+ *  reading, 22.08.2026 (Article 49); they now stand directly under the time. The
+ *  day is not a rung on this one (PDL P12). */
 const BY_TIME_ON_COURSE = byLadder<TotalsRow>([
   (row) => row.seconds,
+  (row) => row.points,
   (row) => row.kilometers,
   (row) => row.races,
   VERTICAL,
@@ -1014,11 +1021,15 @@ export function bestSingleRaces(
       : [{ competitor, result, seasonTotals }]
   })
 
+  /* Points on that one race, then the longer race, then what the member took in
+     the whole season, then their kilometres in it (Article 49, owner's fourth
+     reading 22.08.2026). The count of races in the season was the fourth rung
+     until then and is not a measure any more. */
   const ladder = byLadder<(typeof rows)[number]>([
     (row) => row.result.points,
     (row) => row.result.distanceKm,
+    (row) => row.seasonTotals.points,
     (row) => row.seasonTotals.kilometers,
-    (row) => row.seasonTotals.races,
   ])
 
   return withPlaces(rows, ladder, (row) => row.competitor.memberNumber).slice(0, limit)
