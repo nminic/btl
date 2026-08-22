@@ -266,7 +266,9 @@ export function Shell() {
             first section of the terms of use, which is where a reader looking for the
             document would go. It was a page of twenty sections until 20.08.2026, then a
             file linked from here; the file stays, the button goes. */}
-        <p className="shell__note">{t('shell.footerNote')}</p>
+        {/* „Portal je u izradi. Sve što ovde vidiš su probni podaci." stajalo je
+            ovde do 22.08.2026. Vlasnik: „Ovo obriši da se više ne prikazuje, znam
+            do kada su podaci probni a kad će postati stvarni." */}
         {/* The credit for the codebook of towns behind the place field is not
             here any more (owner, 11.08.2026). GeoNames is CC BY 4.0 and asks to
             be named wherever the material is shared, which the licence lets a

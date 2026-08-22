@@ -2350,6 +2350,31 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
+  it('signs all three documents the same way, with the day they last changed', () => {
+    /* Owner, 22.08.2026: „Potpis sa poslednjom izmenom identično kao na strani
+       Uslovi korišćenja. Isto uradi i u Pravilniku... Svi datumi poslednjih
+       izmena treba da budu 15.9."
+
+       Three documents, one sign-off, and it was three different things before:
+       the rulebook had no date at all, the policy put the date above the name
+       and added the address of the site beside it, and only the terms were in
+       the shape he asked for. Held together rather than one by one, because
+       what he asked for is that they **match**: pinned separately, the next one
+       to be reworded drifts and nothing says so. */
+    for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
+      const sections = must(written[slug], slug).sections
+      const last = must(sections[sections.length - 1], `the last section of ${slug}`).body
+
+      expect(last, `${slug} does not sign off the way the other two do`).toMatch(
+        new RegExp(
+          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 15.09.2026.']
+            .join(NEWLINE)
+            .replaceAll('.', String.fromCharCode(92) + '.') + String.fromCharCode(36),
+        ),
+      )
+    }
+  })
+
   it('says who pays the postage in both documents that promise the parcel', () => {
     /* Owner, 22.08.2026, on the fourth reading: „Poštanske troškove snosi Član."
        He put it in Član 64, and the terms carry the same promise in their own

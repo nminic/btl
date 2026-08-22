@@ -140,9 +140,13 @@
   gap: var(--space-12);
 }
 
+/* Centrirane (vlasnik, 22.08.2026). Sada su jedino što u podnožju stoji, pošto
+   je traka o probnim podacima izašla, pa red uz levu ivicu izgleda kao ostatak
+   nečega. */
 .shell__footer-links {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-4) var(--space-8);
 }
 

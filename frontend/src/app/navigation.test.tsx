@@ -4,6 +4,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import WRITTEN from '../../public/mock/pages.json'
+import sr from '../i18n/sr.json'
+import { must } from '../test/at'
 
 describe('navigation', () => {
   beforeEach(() => {
@@ -406,5 +408,24 @@ const STATUTE = '/BTL%20Statut.pdf'
     const skip = await screen.findByRole('link', { name: 'Preskoči na sadržaj' })
     expect(skip).toHaveAttribute('href', '#content')
     expect(screen.getByRole('main')).toHaveAttribute('id', 'content')
+  })
+
+  it('carries three links in the footer and nothing else', async () => {
+    /* „Portal je u izradi. Sve što ovde vidiš su probni podaci." stood under
+       them until 22.08.2026. Owner: „Ovo obriši da se više ne prikazuje, znam do
+       kada su podaci probni a kad će postati stvarni."
+     *
+       Held as an absence and as a count, because a sentence removed from the
+       markup and left in the dictionary comes back the first time somebody
+       reaches for a note to put there. The dictionary is read too: the key is
+       gone, and a key nobody uses is a sentence waiting for a place. */
+    renderAt('/sr')
+
+    const footer = must(document.querySelector('.shell__footer'), 'the footer')
+    const links = [...footer.querySelectorAll('a')].map((one) => one.textContent?.trim())
+
+    expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
+    expect(footer.textContent ?? '').not.toMatch(/probni podaci|u izradi/)
+    expect(JSON.stringify(sr)).not.toContain('Portal je u izradi')
   })
 })
