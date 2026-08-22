@@ -1,3 +1,5 @@
+import { must } from './at'
+
 /**
  * Reading a rule out of a stylesheet, for the guards that hold a declaration
  * jsdom cannot compute.
@@ -150,3 +152,50 @@ export function bodyOf(css: string, selector: string): string {
   expect(at, `${selector} is not a rule of its own in the stylesheet`).toBeGreaterThan(-1)
   return css.slice(at, closes(css, at))
 }
+
+/**
+ * Every rule of a sheet that applies **unconditionally**, with its selector.
+ *
+ * Read through the browser's own parser and not as text: a sheet handed to a
+ * `<style>` element answers `sheet.cssRules`, and a rule inside `@media` or
+ * `@supports` is not among the top level ones. That is the whole difference. Read
+ * as text, a rule wrapped in `@media print` is still there to be found, while on
+ * a screen it no longer applies — a review measured exactly that on `Entity.css`
+ * on 17.08.2026, with four guards staying green over two dead rules, and it is
+ * written down as ADL A18: **ask the parser about structure, ask the text only
+ * whether a declaration shouts.**
+ *
+ * The text readers above are the exception that proves it. They exist for
+ * `goldBand.test.ts`, which does arithmetic on custom properties jsdom does not
+ * compute at all, and they say so where they are used. Anything asking „does this
+ * rule apply" belongs here instead.
+ */
+export function unconditionalRules(css: string, named: string): CSSStyleRule[] {
+  const tag = document.createElement('style')
+
+  tag.textContent = css
+  document.head.append(tag)
+
+  const sheet = tag.sheet
+
+  expect(sheet, `jsdom did not parse ${named}`).not.toBeNull()
+
+  const rules = [...(sheet?.cssRules ?? [])].filter(
+    (rule): rule is CSSStyleRule => rule instanceof CSSStyleRule,
+  )
+
+  tag.remove()
+
+  return rules
+}
+
+/** The one unconditional rule written for exactly this selector, and a failure
+ *  naming it where there is none or more than one. */
+export function ruleFor(css: string, selector: string, named: string): CSSStyleDeclaration {
+  const found = unconditionalRules(css, named).filter((rule) => rule.selectorText === selector)
+
+  expect(found.length, `${selector} is not one unconditional rule of ${named}`).toBe(1)
+
+  return must(found[0], `the rule ${selector}`).style
+}
+

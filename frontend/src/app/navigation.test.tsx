@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import WRITTEN from '../../public/mock/pages.json'
+import sr from '../i18n/sr.json'
 
 describe('navigation', () => {
   beforeEach(() => {
@@ -406,5 +407,35 @@ const STATUTE = '/BTL%20Statut.pdf'
     const skip = await screen.findByRole('link', { name: 'Preskoči na sadržaj' })
     expect(skip).toHaveAttribute('href', '#content')
     expect(screen.getByRole('main')).toHaveAttribute('id', 'content')
+  })
+
+  it('carries three links in the footer and nothing else', async () => {
+    /* „Portal je u izradi. Sve što ovde vidiš su probni podaci." stood under
+       them until 22.08.2026. Owner: „Ovo obriši da se više ne prikazuje, znam do
+       kada su podaci probni a kad će postati stvarni."
+     *
+       Found by its landmark and not by its class. Asked as `.shell__footer`, the
+       footer answered to a `div` with that class and no `contentinfo` role, and
+       the navigation inside it answered with no accessible name: the class is
+       still there, so the guard sees a footer while a screen reader has lost
+       both. Measured, and the whole suite stayed green.
+     *
+       „And nothing else" is measured too, since the name says it. The note is
+       held as an absence in both homes — the markup and the dictionary — because
+       a sentence deleted from one and left in the other comes back the first time
+       somebody reaches for a note to put there. And the footer is held to having
+       nothing but that navigation in it: a line of small print added under the
+       links passed everything this test had before. */
+    renderAt('/sr')
+
+    const footer = await screen.findByRole('contentinfo')
+    const nav = within(footer).getByRole('navigation', { name: 'Uslovi i pravila' })
+    const links = within(nav)
+      .getAllByRole('link')
+      .map((one) => one.textContent?.trim())
+
+    expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
+    expect(footer.textContent?.trim()).toBe(links.join(''))
+    expect(JSON.stringify(sr)).not.toContain('Portal je u izradi')
   })
 })

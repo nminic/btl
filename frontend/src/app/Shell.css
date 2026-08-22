@@ -140,17 +140,20 @@
   gap: var(--space-12);
 }
 
+/* Centred (owner, 22.08.2026). They are all that stands in the footer since the
+   note about trial data left with them, and a row against the left edge under
+   nothing at all reads as the remains of something.
+
+   `.shell__note` used to be below this and is gone with that note: the one
+   element wearing it went out of Shell.tsx, and a rule nothing wears still ships
+   in the bundle. */
 .shell__footer-links {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-4) var(--space-8);
 }
 
-.shell__note {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
 
 /* From tablet up the navigation is always visible, so the menu button and the
    collapsed state stop existing. */

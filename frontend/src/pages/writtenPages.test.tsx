@@ -2350,6 +2350,69 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
+  it('signs all three documents the same way, with the day they last changed', () => {
+    /* Owner, 22.08.2026: „Potpis sa poslednjom izmenom identično kao na strani
+       Uslovi korišćenja. Isto uradi i u Pravilniku... Svi datumi poslednjih
+       izmena treba da budu 15.9."
+
+       Three documents, one sign-off, and it was three different things before:
+       the rulebook had no date at all, the policy put the date above the name
+       and added the address of the site beside it, and only the terms were in
+       the shape he asked for. Held together rather than one by one, because
+       what he asked for is that they **match**: pinned separately, the next one
+       to be reworded drifts and nothing says so. */
+    for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
+      const sections = must(written[slug], slug).sections
+      const last = must(sections[sections.length - 1], `the last section of ${slug}`).body
+
+      /* Anchored at both ends of the sign-off and not only at the end of the
+         text. Held with `$` alone, the same sign-off written twice one under the
+         other passed, because the last one closes the string: the reader sees two
+         and the gate sees one. Measured. */
+      expect(last, `${slug} does not sign off the way the other two do`).toMatch(
+        new RegExp(
+          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 15.09.2026.']
+            .join(NEWLINE)
+            .replaceAll('.', String.fromCharCode(92) + '.') + String.fromCharCode(36),
+        ),
+      )
+      expect(
+        last.match(/Sportsko udruženje BTL/g)?.length,
+        `${slug} signs off more than once`,
+      ).toBe(1)
+      expect(
+        last.match(/Poslednja izmena/g)?.length,
+        `${slug} names the day it last changed more than once`,
+      ).toBe(1)
+    }
+  })
+
+  it('does not offer to name a safeguard, or a way to complain, any more', () => {
+    /* Owner, 22.08.2026: both out of the privacy policy. The sentence offering to
+       name, on request, which safeguard covers which processor, and the paragraph
+       on complaining to the Commissioner, to another country's authority, and
+       going to court.
+
+       Held as an absence, which is the half that rots: deleted and unheld, the two
+       come back the first time the policy is reworded and nobody learns of it. The
+       sentence that stays in their place is held too, so this does not pass on a
+       section somebody emptied. */
+    const policy = whole('politika-privatnosti')
+
+    expect(policy).toContain('Prvo nam pišite, jer se većina stvari reši u jednoj poruci.')
+    expect(policy).toContain('Za prenos van Evropske unije koristimo propisane mehanizme zaštite.')
+
+    for (const gone of [
+      /pojedinog pružaoca/,
+      /Povereniku za informacije/,
+      /AZOP/,
+      /sudsku zaštitu/,
+      /nadzornom organu/,
+    ]) {
+      expect(policy, `the policy offers ${String(gone)} again`).not.toMatch(gone)
+    }
+  })
+
   it('says who pays the postage in both documents that promise the parcel', () => {
     /* Owner, 22.08.2026, on the fourth reading: „Poštanske troškove snosi Član."
        He put it in Član 64, and the terms carry the same promise in their own
