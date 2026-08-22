@@ -7,6 +7,7 @@ import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
+import newResult from '../forms/definitions/unos-rezultata.form.json'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
@@ -598,6 +599,39 @@ describe('one written section, drawn on its own', () => {
       block.classList.contains('markdown') ? `words(${block.textContent ?? ''})` : 'the drawing',
     )
   }
+
+  it('wraps a sign-off as one row, and leaves every other drawing in the column', () => {
+    /* The statute stands **beside** the name of the association and not above it
+       (owner, 22.08.2026: „sa desne strane u liniji sa potpisom"). That is the
+       one drawing wrapped rather than stacked, and nothing measured it: turning
+       the branch off dropped the statute into the ordinary column, full width
+       and over the signature, and the whole suite stayed green.
+
+       Both halves are held. A row for the sign-off, and no row for the two
+       drawings that were here first, because the wrapper would put the wall of
+       ducats and the price list beside the words they belong under. */
+    const { container } = draw({
+      heading: 'Proba',
+      body: ['---', '', '[[gallery]]', '', 'Sportsko udruženje BTL'].join(NL),
+      gallery: 'statute',
+    })
+
+    const row = must(
+      container.querySelector('.section-body__signoff'),
+      'the row the sign-off is wrapped in',
+    )
+
+    expect(shape(container)).toEqual(['words()', 'the drawing'])
+    expect([...row.children].map((block) => block.className)).toEqual(['markdown', 'statute'])
+
+    const plain = draw({
+      heading: 'Proba',
+      body: ['Pre.', '', '[[gallery]]', '', 'Posle.'].join(NL),
+      gallery: 'prices',
+    })
+
+    expect(plain.container.querySelector('.section-body__signoff')).toBeNull()
+  })
 
   it('takes the mark with spaces around it, and never prints it', () => {
     /* The trimming, which nothing else reads. A mark written with a space in
@@ -2158,6 +2192,99 @@ describe('what the written pages say the fee buys', () => {
     expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
       /oslobodio plaćanja članarine prolazi bez koraka 4; članski broj i sva prava dobija/,
     )
+  })
+
+  it('asks the result form for what Član 37 says a picture changes', () => {
+    /* Owner, 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim rezultatima
+       postaje neobavezan, ali polje Komentar postaje obavezno."
+
+       Held on the form the member actually meets and not only on a form built by
+       hand in a test. Measured: the rule taken out of `unos-rezultata.form.json`
+       left all 2028 tests green, and a member with a photograph of their watch
+       and a comment still could not send the result while the hint under the
+       field told them they could.
+
+       The field each rule names is checked to be on the form as well, because a
+       typo in it is silent: a rule pointing at nothing never fires. */
+    const article = must(
+      /### Član 37\.[\s\S]*?(?=### Član 38\.)/.exec(
+        sectionOf('pravilnik', /Rezultat prijavljujete sami/),
+      ),
+      'Član 37 in its section',
+    )[0]
+
+    expect(article).toMatch(
+      /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
+    )
+
+    /* Read off the form the member meets, field by field and not through a
+       loop over a shape asserted into being: a rule nobody has written yet is
+       simply absent from the type the JSON import gives, and asserting past that
+       is asserting past the very thing this guard is for.
+
+       The field each rule names is checked to be on the form as well, because a
+       typo in it is silent: a rule pointing at nothing never fires. */
+    const named = new Set(newResult.fields.map((field) => field.name))
+    const link = must(
+      newResult.fields.find((one) => one.name === 'link'),
+      'the link field of the result form',
+    )
+    const comment = must(
+      newResult.fields.find((one) => one.name === 'comment'),
+      'the comment field of the result form',
+    )
+
+    expect(must(link.optionalWhenFilled, 'the link carries no rule').field).toBe('photo')
+    expect(must(comment.requiredWhenFilled, 'the comment carries no rule').field).toBe('photo')
+    expect(named.has('photo'), 'the rules name a field the form does not ask').toBe(true)
+  })
+
+  it('summarises in the terms only the measures the rulebook still knows', () => {
+    /* The terms send the reader to the rulebook and then say „Ukratko:", so the
+       summary answers to the article. The owner struck two of the five measures
+       on 22.08.2026 (Član 69: opomena, diskvalifikacija, isključenje), and the
+       summary went on offering the other two: a member reading the terms would
+       have seen that the league may delete their results or suspend them for
+       thirty days, out of a rulebook that no longer allows either.
+
+       Held as an absence and not only as a presence, because that is the half
+       that rots: a measure struck from the article leaves the summary passing. */
+    const terms = sectionOf('uslovi-koriscenja', /Ukratko: mere idu/)
+    /* The article and not the section it sits in. Read whole, the section also
+       holds Član 70, which begins „Brišu se svi rezultati": the absence below
+       would then be an absence of the wrong thing, and a measure put back into
+       Član 69 would pass under cover of the article after it. */
+    const article = must(
+      /### Član 69\.[\s\S]*?(?=### Član 70\.)/.exec(
+        sectionOf('pravilnik', /Za kršenje pravilnika članu se može izreći/),
+      ),
+      'Član 69 in its section',
+    )[0]
+
+    for (const measure of [/opomen/, /diskvalifikacij/, /isključenj/]) {
+      expect(terms).toMatch(measure)
+      expect(article).toMatch(measure)
+    }
+
+    for (const gone of [/brisanj/i, /suspenzij/]) {
+      expect(terms).not.toMatch(gone)
+      expect(article).not.toMatch(gone)
+    }
+  })
+
+  it('says who pays the postage in both documents that promise the parcel', () => {
+    /* Owner, 22.08.2026, on the fourth reading: „Poštanske troškove snosi Član."
+       He put it in Član 64, and the terms carry the same promise in their own
+       section on prizes; asked, he said it belongs in both.
+
+       One fact with two homes, which is the shape that goes stale: the rulebook
+       and the terms said the shirt and the medal are sent together long before
+       today, and only one of the two learnt who pays for the sending. Held here
+       so neither home can lose it alone. */
+    const sentence = /Poštanske troškove snosi Član\./
+
+    expect(sectionOf('pravilnik', /Pehari se preuzimaju lično/)).toMatch(sentence)
+    expect(sectionOf('uslovi-koriscenja', /Pehare ne šaljemo poštom/)).toMatch(sentence)
   })
 
   it('quotes the processing fee in the terms as the number the portal charges', () => {

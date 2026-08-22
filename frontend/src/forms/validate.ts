@@ -114,9 +114,16 @@ export function asAsked(field: FieldDef, values: FormValues, today: Date): Field
 
 /** Whether a field has been answered at all. A picture is held as the name of
  *  the chosen file (FormRenderer.tsx), so an unanswered one is the empty
- *  string, like every other field on the form. */
+ *  string, like every other field on the form.
+ *
+ *  A tick box is the other shape a value comes in, and `false` written out is
+ *  the word `false`, which is not empty: read through the string alone, an
+ *  unticked box answered the question and let a required field go. Asked the
+ *  same way `validateField` asks it, so one fact has one answer. */
 function answered(values: FormValues, name: string): boolean {
-  return String(values[name] ?? '').trim() !== ''
+  const value = values[name] ?? ''
+
+  return typeof value === 'boolean' ? value : value.trim() !== ''
 }
 
 /**

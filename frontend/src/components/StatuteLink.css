@@ -13,7 +13,7 @@
 
 .statute:hover,
 .statute:focus-visible {
-  border-color: var(--gold-600);
+  border-color: var(--gold-text);
 }
 
 .statute__sheet {
@@ -32,8 +32,14 @@
   fill: var(--border);
 }
 
+/* The semantic token and never the raw scale, which `tokens.css` says in so many
+   words. `--gold-600` is the gold that reaches 4.5:1 on white and it is not
+   swapped on the dark theme, so the three letters were drawn at 3.14:1 over the
+   dark surface, under the 4.5:1 this project holds itself to and at a size no
+   exception covers. `--gold-text` is `--gold-600` on light and `--gold-300` on
+   dark, which measures 10.88:1 there. */
 .statute__kind {
-  fill: var(--gold-600);
+  fill: var(--gold-text);
   font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.04em;

@@ -216,6 +216,28 @@ describe('a picture that lets one field go and demands another', () => {
     })
   })
 
+  it('reads an unticked box as no answer, the way every other check does', () => {
+    /* The other shape a value comes in. `String(false)` is the word „false",
+       which is not empty, so a box nobody ticked answered the question and let a
+       required field go. `validateField` reads `false` as unanswered; two ways
+       of asking one thing is the fault, not the box. */
+    const ticked: FieldDef = {
+      name: 'link',
+      type: 'text',
+      labelKey: 'x',
+      required: true,
+      optionalWhenFilled: { field: 'agrees' },
+    }
+    const box: FieldDef = { name: 'agrees', type: 'checkbox', labelKey: 'x' }
+    const withBox: FormDef = { id: 'b', titleKey: 't', submitKey: 's', fields: [ticked, box] }
+    const day = new Date(Date.UTC(2026, 7, 22))
+
+    expect(validateForm(withBox, { link: '', agrees: false }, day)).toEqual({
+      link: { key: 'form.errors.required' },
+    })
+    expect(validateForm(withBox, { link: '', agrees: true }, day)).toEqual({})
+  })
+
   it('leaves a field with neither rule as it is written', () => {
     expect(validateForm(form, { link: 'https://x.rs', comment: '', photo: '' }, today)).toEqual({})
   })

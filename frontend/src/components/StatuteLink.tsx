@@ -8,8 +8,15 @@ import './StatuteLink.css'
  *  The same file the footer links to (src/app/Shell.tsx). Two links to one
  *  document, and the address is written twice; it is written twice on purpose
  *  rather than shared, because sharing it would make the footer import from a
- *  component of the written pages for the sake of one string. If the file is
- *  ever renamed, a test holds both of them to the same value. */
+ *  component of the written pages for the sake of one string.
+ *
+ *  What makes that safe is a guard and not the intention: `navigation.test.tsx`
+ *  reads both links off one render and holds them to the same value, and the
+ *  guard beside it walks the footer's all the way to the bytes on disk. Written
+ *  before the guard existed, this comment claimed the guard; a renamed file then
+ *  passed all 2028 tests, and `nginx.conf` answers an unknown path with
+ *  `index.html`, so the member would have saved the application shell as a
+ *  PDF with nothing on the screen saying so. */
 const STATUTE_FILE = '/BTL%20Statut.pdf'
 
 /**

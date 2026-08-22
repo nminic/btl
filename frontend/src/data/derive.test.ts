@@ -1023,6 +1023,51 @@ describe('bestSingleRaces', () => {
     ])
   })
 
+  it('takes the kilometres of the season under the points of it, and counts no races', () => {
+    /* The two rungs under the season's points, and both were unmeasured. Taking
+       the kilometres out left the member number to settle a pair the article
+       separates, and putting the count of races back — which Article 49 struck on
+       22.08.2026 — sent three small races ahead of two large ones. Whole suite
+       green either way.
+
+       000001 and 000002 are level on the race and on the season's points, so the
+       kilometres decide; 000002 has more races and fewer kilometres, which is
+       what tells the two rungs apart. */
+    const two = [competitor('000001'), competitor('000002')]
+    const seasons = [
+      result('000001', '2027-01-01', 10),
+      result('000001', '2027-02-01', 20, { distanceKm: 40 }),
+      result('000002', '2027-01-01', 10),
+      result('000002', '2027-02-01', 10, { distanceKm: 1 }),
+      result('000002', '2027-03-01', 10, { distanceKm: 1 }),
+    ]
+
+    expect(
+      bestSingleRaces(two, seasons, 2027, 10)
+        .filter((row) => row.result.points === 10 && row.result.distanceKm === 10)
+        .map((row) => row.competitor.memberNumber),
+    ).toEqual(['000001', '000002'])
+
+    /* And the kilometres against the member number, which is the only way to see
+       that rung at all: level on everything above it, the pair with the rung
+       gone falls to the number, and the number happens to agree with the
+       kilometres in the pair above. Here it disagrees, so taking the rung out
+       reverses the two. */
+    const other = [competitor('000003'), competitor('000004')]
+    const levelOnPoints = [
+      result('000003', '2027-01-01', 10),
+      result('000003', '2027-02-01', 20, { distanceKm: 1 }),
+      result('000004', '2027-01-01', 10),
+      result('000004', '2027-02-01', 20, { distanceKm: 50 }),
+    ]
+
+    expect(
+      bestSingleRaces(other, levelOnPoints, 2027, 10)
+        .filter((row) => row.result.points === 10 && row.result.distanceKm === 10)
+        .map((row) => row.competitor.memberNumber),
+    ).toEqual(['000004', '000003'])
+  })
+
   it('ranks one result at a time, down the ladder, and only for the season asked for', () => {
     const rows = bestSingleRaces(competitors, results, 2027, 10)
 
