@@ -1489,7 +1489,11 @@ describe('the rulebook', () => {
        saying the opposite, which is what a round of review found. */
     for (const page of ['pravilnik', 'uslovi-koriscenja'] as const) {
       expect(whole(page)).not.toMatch(/nikad zamena za link/)
-      expect(whole(page)).not.toMatch(/se ne prihvata kao dokaz/)
+      /* The picture, not any picture at all: „Slika bez komentara se ne prihvata
+         kao dokaz" is the rule that stayed, said the other way round, and a ban
+         on the bare phrase failed it. Measured. */
+      expect(whole(page)).not.toMatch(/[Ss]lika [a-zčćžšđ]+ se ne prihvata kao dokaz/)
+      expect(whole(page)).not.toMatch(/slika diplome se ne prihvata/)
     }
   })
 
@@ -2249,6 +2253,15 @@ describe('what the written pages say the fee buys', () => {
       [
         'Najbolji trkački par',
         'bodovi sa zajedničkih trka, pa više zajedničkih trka, pa zajednički kilometri, pa zajedničko vreme na stazi, pa niži zbir članskih brojeva',
+      ],
+      /* All seven and not six. The seventh was left out of the first version of
+         this list, and it has a home in the code like the others (`BY_CATEGORY`):
+         rewritten to contradict it — points dropped under the vertical, „pa
+         ranije dostignuto" struck, which is the rung `-Date.parse(reachedOn)` —
+         the whole of `src/pages` stayed green. */
+      [
+        'Po broju trka po tipu',
+        'broj trka, pa bodovi iz baš tih trka, pa kilometri iz tih trka, pa vertikala iz tih trka, pa ranije dostignuto, pa niži članski broj',
       ],
     ]
     const article = sectionOf('pravilnik', /Redosled merila, dok se izjednačenje ne razreši/)
