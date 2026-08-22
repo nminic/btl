@@ -2143,21 +2143,43 @@ function sectionOf(
   slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
   says: RegExp,
 ): string {
+  const found = written[slug].sections.find((section) => says.test(section.body))
+
+  if (found === undefined) {
+    throw new Error(`no section of ${slug} says ${String(says)}`)
+  }
+
+  return found.body
+}
+
+/**
+ * The one section of a page that says something, where "one" is the claim.
+ *
+ * `sectionOf` above takes the first that matches, which is right for sixteen
+ * questions in this file that are anchored on a phrase: „Član lige je" is a
+ * definition in Član 10 and a sentence anybody may write in the code of ethics,
+ * and a guard that stopped the file over an ordinary edit to the rulebook would
+ * be a guard about itself.
+ *
+ * Here the count is the point. What is asked below is where a section **stops**,
+ * and a second section that ends on the same sentence quietly moves that question
+ * onto a section nobody meant: a guard reading the wrong section is worse than no
+ * guard, because it is green. Measured on 23.08.2026, a new section carrying the
+ * sentence „Za prenos van Evropske unije koristimo propisane mehanizme zaštite."
+ * used to move the guard under it and let the deleted sentence back.
+ *
+ * So the strictness lives with the two callers that need it and not with the
+ * sixteen that do not.
+ */
+function oneSectionOf(
+  slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
+  says: RegExp,
+): string {
   const found = written[slug].sections.filter((section) => says.test(section.body))
 
   if (found.length !== 1) {
-    /* Not "the first that says it", which is what this was until 23.08.2026 and
-       what an independent round measured the cost of: a second section that
-       mentions the same sentence quietly moves every question asked through this
-       helper onto a section nobody meant. A guard reading the wrong section is
-       worse than no guard, because it is green.
-     *
-       So an anchor that is not one section's alone is a broken anchor, and it
-       says so out loud rather than picking. Measured: a new section carrying the
-       sentence „Za prenos van Evropske unije koristimo propisane mehanizme
-       zaštite." now stops the file instead of moving the guard under it. */
     throw new Error(
-      `${String(found.length)} sections of ${slug} say ${String(says)}, and an anchor has to be one section's own`,
+      `${String(found.length)} sections of ${slug} say ${String(says)}, and this anchor has to be one section's own`,
     )
   }
 
@@ -2432,36 +2454,60 @@ describe('what the written pages say the fee buys', () => {
        three of them are the phrases these two passages are made of, and two are
        the names of the authorities, which are facts rather than wordings.
 
-       `sudsku zaštitu` and not `sud`: measured on 23.08.2026, a ban on the word
-       failed the sentence „Državnom organu podatke dajemo samo po nalogu suda",
-       which is the policy saying on what basis it hands data over rather than
-       offering anybody a court. `nadzor` is not banned at all, for the same
-       reason: section 7 tells a supervisory authority about a breach, quite
-       properly.
+       Each mark is as narrow as the passage it is made of, and two of them were
+       measured wider and taken back on 23.08.2026. `sudsku zaštitu` and not
+       `sud`, because a ban on the word failed „Državnom organu podatke dajemo samo
+       po nalogu suda", which is the policy saying on what basis it hands data over
+       rather than offering anybody a court. `Povereniku za informacije` and not
+       `poverenik`, because the Commissioner is also the authority a breach is
+       reported **to**, and section 7 may one day name it properly instead of
+       saying „nadzorni organ": in the dative it is a complaint, in the accusative
+       it is a notification, and only the first is what the owner deleted.
 
-       What neither half holds, said out loud rather than left to be discovered: a
-       **reworded** passage put in the middle of some other section. The marks
-       catch it word for word anywhere; the section end catches any wording at the
-       foot of these two; a rewording anywhere else goes past both. Nothing
-       shorter than pinning the whole document catches that, and the whole
+       Two limits, said out loud rather than left to be discovered.
+
+       `nadzornom organu` is the one mark that can still fail a sentence the policy
+       is entitled to. Section 7 says today „obaveštavamo vas i nadzorni organ";
+       written as „povredu prijavljujemo nadzornom organu", which is the same duty
+       in the dative, this stops the file. It is kept because it is what the
+       deleted paragraph offered another country's reader, and because it is what
+       `origin/main` held before this PR: dropping it would be less reach than the
+       branch it is replacing. Whoever meets that failure is writing a breach
+       notice, not an offer to complain, and should say so here.
+
+       And what neither half holds: a **reworded** passage put in the middle of a
+       section, its own included. The marks catch it word for word anywhere; the
+       section end catches any wording after the last sentence of these two; a
+       rewording above that sentence, or in any other section, goes past both.
+       Nothing shorter than pinning the whole document catches that, and the whole
        document is what the rest of this file already reads. */
     const endsOn = (sentence: string, named: string) => {
       /* Found by the whole sentence it ends on, minus the full stop, which is the
          only character in either of them a regular expression would read as
          something else.
 
-         The whole sentence and not a phrase out of it, because `sectionOf` now
+         The whole sentence and not a phrase out of it, because `oneSectionOf`
          refuses an anchor two sections share and a phrase is easy to share: „za
          obrađivače van Evropske unije primenjujemo propisane mehanizme zaštite iz
          sekcije 5", written anywhere in the policy as an ordinary cross
          reference, would have stopped this file with three words in common. The
          whole sentence is one section's own. */
-      const section = sectionOf('politika-privatnosti', new RegExp(sentence.slice(0, -1)))
+      const section = oneSectionOf('politika-privatnosti', new RegExp(sentence.slice(0, -1)))
 
       expect(
         section.trimEnd().endsWith(sentence),
         `the policy carries on after "${sentence}", so ${named}`,
       ).toBe(true)
+      /* And it is the end because it is said once. Ending on it is not the same
+         claim: a paragraph written in and the sentence repeated under it ends on
+         the sentence just as truly, and the whole of the deleted offer stood
+         between the two. Measured on 23.08.2026, that passed. The count is the
+         same shape the sign-off two tests above is held in, and for the same
+         reason. */
+      expect(
+        section.split(sentence).length - 1,
+        `the policy says "${sentence}" more than once, so what stands between them is unheld`,
+      ).toBe(1)
     }
 
     endsOn(
@@ -2475,7 +2521,7 @@ describe('what the written pages say the fee buys', () => {
 
     for (const gone of [
       /pojedinog pružaoca/i,
-      /poverenik/i,
+      /Povereniku za informacije/i,
       /azop/i,
       /sudsku zaštitu/i,
       /nadzornom organu/i,
