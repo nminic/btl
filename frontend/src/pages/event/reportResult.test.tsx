@@ -236,6 +236,39 @@ describe('a result reported this way', () => {
     expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
   })
 
+  it('sends no address at all where a picture stands in for one', async () => {
+    /* Član 37, and the rule the form keeps on both ways in since 23.08.2026: a
+       picture makes the link optional and the comment obligatory. What reaches
+       the moderator then has no address, and the queue draws the name of the
+       event as a name rather than as a link, because a sentence in an `href` is
+       an address made of somebody's sentence (admin/ReviewQueue.tsx).
+
+       Held from this side and not from the queue's, because it is the form that
+       decides whether an address is sent at all. */
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+    const { router } = renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
+
+    await user.type(await screen.findByLabelText(/Sati/), '3')
+    await user.type(screen.getByLabelText(/Minuta/), '41')
+    await user.type(screen.getByLabelText(/Sekundi/), '12')
+    await user.upload(
+      screen.getByLabelText(/Slika kao dokaz/),
+      new File(['proba'], 'sat.jpg', { type: 'image/jpeg' }),
+    )
+    await user.type(screen.getByLabelText(/Komentar/), 'Snimak sa sata, bez zvanicne liste')
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+    await screen.findByRole('heading', { level: 1 })
+
+    await router.navigate('/sr/administracija/verifikacija/rezultati')
+
+    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
+
+    expect(within(table).getByText('Snimak sa sata, bez zvanicne liste')).toBeVisible()
+    expect(within(table).queryByRole('link', { name: /Maraton maratona/ })).toBeNull()
+    expect(within(table).getAllByText(/Maraton maratona/).length).toBeGreaterThan(0)
+  })
+
   it('scores a time of nothing at nothing, rather than falling over', async () => {
     /* The three boxes take a nought each, so a member can send in 0:00:00 by
        mistyping or by pressing through. The formula has no answer for a time of

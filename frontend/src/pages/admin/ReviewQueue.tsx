@@ -127,10 +127,16 @@ export function ReviewQueue() {
                   <td>{formatShortDate(one.date, locale)}</td>
                   <td>{one.memberNumber}</td>
                   <td>
-                    {/* A link only where there is an address to link to. Where
-                        the entry came from the event's own page there is none:
-                        that form asks for words, and words in an `href` are an
-                        address made of somebody's sentence. */}
+                    {/* A link only where there is an address to link to, and
+                        since 23.08.2026 there is one on both ways in: the form on
+                        the event asks for the official results too, exactly as the
+                        one outside the calendar does.
+                     *
+                        What is left empty is what Član 37 allows: a member who
+                        attached a picture instead of a link sends no address at
+                        all, and then the name of the event is a name and nothing
+                        more. Words in an `href` would be an address made of
+                        somebody's sentence. */}
                     {one.link === '' ? (
                       one.eventName
                     ) : (
