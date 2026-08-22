@@ -11,6 +11,11 @@ import { setupUser } from '../../test/user'
 /** An event with races on it, by the address the calendar links to. */
 const EVENT = '/sr/kalendar/maraton-maratona-2015'
 
+/** The table of races, which is the one named after them. */
+function races(): HTMLElement {
+  return screen.getByRole('table', { name: 'Trke' })
+}
+
 async function openEvent(
   role: Parameters<typeof renderAt>[1],
   member: string | null = null,
@@ -23,15 +28,20 @@ async function openEvent(
 }
 
 describe('who is offered what on an event', () => {
-  it('offers a visitor nothing at all', async () => {
+  it('offers a visitor nothing at all, and no column to put it in', async () => {
     await openEvent('visitor')
 
     for (const name of ['Kopiranje', 'Brisanje']) {
       expect(screen.queryByRole('button', { name })).toBeNull()
     }
 
-    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Unesi rezultat' })).toBeNull()
+    /* And the table is four columns rather than five with an empty one: „tabela
+       ostaje kraca za tu kolonu" (owner, 23.08.2026). */
+    expect(
+      within(races()).getAllByRole('columnheader').map((one) => one.textContent),
+    ).toEqual(['Kategorija trke', 'Dužina', 'Uspon', 'Spust'])
   })
 
   it('offers the superadmin the copy and the deletion', async () => {
@@ -51,10 +61,24 @@ describe('who is offered what on an event', () => {
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
   })
 
-  it('offers a signed-in member the way to report a result', async () => {
+  it('offers a signed-in member the way in, once per race, in the table', async () => {
+    /* It stood over the table until 23.08.2026 and asked which race afterwards.
+       The owner had it moved into the rows, where the race is already decided,
+       and the button over the table went with the question.
+
+       Every row and not merely one: a column drawn with a button in the first
+       row alone reads as a table where only the first race can be reported. */
     await openEvent('competitor', '000007')
 
-    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    const rows = within(races()).getAllByRole('row').slice(1)
+
+    expect(rows.length).toBeGreaterThan(1)
+
+    for (const row of rows) {
+      expect(within(row).getByRole('link', { name: 'Unesi rezultat' })).toBeVisible()
+    }
+
+    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
   })
 
@@ -64,20 +88,27 @@ describe('who is offered what on an event', () => {
 
     expect(screen.getByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
-    /* A link, because it leads to another screen (EventActions.tsx). */
-    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    /* A link, because it leads to another screen, and in the table because that
+       is where the race is (EventDetail.tsx). */
+    expect(within(races()).getAllByRole('link', { name: 'Unesi rezultat' }).length)
+      .toBeGreaterThan(0)
   })
 })
 
 describe('reporting a result from the event', () => {
-  it('leads to the form under the event, so it does not ask which event it was', async () => {
+  it('carries the race into the form, so it asks neither which event nor which race', async () => {
     const user = setupUser()
     const { router } = await openEvent('competitor', '000007')
 
-    await user.click(screen.getByRole('link', { name: 'Prijavi rezultat' }))
+    const row = must(within(races()).getAllByRole('row')[1], 'the first race')
+
+    await user.click(within(row).getByRole('link', { name: 'Unesi rezultat' }))
 
     expect(router.state.location.pathname).toBe(`${EVENT}/prijava`)
-    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+    expect(router.state.location.search).toMatch(/^[?]trka=/)
+    /* The form opens on it: the time is asked for, the race is not. */
+    expect(await screen.findByLabelText(/Sati/)).toBeVisible()
+    expect(screen.queryByLabelText(/^Trka/)).toBeNull()
   })
 })
 

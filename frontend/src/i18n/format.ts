@@ -153,6 +153,20 @@ export function formatDayMonth(isoDate: string): string {
   return `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.`
 }
 
+/**
+ * "19.04.2026." from "2026-04-19", which is the shape the owner named twice for
+ * the list under the name of an event (23.08.2026: „Dakle naziv dogadjaja -
+ * DD.MM.YYYY. - Distanca").
+ *
+ * The only place on the portal that writes a date this way. Everywhere else a
+ * date is written through Intl, where the words matter and the language decides;
+ * this is a fixed numeric shape asked for by name, and it is cut from the string
+ * for the same reason `formatDayMonth` above is.
+ */
+export function formatNumericDate(isoDate: string): string {
+  return `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.${isoDate.slice(0, 4)}.`
+}
+
 /** "maj 2027." from "2027-05", for a calendar heading. */
 export function formatMonth(month: string, locale: string): string {
   return dateFormat(locale, 'monthYear').format(new Date(`${month}-01T00:00:00Z`))

@@ -68,8 +68,10 @@ describe('a part of an event that has not arrived', () => {
     renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', '000007', undefined, BEFORE)
 
     /* Waited for by something else on the screen, so the check is made after the
-       event itself has arrived and the sections would have been drawn. */
-    await screen.findByRole('heading', { level: 2, name: 'Trke' })
+       event itself has arrived and the sections would have been drawn. The table
+       of races and not the heading over it: the heading went on 23.08.2026 and
+       the table names itself in a caption instead. */
+    await screen.findByRole('table', { name: 'Trke' })
 
     for (const [, said, heading] of PARTS) {
       expect(screen.queryByText(said)).toBeNull()
@@ -90,7 +92,7 @@ describe('a part of an event that will not arrive', () => {
     broken()
     renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', '000007', undefined, BEFORE)
 
-    await screen.findByRole('heading', { level: 2, name: 'Trke' })
+    await screen.findByRole('table', { name: 'Trke' })
 
     /* An alert about a section nobody was going to be shown is worse than the
        silence: it is the portal reporting a fault in something it had already

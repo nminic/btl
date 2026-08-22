@@ -1,0 +1,41 @@
+/* The box and the list under it.
+   The list is taken out of the flow, so a form does not grow and shrink by the
+   height of eight rows as somebody types. */
+.suggests {
+  position: relative;
+}
+
+.suggests__list {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  z-index: 20;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  max-block-size: 17rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-8);
+  /* The same lift the calendar panel has (DatePicker.css), because it is the
+     same kind of thing: a panel that stands over the form for a moment. */
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+}
+
+.suggests__one {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  font: inherit;
+  padding: var(--space-8) var(--space-12);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.suggests__one:hover,
+.suggests__one:focus-visible {
+  background: var(--surface-hover);
+}

@@ -8,80 +8,119 @@ import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
-import { first, must, selectElement } from '../../test/at'
+import { first, must } from '../../test/at'
 import { formatDistance, formatNumber } from '../../i18n/format'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { raceFor } from './raceFor'
 import { ReportResult } from './ReportResult'
 
 /** Somebody signed in, since the form is only for members. */
 const ME = '000007'
 
-/* A result reported from the event it was run at (owner, 03.08.2026).
+/* A result reported from the race it was run at (owner, 03.08.2026, and
+ * 23.08.2026 for the race).
  *
  * The portal already had a form for this and it began by asking which event,
  * then the date, then the distance, the climb and the descent, all of which the
  * portal knows: they are on the race.
+ *
+ * Which race was the last thing it still asked, in a field at the top, and that
+ * went too: the way in is a button in the row of the race on the event, so the
+ * address carries the race and the form opens knowing (owner: „ne treba onda ni
+ * dropdown na vrhu za izbor trke nego to zavisi od reda iz kog je kliknuto").
  */
 
 const EVENT = 'maraton-maratona-2015'
-const REPORT = `/sr/kalendar/${EVENT}/prijava`
+
+/** The event and its races, off the disc, so a fixture that changes changes what
+ *  these tests say rather than what they assume. */
+async function racesOf(slug: string) {
+  const events = await loadResource<BtlEvent[]>('events')
+  const races = await loadResource<Race[]>('races')
+  const event = must(
+    events.find((one) => one.slug === slug),
+    `the event ${slug}`,
+  )
+
+  return { event, races: races.filter((one) => one.eventId === event.id) }
+}
+
+/** The address the button in a race's row writes (EventDetail.tsx). */
+function reportAddress(slug: string, race: Race): string {
+  return `/sr/kalendar/${slug}/prijava?trka=${race.id}`
+}
 
 describe('the way to report a result', () => {
   it('asks whoever is not signed in to sign in', async () => {
-    renderAt(REPORT)
+    const { races } = await racesOf(EVENT)
+
+    renderAt(reportAddress(EVENT, first(races)))
 
     expect(await screen.findByRole('heading', { name: /prijav/i })).toBeVisible()
-    expect(screen.queryByLabelText(/^Trka/)).toBeNull()
+    expect(screen.queryByLabelText(/Sati/)).toBeNull()
   })
 
-  it('opens on a race of that event and asks for nothing the portal knows', async () => {
-    renderAt(REPORT, 'competitor', '000007')
+  it('opens on the race the address names and asks for nothing the portal knows', async () => {
+    const { races } = await racesOf(EVENT)
 
-    const race = await screen.findByLabelText(/^Trka/)
+    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
 
-    /* Preselected, so an event of one race is a time and nothing else. */
-    expect(selectElement(race).value).not.toBe('')
-
-    for (const asked of [/Sati/, /Minuta/, /Sekundi/, /Komentar/]) {
-      expect(screen.getByLabelText(asked)).toBeVisible()
+    for (const asked of [/Sati/, /Minuta/, /Sekundi/, /Komentar/, /Link ka zvaničnim/]) {
+      expect(await screen.findByLabelText(asked)).toBeVisible()
     }
 
-    /* And none of the five the race already carries. */
-    for (const known of [/Naziv događaja/, /Datum/, /Dužina/, /Uspon/, /Spust/]) {
+    /* And none of the five the race already carries, nor the sixth it used to
+       ask for itself. */
+    for (const known of [/Naziv događaja/, /Datum/, /Dužina/, /Uspon/, /Spust/, /^Trka/]) {
       expect(screen.queryByLabelText(known)).toBeNull()
     }
   })
 
-  it('writes every race in it as a length, in this language', async () => {
-    /* A race is offered by its length and by nothing else (data/types.ts): the
-       event is the page this form was opened from, so the length is the whole of
-       what tells two of them apart. Written raw it read „5.0 km" with a full
-       stop, which is not how a number is written in Serbian. */
-    renderAt(REPORT, 'competitor', ME)
+  it('says which race it is reporting, by its length, in this language', async () => {
+    /* A race is told from the one beside it by its length and by nothing else
+       (data/types.ts): the event is the page this form was opened from. It stood
+       in a list of choices until 23.08.2026 and stands in the sentence over the
+       form now, said by the same helper, so the two never drifted apart.
 
-    const race = await screen.findByLabelText(/^Trka/)
-    const said = within(race).getAllByRole('option').map((one) => one.textContent ?? '')
+       Written raw it read „5.0 km" with a full stop, which is not how a number
+       is written in Serbian. */
+    const { races } = await racesOf(EVENT)
+    const race = first(races)
 
-    expect(said.length).toBeGreaterThan(0)
-    expect(said.every((one) => /^\d+,\d km$/.test(one))).toBe(true)
+    renderAt(reportAddress(EVENT, race), 'competitor', ME)
+
+    const note = await screen.findByText(/Prijavljuješ rezultat/)
+
+    expect(note).toHaveTextContent(formatDistance(race.distanceKm, 'sr-Latn'))
+    expect(note).toHaveTextContent('Maraton maratona')
   })
 
-  it('offers only the races of the event it was opened from', async () => {
-    renderAt(REPORT, 'competitor', '000007')
+  it('refuses a race that belongs to another event', async () => {
+    /* The address is written by the row that leads here, so an address naming a
+       race this event has not run was typed by hand. Nothing is guessed: a form
+       that quietly fell back to some race of this event would file somebody's
+       time against a distance they never ran, and the points are worked out from
+       that distance. */
+    const other = await racesOf('fruskogorski-maraton-2010')
 
-    const race = await screen.findByLabelText(/^Trka/)
-    const offered = Array.from(selectElement(race).options).length
+    renderAt(reportAddress(EVENT, first(other.races)), 'competitor', ME)
 
-    expect(offered).toBeGreaterThan(1)
-    expect(offered).toBeLessThan(10)
+    expect(await screen.findByText(/Rezultat se unosi sa reda trke/)).toBeVisible()
+    expect(screen.queryByLabelText(/Sati/)).toBeNull()
+    expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
+  })
+
+  it('refuses an address that names no race at all', async () => {
+    renderAt(`/sr/kalendar/${EVENT}/prijava`, 'competitor', ME)
+
+    expect(await screen.findByText(/Rezultat se unosi sa reda trke/)).toBeVisible()
+    expect(screen.queryByLabelText(/Sati/)).toBeNull()
   })
 })
 
 describe('an address that names no event', () => {
   it('says so rather than drawing a form against nothing', async () => {
-    renderAt('/sr/kalendar/nepostoji/prijava', 'competitor', '000007')
+    renderAt('/sr/kalendar/nepostoji/prijava?trka=bilo-sta', 'competitor', ME)
 
     expect(await screen.findByRole('heading', { name: 'Ovog događaja nema.' })).toBeVisible()
   })
@@ -110,9 +149,12 @@ function Given({ act, children }: { act: (session: SessionValue) => void; childr
 }
 
 describe('an event with no races on it', () => {
-  it('says there is nothing to report rather than offering an empty choice', async () => {
-    /* A form whose one choice is empty is a form that cannot be submitted and
-       does not say why.
+  it('says there is nothing to report rather than saying the race is unknown', async () => {
+    /* Two different silences, and the screen tells them apart: an event that has
+       no race to report on says so, and an event that has one says where the way
+       in is. Said differently because they are answered differently, one by an
+       organiser entering a distance and one by the reader pressing the button in
+       the row.
      *
        It is a real state and not a defensive one: an event exists before its
        races do. During the fortnight before registration opens the owner enters
@@ -139,21 +181,27 @@ describe('an event with no races on it', () => {
     )
 
     expect(await screen.findByText(/nema nijednu trku/)).toBeVisible()
-    expect(screen.queryByLabelText(/^Trka/)).toBeNull()
+    expect(screen.queryByLabelText(/Sati/)).toBeNull()
     /* And the way back is the event it came from. */
     expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
   })
 })
 
 describe('a result reported this way', () => {
-  it('says how many points it earned and that it is waiting', async () => {
-    const user = setupUser()
-    renderAt(REPORT, 'competitor', '000007')
-
+  /** The three boxes of the time, and the address of the official results. */
+  async function fillIn(user: ReturnType<typeof setupUser>, said = 'https://primer.rs/rezultati') {
     await user.type(await screen.findByLabelText(/Sati/), '3')
     await user.type(screen.getByLabelText(/Minuta/), '41')
     await user.type(screen.getByLabelText(/Sekundi/), '12')
-    await user.type(screen.getByLabelText(/Komentar/), 'https://primer.rs/rezultati')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), said)
+  }
+
+  it('says how many points it earned and that it is waiting', async () => {
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+
+    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+    await fillIn(user)
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
@@ -163,12 +211,11 @@ describe('a result reported this way', () => {
   })
 
   it('reaches the queue the moderator decides in, with the points already worked out', async () => {
+    const { races } = await racesOf(EVENT)
     const user = setupUser()
-    const { router } = renderAt(REPORT, 'superadmin', '000007')
+    const { router } = renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
 
-    await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '41')
-    await user.type(screen.getByLabelText(/Sekundi/), '12')
+    await fillIn(user)
     await user.type(screen.getByLabelText(/Komentar/), 'Startni broj 412')
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
     await screen.findByRole('heading', { level: 1 })
@@ -180,11 +227,13 @@ describe('a result reported this way', () => {
     expect(table).toBeVisible()
     expect(screen.getAllByRole('button', { name: 'Odobri' }).length).toBeGreaterThan(0)
 
-    /* What the member wrote, as words. The name of the event is not a link
-       here, because this form asks for words and there is no address: an
-       unchecked sentence in an `href` is an address made of that sentence. */
+    /* Both halves of what the member sent: the words as words, and the address
+       as an address. The address used to be written into the field for words,
+       because this form asked for no address at all; since 23.08.2026 it asks
+       for one, so the queue can draw it as a link and the moderator can follow
+       it. */
     expect(within(table).getByText('Startni broj 412')).toBeVisible()
-    expect(within(table).queryByRole('link', { name: /Maraton maratona/ })).toBeNull()
+    expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
   })
 
   it('scores a time of nothing at nothing, rather than falling over', async () => {
@@ -192,134 +241,115 @@ describe('a result reported this way', () => {
        mistyping or by pressing through. The formula has no answer for a time of
        nothing and says so by returning nothing; the screen then has to say
        something, and nought points is the truthful thing to say. */
+    const { races } = await racesOf(EVENT)
     const user = setupUser()
-    renderAt(REPORT, 'competitor', '000007')
+
+    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
 
     await user.type(await screen.findByLabelText(/Sati/), '0')
     await user.type(screen.getByLabelText(/Minuta/), '0')
     await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
     expect(screen.getByText(/0,00 BTL poena/)).toBeVisible()
   })
 
-  it('refuses a time that was never typed', async () => {
+  it('refuses a form that was never filled in', async () => {
+    /* Four boxes and not three since 23.08.2026: the address of the official
+       results is asked for here exactly as it is asked for on the form outside
+       the calendar, and it is obligatory unless a picture stands in its place
+       (Član 37, forms/validate.ts). */
+    const { races } = await racesOf(EVENT)
     const user = setupUser()
-    renderAt(REPORT, 'competitor', '000007')
 
-    await screen.findByLabelText(/^Trka/)
+    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+
+    await screen.findByLabelText(/Sati/)
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
-    expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(3)
-  })
-})
-
-describe('which race a reported result is scored against', () => {
-  /* The choice is drawn from the event's own races and the field is required, so
-     in the portal the second half never runs. It is here because a lookup that
-     can miss has to say what it does when it does, and scoring against whichever
-     race the form opened on is a decision rather than a shrug: the one thing
-     worse than the wrong distance is a page that throws while somebody is
-     sending in a result they have just run. */
-  const race = (id: string): Race => ({
-    id,
-    eventId: 'e1',
-    date: '2027-04-03',
-    distanceKm: 10,
-    ascentM: 0,
-    descentM: 0,
-    category: 'short',
-  })
-
-  const opened = race('a')
-  const other = race('b')
-
-  it('is the one that was chosen', () => {
-    expect(raceFor([opened, other], 'b', opened)).toBe(other)
-  })
-
-  it('is the one the form opened on when the choice names no race it holds', () => {
-    expect(raceFor([opened, other], 'nepostoji', opened)).toBe(opened)
-    expect(raceFor([], 'a', opened)).toBe(opened)
+    expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(4)
   })
 })
 
 describe('an event that runs over two mornings', () => {
-  /* A race carries its own day, and the form offers what has been run rather
-     than what belongs to an event that has begun (owner, 11.08.2026): on the
-     Saturday of a weekend the two Saturday races, on the Sunday all three.
+  /* A race carries its own day, and a result can be reported on the day of that
+     race or later (owner, 11.08.2026): on the Saturday of a weekend the two
+     Saturday races, on the Sunday all three.
+
+     The rule used to be kept by the list of choices, which offered what had been
+     run. With the list gone it is kept by the same test the address goes
+     through, which is stricter: the Sunday race is refused on the Saturday even
+     though its address can be typed.
 
      Read off the record rather than named here, so the day this fixture changes
      the test says what the screen says. */
   const WEEKEND = 'balkansko-prvenstvo-veterana-2021'
 
-  async function racesOffered(): Promise<string[]> {
-    const chooser = await screen.findByLabelText(/^Trka/)
-
-    return [...selectElement(chooser).options].map((one) => one.textContent ?? '')
-  }
-
-  it('offers only the races of the first morning, on the first morning', async () => {
-    const events = await loadResource<BtlEvent[]>('events')
-    const races = await loadResource<Race[]>('races')
-    const event = must(
-      events.find((one) => one.slug === WEEKEND),
-      'the event of that weekend',
-    )
-    const mine = races.filter((one) => one.eventId === event.id)
-    const days = [...new Set(mine.map((one) => one.date))].sort()
-    const first = must(days[0], 'its first morning')
+  async function mornings() {
+    const { event, races } = await racesOf(WEEKEND)
+    const days = [...new Set(races.map((one) => one.date))].sort()
 
     expect(days.length).toBeGreaterThan(1)
 
-    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, first)
+    return {
+      event,
+      races,
+      firstDay: must(days[0], 'its first morning'),
+      lastDay: must(days.at(-1), 'its last morning'),
+    }
+  }
 
-    expect(await racesOffered()).toHaveLength(mine.filter((one) => one.date === first).length)
+  it('takes a race of the first morning on the first morning', async () => {
+    const { races, firstDay } = await mornings()
+    const race = must(
+      races.find((one) => one.date === firstDay),
+      'a race of the first morning',
+    )
+
+    renderAt(reportAddress(WEEKEND, race), 'competitor', ME, undefined, firstDay)
+
+    expect(await screen.findByLabelText(/Sati/)).toBeVisible()
   })
 
-  it('offers all of them once the last morning has come', async () => {
-    const events = await loadResource<BtlEvent[]>('events')
-    const races = await loadResource<Race[]>('races')
-    const event = must(
-      events.find((one) => one.slug === WEEKEND),
-      'the event of that weekend',
+  it('refuses a race of the last morning until that morning has come', async () => {
+    const { races, firstDay, lastDay } = await mornings()
+    const race = must(
+      races.find((one) => one.date === lastDay),
+      'a race of the last morning',
     )
-    const mine = races.filter((one) => one.eventId === event.id)
-    const last = must([...new Set(mine.map((one) => one.date))].sort().at(-1), 'its last morning')
 
-    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, last)
+    renderAt(reportAddress(WEEKEND, race), 'competitor', ME, undefined, firstDay)
 
-    expect(await racesOffered()).toHaveLength(mine.length)
+    expect(await screen.findByText(/Rezultat se unosi sa reda trke/)).toBeVisible()
+    expect(screen.queryByLabelText(/Sati/)).toBeNull()
   })
 
-  it('offers the first morning on the day of the event itself', async () => {
-    /* The day of an event is the day of its first race (PDL P10), so on that
-       day there is something to report and the form is there. What it holds is
-       only that morning's races, which is what the test above this one says.
-
-       It used to be called „says there is nothing to report before the first
-       morning" and to assert that the form is drawn, which is the opposite of
-       what its name promised: the day before the first morning is a day the
-       event does not have. Where an event really has no race to report on, the
-       screen says so and offers no list at all, and that is held higher up in
-       this file. */
-    const events = await loadResource<BtlEvent[]>('events')
-    const event = must(
-      events.find((one) => one.slug === WEEKEND),
-      'the event of that weekend',
-    )
-    const races = await loadResource<Race[]>('races')
-    const firstMorning = races.filter(
-      (one) => one.eventId === event.id && one.date === event.date,
+  it('takes that same race once the last morning has come', async () => {
+    const { races, lastDay } = await mornings()
+    const race = must(
+      races.find((one) => one.date === lastDay),
+      'a race of the last morning',
     )
 
-    expect(firstMorning.length).toBeGreaterThan(0)
+    renderAt(reportAddress(WEEKEND, race), 'competitor', ME, undefined, lastDay)
 
-    renderAt(`/sr/kalendar/${WEEKEND}/prijava`, 'competitor', ME, undefined, event.date)
+    expect(await screen.findByLabelText(/Sati/)).toBeVisible()
+  })
 
-    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
-    expect(await racesOffered()).toHaveLength(firstMorning.length)
+  it('takes a first-morning race on the day of the event itself', async () => {
+    /* The day of an event is the day of its first race (PDL P10), so on that day
+       there is something to report. */
+    const { event, races } = await mornings()
+    const race = must(
+      races.find((one) => one.date === event.date),
+      'a race of the day the event is dated',
+    )
+
+    renderAt(reportAddress(WEEKEND, race), 'competitor', ME, undefined, event.date)
+
+    expect(await screen.findByLabelText(/Sati/)).toBeVisible()
   })
 })
 
@@ -349,22 +379,21 @@ describe('a race, which has no name of its own', () => {
 
     renderAt(`/sr/kalendar/${event.slug}`)
 
-    const table = await screen.findByRole('table')
+    const table = await screen.findByRole('table', { name: 'Trke' })
 
     expect(within(table).getAllByText(formatNumber(race.distanceKm, 'sr-Latn', 2)).length)
       .toBeGreaterThan(0)
   })
 
-  it('is offered by its length on the form that reports a result', async () => {
+  it('is named by its length on the form that reports a result', async () => {
     const { race, event } = await anyRace()
 
-    renderAt(`/sr/kalendar/${event.slug}/prijava`, 'competitor', ME)
-
-    const chooser = await screen.findByLabelText(/^Trka/)
-    const said = [...selectElement(chooser).options].map((one) => one.textContent ?? '')
+    renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
     /* By the length alone, which is the whole of what tells two races of one
        event apart. */
-    expect(said).toContain(formatDistance(race.distanceKm, 'sr-Latn'))
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
+      formatDistance(race.distanceKm, 'sr-Latn'),
+    )
   })
 })

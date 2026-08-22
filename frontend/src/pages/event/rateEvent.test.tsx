@@ -5,7 +5,7 @@ import { prijava } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { at, must } from '../../test/at'
+import { at, first, must } from '../../test/at'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
 import { overall, rated } from './overall'
@@ -1109,7 +1109,11 @@ describe('what an event nobody has run yet offers', () => {
        is in. */
     renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
 
-    expect(await screen.findByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    /* In the row of the race since 23.08.2026, rather than over the table. */
+    const table = await screen.findByRole('table', { name: 'Trke' })
+
+    expect(within(table).getAllByRole('link', { name: 'Unesi rezultat' }).length)
+      .toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
   })
 
@@ -1183,9 +1187,19 @@ describe('what an event nobody has run yet offers', () => {
   })
 
   it('takes a reported result on the day the race is run', async () => {
-    renderAt(`/sr/kalendar/${AHEAD}/prijava`, 'competitor', ME, undefined, AHEAD_DAY)
+    /* Walked from the row of the race, which is the only way in and the only
+       thing that knows the address. */
+    const user = setupUser()
 
-    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+    renderAt(`/sr/kalendar/${AHEAD}`, 'competitor', ME, undefined, AHEAD_DAY)
+
+    const table = await screen.findByRole('table', { name: 'Trke' })
+
+    await user.click(
+      first(within(table).getAllByRole('link', { name: 'Unesi rezultat' })),
+    )
+
+    expect(await screen.findByLabelText(/Sati/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Ovaj događaj još nije održan' })).toBeNull()
   })
 
@@ -1201,7 +1215,7 @@ describe('what an event nobody has run yet offers', () => {
        event, so this is not the empty row a visitor gets. */
     expect(await screen.findByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Unesi rezultat' })).toBeNull()
   })
 })
 

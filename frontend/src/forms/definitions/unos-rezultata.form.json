@@ -79,6 +79,12 @@
       }
     },
     {
+      "name": "photo",
+      "type": "photo",
+      "labelKey": "newResult.photo",
+      "hintKey": "newResult.photoHint"
+    },
+    {
       "name": "comment",
       "type": "textarea",
       "labelKey": "newResult.comment",
@@ -87,12 +93,6 @@
       "requiredWhenFilled": {
         "field": "photo"
       }
-    },
-    {
-      "name": "photo",
-      "type": "photo",
-      "labelKey": "newResult.photo",
-      "hintKey": "newResult.photoHint"
     }
   ]
 }

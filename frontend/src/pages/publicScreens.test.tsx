@@ -1786,13 +1786,16 @@ describe('Teams', () => {
  * used to.
  */
 describe('the row a screen opens with', () => {
-  for (const [path, screenName] of [
+  for (const [path, screenName, role] of [
     ['/sr/tabela', 'the season table'],
-    /* Signed in and on an event already run, which is the only way this row has
-       anything in it: the event's head became the shared row on 06.08.2026, and
-       nothing held that it had (goldBand.test.ts says only that the old grid is
-       gone, which stays true whatever replaces it). */
-    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event'],
+    /* On an event, as somebody who administers one, which since 23.08.2026 is
+       the only way this row has anything in it: the way into the form left it
+       for the rows of the table, so a member who has not run this event is
+       offered nothing here and the row draws nothing at all. The event's head
+       became the shared row on 06.08.2026, and nothing held that it had
+       (goldBand.test.ts says only that the old grid is gone, which stays true
+       whatever replaces it). */
+    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event', 'superadmin'],
     ['/sr/takmicari', 'the competitors'],
     ['/sr/timovi', 'the teams'],
     ['/sr/top-liste', 'the top boards'],
@@ -1801,7 +1804,7 @@ describe('the row a screen opens with', () => {
     ['/sr/tim/dunavski-trkaci', 'a team'],
   ] as const) {
     it(`is the shared one on ${screenName}`, async () => {
-      renderAt(path, 'competitor', '000007')
+      renderAt(path, role ?? 'competitor', '000007')
 
       const heading = await screen.findByRole('heading', { level: 1 })
       const row = must(heading.parentElement, 'the row around the heading')

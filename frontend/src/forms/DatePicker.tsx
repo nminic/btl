@@ -40,6 +40,7 @@ export function DatePicker({
   describedBy,
   onChange,
   openAt = false,
+  locked = false,
 }: {
   id: string
   name: string
@@ -53,6 +54,9 @@ export function DatePicker({
   /** Whether the cursor starts in the box. The one caller that asks is a copied
    *  event, whose date is the one thing certainly wrong (FormRenderer). */
   openAt?: boolean
+  /** Whether the date came off a record rather than from this reader, in which
+   *  case neither the box nor the calendar takes anything (FormRenderer.tsx). */
+  locked?: boolean
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -108,6 +112,7 @@ export function DatePicker({
         aria-invalid={invalid}
         aria-describedby={describedBy}
         autoFocus={openAt}
+        disabled={locked}
         value={value}
         onChange={(event) => onChange(maskDate(event.target.value))}
       />
@@ -115,6 +120,7 @@ export function DatePicker({
       <button
         type="button"
         className="datepicker__open"
+        disabled={locked}
         aria-expanded={open}
         aria-label={t('form.openCalendar')}
         onClick={() => {

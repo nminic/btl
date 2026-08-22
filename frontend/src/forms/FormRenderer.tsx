@@ -18,10 +18,12 @@ import type {
   FieldOption,
   FormDef,
   FormValues,
+  Suggestion,
 } from './types'
 import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
+import { Suggesting } from './Suggesting'
 import { optionsFor } from './records'
 import { asAsked, emptyValues, isVisible, trimValues, validateForm } from './validate'
 import './FormRenderer.css'
@@ -41,6 +43,15 @@ type Props = {
   /** Choices for selects whose list is data: the events a race can belong to,
    *  the members who can run a team. Keyed by field name. */
   options?: Record<string, FieldOption[]>
+  /**
+   * Lists to type against, keyed by field name.
+   *
+   * Not the same thing as `options`, which is a closed list a select is answered
+   * from: this is what the portal already holds, offered while somebody types
+   * something they may also type freely. Choosing an entry fills the fields it
+   * names and locks them; typing again breaks that and hands them back.
+   */
+  suggests?: Record<string, Suggestion[]>
   /**
    * A rule the definition cannot describe, checked when the form is submitted
    * and returned in the same shape as the rules that can: errors by field name.
@@ -143,6 +154,8 @@ const Field = memo(function Field({
   choices,
   onChange,
   open = false,
+  locked = false,
+  suggesting,
 }: {
   field: FieldDef
   value: string | boolean
@@ -161,8 +174,30 @@ const Field = memo(function Field({
   onChange: (field: FieldDef, value: string | boolean, also?: Record<string, string>) => void
   /** Whether the cursor starts here. One field on one form ever does. */
   open?: boolean
+  /**
+   * Whether this field was filled from a record rather than by the reader.
+   *
+   * Then it takes nothing: the four measurements of a race come off the race,
+   * and a reader who could edit them would be filing a time against a distance
+   * the calendar does not have. The way out is the field they came from: editing
+   * the name breaks the link and hands all four back (FormRenderer below).
+   */
+  locked?: boolean
+  /** The list this field is typed against, where it has one, and what to do with
+   *  what is typed and what is chosen (forms/Suggesting.tsx). */
+  suggesting?: {
+    list: readonly Suggestion[]
+    onType: (next: string) => void
+    onChoose: (one: Suggestion) => void
+  }
 }) {
   const { locale, t } = useI18n()
+  /* How many times the picture has been thrown away, which is the whole of what
+     this counts. A file input holds its own copy of what was chosen and nothing
+     but the browser may write to it, so emptying our value leaves the name of
+     the file standing beside an empty field. Drawn again under a new key, the
+     browser builds a new box and its copy goes with the old one. */
+  const [cleared, setCleared] = useState(0)
   const change = useCallback(
     (next: string | boolean) => {
       onChange(field, next)
@@ -206,6 +241,10 @@ const Field = memo(function Field({
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     className: 'field__control',
     autoFocus: open,
+    /* `undefined` and not `false`, so a control that is not locked carries no
+       attribute at all: `disabled={false}` is the same to a browser and one more
+       thing in the markup for a test to read as a decision somebody made. */
+    disabled: locked ? true : undefined,
   }
 
   if (field.type === 'checkbox') {
@@ -392,12 +431,33 @@ const Field = memo(function Field({
       )}
 
       {field.type === 'photo' && (
-        <input
-          {...shared}
-          type="file"
-          accept="image/*"
-          onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
-        />
+        /* The box and, once there is something in it, the way out of it (owner,
+           23.08.2026: „Slika treba da ima dugme Obrisi na kraju reda, jer
+           trenutno ne mogu da odustanem od slanja slike"). Drawn only where there
+           is a picture, because a button that undoes nothing is a button that
+           says something was done. */
+        <span className="field__photo">
+          <input
+            {...shared}
+            key={cleared}
+            type="file"
+            accept="image/*"
+            onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
+          />
+
+          {String(value) !== '' && (
+            <button
+              type="button"
+              className="button button--secondary button--compact field__clear"
+              onClick={() => {
+                setCleared((was) => was + 1)
+                change('')
+              }}
+            >
+              {t('form.clearPhoto')}
+            </button>
+          )}
+        </span>
       )}
 
       {field.type === 'select' && (
@@ -470,21 +530,33 @@ const Field = memo(function Field({
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
+          locked={locked}
           onChange={change}
         />
       )}
 
-      {(field.type === 'text' ||
-        field.type === 'email' ||
-        field.type === 'password' ||
-        field.type === 'number') && (
-        <input
-          {...shared}
-          type={field.type}
+      {suggesting !== undefined && (
+        <Suggesting
+          shared={shared}
           value={String(value)}
-          onChange={(e) => change(e.target.value)}
+          suggestions={suggesting.list}
+          onType={suggesting.onType}
+          onChoose={suggesting.onChoose}
         />
       )}
+
+      {suggesting === undefined &&
+        (field.type === 'text' ||
+          field.type === 'email' ||
+          field.type === 'password' ||
+          field.type === 'number') && (
+          <input
+            {...shared}
+            type={field.type}
+            value={String(value)}
+            onChange={(e) => change(e.target.value)}
+          />
+        )}
 
       {error !== undefined && (
         <p className="field__error" id={errorId}>
@@ -501,6 +573,7 @@ export function FormRenderer({
   initial,
   title,
   options = {},
+  suggests = {},
   check,
   derived,
   was,
@@ -516,6 +589,10 @@ export function FormRenderer({
      screen and a word in the record is worse than the fault it replaced. */
   const filled: FormValues = { ...emptyValues(form), ...values }
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
+  /* The fields that were filled from a chosen entry, and are therefore not this
+     reader's to change. Names and not a flag per field, because what is locked is
+     decided by the entry that was chosen and differs from one list to the next. */
+  const [led, setLed] = useState<string[]>([])
   /* One day for showing a field and for validating it. They used to read the
      clock separately, one on every draw and one on submit, so a form filled in
      across midnight could show a field it then refused to validate. */
@@ -627,6 +704,48 @@ export function FormRenderer({
     [],
   )
 
+  /**
+   * The list a field is typed against, and what typing and choosing do to the
+   * form around it.
+   *
+   * Built here rather than handed to every field, so the two callbacks are made
+   * only for the one field that has a list. Every other field goes on getting
+   * the memoised `handleChange` and is drawn again only when its own value
+   * changes, which is what keeps a form of twelve hundred options usable.
+   */
+  function suggestingOn(field: FieldDef) {
+    const list = suggests[field.name]
+
+    if (list === undefined) {
+      return undefined
+    }
+
+    return {
+      list,
+      onType: (next: string) => {
+        /* The link breaks the moment the name is edited (owner, 23.08.2026):
+           what was filled from the chosen entry is emptied and handed back, so a
+           name typed freely cannot stand over somebody else's date and distance.
+           Emptied and not merely unlocked, because the four are then a record
+           this form is no longer describing. */
+        setValues((current) => ({
+          ...current,
+          ...Object.fromEntries(led.map((name) => [name, ''])),
+          [field.name]: next,
+        }))
+        setErrors({})
+        setLed([])
+      },
+      onChoose: (one: Suggestion) => {
+        setValues((current) => ({ ...current, [field.name]: one.value, ...one.fills }))
+        /* Whatever was wrong with those fields is no longer this reader's to
+           read: they hold what the record holds. */
+        setErrors({})
+        setLed(Object.keys(one.fills))
+      },
+    }
+  }
+
   /* The form is named after its own heading, so it is a region a screen reader
    * can be taken to and land in, rather than a run of fields in the page. */
   return (
@@ -688,6 +807,8 @@ export function FormRenderer({
             choices={optionsFor(field, options)}
             onChange={handleChange}
             open={field.name === openAt}
+            locked={led.includes(field.name)}
+            suggesting={suggestingOn(field)}
           />
         ))
 

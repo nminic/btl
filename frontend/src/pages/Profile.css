@@ -2,6 +2,40 @@
 @import '../styles/counter.css';
 @import '../styles/table.css';
 
+/* The table of races on an event: five columns of one width, and four of that
+   same width when the fifth is not drawn (owner, 23.08.2026).
+
+   `table-layout: fixed` is what makes them equal: with it and no width on any
+   column, a table divides itself evenly, and without it every column is as wide
+   as its own longest cell. The count of columns rides on the element, because
+   only the render knows whether the day is drawn and whether the reader may
+   enter a result, and the width follows from it: five twentieths is the whole
+   width, four is four fifths of it, which is „tabela ostaje kraca za tu kolonu,
+   pa se prethodne cetiri zavrsavaju gde i kad ih ima 5".
+
+   `min()` because the count can reach six, on an event that runs over two
+   mornings with a reader signed in: six twentieths is more than there is, and a
+   table wider than the screen scrolls the page sideways (WCAG 2.2 SC 1.4.10). At
+   six the columns are equal at a sixth each, which is the same rule under a
+   ceiling rather than a second arrangement.
+
+   Only where every column is drawn. Under 700px the climb and the descent are
+   hidden (styles/table.css), so the count on the element and the columns on the
+   screen stop agreeing, and a width worked out from the count would leave the
+   table short by two columns it is not drawing. */
+@media (min-width: 700px) {
+  /* Both classes, and that is not decoration: `.table` sets `width: 100%` in
+     styles/table.css, which weighs exactly what a single class weighs, so the
+     two would be settled by whichever sheet the bundle put last. Measured in the
+     browser with one class here: `table-layout: fixed` took and the width did
+     not, so the table stayed the full width with four columns spread across it,
+     and the rule looked as though it worked. */
+  .table.table--races {
+    table-layout: fixed;
+    inline-size: min(100%, calc(var(--race-columns) * 20%));
+  }
+}
+
 /* The head of a competitor's profile, and of no other screen with this class.
  *
  * A face on the left, and the name with the line under it beside it (owner,
