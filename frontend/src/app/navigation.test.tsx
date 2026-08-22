@@ -5,7 +5,6 @@ import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import WRITTEN from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
-import { must } from '../test/at'
 
 describe('navigation', () => {
   beforeEach(() => {
@@ -415,17 +414,28 @@ const STATUTE = '/BTL%20Statut.pdf'
        them until 22.08.2026. Owner: „Ovo obriši da se više ne prikazuje, znam do
        kada su podaci probni a kad će postati stvarni."
      *
-       Held as an absence and as a count, because a sentence removed from the
-       markup and left in the dictionary comes back the first time somebody
-       reaches for a note to put there. The dictionary is read too: the key is
-       gone, and a key nobody uses is a sentence waiting for a place. */
+       Found by its landmark and not by its class. Asked as `.shell__footer`, the
+       footer answered to a `div` with that class and no `contentinfo` role, and
+       the navigation inside it answered with no accessible name: the class is
+       still there, so the guard sees a footer while a screen reader has lost
+       both. Measured, and the whole suite stayed green.
+     *
+       „And nothing else" is measured too, since the name says it. The note is
+       held as an absence in both homes — the markup and the dictionary — because
+       a sentence deleted from one and left in the other comes back the first time
+       somebody reaches for a note to put there. And the footer is held to having
+       nothing but that navigation in it: a line of small print added under the
+       links passed everything this test had before. */
     renderAt('/sr')
 
-    const footer = must(document.querySelector('.shell__footer'), 'the footer')
-    const links = [...footer.querySelectorAll('a')].map((one) => one.textContent?.trim())
+    const footer = await screen.findByRole('contentinfo')
+    const nav = within(footer).getByRole('navigation', { name: 'Uslovi i pravila' })
+    const links = within(nav)
+      .getAllByRole('link')
+      .map((one) => one.textContent?.trim())
 
     expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
-    expect(footer.textContent ?? '').not.toMatch(/probni podaci|u izradi/)
+    expect(footer.textContent?.trim()).toBe(links.join(''))
     expect(JSON.stringify(sr)).not.toContain('Portal je u izradi')
   })
 })
