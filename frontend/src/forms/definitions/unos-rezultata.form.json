@@ -73,14 +73,20 @@
       "labelKey": "newResult.link",
       "hintKey": "newResult.linkHint",
       "required": true,
-      "pattern": "^https?://.+"
+      "pattern": "^https?://.+",
+      "optionalWhenFilled": {
+        "field": "photo"
+      }
     },
     {
       "name": "comment",
       "type": "textarea",
       "labelKey": "newResult.comment",
       "hintKey": "newResult.commentHint",
-      "maxLength": 600
+      "maxLength": 600,
+      "requiredWhenFilled": {
+        "field": "photo"
+      }
     },
     {
       "name": "photo",

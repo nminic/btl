@@ -825,9 +825,15 @@ describe('topByCategory, when the count ties', () => {
 })
 
 describe('topByKilometers', () => {
-  /* Every rung of the ladder from PDL P12 is exercised here, in order:
-   * kilometres, then more races, then vertical, then points, and finally two
-   * rows that stay level all the way down. */
+  /* Every rung of the ladder is exercised here, in order: kilometres, then
+   * points, then more races, then vertical, and finally two rows that stay level
+   * all the way down.
+   *
+   * Points moved from the fourth rung to the second on 22.08.2026, in the
+   * owner's fourth reading of Article 49. The fixture is unchanged and the order
+   * it produces is not, which is the point of leaving it alone: the same six
+   * members come out in a different order because the rule changed, not because
+   * the data did. */
   const competitors = [
     competitor('000001'),
     competitor('000002'),
@@ -853,12 +859,12 @@ describe('topByKilometers', () => {
     expect(rows.map((row) => row.competitor.memberNumber)).toEqual([
       // 30 km beats every 20 km.
       '000001',
-      // Level on 20 km, and two races beat one.
-      '000004',
-      // One race each, and more vertical decides.
-      '000005',
-      // Vertical level too, so the points settle it.
+      // Level on 20 km, and nine points beat every other tally.
       '000007',
+      // Two points beat one, before the count of races is ever asked.
+      '000004',
+      // One point each and one race each, so the vertical decides.
+      '000005',
       // Level down to the last rung, which is the member number: the smaller
       // one takes the fifth place and the other the sixth.
       '000002',
@@ -877,9 +883,9 @@ describe('topByKilometers', () => {
   })
 
   it('gives the place to whoever got there first, before sharing it', () => {
-    /* The fifth rung, from PDL P12 and Article 49 of the rulebook: two rows level
-       on kilometres, races, vertical and points are settled by who reached the
-       count earlier. The board of races by length already had it and this one did
+    /* The rung under all the measures, from PDL P12 and Article 49 of the
+       rulebook: two rows level on kilometres, points, races and vertical are
+       settled by who reached the count earlier. The board of races by length already had it and this one did
        not, so the two were left in whatever order they came in and shared a place
        they were not level on. */
     const level = [
@@ -937,6 +943,7 @@ describe('topByTimeOnCourse', () => {
     competitor('000004'),
     competitor('000005'),
     competitor('000007'),
+    competitor('000008'),
   ]
   const results = [
     result('000001', '2027-01-01', 1),
@@ -944,6 +951,9 @@ describe('topByTimeOnCourse', () => {
     result('000002', '2027-01-01', 1, { seconds: 5000 }),
     result('000004', '2027-01-01', 1, { seconds: 5000, ascentM: 300 }),
     result('000005', '2027-01-01', 1, { seconds: 5000, distanceKm: 15 }),
+    // Level on time with 000005 and short of it on kilometres, and ahead of it
+    // anyway: points are the rung directly under the time since 22.08.2026.
+    result('000008', '2027-01-01', 9, { seconds: 5000 }),
     // Level with 000002 on every rung this board has.
     result('000007', '2027-01-01', 1, { seconds: 5000 }),
   ]
@@ -954,13 +964,18 @@ describe('topByTimeOnCourse', () => {
     expect(rows.map((row) => [row.competitor.memberNumber, row.position])).toEqual([
       // Two races, 6000 seconds in all.
       ['000001', 1],
-      // Level on time, and 15 km beats 10 km.
-      ['000005', 2],
-      // Level on time, kilometres and races, so the vertical decides.
-      ['000004', 3],
+      /* Level on time, and nine points beat one. This is the whole of the
+         owner's fourth reading of Article 49 on this board: before 22.08.2026
+         points were not a measure here at all, and 000008 came fourth on the
+         member number behind three members it out-scored nine to one. */
+      ['000008', 2],
+      // Level on time and points, and 15 km beats 10 km.
+      ['000005', 3],
+      // Level on time, points, kilometres and races, so the vertical decides.
+      ['000004', 4],
       // Nothing left but the member number, so the smaller one goes ahead.
-      ['000002', 4],
-      ['000007', 5],
+      ['000002', 5],
+      ['000007', 6],
     ])
   })
 })
@@ -977,6 +992,81 @@ describe('bestSingleRaces', () => {
     // Nobody by this number; a result without a member is not a place.
     result('M9999', '2027-01-01', 50),
   ]
+
+  it('settles two level races by the season behind them, points before kilometres', () => {
+    /* The third rung, rewritten by the owner on 22.08.2026 (Article 49): what a
+       member took in the whole season, and only then their kilometres in it. The
+       count of races in the season was a rung until that day and is not one now.
+
+       Both members here ran the same race for the same points over the same
+       distance, so the board has to reach the season to separate them. 000001
+       took four times the points over a ninth of the kilometres: under the rule
+       as it stood, 000002 went ahead on 110 km against 11. */
+    const twoLevel = [competitor('000001'), competitor('000002')]
+    const seasons = [
+      result('000001', '2027-01-01', 10),
+      result('000001', '2027-02-01', 30, { distanceKm: 1 }),
+      result('000002', '2027-01-01', 10),
+      result('000002', '2027-02-01', 1, { distanceKm: 100 }),
+    ]
+
+    expect(
+      bestSingleRaces(twoLevel, seasons, 2027, 10).map((row) => [
+        row.competitor.memberNumber,
+        row.result.points,
+      ]),
+    ).toEqual([
+      ['000001', 30],
+      ['000001', 10],
+      ['000002', 10],
+      ['000002', 1],
+    ])
+  })
+
+  it('takes the kilometres of the season under the points of it, and counts no races', () => {
+    /* The two rungs under the season's points, and both were unmeasured. Taking
+       the kilometres out left the member number to settle a pair the article
+       separates, and putting the count of races back — which Article 49 struck on
+       22.08.2026 — sent three small races ahead of two large ones. Whole suite
+       green either way.
+
+       000001 and 000002 are level on the race and on the season's points, so the
+       kilometres decide; 000002 has more races and fewer kilometres, which is
+       what tells the two rungs apart. */
+    const two = [competitor('000001'), competitor('000002')]
+    const seasons = [
+      result('000001', '2027-01-01', 10),
+      result('000001', '2027-02-01', 20, { distanceKm: 40 }),
+      result('000002', '2027-01-01', 10),
+      result('000002', '2027-02-01', 10, { distanceKm: 1 }),
+      result('000002', '2027-03-01', 10, { distanceKm: 1 }),
+    ]
+
+    expect(
+      bestSingleRaces(two, seasons, 2027, 10)
+        .filter((row) => row.result.points === 10 && row.result.distanceKm === 10)
+        .map((row) => row.competitor.memberNumber),
+    ).toEqual(['000001', '000002'])
+
+    /* And the kilometres against the member number, which is the only way to see
+       that rung at all: level on everything above it, the pair with the rung
+       gone falls to the number, and the number happens to agree with the
+       kilometres in the pair above. Here it disagrees, so taking the rung out
+       reverses the two. */
+    const other = [competitor('000003'), competitor('000004')]
+    const levelOnPoints = [
+      result('000003', '2027-01-01', 10),
+      result('000003', '2027-02-01', 20, { distanceKm: 1 }),
+      result('000004', '2027-01-01', 10),
+      result('000004', '2027-02-01', 20, { distanceKm: 50 }),
+    ]
+
+    expect(
+      bestSingleRaces(other, levelOnPoints, 2027, 10)
+        .filter((row) => row.result.points === 10 && row.result.distanceKm === 10)
+        .map((row) => row.competitor.memberNumber),
+    ).toEqual(['000004', '000003'])
+  })
 
   it('ranks one result at a time, down the ladder, and only for the season asked for', () => {
     const rows = bestSingleRaces(competitors, results, 2027, 10)

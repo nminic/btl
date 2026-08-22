@@ -236,6 +236,29 @@ describe('navigation', () => {
     )
   })
 
+  it('offers the same file from the foot of the rulebook as from the footer', async () => {
+    /* Two links to one document, and the address written twice. The comment on
+       the second one claimed a test held them to the same value; there was none,
+       and that is worse than no claim: `nginx.conf` answers an unknown path with
+       `index.html`, so a renamed file plus a `download` attribute hands the
+       member the application shell saved as a PDF, with nothing on the screen
+       saying anything is wrong. Measured 22.08.2026: the address changed to a
+       file that does not exist and all 2028 tests stayed green.
+
+       Held against the footer's, which is the one the guard below walks all the
+       way to the bytes on disk. */
+    /* One render and not two, because the second leaves the first tree standing
+       and the footer of both answers to the same name. The rulebook carries both
+       links anyway: its own at the foot of the text, and the footer's under it. */
+    renderAt('/sr/pravilnik')
+
+    const fromRulebook = await screen.findByRole('link', { name: 'BTL Statut' })
+    const fromFooter = await screen.findByRole('link', { name: 'Statut' })
+
+    expect(fromRulebook.getAttribute('href')).toBe(fromFooter.getAttribute('href'))
+    expect(fromRulebook).toHaveAttribute('download')
+  })
+
   it('publishes the statute as the document it is, and the document is there', async () => {
     /* Član 34 stav 6 of the statute adopted on 17.08.2026 puts the statute on the
        internet page of the association, and član 39 stav 2 gives three days from the day

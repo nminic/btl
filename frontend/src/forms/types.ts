@@ -117,6 +117,26 @@ export type FieldDef = {
    */
   optionalWhenYoungerThan?: { field: string; years: number }
   /**
+   * Required of everybody, and not of somebody who has answered `field`.
+   *
+   * The one case is the link to the official results, and the field that lets it
+   * go is the picture (Član 37, owner 22.08.2026): a photograph of the watch or
+   * of the diploma is a proof of its own, so a member who has one is not asked
+   * for a link as well.
+   *
+   * Named rather than general, like the two rules above and for the same reason:
+   * a condition language in a JSON file is a small programming language.
+   */
+  optionalWhenFilled?: { field: string }
+  /**
+   * Asked of everybody, and required of somebody who has answered `field`.
+   *
+   * The mirror of the rule above and the other half of one decision: a result
+   * proved by a picture instead of a link has to say in words what the picture
+   * shows, so the comment stops being optional the moment the picture is there.
+   */
+  requiredWhenFilled?: { field: string }
+  /**
    * The row of the privacy policy that describes what is done with this answer.
    *
    * The first column of that row, word for word. A field is a thing the portal collects

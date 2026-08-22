@@ -179,7 +179,16 @@ describe('every form definition in the portal', () => {
        both optional, and asked in the same breath that the way of reporting be
        the same wherever it is done (03.08.2026, PDL P9). One of the two had no
        comment at all, so what a member could say about a result depended on
-       which door they came through. */
+       which door they came through.
+
+       **The two doors are no longer identical, and that is a decision** (owner,
+       22.08.2026, PDL P9). On the profile a picture makes the link optional and
+       the comment required; on the page of an event there is no link to make
+       optional, the race is chosen from the calendar, and the owner asked that
+       the rule stay off that form. What this guard holds is the part that did
+       not change: the same fields are asked on both, written as `required` the
+       same way. What one answer does to another is held where it lives, on the
+       result form (writtenPages.test.tsx) and in `validate.test.ts`. */
     const roads = ['unos-rezultata.form.json', 'prijava-sa-trke.form.json'].map((name) => {
       const found = FORMS.find((one) => one.name === name)
 
