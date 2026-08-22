@@ -15,7 +15,7 @@ import { useSession } from '../session/useSession'
 import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
 import { expectFrontPage, renderAt } from '../test/render'
-import { setupUser } from '../test/user'
+import { setupUser, type Pressing } from '../test/user'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -96,10 +96,13 @@ describe('signing in', () => {
     await user.selectOptions(await screen.findByLabelText('Ko si?'), '000007')
     await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
 
-    expect(await screen.findByRole('heading', { name: 'Moje stvari' })).toBeVisible()
-    // Member screens are now in the navigation, and also among the actions on
-    // the profile, so there is deliberately more than one way in.
-    expect(screen.getAllByRole('link', { name: 'Moji rezultati' }).length).toBeGreaterThan(0)
+    /* Their own profile, which since 23.08.2026 is the profile and nothing else:
+       the row of member links under it went, and the heading over that row went
+       with it. What says this is their profile rather than somebody's is the
+       table of results the screen is built around. */
+    expect(await screen.findByRole('table', { name: 'Rezultati' })).toBeVisible()
+    // And the way into the rest of the member area is the picture in the header.
+    expect(screen.getByRole('button', { name: 'Otvori nalog' })).toBeVisible()
   })
 
   it('says the one field it has is obligatory, as every field on the portal does', async () => {
@@ -180,24 +183,73 @@ describe('member screens without a session', () => {
 })
 
 describe('my profile', () => {
-  it('shows the profile with the things only its owner can do', async () => {
+  /** The menu behind the picture in the header, opened. */
+  async function openAccount(user: Pressing): Promise<HTMLElement> {
+    await user.click(screen.getByRole('button', { name: 'Otvori nalog' }))
+
+    return must(document.getElementById('account-menu'), 'the account menu')
+  }
+
+  it('is the profile everybody else sees, and nothing under it', async () => {
+    /* A row of five buttons stood under it until 23.08.2026: my results, my
+       membership, messages, settings, sign out. The owner had it taken out,
+       because every one of them is behind the picture in the header: „sve je to
+       vec vidljivo iz klika na profilnu sliku gore desno portala".
+
+       Held as an absence of all five and not of the heading over them, which is
+       the half that rots: a heading is one line to delete and five links are five
+       places for one of them to come back. */
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
-    expect(await screen.findByRole('heading', { name: 'Moje stvari' })).toBeVisible()
-    // The profile itself is the same one everyone else sees.
-    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(await screen.findByRole('table', { name: 'Rezultati' })).toBeVisible()
+
+    const main = within(screen.getByRole('main'))
+
+    expect(main.queryByRole('heading', { name: 'Moje stvari' })).not.toBeInTheDocument()
     // Notifications and the theme left the profile for the settings screen.
-    expect(screen.queryByRole('heading', { name: 'Obaveštenja' })).not.toBeInTheDocument()
-    expect(
-      within(screen.getByRole('main')).getByRole('link', { name: 'Podešavanja' }),
-    ).toHaveAttribute('href', '/sr/podesavanja')
+    expect(main.queryByRole('heading', { name: 'Obaveštenja' })).not.toBeInTheDocument()
+
+    for (const gone of ['Moji rezultati', 'Moja članarina', 'Poruke', 'Podešavanja']) {
+      expect(
+        main.queryByRole('link', { name: gone }),
+        `${gone} is still drawn under the profile`,
+      ).not.toBeInTheDocument()
+    }
+
+    expect(main.queryByRole('button', { name: 'Odjavi se' })).not.toBeInTheDocument()
   })
 
-  it('signs out again', async () => {
+  it('offers four of the five behind the picture, and never the messages', async () => {
+    /* What the row under the profile used to be, in the one place it is now. The
+       messages are not among them (owner, 23.08.2026): the envelope beside the
+       picture opens the inbox and „Sve poruke" stands at the foot of it, which is
+       one press fewer.
+
+       The whole list rather than the absence of one name, because a menu is an
+       order as much as a set: „Poruke" taken out and „Podešavanja" quietly taken
+       out with it would pass a check that only asked whether the messages are
+       gone. */
     const user = setupUser()
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
-    await user.click(await screen.findByRole('button', { name: 'Odjavi se' }))
+    await screen.findByRole('table', { name: 'Rezultati' })
+
+    const menu = within(await openAccount(user))
+    const links = menu.getAllByRole('link').map((one) => one.textContent?.trim())
+
+    expect(links).toEqual(['Moj profil', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
+    expect(menu.getByRole('button', { name: 'Odjavi se' })).toBeVisible()
+  })
+
+  it('signs out from behind the picture, which is the only place that can', async () => {
+    const user = setupUser()
+    renderAt('/sr/moj-profil', 'competitor', '000007')
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+
+    const menu = within(await openAccount(user))
+
+    await user.click(menu.getByRole('button', { name: 'Odjavi se' }))
 
     expect(screen.getByRole('heading', { name: 'Za ovo treba prijava' })).toBeVisible()
   })

@@ -486,21 +486,40 @@ describe('Rankings', () => {
  * back to what it said is a change nobody would notice for a month.
  */
 describe('what the filters are called', () => {
-  it('puts both filters in one row, each a name over its control', async () => {
-    /* Season, then categories (owner, 11.08.2026). There was a third, a search
-       box at the end of the width, until he had it taken out on 31.07.2026.
-       jsdom computes no layout, so what is held is the order and the shape the
-       layout is built out of: two fields in one row, each one a name over a
-       control. A row that reads right and is built some other way is a row that
-       stops reading right on the next screen that copies it. */
+  it('keeps the gender and the season in the head, and the categories alone under it', async () => {
+    /* Owner, 23.08.2026: the season goes up beside the name of the screen, in the
+       shape it has on the top boards, and the two gender buttons stand in front
+       of it. What is left under the heading is the categories, and they start at
+       the edge of the screen rather than behind a field. The season had stood in
+       front of them since 11.08.2026, and a search box stood at the end of that
+       row until 31.07.2026.
+
+       jsdom computes no layout, so what is held is the order in the markup and
+       what holds what. Asked through the two groups and the field themselves
+       rather than through the class of the box around them: the box is how the
+       layout is built, and a screen that put the season back among the filters
+       while keeping the class would have gone past a guard that only counted
+       children of `.rankings__head-tool`.
+
+       Both halves of it, because the season arriving in the head while a copy of
+       it stayed among the filters reads right on the screen and is two controls
+       of one purpose, which is exactly what the owner had taken apart. */
     renderAt('/sr/tabela?sezona=2020')
 
     await screen.findByRole('table')
 
-    const row = must(document.querySelector('.rankings__filters'), 'the row of filters')
-    const named = [...row.children].map((one) => (one.querySelector('span')?.textContent ?? ''))
+    const genders = screen.getByRole('group', { name: 'BTL tabele' })
+    const season = must(screen.getByLabelText('Sezona').closest('label'), 'the season field')
+    const categories = screen.getByRole('group', { name: 'Kategorija' })
+    const head = must(genders.parentElement, 'what holds the gender buttons')
 
-    expect(named).toEqual(['Sezona', 'Kategorija'])
+    expect([...head.children]).toEqual([genders, season])
+    expect(head.contains(categories)).toBe(false)
+
+    const row = must(document.querySelector('.rankings__filters'), 'the row of filters')
+    const named = [...row.children].map((one) => one.querySelector('span')?.textContent ?? '')
+
+    expect(named).toEqual(['Kategorija'])
   })
 
   it('names the category in full, and offers all of them as Sve', async () => {

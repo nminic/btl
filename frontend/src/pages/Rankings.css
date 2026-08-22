@@ -143,88 +143,20 @@
   min-inline-size: 0;
 }
 
-/* On a telephone the gender goes beside the season, in one row under the name
-   of the screen (owner, 11.08.2026). Above 560px they are on two different
-   rows by design: the gender belongs with the name of the screen, because it
-   says which table is being read rather than narrowing it, and the season
-   belongs with the two filters beside it.
+/* The categories alone, from the left edge (owner, 23.08.2026; the season stood
+   in front of them from 11.08.2026 and there was a search box at the end of the
+   row until 31.07.2026). `align-items: start` and not `end`, because each field
+   is a name over a control and both names have to sit on one line: aligned at
+   the foot, a field whose control is taller pushes its own name up and the two
+   read as two heights.
 
-   Under that width there is no room for either arrangement, and what was there
-   was a row with two buttons pushed to the right and a lonely select under it,
-   with a band of nothing beside each. `display: contents` on the row of filters
-   is what lets a grandchild stand in the grid: the season is inside that row
-   and the gender is outside it, and this is the one place they meet.
-
-   Scoped to this screen. `rankings--tooled` is shared by eight, and none of
-   the others has a select to bring up. */
-@media (max-width: 34.99875em) {
-  .rankings--tooled:has(> .rankings__filters) {
-    display: grid;
-    /* `minmax(0, …)` on both, because a track is otherwise at least as wide as
-       its content asks for: at 200% text the two gender buttons stopped fitting
-       and the page itself scrolled sideways (WCAG 2.2 SC 1.4.4 and 1.4.10). */
-    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-    align-items: end;
-    /* Both, and not only the column: `display: contents` throws away the row's
-       own gap along with its box, so without this the three rows of filters
-       touched at nought pixels. */
-    column-gap: var(--space-12);
-    row-gap: var(--space-12);
-  }
-
-  /* Only the row of filters. The heading keeps its own box, because a heading
-     is a box: it holds its line and spans the row. */
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters {
-    display: contents;
-  }
-
-  .rankings--tooled:has(> .rankings__filters) > h1 {
-    grid-column: 1 / -1;
-  }
-
-  .rankings--tooled:has(> .rankings__filters) > .rankings__head-tool {
-    grid-column: 2;
-    grid-row: 2;
-    margin-block-end: 0;
-  }
-
-  /* Scoped like the four above it: these three are children of the row of
-     filters, and that row exists on the admin screens too, under a different
-     parent. Placing them in a grid they are not in would be inert, and inert is
-     not the same as written down. */
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field:first-child {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories {
-    grid-column: 1 / -1;
-  }
-
-  /* The row of filters gives its own spacing away with `display: contents`, so
-     what stood between it and the table has to be put back on the last field in
-     it. That was the search box until 31.07.2026, and taking the box out took
-     the spacing with it: a review measured the gap between the filters and the
-     table fall from 24px to 12px on a 360px screen.
-
-     The chips alone. They were briefly named beside `--wide`, on the reasoning
-     that a screen might end its row with either, and a review measured that no
-     element on the portal matches that branch at all: the three screens with a
-     row of filters are this one and two in administration, and neither of those
-     carries `rankings--tooled`. A selector nothing wears is a selector nobody
-     can see go wrong, which is how the block this one replaced survived a
-     fortnight. */
-  .rankings--tooled:has(> .rankings__filters) > .rankings__filters > .rankings__field--categories:last-child {
-    margin-block-end: var(--space-12);
-  }
-}
-
-/* One row: season and categories (owner, 11.08.2026; there was a search box
-   at the end of it until 31.07.2026). `align-items: start` and not `end`,
-   because each field is a name over a control and both names
-   have to sit on one line: aligned at the foot, a field whose
-   control is taller pushes its own name up and the two read as two
-   heights. */
+   A whole arrangement went out of this sheet with the season. Below 560px the
+   screen turned itself into a grid so that the season, which lived inside this
+   row, could stand beside the gender buttons, which lived outside it: the row
+   gave up its own box with `display: contents` so a grandchild could be placed,
+   and four scoped rules put the three parts back where they belonged. With both
+   controls in the head there is nothing to bring together, and the plain stack
+   is what every other screen with a control already does. */
 .rankings__filters {
   display: flex;
   flex-wrap: wrap;

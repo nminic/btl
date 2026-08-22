@@ -1143,8 +1143,7 @@
       "bestRacePoints": "najviše bodova na jednoj trci",
       "bestRaceKm": "najviše kilometara na jednoj trci",
       "bestRaceAscent": "najviše uspona na jednoj trci"
-    },
-    "tierShort": "{tier}/5"
+    }
   },
   "settings": {
     "title": "Podešavanja",
@@ -1305,7 +1304,6 @@
   "awards": {
     "trophies": "Pehari",
     "ducats": "Dukati",
-    "note": "Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno.",
     "board": "Lista",
     "place": "Mesto",
     "overall": "Generalni plasman",

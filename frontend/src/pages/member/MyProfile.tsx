@@ -1,16 +1,20 @@
-import { Link } from 'react-router'
-import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { CompetitorProfile } from '../CompetitorProfile'
 import { SignedOut } from './SignedOut'
 import './Member.css'
 
-/* The same profile everyone else sees, with the things only its owner can do
- * underneath it. A signed-in member sees no different front page and no
- * different profile; the difference is what sits below (PDL P14). */
+/* The same profile everyone else sees, and nothing under it.
+ *
+ * A row of five buttons stood here until 23.08.2026: my results, my membership,
+ * messages, settings, sign out. Every one of them is in the menu behind the
+ * picture in the header, and the owner had the row taken out: „sve je to vec
+ * vidljivo iz klika na profilnu sliku gore desno portala". One way in, at the top
+ * of every screen, rather than a second one at the foot of a single screen.
+ *
+ * A signed-in member sees no different front page and no different profile; what
+ * differs is what the header offers them (PDL P14, P28a). */
 export function MyProfile() {
-  const { locale, t } = useI18n()
-  const { memberNumber, signOut } = useSession()
+  const { memberNumber } = useSession()
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -20,31 +24,6 @@ export function MyProfile() {
     <div className="member">
       <CompetitorProfile memberNumber={memberNumber} />
 
-      <section className="member__panel" aria-labelledby="my-actions">
-        <h2 className="profile__section" id="my-actions">
-          {t('myProfile.actions')}
-        </h2>
-        <div className="member__links">
-          <Link className="button button--secondary" to={`/${locale}/moji-rezultati`}>
-            {t('nav.myResults')}
-          </Link>
-          <Link className="button button--secondary" to={`/${locale}/moja-clanarina`}>
-            {t('nav.membership')}
-          </Link>
-          <Link className="button button--secondary" to={`/${locale}/poruke`}>
-            {t('nav.messages')}
-          </Link>
-          {/* Notifications and the theme moved to their own screen, which hangs
-              off the account picture in the header (PDL P28a). There is no cog
-              of its own any more. */}
-          <Link className="button button--secondary" to={`/${locale}/podesavanja`}>
-            {t('nav.settings')}
-          </Link>
-          <button type="button" className="button button--secondary" onClick={signOut}>
-            {t('myProfile.signOut')}
-          </button>
-        </div>
-      </section>
     </div>
   )
 }

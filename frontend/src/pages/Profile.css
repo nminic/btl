@@ -2,6 +2,48 @@
 @import '../styles/counter.css';
 @import '../styles/table.css';
 
+/* The head of a competitor's profile, and of no other screen with this class.
+ *
+ * A face on the left, and the name with the line under it beside it (owner,
+ * 23.08.2026). The circle spans both of those rows rather than sitting on one of
+ * them, which is what „u nivou i Imena / Prezimena i Clanski broj" asks for, and
+ * what centring the row does by itself.
+ *
+ * The modifier and not `.profile__head`, because an event and a league draw
+ * their heads with that same class and have no face to put in front of anything.
+ * Laid out here, the name of every event on the portal would have moved sideways
+ * by the width of a circle that is not there.
+ */
+.profile__head--person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+/* Everything that is not the face takes the rest of the row. `min-inline-size: 0`
+   because a flex item will not shrink below its content, and the content here is
+   a heading with a forty character surname in it: without this the row keeps the
+   width the longest name asks for and the page scrolls sideways on a telephone
+   (WCAG 2.2 SC 1.4.10). */
+.profile__identity {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* Bigger than the circle over a top ten, because on this screen it is the
+   picture of the person the page is about rather than a mark beside a row. Two
+   classes deep, so it settles against `.portrait` on weight rather than on which
+   sheet the bundle happened to put last (Portrait.css sets 2,9rem there).
+
+   `clamp` rather than one size, and the type inside it with the same shape: at
+   360px a fixed 5rem circle takes a seventh of the width away from a name that
+   already wraps. */
+.profile__head--person > .portrait {
+  inline-size: clamp(3.25rem, 9vw, 5rem);
+  block-size: clamp(3.25rem, 9vw, 5rem);
+  font-size: clamp(1rem, 2.6vw, 1.45rem);
+}
+
 .profile__meta {
   margin: 0 0 var(--space-4);
   color: var(--text-muted);
@@ -510,15 +552,3 @@
   font-style: italic;
 }
 
-/* What a ducat is worth, beside its name. Two characters, because the sentence
-   that used to say it under every coin was taken off the page (owner,
-   11.08.2026) and the metal alone cannot say it: bronze, silver and gold differ
-   by colour and by nothing else. Quiet enough not to compete with the name, and
-   never below the contrast a reader needs (--text-muted is the token every
-   secondary line on the portal uses). */
-.awards__tier {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}

@@ -11,6 +11,7 @@ export function LoadMore({
   asked,
   onMore,
   words,
+  endShown = true,
 }: {
   whole: boolean
   /** Whether the reader has asked for more at least once. */
@@ -26,6 +27,20 @@ export function LoadMore({
    * knows how to grow a list.
    */
   words: { more: string; showing: string; whole: string }
+  /**
+   * Whether the sentence at the end is drawn as well as spoken.
+   *
+   * The owner had it off the results and off the ducats on 23.08.2026 („Linija
+   * na dnu To je sve, 78 rezultata ne treba da postoji"), and it stays on the
+   * comments, which he did not ask about.
+   *
+   * Not deleted anywhere, because two things hang on it: it is what tells a
+   * reader who cannot see the list that it ended rather than broke, and it is
+   * what the focus lands on after the last press of the button. Deleted, that
+   * press drops a keyboard reader at the top of the document with the whole page
+   * to walk again (WCAG 2.2 SC 2.4.3).
+   */
+  endShown?: boolean
 }) {
   const foot = useRef<HTMLDivElement>(null)
   const end = useRef<HTMLParagraphElement>(null)
@@ -85,7 +100,7 @@ export function LoadMore({
 
            `tabIndex={-1}` so it can be focused and still not be a stop on the
            way through. */
-        <p className="load-more__end" tabIndex={-1} ref={end}>
+        <p className={endShown ? 'load-more__end' : 'visually-hidden'} tabIndex={-1} ref={end}>
           {words.whole}
         </p>
       ) : (

@@ -2,6 +2,7 @@ import { profilePath } from '../profileAddress'
 import { categoryLabel } from '../../data/categories'
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
+import { Portrait } from '../../components/Portrait'
 import { SeasonPicker } from '../../components/SeasonPicker'
 import { categoryOfMember } from '../../data/derive'
 import { SEASON } from '../../data/pricing'
@@ -41,53 +42,69 @@ export function ProfileHead({
   const { locale, t } = useI18n()
 
   return (
-    <header className="profile__head">
-      {/* The same row every screen with a control has, so the control lands at
-          the height it lands at on the teams (owner, 05.08.2026). It was a row
-          of its own making before, and a name set smaller than a screen title
-          put the control a few pixels higher than anywhere else. */}
-      <div className="profile__title rankings--tooled">
-        <h1 className="profile__name">
-          {competitor.firstName} {competitor.lastName}
-        </h1>
-        <div className="rankings__head-tool">
-          {/* Named and shaped like a field, as on the teams and the top boards
-              (owner, 05.08.2026). It was a pill with its name hidden from
-              04.08.2026, on the reasoning that beside a name a labelled field
-              reads as a second heading; the owner has since asked for the one
-              shape everywhere, and one shape is one thing to learn. */}
-          <SeasonPicker seasons={seasons} season={season} />
-        </div>
-      </div>
+    <header className="profile__head profile__head--person">
+      {/* The face first, and the name and the line under it beside it (owner,
+          23.08.2026: „prvo ide slika, onda desno od nje u gornjem redu ime i
+          prezime, a u donjem trenutna linija"). It is the same circle the top ten
+          and the cards of the competitors draw, at the size this screen gives it:
+          one shape in one place, so a photograph arriving in it arrives
+          everywhere at once (components/Portrait.tsx).
 
-      <p className="profile__meta">
-        {/* The public page of a competitor is the digital membership card, so the
-            number is named rather than left to stand on its own between a name
-            and a category (owner, 17.08.2026). Nothing else is added here: a
-            date of birth or anything else private has no place on a card. */}
-        <span className="profile__number">
-          {t('profile.memberNumberLabel', { number: competitor.memberNumber })}
-        </span>
-        {' · '}
-        {categoryLabel(categoryOfMember(competitor, SEASON), t)}
-        {' · '}
-        {competitor.city}
-        {' · '}
-        {t('profile.memberSince', { season: competitor.firstSeason })}
-        {' · '}
-        {team === undefined || competitor.teamSince === null ? (
-          <span>{t('profile.noTeam')}</span>
-        ) : (
-          /* The club name is a link inside the sentence rather than beside it,
-             so a screen reader hears where the link goes without an
-             aria-label having to repeat what the sentence already says. */
-          <span className="profile__club">
-            <Sentence text={t('profile.inClub', { season: competitor.teamSince })} slot="team">
-              <Link to={`/${locale}/tim/${team.slug}`}>{team.name}</Link>
-            </Sentence>
+          A photograph is what it is for and initials are what it holds today: the
+          member record carries no picture yet, so every circle on the portal is a
+          monogram on that member's own colour. The owner asked for exactly that
+          fallback, and it is the whole of what is drawn until the picture has
+          somewhere to live. */}
+      <Portrait competitor={competitor} />
+
+      <div className="profile__identity">
+        {/* The same row every screen with a control has, so the control lands at
+            the height it lands at on the teams (owner, 05.08.2026). It was a row
+            of its own making before, and a name set smaller than a screen title
+            put the control a few pixels higher than anywhere else. */}
+        <div className="profile__title rankings--tooled">
+          <h1 className="profile__name">
+            {competitor.firstName} {competitor.lastName}
+          </h1>
+          <div className="rankings__head-tool">
+            {/* Named and shaped like a field, as on the teams and the top boards
+                (owner, 05.08.2026). It was a pill with its name hidden from
+                04.08.2026, on the reasoning that beside a name a labelled field
+                reads as a second heading; the owner has since asked for the one
+                shape everywhere, and one shape is one thing to learn. */}
+            <SeasonPicker seasons={seasons} season={season} />
+          </div>
+        </div>
+
+        <p className="profile__meta">
+          {/* The public page of a competitor is the digital membership card, so the
+              number is named rather than left to stand on its own between a name
+              and a category (owner, 17.08.2026). Nothing else is added here: a
+              date of birth or anything else private has no place on a card. */}
+          <span className="profile__number">
+            {t('profile.memberNumberLabel', { number: competitor.memberNumber })}
           </span>
-        )}
-      </p>
+          {' · '}
+          {categoryLabel(categoryOfMember(competitor, SEASON), t)}
+          {' · '}
+          {competitor.city}
+          {' · '}
+          {t('profile.memberSince', { season: competitor.firstSeason })}
+          {' · '}
+          {team === undefined || competitor.teamSince === null ? (
+            <span>{t('profile.noTeam')}</span>
+          ) : (
+            /* The club name is a link inside the sentence rather than beside it,
+               so a screen reader hears where the link goes without an
+               aria-label having to repeat what the sentence already says. */
+            <span className="profile__club">
+              <Sentence text={t('profile.inClub', { season: competitor.teamSince })} slot="team">
+                <Link to={`/${locale}/tim/${team.slug}`}>{team.name}</Link>
+              </Sentence>
+            </span>
+          )}
+        </p>
+      </div>
     </header>
   )
 }
