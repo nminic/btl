@@ -1468,14 +1468,29 @@ describe('the rulebook', () => {
 
        Held here because the criterion is what PDL P17 calls the most damaging
        hole the old league ever had, and because it now stands on two sentences
-       rather than on an article of its own. */
+       rather than on an article of its own.
+
+       **[22.08.2026] The picture is a proof now, and the owner decided it
+       knowing what it costs.** Asked directly — the article said a picture is
+       „nikad zamena za link" while Član 37 had just made it one, and the form
+       already let a result through on a photograph alone — he chose that the
+       picture really replaces the link. So somebody who runs the course alone on
+       a watch can file a result with no official list behind it, which is the
+       hole P17 named. What holds the line instead is that a picture never stands
+       by itself: the comment beside it is required, and it has to say what the
+       picture shows. The three documents and the form now say one thing. */
     expect(rulebook).toMatch(
-      /Link ka zvaničnim rezultatima je jedini dokaz koji tražimo, i sam po sebi je dovoljan/,
+      /Link ka zvaničnim rezultatima je dokaz koji tražimo i sam po sebi je dovoljan/,
     )
-    expect(rulebook).toMatch(/Slika je neobavezna dopuna, nikad zamena za link/)
-    expect(rulebook).toMatch(
-      /ni diploma ni snimak sa sata, ne dokazuje rezultat sama za sebe/,
-    )
+    expect(rulebook).toMatch(/Slika je drugi dokaz i sme da stane umesto linka, ali nikad sama/)
+    expect(rulebook).toMatch(/uz nju je komentar obavezan/)
+    /* And nowhere the other way round, in any of the three documents: this rule
+       lived in four homes and one of them was rewritten while three went on
+       saying the opposite, which is what a round of review found. */
+    for (const page of ['pravilnik', 'uslovi-koriscenja'] as const) {
+      expect(whole(page)).not.toMatch(/nikad zamena za link/)
+      expect(whole(page)).not.toMatch(/se ne prihvata kao dokaz/)
+    }
   })
 
   it('says when an event counts, in three conditions and one discretion', () => {
@@ -1583,7 +1598,13 @@ describe('the rulebook', () => {
        thing in src/forms/definitions.test.ts. */
     expect(rulebook).toMatch(/Sliku, neobavezno/)
     expect(rulebook).toMatch(/Komentar, neobavezno/)
-    expect(rulebook).toMatch(/Slika je neobavezna dopuna, nikad zamena za link/)
+    /* Both optional as fields, and the article says in the next breath what a
+       picture does to the other two (owner, 22.08.2026). Written out here as
+       well, because „neobavezno" on its own reads as the whole rule and stopped
+       being it. */
+    expect(rulebook).toMatch(
+      /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
+    )
   })
 })
 
@@ -2194,6 +2215,49 @@ describe('what the written pages say the fee buys', () => {
     )
   })
 
+  it('writes the ladders of Član 49 exactly as the boards are ordered', () => {
+    /* The tie-break ladders live in two homes: this table and `data/derive.ts`.
+       Each home has its own guard — `derive.test.ts` measures the code by
+       mutation — and until now nothing held this one, so the table could be put
+       back to the order the owner replaced on 22.08.2026 while the portal went
+       on ranking by the new one. A member disputing a place would read a rulebook
+       that does not describe the portal. Measured: the row for the best race put
+       back to its old wording left all 2035 tests green.
+
+       Written out row by row rather than parsed into criteria: the table is
+       Serbian prose and any mapping from „pa bodovi" onto a comparator is a
+       third home for the same fact. What this holds is that the text does not
+       move without somebody looking at the ladders beside it. */
+    const rows: [string, string][] = [
+      ['Generalni plasman', 'bodovi, pa kilometri, pa više trka, pa više vertikale, pa niži članski broj'],
+      [
+        'Najviše kilometara',
+        'kilometri, pa bodovi, pa više trka, pa vertikala, pa ranije dostignuto, pa niži članski broj',
+      ],
+      [
+        'Najduže na stazi',
+        'vreme, pa bodovi, pa kilometri, pa više trka, pa vertikala, pa niži članski broj',
+      ],
+      [
+        'Najbolja trka',
+        'bodovi na toj trci, pa veća dužina trke, pa bodovi u sezoni, pa kilometri u sezoni, pa niži članski broj',
+      ],
+      [
+        'Najbolji tim',
+        'bodovi, pa više trka, pa kilometri, pa vreme na stazi, pa stalan redosled timova',
+      ],
+      [
+        'Najbolji trkački par',
+        'bodovi sa zajedničkih trka, pa više zajedničkih trka, pa zajednički kilometri, pa zajedničko vreme na stazi, pa niži zbir članskih brojeva',
+      ],
+    ]
+    const article = sectionOf('pravilnik', /Redosled merila, dok se izjednačenje ne razreši/)
+
+    for (const [board, ladder] of rows) {
+      expect(article, `the ladder of ${board}`).toContain(`| ${board} | ${ladder} |`)
+    }
+  })
+
   it('asks the result form for what Član 37 says a picture changes', () => {
     /* Owner, 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim rezultatima
        postaje neobavezan, ali polje Komentar postaje obavezno."
@@ -2249,7 +2313,15 @@ describe('what the written pages say the fee buys', () => {
 
        Held as an absence and not only as a presence, because that is the half
        that rots: a measure struck from the article leaves the summary passing. */
-    const terms = sectionOf('uslovi-koriscenja', /Ukratko: mere idu/)
+    /* The summary sentence and not the section it sits in, for the same reason
+       the article below is taken out of its own: section 7 also speaks of
+       comments, blocking and reporting, and „Brisanje neprikladnog komentara je
+       moderacija" is a true sentence that the absence below would have called a
+       measure. Measured. */
+    const terms = must(
+      /Ukratko: mere idu[^\n]*/.exec(sectionOf('uslovi-koriscenja', /Ukratko: mere idu/)),
+      'the summary of the measures in the terms',
+    )[0]
     /* The article and not the section it sits in. Read whole, the section also
        holds Član 70, which begins „Brišu se svi rezultati": the absence below
        would then be an absence of the wrong thing, and a measure put back into
@@ -2266,7 +2338,7 @@ describe('what the written pages say the fee buys', () => {
       expect(article).toMatch(measure)
     }
 
-    for (const gone of [/brisanj/i, /suspenzij/]) {
+    for (const gone of [/brisanj/i, /suspenzij/i]) {
       expect(terms).not.toMatch(gone)
       expect(article).not.toMatch(gone)
     }
