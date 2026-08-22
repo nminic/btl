@@ -2397,28 +2397,56 @@ describe('what the written pages say the fee buys', () => {
        going to court.
 
        Held as an absence, which is the half that rots: deleted and unheld, the two
-       come back the first time the policy is reworded and nobody learns of it. The
-       sentence that stays in their place is held too, so this does not pass on a
-       section somebody emptied. */
-    /* Each mark is the shortest thing the fact cannot be said without. Written as
-       whole phrases, the paragraph came back reworded and walked past every one of
-       them: „Povereniku **za zaštitu podataka o ličnosti**", „organu te zemlje
-       **koji nadzire zaštitu podataka**", „pravo **da se obratite sudu**". A guard
-       against a paragraph returning must not be a guard on its wording.
-     *
-       Asked of the two sections the passages stood in and not of the whole policy,
-       which is what marks that short need: section 7 tells the supervisory
-       authority about a breach, quite properly, and a ban on „nadzor" over the
-       whole document failed that. */
-    const safeguards = sectionOf('politika-privatnosti', /propisane mehanizme zaštite/)
-    const rights = sectionOf('politika-privatnosti', /Prvo nam pišite/)
+       come back the first time the policy is reworded and nobody learns of it.
 
-    expect(safeguards).toContain('Za prenos van Evropske unije koristimo propisane mehanizme zaštite.')
-    expect(rights).toContain('Prvo nam pišite, jer se većina stvari reši u jednoj poruci.')
-    expect(safeguards, 'the policy offers to name a safeguard again').not.toMatch(/pružaoc/)
+       Not as marks on their wording, which is what this was until 23.08.2026 and
+       what an independent round took apart: "Povereniku za zaštitu podataka o
+       ličnosti" fell on `Poverenik` and "pravo da se obratite sudu" fell on `sud`,
+       while "organu te zemlje koji nadzire zaštitu podataka" walked past `nadzor`
+       and past every other mark beside it. A paragraph can always be said in one
+       more wording than a guard has marks.
 
-    for (const gone of [/Poverenik/, /AZOP/, /sud/, /nadzor/]) {
-      expect(rights, `the section on rights offers ${String(gone)} again`).not.toMatch(gone)
+       So the question asked here is where each section stops. Both passages stood
+       at the foot of a section, which is where a deleted paragraph comes back, and
+       a section held to the sentence it ends on ends on it in every wording:
+       nothing can follow it at all. That holds the sentence that stays as well, so
+       this cannot pass on a section somebody emptied.
+
+       The two authorities are held over the whole document besides, lower cased,
+       because a name is a fact and not a wording: the paragraph is gone, so
+       neither of them belongs anywhere in the policy, in any section or in a
+       heading. `sud` is held from a word boundary, so "presuda" and "posuda" are
+       none of its business.
+
+       What this does not hold, said out loud rather than left to be discovered: a
+       passage put between two paragraphs in the middle of one of the two sections,
+       naming no authority. Both passages returning the way they stood, appended,
+       fail; an offer to name a safeguard slipped into the middle of section 5 does
+       not. Nothing shorter than the whole section catches that, and the whole
+       section is two and a half thousand characters of content held elsewhere. */
+    const endsOn = (section: string, sentence: string, named: string) => {
+      expect(
+        section.trimEnd().endsWith(sentence),
+        `the policy carries on after "${sentence}", so ${named}`,
+      ).toBe(true)
+    }
+
+    endsOn(
+      sectionOf('politika-privatnosti', /propisane mehanizme zaštite/),
+      'Za prenos van Evropske unije koristimo propisane mehanizme zaštite.',
+      'it may be offering to name a safeguard once more',
+    )
+    endsOn(
+      sectionOf('politika-privatnosti', /Prvo nam pišite/),
+      'Prvo nam pišite, jer se većina stvari reši u jednoj poruci.',
+      'it may be offering a way to complain once more',
+    )
+
+    for (const gone of [/poverenik/i, /azop/i, /\bsud/i]) {
+      expect(
+        whole('politika-privatnosti'),
+        `the policy sends the reader to ${String(gone)} again`,
+      ).not.toMatch(gone)
     }
   })
 

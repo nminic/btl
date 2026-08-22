@@ -435,11 +435,20 @@ const STATUTE = '/BTL%20Statut.pdf'
       .map((one) => one.textContent?.trim())
 
     expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
-    /* „Nothing else" counted in elements and not only in text. Held on the text
-       alone, everything without any passed: a fourth link carrying an icon and an
-       `aria-label`, a sponsor's image, a rule, an ornamental div. Measured, and
-       the fourth link is the one that matters, because PDL P28a says the footer
-       carries three. */
+    /* „Nothing else" counted in elements and not only in text, which catches what
+       is put beside the navigation rather than inside it: a link carrying an icon
+       and an `aria-label`, a sponsor's image, a rule, an ornamental div, a second
+       navigation. Every one of those passed everything this test had before and
+       fails now.
+     *
+       A fourth link inside the navigation was caught before this line and still
+       is, by the three names above; a bare line of text anywhere in the footer is
+       caught by the line under this one. Said plainly because the comment here
+       claimed the fourth link, which was the one case that needed nothing new.
+     *
+       The count is one level deep, and that is where it stops: an image or a rule
+       put inside the navigation carries no text and leaves the footer with the one
+       child it had, so it goes past all three lines. Measured both ways. */
     expect([...footer.children].map((one) => one.tagName)).toEqual(['NAV'])
     expect(footer.textContent?.trim()).toBe(links.join(''))
     expect(JSON.stringify(sr)).not.toContain('Portal je u izradi')
