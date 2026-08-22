@@ -271,9 +271,13 @@ export function Shell() {
             here any more (owner, 11.08.2026). GeoNames is CC BY 4.0 and asks to
             be named wherever the material is shared, which the licence lets a
             work do „in any reasonable manner based on the medium"; on a portal,
-            the terms of use is such a place. It is the last paragraph of the
-            last section of them (public/mock/pages.json, `uslovi-koriscenja`),
-            which is as quiet as naming it can be without ceasing to name it. */}
+            the terms of use is such a place. It is in the section on technical
+            partners (public/mock/pages.json, `uslovi-koriscenja`), which is where
+            a credit belongs and is as quiet as naming it can be without ceasing
+            to name it. It stood in the sign-off until 22.08.2026, when the owner
+            added that section and moved it there; a guard reads it by the
+            sentence rather than by counting to the last section, so the next
+            section added under it breaks nothing. */}
       </footer>
     </div>
   )

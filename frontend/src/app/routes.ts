@@ -64,12 +64,14 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
 
 /** Only these three, and Contact is a mailto rather than a screen (PDL P28a).
  *
- *  The statute is not among them, and it is not absent from the footer either: it is a
- *  file rather than a screen, so `Shell.tsx` links it beside Contact for the same reason.
- *  It was a page of twenty sections until 20.08.2026, when the owner asked that it not be
- *  put in front of members; a review then found that taking it off the portal breaks
- *  član 34 stav 6 of the statute itself, and on 21.08.2026 the owner asked for the
- *  document to be published under its own name. */
+ *  The statute is not among them and it is not in the footer at all. It was a page of
+ *  twenty sections until 20.08.2026, when the owner asked that it not be put in front of
+ *  members; a review then found that taking it off the portal breaks član 34 stav 6 of
+ *  the statute itself, so on 21.08.2026 it became a file linked beside Contact. On
+ *  22.08.2026 the owner asked for that button to go as well („ne želim ga tu") and for
+ *  the name of the statute in the first section of the terms to be the link instead.
+ *  The obligation is met there: one published copy is a published copy, and it is the
+ *  document a member accepts on joining, which is where somebody looking for it goes. */
 export const FOOTER_ROUTES: RouteDef[] = [
   { path: 'politika-privatnosti', labelKey: 'nav.privacy', seoKey: 'privacy' },
   { path: 'uslovi-koriscenja', labelKey: 'nav.terms', seoKey: 'terms' },

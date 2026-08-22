@@ -144,6 +144,54 @@ describe('Markdown', () => {
     )
   })
 
+  it('refuses another host written with a backslash, as it refuses two slashes', () => {
+    /* A browser normalises `/\\` to `//` before it resolves anything, so
+       `/\\primer.rs` is `https://primer.rs`. It was harmless while every path of
+       ours went through the router; the day a path could be served as written it
+       became a way for a page a moderator types to send a reader off the portal.
+       Left as plain text, like every other address outside the closed list. */
+    /* Written as an expression and not as a plain attribute: in JSX an attribute
+       is literal, so a backslash typed twice stays two, and the test would then
+       be about a shape nobody writes. */
+    const said = 'Idi [ovde](/\\primer.rs) odmah.'
+    const { container } = render(<Markdown text={said} />)
+
+    expect(container.querySelector('a')).toBeNull()
+    expect(container.textContent).toBe(said)
+  })
+
+  it('carries a file with a fragment or a query as a file, not as a page', () => {
+    /* The extension is read off the path and not off the whole address. Asked of
+       the whole, `/BTL%20Statut.pdf#strana=3` stopped looking like a file and
+       went back through the router, which hands the reader the application shell
+       instead of the document. */
+    render(<Markdown text="Vidi [treću stranu](/BTL%20Statut.pdf#strana=3) Statuta." />)
+    render(<Markdown text="Ili [novu verziju](/BTL%20Statut.pdf?v=2) istog." />)
+
+    expect(screen.getByRole('link', { name: 'treću stranu' })).toHaveAttribute(
+      'href',
+      '/BTL%20Statut.pdf#strana=3',
+    )
+    expect(screen.getByRole('link', { name: 'novu verziju' })).toHaveAttribute(
+      'href',
+      '/BTL%20Statut.pdf?v=2',
+    )
+  })
+
+  it('reads the extension as at most four characters, digits among them', () => {
+    /* The boundary itself, in both directions, because „two to four" was written
+       down and nothing measured where four stops. Four is a file (`.jpeg`), five
+       is a word (`.trkom`), and a digit counts: a season written `/liga/2027.5`
+       is not a page of this portal but a file nobody has. */
+    render(<Markdown text="Slika je [ovde](/slike/sat.jpeg), a liga [tu](/liga/sezona.trkom)." />)
+
+    expect(screen.getByRole('link', { name: 'ovde' })).toHaveAttribute('href', '/slike/sat.jpeg')
+    expect(screen.getByRole('link', { name: 'tu' })).toHaveAttribute(
+      'href',
+      '/sr/liga/sezona.trkom',
+    )
+  })
+
   it('still reads a page whose name merely has a dot in it as a page', () => {
     /* The other side of the rule, so „ends in a dot and letters" does not eat a
        page. Two to four letters after the last dot is a file extension; a

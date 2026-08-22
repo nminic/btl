@@ -1456,24 +1456,38 @@ describe('the rulebook', () => {
        saying the opposite, which is what a round of review found. */
     for (const page of ['pravilnik', 'uslovi-koriscenja'] as const) {
       expect(whole(page)).not.toMatch(/nikad zamena za link/)
-      /* The picture, not any picture at all: „Slika bez komentara se ne prihvata
-         kao dokaz" is the rule that stayed, said the other way round, and a ban
-         on the bare phrase failed it.
-       *
-         Written as „everything of that shape except the one that stayed" rather
-         than as a list of the shapes that must not appear. Listed, three plain
-         restatements walked past it, all measured: „Slika se ne prihvata kao
-         dokaz." with no word between, the same with „Fotografija", and „Slika
-         diplome se ne prihvata." with a capital and no „kao dokaz" at the end.
-         A ban that has to enumerate its subject is a ban on the wording. */
-      for (const said of whole(page).split(/(?<=\.)\s+/)) {
-        if (/ne prihvata/.test(said) && !/(bez|osim|jedino|samo)/i.test(said)) {
-          expect(said, `${page} refuses a picture as proof again`).not.toMatch(
-            /[Ss]lik|[Ff]otografij|[Dd]iplom/,
-          )
-        }
-      }
     }
+
+    /* And every sentence that refuses a picture is one of the two that may.
+     *
+       Written out whole rather than described. Two shapes were tried before this
+       and both failed, measured: a list of the phrasings that must not appear
+       let three plain restatements through („Slika se ne prihvata kao dokaz.",
+       the same with „Fotografija", „Slika diplome se ne prihvata."), and a rule
+       with an escape for the words „bez, osim, jedino, samo" let through „…zbog
+       bezbednosti" and „…nikada kao samostalan dokaz" while failing „Slika se ne
+       prihvata kao dokaz ako uz nju ne stoji komentar", which is the rule that
+       stayed.
+     *
+       There is no grammar for „refuses on the right ground". So the sentences
+       are pinned, and a new one — however it is worded — stops the gate and asks
+       a person whether the picture is still proof. That is the whole point: the
+       rule lived in four homes and one was rewritten while three went on saying
+       the opposite. */
+    const refusing = (['pravilnik', 'uslovi-koriscenja'] as const).flatMap((page) =>
+      whole(page)
+        .split(/[\n]|(?<=\.)\s+/)
+        .map((said) => said.trim())
+        .filter((said) => /ne prihvata/.test(said) && /[Ss]lik|[Ff]otografij|[Dd]iplom/.test(said)),
+    )
+
+    /* Empty, and that is the whole claim. Since 22.08.2026 no sentence of either
+       document refuses a picture at all: what the terms say is the positive
+       form, „prihvata se kao dokaz samo uz komentar", which does not read as a
+       refusal and does not have to be excepted from one. A list rather than a
+       count, so a sentence that arrives is printed in the failure and a person
+       decides whether the picture is still proof. */
+    expect(refusing).toEqual([])
   })
 
   it('says when an event counts, in three conditions and one discretion', () => {

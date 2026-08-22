@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
+import WRITTEN from '../../public/mock/pages.json'
 
 describe('navigation', () => {
   beforeEach(() => {
@@ -236,12 +237,18 @@ describe('navigation', () => {
     )
   })
 
+/** The address the statute is served at, written once here so the guard below
+ *  and the page it reads answer to the same string. */
+const STATUTE = '/BTL%20Statut.pdf'
+
   it('publishes the statute as the document it is, and the document is there', async () => {
     /* Član 34 stav 6 of the statute adopted on 17.08.2026 puts the statute on the
        internet page of the association, and član 39 stav 2 gives three days from the day
        it was adopted. It was a page of twenty sections until 20.08.2026; the owner asked
        that it not be pushed at anybody, and then that the document itself be published,
-       under that name. A link in the footer is both: published, and out of the way.
+       under that name, linked from the footer. On 22.08.2026 that button went too,
+       and the link moved into the first section of the terms of use, which is
+       where it is read from below.
        The file is checked to exist, because a link to a missing document reads as
        published while publishing nothing, and that is worse than no link at all: the
        obligation would look met. */
@@ -256,8 +263,19 @@ describe('navigation', () => {
 
     expect(link).toHaveAttribute('href', '/BTL%20Statut.pdf')
     /* And nowhere else, because the obligation is met by one published copy and
-       two of them are two things to keep true. */
-    expect(screen.queryByRole('link', { name: 'Statut' })).toBeNull()
+       two of them are two things to keep true.
+     *
+       Counted in the content rather than looked for by name on one screen. Asked
+       as „no link called exactly Statut is on this render", a second one written
+       into the rulebook as „Preuzmite [Statut](/BTL%20Statut.pdf)." passed
+       without a word: wrong screen, and a name that is not exactly that. */
+    const linking = Object.entries(WRITTEN).flatMap(([slug, page]) =>
+      page.sections
+        .filter((section) => section.body.includes(STATUTE))
+        .map((section) => `${slug} / ${section.heading}`),
+    )
+
+    expect(linking).toEqual(['uslovi-koriscenja / 1. Ko smo i šta ovi uslovi uređuju'])
 
     const served = join(process.cwd(), 'public', decodeURIComponent('BTL%20Statut.pdf'))
 
