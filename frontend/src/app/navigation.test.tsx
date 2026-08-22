@@ -435,6 +435,12 @@ const STATUTE = '/BTL%20Statut.pdf'
       .map((one) => one.textContent?.trim())
 
     expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
+    /* „Nothing else" counted in elements and not only in text. Held on the text
+       alone, everything without any passed: a fourth link carrying an icon and an
+       `aria-label`, a sponsor's image, a rule, an ornamental div. Measured, and
+       the fourth link is the one that matters, because PDL P28a says the footer
+       carries three. */
+    expect([...footer.children].map((one) => one.tagName)).toEqual(['NAV'])
     expect(footer.textContent?.trim()).toBe(links.join(''))
     expect(JSON.stringify(sr)).not.toContain('Portal je u izradi')
   })

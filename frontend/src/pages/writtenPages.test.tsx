@@ -2365,10 +2365,13 @@ describe('what the written pages say the fee buys', () => {
       const sections = must(written[slug], slug).sections
       const last = must(sections[sections.length - 1], `the last section of ${slug}`).body
 
-      /* Anchored at both ends of the sign-off and not only at the end of the
-         text. Held with `$` alone, the same sign-off written twice one under the
-         other passed, because the last one closes the string: the reader sees two
-         and the gate sees one. Measured. */
+      /* The shape, and then the count. The pattern below is anchored only at the
+         end of the text, and that is all it can be: the sign-off is the last thing
+         in the document. So the same sign-off written twice one under the other
+         satisfies it — the last one closes the string, the reader sees two and the
+         pattern sees one. What catches that is the counting under it, and it is
+         written out rather than folded into the pattern because the two questions
+         are different: is it in the right shape, and is there one of it. */
       expect(last, `${slug} does not sign off the way the other two do`).toMatch(
         new RegExp(
           ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 15.09.2026.']
@@ -2397,19 +2400,25 @@ describe('what the written pages say the fee buys', () => {
        come back the first time the policy is reworded and nobody learns of it. The
        sentence that stays in their place is held too, so this does not pass on a
        section somebody emptied. */
-    const policy = whole('politika-privatnosti')
+    /* Each mark is the shortest thing the fact cannot be said without. Written as
+       whole phrases, the paragraph came back reworded and walked past every one of
+       them: „Povereniku **za zaštitu podataka o ličnosti**", „organu te zemlje
+       **koji nadzire zaštitu podataka**", „pravo **da se obratite sudu**". A guard
+       against a paragraph returning must not be a guard on its wording.
+     *
+       Asked of the two sections the passages stood in and not of the whole policy,
+       which is what marks that short need: section 7 tells the supervisory
+       authority about a breach, quite properly, and a ban on „nadzor" over the
+       whole document failed that. */
+    const safeguards = sectionOf('politika-privatnosti', /propisane mehanizme zaštite/)
+    const rights = sectionOf('politika-privatnosti', /Prvo nam pišite/)
 
-    expect(policy).toContain('Prvo nam pišite, jer se većina stvari reši u jednoj poruci.')
-    expect(policy).toContain('Za prenos van Evropske unije koristimo propisane mehanizme zaštite.')
+    expect(safeguards).toContain('Za prenos van Evropske unije koristimo propisane mehanizme zaštite.')
+    expect(rights).toContain('Prvo nam pišite, jer se većina stvari reši u jednoj poruci.')
+    expect(safeguards, 'the policy offers to name a safeguard again').not.toMatch(/pružaoc/)
 
-    for (const gone of [
-      /pojedinog pružaoca/,
-      /Povereniku za informacije/,
-      /AZOP/,
-      /sudsku zaštitu/,
-      /nadzornom organu/,
-    ]) {
-      expect(policy, `the policy offers ${String(gone)} again`).not.toMatch(gone)
+    for (const gone of [/Poverenik/, /AZOP/, /sud/, /nadzor/]) {
+      expect(rights, `the section on rights offers ${String(gone)} again`).not.toMatch(gone)
     }
   })
 
