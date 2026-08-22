@@ -679,7 +679,7 @@ describe('a result from entry to decision', () => {
        That is why `photo: ''` could be put into the correction and the whole suite
        stayed green: the field went in on both entry paths, sat on the record, and
        was read by nobody at all. */
-    await user.upload(screen.getByLabelText(/Slika kao dopuna/), new File(['sat'], 'sat.jpg', { type: 'image/jpeg' }))
+    await user.upload(screen.getByLabelText(/Slika kao dokaz/), new File(['sat'], 'sat.jpg', { type: 'image/jpeg' }))
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
   }
 

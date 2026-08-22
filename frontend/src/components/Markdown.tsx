@@ -51,11 +51,34 @@ const LINK = /^\[[^\]]+\]\([^)\s]+\)$/
  * page somebody else typed is a script on the portal. Anything outside this list
  * stays literal text, so nothing is silently swallowed either. */
 function addressOf(url: string): { inside: boolean; href: string } | undefined {
-  /* One slash is a page of this portal. Two is another host, which a browser
-     reads as a scheme-relative address and the router would turn into a path of
-     ours; neither is what somebody writing a page meant. */
-  if (url.startsWith('/') && !url.startsWith('//')) {
-    return { inside: true, href: url }
+  /* One slash is this portal. Two is another host, which a browser reads as a
+     scheme-relative address and the router would turn into a path of ours;
+     neither is what somebody writing a page meant.
+   *
+     A backslash is the same thing written the other way. A browser normalises
+     `/\` to `//` before it resolves anything, so `/\primer.rs` is `https://primer.rs`.
+     It was harmless while every path of ours went through the router, which made
+     it the literal route `/sr/\primer.rs`; the moment a path could be served as
+     written, it became a way for a page a moderator types to send a reader off
+     the portal. Refused with the double slash, and refused means left as plain
+     text, so nothing is swallowed quietly. Measured 22.08.2026. */
+  if (url.startsWith('/') && !/^\/[/\\]/.test(url)) {
+    /* A file served beside the application is not a route of it. The statute is
+       linked from the terms as `/BTL%20Statut.pdf` (owner, 22.08.2026), and read
+       as a page it became `/sr/BTL%20Statut.pdf`, which the router answers with
+       the application shell: the reader would open the portal again instead of
+       the document. An address that ends in a file extension is therefore served
+       as it is written. It is still this host, because both ways of naming
+       another one are refused above.
+     *
+       The extension is read where the path ends and not where the address does:
+       a file carries a query or a fragment as readily as a page does, and
+       anchored to the end of the whole, `/BTL%20Statut.pdf#strana=3` went back
+       to being a route and the reader got the application shell again. Written
+       as a look-ahead rather than by cutting the address first, because cutting
+       leaves a branch for „no first piece", which a split cannot produce and no
+       test can walk. */
+    return { inside: !/\.[a-z0-9]{2,4}(?=$|[?#])/i.test(url), href: url }
   }
 
   if (url.startsWith('mailto:') || url.startsWith('https://') || url.startsWith('http://')) {

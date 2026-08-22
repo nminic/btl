@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
+import WRITTEN from '../../public/mock/pages.json'
 
 describe('navigation', () => {
   beforeEach(() => {
@@ -236,43 +237,45 @@ describe('navigation', () => {
     )
   })
 
-  it('offers the same file from the foot of the rulebook as from the footer', async () => {
-    /* Two links to one document, and the address written twice. The comment on
-       the second one claimed a test held them to the same value; there was none,
-       and that is worse than no claim: `nginx.conf` answers an unknown path with
-       `index.html`, so a renamed file plus a `download` attribute hands the
-       member the application shell saved as a PDF, with nothing on the screen
-       saying anything is wrong. Measured 22.08.2026: the address changed to a
-       file that does not exist and all 2028 tests stayed green.
-
-       Held against the footer's, which is the one the guard below walks all the
-       way to the bytes on disk. */
-    /* One render and not two, because the second leaves the first tree standing
-       and the footer of both answers to the same name. The rulebook carries both
-       links anyway: its own at the foot of the text, and the footer's under it. */
-    renderAt('/sr/pravilnik')
-
-    const fromRulebook = await screen.findByRole('link', { name: 'BTL Statut' })
-    const fromFooter = await screen.findByRole('link', { name: 'Statut' })
-
-    expect(fromRulebook.getAttribute('href')).toBe(fromFooter.getAttribute('href'))
-    expect(fromRulebook).toHaveAttribute('download')
-  })
+/** The address the statute is served at, written once here so the guard below
+ *  and the page it reads answer to the same string. */
+const STATUTE = '/BTL%20Statut.pdf'
 
   it('publishes the statute as the document it is, and the document is there', async () => {
     /* Član 34 stav 6 of the statute adopted on 17.08.2026 puts the statute on the
        internet page of the association, and član 39 stav 2 gives three days from the day
        it was adopted. It was a page of twenty sections until 20.08.2026; the owner asked
        that it not be pushed at anybody, and then that the document itself be published,
-       under that name. A link in the footer is both: published, and out of the way.
+       under that name, linked from the footer. On 22.08.2026 that button went too,
+       and the link moved into the first section of the terms of use, which is
+       where it is read from below.
        The file is checked to exist, because a link to a missing document reads as
        published while publishing nothing, and that is worse than no link at all: the
        obligation would look met. */
-    renderAt('/sr')
+    /* Read off the terms of use and not off the footer. The button in the footer
+       is gone (owner, 22.08.2026: „izbaci i dugme Statut iz footera sajta, ne
+       želim ga tu"), and the same owner asked in the same breath that the name
+       of the statute in the first section of the terms be the link. So the
+       document has one home now, and this is it. */
+    renderAt('/sr/uslovi-koriscenja')
 
-    const link = await screen.findByRole('link', { name: 'Statut' })
+    const link = await screen.findByRole('link', { name: 'Statut Sportskog udruženja BTL' })
 
     expect(link).toHaveAttribute('href', '/BTL%20Statut.pdf')
+    /* And nowhere else, because the obligation is met by one published copy and
+       two of them are two things to keep true.
+     *
+       Counted in the content rather than looked for by name on one screen. Asked
+       as „no link called exactly Statut is on this render", a second one written
+       into the rulebook as „Preuzmite [Statut](/BTL%20Statut.pdf)." passed
+       without a word: wrong screen, and a name that is not exactly that. */
+    const linking = Object.entries(WRITTEN).flatMap(([slug, page]) =>
+      page.sections
+        .filter((section) => section.body.includes(STATUTE))
+        .map((section) => `${slug} / ${section.heading}`),
+    )
+
+    expect(linking).toEqual(['uslovi-koriscenja / 1. Ko smo i šta ovi uslovi uređuju'])
 
     const served = join(process.cwd(), 'public', decodeURIComponent('BTL%20Statut.pdf'))
 

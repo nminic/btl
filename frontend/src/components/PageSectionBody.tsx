@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { PageSection } from '../data/types'
 import { DucatGallery } from './DucatGallery'
 import { PriceTable } from './PriceTable'
-import { StatuteLink } from './StatuteLink'
 import { Markdown } from './Markdown'
 import './PageSectionBody.css'
 
@@ -72,10 +71,6 @@ function drawing(gallery: PageSection['gallery']): ReactNode {
     return <PriceTable />
   }
 
-  if (gallery === 'statute') {
-    return <StatuteLink />
-  }
-
   return undefined
 }
 
@@ -112,27 +107,12 @@ function drawing(gallery: PageSection['gallery']): ReactNode {
  */
 export function PageSectionBody({ section }: { section: PageSection }) {
   const { before, after } = around(section.body)
-  /* A sign-off is the one drawing that stands **beside** the words rather than
-     among them: the name of the association on one side and the document it
-     offers on the other, on one line (owner, 22.08.2026). Everywhere else the
-     section is a column and the drawing takes a line of its own, which is what
-     prose wants; here the two are one statement and are wrapped as one. */
-  const signoff = section.gallery === 'statute'
 
   return (
     <div className="section-body">
       {hasWords(before) && <Markdown text={before} />}
-      {signoff ? (
-        <div className="section-body__signoff">
-          {hasWords(after) && <Markdown text={after} />}
-          {drawing(section.gallery)}
-        </div>
-      ) : (
-        <>
-          {drawing(section.gallery)}
-          {hasWords(after) && <Markdown text={after} />}
-        </>
-      )}
+      {drawing(section.gallery)}
+      {hasWords(after) && <Markdown text={after} />}
     </div>
   )
 }

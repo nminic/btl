@@ -261,7 +261,7 @@ describe('Registration once it is open', () => {
       </ClockProvider>,
     )
 
-    const field = inputElement(screen.getByLabelText(/Slika kao dopuna/))
+    const field = inputElement(screen.getByLabelText(/Slika kao dokaz/))
     const file = new File(['sadržaj'], 'sat.jpg', { type: 'image/jpeg' })
 
     await user.upload(field, file)

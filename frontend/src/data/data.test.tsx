@@ -602,7 +602,12 @@ describe('the credit the codebook of towns asks for', () => {
 
        Held here because it is one sentence in a file of content and nothing else
        would notice it going: all three parts have to survive, and it has to
-       survive in exactly one place. */
+       survive in exactly one place.
+
+       It moved once more on 22.08.2026, out of the sign-off and into the section
+       on technical partners the owner added above it, which is where a credit
+       belongs. Found by the sentence rather than by counting to the last
+       section, so the next section added under it does not break this. */
     const pages = await loadResource<Record<string, { sections: { body: string }[] }>>('pages')
     const carrying = Object.entries(pages).filter(([, page]) =>
       page.sections.some((section) => section.body.includes('GeoNames')),
@@ -612,8 +617,8 @@ describe('the credit the codebook of towns asks for', () => {
 
     const terms = must(pages['uslovi-koriscenja'], 'the terms of use').sections
     const credit = must(
-      terms[terms.length - 1],
-      'the last section of the terms',
+      terms.find((section) => section.body.includes('GeoNames')),
+      'the section of the terms that names GeoNames',
     ).body
 
     expect(credit).toContain('GeoNames')

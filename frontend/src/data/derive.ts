@@ -992,9 +992,11 @@ export type RaceRow = {
 
 /**
  * The best single races of a season, by the points of one result. Ladder:
- * points, the longer race, then the runner's kilometres and races in the
- * season. The earlier date is deliberately not a rung: the usual tie is two
- * people crossing the line together, which is the same race on the same day.
+ * points on that race, the longer race, then what the runner took in the whole
+ * season and their kilometres in it (Article 49, owner's fourth reading,
+ * 22.08.2026; the count of races in the season was a rung until then). The
+ * earlier date is deliberately not a rung: the usual tie is two people crossing
+ * the line together, which is the same race on the same day.
  */
 export function bestSingleRaces(
   competitors: Competitor[],
