@@ -2143,13 +2143,25 @@ function sectionOf(
   slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
   says: RegExp,
 ): string {
-  const found = written[slug].sections.find((section) => says.test(section.body))
+  const found = written[slug].sections.filter((section) => says.test(section.body))
 
-  if (found === undefined) {
-    throw new Error(`no section of ${slug} says ${String(says)}`)
+  if (found.length !== 1) {
+    /* Not "the first that says it", which is what this was until 23.08.2026 and
+       what an independent round measured the cost of: a second section that
+       mentions the same sentence quietly moves every question asked through this
+       helper onto a section nobody meant. A guard reading the wrong section is
+       worse than no guard, because it is green.
+     *
+       So an anchor that is not one section's alone is a broken anchor, and it
+       says so out loud rather than picking. Measured: a new section carrying the
+       sentence „Za prenos van Evropske unije koristimo propisane mehanizme
+       zaštite." now stops the file instead of moving the guard under it. */
+    throw new Error(
+      `${String(found.length)} sections of ${slug} say ${String(says)}, and an anchor has to be one section's own`,
+    )
   }
 
-  return found.body
+  return must(found[0], 'the one section that says it').body
 }
 
 describe('what the written pages say the fee buys', () => {
@@ -2396,35 +2408,56 @@ describe('what the written pages say the fee buys', () => {
        on complaining to the Commissioner, to another country's authority, and
        going to court.
 
-       Held as an absence, which is the half that rots: deleted and unheld, the two
-       come back the first time the policy is reworded and nobody learns of it.
+       Held as an absence, which is the half that rots: deleted and unheld, the
+       two come back the first time the policy is reworded and nobody learns of
+       it. Two questions are asked about them, and the pair is the point, because
+       each one alone was measured and found short.
 
-       Not as marks on their wording, which is what this was until 23.08.2026 and
-       what an independent round took apart: "Povereniku za zaštitu podataka o
-       ličnosti" fell on `Poverenik` and "pravo da se obratite sudu" fell on `sud`,
-       while "organu te zemlje koji nadzire zaštitu podataka" walked past `nadzor`
-       and past every other mark beside it. A paragraph can always be said in one
-       more wording than a guard has marks.
+       **Where each section stops.** Both passages stood at the foot of a section,
+       which is where a deleted paragraph comes back, and a section held to the
+       sentence it ends on ends on it in every wording: nothing can follow it at
+       all. This is what marks on the wording cannot do. Written as marks alone
+       until 23.08.2026, „Povereniku za zaštitu podataka o ličnosti" walked past
+       „Povereniku za informacije" and „organu te zemlje koji nadzire zaštitu
+       podataka" walked past „nadzornom organu", because a paragraph can always
+       be said in one more wording than a guard has marks. It also holds the
+       sentence that stays, so this cannot pass on a section somebody emptied.
 
-       So the question asked here is where each section stops. Both passages stood
-       at the foot of a section, which is where a deleted paragraph comes back, and
-       a section held to the sentence it ends on ends on it in every wording:
-       nothing can follow it at all. That holds the sentence that stays as well, so
-       this cannot pass on a section somebody emptied.
+       **And the passages themselves, over the whole document.** Written as the
+       section's end alone, for one day, and a second round measured that too: the
+       offer to name a safeguard came back word for word in the middle of section
+       5, at the foot of section 4, and as a section of its own between 5 and 6,
+       and all three passed. The end of a section says nothing about the rest of
+       the page. So the marks stay, lower cased, which is more than they were:
+       three of them are the phrases these two passages are made of, and two are
+       the names of the authorities, which are facts rather than wordings.
 
-       The two authorities are held over the whole document besides, lower cased,
-       because a name is a fact and not a wording: the paragraph is gone, so
-       neither of them belongs anywhere in the policy, in any section or in a
-       heading. `sud` is held from a word boundary, so "presuda" and "posuda" are
-       none of its business.
+       `sudsku zaštitu` and not `sud`: measured on 23.08.2026, a ban on the word
+       failed the sentence „Državnom organu podatke dajemo samo po nalogu suda",
+       which is the policy saying on what basis it hands data over rather than
+       offering anybody a court. `nadzor` is not banned at all, for the same
+       reason: section 7 tells a supervisory authority about a breach, quite
+       properly.
 
-       What this does not hold, said out loud rather than left to be discovered: a
-       passage put between two paragraphs in the middle of one of the two sections,
-       naming no authority. Both passages returning the way they stood, appended,
-       fail; an offer to name a safeguard slipped into the middle of section 5 does
-       not. Nothing shorter than the whole section catches that, and the whole
-       section is two and a half thousand characters of content held elsewhere. */
-    const endsOn = (section: string, sentence: string, named: string) => {
+       What neither half holds, said out loud rather than left to be discovered: a
+       **reworded** passage put in the middle of some other section. The marks
+       catch it word for word anywhere; the section end catches any wording at the
+       foot of these two; a rewording anywhere else goes past both. Nothing
+       shorter than pinning the whole document catches that, and the whole
+       document is what the rest of this file already reads. */
+    const endsOn = (sentence: string, named: string) => {
+      /* Found by the whole sentence it ends on, minus the full stop, which is the
+         only character in either of them a regular expression would read as
+         something else.
+
+         The whole sentence and not a phrase out of it, because `sectionOf` now
+         refuses an anchor two sections share and a phrase is easy to share: „za
+         obrađivače van Evropske unije primenjujemo propisane mehanizme zaštite iz
+         sekcije 5", written anywhere in the policy as an ordinary cross
+         reference, would have stopped this file with three words in common. The
+         whole sentence is one section's own. */
+      const section = sectionOf('politika-privatnosti', new RegExp(sentence.slice(0, -1)))
+
       expect(
         section.trimEnd().endsWith(sentence),
         `the policy carries on after "${sentence}", so ${named}`,
@@ -2432,20 +2465,24 @@ describe('what the written pages say the fee buys', () => {
     }
 
     endsOn(
-      sectionOf('politika-privatnosti', /propisane mehanizme zaštite/),
       'Za prenos van Evropske unije koristimo propisane mehanizme zaštite.',
       'it may be offering to name a safeguard once more',
     )
     endsOn(
-      sectionOf('politika-privatnosti', /Prvo nam pišite/),
       'Prvo nam pišite, jer se većina stvari reši u jednoj poruci.',
       'it may be offering a way to complain once more',
     )
 
-    for (const gone of [/poverenik/i, /azop/i, /\bsud/i]) {
+    for (const gone of [
+      /pojedinog pružaoca/i,
+      /poverenik/i,
+      /azop/i,
+      /sudsku zaštitu/i,
+      /nadzornom organu/i,
+    ]) {
       expect(
         whole('politika-privatnosti'),
-        `the policy sends the reader to ${String(gone)} again`,
+        `the policy carries ${String(gone)} again`,
       ).not.toMatch(gone)
     }
   })
