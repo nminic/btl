@@ -158,6 +158,16 @@ describe('Markdown', () => {
 
     expect(container.querySelector('a')).toBeNull()
     expect(container.textContent).toBe(said)
+
+    /* And the older, plainer form of the same attack, which was refused all
+       along and measured by nothing: a security round replaced the guard with
+       one that lets `//` through, and all 2039 tests stayed green while
+       `//primer.rs` resolved to `https://primer.rs/`. The title of this test and
+       two comments beside it already claimed both were held. */
+    const plain = render(<Markdown text="Ili [ovde](//primer.rs) odmah." />)
+
+    expect(plain.container.querySelector('a')).toBeNull()
+    expect(plain.container.textContent).toBe('Ili [ovde](//primer.rs) odmah.')
   })
 
   it('carries a file with a fragment or a query as a file, not as a page', () => {
