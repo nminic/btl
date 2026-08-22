@@ -289,12 +289,36 @@ const STATUTE = '/BTL%20Statut.pdf'
        guard has already made twice. „Over a kilobyte" let a photograph through with five
        bytes written over it. „Says it is the statute" was then put in its place rather
        than beside it, and a document cut short at a kilobyte still carries both the
-       header and the title, which sits on byte 928 of 184715: an interrupted copy or a
-       one-page export publishes a stump and the gate stays green. So: a PDF, the size of
-       this document, and calling itself by its name. */
+       header and the title, which sat on byte 928 of the 184715 the file had then: an
+       interrupted copy or a one-page export publishes a stump and the gate stays green.
+       So: a PDF, the size of this document, and calling itself by its name. */
     expect(carried.length, 'what is served is too small to be the statute').toBeGreaterThan(
       100 * 1024,
     )
+
+    /* And carrying nobody's confidentiality label. The published file arrived with
+       `MSIP_Label_..._Name`, naming one company's internal classification, the Microsoft
+       tenant it belongs to and the moment it was applied — on a document Član 34 stav 6
+       requires to be public. It is off since 22.08.2026, and nothing noticed it was ever
+       on: a security round put the key back and the whole gate stayed green.
+
+       The way it arrived is the way it comes back. A tenant policy stamps the label on
+       export, so the next time this document is exported from Word it is stamped again,
+       and the only thing between that and the public site is this line.
+
+       One mark, and neither the company's name nor the exact spelling of the key. The
+       name was here and caught nothing this does not, while writing a third party's name
+       and the story of their leak into a public repository. `MSIP_Label` was here too and
+       is one capital away from passing: `Msip_Label` walked past it, measured.
+
+       The answer is a boolean and not the text, so a failure says which mark it found
+       instead of printing a quarter of a megabyte of compressed streams. */
+    const looked = carried.toString('latin1').toLowerCase()
+
+    expect(
+      looked.includes('msip'),
+      "the published statute carries an MSIP label, which is somebody's internal classification",
+    ).toBe(false)
 
     /* And whole, which a size cannot say. A copy cut off at any length under the whole
        one is over that threshold and still unreadable: a PDF ends with its own mark, and
@@ -303,6 +327,51 @@ const STATUTE = '/BTL%20Statut.pdf'
       carried.subarray(-1024).toString('latin1'),
       'what is served is not a whole PDF',
     ).toContain('%%EOF')
+
+    /* And readable, which `%%EOF` does not say either, and this is the newest of the
+       lessons this guard is made of.
+     *
+       On 22.08.2026 a line was taken out of the header to keep the name of a tool off a
+       public file. Twenty-six bytes shorter, every offset in the cross-reference table
+       pointed twenty-six bytes past its object, and two independent readers refused the
+       document outright: `pdftotext` exited non-zero having written nothing, and `pypdf`
+       could not find the root. The four questions above all passed, and so did the proof
+       written for that change — pages, text and pixels compared through a library that
+       silently repairs a broken table before it reads it. A guard that reads through a
+       repair cannot see a break.
+     *
+       So the table is followed the way a reader follows it: `startxref` names a byte, and
+       at that byte a PDF has either the word `xref` or the head of the object holding the
+       table. Anything else means the offsets no longer describe this file.
+     *
+       **The head and not the tail of it.** Written without the line break in front, the
+       pattern matched the end of a number: the table points at `640 0 obj`, and a file
+       one byte shorter puts `40 0 obj` on that spot, which read as a head is a head. One
+       and two bytes therefore passed while `pypdf` and `pdftotext` both refused the
+       document — the same fault as before, one twenty-sixth its size, and the likeliest
+       size of it, since the fix that caused it was a hand count of twenty-six bytes.
+     *
+       A file **longer** by a byte fails here too, and that is meant. Readers cope with
+       it, but an offset that does not land exactly on the head of an object is a table
+       that no longer describes the file, and the next hand to touch these bytes should
+       hear about it rather than inherit it. */
+    const startxref = carried.lastIndexOf(Buffer.from('startxref', 'latin1'))
+
+    expect(startxref, 'what is served has no startxref').toBeGreaterThan(-1)
+
+    const at = Number(
+      /startxref\s+(\d+)/.exec(carried.subarray(startxref, startxref + 64).toString('latin1'))?.[1],
+    )
+
+    expect(at, 'the offset of the cross-reference table is past the end of the file').toBeLessThan(
+      carried.length,
+    )
+    expect(at, 'the cross-reference table of the statute starts at the very first byte')
+      .toBeGreaterThan(0)
+    expect(
+      carried.subarray(at - 1, at + 24).toString('latin1'),
+      'the cross-reference table of the statute does not describe this file',
+    ).toMatch(/^[\r\n](xref|\d+\s+0\s+obj)/)
 
     /* The name in both alphabets a word processor writes. Word keeps a title of plain
        letters as it is and writes one with any letter outside them as UTF-16, which this
