@@ -664,23 +664,31 @@ export function FormRenderer({
    * badly written address is still a badly written address whether or not the form
    * insists on having one, so a pattern error stays.
    *
-   * Derived rather than swept out of the state, because there is nothing to sweep:
-   * the state is what the last submission found, and this reads it again on every
-   * draw. **Only for this one kind of error**, and the rest of the state is as
-   * stale as it ever was: correct the first of two passwords that did not match
-   * and „Ne poklapa se sa prethodnim poljem." goes on standing under the second
-   * until the form is sent again, because `handleChange` clears the error of the
-   * field that was typed into and of no other. That is older than this filter and
-   * it is not what this filter is about; it is written down so the sentence above
-   * is not read as a promise about everything.
+   * Derived here and not swept out of the state, and that is the one home this
+   * question has. Swept was the first answer and it lived in `handleChange` for a
+   * day, as a list of the rules by which one field decides another; a round on
+   * 23.08.2026 measured the two against each other and found the sweep does nothing
+   * this does not, so it went. What is left is smaller than either: this asks only
+   * whether the form is asking for the field **now**, so a fifth rule written
+   * tomorrow needs nothing here, while a list of rules would have had to learn it.
    *
-   * The filter has one visible consequence and it is worth saying rather than
-   * discovering: a field that becomes obligatory again is refused again **at
-   * once**, without another submission. Attach a picture and the message goes;
-   * press „Obriši" on that picture and it is back, over a field nobody has touched
-   * since. It is true, and it is the same sentence the form would say on the next
-   * press; sweeping the state instead would have said nothing until then, over a
-   * field that is obligatory and empty.
+   * **Only for this one kind of error**, and the rest of the state is as stale as it
+   * ever was: correct the first of two passwords that did not match and „Ne poklapa
+   * se sa prethodnim poljem." goes on standing under the second until the form is
+   * sent again, because `handleChange` clears the error of the field that was typed
+   * into and of no other. That is older than this and it is not what this is about;
+   * it is written down so the sentence above is not read as a promise about
+   * everything.
+   *
+   * One visible consequence, worth saying rather than discovering: a field that
+   * becomes obligatory again is refused again **at once**, without another
+   * submission. Attach a picture and the message goes; press „Obriši" on that
+   * picture and it is back, over a field nobody has touched since. That is the same
+   * sentence the form would say on the next press, so nothing is being invented; a
+   * sweep would have said nothing until then, over a field that is obligatory and
+   * empty. Measured in `pages/member/newResult.test.tsx`, because the same sentence
+   * stood here while a sweep was also running and was false: there was nothing left
+   * in the state to come back.
    */
   const shown: Record<string, FieldError> = Object.fromEntries(
     visible.flatMap((field) => {
@@ -777,58 +785,24 @@ export function FormRenderer({
   const without = (names: string[]) => (current: Record<string, FieldError>) =>
     Object.fromEntries(Object.entries(current).filter(([name]) => !names.includes(name)))
 
-  /**
-   * The fields whose obligation hangs on the answer to this one.
-   *
-   * Four rules make one field's obligation depend on another's answer (ADL A21),
-   * and this reads all four by asking the definition rather than by listing them:
-   * any rule on a field that names another field by name. Written as a list of two
-   * for one day, and a round measured what the other two cost: on the real
-   * registration form, a date of birth under sixteen frees the number of an
-   * identity document, and „Ovo polje je obavezno." went on standing under it with
-   * `aria-invalid` still true while the form had stopped asking. A list written by
-   * hand is a list that goes stale the day a fifth rule is written.
-   *
-   * Read so that touching one field clears the message on the other: attach a
-   * picture and the comment becomes obligatory while the link stops being; take the
-   * picture back and both turn round again. The „Obriši" button beside the picture
-   * is what made that a thing a member can do in one press.
-   */
-  const namesField = (rule: unknown, name: string): boolean =>
-    typeof rule === 'object' && rule !== null && 'field' in rule && rule.field === name
-
-  const hangingOn = (name: string): string[] =>
-    form.fields
-      .filter((one) => Object.values(one).some((rule) => namesField(rule, name)))
-      .map((one) => one.name)
-
   const handleChange = useCallback(
     (field: FieldDef, next: string | boolean, also?: Record<string, string>) => {
       /* `also` is what a place field writes beside itself: the country the town
          came with. One field, two values, and the second has no field of its own
          to be typed into (src/forms/types.ts). */
       setValues((current) => ({ ...current, [field.name]: next, ...also }))
-      /* The message goes away as soon as the field is touched, and so does the
-         message about **obligation** on whatever field this one decides the
-         obligation of. Leaving either up tells a screen reader a field is still
-         wrong after it was fixed.
+      /* The message goes away as soon as the field is touched. Leaving it up tells
+         a screen reader a field is still wrong after it was fixed.
        *
-         Only that message on the other field, and that is the whole of the
-         difference: a badly written address is still a badly written address after
-         a picture has made it optional. Taking its message away with the obligation
-         says the shape has been put right when it has not, and the next press
-         refuses the form and writes the same message again, over a field nobody has
-         touched in between. Measured on 23.08.2026 on the real `unos-rezultata`
-         form: the count of messages went 1, then 0, then 1 again. */
-      setErrors((current) =>
-        Object.fromEntries(
-          Object.entries(current).filter(
-            ([name, error]) =>
-              name !== field.name &&
-              !(hangingOn(field.name).includes(name) && error.key === REQUIRED_KEY),
-          ),
-        ),
-      )
+         This field and no other. A message on a **second** field that the answer to
+         this one frees is a separate question, and it is answered where the errors
+         are drawn rather than here (`shown`, further down). Held here as well for
+         one day, on a hand-read list of the rules by which one field decides
+         another, and a round measured on 23.08.2026 that the two do the same work:
+         with the derivation in place, taking this back to the touched field alone
+         left all 2099 tests green. Two homes for one fact, and the derived one is
+         the one that needs no list. */
+      setErrors(without([field.name]))
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form],

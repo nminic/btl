@@ -1142,14 +1142,18 @@ describe('the errors a form is holding while somebody types', () => {
  * today, which is why the second of the two faults below could not be reached
  * through the content and is measured here instead.
  *
- * The first one could be, and was: `unos-rezultata` and `prijava-sa-trke` both ask
- * for a link that a picture frees (Član 37), so a member who sent the form without
- * one, read „Ovo polje je obavezno." and then attached a picture was left with the
- * message under a field the form had stopped asking for. What kept it out of the
- * PR that found it was the risk, not the reach: `PENDING.md` records „popravka
- * dira stanje `FormRenderer`-a... izmena sa realnim rizikom regresije, a PR se
- * zatvarao". Both are held here, because a form built for the purpose can put the
- * second field's obligation on the first without any content at all. */
+ * The first one can be, and is, on the real content: `unos-rezultata` and
+ * `prijava-sa-trke` both ask for a link that a picture frees (Član 37), and
+ * `pages/member/newResult.test.tsx` measures both directions of it there, while
+ * `pages/Registration.test.tsx` measures the third rule, `optionalWhenYoungerThan`,
+ * on the real registration. Those are the guards that hold the arrangement; what is
+ * held here is the case the content cannot reach, and the first is kept beside it so
+ * the pair reads as a pair rather than as one fault with a stray half.
+ *
+ * Said plainly after a round on 23.08.2026: the reason written here for a while, that
+ * a fix „kept out of the PR that found it" made a made-up form the only road, was not
+ * true of the fix that landed, and the `PENDING.md` entry it quoted was closed the
+ * same day. */
 const askedByAnswer: FormDef = {
   id: 'proba',
   titleKey: 'proba.naslov',
