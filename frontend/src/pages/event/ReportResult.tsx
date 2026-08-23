@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { raceLabel } from '../../data/raceLabel'
 import { btlPoints } from '../../data/scoring'
+import { useFilterParams } from '../../app/useFilterParams'
+import { raceLabel } from '../../data/raceLabel'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { prijava } from '../../forms/definitions'
@@ -12,7 +13,6 @@ import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
-import { raceFor } from './raceFor'
 import { SignedOut } from '../member/SignedOut'
 import '../member/Member.css'
 
@@ -46,6 +46,10 @@ function seconds(values: FormValues): number {
 export function ReportResult() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
+  /* Through the shared hook and not through the router's own, which is the
+     rule the whole application keeps (app/filterParams.test.ts). Reading is
+     all this does; the address is written by the row that leads here. */
+  const [params] = useFilterParams()
   const today = useToday()
   const { memberNumber, submit } = useSession()
   const state = combinePair(useEvents(), useRaces())
@@ -100,31 +104,32 @@ export function ReportResult() {
           /* The races of this event that have been run, which is not the same as
              the races of an event that has begun (owner, 11.08.2026): a race
              carries its own day, and an event may run over two mornings. On the
-             Saturday of a weekend the form offers the two Saturday races; on the
-             Sunday it offers all three.
+             Saturday of a weekend the two Saturday races can be reported; on the
+             Sunday all three.
 
              A race has no time of day, so the day it is on counts from its own
              morning: „rezultat na trku moguće uneti na kalendarski dan te trke
              ili kasnije". */
-          const mineHere = races.filter(
-            (race) => race.eventId === event.id && race.date <= today,
-          )
-          /* The first of them is the one the form opens on, which is what the
-             owner asked for: most events hold one race, and where they hold five
-             the member changes it in one press. Taken apart rather than indexed,
-             so the empty case is the one the screen already answers. */
-          const [first, ...rest] = mineHere
+          const here = races.filter((race) => race.eventId === event.id)
+          const mineHere = here.filter((race) => race.date <= today)
+          /* Which of them, decided by the row the reader pressed rather than by a
+             field at the top of this form (owner, 23.08.2026: „ne treba onda ni
+             dropdown na vrhu za izbor trke nego to zavisi od reda iz kog je
+             kliknuto"). The address carries it, so the form opens knowing.
 
-          if (first === undefined) {
-            /* An event with no races run yet is not a thing to report a result
-               on, and a form whose one choice is empty is a form that cannot be
-               submitted and does not say why. Two ways to get here: an event
-               whose distances are not entered yet, and one whose first morning
-               has not come. */
+             Nothing is guessed where the address names none or names one this
+             event has not run. The one way in writes it (EventDetail.tsx), so an
+             address without it was typed by hand, and a form that quietly picked
+             a race would file somebody's time against a distance they never ran. */
+          const chosen = mineHere.find((race) => race.id === params.get('trka'))
+
+          if (chosen === undefined) {
             return (
               <>
                 <h1>{event.name}</h1>
-                <p className="profile__empty">{t('report.noRaces')}</p>
+                <p className="profile__empty">
+                  {t(mineHere.length === 0 ? 'report.noRaces' : 'report.noRace')}
+                </p>
                 <p className="member__actions">
                   <Link className="button button--secondary" to={`/${locale}/kalendar/${slug}`}>
                     {t('report.backToEvent')}
@@ -136,10 +141,9 @@ export function ReportResult() {
 
           /* Narrowed once, for the same reason the event is: the handler below
              runs after the check above and the compiler cannot see that. */
-          const opened = first
+          const race = chosen
 
           function onSubmit(values: FormValues) {
-            const race = raceFor([opened, ...rest], String(values.raceId), opened)
             const total = seconds(values)
             const earned = btlPoints(race.distanceKm, race.ascentM, race.descentM, total) ?? 0
 
@@ -157,11 +161,13 @@ export function ReportResult() {
               seconds: total,
               points: earned,
               category: race.category,
-              /* No address: this form asks for words. What the member wrote
-                 goes in the field for words, because the queue draws the link
-                 as a link and a sentence in an `href` is an address made of
-                 somebody's sentence. */
-              link: '',
+              /* The address of the official results, asked for here since
+                 23.08.2026 exactly as the form outside the calendar asks for it:
+                 the owner had the foot of the two forms made the same, „Link ka
+                 zvanicnim rezultatima, slika, komentar (i da funkcionise sta je
+                 obavezno a sta ne kao do sada)". Until then this form asked for
+                 words alone and wrote nothing here. */
+              link: String(values.link),
               comment: String(values.comment),
             })
 
@@ -171,25 +177,25 @@ export function ReportResult() {
           return (
             <>
               <p className="member__note">
-                {t('report.note', { event: event.name })}
+                {/* The race said the way every screen on the portal says one:
+                    its length, and its day where two of them are the same length
+                    (data/raceLabel.ts). It is the same sentence the chooser used
+                    to write into its own list, which is why the helper stays
+                    after the chooser has gone. */}
+                {t('report.note', {
+                  event: event.name,
+                  /* Among **all** the races of the event and not only the run
+                     ones, because that is what the table on the event says
+                     (EventDetail.tsx) and a race must not change its name between
+                     the row somebody pressed and the form it opened. Measured on
+                     23.08.2026: the row read „42,2 km, 14. 3. 2022." and the form
+                     said „42,2 km", which is two names for one race in two steps
+                     of one flow. */
+                  race: raceLabel(race, here, locale),
+                })}
               </p>
 
-              <FormRenderer
-                form={prijava}
-                initial={{ raceId: opened.id }}
-                options={{
-                  raceId: mineHere.map((race) => ({
-                    value: race.id,
-                    /* Its measurements, and its day where two of them are the
-                       same length (data/raceLabel.ts). `labelKey` takes a key
-                       and falls back to what it is given when there is no such
-                       key, which is what puts a value into a list of choices
-                       (src/i18n/translate.ts). */
-                    labelKey: raceLabel(race, mineHere, locale),
-                  })),
-                }}
-                onSubmit={onSubmit}
-              />
+              <FormRenderer form={prijava} onSubmit={onSubmit} />
             </>
           )
         }}

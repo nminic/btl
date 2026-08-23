@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { at, first, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -10,28 +10,47 @@ import { setupUser } from '../../test/user'
 
 /** An event with races on it, by the address the calendar links to. */
 const EVENT = '/sr/kalendar/maraton-maratona-2015'
+/** The same event, named for what it is where that matters, and one that runs over
+ *  two mornings. The second is what the day column is drawn for, and the only
+ *  reading in which the count of columns has a part for it. */
+const ONE_DAY = EVENT
+const TWO_DAYS = '/sr/kalendar/balkansko-prvenstvo-veterana-2021'
+/** Four mornings and the same length on each of them, which is the only shape in
+ *  which a race is known by more than its length (data/raceLabel.ts). */
+const FOUR_MORNINGS = '/sr/kalendar/danube-maraton-2022-03'
+
+/** The table of races, which is the one named after them. */
+function races(): HTMLElement {
+  return screen.getByRole('table', { name: 'Trke' })
+}
 
 async function openEvent(
   role: Parameters<typeof renderAt>[1],
   member: string | null = null,
   moderator?: Parameters<typeof renderAt>[3],
+  where: string = EVENT,
 ) {
-  const rendered = renderAt(EVENT, role, member, moderator)
+  const rendered = renderAt(where, role, member, moderator)
   await screen.findByRole('heading', { level: 1 })
 
   return rendered
 }
 
 describe('who is offered what on an event', () => {
-  it('offers a visitor nothing at all', async () => {
+  it('offers a visitor nothing at all, and no column to put it in', async () => {
     await openEvent('visitor')
 
     for (const name of ['Kopiranje', 'Brisanje']) {
       expect(screen.queryByRole('button', { name })).toBeNull()
     }
 
-    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Unesi rezultat/ })).toBeNull()
+    /* And the table is four columns rather than five with an empty one: „tabela
+       ostaje kraca za tu kolonu" (owner, 23.08.2026). */
+    expect(
+      within(races()).getAllByRole('columnheader').map((one) => one.textContent),
+    ).toEqual(['Kategorija trke', 'Dužina', 'Uspon', 'Spust'])
   })
 
   it('offers the superadmin the copy and the deletion', async () => {
@@ -51,11 +70,85 @@ describe('who is offered what on an event', () => {
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
   })
 
-  it('offers a signed-in member the way to report a result', async () => {
+  it('offers a signed-in member the way in, once per race, in the table', async () => {
+    /* It stood over the table until 23.08.2026 and asked which race afterwards.
+       The owner had it moved into the rows, where the race is already decided,
+       and the button over the table went with the question.
+
+       Every row and not merely one: a column drawn with a button in the first
+       row alone reads as a table where only the first race can be reported. */
     await openEvent('competitor', '000007')
 
-    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    const rows = within(races()).getAllByRole('row').slice(1)
+
+    expect(rows.length).toBeGreaterThan(1)
+
+    for (const row of rows) {
+      expect(within(row).getByRole('link', { name: /^Unesi rezultat/ })).toBeVisible()
+    }
+
+    expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
+  })
+
+  it('counts the columns it says it has, with the way in and without it', async () => {
+    /* The count rides on the element and the sheet turns it into a width
+       (Profile.css). It is written by hand three lines from the headings it
+       counts, and measured on 23.08.2026: changing the four to a three left the
+       whole suite green while the table drew five columns in the width of four and
+       ended 253px short of the edge the owner asked for.
+
+       Both readings, because the count is what changes between them: five for
+       somebody who may enter a result, four for a visitor. */
+    /* Three readings and not two, because the count has three parts and one of
+       them was uncovered until 23.08.2026: dropping `overDays` from the sum left
+       all 2073 tests green while a visitor to an event of two mornings got a table
+       213px short of where the owner asked it to end. An event that runs over one
+       morning cannot say anything about the part that counts the second. */
+    for (const [who, where, member] of [
+      ['a member', ONE_DAY, '000007'],
+      ['a visitor', ONE_DAY, null],
+      ['a visitor of a weekend', TWO_DAYS, null],
+    ] as const) {
+      await openEvent(who === 'a member' ? 'competitor' : 'visitor', member, undefined, where)
+
+      const table = races()
+      const headings = within(table).getAllByRole('columnheader')
+
+      expect(
+        table.style.getPropertyValue('--race-columns'),
+        `the table shown to ${who} counts itself wrong`,
+      ).toBe(String(headings.length))
+
+      cleanup()
+    }
+  })
+
+  it('offers nothing on a race that has not been run yet', async () => {
+    /* PDL P9 refuses a result dated in the future, and a race carries its own day,
+       so on the Saturday of a weekend the Saturday races can be reported and the
+       Sunday one cannot. A button that leads to a form which then refuses the date
+       is a dead end the reader was invited into.
+
+       Measured on 23.08.2026: with the day dropped from that decision, the whole
+       suite stayed green while every race of every future event carried a button.
+       This is the reading that says otherwise, and it needs a weekend to say it:
+       one morning of an event cannot tell whether the decision reads the day at
+       all. */
+    renderAt(TWO_DAYS, 'competitor', '000007', undefined, '2021-09-17')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const rows = within(races()).getAllByRole('row').slice(1)
+    const offered = rows.map((row) => within(row).queryByRole('link', { name: /^Unesi rezultat/ }))
+
+    /* Two races on the Friday and two on the Saturday after it. */
+    expect(offered.filter(Boolean)).toHaveLength(2)
+    expect(offered.filter((one) => one === null)).toHaveLength(2)
+    /* And the column is still drawn, because some race on this event can be
+       reported: what is empty is the cell, not the table. */
+    expect(within(races()).getAllByRole('columnheader').map((one) => one.textContent))
+      .toContain('Opcije')
   })
 
   it('offers an administrator who is also a member all three', async () => {
@@ -64,20 +157,59 @@ describe('who is offered what on an event', () => {
 
     expect(screen.getByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
-    /* A link, because it leads to another screen (EventActions.tsx). */
-    expect(screen.getByRole('link', { name: 'Prijavi rezultat' })).toBeVisible()
+    /* A link, because it leads to another screen, and in the table because that
+       is where the race is (EventDetail.tsx). */
+    expect(within(races()).getAllByRole('link', { name: /^Unesi rezultat/ }).length)
+      .toBeGreaterThan(0)
   })
 })
 
 describe('reporting a result from the event', () => {
-  it('leads to the form under the event, so it does not ask which event it was', async () => {
+  it('calls a race the same thing in the row and in the form the row opens', async () => {
+    /* A race has no name of its own, so it is known by its length, and by its day
+       as well where the event ran the same length on several mornings. What it is
+       known among decides that, and the two screens were reading two different
+       sets: the table read every race of the event and the form read only those
+       already run.
+
+       Measured on 23.08.2026 on this event, on the day of its first morning: the
+       row said „42,2 km, 14. 3. 2022." and the form said „42,2 km". One race, two
+       names, two steps of one flow, and a screen reader hears both. */
+    const user = setupUser()
+
+    renderAt(FOUR_MORNINGS, 'competitor', '000007', undefined, '2022-03-14')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const row = must(within(races()).getAllByRole('row')[1], 'the first race')
+    const link = within(row).getByRole('link', { name: /^Unesi rezultat/ })
+    const named = must(link.getAttribute('aria-label'), 'what the row calls the race').replace(
+      'Unesi rezultat: ',
+      '',
+    )
+
+    /* The day is part of it here, which is what makes this reading worth having:
+       on an event of one length a morning the two sets cannot disagree. */
+    expect(named).toMatch(/\d{1,2}\. \d{1,2}\. \d{4}\./)
+
+    await user.click(link)
+
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(named)
+  })
+
+  it('carries the race into the form, so it asks neither which event nor which race', async () => {
     const user = setupUser()
     const { router } = await openEvent('competitor', '000007')
 
-    await user.click(screen.getByRole('link', { name: 'Prijavi rezultat' }))
+    const row = must(within(races()).getAllByRole('row')[1], 'the first race')
+
+    await user.click(within(row).getByRole('link', { name: /^Unesi rezultat/ }))
 
     expect(router.state.location.pathname).toBe(`${EVENT}/prijava`)
-    expect(await screen.findByLabelText(/^Trka/)).toBeVisible()
+    expect(router.state.location.search).toMatch(/^[?]trka=/)
+    /* The form opens on it: the time is asked for, the race is not. */
+    expect(await screen.findByLabelText(/Sati/)).toBeVisible()
+    expect(screen.queryByLabelText(/^Trka/)).toBeNull()
   })
 })
 

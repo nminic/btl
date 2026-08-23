@@ -73,10 +73,17 @@
       "labelKey": "newResult.link",
       "hintKey": "newResult.linkHint",
       "required": true,
-      "pattern": "^https?://.+",
+      "pattern": "^https?:\\/\\/[^\\s]+$",
       "optionalWhenFilled": {
         "field": "photo"
-      }
+      },
+      "maxLength": 500
+    },
+    {
+      "name": "photo",
+      "type": "photo",
+      "labelKey": "newResult.photo",
+      "hintKey": "newResult.photoHint"
     },
     {
       "name": "comment",
@@ -87,12 +94,6 @@
       "requiredWhenFilled": {
         "field": "photo"
       }
-    },
-    {
-      "name": "photo",
-      "type": "photo",
-      "labelKey": "newResult.photo",
-      "hintKey": "newResult.photoHint"
     }
   ]
 }

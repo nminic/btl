@@ -352,7 +352,13 @@
     "explain": "Objašnjenje",
     "country": "Država",
     "explainMark": "i",
-    "requiredNote": "Polja sa zvezdicom su obavezna."
+    "requiredNote": "Polja sa zvezdicom su obavezna.",
+    "clearPhoto": "Obriši",
+    "suggested": {
+      "one": "{count} trka iz kalendara odgovara",
+      "few": "{count} trke iz kalendara odgovaraju",
+      "other": "{count} trka iz kalendara odgovara"
+    }
   },
   "registration": {
     "title": "Registracija",
@@ -566,6 +572,10 @@
     "ascent": "Uspon",
     "descent": "Spust",
     "category": "Kategorija",
+    "raceCategory": "Kategorija trke",
+    "options": "Opcije",
+    "enterResult": "Unesi rezultat",
+    "enterResultNamed": "Unesi rezultat: {race}",
     "results": "Rezultati članova",
     "noResults": "Sa ovog događaja nema unetih rezultata.",
     "notFound": "Ovog događaja nema.",
@@ -573,7 +583,6 @@
     "notRunYetWhy": "Rezultat i ocena se unose tek kad se trka istrči.",
     "copy": "Kopiranje",
     "delete": "Brisanje",
-    "report": "Prijavi rezultat",
     "deleteAsk": {
       "one": "Obrisati događaj „{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
       "few": "Obrisati događaj „{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
@@ -598,7 +607,7 @@
     },
     "fromEdition": "Izdanje {year}.",
     "notRanIt": "Ovaj događaj ocenjuju oni koji su ga istrčali",
-    "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa se daje uz upisan rezultat na ovom događaju. Prijavi rezultat; kad ga moderator odobri, ocena se otvara.",
+    "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa se daje uz upisan rezultat na ovom događaju. Unesi rezultat sa reda te trke; kad ga moderator odobri, ocena se otvara.",
     "going": "Ko ide",
     "goingOn": "Idem na ovaj događaj",
     "goingNobody": "Još se niko nije prijavio.",
@@ -824,7 +833,6 @@
     "needsSomebody": "Izaberi člana da bi mogao da se prijaviš."
   },
   "myProfile": {
-    "actions": "Moje stvari",
     "signOut": "Odjavi se",
     "notifications": "Obaveštenja",
     "notificationsNote": "Šest obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru i krupna izmena na portalu. Ispod je sve ostalo.",
@@ -850,7 +858,7 @@
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
     "againDone": "Rezultat je ponovo poslat na proveru.",
     "eventName": "Naziv događaja",
-    "eventNameHint": "Onako kako ga je organizator nazvao.",
+    "eventNameHint": "Posle dva slova nudimo trke iz kalendara, od poslednje ka ranijim. Kad izabereš jednu, datum, dužina, uspon i spust se popune sa nje. Ako naziv posle toga izmeniš, ta četiri polja se prazne i unosiš ih sam.",
     "date": "Datum trke",
     "distanceKm": "Dužina (km)",
     "distanceHint": "Maraton je tačno 42.2, polumaraton tačno 21.1. Bez zaokruživanja, jer od toga zavisi kategorija.",
@@ -1143,8 +1151,7 @@
       "bestRacePoints": "najviše bodova na jednoj trci",
       "bestRaceKm": "najviše kilometara na jednoj trci",
       "bestRaceAscent": "najviše uspona na jednoj trci"
-    },
-    "tierShort": "{tier}/5"
+    }
   },
   "settings": {
     "title": "Podešavanja",
@@ -1305,7 +1312,6 @@
   "awards": {
     "trophies": "Pehari",
     "ducats": "Dukati",
-    "note": "Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno.",
     "board": "Lista",
     "place": "Mesto",
     "overall": "Generalni plasman",
@@ -1318,15 +1324,10 @@
   "report": {
     "title": "Prijava rezultata",
     "submit": "Pošalji rezultat",
-    "race": "Trka",
-    "raceHint": "Trke sa ovog događaja. Dužina, uspon i spust se uzimaju sa izabrane trke.",
-    "comment": "Komentar",
-    "commentHint": "Neobavezno. Ovde ide veza ka zvaničnim rezultatima, startni broj, ili bilo šta što moderatoru pomaže da proveri.",
-    "photo": "Slika kao dopuna",
-    "photoHint": "Neobavezno: snimak sa sata, diploma ili nešto treće. Briše se sa servera čim rezultat bude proveren.",
-    "note": "Prijavljuješ rezultat sa događaja „{event}\". Ostalo portal već zna sa same trke.",
+    "note": "Prijavljuješ rezultat sa trke {race} na događaju „{event}\". Dužinu, uspon i spust portal već zna sa same trke.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
-    "backToEvent": "Nazad na događaj"
+    "backToEvent": "Nazad na događaj",
+    "noRace": "Rezultat se unosi sa reda trke, na strani događaja."
   },
   "pager": {
     "showing": "Prikazano {first} do {last} od {rows}",

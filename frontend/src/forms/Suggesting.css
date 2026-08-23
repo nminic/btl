@@ -1,0 +1,65 @@
+/* The box and the list under it.
+
+   The box takes the whole width of its field, and that has to be said here: every
+   other control on a form is a direct child of `.field`, which is a flex column
+   and stretches them; this one is a child of the box around it, so left alone it
+   fell back to the browser's own twenty characters. Measured on 23.08.2026 at
+   1280: „Naziv događaja" was 207px while „Link ka zvaničnim rezultatima" under it
+   was 544px, and at 200% text on a 360px screen the box stood 72px past the right
+   edge of its own column (WCAG 2.2 SC 1.4.10). */
+.suggests {
+  display: flex;
+  flex-direction: column;
+}
+
+.suggests > .field__control {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* In the flow and not over it, since 23.08.2026. Taken out of the flow it stood
+   over the fields under the box: at 360px the panel covered „Datum trke" whole, so
+   the focus ring on that box could not be seen once the cursor walked past the
+   list (WCAG 2.2 SC 2.4.11), and a click aimed at the date pressed a suggestion
+   instead and locked four fields to somebody else's race. Measured in Chrome, at
+   360, 700 and 1280.
+
+   The price is that the fields under it move while the list is open, and that is
+   the smaller of the two: the list is open only while somebody is typing into the
+   box above it, and it closes on the choice, on Escape and on the way out. */
+.suggests__list {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  /* No height of its own and nothing to scroll. It had both while it stood over
+     the form, and with the list back in the flow they only made trouble: eight rows
+     are 326px against the 270px that box allowed, so the last row and a half were
+     reachable only by scrolling, and pressing that scrollbar moved the focus out of
+     the box and shut the list in the same instant. Measured 23.08.2026. Eight rows
+     is what the list is capped at, so its height is bounded by the cap. */
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-8);
+  /* The same lift the calendar panel has (DatePicker.css), because a reader has
+     to see the two as one kind of thing. This one is in the flow and that one is
+     over the form; what they share is being open for a moment and answering the
+     box above them. */
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+}
+
+.suggests__one {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  font: inherit;
+  padding: var(--space-8) var(--space-12);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.suggests__one:hover,
+.suggests__one:focus-visible {
+  background: var(--surface-hover);
+}

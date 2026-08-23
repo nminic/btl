@@ -15,7 +15,19 @@ export type Address = {
   seoKey: string
 }
 
-export type RouteDef = Address & { labelKey: string }
+export type RouteDef = Address & {
+  labelKey: string
+  /**
+   * Kept out of the menu behind the account picture, while staying an address
+   * the router serves and a screen the portal names.
+   *
+   * Here rather than in the menu, because the two lists this file exports are
+   * read by two different things: the router builds every address out of them,
+   * and the menu draws some of them. A screen reached by a shorter way of its
+   * own is still a screen.
+   */
+  notInMenu?: boolean
+}
 
 /* One entry in the top navigation: one word, one screen. Order here is the order
  * on screen.
@@ -58,7 +70,11 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
   { path: 'moj-profil', labelKey: 'nav.myProfile', seoKey: 'myProfile' },
   { path: 'moji-rezultati', labelKey: 'nav.myResults', seoKey: 'myResults' },
   { path: 'moja-clanarina', labelKey: 'nav.membership', seoKey: 'membership' },
-  { path: 'poruke', labelKey: 'nav.messages', seoKey: 'messages' },
+  /* Not drawn in the menu behind the picture (owner, 23.08.2026): the envelope
+     in the header opens the inbox and „Sve poruke" stands at the foot of it,
+     which is one press fewer than the menu. It stays in this list because the
+     router is built from it too, so leaving would take the address with it. */
+  { path: 'poruke', labelKey: 'nav.messages', seoKey: 'messages', notInMenu: true },
   { path: 'podesavanja', labelKey: 'nav.settings', seoKey: 'settings' },
 ]
 

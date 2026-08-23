@@ -982,3 +982,157 @@ describe('a field asked of everybody and demanded of some', () => {
     expect(star(), 'an adult is no longer shown the star').not.toBeNull()
   })
 })
+
+/* A form whose list fills a group of buttons and a town, which no list on the
+ * portal does today. It is here because the lock was written on `shared`, and the
+ * two kinds of control that do not use `shared` were locked in name only: the form
+ * said the value cannot be changed and it could. */
+const fillsEverything: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'trka', type: 'text', labelKey: 'proba.trka' },
+    {
+      name: 'izbor',
+      type: 'choice',
+      labelKey: 'proba.izbor',
+      options: [
+        { value: 'da', labelKey: 'proba.da' },
+        { value: 'ne', labelKey: 'proba.ne' },
+      ],
+    },
+    { name: 'mesto', type: 'place', labelKey: 'proba.mesto' },
+  ],
+}
+
+describe('a field filled from a list', () => {
+  it('is locked whatever kind of control it is drawn as', async () => {
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={fillsEverything}
+        suggests={{
+          trka: [
+            {
+              id: 'jedna',
+              value: 'Probna trka',
+              said: 'Probna trka – 19.04.2026. – 42,2 km',
+              fills: { izbor: 'da', mesto: 'Beograd' },
+            },
+          ],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.trka/), 'pr')
+    await user.click(screen.getByRole('button', { name: /Probna trka/ }))
+
+    /* Every button of the group, not the group: `disabled` is a property of a
+       control and a group of radio buttons is not one. */
+    for (const one of screen.getAllByRole('radio')) {
+      expect(one, 'a button of the group takes an answer it was not given').toBeDisabled()
+    }
+
+    expect(screen.getByLabelText(/proba.mesto/), 'the town still takes typing').toBeDisabled()
+  })
+})
+
+/* Two obligatory fields, one of them typed against a list. What it is for is the
+ * difference between „this field is answered" and „the form is answered". */
+const askedAndAsked: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'trka', type: 'text', labelKey: 'proba.trka', required: true },
+    { name: 'drugo', type: 'text', labelKey: 'proba.drugo', required: true },
+  ],
+}
+
+describe('a list to type against, on a form that opens already filled in', () => {
+  /** The same form the lock test uses, with a value in the box from the start. */
+  function opened(initial: FormValues) {
+    renderWithI18n(
+      <FormRenderer
+        form={fillsEverything}
+        initial={initial}
+        suggests={{
+          trka: [
+            {
+              id: 'jedna',
+              value: 'Probna trka',
+              said: 'Probna trka – 19.04.2026. – 42,2 km',
+              fills: { izbor: 'da', mesto: 'Beograd' },
+            },
+          ],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+  }
+
+  it('says nothing until somebody types', async () => {
+    /* Measured 23.08.2026: derived from the value alone, the list opened by itself
+       on the form a member reaches by pressing „Ispravi i pošalji ponovo" on a
+       refused result. Eight rows stood over the fields under the box and the live
+       region said „8 trka iz kalendara odgovara" to somebody who had typed
+       nothing. */
+    opened({ trka: 'Probna trka' })
+
+    expect(screen.queryByRole('button', { name: /Probna trka/ })).toBeNull()
+    expect(screen.getAllByRole('status').map((one) => one.textContent)).not.toContain(
+      '1 trka iz kalendara odgovara',
+    )
+  })
+
+  it('opens on the first letter typed into it, and closes on the way out', async () => {
+    /* The other half: shut is where it starts and not where it stays. And it
+       closes when the cursor leaves, because it stands over the fields under the
+       box: a list left open while the cursor walks past it hides the box it lands
+       on (WCAG 2.2 SC 2.4.11). */
+    const user = setupUser()
+
+    opened({})
+
+    await user.type(screen.getByLabelText(/proba.trka/), 'pr')
+
+    expect(screen.getByRole('button', { name: /Probna trka/ })).toBeVisible()
+
+    await user.tab()
+    await user.tab()
+
+    expect(screen.queryByRole('button', { name: /Probna trka/ })).toBeNull()
+  })
+})
+
+describe('the errors a form is holding while somebody types', () => {
+  it('lose only the fields that were touched, and not the whole form', async () => {
+    /* Measured 23.08.2026: one letter typed into a field with a list took away
+       nine messages and the summary over them, while the same letter typed into
+       any other field took away one. A reader walking the summary lost it on
+       touching the first field and had to send the form unfinished again to get it
+       back (WCAG 2.2 SC 3.3.1). */
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={askedAndAsked}
+        suggests={{ trka: [{ id: 'a', value: 'Probna', said: 'Probna', fills: {} }] }}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: sr.form.submit }))
+
+    expect(screen.getAllByText(sr.form.errors.required)).toHaveLength(2)
+
+    await user.type(screen.getByLabelText(/proba.trka/), 'p')
+
+    expect(screen.getAllByText(sr.form.errors.required), 'the other field lost its error too')
+      .toHaveLength(1)
+    expect(screen.queryByRole('alert'), 'the summary went with it').not.toBeNull()
+  })
+})

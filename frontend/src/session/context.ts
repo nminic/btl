@@ -37,8 +37,9 @@ export type Submission = {
    * The official results, as an address and nothing else.
    *
    * The queue draws it as a link, so it has to be one: the form that asks for it
-   * requires the shape (`unos-rezultata.form.json`). Empty where the entry came
-   * from the event's own page, which asks for words rather than an address.
+   * requires the shape, and both forms do since 23.08.2026
+   * (`unos-rezultata.form.json`, `prijava-sa-trke.form.json`). Empty where the
+   * member attached a picture instead of an address, which Clan 37 allows.
    */
   link: string
   /**

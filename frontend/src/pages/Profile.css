@@ -2,6 +2,193 @@
 @import '../styles/counter.css';
 @import '../styles/table.css';
 
+/* The table of races on an event: five columns of one width, and four of that
+   same width when the fifth is not drawn (owner, 23.08.2026).
+
+   `table-layout: fixed` is what makes them equal: with it and no width on any
+   column, a table divides itself evenly, and without it every column is as wide
+   as its own longest cell. The count of columns rides on the element, because
+   only the render knows whether the day is drawn and whether the reader may
+   enter a result, and the width follows from it: five twentieths is the whole
+   width, four is four fifths of it, which is „tabela ostaje kraca za tu kolonu,
+   pa se prethodne cetiri zavrsavaju gde i kad ih ima 5".
+
+   `min()` because the count can reach six, on an event that runs over two
+   mornings with a reader signed in: six twentieths is more than there is, and a
+   table wider than the screen scrolls the page sideways (WCAG 2.2 SC 1.4.10). At
+   six the columns are equal at a sixth each, which is the same rule under a
+   ceiling rather than a second arrangement.
+
+   Only where every column is drawn. Under 700px the climb and the descent are
+   hidden (styles/table.css), so the count on the element and the columns on the
+   screen stop agreeing, and a width worked out from the count would leave the
+   table short by two columns it is not drawing. */
+@media (min-width: 700px) {
+  /* Both classes, and that is not decoration: `.table` sets `width: 100%` in
+     styles/table.css, which weighs exactly what a single class weighs, so the
+     two would be settled by whichever sheet the bundle put last. Measured in the
+     browser with one class here: `table-layout: fixed` took and the width did
+     not, so the table stayed the full width with four columns spread across it,
+     and the rule looked as though it worked. */
+  .table.table--races {
+    table-layout: fixed;
+    /* Equal columns, and never narrower than what may not be broken. The ceiling
+       alone was measured wrong on 23.08.2026: a fixed column cannot grow, so at
+       200% text „Ultramaraton" wrote itself 14px over „324,00" at 1280 and 83px
+       over it at 700. The floor is in `rem`, so it grows with the reader's text
+       exactly as the content does; when it wins, the table is wider than its box
+       and the box scrolls, which is what PDL P24 asks of every table here.
+
+       6,75rem, and both ends of the window that number sits in are measured
+       (Chrome, on „Danube maraton" of March 2022, which runs over four mornings):
+
+       - a column has to hold „31. 12. 2022." unbroken, and that is 88,17px of type
+         beside 16px of cell at a 16px root, so the floor is at least 6,51rem;
+       - six columns have to fit the narrowest box the query covers, 668px at a
+         screen of 700, so the floor is at most 6,96rem.
+
+       7,5rem was outside that window on the high side, and a round measured what
+       it cost: an event over two mornings, read by a signed-in member between 700
+       and 751px, put 55px of the table outside its box at the **ordinary** text
+       size, and what stood over the edge was the „Unesi rezultat" button. The page
+       did not scroll, so nothing on the screen said so. Sized the other way, for
+       the button unbroken, the floor would be 8,17rem and the table 785px against
+       668px of box, which is the same fault twice over. The button folds instead;
+       see the rule under this one. */
+    inline-size: max(
+      min(100%, calc(var(--race-columns) * 20%)),
+      calc(var(--race-columns) * 6.75rem)
+    );
+  }
+
+  /* And a word longer than its column breaks rather than leaving it. A fixed
+     layout has no other way out: the column will not grow for it. */
+  .table.table--races th,
+  .table.table--races td {
+    overflow-wrap: anywhere;
+  }
+
+}
+
+/* And the headings of this table fold rather than run out of their cells.
+ * `.table th` is `nowrap` everywhere else, and both arrangements of this one need
+ * the opposite, for two different reasons.
+ *
+ * Above 700px the layout is fixed, so a column cannot grow for its heading.
+ * Measured at 200% text: „KATEGORIJA TRKE" needs 227px against a column of 202px
+ * at 1024 and 137px at 700, and wrote itself over „DUŽINA" beside it.
+ *
+ * Under 700px the table grows for its content instead, and the heading is what it
+ * grew by: at 360px „KATEGORIJA TRKE" on one line took 121,33px of a table 331px
+ * wide in a box of 313, so 18px of it stood outside and what was cut was the
+ * „Unesi rezultat" button. PDL P24 forbids exactly that: a table on a phone does
+ * not scroll sideways at the ordinary text size, and the reader has no way of
+ * knowing the button is longer than the row. Measured after: 313px of table in
+ * 313px of box, nothing cut. Held out of the query for that second reason, and
+ * measured on the box a real browser gives, which is 15px narrower than the screen
+ * minus the padding (`scrollbar-gutter: stable`, index.css).
+ *
+ * Only the heading folds under 700px, and the cells do not: `overflow-wrap:
+ * anywhere` stays inside the query above. Above it a fixed column has no other way
+ * out; here the table may grow and the box may scroll, which is what every table on
+ * the portal does above the ordinary text size. Measured with the cells breaking
+ * too: at 200% the date „14. 3. 2022." came apart into ten pieces to make the table
+ * fit, and a date in ten pieces is worse than a box that scrolls. */
+.table.table--races th {
+  white-space: normal;
+}
+
+/* And the button folds rather than pushing its column wider than the table has.
+ * `.button--compact` is one line 2,4rem tall everywhere else, where a button has a
+ * row to itself and room in it.
+ *
+ * Outside the query above, because the two arrangements need it for two different
+ * reasons and both were measured on 23.08.2026 in Chrome. Above 700px the table is
+ * laid out fixed, a column is a sixth of the box, and „Unesi rezultat" unbroken is
+ * 114,75px against 95px of column at a screen of 700: it would stand outside its
+ * own cell. Under 700px the table is laid out by its content and the column grows
+ * for the button instead, so nothing leaves a cell, but the table grows with it:
+ * on a 360px screen the box scrolled 41px with the button on one line and 3px with
+ * it folded, and what stood over that edge was the button itself.
+ *
+ * Folded it needs 76,86px, which leaves 15px to spare in a column at the floor.
+ *
+ * `.table--races` and not `.table.table--races`, because what is outweighed here is
+ * `.button--compact`, and that is a single class in a single sheet (ADL A24). */
+.table--races .button--compact {
+  white-space: normal;
+  block-size: auto;
+  min-block-size: 2.4rem;
+  /* Room for the second line, and a gap between the two. The height is a floor now
+     rather than a measurement, so the padding has to say what the fixed height used
+     to say by itself. */
+  padding-block: var(--space-6);
+  line-height: 1.2;
+}
+
+/* The head of a competitor's profile, and of no other screen with this class.
+ *
+ * A face on the left, and the name with the line under it beside it (owner,
+ * 23.08.2026). The circle spans both of those rows rather than sitting on one of
+ * them, which is what „u nivou i Imena / Prezimena i Clanski broj" asks for, and
+ * what centring the row does by itself.
+ *
+ * The modifier and not `.profile__head`, because an event and a league draw
+ * their heads with that same class and have no face to put in front of anything.
+ * Laid out here, the name of every event on the portal would have moved sideways
+ * by the width of a circle that is not there.
+ */
+.profile__head--person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  /* And it may break into two rows. The circle is sized in `rem`, so it grows with
+     the reader's text: at 200% on a 360px screen it is 104px rather than 52px, and
+     beside it the season's `select` has an intrinsic width of its own that
+     `min-inline-size: 0` cannot talk down. Measured 23.08.2026: the page itself
+     scrolled sideways by 44px, which is the one thing the portal never does (WCAG
+     2.2 SC 1.4.10). Wrapped, the name and the line drop under the circle and the
+     row is as wide as the screen again. */
+  flex-wrap: wrap;
+}
+
+/* Everything that is not the face takes the rest of the row. `min-inline-size: 0`
+   because a flex item will not shrink below its content, and the content here is
+   a heading with a forty character surname in it: without this the row keeps the
+   width the longest name asks for and the page scrolls sideways on a telephone
+   (WCAG 2.2 SC 1.4.10). */
+.profile__identity {
+  /* The basis is what decides whether the row breaks, and „auto" reads it off the
+     content: a flex line breaks on the hypothetical size of its items, before any
+     of them is allowed to shrink. The line under the name is long, so at „auto"
+     this block asked for more than a phone has and the circle went above the name
+     on **every** text size, which is not „sa leve strane" at all.
+   *
+     8rem is the block's own smallest usable width, measured: 130px at a 16px root,
+     which is the widest word in it. Written as a basis, the row breaks only when
+     the circle, the gap and those 8rem no longer fit, and everything above that is
+     shrinking rather than breaking. Measured on the box a 360px phone really gives
+     (313px, `scrollbar-gutter` taken off): beside the name at 100%, 125% and 150%,
+     and broken at 200%, where breaking is what keeps the page itself from scrolling
+     sideways (WCAG 2.2 SC 1.4.10). */
+  flex: 1 1 8rem;
+  min-inline-size: 0;
+}
+
+/* Bigger than the circle over a top ten, because on this screen it is the
+   picture of the person the page is about rather than a mark beside a row. Two
+   classes deep, so it settles against `.portrait` on weight rather than on which
+   sheet the bundle happened to put last (Portrait.css sets 2,9rem there).
+
+   `clamp` rather than one size, and the type inside it with the same shape: at
+   360px a fixed 5rem circle takes a seventh of the width away from a name that
+   already wraps. */
+.profile__head--person > .portrait {
+  inline-size: clamp(3.25rem, 9vw, 5rem);
+  block-size: clamp(3.25rem, 9vw, 5rem);
+  font-size: clamp(1rem, 2.6vw, 1.45rem);
+}
+
 .profile__meta {
   margin: 0 0 var(--space-4);
   color: var(--text-muted);
@@ -510,15 +697,3 @@
   font-style: italic;
 }
 
-/* What a ducat is worth, beside its name. Two characters, because the sentence
-   that used to say it under every coin was taken off the page (owner,
-   11.08.2026) and the metal alone cannot say it: bronze, silver and gold differ
-   by colour and by nothing else. Quiet enough not to compete with the name, and
-   never below the contrast a reader needs (--text-muted is the token every
-   secondary line on the portal uses). */
-.awards__tier {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}

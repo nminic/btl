@@ -395,3 +395,26 @@
   align-items: center;
   gap: var(--space-4);
 }
+
+/* The box a picture is chosen in, and the way out of it beside it.
+
+   The button at the end of the row, which is where the owner asked for it
+   (23.08.2026: „dugme Obriši na kraju reda"). An automatic margin in front of it,
+   the same way the calculator keeps its Reset at the end of its row (Home.css):
+   `justify-content: space-between` has nothing to hold apart on a row where the
+   button is not drawn at all, which is every row until a picture is chosen. */
+.field__photo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-inline-size: 0;
+}
+
+.field__photo > .field__control {
+  min-inline-size: 0;
+}
+
+.field__clear {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}

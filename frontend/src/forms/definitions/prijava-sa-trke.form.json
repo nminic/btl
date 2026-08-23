@@ -4,13 +4,6 @@
   "submitKey": "report.submit",
   "fields": [
     {
-      "name": "raceId",
-      "type": "select",
-      "labelKey": "report.race",
-      "hintKey": "report.raceHint",
-      "required": true
-    },
-    {
       "name": "hours",
       "type": "number",
       "labelKey": "newResult.hours",
@@ -35,17 +28,32 @@
       "max": 59
     },
     {
-      "name": "comment",
-      "type": "textarea",
-      "labelKey": "report.comment",
-      "hintKey": "report.commentHint",
-      "maxLength": 600
+      "name": "link",
+      "type": "text",
+      "labelKey": "newResult.link",
+      "hintKey": "newResult.linkHint",
+      "required": true,
+      "pattern": "^https?:\\/\\/[^\\s]+$",
+      "optionalWhenFilled": {
+        "field": "photo"
+      },
+      "maxLength": 500
     },
     {
       "name": "photo",
       "type": "photo",
-      "labelKey": "report.photo",
-      "hintKey": "report.photoHint"
+      "labelKey": "newResult.photo",
+      "hintKey": "newResult.photoHint"
+    },
+    {
+      "name": "comment",
+      "type": "textarea",
+      "labelKey": "newResult.comment",
+      "hintKey": "newResult.commentHint",
+      "maxLength": 600,
+      "requiredWhenFilled": {
+        "field": "photo"
+      }
     }
   ]
 }

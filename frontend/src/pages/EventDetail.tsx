@@ -19,6 +19,8 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
+import { raceLabel } from '../data/raceLabel'
+import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
 import { GoingToEvent } from './event/GoingToEvent'
@@ -30,9 +32,11 @@ import './Profile.css'
  * useful the moment it arrives, and the race table is the heavier half. The date
  * and the organiser used to be named here too; both came off the head on
  * 06.08.2026. */
-function RaceTable({ eventId }: { eventId: string }) {
+function RaceTable({ event }: { event: BtlEvent }) {
   const { locale, t } = useI18n()
   const races = useRaces()
+  const today = useToday()
+  const { memberNumber } = useSession()
 
   return (
     <Resource state={races} inline label={t('event.races')}>
@@ -40,19 +44,44 @@ function RaceTable({ eventId }: { eventId: string }) {
         /* In the order they are run, and told whether that is more than one
            morning. */
         const mine = all
-          .filter((race) => race.eventId === eventId)
+          .filter((race) => race.eventId === event.id)
           .sort(
             (left, right) =>
               left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm,
           )
         const overDays = new Set(mine.map((race) => race.date)).size > 1
 
+        /* The way into the form, one per race, for whoever is signed in (owner,
+           23.08.2026). It replaces the one button that stood over the table and
+           asked which race afterwards: the row already knows.
+
+           A race that has not been run yet gets no button, and a whole event of
+           them gets no column. PDL P9 refuses a result dated in the future, and
+           a race carries its own day, so on the Saturday of a weekend the two
+           Saturday races can be reported and the Sunday one cannot. A column of
+           empty cells would say the opposite. */
+        const canEnter = (race: Race) => memberNumber !== null && race.date <= today
+        const options = mine.some(canEnter)
+        const columns = (overDays ? 1 : 0) + 4 + (options ? 1 : 0)
+
         return (
           <div className="table-scroll">
-            <table className="table">
+            {/* Five columns of one width, and four of that same width where the
+                last one is not drawn (owner, 23.08.2026: „a treba da ima 5 kolona
+                jednake sirine", and without the options „tabela ostaje kraca za
+                tu kolonu"). The count rides on the element because only the
+                render knows it; the sheet turns it into a width (Profile.css). */}
+            <table
+              className="table table--races"
+              style={{ '--race-columns': columns }}
+            >
               {/* Named, like every other table on the portal. Two tables stand on
                   this screen once anybody has run the event, and a screen reader
-                  offered two unnamed ones cannot say which is which. */}
+                  offered two unnamed ones cannot say which is which.
+
+                  It is the only name the table has since 23.08.2026: the heading
+                  „TRKE" over it went on the owner's word, and a caption says the
+                  same thing to a screen reader without a second line of type. */}
               <caption className="visually-hidden">{t('event.races')}</caption>
               <thead>
                 <tr>
@@ -61,7 +90,7 @@ function RaceTable({ eventId }: { eventId: string }) {
                       heading that already says the day is a column that says
                       nothing. */}
                   {overDays && <th scope="col">{t('event.raceDay')}</th>}
-                  <th scope="col">{t('event.category')}</th>
+                  <th scope="col">{t('event.raceCategory')}</th>
                   <th scope="col">{t('event.distance')}</th>
                   <th scope="col" className="table__hide-phone">
                     {t('event.ascent')}
@@ -69,6 +98,7 @@ function RaceTable({ eventId }: { eventId: string }) {
                   <th scope="col" className="table__hide-phone">
                     {t('event.descent')}
                   </th>
+                  {options && <th scope="col">{t('event.options')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -79,6 +109,33 @@ function RaceTable({ eventId }: { eventId: string }) {
                       <td>{formatNumber(race.distanceKm, locale, 2)}</td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
+                      {options && (
+                        <td>
+                          {canEnter(race) && (
+                            /* A link and not a button, like everything else on
+                               the portal that leads somewhere. The race rides in
+                               the address, which is what lets the form stop
+                               asking which one it was. */
+                            <Link
+                              className="button button--secondary button--compact"
+                              /* Named by the race it leads to, because three of
+                                 these stand in one table and „Unesi rezultat"
+                                 three times over is one entry said three times in
+                                 a screen reader's list of links (WCAG 2.2 SC
+                                 2.4.4). The row does not name itself: it has no
+                                 `th`, so nothing else tells them apart. Said the
+                                 way every screen says a race, by its length
+                                 (data/raceLabel.ts). */
+                              aria-label={t('event.enterResultNamed', {
+                                race: raceLabel(race, mine, locale),
+                              })}
+                              to={`/${locale}/kalendar/${event.slug}/prijava?trka=${race.id}`}
+                            >
+                              {t('event.enterResult')}
+                            </Link>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
               </tbody>
@@ -292,9 +349,10 @@ export function EventDetail() {
                 )}
               </header>
 
-              <h2 className="profile__section">{t('event.races')}</h2>
-
-              <RaceTable eventId={event.id} />
+              {/* No heading over it since 23.08.2026 (owner: „Naslov TRKE ne
+                  treba da postoji"). The table names itself in a caption a
+                  screen reader reads and nobody sees. */}
+              <RaceTable event={event} />
 
               <EventResults slug={event.slug} date={event.date} />
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
@@ -6,8 +6,12 @@ import { unosRezultata } from '../../forms/definitions'
 import type { FormValues } from '../../forms/types'
 import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
+import type { BtlEvent, Race } from '../../data/types'
+import type { Suggestion } from '../../forms/types'
+import { useEvents, useRaces } from '../../data/useResource'
+import { useToday } from '../../clock/useClock'
 import { btlPoints } from '../../data/scoring'
-import { formatPoints } from '../../i18n/format'
+import { formatDistance, formatNumericDate, formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Submission } from '../../session/context'
 import { useSession } from '../../session/useSession'
@@ -45,6 +49,60 @@ function filledFrom(one: Submission): FormValues {
   }
 }
 
+/**
+ * The races the calendar already holds, offered while an event name is typed
+ * (owner, 23.08.2026).
+ *
+ * Only what has been run, and newest first: „U autocomplete se navode samo
+ * dogadjaji koji su u proslosti ili na taj dan, ne ubuduce", sorted „po datumu od
+ * poslednje prema ranijim". A race still to come is not a result anybody can
+ * enter (PDL P9 refuses a date in the future), so offering it would be offering a
+ * row the form then refuses.
+ *
+ * One entry per race and not per event, because what is filled in is a race: an
+ * event of five distances is five rows, told apart by the day and the length,
+ * which is what the row says after the name.
+ *
+ * The races are grouped once rather than searched for each event, because the
+ * data is eleven hundred events against sixteen hundred races and this is built
+ * on every letter typed until it is memoised.
+ */
+function racesToOffer(
+  events: BtlEvent[],
+  races: Race[],
+  today: string,
+  locale: string,
+): Suggestion[] {
+  const byEvent = new Map<string, Race[]>()
+
+  for (const race of races) {
+    byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])
+  }
+
+  const pairs = events.flatMap((event) =>
+    (byEvent.get(event.id) ?? [])
+      .filter((race) => race.date <= today)
+      .map((race) => ({ event, race })),
+  )
+
+  pairs.sort((left, right) => right.race.date.localeCompare(left.race.date))
+
+  return pairs.map(({ event, race }) => ({
+    id: race.id,
+    /* Only the name goes into the box (owner: „u polje Naziv dogadjaja se upisuje
+       samo naziv"). The day and the length are what the row is told apart by, and
+       they go into the fields under it rather than into the name. */
+    value: event.name,
+    said: `${event.name} – ${formatNumericDate(race.date)} – ${formatDistance(race.distanceKm, locale)}`,
+    fills: {
+      date: fieldDate(race.date),
+      distanceKm: String(race.distanceKm),
+      ascentM: String(race.ascentM),
+      descentM: String(race.descentM),
+    },
+  }))
+}
+
 /** Hours, minutes and seconds are all required by the form definition, so
  *  there is nothing here to fall back to. */
 function seconds(values: FormValues): number {
@@ -73,6 +131,20 @@ export function NewResult() {
    * result.
    */
   const [params] = useFilterParams()
+  const today = useToday()
+  const events = useEvents()
+  const races = useRaces()
+  /* Built once for the data rather than on every letter typed: the list is the
+     whole calendar read through one date, and it does not change while somebody
+     is typing into the box above it. Empty until both files are here, which is
+     what the form shows for the first moment it is on screen. */
+  const offered = useMemo(
+    () =>
+      events.status === 'ready' && races.status === 'ready'
+        ? racesToOffer(events.data, races.data, today, locale)
+        : [],
+    [events, races, today, locale],
+  )
   const again = params.get('ponovo')
   const correcting = submissions.find(
     (one) => one.id === again && one.memberNumber === memberNumber && one.status === 'rejected',
@@ -175,6 +247,7 @@ export function NewResult() {
       <FormRenderer
         form={unosRezultata}
         initial={correcting === undefined ? undefined : filledFrom(correcting)}
+        suggests={{ eventName: offered }}
         onSubmit={onSubmit}
       />
     </div>

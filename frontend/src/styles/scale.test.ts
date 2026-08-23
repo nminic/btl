@@ -173,6 +173,16 @@ const IN_PIXELS = new Map([
     'pages/league/League.css 699.98',
     'cuts a competitor name and a race name to an ellipsis, both already clipped above',
   ],
+  [
+    'pages/Profile.css 700',
+    /* In pixels because it has to be the other half of a pixel query. The table
+       of races is given equal columns and a width worked out from how many it
+       draws, and two of them are hidden under 700px by `table__hide-phone`
+       (styles/table.css, a pixel query). In `em` the two would agree only at the
+       default text size: a reader at 200% would get the columns back at one
+       window width and the arithmetic about them at another. */
+    'gives the table of races equal columns, and has to fire where `table__hide-phone` hands two of them back',
+  ],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {

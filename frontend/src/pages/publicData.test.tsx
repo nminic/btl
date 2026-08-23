@@ -72,7 +72,12 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
     'Fruškogorski maraton',
   ],
   [
-    '/sr/kalendar/fruskogorski-maraton-2010/prijava',
+    /* With the race in it, which is the only address this form answers since
+       23.08.2026: it is written by the button in the row of the race, and one
+       typed without it says where the way in is instead of drawing a form. The
+       id is written out because this list is read before anything is rendered;
+       it is the one race of that event. */
+    '/sr/kalendar/fruskogorski-maraton-2010/prijava?trka=evt-fruskogorski-maraton-2010-05-08-5768',
     'Za ovo treba prijava',
     'Prijava rezultata',
   ],
@@ -221,8 +226,11 @@ describe('what a browser downloads outside administration', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
       .map((route) => route.path)
       .filter((path) => !path.startsWith('administracija'))
+    /* The address without its query, because a route is a path: one address in
+       the list below carries `?trka=`, which the form it opens needs and which
+       the route table knows nothing about. */
     const missing = every.filter(
-      (path) => !PUBLIC.some(([address]) => matcher(path).test(address)),
+      (path) => !PUBLIC.some(([address]) => matcher(path).test(address.split('?')[0] ?? address)),
     )
 
     expect(missing).toEqual([])

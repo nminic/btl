@@ -2,6 +2,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useRef,
   useState,
   type FormEvent,
 } from 'react'
@@ -18,12 +19,21 @@ import type {
   FieldOption,
   FormDef,
   FormValues,
+  Suggestion,
 } from './types'
 import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
+import { Suggesting } from './Suggesting'
 import { optionsFor } from './records'
-import { asAsked, emptyValues, isVisible, trimValues, validateForm } from './validate'
+import {
+  asAsked,
+  emptyValues,
+  isVisible,
+  REQUIRED_KEY,
+  trimValues,
+  validateForm,
+} from './validate'
 import './FormRenderer.css'
 
 type Props = {
@@ -41,6 +51,15 @@ type Props = {
   /** Choices for selects whose list is data: the events a race can belong to,
    *  the members who can run a team. Keyed by field name. */
   options?: Record<string, FieldOption[]>
+  /**
+   * Lists to type against, keyed by field name.
+   *
+   * Not the same thing as `options`, which is a closed list a select is answered
+   * from: this is what the portal already holds, offered while somebody types
+   * something they may also type freely. Choosing an entry fills the fields it
+   * names and locks them; typing again breaks that and hands them back.
+   */
+  suggests?: Record<string, Suggestion[]>
   /**
    * A rule the definition cannot describe, checked when the form is submitted
    * and returned in the same shape as the rules that can: errors by field name.
@@ -143,6 +162,8 @@ const Field = memo(function Field({
   choices,
   onChange,
   open = false,
+  locked = false,
+  suggesting,
 }: {
   field: FieldDef
   value: string | boolean
@@ -161,8 +182,31 @@ const Field = memo(function Field({
   onChange: (field: FieldDef, value: string | boolean, also?: Record<string, string>) => void
   /** Whether the cursor starts here. One field on one form ever does. */
   open?: boolean
+  /**
+   * Whether this field was filled from a record rather than by the reader.
+   *
+   * Then it takes nothing: the four measurements of a race come off the race,
+   * and a reader who could edit them would be filing a time against a distance
+   * the calendar does not have. The way out is the field they came from: editing
+   * the name breaks the link and hands all four back (FormRenderer below).
+   */
+  locked?: boolean
+  /** The list this field is typed against, where it has one, and what to do with
+   *  what is typed and what is chosen (forms/Suggesting.tsx). */
+  suggesting?: {
+    list: readonly Suggestion[]
+    onType: (next: string) => void
+    onChoose: (one: Suggestion) => void
+  }
 }) {
   const { locale, t } = useI18n()
+  /* How many times the picture has been thrown away, which is the whole of what
+     this counts. A file input holds its own copy of what was chosen and nothing
+     but the browser may write to it, so emptying our value leaves the name of
+     the file standing beside an empty field. Drawn again under a new key, the
+     browser builds a new box and its copy goes with the old one. */
+  const [cleared, setCleared] = useState(0)
+  const putBack = useRef(false)
   const change = useCallback(
     (next: string | boolean) => {
       onChange(field, next)
@@ -206,6 +250,10 @@ const Field = memo(function Field({
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     className: 'field__control',
     autoFocus: open,
+    /* `undefined` and not `false`, so a control that is not locked carries no
+       attribute at all: `disabled={false}` is the same to a browser and one more
+       thing in the markup for a test to read as a decision somebody made. */
+    disabled: locked ? true : undefined,
   }
 
   if (field.type === 'checkbox') {
@@ -319,6 +367,13 @@ const Field = memo(function Field({
                 className="choice__input"
                 value={option.value}
                 checked={String(value) === option.value}
+                /* The lock reaches these too. `shared` carries it for every other
+                   kind of control and this branch is written before `shared` is
+                   used at all, so a suggestion that filled a group of buttons
+                   would have locked nothing while the form said it had. Nothing
+                   fills one today; a lock that is an ornament is worse than none,
+                   because the screen says the value cannot be changed. */
+                disabled={locked}
                 aria-invalid={error !== undefined}
                 /* The rule and the error on every button, and both on the
                    group around them as well.
@@ -392,12 +447,47 @@ const Field = memo(function Field({
       )}
 
       {field.type === 'photo' && (
-        <input
-          {...shared}
-          type="file"
-          accept="image/*"
-          onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
-        />
+        /* The box and, once there is something in it, the way out of it (owner,
+           23.08.2026: „Slika treba da ima dugme Obrisi na kraju reda, jer
+           trenutno ne mogu da odustanem od slanja slike"). Drawn only where there
+           is a picture, because a button that undoes nothing is a button that
+           says something was done. */
+        <span className="field__photo">
+          <input
+            {...shared}
+            key={cleared}
+            ref={(node) => {
+              if (node !== null && putBack.current) {
+                putBack.current = false
+                node.focus()
+              }
+            }}
+            type="file"
+            accept="image/*"
+            onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
+          />
+
+          {String(value) !== '' && (
+            <button
+              type="button"
+              className="button button--secondary button--compact field__clear"
+              onClick={() => {
+                /* The box is remounted in the same stroke (`key` above) and the
+                   button itself stops being drawn, so the cursor would fall to the
+                   document and a screen reader would read that as leaving the form
+                   (WCAG 2.2 SC 2.4.3). Measured on 23.08.2026: after the press,
+                   `document.activeElement` was `<body>`. It goes back onto the box
+                   the button just emptied, which is what the reader was working
+                   on. */
+                putBack.current = true
+                setCleared((was) => was + 1)
+                change('')
+              }}
+            >
+              {t('form.clearPhoto')}
+            </button>
+          )}
+        </span>
       )}
 
       {field.type === 'select' && (
@@ -443,6 +533,7 @@ const Field = memo(function Field({
              filled in (WCAG 2.2 SC 3.3.1). */
           invalid={error !== undefined && !aboutCountry(error)}
           countryInvalid={aboutCountry(error)}
+          locked={locked}
           describedBy={describedBy === '' ? undefined : describedBy}
           /* What is left of that when the error belongs to the country: the
              town keeps saying how it works, and stops carrying somebody else's
@@ -470,21 +561,33 @@ const Field = memo(function Field({
           invalid={error !== undefined}
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
+          locked={locked}
           onChange={change}
         />
       )}
 
-      {(field.type === 'text' ||
-        field.type === 'email' ||
-        field.type === 'password' ||
-        field.type === 'number') && (
-        <input
-          {...shared}
-          type={field.type}
+      {suggesting !== undefined && (
+        <Suggesting
+          shared={shared}
           value={String(value)}
-          onChange={(e) => change(e.target.value)}
+          suggestions={suggesting.list}
+          onType={suggesting.onType}
+          onChoose={suggesting.onChoose}
         />
       )}
+
+      {suggesting === undefined &&
+        (field.type === 'text' ||
+          field.type === 'email' ||
+          field.type === 'password' ||
+          field.type === 'number') && (
+          <input
+            {...shared}
+            type={field.type}
+            value={String(value)}
+            onChange={(e) => change(e.target.value)}
+          />
+        )}
 
       {error !== undefined && (
         <p className="field__error" id={errorId}>
@@ -501,6 +604,7 @@ export function FormRenderer({
   initial,
   title,
   options = {},
+  suggests = {},
   check,
   derived,
   was,
@@ -516,6 +620,10 @@ export function FormRenderer({
      screen and a word in the record is worse than the fault it replaced. */
   const filled: FormValues = { ...emptyValues(form), ...values }
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
+  /* The fields that were filled from a chosen entry, and are therefore not this
+     reader's to change. Names and not a flag per field, because what is locked is
+     decided by the entry that was chosen and differs from one list to the next. */
+  const [led, setLed] = useState<string[]>([])
   /* One day for showing a field and for validating it. They used to read the
      clock separately, one on every draw and one on submit, so a form filled in
      across midnight could show a field it then refused to validate. */
@@ -614,18 +722,115 @@ export function FormRenderer({
      handed a new handler every time counts as changed and redraws with it, which
      is the one thing the memo above cannot see through. Both setters are stable
      and both updates read the current state, so there is nothing to depend on. */
+  /**
+   * The errors of the fields that were just touched, gone, and the rest left
+   * standing.
+   *
+   * `setErrors({})` stood here until 23.08.2026 and emptied the whole form: one
+   * letter typed into the name of an event took away nine messages and the summary
+   * over them, while the same letter typed into „Sati" took away one. A reader
+   * walking the summary with a screen reader lost it on touching the first field
+   * and had to send the form unfinished again to get it back (WCAG 2.2 SC 3.3.1).
+   */
+  const without = (names: string[]) => (current: Record<string, FieldError>) =>
+    Object.fromEntries(Object.entries(current).filter(([name]) => !names.includes(name)))
+
+  /**
+   * The fields whose obligation hangs on the answer to this one.
+   *
+   * Four rules make one field's obligation depend on another's answer (ADL A21),
+   * and this reads all four by asking the definition rather than by listing them:
+   * any rule on a field that names another field by name. Written as a list of two
+   * for one day, and a round measured what the other two cost: on the real
+   * registration form, a date of birth under sixteen frees the number of an
+   * identity document, and „Ovo polje je obavezno." went on standing under it with
+   * `aria-invalid` still true while the form had stopped asking. A list written by
+   * hand is a list that goes stale the day a fifth rule is written.
+   *
+   * Read so that touching one field clears the message on the other: attach a
+   * picture and the comment becomes obligatory while the link stops being; take the
+   * picture back and both turn round again. The „Obriši" button beside the picture
+   * is what made that a thing a member can do in one press.
+   */
+  const namesField = (rule: unknown, name: string): boolean =>
+    typeof rule === 'object' && rule !== null && 'field' in rule && rule.field === name
+
+  const hangingOn = (name: string): string[] =>
+    form.fields
+      .filter((one) => Object.values(one).some((rule) => namesField(rule, name)))
+      .map((one) => one.name)
+
   const handleChange = useCallback(
     (field: FieldDef, next: string | boolean, also?: Record<string, string>) => {
       /* `also` is what a place field writes beside itself: the country the town
          came with. One field, two values, and the second has no field of its own
          to be typed into (src/forms/types.ts). */
       setValues((current) => ({ ...current, [field.name]: next, ...also }))
-      // The message goes away as soon as the field is touched. Leaving it up
-      // tells a screen reader the field is still wrong after it was fixed.
-      setErrors(({ [field.name]: _fixed, ...rest }) => rest)
+      /* The message goes away as soon as the field is touched, and so does the
+         message about **obligation** on whatever field this one decides the
+         obligation of. Leaving either up tells a screen reader a field is still
+         wrong after it was fixed.
+       *
+         Only that message on the other field, and that is the whole of the
+         difference: a badly written address is still a badly written address after
+         a picture has made it optional. Taking its message away with the obligation
+         says the shape has been put right when it has not, and the next press
+         refuses the form and writes the same message again, over a field nobody has
+         touched in between. Measured on 23.08.2026 on the real `unos-rezultata`
+         form: the count of messages went 1, then 0, then 1 again. */
+      setErrors((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([name, error]) =>
+              name !== field.name &&
+              !(hangingOn(field.name).includes(name) && error.key === REQUIRED_KEY),
+          ),
+        ),
+      )
     },
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form],
   )
+
+  /**
+   * The list a field is typed against, and what typing and choosing do to the
+   * form around it.
+   *
+   * Built here rather than handed to every field, so the two callbacks are made
+   * only for the one field that has a list. Every other field goes on getting
+   * the memoised `handleChange` and is drawn again only when its own value
+   * changes, which is what keeps a form of twelve hundred options usable.
+   */
+  function suggestingOn(field: FieldDef) {
+    const list = suggests[field.name]
+
+    if (list === undefined) {
+      return undefined
+    }
+
+    return {
+      list,
+      onType: (next: string) => {
+        /* The link breaks the moment the name is edited (owner, 23.08.2026):
+           what was filled from the chosen entry is emptied and handed back, so a
+           name typed freely cannot stand over somebody else's date and distance.
+           Emptied and not merely unlocked, because the four are then a record
+           this form is no longer describing. */
+        setValues((current) => ({
+          ...current,
+          ...Object.fromEntries(led.map((name) => [name, ''])),
+          [field.name]: next,
+        }))
+        setErrors(without([field.name, ...led]))
+        setLed([])
+      },
+      onChoose: (one: Suggestion) => {
+        setValues((current) => ({ ...current, [field.name]: one.value, ...one.fills }))
+        setErrors(without([field.name, ...Object.keys(one.fills)]))
+        setLed(Object.keys(one.fills))
+      },
+    }
+  }
 
   /* The form is named after its own heading, so it is a region a screen reader
    * can be taken to and land in, rather than a run of fields in the page. */
@@ -688,6 +893,8 @@ export function FormRenderer({
             choices={optionsFor(field, options)}
             onChange={handleChange}
             open={field.name === openAt}
+            locked={led.includes(field.name)}
+            suggesting={suggestingOn(field)}
           />
         ))
 

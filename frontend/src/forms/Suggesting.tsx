@@ -1,0 +1,180 @@
+import { useRef, useState } from 'react'
+import { useI18n } from '../i18n/useI18n'
+import type { Suggestion } from './types'
+import './Suggesting.css'
+
+/** How many letters before the list opens (owner, 23.08.2026: „posle dva slova
+ *  treba da krene autocomplete"). */
+const FROM_LETTERS = 2
+
+/**
+ * How many entries stand at once.
+ *
+ * The list is a list of buttons and every one of them is a stop on the way
+ * through the form with a keyboard, so an unbounded list is a form somebody has
+ * to tab through a hundred times to reach the next field. Eight of them stand in
+ * about twenty rem, which is what the fields under the box move down by while it
+ * is open; the list is the newest eight, so typing a third letter is how the older
+ * ones are reached.
+ */
+const AT_MOST = 8
+
+/**
+ * What is offered for what has been typed.
+ *
+ * Case is folded on both sides, because somebody typing a race name types it the
+ * way they say it and not the way it was entered. The order is the order it was
+ * handed in, which is by date, newest first (owner).
+ */
+function matching(value: string, all: readonly Suggestion[]): Suggestion[] {
+  const asked = value.trim().toLocaleLowerCase()
+
+  return asked.length < FROM_LETTERS
+    ? []
+    : all.filter((one) => one.value.toLocaleLowerCase().includes(asked)).slice(0, AT_MOST)
+}
+
+/**
+ * A box to type in, with what the portal already knows underneath it.
+ *
+ * A list of buttons and not the ARIA combobox pattern, deliberately. A combobox
+ * is `aria-activedescendant`, an owned listbox, arrow keys, Home and End, and a
+ * contract about what Enter does when nothing is highlighted; every one of those
+ * is a branch, and a half-built combobox lies to a screen reader about what it
+ * can do. A list of buttons under a text box promises nothing it does not do:
+ * Tab reaches each entry, Enter and Space press it, Escape closes the list, and
+ * the count is said out loud the moment the list opens.
+ *
+ * It opens on what is typed and on nothing else. Shut is where it starts, since
+ * 23.08.2026: derived from the value alone it opened by itself on a form that
+ * arrives already filled in, which is the form somebody reaches by pressing
+ * „Ispravi i pošalji ponovo" on a refused result. Eight rows fell over the fields
+ * under the box, and a reader who had typed nothing was told „8 trka iz kalendara
+ * odgovara".
+ *
+ * Escape closes it, choosing closes it, and leaving the box closes it, so a reader
+ * who wants the box and not the list is never trapped between the two. Leaving is
+ * the one that matters for the keyboard: the list is in the flow (Suggesting.css),
+ * so a list left open while the cursor walks past it holds the fields under it a
+ * screen's worth of rows further down than where they were read. It closes on the
+ * way out rather than on the way in.
+ */
+export function Suggesting({
+  value,
+  shared,
+  suggestions,
+  onType,
+  onChoose,
+}: {
+  value: string
+  /** Everything the form puts on every control of its own: the id, the name, the
+   *  rule and what describes it (FormRenderer.tsx). */
+  shared: Record<string, unknown>
+  suggestions: readonly Suggestion[]
+  onType: (next: string) => void
+  onChoose: (one: Suggestion) => void
+}) {
+  const { t } = useI18n()
+  /* Shut by Escape and by choosing, and opened again by the next letter typed.
+     Not a copy of what is in the box: the list itself is worked out from the
+     value every time, so there is nothing here that can disagree with it. */
+  const [shut, setShut] = useState(true)
+  /* Where the cursor goes back to once a row is pressed. The row is taken off the
+     page in the same stroke that presses it, so whatever was standing on it falls
+     to the document, and a screen reader reads that as leaving the form
+     (WCAG 2.2 SC 2.4.3). Measured on 23.08.2026: Tab onto the first row, Enter, and
+     `document.activeElement` was `<body>`.
+   *
+     Only the keyboard ever gets there. A press with the pointer never moves the
+     focus at all, because `mousedown` is cancelled on the list below; put back on
+     the box either way, which is where the pointer had left it too. */
+  const box = useRef<HTMLInputElement | null>(null)
+  const putBack = useRef(false)
+  const found = matching(value, suggestions)
+  const showing = shut ? [] : found
+
+  return (
+    <div
+      className="suggests"
+      /* Shut on the way out of the whole box, the list included, so tabbing from
+         the last row of the list into the field under it does not close it before
+         it has been reached. `relatedTarget` is where the focus is going; it is
+         null when the focus leaves the document altogether, and that closes it
+         too. */
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setShut(true)
+        }
+      }}
+    >
+      <input
+        {...shared}
+        ref={(node) => {
+          box.current = node
+
+          if (node !== null && putBack.current) {
+            putBack.current = false
+            node.focus()
+          }
+        }}
+        type="text"
+        value={value}
+        /* The browser's own list of what was typed here before would stand over
+           this one, and this one is the portal's own data. */
+        autoComplete="off"
+        onChange={(event) => {
+          setShut(false)
+          onType(event.target.value)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setShut(true)
+          }
+        }}
+      />
+
+      {/* That the list opened, and how long it is, for a reader who cannot see it
+          appear. The region stands whether or not it has anything to say, because
+          a live region added to the page at the moment it speaks is a region a
+          screen reader has not been watching (WCAG 2.2 SC 4.1.3). */}
+      <p className="visually-hidden" role="status">
+        {showing.length === 0 ? '' : t('form.suggested', { count: showing.length })}
+      </p>
+
+      {showing.length > 0 && (
+        <ul
+          className="suggests__list"
+          /* The pointer does not take the focus out of the box. Without this, any
+             press inside the list is a blur first and a press second, and the list
+             is gone before the press lands: measured on the scrollbar it used to
+             have, and true of any part of it that is not itself focusable.
+           *
+             It is also what keeps the cursor where a reader left it. The row is
+             taken off the page in the same stroke that presses it, so a focus that
+             had moved onto the row would fall to the document and a screen reader
+             would read that as leaving the form; because it never moves, there is
+             nothing to put back. The press still reaches the button. */
+          onMouseDown={(event) => {
+            event.preventDefault()
+          }}
+        >
+          {showing.map((one) => (
+            <li key={one.id}>
+              <button
+                type="button"
+                className="suggests__one"
+                onClick={() => {
+                  putBack.current = true
+                  setShut(true)
+                  onChoose(one)
+                }}
+              >
+                {one.said}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}

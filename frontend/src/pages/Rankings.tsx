@@ -1,8 +1,9 @@
 import { categoryLabel } from '../data/categories'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
 import { Resource } from '../components/Resource'
+import { SeasonPicker } from '../components/SeasonPicker'
 import {
   categoriesOf,
   categoryOfMember,
@@ -50,11 +51,12 @@ function Standing({
 
   const seasons = useMemo(() => seasonsWithResults(results), [results])
 
-  const season = useMemo(() => {
-    if (seasonParam !== null) {
-      return Number(seasonParam)
-    }
-
+  /* The season this screen opens on when the address names none, worked out
+     apart from the season being read. The shared control needs both: it writes a
+     year into the address only while that year is not the one the screen would
+     have opened on anyway, which is how every address on the portal stays as
+     short as it can be (SeasonPicker). */
+  const fallback = useMemo(() => {
     // The default follows the list being shown, not the data as a whole: a
     // season can have a full women's field and a single man in it.
     const ofGender = new Set(
@@ -62,7 +64,9 @@ function Standing({
     )
 
     return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
-  }, [competitors, results, gender, seasonParam, today])
+  }, [competitors, results, gender, today])
+
+  const season = seasonParam === null ? fallback : Number(seasonParam)
 
   /* Who this season's table is drawn from (PDL P11, and `fieldFor` for why).
    *
@@ -104,12 +108,21 @@ function Standing({
             {t('rankings.women')}
           </button>
         </div>
+
+        {/* Beside them and to their right, in the shape it has on the top boards
+            and on the teams (owner, 23.08.2026: „Sezona dropdown 2026 treba da
+            stoji identicno kao na strani top liste, gore desno"). It stood among
+            the filters under the heading until then, which put the one control
+            that says *which* table is being read in among the ones that narrow
+            it, and left the categories starting behind it rather than at the
+            edge of the screen. */}
+        <SeasonPicker seasons={seasons} season={String(season)} fallback={String(fallback)} />
       </div>
 
-      {/* Season and categories in one row, their names on one line and their
-          controls on the line below it (owner, 11.08.2026). They were on two
-          rows with the categories under the season, which put two controls of
-          one purpose at two heights.
+      {/* The categories alone, from the left edge of the screen (owner,
+          23.08.2026). The season stood in front of them from 11.08.2026 until
+          then and has gone up into the head, so what is left is the one row that
+          narrows the table, starting where the table starts.
 
           The categories are chosen by pressing one rather than out of a list
           that has to be opened first: a category is one of eight or so, all of
@@ -125,17 +138,6 @@ function Standing({
           every letter typed, and it answered a question the list of
           competitors already answers (PDL P12). */}
       <div className="rankings__filters">
-        <label className="rankings__field">
-          <span>{t('rankings.season')}</span>
-          <select value={season} onChange={(e) => onChange({ sezona: e.target.value })}>
-            {seasons.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <div
           className="rankings__field rankings__field--categories"
           role="group"
@@ -256,9 +258,44 @@ function Standing({
   )
 }
 
+/**
+ * A key this screen's address may still carry and nothing on it reads.
+ *
+ * The standing had a search box until 31.07.2026 (owner). Somebody has this page
+ * bookmarked with `?trazi=` in it from before, and left alone it rides into every
+ * filter pressed after it and every link shared from there, naming a control that
+ * is not on the screen.
+ *
+ * Dropped on arrival and not on the way past, which is the difference a round
+ * measured on 23.08.2026: it was written into this screen's own `change`, so
+ * pressing a category dropped it and changing the season did not, because the
+ * season is drawn by a shared control that writes the address for itself
+ * (`components/SeasonPicker`). Dropped once here, and every control on the screen
+ * is right afterwards without knowing anything about it.
+ *
+ * On this screen and nowhere near `useFilterParams`, because the key is stale
+ * **here** and nowhere else: the list of competitors reads `trazi` as its own
+ * search and dropping it there empties the search box while somebody is typing in
+ * it. Measured, by putting the drop in the shared hook: 31 rows where 1 was asked
+ * for (`publicScreens.test.tsx`).
+ *
+ * `replace` so the address a reader arrived at is corrected rather than added to,
+ * and the browser's own back button still leaves the screen in one press.
+ */
+const STALE = 'trazi'
+
 export function Rankings() {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
+
+  useEffect(() => {
+    if (params.has(STALE)) {
+      const cleaned = new URLSearchParams(params)
+
+      cleaned.delete(STALE)
+      setParams(cleaned, { replace: true })
+    }
+  }, [params, setParams])
   /* Only what the standing shows. Waiting on the events as well meant the whole
    * table turned into an error message if that one file failed, over data no row
    * in it has ever read. */
@@ -266,13 +303,6 @@ export function Rankings() {
 
   function change(next: Record<string, string>) {
     const merged = new URLSearchParams(params)
-
-    /* Dropped on the way past, rather than carried for ever. Somebody has a
-       standing bookmarked with `?trazi=` in it from before the search went
-       (owner, 31.07.2026), and nothing reads it: the table draws correctly and
-       the address goes on naming a control that is not on the screen, into
-       every filter pressed after it and every link shared from there. */
-    merged.delete('trazi')
 
     for (const [key, value] of Object.entries(next)) {
       if (value === '') {

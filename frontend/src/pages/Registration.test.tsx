@@ -170,6 +170,45 @@ describe('Registration once it is open', () => {
     expect(kinship).toHaveAttribute('aria-required', 'true')
   })
 
+  it('takes the message off a field a date of birth has just freed', async () => {
+    /* The fourth of the four rules by which one field decides another (ADL A21),
+       and the one a list written by hand left out. Measured by a round on
+       23.08.2026: press „Pošalji prijavu" on an empty form and „Broj ličnog
+       dokumenta" is asked for and says so; type a date of birth under sixteen and
+       the form stops asking, while the message and `aria-invalid` stayed on. The
+       screen then says the field is wrong and that nothing is being asked of it,
+       in the same breath.
+
+       On the real registration form and not a made-up one, because this is the
+       only form on the portal carrying `optionalWhenYoungerThan`, and a definition
+       written inside a test would leave the real one free to lose the rule. */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const document = screen.getByLabelText(/^Broj ličnog dokumenta$/)
+
+    expect(document).toHaveAttribute('aria-required', 'true')
+    expect(document).toHaveAttribute('aria-invalid', 'true')
+    expect(must(document.getAttribute('aria-describedby'), 'what describes the document')).toContain(
+      'error',
+    )
+
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    expect(
+      document,
+      'the form goes on asking for a document a child has not got',
+    ).not.toHaveAttribute('aria-required')
+    expect(document, 'the field still reads as wrong').toHaveAttribute('aria-invalid', 'false')
+    /* And the words themselves are gone, not only the flag beside them. */
+    expect(
+      document.getAttribute('aria-describedby'),
+      'the message stands under a field the form has stopped asking about',
+    ).not.toContain('error')
+  })
+
   it('keeps who brought a member who arrived by a referral link', async () => {
     /* The address said `?preporuka=` and nothing read it. The link was written
        on the membership screen, printed for the member to share, and the one

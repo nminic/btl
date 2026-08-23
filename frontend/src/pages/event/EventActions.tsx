@@ -171,7 +171,11 @@ export function EventActions({
   const mayRate =
     memberNumber !== null && mayAct && ran(results, races, event.id, memberNumber)
 
-  if (!mayEdit && !mayAct) {
+  /* Nothing here for somebody with nothing to press. Since the report went into
+     the table of races, being signed in is no longer enough on its own: the two
+     things this row can still hold are the administrator's pair and the rating,
+     and the rating asks for more than a session. */
+  if (!mayEdit && !mayRate) {
     return null
   }
 
@@ -199,23 +203,12 @@ export function EventActions({
         </>
       )}
 
-      {/* A member reports what they ran here, on the event they ran, rather than
-          on a form that starts by asking which event it was (owner,
-          03.08.2026). Offered to whoever is signed in, including an
-          administrator, because an administrator runs too. */}
-      {/* Nothing to report on a race that has not been run. PDL P9 is plain
-          about it: a date in the future is refused, and the date here is the
-          event's own, so the only way to keep that rule is not to offer the
-          form at all. */}
-      {mayAct && (
-        /* A link and not a button, like everything else on the portal that
-           leads somewhere: a button has no middle click, no "open in a new
-           tab", no address in the status bar, and is announced as a button by
-           a screen reader when it is a way to another screen. */
-        <Link className="button button--primary" to={`/${locale}/kalendar/${event.slug}/prijava`}>
-          {t('event.report')}
-        </Link>
-      )}
+      {/* „Prijavi rezultat" stood here from 03.08.2026 until 23.08.2026, and it
+          asked which race afterwards, in a field at the top of the form. The
+          owner had it replaced by a button in every row of the table of races,
+          where the race is already decided: „ne treba onda ni dropdown na vrhu
+          za izbor trke nego se to zavisi od reda iz kog je kliknuto". One way in,
+          and it knows what it is about (EventDetail.tsx). */}
 
       {/* And what they thought of it (owner, 06.08.2026), where they were there:
           the rating asks about the organisation and the surroundings, which are

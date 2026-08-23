@@ -341,6 +341,7 @@ function ProfileBody({
               showing: t('profile.showingResults', { shown: grown, total: shown.length }),
               whole: t('profile.allResults', { count: shown.length }),
             }}
+            endShown={false}
           />
         )}
       </section>

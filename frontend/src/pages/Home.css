@@ -445,7 +445,16 @@
    line of its own and keeps the far end of it. */
 .calc__answer {
   display: flex;
-  align-items: flex-end;
+  /* On the line of the words, not along the bottom of the boxes (owner,
+     23.08.2026: "Tekst Reset u dugmetu kalkulatora treba da bude na istoj
+     vertikali kao i BTL poeni"). Measured on the page at 1280 before the change:
+     the two boxes ended level, and the word inside the button sat nine pixels
+     above the line of "BTL poeni:", because a button centres its word in a box
+     taller than the word. A shared baseline puts the two words on one line and
+     lets the button hang below it, which is why the row and the card are a
+     little taller than they were. That extra height is the change, not a side
+     effect of it. */
+  align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-8);
 }
@@ -540,6 +549,19 @@
 .calc__reset {
   flex: 0 0 auto;
   margin-inline-start: auto;
+}
+
+/* The size of the label beside it and not the size of the header's buttons
+   (owner, 23.08.2026: „i ista veličina slova"). Written as a size of its own
+   rather than by dropping `button--compact`, because compact is also the padding
+   and the weight, and only the size was asked for.
+ *
+ * Two classes deep on purpose. `.calc__reset` alone weighs exactly as much as
+ * `.button--compact`, and a tie is settled by which stylesheet was loaded last,
+ * which here is the buttons: measured in the browser, the rule was in the sheet,
+ * lost the tie and the word stayed at 13,6px. */
+.calc__answer .calc__reset {
+  font-size: 0.8rem;
 }
 
 /* News and sponsor */

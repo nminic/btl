@@ -8,6 +8,7 @@ import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
 import newResult from '../forms/definitions/unos-rezultata.form.json'
+import fromEvent from '../forms/definitions/prijava-sa-trke.form.json'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
@@ -1413,7 +1414,7 @@ describe('the rulebook', () => {
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
       ['pravilnik', 'prednost ima podatak organizatora', 29, /Uspon i spust/],
-      ['pravilnik', 'portal uzima iz same trke', 37, /Ko prijavljuje i šta/],
+      ['pravilnik', 'izaberete trku iz ponuđenog spiska', 37, /Ko prijavljuje i šta/],
       ['pravilnik', 'Prijava rezultata posle roka iz', 38, /^Rok$/],
       /* „Top liste iz Člana 48" stood in the list of what is kept per sex until
          22.08.2026, and the owner struck it: the top boards are combined and the
@@ -2007,8 +2008,25 @@ describe('how a written page is set', () => {
 
         /* A constant: find where it is given its value, anywhere in the portal.
            The name goes into the pattern escaped, because it is read out of a
-           file and this test has no say in what it looks like. */
-        const gives = new RegExp(`${escaped(handed)}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
+           file and this test has no say in what it looks like.
+         *
+           The whole name, and that is not a nicety. The clock's store is opened by
+           a constant called `KEY` (clock/ClockProvider.tsx), and written without
+           the boundary this pattern matched every identifier ending in those three
+           letters: `THEME_STORAGE_KEY` all along, and on 23.08.2026 a new
+           `REQUIRED_KEY` in forms/validate.ts, whose value is the name of an error
+           message rather than of any store. The guard then asked the privacy policy
+           to disclose a store the portal does not have, and would as happily have
+           let the clock's own store be disclosed under somebody else's name.
+         *
+           A constant given a written type, `const KEY: string = '…'`, is matched by
+           neither the old pattern nor this one, and that is the safe side: it fails
+           loudly with „nothing in the portal gives `KEY` a value" rather than
+           quietly reading nothing. Measured both ways. */
+        const gives = new RegExp(
+          `(?:^|[^\\w$])${escaped(handed)}\\s*=\\s*['"\`](.*?)['"\`]`,
+          'g',
+        )
         const named = everywhere
           .flatMap((one) => [...one.matchAll(gives)])
           .map((one) => one[1] ?? '')
@@ -2440,26 +2458,55 @@ describe('what the written pages say the fee buys', () => {
       /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
     )
 
-    /* Read off the form the member meets, field by field and not through a
-       loop over a shape asserted into being: a rule nobody has written yet is
-       simply absent from the type the JSON import gives, and asserting past that
-       is asserting past the very thing this guard is for.
+    /* And it says so of both ways in, since 23.08.2026. The article described the
+       form on the event as a different thing for three weeks: „birate trku iz
+       spiska", „link nije zasebno polje: ako ga imate, ide u komentar". The owner
+       had that form given the same foot as the one on a profile, the rulebook was
+       left as it was, and nothing here read it, because this guard knew one form.
+       A member who did what Član 37 told them, and put the address into the
+       comment, met „Ovo polje je obavezno." */
+    expect(article).toMatch(/Vi unosite vreme, link ka zvaničnim rezultatima/)
+    /* And it names what that form does **not** ask for, which the sentence before
+       this one got wrong on the first try: „sve ostalo unosite isto kao sa profila"
+       promised the name of the event and the date as well, and the form on the
+       event asks for neither. */
+    expect(article).toMatch(/naziv, datum, dužinu, uspon i spust portal uzima iz nje/)
+    expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
+      /link nije zasebno polje|ide u komentar/,
+    )
+
+    /* Read off the forms the member meets, field by field and not through a loop
+       over a shape asserted into being: a rule nobody has written yet is simply
+       absent from the type the JSON import gives, and asserting past that is
+       asserting past the very thing this guard is for.
 
        The field each rule names is checked to be on the form as well, because a
-       typo in it is silent: a rule pointing at nothing never fires. */
-    const named = new Set(newResult.fields.map((field) => field.name))
-    const link = must(
-      newResult.fields.find((one) => one.name === 'link'),
-      'the link field of the result form',
-    )
-    const comment = must(
-      newResult.fields.find((one) => one.name === 'comment'),
-      'the comment field of the result form',
-    )
+       typo in it is silent: a rule pointing at nothing never fires.
 
-    expect(must(link.optionalWhenFilled, 'the link carries no rule').field).toBe('photo')
-    expect(must(comment.requiredWhenFilled, 'the comment carries no rule').field).toBe('photo')
-    expect(named.has('photo'), 'the rules name a field the form does not ask').toBe(true)
+       Both forms, and by name, so a rule taken off one of them fails here rather
+       than quietly making the rulebook wrong about half the portal. */
+    for (const [what, form] of [
+      ['the result form', newResult],
+      ['the form on the event', fromEvent],
+    ] as const) {
+      const named = new Set(form.fields.map((field) => field.name))
+      const link = must(
+        form.fields.find((one) => one.name === 'link'),
+        `the link field of ${what}`,
+      )
+      const comment = must(
+        form.fields.find((one) => one.name === 'comment'),
+        `the comment field of ${what}`,
+      )
+
+      expect(must(link.optionalWhenFilled, `the link of ${what} carries no rule`).field).toBe(
+        'photo',
+      )
+      expect(
+        must(comment.requiredWhenFilled, `the comment of ${what} carries no rule`).field,
+      ).toBe('photo')
+      expect(named.has('photo'), `the rules of ${what} name a field it does not ask`).toBe(true)
+    }
   })
 
   it('summarises in the terms only the measures the rulebook still knows', () => {

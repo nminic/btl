@@ -272,28 +272,40 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
   })
 
-  it('drops a search out of an address that still carries one', async () => {
-    /* Somebody has this bookmarked from before the search went, and nothing
-       reads `trazi` any more. Left alone it is carried into every filter
+  it('drops a search out of an address that still carries one, on arrival', async () => {
+    /* Somebody has this bookmarked from before the search went, and nothing on this
+       screen reads `trazi` any more. Left alone it is carried into every filter
        pressed after it and every link shared from there, so the address goes on
-       naming a control that is not on the screen. The table itself is drawn
-       from the season and the category, so it was right either way; the address
-       is what a reader copies. */
+       naming a control that is not on the screen. The table itself is drawn from
+       the season and the category, so it was right either way; the address is what
+       a reader copies.
+
+       On arrival and not on the way past, which is what a round measured on
+       23.08.2026: written into this screen's own `change`, pressing a category
+       dropped it and changing the season did not, because the season is drawn by a
+       shared control that writes the address for itself. Both controls are pressed
+       below, and the address is read before either of them. */
     const user = setupUser()
     const { router } = renderAt('/sr/tabela?sezona=2020&trazi=nesto')
+    const address = () => new URLSearchParams(router.state.location.search)
 
     await screen.findByRole('table')
+
+    expect(address().get('trazi'), 'the address still names a control that is gone').toBeNull()
+    expect(address().get('sezona'), 'the rest of the address went with it').toBe('2020')
 
     await user.click(
       within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')[1] ??
         screen.getByRole('button', { name: 'Sve' }),
     )
 
-    const address = new URLSearchParams(router.state.location.search)
+    expect(address().get('trazi')).toBeNull()
+    expect(address().get('kategorija')).not.toBeNull()
 
-    expect(address.get('trazi')).toBeNull()
-    expect(address.get('sezona')).toBe('2020')
-    expect(address.get('kategorija')).not.toBeNull()
+    await user.selectOptions(screen.getByLabelText('Sezona'), '2019')
+
+    expect(address().get('trazi'), 'the season wrote it back').toBeNull()
+    expect(address().get('sezona')).toBe('2019')
   })
 
   it('marks the chosen category as chosen, and not only to a screen reader', async () => {
@@ -486,21 +498,40 @@ describe('Rankings', () => {
  * back to what it said is a change nobody would notice for a month.
  */
 describe('what the filters are called', () => {
-  it('puts both filters in one row, each a name over its control', async () => {
-    /* Season, then categories (owner, 11.08.2026). There was a third, a search
-       box at the end of the width, until he had it taken out on 31.07.2026.
-       jsdom computes no layout, so what is held is the order and the shape the
-       layout is built out of: two fields in one row, each one a name over a
-       control. A row that reads right and is built some other way is a row that
-       stops reading right on the next screen that copies it. */
+  it('keeps the gender and the season in the head, and the categories alone under it', async () => {
+    /* Owner, 23.08.2026: the season goes up beside the name of the screen, in the
+       shape it has on the top boards, and the two gender buttons stand in front
+       of it. What is left under the heading is the categories, and they start at
+       the edge of the screen rather than behind a field. The season had stood in
+       front of them since 11.08.2026, and a search box stood at the end of that
+       row until 31.07.2026.
+
+       jsdom computes no layout, so what is held is the order in the markup and
+       what holds what. Asked through the two groups and the field themselves
+       rather than through the class of the box around them: the box is how the
+       layout is built, and a screen that put the season back among the filters
+       while keeping the class would have gone past a guard that only counted
+       children of `.rankings__head-tool`.
+
+       Both halves of it, because the season arriving in the head while a copy of
+       it stayed among the filters reads right on the screen and is two controls
+       of one purpose, which is exactly what the owner had taken apart. */
     renderAt('/sr/tabela?sezona=2020')
 
     await screen.findByRole('table')
 
-    const row = must(document.querySelector('.rankings__filters'), 'the row of filters')
-    const named = [...row.children].map((one) => (one.querySelector('span')?.textContent ?? ''))
+    const genders = screen.getByRole('group', { name: 'BTL tabele' })
+    const season = must(screen.getByLabelText('Sezona').closest('label'), 'the season field')
+    const categories = screen.getByRole('group', { name: 'Kategorija' })
+    const head = must(genders.parentElement, 'what holds the gender buttons')
 
-    expect(named).toEqual(['Sezona', 'Kategorija'])
+    expect([...head.children]).toEqual([genders, season])
+    expect(head.contains(categories)).toBe(false)
+
+    const row = must(document.querySelector('.rankings__filters'), 'the row of filters')
+    const named = [...row.children].map((one) => one.querySelector('span')?.textContent ?? '')
+
+    expect(named).toEqual(['Kategorija'])
   })
 
   it('names the category in full, and offers all of them as Sve', async () => {
@@ -1502,6 +1533,25 @@ describe('CompetitorProfile', () => {
     /* And it really did fill: the loop is allowed to run out, and a reading taken
        from a table still half drawn would pass while saying nothing. */
     expect(screen.queryByRole('button', { name: 'Učitaj još rezultata' })).toBeNull()
+
+    /* And the wall says it ended without writing it on the screen (owner,
+       23.08.2026: „Linija na dnu To je sve, 78 rezultata ne treba da postoji").
+       Read off the class, because jsdom applies no stylesheet and `toBeVisible`
+       cannot tell a hidden paragraph from a drawn one (ADL A18); the sentence
+       itself stays, because the focus lands on it after the last press and it is
+       what tells a reader who cannot see the wall that it ended rather than broke
+       (components/LoadMore.tsx).
+
+       The same sentence over the coins has its own guard in
+       `profile/profile.test.tsx`; this is the wall the owner named, and until
+       23.08.2026 it had none: taking `endShown` off it left the whole suite
+       green. */
+    const end = screen.getByText(/^To je sve, \d+ rezultat/)
+
+    expect([...end.classList], 'the end of the wall is written on the screen').toEqual([
+      'visually-hidden',
+    ])
+
     // Everything the ring names, less the total, which is not a length.
     const named = within(chart)
       .getAllByRole('rowheader')
@@ -1767,13 +1817,16 @@ describe('Teams', () => {
  * used to.
  */
 describe('the row a screen opens with', () => {
-  for (const [path, screenName] of [
+  for (const [path, screenName, role] of [
     ['/sr/tabela', 'the season table'],
-    /* Signed in and on an event already run, which is the only way this row has
-       anything in it: the event's head became the shared row on 06.08.2026, and
-       nothing held that it had (goldBand.test.ts says only that the old grid is
-       gone, which stays true whatever replaces it). */
-    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event'],
+    /* On an event, as somebody who administers one, which since 23.08.2026 is
+       the only way this row has anything in it: the way into the form left it
+       for the rows of the table, so a member who has not run this event is
+       offered nothing here and the row draws nothing at all. The event's head
+       became the shared row on 06.08.2026, and nothing held that it had
+       (goldBand.test.ts says only that the old grid is gone, which stays true
+       whatever replaces it). */
+    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event', 'superadmin'],
     ['/sr/takmicari', 'the competitors'],
     ['/sr/timovi', 'the teams'],
     ['/sr/top-liste', 'the top boards'],
@@ -1782,7 +1835,7 @@ describe('the row a screen opens with', () => {
     ['/sr/tim/dunavski-trkaci', 'a team'],
   ] as const) {
     it(`is the shared one on ${screenName}`, async () => {
-      renderAt(path, 'competitor', '000007')
+      renderAt(path, role ?? 'competitor', '000007')
 
       const heading = await screen.findByRole('heading', { level: 1 })
       const row = must(heading.parentElement, 'the row around the heading')

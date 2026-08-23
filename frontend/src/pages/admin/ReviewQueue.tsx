@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
+import { officialResultsLink } from '../../data/officialResults'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
@@ -127,14 +128,30 @@ export function ReviewQueue() {
                   <td>{formatShortDate(one.date, locale)}</td>
                   <td>{one.memberNumber}</td>
                   <td>
-                    {/* A link only where there is an address to link to. Where
-                        the entry came from the event's own page there is none:
-                        that form asks for words, and words in an `href` are an
-                        address made of somebody's sentence. */}
-                    {one.link === '' ? (
+                    {/* A link only where what is stored is an address this
+                        portal is willing to hand a browser, which is asked here
+                        and not taken on trust from the form (data/officialResults.ts
+                        says why both ask). Anything else is drawn as the name and
+                        nothing more, the same as an entry that carries no address
+                        at all.
+                     *
+                        Empty is what Član 37 allows: a member who attached a
+                        picture instead of a link sends no address. Since
+                        23.08.2026 both ways in ask for one, the form on the event
+                        included. Words in an `href` would be an address made of
+                        somebody's sentence, and that is what this screen drew
+                        before the field existed. */}
+                    {officialResultsLink(one.link) === undefined ? (
                       one.eventName
                     ) : (
-                      <a href={one.link} rel="noreferrer noopener" target="_blank">
+                      /* `noreferrer` because the host on the other end is one the
+                         member chose, and without it the address of this
+                         administrative screen travels there in the `Referer`.
+                         `noopener` says the same thing about `window.opener`; it
+                         is what browsers already do for `target="_blank"`, and it
+                         is written out because a rule that depends on a default
+                         is a rule nobody can read. */
+                      <a href={officialResultsLink(one.link)} rel="noreferrer noopener" target="_blank">
                         {one.eventName}
                       </a>
                     )}

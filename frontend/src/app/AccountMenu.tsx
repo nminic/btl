@@ -34,7 +34,10 @@ export function AccountMenu({ memberNumber }: { memberNumber: string }) {
           <p className="account__who">
             {member === undefined ? memberNumber : `${member.firstName} ${member.lastName}`}
           </p>
-          {ACCOUNT_ROUTES.map((route) => (
+          {/* Everything but what has a shorter way in of its own (routes.ts).
+              Filtered here rather than dropped there, because that same list is
+              what the router is built from. */}
+          {ACCOUNT_ROUTES.filter((route) => route.notInMenu !== true).map((route) => (
             <Link
               key={route.path}
               className="account__link"

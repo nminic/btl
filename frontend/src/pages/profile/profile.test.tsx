@@ -5,6 +5,7 @@ import { at, first, must, selectElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
+import sr from '../../i18n/sr.json'
 import { formatPoints } from '../../i18n/format'
 import type { Competitor, Result } from '../../data/types'
 import { awardsOf } from './awards'
@@ -627,7 +628,7 @@ describe('a wall of ducats that grows as it is read', () => {
      Stood up rather than found: the most decorated member of the generated data
      holds three ducats, so nothing in it is long enough to be cut. What is
      under test is the cutting. */
-  function servingMany(howMany: number) {
+  function servingMany(howMany: number, tier = 1) {
     const real = globalThis.fetch
     const many = Array.from({ length: howMany }, (_, at) => ({
       id: `duk-proba-${String(at)}`,
@@ -641,7 +642,7 @@ describe('a wall of ducats that grows as it is read', () => {
       periodAt: 'none',
       mark: 'races',
       art: 'none',
-      tier: 1,
+      tier,
       step: 0,
       last: 0,
       tierUpFrom: 0,
@@ -679,8 +680,103 @@ describe('a wall of ducats that grows as it is read', () => {
 
     await user.click(screen.getByRole('button', { name: 'Učitaj još dukata' }))
     expect(count()).toBe(12)
-    expect(screen.getByText('To je sve, 12 dukata')).toBeVisible()
+
+    /* And the end of the wall is spoken and not drawn (owner, 23.08.2026: no
+       „To je sve, 2 dukata" beside the coins).
+     *
+       Held on the class and not with `toBeVisible`, which is the whole lesson of
+       this line: jsdom applies no stylesheet, so a paragraph carrying
+       `visually-hidden` is as visible to it as any other, and the assertion that
+       stood here went on passing after the sentence came off the screen. What
+       makes it invisible is the class, so the class is what is asked about
+       (styles/hooks.test.ts holds what that class does).
+     *
+       The sentence itself stays, because the focus lands on it after the last
+       press and it is what tells a reader who cannot see the wall that it ended
+       rather than broke (components/LoadMore.tsx). */
+    const end = screen.getByText('To je sve, 12 dukata')
+
+    expect([...end.classList]).toEqual(['visually-hidden'])
 
     stop()
+  })
+
+  it('writes nothing beside a coin about what it is worth, and still says it', async () => {
+    /* „3/5" stood beside every name from 11.08.2026 until the owner had it off
+       the screen on 23.08.2026: „Nigde gde su dukati ne treba da piše 3/5 i
+       slično pored."
+
+       Both halves, because only one of them was asked for. What goes is the
+       seeing of it; what stays is the coin's own name, which is the only thing
+       telling a bronze from a gold to somebody who does not see the metal (PDL
+       P16, WCAG 2.2 SC 1.4.1). A guard on the absence alone would pass on a wall
+       that had quietly lost the label too.
+
+       Asked of the whole wall rather than of one line, and by shape rather than
+       by the string that used to be there: „3 od 5" or „III" beside a name is
+       the same thing said differently, and neither is a wall of coins. */
+    const stop = servingMany(2, 3)
+
+    renderAt('/sr/takmicar/000021/priznanja')
+
+    const wall = await screen.findByRole('list', { name: '' })
+
+    expect(wall.textContent ?? '', 'a ducat is worth something on the screen again').not.toMatch(
+      /[1-5]\s*(\/|od)\s*5|\bI{1,3}V?\b/,
+    )
+    expect(within(wall).getAllByRole('img', { name: /Vrednost 3 od 5/ })).toHaveLength(2)
+
+    stop()
+  })
+})
+
+describe('who the profile is about, above everything else', () => {
+  it('draws the face first and the name and the line beside it', async () => {
+    /* Owner, 23.08.2026: „prvo ide slika, onda desno od nje u gornjem redu ime i
+       prezime, a u donjem trenutna linija". The circle stands level with both of
+       those rows rather than with one of them, which is what makes it the
+       picture of the person rather than a mark beside a name.
+
+       jsdom lays nothing out, so what is held is the order in the markup and
+       what holds what: the face first, everything else in one box after it. Where
+       that box lands is a question for a browser, and it was measured there
+       (Profile.css carries the numbers).
+
+       A photograph is what the circle is for and initials are what it holds
+       today, because the member record carries no picture yet. The owner asked
+       for exactly that fallback, so the initials are held too. */
+    renderAt('/sr/takmicar/000008')
+
+    const name = await screen.findByRole('heading', { level: 1, name: 'Ognjen Perišić' })
+    const head = must(document.querySelector('.profile__head--person'), 'the head of a profile')
+    const [face, identity] = [...head.children]
+
+    expect(face?.className, 'the first thing in the head is not the face').toContain('portrait')
+    expect(face?.textContent, 'the circle holds no initials').toBe('OP')
+    /* Hidden from a reader who hears the page rather than sees it: the name it
+       would say stands beside it, in a heading, where a name belongs. */
+    expect(face?.getAttribute('aria-hidden')).toBe('true')
+
+    expect(identity?.contains(name), 'the name is not beside the face').toBe(true)
+    expect(
+      identity?.contains(must(document.querySelector('.profile__meta'), 'the line under the name')),
+      'the line under the name is not beside the face',
+    ).toBe(true)
+  })
+
+  it('no longer promises that what is won is never taken away', async () => {
+    /* „Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno." stood over
+       the trophies until 23.08.2026, when the owner called it meaningless and had
+       it out.
+
+       Held as an absence in both of its homes, the page and the dictionary,
+       because a sentence deleted from the markup and left in the dictionary comes
+       back the first time somebody reaches for a line to put over that heading. */
+    renderAt('/sr/takmicar/000008/priznanja')
+
+    await screen.findByRole('heading', { name: /Pehari/ })
+
+    expect(screen.queryByText(/Osvojeno se nikad ne skida/)).not.toBeInTheDocument()
+    expect(JSON.stringify(sr)).not.toContain('Osvojeno se nikad')
   })
 })

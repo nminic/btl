@@ -189,6 +189,55 @@ export function unconditionalRules(css: string, named: string): CSSStyleRule[] {
   return rules
 }
 
+/**
+ * Every rule of one media query, read the way a browser reads it.
+ *
+ * `unconditionalRules` above deliberately refuses these, because a rule wrapped in
+ * `@media print` is a rule that does not apply and a guard over the text of a sheet
+ * cannot tell the two apart (ADL A18). Some rules, though, are meant to be
+ * conditional: a table that is given equal columns only where every column is drawn
+ * says so in a query, and holding it means naming the query it is in.
+ *
+ * The condition is matched as written, so a rule moved into another query fails
+ * here rather than being found under a condition nobody asked about.
+ */
+export function rulesInMedia(css: string, condition: string, named: string): CSSStyleRule[] {
+  const tag = document.createElement('style')
+
+  tag.textContent = css
+  document.head.append(tag)
+
+  const sheet = tag.sheet
+
+  expect(sheet, `jsdom did not parse ${named}`).not.toBeNull()
+
+  const found = [...(sheet?.cssRules ?? [])]
+    .filter((rule): rule is CSSMediaRule => rule instanceof CSSMediaRule)
+    .filter((rule) => rule.conditionText === condition)
+    .flatMap((rule) => [...rule.cssRules])
+    .filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule)
+
+  tag.remove()
+
+  return found
+}
+
+/** The one rule of one media query written for exactly this selector. */
+export function ruleInMedia(
+  css: string,
+  condition: string,
+  selector: string,
+  named: string,
+): CSSStyleDeclaration {
+  const found = rulesInMedia(css, condition, named).filter(
+    (rule) => rule.selectorText === selector,
+  )
+
+  expect(found.length, `${selector} is not one rule of ${condition} in ${named}`).toBe(1)
+
+  return must(found[0], `the rule ${selector}`).style
+}
+
 /** The one unconditional rule written for exactly this selector, and a failure
  *  naming it where there is none or more than one. */
 export function ruleFor(css: string, selector: string, named: string): CSSStyleDeclaration {

@@ -52,6 +52,26 @@ export type FieldType =
    */
   | 'photo'
 
+/**
+ * One entry of a list a field is typed against.
+ *
+ * What the portal already holds, offered so it does not have to be typed again.
+ * Choosing one writes `value` into the field itself and `fills` into the fields
+ * beside it, which are then locked: they came off a record and editing them
+ * would make the record say something it does not say (FormRenderer.tsx).
+ */
+export type Suggestion = {
+  /** Its own, so React can key the list and two identical rows are still two. */
+  id: string
+  /** What goes into the field that is being typed in. */
+  value: string
+  /** What the row reads on the screen, which is more than the value: the value
+   *  alone would offer five identical rows for five races of one event. */
+  said: string
+  /** What choosing it writes into the other fields, by field name. */
+  fills: Record<string, string>
+}
+
 export type FieldOption = {
   value: string
   labelKey: string
