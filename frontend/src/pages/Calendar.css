@@ -90,44 +90,40 @@
 .day {
   /* What the shortcut in the corner is placed against (owner, 12.08.2026). */
   position: relative;
-  /* And it may be narrower than the longest name in it. A grid item refuses to
-     shrink under its own `min-content` unless it is told to, and under 780px the
-     month is one column: at 200% text the longest event name of the month grew
-     that column to 407,94px inside a box of 296px and **the page itself** scrolled
-     sideways by 80px, which is the one thing the portal never does (WCAG 2.2
-     SC 1.4.10). Measured 23.08.2026, before and after.
-
-     296 and not 328: the box is `360 - 2 x 32`, and the padding is in `rem`, so at
+  /* And it may be narrower than the longest name in it, down to the width of the
+     dots it carries and no further.
+     
+     A grid item refuses to shrink under its own `min-content` unless it is told to,
+     and the longest event name of a month set the width of every day: at 200% text
+     on a 360px phone that made the column 407,94px inside a box of 296 and **the
+     page itself** scrolled sideways by 80px, which is the one thing the portal
+     never does (WCAG 2.2 SC 1.4.10). Without a floor at all, 266 of 480 measured
+     combinations of width, zoom and month scroll the page, the worst by 279px.
+     
+     296 and not 328: the box is `360 - 2 x 32`, the padding being in `rem`, so at
      200% text it grows with the letters. 328 is the same box at the default size,
-     and mixing the two is how the first version of this comment got a second pair
-     of numbers, „407,94 in a box of 281, scrolled 95px", which is a 345px desktop
-     window with its scrollbar left in. Whose scrollbar is drawn where decides
-     which box is the box (ADL A26).
-
-     What this does not claim: that nothing leaves its day. It does. The chips do
-     not wrap - `.chip__name` carries `nowrap` and `.chip__lengths` does not shrink
-     - so a day with five length dots pushes them over its own right edge and onto
-     the frame of the next day.
-
-     On a **desk** window of 780px, where the content column is 733 because the
-     scrollbar is deducted, the day is 74,47px and the dots 59,98px, which is
-     11,52px over. On a telephone of the same 780px the column is 748 and the same
-     day gives 76,08 and 9,91: which box is the box depends on whose scrollbar is
-     drawn where (ADL A26), and neither number is the other one's. It is not only
-     780 either: 7,17px at 820/100%, 10,31px at 1000/125%, and 20,42px at 1200,
-     1280 and 1440 at 150%.
-
-     Three days in the data, not five: 17.07.2015, 22.07.2016 and 13.07.2018, all
-     three „BTL Round 'n' Around", the only events with five different length
-     categories. Five is how many have four or more, and four dots stay inside.
-
-     The trade is still the right way round, and that is measured rather than
-     assumed: on every width where the dots now overflow, the **page itself** used
-     to scroll instead, by 179, 139, 189, 261, 221 and 141px. There is no width
-     where this line introduces a fault that was not there, and structurally there
-     cannot be: the `min-content` of a day holds the whole name in `nowrap`, which
-     is always wider than the dots alone. Recorded in `PENDING.md`, section 4a. */
-  min-inline-size: 0;
+     and mixing the two is how the first version of this said „407,94 in a box of
+     281, scrolled 95px", which is a desk window of 345px with its scrollbar left in
+     (ADL A26).
+     
+     **Four rem and not nought, and that is a correction.** Written as `0` until
+     23.08.2026 and a round measured what that cost: a day could then be narrower
+     than the row of length dots inside it, and the dots do not wrap
+     (`.chip__name` carries `nowrap`, `.chip__lengths` does not shrink). July 2015 at
+     1440px and 150% text had no page scroll at all and the line pushed five dots
+     20,42px over the edge of their day; at 1560px and 200% text seven days of the
+     archive overflowed, the worst by 65,80px. Five measured combinations were a
+     fault the floor introduced where there was none.
+     
+     The fullest tile there is asks for 5,25rem, and the floor is **5,5rem**. It was
+     measured up to rather than guessed: `min-inline-size` is the border box, so 4rem
+     left the same day 11,52px over its own edge and 5rem left it 5,98px over, while
+     at 5,5rem the day of five dots neither overflows nor scrolls the page. Seven
+     columns of it plus six gaps are 44,5rem and the grid begins at 48,75em, so the
+     floor fits the narrowest grid there is at any size of letters. In `rem` and not
+     in pixels for exactly that reason: what has to fit inside is itself measured in
+     letters, so the floor has to grow with them. */
+  min-inline-size: 5.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
