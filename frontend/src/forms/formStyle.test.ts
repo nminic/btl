@@ -70,8 +70,11 @@ describe('the box a town is typed into', () => {
     /* The column already refuses to grow for it (`min-inline-size: 0` on
        `.place__town`); what was missing until 23.08.2026 is the box being told the
        same. Measured that day at 200% text on a 360px screen: the box came out
-       417px inside 281px of column and the **page** scrolled sideways by 104px,
-       which is the one thing the portal never does (WCAG 2.2 SC 1.4.10).
+       417px inside 296px of column and the **page** scrolled sideways by 104px,
+       which is the one thing the portal never does (WCAG 2.2 SC 1.4.10). (296 and
+       not 281: the column is `360 - 2 x 32`, the padding being in `rem`, and 281
+       was a desk window of 345px with the scrollbar left in. Corrected 23.08.2026,
+       ADL A26.)
 
        jsdom applies no stylesheet and lays nothing out (ADL A18), so what is asked
        here is that the rule is written; the number beside it is what a browser
@@ -81,5 +84,29 @@ describe('the box a town is typed into', () => {
 
     expect(box.getPropertyValue('inline-size')).toBe('100%')
     expect(box.getPropertyValue('min-inline-size')).toBe('0px')
+  })
+})
+
+describe('the calendar of a date field', () => {
+  it('has columns that give way when the sheet is capped', () => {
+    /* The other half of the fix, and the half nothing was watching. `DatePicker.tsx`
+       caps the sheet at the width of the visible window, and the cap does nothing
+       unless the columns can be narrower than they would like: seven of `2rem` are
+       448px of grid at 200% text, and a `fixed` box that hangs over the edge cannot
+       be scrolled to.
+
+       Measured in Chrome on 23.08.2026, 360px at 200% text: with `repeat(7, 2rem)`
+       the sheet stood 514px wide and ten of the thirty day buttons answered `null`
+       from `elementFromPoint`, the whole weekend column, on every date field on the
+       portal. With `minmax(0, 2rem)` none are lost. A round put the rigid value back
+       and all 2133 tests stayed green, which is why this is written.
+
+       jsdom applies no stylesheet and lays nothing out (ADL A18), so what is asked
+       here is that the value is written; the numbers beside it are what a browser
+       measured. */
+    const picker = readFileSync(join(process.cwd(), 'src/forms/DatePicker.css'), 'utf-8')
+    const grid = ruleFor(picker, '.datepicker__grid', 'DatePicker.css')
+
+    expect(grid.getPropertyValue('grid-template-columns')).toBe('repeat(7, minmax(0, 2rem))')
   })
 })

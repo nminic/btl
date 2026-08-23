@@ -181,6 +181,39 @@ describe('the races of an event', () => {
     expect(fall, 'the second wrong cell says it is fine').toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('marks the two lengths that clash, and says why on the cell itself', async () => {
+    /* A clash is a fact about two rows, so neither length is out of bounds and the
+       cell that carries it answered `aria-invalid="false"`. Measured 23.08.2026:
+       the press was refused, a reader in forms mode walked every control of the
+       table, and every one of them said it was fine. There was nothing to stand on
+       and no way to learn why (WCAG 2.2 SC 4.1.2, SC 3.3.1). */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const first = must(screen.getAllByLabelText(/^Dužina/)[0], 'the length of the first race')
+    const was = inputElement(first).value
+
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const second = must(screen.getAllByLabelText(/^Dužina/)[1], 'the length of the second race')
+
+    await user.clear(second)
+    await user.type(second, was)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    /* Both, because neither is the wrong one; what is wrong is that there are
+       two. */
+    expect(first, 'the first of the two says it is fine').toHaveAttribute('aria-invalid', 'true')
+    expect(second, 'the second of the two says it is fine').toHaveAttribute('aria-invalid', 'true')
+
+    /* And the reason is read with the cell rather than left standing beside it. */
+    const said = must(second.getAttribute('aria-describedby'), 'the reason on the cell')
+
+    expect(must(document.getElementById(said), 'the sentence').textContent).toMatch(/već ima trku/)
+  })
+
   it('will not save while a row is missing its day or its length', async () => {
     /* Owner, 23.08.2026: „validacija mi ne da da nastavim dalje dok svaki red nema
        sve obavezne podatke". One press writes the event and every one of its
@@ -972,6 +1005,27 @@ describe('what the form for a new event asks for', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+
+    /* And the race is under the event rather than merely announced. „Sačuvano" is
+       what the form says about itself, and it says it whether or not the rows were
+       written: measured 23.08.2026, an `alsoSave` that skipped an event with no
+       races of its own lost every row and the screen still said it was saved. The
+       list is opened again and the event reopened, because that is the only thing
+       that reads the record back. */
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Trka sa trkama')
+
+    const found = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    await user.click(
+      within(at(found.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+    )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(
+      screen.getAllByLabelText(/^Dužina/).map((one) => inputElement(one).value),
+      'the race entered beside the new event was not written under it',
+    ).toEqual(['21.1'])
   })
 
   it('takes a race with no name at all, since the length is what names it', async () => {

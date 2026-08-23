@@ -545,7 +545,11 @@ describe('copying an event', () => {
     await screen.findByRole('heading', { level: 1 })
     await copyOnto('14032028')
 
-    /* The first copy is emptied, which is what frees the numbers the second holds. */
+    /* The first copy is emptied, which is what frees the numbers the second one
+       holds. Emptied in the administration and not deleted from its own page,
+       which would be shorter: nothing the administration creates reaches a public
+       screen, so the copy has no page of its own to delete it from. Measured, and
+       written down because it is the obvious shortcut. */
     await openCopy('2027')
     for (const button of screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ }).reverse()) {
       await user.click(button)
@@ -553,7 +557,6 @@ describe('copying an event', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
 
     /* And now a third copy, which counted would land on the second one's ids. */
     await router.navigate(EVENT)
@@ -571,5 +574,15 @@ describe('copying an event', () => {
       screen.queryAllByLabelText(/^Dužina/).length,
       'the second copy was left without the races it had',
     ).toBe(races)
-  }, 30000)
+    /* Its own budget, and the reason for it. ADL A2 keeps the package at 5000ms as
+       a **performance** budget rather than a guard against hanging, so a longer one
+       has to say what it is paying for. This walk makes three copies of an event of
+       four races, opens two forms and saves them, which is the shortest sequence
+       that reaches the fault at all: measured 1390ms warm on this machine, and a
+       package under load has been measured at three to four times its warm time
+       (`adminFlows.test.tsx`, 1,6s warm against 4,4s loaded), which is 4,2 to 5,6s
+       and either side of the default. Fifteen seconds is ten times warm; a fourfold
+       slowdown of the copy itself would still be caught by the other tests of this
+       file, which keep the default. */
+  }, 15_000)
 })
