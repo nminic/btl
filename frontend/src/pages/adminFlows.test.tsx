@@ -2054,6 +2054,14 @@ describe('the six queues read from the file', () => {
     expect(document.getElementById(String(opens))).not.toBeNull()
   })
 
+  /* Its own limit, because it really does walk a screen: it opens the calendar from
+     the administration, enters a race in the table, moves the event, answers two
+     reports in the queue and opens the event again to read the days. Four seconds
+     and a half here, and the machine that decides is about half again slower, which
+     put it over the package's five and failed a branch that had nothing to do with
+     it. A test that genuinely waits carries its own limit rather than raising the
+     package's (the same rule is written over the turning chart in
+     `publicScreens.test.tsx`). */
   it('moves a race entered during the visit, and moves it from the day it now has', async () => {
     /* Two things the queue reads through the session rather than off the file:
        a race entered or re-dated during this visit is moved with its event, and
@@ -2089,15 +2097,13 @@ describe('the six queues read from the file', () => {
     const lengths = () => screen.getAllByLabelText(/^Dužina/)
 
     await user.type(must(lengths()[lengths().length - 1], 'the row just opened'), '5')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
     /* And the event moved a day on before the report is answered, so the day the
-       report names is a day the event has already left. Opened again, because one
-       press saves the whole screen and closes it (owner, 23.08.2026). */
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-
-    const date = await screen.findByLabelText(/^Datum/)
+       report names is a day the event has already left. In the same sitting as the
+       race above, because one press saves the whole screen since 23.08.2026: two
+       sittings would be two opens of a list of eleven hundred, and this test was
+       over five seconds on the machine that decides. */
+    const date = screen.getByLabelText(/^Datum/)
 
     await user.clear(date)
     await user.type(date, '04042027')
@@ -2163,7 +2169,7 @@ describe('the six queues read from the file', () => {
       .map((box) => inputElement(box).value)
 
     expect(after).toEqual(['10/04/2027', '10/04/2027', '11/04/2027'])
-  })
+  }, 20_000)
 
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')

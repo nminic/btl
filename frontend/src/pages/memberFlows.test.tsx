@@ -854,6 +854,13 @@ describe('a result from entry to decision', () => {
     expect(screen.getByRole('button', { name: 'Pošalji na proveru' })).toBeVisible()
   })
 
+  /* Its own limit, because it really does walk the whole way: a member enters a
+     result, a moderator sends it back, the member corrects it and sends it again,
+     and the queue is read at every step. Measured 23.08.2026: 1,6 seconds of test
+     time on a warm run and 4,4 under the load of the whole package, against the
+     package's five, and the machine that decides is about half again slower. A test
+     that genuinely walks carries its own limit rather than raising everybody's (the
+     same rule is written over the turning chart in `publicScreens.test.tsx`). */
   it('is corrected and sent again, as the same result rather than a second one', async () => {
     /* Owner, 06.08.2026. A refusal is not the end of a result: the member is
        told why, corrects it and sends the same race again, and it goes back into
@@ -964,7 +971,7 @@ describe('a result from entry to decision', () => {
     expect(said.getAllByText('540')).toHaveLength(2)
     expect(said.getByText('1:52:10')).toBeVisible()
     expect(said.getByText('23,55')).toBeVisible()
-  })
+  }, 20_000)
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
     const user = setupUser()
