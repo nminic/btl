@@ -71,7 +71,7 @@ describe('the way to report a result', () => {
 
     /* And none of the five the race already carries, nor the sixth it used to
        ask for itself. */
-    for (const known of [/Naziv događaja/, /Datum/, /Dužina/, /Uspon/, /Spust/, /^Trka/]) {
+    for (const known of [/^Naziv trke/, /Datum/, /Dužina/, /Uspon/, /Spust/, /^Trka/]) {
       expect(screen.queryByLabelText(known)).toBeNull()
     }
   })
@@ -208,6 +208,60 @@ describe('a result reported this way', () => {
     /* The one thing the member came to find out (PDL P9). */
     expect(screen.getByText(/BTL poena/)).toBeVisible()
     expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+  })
+
+  it('sends the name of the race, not the name of the event it is run at', async () => {
+    /* Owner, 23.08.2026: the result carries the race's name, and that is what the
+       queue and „Moji rezultati" show. The field was renamed and the value was left
+       behind for a day: a race the administrator had called „Mrazijada,
+       polumaraton" reached the moderator as „Mrazijada".
+
+       Measured on the one race in the data that carries a name of its own, because
+       every other one is named after its event and the fault is invisible against
+       them. */
+    const { races } = await racesOf('mrazijada-2020')
+    const own = must(
+      races.find((race) => race.name.includes('polumaraton')),
+      'the race with a name of its own',
+    )
+    const user = setupUser()
+    const { router } = renderAt(reportAddress('mrazijada-2020', own), 'superadmin', ME)
+
+    await fillIn(user)
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+    await screen.findByRole('heading', { level: 1 })
+
+    await router.navigate('/sr/administracija/verifikacija/rezultati')
+
+    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
+
+    expect(within(table).getByText(own.name), 'the queue was sent the event name').toBeVisible()
+  })
+
+  it('names the column of the queue after the race, not after the event', async () => {
+    /* The third of the three screens the owner named (23.08.2026). The cell was put
+       right in the first round and the heading above it was left saying „Događaj";
+       a round measured that nothing sees it, so the heading is asked for here. */
+    const { races } = await racesOf('mrazijada-2020')
+    const own = must(
+      races.find((race) => race.name.includes('polumaraton')),
+      'the race with a name of its own',
+    )
+    const user = setupUser()
+    const { router } = renderAt(reportAddress('mrazijada-2020', own), 'superadmin', ME)
+
+    await fillIn(user)
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+    await screen.findByRole('heading', { level: 1 })
+
+    await router.navigate('/sr/administracija/verifikacija/rezultati')
+
+    const table = within(await screen.findByRole('table', { name: 'Čeka proveru' }))
+
+    expect(
+      table.getAllByRole('columnheader').map((one) => one.textContent),
+      'the heading says the column holds events',
+    ).toContain('Trka')
   })
 
   it('reaches the queue the moderator decides in, with the points already worked out', async () => {

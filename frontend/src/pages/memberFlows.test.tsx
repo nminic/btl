@@ -166,6 +166,37 @@ describe('signing in', () => {
   })
 })
 
+describe('what the results of a member are named by', () => {
+  it('names the race, and says so in the heading above it', async () => {
+    /* Owner, 23.08.2026: „u listi rezultata treba da se prikazuju nazivi trka na
+       kojima je čovek učestvovao, a ne događaja." „Moji rezultati" is one of the
+       three screens he named.
+
+       Measured against the one race in the data that carries a name of its own,
+       „Mrazijada, polumaraton" under the event „Mrazijada": every other race is
+       named after its event, so a screen drawing the wrong one of the two looks
+       right. A round measured what that costs — four mutations that put the event's
+       name back walked through all 2139 tests, this screen among them. */
+    renderAt('/sr/moji-rezultati', 'competitor', '000002')
+
+    const counted = within(await screen.findByRole('table', { name: 'Uračunato' }))
+
+    expect(
+      counted.getAllByRole('columnheader').map((one) => one.textContent),
+      'the heading says the column holds events',
+    ).toContain('Trka')
+
+    const named = counted
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[1]?.textContent ?? '')
+
+    expect(named.some((one) => one.includes('Mrazijada, polumaraton')), named.join(' | ')).toBe(
+      true,
+    )
+  })
+})
+
 describe('member screens without a session', () => {
   it.each([
     ['/sr/moj-profil'],
@@ -714,7 +745,7 @@ describe('messages', () => {
 
 describe('a result from entry to decision', () => {
   async function enterResult(user: ReturnType<typeof setupUser>) {
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
     await user.type(screen.getByLabelText(/Uspon/), '540')
@@ -750,7 +781,7 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
     expect(screen.getByRole('alert')).toBeVisible()
@@ -813,7 +844,7 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka sa pričom')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka sa pričom')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
@@ -834,7 +865,7 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka bez vremena')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka bez vremena')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
@@ -874,7 +905,7 @@ describe('a result from entry to decision', () => {
        result, and a list rewritten wholesale would carry the correction into
        every row of it. */
     await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Druga trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
     await user.type(screen.getByLabelText(/Datum trke/), '11052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
@@ -903,6 +934,16 @@ describe('a result from entry to decision', () => {
 
     const sent = within(await screen.findByRole('list'))
     expect(sent.getAllByRole('listitem')).toHaveLength(2)
+
+    /* Named by the race, like everything else that names a result since 23.08.2026.
+       A sweep of mutations found this one and six rounds of review did not: the name
+       inside the accessible label was the only place left reading the event, and
+       nothing measured it. A member with two refused results hears „Ispravi i pošalji
+       ponovo" twice over otherwise. */
+    expect(
+      screen.queryByRole('link', { name: 'Ispravi i pošalji ponovo: Probna trka' }),
+      'the link is named after something other than the race',
+    ).not.toBeNull()
 
     await user.click(screen.getByRole('link', { name: /Ispravi i pošalji ponovo: / }))
 
@@ -1041,6 +1082,7 @@ async function withOneMoreResult(
       id: `added-${row.memberNumber}-${row.date}`,
       memberNumber: row.memberNumber,
       raceId: 'race-added',
+      raceName: 'Trka',
       eventName: 'Trka',
       eventSlug: 'trka',
       date: row.date,

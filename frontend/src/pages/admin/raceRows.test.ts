@@ -1,4 +1,4 @@
-import { allFinished, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
+import { allFinished, isWrong, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
 import { fieldDate } from '../../forms/dateField'
 import type { Race } from '../../data/types'
 
@@ -7,6 +7,8 @@ function race(id: string, date: string, distanceKm: number): Race {
   return {
     id,
     eventId: 'evt',
+    name: 'Trka',
+    renamed: 'no' as const,
     date,
     distanceKm,
     ascentM: 120,
@@ -17,6 +19,8 @@ function race(id: string, date: string, distanceKm: number): Race {
 
 const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   id: '',
+  name: 'Trka',
+  renamed: 'no',
   date: '17/10/2026',
   distanceKm: '10',
   ascentM: '',
@@ -105,9 +109,31 @@ describe('the races of an event while they are being entered', () => {
     expect(allFinished([row(), row({ distanceKm: '' })])).toBe(false)
   })
 
+  it('reads a name of nothing but spaces as no name at all', () => {
+    /* A name is what a race is picked out by, so „   " is not one: it looks answered
+       and is not. Measured by a sweep on 23.08.2026: taking the `trim` out of all
+       three places that read the name walks through 2151 tests, and a race saves
+       under a name nobody can see.
+
+       Both ends, because the row is asked twice: once to refuse the press, and once
+       to write the record. */
+    expect(whatIsMissing(row({ name: '   ' }))).toBe('name')
+    expect(allFinished([row({ name: '   ' })])).toBe(false)
+    /* And what is written is the name without the spaces around it, so „ Trka " and
+       „Trka" are one race and not two. */
+    expect(storedRow(row({ name: '  Trka  ' }), 'evt').name).toBe('Trka')
+    /* And the cell says the same thing the press says. Asked of the other three and
+       not of this one, the two answers drifted apart: the press refused a name of
+       three spaces and the cell that carried it reported itself fine. A round
+       measured that, and this line is the reason it cannot come back. */
+    expect(isWrong(row({ name: '   ' }), 'name')).toBe(true)
+  })
+
   it('writes an empty climb and fall as nought', () => {
     expect(storedRow(row(), 'evt')).toEqual({
       eventId: 'evt',
+      name: 'Trka',
+      renamed: 'no' as const,
       date: '2026-10-17',
       distanceKm: '10',
       ascentM: '0',

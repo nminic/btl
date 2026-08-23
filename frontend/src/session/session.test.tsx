@@ -17,7 +17,7 @@ function Probe() {
         onClick={() =>
           submit({
             memberNumber: '000001',
-            eventName: `Trka ${submissions.length + 1}`,
+            raceName: `Trka ${submissions.length + 1}`,
             date: '2026-05-10',
             distanceKm: 10,
             ascentM: 0,

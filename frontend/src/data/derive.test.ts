@@ -51,6 +51,7 @@ const result = (memberNumber: string, date: string, points: number, extra: Parti
   id: `${memberNumber}-${date}-${points}`,
   memberNumber,
   raceId: 'race',
+  raceName: 'Trka',
   eventName: 'Trka',
   eventSlug: 'trka',
   date,
@@ -1170,6 +1171,8 @@ describe('categoriesAt', () => {
   const race = (id: string, eventId: string, category: RaceCategory): Race => ({
     id,
     eventId,
+    name: 'Trka',
+    renamed: 'no',
     date: '2027-04-03',
     distanceKm: 10,
     ascentM: 0,

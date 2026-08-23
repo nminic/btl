@@ -32,6 +32,7 @@ function race(date: string, over: Partial<Result> = {}): Result {
     id: `r${made}`,
     memberNumber: '000001',
     raceId: `t${made}`,
+    raceName: 'Trka',
     eventName: 'Trka',
     eventSlug: 'trka',
     date,

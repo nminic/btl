@@ -44,7 +44,7 @@ export function MyResults() {
             {mine.map((one) => (
               <li key={one.id} className={`submissions__item submissions__item--${one.status}`}>
                 <div className="submissions__head">
-                  <strong>{one.eventName}</strong>
+                  <strong>{one.raceName}</strong>
                   <span className={`tag tag--${one.status}`}>{t(`status.${one.status}`)}</span>
                 </div>
                 <p className="submissions__meta">
@@ -68,7 +68,7 @@ export function MyResults() {
                   <p className="submissions__again">
                     <Link
                       className="button button--secondary"
-                      aria-label={t('myResults.sendAgainNamed', { name: one.eventName })}
+                      aria-label={t('myResults.sendAgainNamed', { name: one.raceName })}
                       to={`/${locale}/rezultat/novi?ponovo=${one.id}`}
                     >
                       {t('myResults.sendAgain')}
@@ -98,7 +98,10 @@ export function MyResults() {
                 <thead>
                   <tr>
                     <th scope="col">{t('profile.columns.date')}</th>
-                    <th scope="col">{t('profile.columns.event')}</th>
+                    {/* „Trka" and not „Događaj": what stands in this column is the name of
+                      the race (owner, 23.08.2026), and a heading that says otherwise
+                      is read out with every cell under it. */}
+                  <th scope="col">{t('profile.columns.race')}</th>
                     <th scope="col">{t('rankings.columns.category')}</th>
                     <th scope="col" className="table__hide-phone">
                       {t('profile.columns.time')}
@@ -110,7 +113,13 @@ export function MyResults() {
                   {counted.map((result) => (
                     <tr key={result.id}>
                       <td>{formatShortDate(result.date, locale)}</td>
-                      <td>{result.eventName}</td>
+                      <td>
+                        {/* The race and not the event it belonged to (owner,
+                            23.08.2026): „u listi rezultata treba da se prikazuju
+                            nazivi trka na kojima je čovek učestvovao, a ne
+                            događaja." */}
+                        {result.raceName}
+                      </td>
                       <td>{t(`category.${result.category}`)}</td>
                       <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
                       <td className="table__points">{formatPoints(result.points, locale)}</td>

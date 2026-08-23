@@ -130,6 +130,192 @@ describe('the races of an event', () => {
     ).toBeNull()
   })
 
+  it('opens every race under the name of its event, and follows it when that changes', async () => {
+    /* Owner, 23.08.2026: „svaka trka ipak treba da ima i svoj naziv koji je po
+       default-u naziv događaja, ali se može po potrebi promeniti." A race that
+       still carries its event's name follows it when the event is renamed; one
+       that was renamed by hand keeps what it was given, which is the whole of
+       `renamed`. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const event = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name of the event')
+    const was = inputElement(event).value
+    const races = () => screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
+
+    expect(races().length).toBeGreaterThan(0)
+    expect(races().every((one) => one === was), 'a race opened under some other name').toBe(true)
+
+    /* A second one, entered here rather than out of the file, so what is measured
+       is both the race that came with the event and the race this screen made. */
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    expect(races()[1], 'a new row opened under some other name').toBe(was)
+
+    /* One of them is given a name of its own, and only that one stops following. */
+    const own = must(screen.getAllByLabelText(/^Trka,/)[1], 'the second race')
+
+    await user.clear(own)
+    await user.type(own, 'Polumaraton')
+
+    await user.clear(event)
+    await user.type(event, 'Drugo ime')
+
+    const after = races()
+
+    expect(after[0], 'a race that was never renamed did not follow its event').toBe('Drugo ime')
+    expect(after[1], 'a race renamed by hand was overwritten by its event').toBe('Polumaraton')
+
+    /* And it survives the round trip: the record keeps that the name was given by
+       hand, so opening the event again and renaming it once more still leaves that
+       race alone. Read back rather than trusted, because between the table and the
+       record the flag is a word in a store that keeps only text. */
+    await user.type(must(screen.getAllByLabelText(/^Dužina/)[1], 'the second length'), '21.1')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const again = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    await user.click(
+      within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+    )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const twice = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name again')
+
+    await user.clear(twice)
+    await user.type(twice, 'Treće ime')
+
+    /* Sorted, because the rows are lined up by the day and the length inside it and
+       the second race has just been given a length. What is asked is which name
+       each carries, not which row it sits in. */
+    expect([...races()].sort(), 'the record forgot which race was renamed by hand').toEqual(
+      ['Polumaraton', 'Treće ime'].sort(),
+    )
+  })
+
+  it('opens a row somebody adds under the event too, and lets it go on following', async () => {
+    /* The row „Nova trka" makes starts out following its event, and until this was
+       written nothing measured it: a round set `renamed: 'yes'` into the new row and
+       all 2150 tests stayed green. What that costs is worse on a new event, where
+       the name is still empty when the row is added and the row would keep the
+       screen's own fallback, „Događaji", as the name of a race.
+
+       Measured here without touching the row's name, which is what the other guard
+       does and why it cannot see this. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const event = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name of the event')
+
+    await user.clear(event)
+    await user.type(event, 'Drugo ime')
+
+    const named = screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
+
+    expect(named.length).toBeGreaterThan(1)
+    expect(
+      named.every((one) => one === 'Drugo ime'),
+      `a row entered by hand did not follow its event: ${named.join(' | ')}`,
+    ).toBe(true)
+  })
+
+  it('will not save a race with no name at all', async () => {
+    /* It opens as the name of its event and may be changed, not taken away: a row
+       with no name is a row nobody can pick out of a list of races. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const first = must(screen.getAllByLabelText(/^Trka,/)[0], 'the name of the first race')
+
+    await user.clear(first)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(first).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('puts the name first and the category second, which is what the floor is written on', async () => {
+    /* Owner, 23.08.2026: „u okviru događaja editabilno polje Trka treba da bude u
+       prvoj koloni, dok će se druga kolona zvati Kategorija, a zatim slede dužina,
+       uspon, spust itd."
+
+       Asked here and not only in the stylesheet, because the floor that makes the
+       name readable is written on `td:first-child` (`Entity.css`): which column that
+       is lives in this file, and nothing compared the two. A round swapped „Trka"
+       and „Kategorija" and all 2151 tests stayed green while the floor moved onto a
+       column that is only read, and the name fell back to 47,27px on a 360px screen. */
+    await openFirstEvent()
+
+    const table = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+
+    expect(table.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
+      'Trka',
+      'Kategorija',
+      'Dan trke',
+      'Dužina',
+      'Uspon',
+      'Spust',
+      'Zapis',
+    ])
+
+    /* And the body in the same order, which is a second fact: the heading and the
+       cells are written in two places, and the floor that makes the name readable is
+       on `td:first-child`. Measured 23.08.2026 by a round: swapping only the cells
+       left „Trka | Kategorija" standing over „Kategorija | Trka", the floor moved
+       onto the column that is only read, and 2153 tests stayed green. A screen
+       reader reads the two together (WCAG 2.2 SC 1.3.1). */
+    const first = must(table.getAllByRole('row')[1], 'the first race')
+    const cells = within(first).getAllByRole('cell')
+
+    /* The whole row against the whole heading, not only its first cell. Asked of the
+       first alone, swapping any other pair leaves the heading saying one thing over
+       cells saying another: a round swapped the day and the length and 52 tests
+       stayed green while a screen reader read „Dužina: 17/10/2026" (WCAG 2.2 SC
+       1.3.1). The same shape is already used for the tables of the portal in
+       `styles/tableWidths.test.ts`. */
+    expect(cells.length, 'the row and the heading are not the same width').toBe(7)
+
+    /* Every one of the seven, not five of them: two were left out as „has no control
+       of its own", and a round measured what that cost — swapping the category and
+       the „Obriši" button leaves the heading „Kategorija … Zapis" over cells reading
+       „Obriši … Maraton", and all 2154 tests stay green. The two without controls are
+       asked by what they hold instead. */
+    const named = [
+      /^Trka,/,
+      /^Dan trke,/,
+      /^Dužina \(km\),/,
+      /^Uspon \(m\),/,
+      /^Spust \(m\),/,
+    ] as const
+    const at = [0, 2, 3, 4, 5] as const
+
+    for (const [which, asked] of named.entries()) {
+      const where = at[which] ?? 0
+
+      expect(
+        within(must(cells[where], `cell ${String(where + 1)}`)).queryByLabelText(asked),
+        `cell ${String(where + 1)} of a row does not answer to its own heading`,
+      ).not.toBeNull()
+    }
+
+    /* The category is read off the length and has no control; the last cell is the
+       one button of the row. */
+    expect(
+      must(cells[1], 'the category').textContent,
+      'the second cell is not the category',
+    ).toBe('Maraton')
+    expect(
+      within(must(cells[6], 'the record')).queryByRole('button', { name: /^Obriši/ }),
+      'the last cell is not the one that removes the row',
+    ).not.toBeNull()
+  })
+
   it('names every control in a row by the row it is in', async () => {
     /* „Dužina" twelve times over is twelve controls a screen reader cannot tell
        apart, and the table has no row heading to read them with. Written without
@@ -191,7 +377,7 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/Svaka trka mora da ima dan i dužinu/)).toBeVisible()
+    expect(await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/)).toBeVisible()
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     await fill(user, lastRow(), { km: '12' })
@@ -378,7 +564,15 @@ describe('the races of an event', () => {
       'a second event was filed at an address the first one already answers to',
     ).toBeNull()
     expect(await screen.findByText(/već postoji/)).toBeVisible()
-  })
+    /* Its own budget, and the reason for it. ADL A2 keeps the package at 5000ms as a
+       **performance** budget rather than a guard against hanging, so a longer one has
+       to say what it is paying for. This walk enters two whole events, each with a
+       name, a date, a town and a race of its own, which is the shortest sequence that
+       reaches the fault: measured 1526ms warm, and 5036ms under coverage, which is
+       the run that failed. Ten seconds is six times warm; a fourfold slowdown of the
+       form itself would still be caught by the other walks of this file, which keep
+       the default. */
+  }, 10_000)
 
   it('takes a race away when the row it was in is gone and the press lands', async () => {
     /* A row removed from the table is a race removed from the event, and the store

@@ -27,7 +27,7 @@ import './Member.css'
  */
 function filledFrom(one: Submission): FormValues {
   return {
-    eventName: one.eventName,
+    raceName: one.raceName,
     date: fieldDate(one.date),
     distanceKm: String(one.distanceKm),
     ascentM: String(one.ascentM),
@@ -87,13 +87,19 @@ function racesToOffer(
 
   pairs.sort((left, right) => right.race.date.localeCompare(left.race.date))
 
-  return pairs.map(({ event, race }) => ({
+  return pairs.map(({ race }) => ({
     id: race.id,
-    /* Only the name goes into the box (owner: „u polje Naziv dogadjaja se upisuje
-       samo naziv"). The day and the length are what the row is told apart by, and
-       they go into the fields under it rather than into the name. */
-    value: event.name,
-    said: `${event.name} – ${formatNumericDate(race.date)} – ${formatDistance(race.distanceKm, locale)}`,
+    /* The **race** is what is searched for and what goes into the box, since
+       23.08.2026: „sad je postalo logičnije da se pretražuje zapravo naziv trke sa
+       datumom i dužinom" (owner). Until that day a race had no name of its own and
+       the event's stood in for it.
+
+       Only the name goes into the box (owner: „u polje se upisuje samo naziv").
+       The day and the length are what one race of an event is told apart from
+       another by, and they go into the fields under it rather than into the
+       name. */
+    value: race.name,
+    said: `${race.name} – ${formatNumericDate(race.date)} – ${formatDistance(race.distanceKm, locale)}`,
     fills: {
       date: fieldDate(race.date),
       distanceKm: String(race.distanceKm),
@@ -166,7 +172,7 @@ export function NewResult() {
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     const sent = {
-      eventName: String(values.eventName),
+      raceName: String(values.raceName),
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -247,7 +253,7 @@ export function NewResult() {
       <FormRenderer
         form={unosRezultata}
         initial={correcting === undefined ? undefined : filledFrom(correcting)}
-        suggests={{ eventName: offered }}
+        suggests={{ raceName: offered }}
         onSubmit={onSubmit}
       />
     </div>

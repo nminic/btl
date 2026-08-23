@@ -59,6 +59,15 @@ function racesUnder(all: Record<string, unknown>[], event: string): Race[] {
     .map((one) => ({
       id: String(one.id),
       eventId: String(one.eventId),
+      /* Read straight, like the day beside it and for the same reason: both places
+         a race can come from write it. One out of the file carries it, and one
+         entered here is written by `storedRow`, which never leaves it out. A
+         fallback here would be a second answer to a question that has one. */
+      name: String(one.name),
+      /* Read as the one word that means yes, because that is what the store keeps:
+         every value in it is text (`session/context.ts`), so a boolean written into
+         it comes back as the string „false", which is true. */
+      renamed: one.renamed === 'yes' ? 'yes' : 'no',
       date: String(one.date),
       distanceKm: Number(one.distanceKm),
       ascentM: Number(one.ascentM),

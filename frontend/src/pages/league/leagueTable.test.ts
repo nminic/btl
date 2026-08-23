@@ -34,6 +34,8 @@ const event = (id: string, date: string): BtlEvent => ({
 const race = (id: string, eventId: string, distanceKm = 10, date = '2027-04-03'): Race => ({
   id,
   eventId,
+  name: 'Trka',
+  renamed: 'no',
   date,
   distanceKm,
   ascentM: 0,
@@ -45,6 +47,7 @@ const result = (memberNumber: string, raceId: string, points: number): Result =>
   id: `${memberNumber}-${raceId}`,
   memberNumber,
   raceId,
+  raceName: 'Događaj',
   eventName: 'Događaj',
   eventSlug: 'dogadjaj',
   date: '2019-05-01',

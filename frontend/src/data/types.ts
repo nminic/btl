@@ -126,6 +126,34 @@ export type Race = {
   id: string
   eventId: string
   /**
+   * What this race is called.
+   *
+   * Every race has one, and it starts out as the name of its event (owner,
+   * 23.08.2026): „ja mogu da u okviru Beogradskog maratona imam dve trke, od 42.2 i
+   * 21.1, i obe će dobiti default naziv Beogradski maraton. Ali onda mogu izmeniti
+   * ovu drugu da se zove Beogradski polumaraton."
+   *
+   * Never empty. It is what a member is offered when they report a result and what
+   * their own list of results shows them afterwards, so a race with no name is a
+   * row nobody can pick out.
+   */
+  name: string
+  /**
+   * Whether that name was given by hand.
+   *
+   * A race that still carries its event's name follows it when the event is
+   * renamed; one that was renamed keeps what it was given (owner, 23.08.2026).
+   * Written down rather than worked out by comparing the two names, because
+   * comparing gets it wrong for the race somebody deliberately typed the event's
+   * name into: it would go on following, and the next rename would take away a
+   * choice that was made.
+   *
+   * Yes or no and not `true`/`false`, for the same reason `BtlEvent.featured` is:
+   * the store keeps every value as text (`session/context.ts`, `Created`), and a
+   * boolean written into it comes back as the string „false", which is true.
+   */
+  renamed: 'yes' | 'no'
+  /**
    * The day this race is run on, which is not always the day of its event.
    *
    * One event may run over more than one morning: two races on the Saturday and
@@ -199,6 +227,21 @@ export type Result = {
   id: string
   memberNumber: string
   raceId: string
+  /**
+   * The name of the race this result was run in, carried on the result the way
+   * the event's name already is.
+   *
+   * This is what every list of results shows (owner, 23.08.2026): „u listi
+   * rezultata na profilu npr. treba da se prikazuju nazivi trka na kojima je čovek
+   * učestvovao, a ne događaja."
+   */
+  raceName: string
+  /**
+   * And the name of the event it belonged to, which is **not** what those lists
+   * show any more. It stays because the link out of such a row goes to the event
+   * and is built from it, and because the calendar and the event's own page name
+   * the event and go on doing so.
+   */
   eventName: string
   /**
    * The address of the event this race belonged to, carried on the result

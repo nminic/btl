@@ -101,6 +101,12 @@ export function EventActions({
          „Maraton maratona 2015" on 23.08.2026: four rows became none. */
       create(RACES.id, `${race.id}-kopija-${String(nextNumber(takenRaces, `${race.id}-kopija-`))}`, {
         eventId: id,
+        /* Its name comes across with it, and so does whether it was given by hand:
+           a race renamed „Beogradski polumaraton" is still that next season, and one
+           that only ever carried its event's name goes on following it (owner,
+           23.08.2026). */
+        name: race.name,
+        renamed: race.renamed,
         /* The day it was run on, kept as it was. The copy starts on the day the
            event was on, so the races start on the days they were on, and moving
            the event's date afterwards moves them all by the same number of days

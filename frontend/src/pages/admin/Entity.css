@@ -214,3 +214,25 @@
 .entity-races .table {
   inline-size: 100%;
 }
+
+/* Except the name, which is what the row is read by (owner, 23.08.2026) and which
+   came out narrowest of the seven.
+ *
+ * Shared out by what each column holds, the name lost: measured in Chrome at 360px
+ * with the default letters, the cell was 47px and the box inside it **31px**, some
+ * three letters of „Šidski novogodišnji maraton", while „Kategorija", which is only
+ * read, had 88. A column somebody types a name into cannot be narrower than one
+ * they only look at.
+ *
+ * The floor is on the cell rather than on the control, because the control is told
+ * to take the cell (`inline-size: 100%` above) and a floor on it would be shared
+ * out again. Eight rem is about a dozen letters at the default size and grows with
+ * the reader's own.
+ *
+ * The cost is measured and is the ordinary one for this table: the box scrolls
+ * further, and the page does not (owner's choice of the three offered,
+ * 23.08.2026). */
+.entity-races .table th:first-child,
+.entity-races .table td:first-child {
+  min-inline-size: 8rem;
+}
