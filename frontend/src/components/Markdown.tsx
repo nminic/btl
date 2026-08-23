@@ -34,9 +34,10 @@ const NUMBERED = /^\d+\.\s+(?=\S)/
  *
  *  Exported because a guard over the written pages asks the same question and asked
  *  it with its own copy of this pattern until 23.08.2026, which is two homes for one
- *  fact: loosening this one to `/^\|/` there and here would have let a line that
- *  opens a row and never closes it be drawn as a row and read as prose at once, and
- *  nothing would have said so (pages/writtenPages.test.tsx). */
+ *  fact. With two copies a line that opens a row and never closes it was drawn as a
+ *  paragraph here and read by nobody there, and nothing said so. With one, changing
+ *  this pattern moves both readers at once and the guard over the written pages says
+ *  what moved (pages/writtenPages.test.tsx). */
 export const ROW = /^\|.*\|$/
 const SEPARATOR = /^:?-{2,}:?$/
 /* The one that does capture, because splitting on it is what the group is for:

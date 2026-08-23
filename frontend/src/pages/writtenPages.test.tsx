@@ -1052,7 +1052,13 @@ function wordsBefore(before: string): string {
    i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz Člana 99"
    walked out of the check on a page where a bare number is a fault, and Član 99 does
    not exist. Measured. */
-const NAMED = /pravilnik|statut|zakon/i
+/* And the whole word, not a stem inside one. „zakonskog zastupnika" is an adjective
+   about a person and „nezakonito" is not a document at all; read as substrings, both
+   made a sentence that names one document look like a sentence that names two, and
+   the message said so out loud. The ending is bounded rather than refused, because a
+   document is written in cases: „Pravilnika", „pravilniku", „zakonom", „statuta".
+   Measured 24.08.2026, both ways. */
+const NAMED = /\b(pravilnik|statut|zakon)(?!sk)\w{0,3}\b/i
 
 /** Every document named among some words, in lower case and without repeats.
  *
@@ -1066,13 +1072,18 @@ function namedAmong(words: string[]): Set<string> {
     words.flatMap((word) => {
       const found = NAMED.exec(word)
 
-      return found === null ? [] : [found[0].toLowerCase()]
+      /* The stem and not the word: „Pravilnika" and „pravilniku" are one document,
+         and the whole match would make them two. The ending is matched only so that
+         a word which merely begins with the stem is not read as the document
+         (`NAMED` says which). */
+      return found === null ? [] : [must(found[1], 'the document a word names').toLowerCase()]
     }),
   )
 }
 
 /** Which document a numbered reference says it belongs to, in lower case, or the
- *  empty string when it names none, or `AMBIGUOUS` when the two sides disagree.
+ *  empty string when it names none, or `AMBIGUOUS` where more than one is named and
+ *  the rulebook is among them.
  *
  *  Read from the words of the reference itself, three on either side, and not from
  *  the sentence around it. A legal text names the law in passing all the time:
@@ -1095,8 +1106,11 @@ function namedAmong(words: string[]): Set<string> {
  *  did the same to „po pravilniku i zakonu, Član 74". Every one of them is a guess
  *  about which of two names the writer meant, and a wrong guess is silent.
  *
- *  So nothing is guessed. One name is the answer; none is the empty string; and
- *  several is `AMBIGUOUS`, **but only where the rulebook is among them**. That last
+ *  So nothing this guard could be wrong about is guessed. One name is the answer;
+ *  none is the empty string; and several is `AMBIGUOUS`, **but only where the
+ *  rulebook is among them**. Where several are named and none is ours, one of them
+ *  comes back and which one is indeed arbitrary; it changes nothing, because the
+ *  reader below asks only whether the answer begins with „pravilnik". That last
  *  clause is the difference between a guard and a nuisance: „Prijem u članstvo vrši
  *  se u skladu sa Statutom i Članom 12 Zakona o sportu." names two documents and
  *  neither is ours, so there is nothing here to be wrong about and the reference is
@@ -2221,6 +2235,17 @@ describe('the guard over the written pages', () => {
   })
 })
 
+/**
+ * One source file with its comments taken out.
+ *
+ * A rule described in prose is not a rule, and a sweep that reads prose finds the
+ * very sentences that explain what it is looking for. `styles/scale.test.ts` keeps
+ * the same rule over stylesheets and for the same reason.
+ */
+function unwritten(code: string): string {
+  return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '')
+}
+
 /** The whole of one written page, as one piece of text. */
 function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti'): string {
   /* Headings as well as bodies, and the name of the page. A section called
@@ -2755,10 +2780,16 @@ describe('which document a numbered reference belongs to', () => {
     /* „Prijem u članstvo vrši se u skladu sa Statutom i Članom 12 Zakona o sportu."
        names two documents and neither is ours. There is nothing here for this guard
        to be wrong about, so it is skipped exactly as a reference to one other
-       document is (ADL A20). Failing on it would be a guard that stops the file
-       over a sentence it has no business reading. */
-    expect(documentOf('u skladu sa Statutom i', ' Zakona o sportu')).not.toBe(AMBIGUOUS)
-    expect(documentOf('u skladu sa Statutom i', ' Zakona o sportu')).not.toBe('pravilnik')
+       document is (ADL A20). Failing on it would be a guard that stops the file over
+       a sentence it has no business reading.
+
+       Held as „it names one of those two" and not as „it is not ambiguous", which is
+       what this said for one day: the empty string satisfies every denial, and the
+       empty string is the one answer that does **not** skip. Where a reference names
+       nothing at all, a page other than the rulebook fails, which is the whole of
+       ADL A20's rule about a bare number. Measured: `return '' `in place of the name
+       left this test green and took the skipping away. */
+    expect(['statut', 'zakon']).toContain(documentOf('u skladu sa Statutom i', ' Zakona o sportu'))
   })
 
   it('answers plainly where only one side names one', () => {
@@ -2770,6 +2801,20 @@ describe('which document a numbered reference belongs to', () => {
 
   it('says nothing where neither side names one', () => {
     expect(documentOf('Prema', ' postupa se dalje')).toBe('')
+  })
+
+  it('does not read an adjective as a document', () => {
+    /* „Saglasnost zakonskog zastupnika iz Člana 12 Pravilnika lige" names one
+       document and says so plainly. Read as substrings, „zakonskog" counted as the
+       law, the sentence looked like a sentence naming two, and the file stopped with
+       a message that said exactly that. „zakonski rok" already stands in the
+       published privacy policy, so this is a word the portal writes. */
+    expect(documentOf('Saglasnost zakonskog zastupnika iz', ' Pravilnika lige')).toBe('pravilnik')
+    expect(documentOf('prema pravilniku,', ' nezakonito je')).toBe('pravilnik')
+    /* And the document itself is still read in every case it is written in. */
+    for (const said of [' Pravilnika', ' pravilniku', ' pravilnikom', ' Zakona', ' zakonom']) {
+      expect(documentOf('iz', said), `${said} is not read as the document it names`).not.toBe('')
+    }
   })
 
   it('still reads an enumeration as a reference that names nothing', () => {
@@ -2824,26 +2869,43 @@ describe('what is read as a row of a table', () => {
     expect(isTableRow('|')).toBe(false)
   })
 
-  it('is asked in one place, by everything that asks it', () => {
+  it('is asked in one place, and nowhere else asks it for itself', () => {
     /* The two readers share a question, and sharing it is the fix rather than the
-       fact: either of them can stop asking it, and a round measured exactly that
-       on 23.08.2026, putting the old inline filter back at the place the sections
-       are read and leaving the file green.
+       fact: either of them can stop asking it, and a round measured exactly that on
+       23.08.2026, putting the old inline filter back at the place the sections are
+       read and leaving the file green.
 
-       So the sweep, in the shape `app/filterParams.test.ts` uses for its own one
-       hook: nothing in the portal or in this file may ask „does the line begin with
-       a pipe" for itself. `isTableRow` is the one place, and it reads the pattern
-       the renderer draws with (`components/Markdown.tsx`), so a third home cannot
-       appear either. */
-    const mine = readFileSync(join(process.cwd(), 'src/pages/writtenPages.test.tsx'), 'utf-8')
-    const everywhere = [...sources().map(({ code }) => code), mine]
-    const asked = everywhere.flatMap((code) => [
-      ...code.matchAll(/startsWith\('\|'\)|\/\^\\\|/g),
-    ])
+       So a sweep, in the shape `app/filterParams.test.ts` uses for its own one hook:
+       the list of files that ask it for themselves, held against an empty list. Not
+       a count of matches, which is what this was for one day and what a second round
+       took apart: a count is a number written by hand, and it counted a sentence of
+       prose in the renderer's own comment while the import it claimed to be counting
+       gave no match at all. Rewording that comment failed the file, and deleting the
+       import did not.
 
-    /* Two: the one in `Markdown.tsx` where the pattern lives, and the one here where
-       it is imported. Anything more is a third copy of the question. */
-    expect(asked).toHaveLength(2)
+       Comments are blanked before the question is asked, because a rule described in
+       prose is not a rule (`styles/scale.test.ts` keeps the same rule over CSS).
+
+       `Markdown.tsx` is where the pattern lives and is therefore not an offender;
+       everything else, this file included, must import it. */
+    const HOME = join('components', 'Markdown.tsx')
+    const asks = /startsWith\('\|'\)|\/\^\\\|/
+    const mine = {
+      path: join('pages', 'writtenPages.test.tsx'),
+      code: readFileSync(join(process.cwd(), 'src/pages/writtenPages.test.tsx'), 'utf-8'),
+    }
+    const everywhere = [...sources(), mine]
+
+    /* The sweep is not empty and does reach the file the pattern lives in, so an
+       empty answer below is an answer and not a search that found nothing. */
+    expect(everywhere.length).toBeGreaterThan(80)
+    expect(everywhere.some(({ path }) => path.endsWith(HOME))).toBe(true)
+
+    const elsewhere = everywhere
+      .filter(({ path }) => !path.endsWith(HOME))
+      .filter(({ code }) => asks.test(unwritten(code)))
+
+    expect(elsewhere.map(({ path }) => path)).toEqual([])
   })
 
   it('is answered the same way by both readers, so nothing falls between them', () => {
