@@ -50,7 +50,26 @@ describe('who is offered what on an event', () => {
        ostaje kraca za tu kolonu" (owner, 23.08.2026). */
     expect(
       within(races()).getAllByRole('columnheader').map((one) => one.textContent),
-    ).toEqual(['Kategorija trke', 'Dužina', 'Uspon', 'Spust'])
+    ).toEqual(['Trka', 'Kategorija trke', 'Dužina', 'Uspon', 'Spust'])
+  })
+
+  it('names each race in the first column, not only the category it falls in', async () => {
+    /* Owner, 23.08.2026: „u opisu događaja gde su izlistane trke nedostaje naziv trke
+       u prvoj koloni." A race carries a name since isporuka 121, and this table was
+       the one place that still read a race by the category it falls in.
+
+       Measured on the one race in the data that carries a name of its own,
+       „Mrazijada, polumaraton" under the event „Mrazijada": every other race is named
+       after its event, so a table drawing the wrong one of the two looks right. */
+    await openEvent('visitor', null, undefined, '/sr/kalendar/mrazijada-2020')
+
+    const table = within(await screen.findByRole('table', { name: 'Trke' }))
+    const first = must(table.getAllByRole('row')[1], 'the first race')
+
+    expect(
+      must(within(first).getAllByRole('cell')[0], 'the first cell').textContent,
+      'the first column is not the name of the race',
+    ).toBe('Mrazijada, polumaraton')
   })
 
   it('offers the superadmin the copy and the deletion', async () => {

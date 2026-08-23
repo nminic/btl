@@ -62,7 +62,13 @@ function RaceTable({ event }: { event: BtlEvent }) {
            empty cells would say the opposite. */
         const canEnter = (race: Race) => memberNumber !== null && race.date <= today
         const options = mine.some(canEnter)
-        const columns = (overDays ? 1 : 0) + 4 + (options ? 1 : 0)
+        /* Five that are always there since isporuka 125: the name, the category, the
+           length, the climb and the fall. The day is a sixth on an event that runs
+           over more than one morning, and the way in a seventh for somebody who may
+           report a result. Written by hand three lines from the headings it counts,
+           and a round measured what that costs when the two disagree: the table drew
+           five columns in the width of four and ended 253px short of the edge. */
+        const columns = (overDays ? 1 : 0) + 5 + (options ? 1 : 0)
 
         return (
           <div className="table-scroll">
@@ -89,6 +95,13 @@ function RaceTable({ event }: { event: BtlEvent }) {
                       (owner, 10.08.2026). A column of one repeated date under a
                       heading that already says the day is a column that says
                       nothing. */}
+                  {/* The name first, because it is what a race is read by since
+                      isporuka 121: „u opisu događaja gde su izlistane trke nedostaje
+                      naziv trke u prvoj koloni" (owner, 23.08.2026). Every race in
+                      the file is named after its event, so this column repeats the
+                      heading above it until somebody renames one, which is exactly
+                      what the name is for. */}
+                  <th scope="col">{t('event.raceName')}</th>
                   {overDays && <th scope="col">{t('event.raceDay')}</th>}
                   <th scope="col">{t('event.raceCategory')}</th>
                   <th scope="col">{t('event.distance')}</th>
@@ -104,6 +117,7 @@ function RaceTable({ event }: { event: BtlEvent }) {
               <tbody>
                 {mine.map((race) => (
                     <tr key={race.id}>
+                      <td>{race.name}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
                       <td>{t(`category.${race.category}`)}</td>
                       <td>{formatNumber(race.distanceKm, locale, 2)}</td>
