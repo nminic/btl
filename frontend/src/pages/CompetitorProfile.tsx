@@ -20,7 +20,7 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
-import { ProfileHead, ProfileParts } from './profile/ProfileHead'
+import { ProfileTop } from './profile/ProfileHead'
 import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
 import { useFilterParams } from '../app/useFilterParams'
 import './Profile.css'
@@ -233,8 +233,7 @@ function ProfileBody({
 
   return (
     <div className="profile profile--competitor">
-      <ProfileHead competitor={competitor} team={team} seasons={options} season={season} />
-      <ProfileParts competitor={competitor} />
+      <ProfileTop competitor={competitor} team={team} seasons={options} season={season} />
 
       <div className="profile__row profile__row--bio">
         <Biography text={competitor.bio} gender={competitor.gender} />

@@ -27,17 +27,9 @@ import { useI18n } from '../../i18n/useI18n'
 export function ProfileHead({
   competitor,
   team,
-  seasons,
-  season,
 }: {
   competitor: Competitor
   team: Team | undefined
-  /** The seasons the control offers. It stands level with the name because it
-   *  governs both parts of the profile, not one of them (owner, 31.07.2026). */
-  seasons: number[]
-  /** Which of them the profile is being read in, worked out by the part that
-   *  draws the content, so the control cannot disagree with what is below it. */
-  season: string
 }) {
   const { locale, t } = useI18n()
 
@@ -66,14 +58,6 @@ export function ProfileHead({
           <h1 className="profile__name">
             {competitor.firstName} {competitor.lastName}
           </h1>
-          <div className="rankings__head-tool">
-            {/* Named and shaped like a field, as on the teams and the top boards
-                (owner, 05.08.2026). It was a pill with its name hidden from
-                04.08.2026, on the reasoning that beside a name a labelled field
-                reads as a second heading; the owner has since asked for the one
-                shape everywhere, and one shape is one thing to learn. */}
-            <SeasonPicker seasons={seasons} season={season} />
-          </div>
         </div>
 
         <p className="profile__meta">
@@ -162,5 +146,68 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
         { to: `${base}/priznanja`, label: t('profile.parts.awards') },
       ]}
     />
+  )
+}
+
+/**
+ * The head of a profile, the parts of it, and the season, as one grid.
+ *
+ * The three are one arrangement and not three, because where the season stands
+ * depends on how much room there is: beside the name on a wide screen, and in the
+ * row with „Pregled" and „Priznanja i nagrade" once the screen is narrow (owner,
+ * 23.08.2026: „Sezona 2026 sa dropdown treba da pređe u red gde su Pregled i
+ * Priznanja / nagrade, a da Ime i Prezime ostane odmah iznad Članskog broja i sl.
+ * bez ogromnog praznog prostora kao što je trenutno slučaj").
+ *
+ * Measured on 23.08.2026, before: at 760px the name and the season shared a row and
+ * the member's number stood 6px under the name; at 520 and at 360 the season fell
+ * **between** them and pushed the number 60px down. The gap the owner saw is that
+ * fall.
+ *
+ * The season has **one** home in the markup and the grid decides which row it is
+ * in, rather than being drawn twice and hidden by turns: two of them is two things
+ * to keep in step, and a hidden one is still read out by anything that walks the
+ * page (`components/PartsNav.tsx` keeps the same rule for the parts).
+ */
+export function ProfileTop({
+  competitor,
+  team,
+  seasons,
+  season,
+}: {
+  competitor: Competitor
+  team: Team | undefined
+  /** The seasons the control offers. It governs both parts of the profile, not one
+   *  of them (owner, 31.07.2026), which is why it stands with them rather than
+   *  inside either. */
+  seasons: number[]
+  /** Which of them the profile is being read in, worked out by the part that draws
+   *  the content, so the control cannot disagree with what is below it. */
+  season: string
+}) {
+  return (
+    <div className="profile__top">
+      <ProfileHead competitor={competitor} team={team} />
+      {/* Named and shaped like a field, as on the teams and the top boards (owner,
+          05.08.2026). It was a pill with its name hidden from 04.08.2026, on the
+          reasoning that beside a name a labelled field reads as a second heading;
+          the owner has since asked for the one shape everywhere, and one shape is
+          one thing to learn. */}
+      {/* The parts and the season as one belt, so that on a narrow screen they share
+          a line and **wrap** when they cannot: „Priznanja i nagrade" and the season
+          together ask for 435px at 200% text in a box of 328, and a row that cannot
+          give way pushes the page sideways instead. Measured on the first attempt at
+          this: 107px of page scroll at 200%, starting from 162%.
+
+          Above the breakpoint the belt gives up its box (`Profile.css`), so the two
+          become children of the grid and the season goes up beside the name. One
+          markup, two arrangements, and no copy of the control. */}
+      <div className="profile__belt">
+        <ProfileParts competitor={competitor} />
+        <div className="rankings__head-tool profile__season">
+          <SeasonPicker seasons={seasons} season={season} />
+        </div>
+      </div>
+    </div>
   )
 }
