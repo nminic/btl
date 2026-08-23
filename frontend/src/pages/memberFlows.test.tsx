@@ -714,7 +714,7 @@ describe('messages', () => {
 
 describe('a result from entry to decision', () => {
   async function enterResult(user: ReturnType<typeof setupUser>) {
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
     await user.type(screen.getByLabelText(/Uspon/), '540')
@@ -750,7 +750,7 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
     expect(screen.getByRole('alert')).toBeVisible()
@@ -813,7 +813,7 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka sa pričom')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka sa pričom')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
@@ -834,7 +834,7 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Trka bez vremena')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka bez vremena')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
@@ -874,7 +874,7 @@ describe('a result from entry to decision', () => {
        result, and a list rewritten wholesale would carry the correction into
        every row of it. */
     await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Druga trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
     await user.type(screen.getByLabelText(/Datum trke/), '11052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
@@ -1041,6 +1041,7 @@ async function withOneMoreResult(
       id: `added-${row.memberNumber}-${row.date}`,
       memberNumber: row.memberNumber,
       raceId: 'race-added',
+      raceName: 'Trka',
       eventName: 'Trka',
       eventSlug: 'trka',
       date: row.date,

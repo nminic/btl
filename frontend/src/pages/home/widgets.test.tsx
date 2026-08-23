@@ -49,6 +49,7 @@ const result = (memberNumber: string, points: number): Result => ({
   id: `${memberNumber}-${points}`,
   memberNumber,
   raceId: 'r',
+  raceName: 'Trka',
   eventName: 'Trka',
   eventSlug: 'trka',
   date: '2027-05-01',

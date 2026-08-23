@@ -39,6 +39,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,
       memberNumber: '000007',
+      raceName: 'Probna trka',
       eventName: 'Probna trka',
       date: '2026-05-10',
       distanceKm: 10,
@@ -1312,7 +1313,7 @@ describe('verification', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')

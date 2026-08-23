@@ -149,7 +149,7 @@ export function ReportResult() {
 
             submit({
               memberNumber: mine,
-              eventName: event.name,
+              raceName: event.name,
               date: event.date,
               /* Off the race, not off the member. These are the official figures
                  and a moderator corrects them on the race itself, where the

@@ -18,6 +18,15 @@ import type { Race } from '../../data/types'
 export type RaceRow = {
   /** The race this row already is, or an empty string for one being entered. */
   id: string
+  /**
+   * What the race is called. Opens as the name of its event and may be changed
+   * (owner, 23.08.2026), and is the first column of the table because it is what
+   * the row is read by.
+   */
+  name: string
+  /** Whether that name was given by hand, which is what decides whether the race
+   *  follows its event when the event is renamed (`data/types.ts`). */
+  renamed: 'yes' | 'no'
   date: string
   distanceKm: string
   ascentM: string
@@ -32,6 +41,8 @@ export function rowsOf(races: Race[], fieldDate: (iso: string) => string): RaceR
     .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
     .map((race) => ({
       id: race.id,
+      name: race.name,
+      renamed: race.renamed,
       date: fieldDate(race.date),
       distanceKm: String(race.distanceKm),
       ascentM: String(race.ascentM),
@@ -75,7 +86,11 @@ function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
  * `aria-invalid="false"`, so a reader was sent looking somewhere else
  * (WCAG 2.2 SC 3.3.1). Measured 23.08.2026.
  */
-export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date'): boolean {
+export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'name'): boolean {
+  if (field === 'name') {
+    return row.name.trim() === ''
+  }
+
   if (field === 'date') {
     return isoDate(row.date) === ''
   }
@@ -83,7 +98,14 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date'): bool
   return !withinBounds(row[field], field)
 }
 
-export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | undefined {
+export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'name' | undefined {
+  /* A race always has a name, and it cannot be emptied: it opens as the name of
+     its event and may be changed, not taken away (owner, 23.08.2026). A row with
+     no name is a row nobody can pick out of a list of races. */
+  if (row.name.trim() === '') {
+    return 'name'
+  }
+
   if (isoDate(row.date) === '') {
     return 'date'
   }
@@ -120,6 +142,8 @@ export function allFinished(rows: RaceRow[]): boolean {
 export function storedRow(row: RaceRow, eventId: string): Record<string, string> {
   return {
     eventId,
+    name: row.name.trim(),
+    renamed: row.renamed,
     date: isoDate(row.date),
     distanceKm: String(Number(row.distanceKm)),
     ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),

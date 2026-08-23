@@ -71,7 +71,7 @@ describe('the way to report a result', () => {
 
     /* And none of the five the race already carries, nor the sixth it used to
        ask for itself. */
-    for (const known of [/Naziv događaja/, /Datum/, /Dužina/, /Uspon/, /Spust/, /^Trka/]) {
+    for (const known of [/^Naziv trke/, /Datum/, /Dužina/, /Uspon/, /Spust/, /^Trka/]) {
       expect(screen.queryByLabelText(known)).toBeNull()
     }
   })

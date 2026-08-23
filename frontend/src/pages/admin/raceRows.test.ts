@@ -7,6 +7,8 @@ function race(id: string, date: string, distanceKm: number): Race {
   return {
     id,
     eventId: 'evt',
+    name: 'Trka',
+    renamed: 'no' as const,
     date,
     distanceKm,
     ascentM: 120,
@@ -17,6 +19,8 @@ function race(id: string, date: string, distanceKm: number): Race {
 
 const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   id: '',
+  name: 'Trka',
+  renamed: 'no',
   date: '17/10/2026',
   distanceKm: '10',
   ascentM: '',
@@ -108,6 +112,8 @@ describe('the races of an event while they are being entered', () => {
   it('writes an empty climb and fall as nought', () => {
     expect(storedRow(row(), 'evt')).toEqual({
       eventId: 'evt',
+      name: 'Trka',
+      renamed: 'no' as const,
       date: '2026-10-17',
       distanceKm: '10',
       ascentM: '0',

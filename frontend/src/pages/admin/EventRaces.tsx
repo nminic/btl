@@ -89,6 +89,29 @@ export function EventRaces({
     )
   }, [eventDate, onRows, rows])
 
+  /* The day the form was showing when these rows were last lined up with its name. */
+  const wasCalled = useRef(eventName)
+
+  /**
+   * And a race that still carries its event's name follows it when the event is
+   * renamed (owner, 23.08.2026); one that was renamed by hand keeps what it was
+   * given, which is what `renamed` is for.
+   *
+   * On the screen for the same reason the days move on the screen: the table is
+   * what somebody is looking at while they type the new name into the field above
+   * it, and a table that says the old one is a table that is lying about what the
+   * press will write.
+   */
+  useEffect(() => {
+    if (eventName === wasCalled.current) {
+      return
+    }
+
+    wasCalled.current = eventName
+
+    onRows(rows.map((row) => (row.renamed === 'yes' ? row : { ...row, name: eventName })))
+  }, [eventName, onRows, rows])
+
   const change = (at: number, over: Partial<RaceRow>) => {
     onRows(rows.map((row, index) => (index === at ? { ...row, ...over } : row)))
   }
@@ -149,19 +172,52 @@ export function EventRaces({
             </caption>
             <thead>
               <tr>
+                {/* The name first, because it is what the row is read by, and the
+                    category beside it (owner, 23.08.2026: „u okviru događaja
+                    editabilno polje Trka treba da bude u prvoj koloni, dok će se
+                    druga kolona zvati Kategorija, a zatim slede dužina, uspon,
+                    spust itd."). */}
+                <th scope="col">{t('admin.field.raceName')}</th>
+                <th scope="col">{t('event.category')}</th>
                 {/* The day, because an event may run over more than one (owner,
                     10.08.2026). */}
                 <th scope="col">{t('admin.field.raceDate')}</th>
                 <th scope="col">{t('event.distance')}</th>
                 <th scope="col">{t('event.ascent')}</th>
                 <th scope="col">{t('event.descent')}</th>
-                <th scope="col">{t('event.category')}</th>
                 <th scope="col">{t('admin.form.record')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, at) => (
                 <tr key={row.id === '' ? `nova-${String(at)}` : row.id}>
+                  <td>
+                    <input
+                      className="field__control"
+                      type="text"
+                      value={row.name}
+                      /* Named by its row as well as its column, like every other
+                         control of this table. */
+                      aria-label={`${t('admin.field.raceName')}, ${t('admin.form.raceNumber', {
+                        which: String(at + 1),
+                      })}`}
+                      aria-required="true"
+                      aria-invalid={refused && isWrong(row, 'name')}
+                      /* Changed by hand, so this race stops following its event:
+                         renaming the event afterwards leaves it alone
+                         (owner, 23.08.2026). */
+                      onChange={(event) => change(at, { name: event.target.value, renamed: 'yes' })}
+                    />
+                  </td>
+                  {/* Read off the length and never asked for, which is the rule the
+                      portal has always kept: there is nothing to decide and nothing
+                      to get wrong (data/raceCategory.ts). An empty length has no
+                      category yet, and a dash says so without pretending to one. */}
+                  <td>
+                    {Number(row.distanceKm) > 0
+                      ? t(`category.${categoryOf(Number(row.distanceKm))}`)
+                      : '–'}
+                  </td>
                   <td>
                     <DatePicker
                       id={`race-date-${String(at)}`}
@@ -186,16 +242,6 @@ export function EventRaces({
                   </td>
                   <td>{measure(row, at, 'ascentM', false)}</td>
                   <td>{measure(row, at, 'descentM', false)}</td>
-                  {/* Read off the length and never asked for, which is the rule
-                      the portal has always kept: there is nothing to decide and
-                      nothing to get wrong (data/raceCategory.ts). An empty length
-                      has no category yet, and a dash says so without pretending to
-                      one. */}
-                  <td>
-                    {Number(row.distanceKm) > 0
-                      ? t(`category.${categoryOf(Number(row.distanceKm))}`)
-                      : '–'}
-                  </td>
                   <td>
                     <button
                       type="button"
@@ -227,6 +273,11 @@ export function EventRaces({
             ...rows,
             {
               id: '',
+              /* Named after the event it is entered under, which is what „po
+                 default-u naziv događaja" means; it follows the event until
+                 somebody types into it. */
+              name: eventName,
+              renamed: 'no',
               date: isoDate(eventDate) === '' ? '' : eventDate,
               distanceKm: '',
               ascentM: '',

@@ -149,7 +149,7 @@ describe('the last few branches these screens have', () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')

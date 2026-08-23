@@ -21,7 +21,16 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 export type Submission = {
   id: string
   memberNumber: string
-  eventName: string
+  /**
+   * The name of the race, which is what the member typed or picked.
+   *
+   * The race and not the event since 23.08.2026 (owner): „sad je postalo logičnije
+   * da se pretražuje zapravo naziv trke sa datumom i dužinom". A member may also
+   * report a race the calendar does not hold, and then this is the only name there
+   * is, which is the other reason it is the race's: an event they did not pick has
+   * no name to lend.
+   */
+  raceName: string
   date: string
   distanceKm: number
   ascentM: number

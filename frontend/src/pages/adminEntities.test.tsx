@@ -130,6 +130,88 @@ describe('the races of an event', () => {
     ).toBeNull()
   })
 
+  it('opens every race under the name of its event, and follows it when that changes', async () => {
+    /* Owner, 23.08.2026: „svaka trka ipak treba da ima i svoj naziv koji je po
+       default-u naziv događaja, ali se može po potrebi promeniti." A race that
+       still carries its event's name follows it when the event is renamed; one
+       that was renamed by hand keeps what it was given, which is the whole of
+       `renamed`. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const event = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name of the event')
+    const was = inputElement(event).value
+    const races = () => screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
+
+    expect(races().length).toBeGreaterThan(0)
+    expect(races().every((one) => one === was), 'a race opened under some other name').toBe(true)
+
+    /* A second one, entered here rather than out of the file, so what is measured
+       is both the race that came with the event and the race this screen made. */
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    expect(races()[1], 'a new row opened under some other name').toBe(was)
+
+    /* One of them is given a name of its own, and only that one stops following. */
+    const own = must(screen.getAllByLabelText(/^Trka,/)[1], 'the second race')
+
+    await user.clear(own)
+    await user.type(own, 'Polumaraton')
+
+    await user.clear(event)
+    await user.type(event, 'Drugo ime')
+
+    const after = races()
+
+    expect(after[0], 'a race that was never renamed did not follow its event').toBe('Drugo ime')
+    expect(after[1], 'a race renamed by hand was overwritten by its event').toBe('Polumaraton')
+
+    /* And it survives the round trip: the record keeps that the name was given by
+       hand, so opening the event again and renaming it once more still leaves that
+       race alone. Read back rather than trusted, because between the table and the
+       record the flag is a word in a store that keeps only text. */
+    await user.type(must(screen.getAllByLabelText(/^Dužina/)[1], 'the second length'), '21.1')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const again = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    await user.click(
+      within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+    )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const twice = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name again')
+
+    await user.clear(twice)
+    await user.type(twice, 'Treće ime')
+
+    /* Sorted, because the rows are lined up by the day and the length inside it and
+       the second race has just been given a length. What is asked is which name
+       each carries, not which row it sits in. */
+    expect([...races()].sort(), 'the record forgot which race was renamed by hand').toEqual(
+      ['Polumaraton', 'Treće ime'].sort(),
+    )
+  })
+
+  it('will not save a race with no name at all', async () => {
+    /* It opens as the name of its event and may be changed, not taken away: a row
+       with no name is a row nobody can pick out of a list of races. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const first = must(screen.getAllByLabelText(/^Trka,/)[0], 'the name of the first race')
+
+    await user.clear(first)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(first).toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('names every control in a row by the row it is in', async () => {
     /* „Dužina" twelve times over is twelve controls a screen reader cannot tell
        apart, and the table has no row heading to read them with. Written without

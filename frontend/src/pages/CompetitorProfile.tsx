@@ -300,7 +300,10 @@ function ProfileBody({
                         now the only way there was to guess the date in the
                         calendar. */}
                     <td>
-                      <Link to={`/${locale}/kalendar/${result.eventSlug}`}>{result.eventName}</Link>
+                      {/* The name of the race, and the link still to the event it was run at:
+                          the race has no page of its own and the event does
+                          (owner, 23.08.2026). */}
+                      <Link to={`/${locale}/kalendar/${result.eventSlug}`}>{result.raceName}</Link>
                     </td>
                     <td className="table__points">
                       {/* The dot carries the length, and its name goes with it,

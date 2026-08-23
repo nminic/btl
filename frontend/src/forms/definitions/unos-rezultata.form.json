@@ -4,10 +4,10 @@
   "submitKey": "newResult.submit",
   "fields": [
     {
-      "name": "eventName",
+      "name": "raceName",
       "type": "text",
-      "labelKey": "newResult.eventName",
-      "hintKey": "newResult.eventNameHint",
+      "labelKey": "newResult.raceName",
+      "hintKey": "newResult.raceNameHint",
       "required": true,
       "maxLength": 120
     },

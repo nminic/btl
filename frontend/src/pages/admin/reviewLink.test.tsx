@@ -142,7 +142,7 @@ function Sends({ link }: { link: string }) {
       done.current = true
       session.submit({
         memberNumber: ME,
-        eventName: 'Probna trka',
+        raceName: 'Probna trka',
         date: '2026-05-10',
         distanceKm: 21.1,
         ascentM: 540,

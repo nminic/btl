@@ -23,8 +23,8 @@ const NEW = '/sr/rezultat/novi'
 const TODAY = '2026-08-23'
 
 /** The box the name of the event is typed into. */
-function eventName(): HTMLElement {
-  return screen.getByLabelText(/Naziv događaja/)
+function raceName(): HTMLElement {
+  return screen.getByLabelText(/^Naziv trke/)
 }
 
 /** What the list under it offers, in the order it offers it. */
@@ -49,11 +49,11 @@ describe('the list of races under the name of an event', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'b')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'b')
 
     expect(offered()).toEqual([])
 
-    await user.type(eventName(), 'e')
+    await user.type(raceName(), 'e')
 
     expect(offered().length).toBeGreaterThan(0)
   })
@@ -65,7 +65,7 @@ describe('the list of races under the name of an event', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'beogradski maraton')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
 
     for (const row of offered()) {
       expect(row, 'a row of the list is not written the way the owner asked').toMatch(
@@ -89,7 +89,7 @@ describe('the list of races under the name of an event', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'trka')
 
     const rows = offered()
     const days = rows.map((row) => must(/(\d{2})\.(\d{2})\.(\d{4})\./.exec(row), 'the day in a row'))
@@ -117,7 +117,7 @@ describe('the list of races under the name of an event', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'ka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'ka')
 
     expect(offered()).toHaveLength(8)
   })
@@ -127,7 +127,7 @@ describe('the list of races under the name of an event', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'ka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'ka')
 
     /* One of the live regions on the screen and not the only one: a form has its
        own and so does every list that grows. What is held is that this sentence
@@ -141,7 +141,7 @@ describe('the list of races under the name of an event', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'ka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'ka')
 
     expect(offered().length).toBeGreaterThan(0)
 
@@ -149,7 +149,7 @@ describe('the list of races under the name of an event', () => {
 
     expect(offered()).toEqual([])
 
-    await user.type(eventName(), 'l')
+    await user.type(raceName(), 'l')
 
     expect(offered().length).toBeGreaterThan(0)
   })
@@ -159,7 +159,7 @@ describe('a race chosen out of that list', () => {
   /** Types two letters and presses the first row, which is what a member does. */
   async function choose(user: ReturnType<typeof setupUser>, said = 'beogradski maraton') {
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), said)
+    await user.type(await screen.findByLabelText(/^Naziv trke/), said)
 
     const list = screen.getByRole('list', { name: '' })
     const row = first(within(list).getAllByRole('button'))
@@ -177,7 +177,7 @@ describe('a race chosen out of that list', () => {
     const user = setupUser()
     const words = await choose(user)
 
-    expect(eventName()).toHaveValue(must(words.split(' – ')[0], 'the name in the row'))
+    expect(raceName()).toHaveValue(must(words.split(' – ')[0], 'the name in the row'))
 
     for (const asked of FILLED) {
       const box = screen.getByLabelText(asked)
@@ -262,7 +262,7 @@ describe('a race chosen out of that list', () => {
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'beogradski maraton')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
 
     const list = screen.getByRole('list', { name: '' })
 
@@ -275,7 +275,7 @@ describe('a race chosen out of that list', () => {
        have taken with it. */
     await user.click(first(within(list).getAllByRole('button')))
 
-    expect(eventName()).toHaveFocus()
+    expect(raceName()).toHaveFocus()
     expect(offered()).toEqual([])
   })
 
@@ -287,7 +287,7 @@ describe('a race chosen out of that list', () => {
     const user = setupUser()
 
     await choose(user)
-    await user.type(eventName(), ' i po')
+    await user.type(raceName(), ' i po')
 
     for (const asked of FILLED) {
       const box = screen.getByLabelText(asked)
@@ -312,7 +312,7 @@ describe('a picture attached to a result', () => {
   it('offers no way out while there is nothing to undo', async () => {
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await screen.findByLabelText(/Naziv događaja/)
+    await screen.findByLabelText(/^Naziv trke/)
 
     expect(within(photoField()).queryByRole('button', { name: 'Obriši' })).toBeNull()
   })
@@ -358,7 +358,7 @@ describe('where the cursor stands after a press that takes the control away', ()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    const box = await screen.findByLabelText(/Naziv događaja/)
+    const box = await screen.findByLabelText(/^Naziv trke/)
 
     await user.type(box, 'Be')
     await user.tab()
@@ -413,7 +413,7 @@ describe('a message about a field the form has stopped asking for', () => {
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
     /* The link is obligatory as the form is written, so it is refused. */
@@ -470,7 +470,7 @@ describe('a message about a field the form has stopped asking for', () => {
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
     const underLink = () =>
@@ -518,7 +518,7 @@ describe('an error that is not about a field being obligatory', () => {
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/^Link/), 'trka.rs/rezultati')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
@@ -548,7 +548,7 @@ describe('the foot of the form', () => {
        comment becomes obligatory (Član 37), so it stands before it. */
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await screen.findByLabelText(/Naziv događaja/)
+    await screen.findByLabelText(/^Naziv trke/)
 
     const asked = [...document.querySelectorAll('.field__label')].map(
       (one) => one.textContent ?? '',
@@ -575,7 +575,7 @@ function Refused({ whose }: { whose: string }) {
       done.current = true
       session.submit({
         memberNumber: whose,
-        eventName: 'Tuđa trka',
+        raceName: 'Tuđa trka',
         date: '2026-05-10',
         distanceKm: 21.1,
         ascentM: 540,
@@ -619,7 +619,7 @@ describe('a refused result somebody else is correcting', () => {
        own words about why it was refused. */
     renderAt(AGAIN, 'competitor', ME, undefined, TODAY, <Refused whose="000021" />)
 
-    await screen.findByLabelText(/Naziv događaja/)
+    await screen.findByLabelText(/^Naziv trke/)
 
     expect(screen.queryByText(/Link ne otvara rezultate/), 'the reason was shown').toBeNull()
     expect(screen.queryByText(/Tuđa trka/), 'the race was shown').toBeNull()
