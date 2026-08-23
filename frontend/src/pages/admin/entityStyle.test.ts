@@ -314,3 +314,32 @@ describe('a record that may no longer be opened', () => {
     expect(must(mount.parentElement, 'above the mount point').tagName.toLowerCase()).toBe('body')
   })
 })
+
+describe('the column a race is read by', () => {
+  it('has a floor, and it is an unconditional rule of the sheet', () => {
+    /* The name is what a row is picked out by (owner, 23.08.2026), and shared out by
+       what each column holds it came out narrowest of the seven: measured in Chrome
+       at 360px with the default letters, the cell was 47,27px and the box inside it
+       31,27px, some three letters of „Šidski novogodišnji maraton", while
+       „Kategorija", which is only read, had 88,34. With the floor: 128 and 112, and
+       at 200% text 256 and 224, since it is written in the reader's own letters. The
+       page does not scroll at either size; the box does, which is the pattern this
+       table already uses, and the owner chose that of three offered.
+
+       Asked through the parser and not as text in the file, which is the whole point
+       of writing it here rather than beside the other stylesheet claims: wrapped in
+       `@media print` the rule stops applying on a screen and a text search still
+       finds it. Measured 23.08.2026 by a round, on this very rule: wrapped, eighty
+       tests stayed green while the column fell back to 47,27px. ADL A18 records the
+       same shape of miss over this same file. */
+    /* Named exactly as the parser gives it back, newline and all: jsdom keeps the
+       line break the sheet is written with rather than folding the two selectors onto
+       one line. */
+    const floor = ruleFor(
+      `.entity-races .table th:first-child,
+.entity-races .table td:first-child`,
+    )
+
+    expect(floor.getPropertyValue('min-inline-size')).toBe('8rem')
+  })
+})

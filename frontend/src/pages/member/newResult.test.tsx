@@ -76,6 +76,23 @@ describe('the list of races under the name of an event', () => {
       said.some((one) => one.startsWith('Mrazijada, polumaraton')),
       said.join(' | '),
     ).toBe(true)
+
+    /* And what the press puts **into the field**, which is a second fact and not the
+       same one: a suggestion carries `said` for the row and `value` for the box.
+       Measured 23.08.2026 by a round: with `value` alone put back to the event's
+       name, the row still read „Mrazijada, polumaraton" and the box took
+       „Mrazijada", so the member sent the event's name under the race's label and
+       every screen the owner named showed the wrong one. */
+    const row = must(
+      within(must(screen.queryByRole('list'), 'the list of races')).getAllByRole('button')[0],
+      'the first race offered',
+    )
+
+    await user.click(row)
+
+    expect(raceName(), 'the box took a name the row never showed').toHaveValue(
+      'Mrazijada, polumaraton',
+    )
   })
 
   it('writes each race as its event, its day and its length', async () => {

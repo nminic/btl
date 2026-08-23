@@ -263,6 +263,20 @@ describe('the races of an event', () => {
       'Spust',
       'Zapis',
     ])
+
+    /* And the body in the same order, which is a second fact: the heading and the
+       cells are written in two places, and the floor that makes the name readable is
+       on `td:first-child`. Measured 23.08.2026 by a round: swapping only the cells
+       left „Trka | Kategorija" standing over „Kategorija | Trka", the floor moved
+       onto the column that is only read, and 2153 tests stayed green. A screen
+       reader reads the two together (WCAG 2.2 SC 1.3.1). */
+    const first = must(table.getAllByRole('row')[1], 'the first race')
+    const cells = within(first).getAllByRole('cell')
+
+    expect(
+      within(must(cells[0], 'the first cell')).queryByLabelText(/^Trka,/),
+      'the first cell of a row is not the name',
+    ).not.toBeNull()
   })
 
   it('names every control in a row by the row it is in', async () => {
