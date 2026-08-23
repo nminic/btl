@@ -166,6 +166,29 @@ describe('signing in', () => {
   })
 })
 
+describe('a member looking at their own profile', () => {
+  it('opens on Pregled, the same part that is marked from the list of competitors', async () => {
+    /* Owner, 23.08.2026: „kad se ulogujem u profil i odem na svoju stranu takmičara,
+       treba da stoji selektovana prva opcija Pregled kao što stoji kad u nečiji
+       profil uđem sa strane takmičara."
+
+       The screen is drawn by the very component that draws everybody else's, but at
+       `/moj-profil`, while the parts are built from the record's own address. The two
+       never matched, so no part was marked at all. */
+    renderAt('/sr/moj-profil', 'competitor', '000007')
+
+    const parts = within(await screen.findByRole('navigation', { name: 'Delovi profila' }))
+
+    const open = parts
+      .getAllByRole('link')
+      .filter((one) => one.getAttribute('aria-current') !== null)
+
+    expect(open.map((one) => one.textContent), 'no part of the profile is marked open').toEqual([
+      'Pregled',
+    ])
+  })
+})
+
 describe('what the results of a member are named by', () => {
   it('names the race, and says so in the heading above it', async () => {
     /* Owner, 23.08.2026: „u listi rezultata treba da se prikazuju nazivi trka na
