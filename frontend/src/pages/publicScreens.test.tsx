@@ -1349,6 +1349,16 @@ describe('CompetitorProfile', () => {
       must(heading.closest('.profile__top'), 'the head, the parts and the season'),
     )
 
+    /* And the row around the name still carries the class the whole of its spacing
+       comes through. It was the profile's line in the list of screens with a shared
+       row that held this, and taking the profile off that list took the last hold on
+       it with it: measured, without the class the distance from the name to the
+       number goes from 6px to 26,8px and the season is drawn 10,39px below the name.
+       A round found that nothing failed when the class was removed. */
+    expect([...must(heading.parentElement, 'the row around the name').classList]).toContain(
+      'rankings--tooled',
+    )
+
     expect(within(top).getAllByLabelText('Sezona')).toHaveLength(1)
     /* Not inside either of the other two, which is what lets one grid put it in
        either row without drawing it twice. */

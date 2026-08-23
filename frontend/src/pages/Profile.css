@@ -738,6 +738,7 @@
  * 107px, from 162% text upward, which is the one thing the portal never does
  * (WCAG 2.2 SC 1.4.10). */
 .profile__top {
+  --profile-belt-gap: var(--space-20);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
@@ -797,8 +798,11 @@
 
 .profile__belt {
   grid-area: belt;
-  /* Its own distance from the head, since the grid gives it none. */
-  margin-block-start: var(--space-12);
+  /* The distance from the head, which the grid does not give and which the profile
+     used to get from its own `gap` before the head and the parts were one grid.
+     Measured: 24px above the breakpoint on `main`, and 4px here until this was put
+     back. One value, read in both arrangements. */
+  margin-block-start: var(--profile-belt-gap);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -832,6 +836,10 @@
 
   .profile__top .parts {
     grid-area: parts;
+    /* Above the breakpoint the belt gives up its box, and with it its margin, so the
+       distance has to be carried by what is left. Same value, read from the same
+       place. */
+    margin-block-start: var(--profile-belt-gap);
   }
 
   .profile__top .profile__season {
