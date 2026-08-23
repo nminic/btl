@@ -125,11 +125,19 @@ export function Calculator() {
      from the widget, which goes on saying it holds nothing: Reset stays refused
      over a box with a number in it.
    *
-     It is narrow and it is not empty. A browser restoring a form on reload and an
-     autofill both write into a box and fire `input` of their own accord, at
-     whatever moment they choose. And the gate failed twice on this widget on
-     22.08.2026, on two different tests, both times on the first assertion after
-     the first typing of that test, which is the shape this window makes.
+     It is narrow and it is not empty, and the reason is measured rather than
+     assumed. The gate failed twice on this widget on 22.08.2026, on two different
+     tests, both times on the first assertion after the first typing of that test,
+     which is the shape this window makes. Instrumented on 23.08.2026 in the form
+     `Home.test.tsx` has: with a passive effect the listener was not yet attached
+     in one pass of fifteen, and with this one in none of ten.
+
+     What is **not** a reason here, though it would be one elsewhere: a browser
+     restoring a form on reload, or an autofill. Both write into a box and fire
+     `input` of their own accord, and neither reaches these six: every one of them
+     says `autoComplete="off"` for the reason written above, and they are built by
+     React after the page has loaded, so a form restored from session history never
+     sees them.
    *
      Measured in both directions, deterministically, in `calculatorEarly.test.tsx`:
      a probe mounted before this widget writes into a box from its own passive

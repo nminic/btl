@@ -21,12 +21,16 @@ import { Calculator } from './Calculator'
  * it, but from the widget, which goes on saying it holds nothing. Reset stays
  * refused and the answer stays unwritten over a box with a number in it.
  *
- * It is a narrow window and it is not empty: a browser restoring a form on
- * reload, and an autofill, both write into a box and fire `input` of their own
- * accord, at whatever moment they choose. Twice in one day, on 22.08.2026, the
- * gate failed on this widget on two different tests, and both times it was the
- * first assertion after the first typing of that test, which is the shape this
- * window makes.
+ * The window is narrow and it is real. Twice in one day, on 22.08.2026, the gate
+ * failed on this widget on two different tests, and both times it was the first
+ * assertion after the first typing of that test, which is the shape this window
+ * makes. Instrumented on 23.08.2026 in the form `Home.test.tsx` has: with a
+ * passive effect the listener was not yet attached in one pass of fifteen; with a
+ * layout effect, in none of ten.
+ *
+ * An autofill and a form restored on reload would open the same window elsewhere,
+ * and they do not open it here: these six boxes say `autoComplete="off"`, and
+ * React builds them after the page has loaded.
  *
  * A layout effect closes it: it runs inside the commit, before the browser
  * paints and before any passive effect anywhere in the tree.
