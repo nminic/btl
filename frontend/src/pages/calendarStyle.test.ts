@@ -13,12 +13,12 @@ import { ruleFor } from '../test/stylesheet'
 const calendar = readFileSync(join(process.cwd(), 'src/pages/Calendar.css'), 'utf-8')
 
 describe('a day of the month', () => {
-  it('may be narrower than the longest name in it, down to the dots it carries', () => {
+  it('may be narrower than the longest name in it, down to what it carries', () => {
     /* The one thing the portal never does is move the page sideways (WCAG 2.2 SC
        1.4.10, ADL A7), and the calendar was doing it: measured on 23.08.2026 on a
        360px phone at 200% text, **the page itself** scrolled 80px, and with no floor
-       at all 266 of 480 measured combinations of width, zoom and month scroll it,
-       the worst by 279px.
+       at all it scrolls on 266 of 480 measured combinations of width, zoom and
+       month, at 1560px on 200% by as much as 548px.
 
        A grid item refuses to shrink under its own `min-content` unless it is told
        to, so the longest event name of the month set the width of every day:
@@ -26,21 +26,21 @@ describe('a day of the month', () => {
        the padding grows with the letters. (328 is that same box at the default size;
        the two are not interchangeable, ADL A26.)
 
-       **A floor and not nought, which is a correction.** Written as `0` first, and a
-       round measured what that cost: a day could then be narrower than the row of
-       length dots inside it, and neither the name nor the dots wrap. July 2015 at
-       1440px and 150% text had no page scroll at all and the line pushed five dots
-       20,42px past the edge of their day; at 1560px and 200% text seven days
-       overflowed, the worst by 65,80px. The fullest tile there is asks for 5,25rem
-       and the floor is 5,5rem; measured after, at 765px of content the same day
-       neither overflows nor scrolls the page, and at 4rem it stood 11,52px over.
+       **The value is measured, and both of its parts are.** What has to fit inside a
+       day is five length dots and the gap before them, drawn in the reader's own
+       letters, **plus four pixels that are not**: one of the day's border and three
+       of the tile's. A floor written wholly in `rem` is right at exactly one size of
+       text, and that is not a detail: `5.5rem` removed the overflow and brought the
+       page scroll back, 38px at 1560px on 200% text, on every one of the 216 months,
+       because the grid gets `.shell__main` and its `max-width: 1100px` is in pixels
+       and does not grow with the letters. `calc(5.125rem + 4px)` gives zero of both
+       across all 216 months at 1560/200% and across 72 further combinations.
 
-       Seven columns of 5,5rem plus six gaps are 44,5rem, and the grid begins at
-       48,75em, so the floor fits the narrowest grid there is at any size of letters:
-       both are drawn in the reader's own, which is why the floor is in `rem` and not
-       in pixels. */
+       Asked as the string the parser gives back, which puts the pixels first: jsdom
+       normalises `calc()` and reorders its terms, so what is written in the sheet
+       and what is read out of it are not the same characters. */
     const day = ruleFor(calendar, '.day', 'Calendar.css')
 
-    expect(day.getPropertyValue('min-inline-size')).toBe('5.5rem')
+    expect(day.getPropertyValue('min-inline-size')).toBe('calc(4px + 5.125rem)')
   })
 })
