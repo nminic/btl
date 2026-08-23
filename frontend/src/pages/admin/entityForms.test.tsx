@@ -2,10 +2,10 @@ import { screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
-import { at, first, inputElement, must } from '../../test/at'
-import { formatNumber } from '../../i18n/format'
+import { at, first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { categoryOf } from '../../data/raceCategory'
 import {
   ENTITY_FORMS,
   EVENTS,
@@ -408,142 +408,73 @@ describe('the identity of a record', () => {
  * first (owner, 06.08.2026). The screen of races is gone, and with it the
  * question of which event a race belongs to.
  */
-async function newRaceOnFirstEvent(user: ReturnType<typeof setupUser>) {
+/** The screen of events with the first of them open, which is where a race is
+ *  entered since 23.08.2026. */
+async function openFirstEvent(user: ReturnType<typeof setupUser>) {
   renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
   const events = within(await screen.findByRole('table', { name: 'Događaji' }))
-  const first = at(events.getAllByRole('row'), 1)
 
-  await user.click(within(first).getByRole('button', { name: /^Otvori:/ }))
-  await user.click(await screen.findByRole('button', { name: t('admin.form.new.races') }))
-
-  const form = open(t('admin.form.new.races'))
-  /* Onto the morning after the one the form opens on, which is the day the event
-     begins. The event may already hold a race of the length these tests enter,
-     and two races of one event on one morning and of one length are refused
-     (entityForms.ts, `raceClash`): there would be nothing left to tell them
-     apart by. A later morning is a different race and is what is being tested
-     here anyway, which is the category the length is read as. */
-  const day = form.getByLabelText(labelled(t('admin.field.raceDate')))
-  const opened = must(
-    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(day).value)),
-    'the day the form opened on',
-  )
-
-  await user.clear(day)
-  await user.type(day, `${String(Number(opened[1]) + 1).padStart(2, '0')}${opened[2]}${opened[3]}`)
-
-  return form
-}
-
-/** The row of a race under the event that is open. */
-/**
- * The row of the race that is this long and climbs this much.
- *
- * A race carries no name of its own (data/types.ts), so it is found by its
- * measurements. Both of them, because an event may already hold a race of the
- * same length: the one entered here climbs a number no other one does.
- */
-async function raceRow(distanceKm: number, ascentM: number) {
-  const rows = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-    .getAllByRole('row')
-    .slice(1)
-
-  return within(
-    must(
-      rows.find((row) => {
-        const cells = within(row)
-          .getAllByRole('cell')
-          .map((one) => one.textContent ?? '')
-
-        return (
-          cells.includes(formatNumber(distanceKm, 'sr-Latn', 2)) &&
-          cells.includes(formatNumber(ascentM, 'sr-Latn'))
-        )
-      }),
-      `the row of the ${distanceKm} km race climbing ${ascentM} m`,
-    ),
-  )
+  await user.click(within(at(events.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }))
+  await screen.findByRole('heading', { name: /^Trke na događaju/ })
 }
 
 describe('the category of a race', () => {
-  it('is read off the distance rather than asked for, and says where it comes from', async () => {
-    const user = setupUser()
-    const form = await newRaceOnFirstEvent(user)
-
-    /* It was a free choice beside the distance, so a race of 42.2 km could be
+  it('is read off the length in the row, and never asked for', async () => {
+    /* It was a free choice beside the distance, so a race of 42,2 km could be
        saved as a short one and the board of most marathons lied. The category is
-       the distance, by the exact value and with no tolerance (PDL P5), so there
-       is nothing to ask. */
-    expect(form.queryByLabelText(labelled(t('admin.field.category')))).not.toBeInTheDocument()
-    expect(form.getByText(t('admin.field.categoryFromDistance'))).toBeVisible()
+       the distance, by the exact value and with no tolerance (PDL P5), so there is
+       nothing to ask.
 
-    /* Nor which event it is. The screen it is entered on already answers that. */
-    expect(form.queryByLabelText(labelled(t('admin.field.event')))).not.toBeInTheDocument()
-
-    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
-    await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
-    await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
-
-    // Shown as it is typed, with the rule that produced it beside it.
-    expect(form.getByText(t('category.marathon'))).toBeVisible()
-    expect(form.getByText(t('admin.hint.category'))).toBeVisible()
-
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
-
-    const saved = within(screen.getByRole('status', { name: t('admin.form.saved') }))
-    expect(saved.getByText(t('category.marathon'))).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
-
-    expect((await raceRow(42.2, 120)).getByText(t('category.marathon'))).toBeVisible()
-  })
-
-  it('is written again when the record is changed, and not only when it is made', async () => {
-    /* The half of it that had no proof, and the half every screen leans on: a
-       name and an address, a distance and a category, are two facts on one
-       record, and only the form keeps them in step. Read off the list rather
-       than off the table of what was saved, because that table works the value
-       out again from the fields and would say the right thing over a record
-       that still says the old one.
-
-       Whether it can be changed anywhere else is the other question this branch
-       answers: not in a cell in the row, for exactly this reason. */
+       Since 23.08.2026 there is no form for a race at all: the rows are the form
+       (owner). The cell changes as the length is typed, before anything is saved,
+       which is what „kategorija se zavisno od toga menja automatski" asks for. */
     const user = setupUser()
-    const form = await newRaceOnFirstEvent(user)
 
-    /* A length no other race of this event has, so the row this is about is the
-       only one that answers to it. */
-    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.2')
-    await user.type(form.getByLabelText(labelled(t('admin.field.ascentM'))), '120')
-    await user.type(form.getByLabelText(labelled(t('admin.field.descentM'))), '120')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+    await openFirstEvent(user)
+    await user.click(screen.getByRole('button', { name: t('admin.form.new.races') }))
 
-    expect((await raceRow(42.2, 120)).getByText(t('category.marathon'))).toBeVisible()
+    const rows = () =>
+      within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ })).getAllByRole('row')
+    const last = () => within(must(rows()[rows().length - 1], 'the row just opened'))
 
-    await user.click((await raceRow(42.2, 120)).getByRole('button', { name: /^Otvori:/ }))
+    /* Nothing chooses it and nothing asks which event this is: the screen it is
+       entered on already answers that. */
+    expect(last().queryByLabelText(t('admin.field.category'))).toBeNull()
+    expect(last().queryByLabelText(t('admin.field.event'))).toBeNull()
+    /* And with no length yet it says so rather than naming one. */
+    expect(last().getByText('\u2013')).toBeVisible()
 
-    const distance = await screen.findByLabelText(labelled(t('admin.field.distanceKm')))
-    await user.clear(distance)
-    await user.type(distance, '10')
-    await user.click(screen.getByRole('button', { name: t('form.submit') }))
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+    await user.type(last().getByLabelText(t('admin.field.distanceKm')), '42.2')
 
-    const changed = await raceRow(10, 120)
+    expect(last().getByText(t('category.marathon'))).toBeVisible()
 
-    expect(changed.getByText(t('category.short'))).toBeVisible()
-    expect(changed.queryByText(t('category.marathon'))).toBeNull()
+    await user.clear(last().getByLabelText(t('admin.field.distanceKm')))
+    await user.type(last().getByLabelText(t('admin.field.distanceKm')), '10')
+
+    expect(
+      last().getByText(t('category.short')),
+      'the category is worked out once and then left where it was',
+    ).toBeVisible()
   })
 
   it('is a hundred metres short of a marathon and says so', async () => {
+    /* PDL P5: by the exact value and with no tolerance. 42,1 km is not a marathon
+       and the board of most marathons must not count it as one. */
     const user = setupUser()
-    const form = await newRaceOnFirstEvent(user)
 
-    await user.type(form.getByLabelText(labelled(t('admin.field.distanceKm'))), '42.195')
+    await openFirstEvent(user)
+    await user.click(screen.getByRole('button', { name: t('admin.form.new.races') }))
 
-    // The deliberate consequence of there being no tolerance (PDL P5).
-    expect(form.getByText(t('category.long'))).toBeVisible()
+    const rows = within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ })).getAllByRole(
+      'row',
+    )
+    const last = within(must(rows[rows.length - 1], 'the row just opened'))
+
+    await user.type(last.getByLabelText(t('admin.field.distanceKm')), '42.1')
+
+    expect(last.queryByText(t('category.marathon'))).toBeNull()
+    expect(last.getByText(t('category.long'))).toBeVisible()
   })
 })
 
@@ -663,13 +594,14 @@ describe('the words the seven forms need', () => {
   })
 
   it('offer no choice at all where the value is read off another one', () => {
-    // The category of a race is its distance (PDL P5), so it is not a field.
+    /* The category of a race is its distance (PDL P5), so it is not a field, and
+       since 23.08.2026 it is not a derived value of a form either: a race is
+       entered in a row of the event's own table and the cell is worked out from
+       the length beside it (`admin/EventRaces.tsx`, held by `adminEntities`). */
     expect(RACES.form.fields.map((one) => one.name)).not.toContain('category')
-    expect(RACES.derived?.({ distanceKm: '21.1' })[0]).toMatchObject({
-      name: 'category',
-      value: 'half',
-      shownKey: 'category.half',
-    })
+    expect(RACES.derived, 'the entity still derives something nothing draws')
+      .toBeUndefined()
+    expect(categoryOf(21.1), 'the rule itself moved as well').toBe('half')
   })
 })
 

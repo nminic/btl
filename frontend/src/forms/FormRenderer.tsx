@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
@@ -39,6 +40,26 @@ import './FormRenderer.css'
 type Props = {
   form: FormDef
   onSubmit: (values: FormValues) => void
+  /**
+   * What the screen draws between the fields and the button that sends them.
+   *
+   * The races of an event are entered in a table under its form and saved with it
+   * in one press (owner, 23.08.2026), so the button has to stand under them: put
+   * above, it reads as belonging to the fields alone and the table under it as
+   * something else again. Handed in rather than built here, because a form knows
+   * fields and nothing else.
+   */
+  beneath?: (values: FormValues) => ReactNode
+  /**
+   * A refusal that belongs to the screen rather than to any field of the form.
+   *
+   * Answers with what to say, or nothing where there is nothing to refuse. What
+   * is beneath the form may be as unfinished as a field is, and the press has to
+   * stop for it the same way: a row of a race with no distance is not a race, and
+   * saving the event without it would file a morning that has nothing running on
+   * it.
+   */
+  alsoRefuses?: () => string | undefined
   /** What the fields start out holding. Empty when nothing is handed in, which
    *  is a form that creates something rather than one that changes it. */
   initial?: FormValues
@@ -609,6 +630,8 @@ export function FormRenderer({
   derived,
   was,
   openAt,
+  beneath,
+  alsoRefuses,
 }: Props) {
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
@@ -620,6 +643,9 @@ export function FormRenderer({
      screen and a word in the record is worse than the fault it replaced. */
   const filled: FormValues = { ...emptyValues(form), ...values }
   const [errors, setErrors] = useState<Record<string, FieldError>>({})
+  /** What was refused beneath the form when it was last sent, so the sentence is
+   *  drawn where the field errors are and goes when the press succeeds. */
+  const [refused, setRefused] = useState<string | undefined>(undefined)
   /* The fields that were filled from a chosen entry, and are therefore not this
      reader's to change. Names and not a flag per field, because what is locked is
      decided by the entry that was chosen and differs from one list to the next. */
@@ -763,7 +789,14 @@ export function FormRenderer({
     }
     setErrors(found)
 
-    if (Object.keys(found).length === 0) {
+    /* Asked on the press and not while typing, like every other rule this form
+       keeps: a row half entered is not a fault until somebody says they are
+       finished. */
+    const beyond = alsoRefuses?.()
+
+    setRefused(beyond)
+
+    if (Object.keys(found).length === 0 && beyond === undefined) {
       onSubmit(trimValues(onScreen(filled)))
     }
   }
@@ -872,9 +905,14 @@ export function FormRenderer({
 
       {/* Announced the moment it appears. Without it, pressing the button with
           a broken form does nothing perceivable for a blind visitor. */}
-      {broken.length > 0 && (
+      {(broken.length > 0 || refused !== undefined) && (
         <div className="form__summary" role="alert">
           <p className="form__summary-title">{t('form.errorSummary')}</p>
+          {/* What was refused under the form, said in the same place as what was
+              refused in it. Above the list rather than inside it, because it is
+              not a field and has no address to be led to; what it names is the
+              table below, and the row that is wrong says so itself. */}
+          {refused !== undefined && <p className="form__summary-beneath">{t(refused)}</p>}
           <ul>
             {broken.map((field) => (
               <li key={field.name}>
@@ -957,6 +995,11 @@ export function FormRenderer({
           <span className="field__hint">{t(one.hintKey)}</span>
         </p>
       ))}
+
+      {/* Handed the values as they stand, because what it draws answers them: a
+          race entered under an event opens on the day the form above it is
+          showing, whether or not that day has been saved yet. */}
+      {beneath?.(filled)}
 
       <button type="submit" className="form__submit">
         {t(form.submitKey)}

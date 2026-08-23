@@ -16,19 +16,63 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
+import { dogadjaj } from '../../forms/definitions'
+import type { FormDef } from '../../forms/types'
+import type { Race } from '../../data/types'
+import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
-import { moveEvent } from './moveEvent'
+import { allFinished, rowsOf, storedRow, type RaceRow } from './raceRows'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 import { fieldDate } from '../../forms/dateField'
 import { useFilterParams } from '../../app/useFilterParams'
+
+/**
+ * The event form as a copy is asked it: without the town, the country and the
+ * kind.
+ *
+ * A copy has all three out of the event it came from and none of them is in
+ * question (owner, 23.08.2026: „ne treba da se pominju Mesto, Država, Vrsta
+ * događaja nego se kopiraju po default-u"). „Istaknuto" stays, because being
+ * singled out is a choice about this running of the race.
+ *
+ * Left off the form rather than filled in and hidden: a save writes the fields the
+ * form carries, so what is not asked keeps what the record already had. The town
+ * carries the country, so taking the town takes both.
+ */
+const copyOfEvent: FormDef = {
+  ...dogadjaj,
+  fields: dogadjaj.fields.filter((one) => one.name !== 'city' && one.name !== 'kind'),
+}
+
+/**
+ * The races of one event, read off the overlaid list.
+ *
+ * `recordsOf` answers with records of whatever shape an entity keeps; the rows
+ * need races. Read field by field rather than asserted into a `Race`, so a record
+ * missing one of them comes out as a row that says so rather than as a race with
+ * `undefined` inside it.
+ */
+function racesUnder(all: Record<string, unknown>[], event: string): Race[] {
+  return all
+    .filter((one) => String(one.eventId) === event)
+    .map((one) => ({
+      id: String(one.id),
+      eventId: String(one.eventId),
+      date: String(one.date),
+      distanceKm: Number(one.distanceKm),
+      ascentM: Number(one.ascentM),
+      descentM: Number(one.descentM),
+      category: categoryOf(Number(one.distanceKm)),
+    }))
+}
 
 /* The calendar from the other side. Between 15 and 30 September this is the
  * screen the owner spends the period of looking around on, filling the season
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { editRecord, remove } = useSession()
+  const { editRecord, remove, create, creations } = useSession()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
   /* And what was opened by pressing something somewhere else. The calendar
@@ -50,9 +94,21 @@ export function AdminEvents() {
   /* The event entered a moment ago, so its races can be added under it while
      the confirmation of the save is still on screen. */
   const [justMade, setJustMade] = useState<string | null>(null)
-  /** Which race of the open event is being edited, if any. Held here because
-   *  the event's own form is put away while one is. */
-  const [race, setRace] = useState<Editing | null>(null)
+  /**
+   * The races of the open event as they stand, before anything is saved.
+   *
+   * Held here and not in the table, because the one button under the table writes
+   * them (owner, 23.08.2026): the event and the mornings it runs on are one
+   * question, asked once and refused once.
+   *
+   * Keyed by the event they were read off, so opening another event lines them up
+   * again. Held as state rather than worked out on every render, because they are
+   * what somebody is typing into.
+   */
+  const [held, setHeld] = useState<{ of: string; rows: RaceRow[] }>({ of: '', rows: [] })
+  /** Whether the last press was refused over a row, which is when the rows start
+   *  saying what is missing. */
+  const [refused, setRefused] = useState(false)
   /**
    * How many times the races have moved the event while its own form was open.
    *
@@ -69,7 +125,6 @@ export function AdminEvents() {
    * thing that changed it, and there the form must stay where it is: it has just
    * said "Sačuvano" and remounting would take that away.
    */
-  const [movedByRaces, setMovedByRaces] = useState(0)
   const state = combinePair(useEvents(), useRaces())
   /* Read for what it is worth rather than waited for. No row here shows a
      result: they are read only to take them down with the event they belong to.
@@ -103,6 +158,11 @@ export function AdminEvents() {
    * state inside this component, and a link is what the other page has.
    */
   const asked = params.get('zapis')
+  /* And whether this is the copy being made, said by the press that made it
+     rather than worked out here: a copy is edited again like any other event a
+     season later, and both its id and its `copiedFrom` would still say „copy"
+     then (event/EventActions.tsx). */
+  const copying = params.get('kopija') === '1'
 
   return (
     <div className="member">
@@ -157,14 +217,53 @@ export function AdminEvents() {
               : all.find((one) => one.id === String(editing.record[EVENTS.idField]))
 
           if (editing !== null) {
+            /* The rows this screen is holding, or the event's races lined up as
+               rows where it is not holding any yet. Worked out rather than put
+               into state by an effect: state that mirrors a list is state that
+               falls out of step with it, and this screen has been bitten by an
+               effect that copied a record already (see `wanted` above). */
+            const under = openEvent?.id ?? 'nov'
+            const current =
+              held.of === under
+                ? held.rows
+                : rowsOf(racesUnder(allRaces, under), fieldDate)
+            const setCurrent = (next: RaceRow[]) => {
+              setHeld({ of: under, rows: next })
+            }
+
             return (
               <>
-                {race === null && (
+                {(
                   <EntityEditor
-                    /* Drawn again where the races have moved the event under it,
-                       so it is seeded from the day the event is on now. */
-                    seed={movedByRaces}
                     entity={EVENTS}
+                    /* What a copy is not asked for: it has its town, its country
+                       and its kind out of the event it came from, and none of the
+                       three is in question (owner, 23.08.2026). A save writes the
+                       fields it carries, so what is not asked stays as it was. */
+                    form={copying ? copyOfEvent : undefined}
+                    titleKey={copying ? 'admin.form.copying' : undefined}
+                    beneath={(values) => (
+                      <EventRaces
+                        eventName={
+                          String(values.name) === '' ? t('admin.events') : String(values.name)
+                        }
+                        eventDate={String(values.date)}
+                        rows={current}
+                        onRows={setCurrent}
+                        refused={refused}
+                      />
+                    )}
+                    /* One press writes the event and every one of its mornings, so
+                       one unfinished row is the whole press refused (owner,
+                       23.08.2026: „validacija mi ne da da nastavim dalje dok svaki
+                       red nema sve obavezne podatke"). */
+                    alsoRefuses={() => {
+                      const short = !allFinished(current)
+
+                      setRefused(short)
+
+                      return short ? 'admin.form.racesRefused' : undefined
+                    }}
                     editing={
                       openEvent === undefined ? editing : { mode: 'one', record: openEvent }
                     }
@@ -199,57 +298,70 @@ export function AdminEvents() {
                         openEvent,
                       )
                     }
-                    /* The races move with the event, by the same number of days
-                       (owner, 10.08.2026). That is what makes a copy of last
-                       season's event worth making: two races on the Saturday and
-                       one on the Sunday stay two and one after the date is
-                       moved, and a single race is corrected on its own form
-                       afterwards. An ordinary correction of a date moves them
-                       too, which is the same rule and the same expectation. */
-                    /* Nothing to move where the form is entering an event: it
-                       has no races yet, and no day to move them from. */
-                    alsoSave={
-                      openEvent === undefined
-                        ? undefined
-                        : (values) => {
-                            /* Off the list rather than off the form's own
-                               record: the list is what the overlay has since
-                               made of it, and the day being moved from is the
-                               day it is on now. */
-                            moveEvent(
-                              openEvent.id,
-                              openEvent.date,
-                              isoDate(String(values.date)),
-                              allRaces,
-                              editRecord,
-                            )
-                          }
-                    }
+                    /**
+                     * And its races, in the same press (owner, 23.08.2026).
+                     *
+                     * Three things happen and the order matters. A row that was a
+                     * race and is no longer on the table is taken away first, so a
+                     * length deleted and entered again in one sitting does not
+                     * meet itself. A row that is already a race is written over. A
+                     * row that is new is created under the event that was written
+                     * a line above, which is what the identity handed in is for: a
+                     * new event has none until that moment.
+                     *
+                     * Then the event follows its first morning (owner,
+                     * 10.08.2026): its date is the day it begins, so a race
+                     * entered on an earlier one makes that day the event's.
+                     */
+                    alsoSave={(values, written) => {
+                      const was = allRaces.filter((one) => String(one.eventId) === written)
+                      const kept = new Set(
+                        current.filter((row) => row.id !== '').map((row) => row.id),
+                      )
+
+                      for (const race of was) {
+                        if (!kept.has(race.id)) {
+                          remove(RACES.id, race.id)
+                        }
+                      }
+
+                      /* Counted against the races already created in this visit and
+                         not against the rows on the table, which is what it was for
+                         a moment: a row deleted and another entered gives two rows
+                         and one creation, and the second would land on an id the
+                         first already has. */
+                      let made = (creations[RACES.id] ?? []).filter((one) =>
+                        one.id.startsWith(`${written}-trka-`),
+                      ).length
+
+                      for (const row of current) {
+                        if (row.id === '') {
+                          made += 1
+                          create(RACES.id, `${written}-trka-${String(made)}`, storedRow(row, written))
+                        } else {
+                          editRecord(row.id, storedRow(row, written))
+                        }
+                      }
+
+                      const first = current
+                        .map((row) => isoDate(row.date))
+                        .filter((day) => day !== '')
+                        .sort()[0]
+
+                      if (first !== undefined && first !== isoDate(String(values.date))) {
+                        editRecord(written, { date: first })
+                      }
+                    }}
                     onCreated={setJustMade}
                     onDone={() => {
                       setChosen(null)
-                      setRace(null)
                       setJustMade(null)
+                      setHeld({ of: '', rows: [] })
+                      setRefused(false)
                       /* And the address forgets it, so leaving the form and coming
                          back to this screen does not open it again. */
                       setParams({}, { replace: true })
                     }}
-                  />
-                )}
-
-                {/* And its races, under the form that names it. A race is one
-                    length of one morning and belongs to the event it is run at
-                    (owner, 06.08.2026); it had a screen of its own, where finding
-                    the event meant searching a list of eleven hundred. Only on a
-                    record that exists: a new event has no identity to hang a race
-                    on until it is saved. */}
-                {openEvent !== undefined && (
-                  <EventRaces
-                    event={openEvent}
-                    races={allRaces}
-                    editing={race}
-                    setEditing={setRace}
-                    onEventMoved={() => setMovedByRaces((many) => many + 1)}
                   />
                 )}
               </>

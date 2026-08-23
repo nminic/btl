@@ -1982,12 +1982,14 @@ describe('the six queues read from the file', () => {
 
     await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
 
+    /* Read out of the boxes rather than off the text of the cells: since
+       23.08.2026 a race's day is a picker in its own row and holds `dd/mm/gggg`
+       (owner). */
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
+      .getAllByLabelText(/^Dan trke/)
+      .map((box) => inputElement(box).value)
 
-    expect(races).toEqual(['10. 4. 2027.', '11. 4. 2027.'])
+    expect(races).toEqual(['10/04/2027', '11/04/2027'])
   })
 
   it('folds a card open and shut, one at a time', async () => {
@@ -2081,15 +2083,21 @@ describe('the six queues read from the file', () => {
     /* A race added to it this visit, on the day the event begins. */
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
     await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
-    await user.type(screen.getByLabelText(/^Dužina/), '5')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
+
+    /* Into the row that was just opened, which is the last one: since 23.08.2026
+       every race of the event has a box of its own in the table (owner). */
+    const lengths = () => screen.getAllByLabelText(/^Dužina/)
+
+    await user.type(must(lengths()[lengths().length - 1], 'the row just opened'), '5')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
     /* And the event moved a day on before the report is answered, so the day the
-       report names is a day the event has already left. */
-    const date = screen.getByLabelText(/^Datum/)
+       report names is a day the event has already left. Opened again, because one
+       press saves the whole screen and closes it (owner, 23.08.2026). */
+    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+
+    const date = await screen.findByLabelText(/^Datum/)
 
     await user.clear(date)
     await user.type(date, '04042027')
@@ -2119,13 +2127,16 @@ describe('the six queues read from the file', () => {
        (data/types.ts). Five kilometres is a length no other race of this event
        has, which is why it was the one entered. */
     const mine = must(
-      races.getAllByRole('row').find((one) => (one.textContent ?? '').includes('5,00')),
+      races
+        .getAllByRole('row')
+        .find((one) => within(one).queryByDisplayValue('5') !== null),
       'the race entered during the visit',
     )
 
     /* Moved with everything else, rather than left on the day it was entered on,
-       and moved by six days rather than seven. */
-    expect(within(mine).getByText('10. 4. 2027.')).toBeVisible()
+       and moved by six days rather than seven. Read out of the box, because the
+       day of a race is a picker in its own row since 23.08.2026. */
+    expect(within(mine).getByLabelText(/^Dan trke/)).toHaveValue('10/04/2027')
 
     /* And the second report of the same change moves nothing more. Two
        independent reports are what a reported change is made of (PDL P10), so
@@ -2148,11 +2159,10 @@ describe('the six queues read from the file', () => {
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
 
     const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
+      .getAllByLabelText(/^Dan trke/)
+      .map((box) => inputElement(box).value)
 
-    expect(after).toEqual(['10. 4. 2027.', '10. 4. 2027.', '11. 4. 2027.'])
+    expect(after).toEqual(['10/04/2027', '10/04/2027', '11/04/2027'])
   })
 
   it('deletes a comment with a note nobody has to write', async () => {

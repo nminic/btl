@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
-import type { FieldError, FieldOption, FormValues } from '../../forms/types'
+import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
@@ -38,6 +38,10 @@ export function EntityEditor({
   openAt,
   onDone,
   onCreated,
+  beneath,
+  alsoRefuses,
+  titleKey,
+  form: drawn,
 }: {
   entity: EntityDef
   editing: Editing
@@ -49,7 +53,7 @@ export function EntityEditor({
    * because what belongs to what is a fact about the screen and not about the
    * editor.
    */
-  alsoSave?: (values: FormValues) => void
+  alsoSave?: (values: FormValues, written: string) => void
   /**
    * A number that changes when the record has been changed by something else,
    * so the form is drawn again from what it now says.
@@ -101,12 +105,36 @@ export function EntityEditor({
    * list, find the event they had just made, and open it again.
    */
   onCreated?: (id: string) => void
+  /** What the screen draws between the fields and the button that sends them,
+   *  and what it refuses that no field of the form can (FormRenderer.tsx). */
+  beneath?: (values: FormValues) => ReactNode
+  alsoRefuses?: () => string | undefined
+  /**
+   * Words for the heading, where what the screen is doing is not what the mode
+   * says. Copying an event is technically an edit of a record that was written a
+   * moment ago, and „Izmena događaja" is the truth about the code rather than
+   * about the work (owner, 23.08.2026: „Kopiranje događaja treba da se zove u vrhu
+   * Kopiranje a ne Izmena").
+   */
+  titleKey?: string
+  /**
+   * The form to draw, where the screen asks for less than the entity does.
+   *
+   * A copy is not asked for its town, its country or its kind: it has them from
+   * the event it was copied out of and they are not in question (owner,
+   * 23.08.2026). Left off the form, they are left out of what the save writes, and
+   * a save writes over the fields it carries rather than the whole record, so what
+   * is not asked stays as it was.
+   */
+  form?: FormDef
 }) {
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
   const [saved, setSaved] = useState<FormValues | null>(null)
   const done = useRef<HTMLDivElement>(null)
-  const form = entity.form
+  /* What the screen asked for, or what the entity holds. A copy is drawn without
+     the three fields it does not put in question (see `form` above). */
+  const form = drawn ?? entity.form
 
   /* The confirmation has just replaced the form, so whatever had the focus is no
    * longer on the page and the next Tab would start it from the top. The focus
@@ -135,6 +163,8 @@ export function EntityEditor({
       ),
     }
 
+    let written: string
+
     if (editing.mode === 'new') {
       const made = idFor(
         entity,
@@ -145,14 +175,17 @@ export function EntityEditor({
 
       create(entity.id, made, text)
       onCreated?.(made)
+      written = made
     } else {
-      editRecord(String(editing.record[entity.idField]), text)
+      written = String(editing.record[entity.idField])
+      editRecord(written, text)
     }
 
     /* On both, because what else a save changes does not depend on whether the
-       record is new: a race entered on an earlier day than its event moves the
-       event exactly as a race changed onto one does (EventRaces). */
-    alsoSave?.(values)
+       record is new. With the identity of what was written, which a new record
+       does not have until this moment: the races of an event are saved in the
+       same press and have to be filed under it (AdminEvents.tsx). */
+    alsoSave?.(values, written)
 
     setSaved(values)
   }
@@ -226,9 +259,10 @@ export function EntityEditor({
         key={seed}
         form={form}
         title={t(
-          editing.mode === 'new'
-            ? `admin.form.new.${entity.id}`
-            : `admin.form.edit.${entity.id}`,
+          titleKey ??
+            (editing.mode === 'new'
+              ? `admin.form.new.${entity.id}`
+              : `admin.form.edit.${entity.id}`),
         )}
         initial={
           editing.mode === 'new'
@@ -248,6 +282,11 @@ export function EntityEditor({
         check={(values) => ({ ...takenAddress(entity, values, others), ...also?.(values) })}
         derived={entity.derived}
         openAt={openAt}
+        /* What the screen draws between the fields and the button, and what it
+           refuses that no field of the form can (forms/FormRenderer.tsx). The
+           races of an event are entered there and saved with it. */
+        beneath={beneath}
+        alsoRefuses={alsoRefuses}
         onSubmit={handleSubmit}
       />
     </div>

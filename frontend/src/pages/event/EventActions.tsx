@@ -5,6 +5,8 @@ import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
+import { nextSeason } from '../admin/nextSeason'
+import { daysBetween, shiftDate } from '../../forms/dateField'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
 
@@ -52,6 +54,12 @@ export function EventActions({
    * form mentions them.
    */
   function copy() {
+    /* Worked out once, here, and everything that follows is moved by the same
+       number of days: the event, and every race under it. Done at the press
+       rather than while somebody types over the date afterwards, which is the
+       same rule applied once instead of once per keystroke. */
+    const moved = nextSeason(event.date)
+    const by = daysBetween(event.date, moved)
     /* Counted against the copies of this event and not against its races, which
        is what it was: the number of races does not change when a copy is made,
        so pressing the button twice made two records under one id. Two records
@@ -72,7 +80,12 @@ export function EventActions({
          what a member types when it opens (forms/records.ts, `valuesFor`). It
          was handed over in the form's own shape, which no screen but that form
          could read. */
-      date: event.date,
+      /* A year on, in the same place in the calendar rather than on the same
+         date: a race held on the third Saturday of October is held on the third
+         Saturday of October next year, whatever date that is (owner, 23.08.2026,
+         `admin/nextSeason.ts`). A proposal and nothing more, and the form opens
+         with the cursor in it. */
+      date: moved,
       city: event.city,
       country: event.country,
       kind: event.kind,
@@ -105,7 +118,10 @@ export function EventActions({
            the event's date afterwards moves them all by the same number of days
            (admin/AdminEvents.tsx): two races on the Saturday and one on the
            Sunday stay two and one, a year on (owner, 10.08.2026). */
-        date: race.date,
+        /* Moved with the event, by the same number of days: two races on the
+           Saturday and one on the Sunday stay two and one, a year on (owner,
+           10.08.2026). */
+        date: shiftDate(race.date, by),
         distanceKm: String(race.distanceKm),
         ascentM: String(race.ascentM),
         descentM: String(race.descentM),

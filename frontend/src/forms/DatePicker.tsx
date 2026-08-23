@@ -41,6 +41,7 @@ export function DatePicker({
   onChange,
   openAt = false,
   locked = false,
+  label,
 }: {
   id: string
   name: string
@@ -57,6 +58,15 @@ export function DatePicker({
   /** Whether the date came off a record rather than from this reader, in which
    *  case neither the box nor the calendar takes anything (FormRenderer.tsx). */
   locked?: boolean
+  /**
+   * What to call this box, where nothing else does.
+   *
+   * A field of a form is named by its label and needs nothing here. A cell of a
+   * table has no label: the column heading names the column and a screen reader
+   * reads it with the cell, but the box inside the cell is unnamed, and twenty of
+   * them are twenty controls nothing tells apart (admin/EventRaces.tsx).
+   */
+  label?: string
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -108,6 +118,7 @@ export function DatePicker({
         inputMode="numeric"
         autoComplete="off"
         placeholder="dd/mm/gggg"
+        aria-label={label}
         aria-required={required}
         aria-invalid={invalid}
         aria-describedby={describedBy}

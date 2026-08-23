@@ -1031,6 +1031,9 @@
         "moderators": "Izmena moderatora"
       },
       "delete": "Obriši",
+      "removeRow": "Obriši {which}. trku",
+      "raceTwice": "Ovaj događaj već ima trku te dužine tog dana.",
+      "racesRefused": "Svaka trka mora da ima dan i dužinu. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",
