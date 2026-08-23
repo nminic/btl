@@ -600,10 +600,17 @@ export type SeriesEntry = {
  * The calendar extract for the front page. A recurring event takes one row and
  * says when it runs next, instead of five consecutive Wednesdays taking five of
  * the few places there are.
+ *
+ * **Races only** (owner, 23.08.2026: „na priprema pozor sad widgetu ne treba da
+ * postoje ni Skupovi ni treninzi. Samo tip događaja Trka"). A gathering and a
+ * training are days of the league's own life rather than something anybody enters
+ * a result for, and the widget is the front page's answer to „what do I run next".
+ * They stay in the calendar, where they are found by looking rather than by being
+ * put in front of everybody.
  */
 export function upcomingSeries(events: BtlEvent[], today: string, limit: number): SeriesEntry[] {
   const ahead = events
-    .filter((event) => event.date >= today)
+    .filter((event) => event.date >= today && event.kind === 'race')
     .sort((left, right) => left.date.localeCompare(right.date))
 
   /* The row a name gets, built as the runs of it are met rather than gathered
