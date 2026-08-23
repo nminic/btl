@@ -112,7 +112,12 @@ export function EventActions({
       })
     }
 
-    void navigate(`/${locale}/${EVENTS.path}?zapis=${id}`)
+    /* And the screen is told what it is doing, rather than left to work it out
+       from the shape of the id or from `copiedFrom`. A copy is edited again like
+       any other event a season later, and both of those would still say „copy"
+       then: what is true only now is that this press is the copy being made
+       (owner, 23.08.2026, the title at the top). */
+    void navigate(`/${locale}/${EVENTS.path}?zapis=${id}&kopija=1`)
   }
 
   /**

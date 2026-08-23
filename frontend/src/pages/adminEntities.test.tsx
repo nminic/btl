@@ -135,15 +135,18 @@ describe('the races of an event', () => {
     expect(screen.queryByText(/već ima trku te dužine tog dana/)).toBeNull()
   })
 
-  it('says that opening a race puts the event form away', async () => {
-    /* The form is unmounted while a race is open, so what was typed into it and
-       not saved is gone. Said before the button rather than discovered after
-       it. */
+  it('says nothing about the event form being put away', async () => {
+    /* It used to, and the sentence was true: the form was unmounted while a race
+       was open, so whatever had been typed into it went. The owner had the whole
+       arrangement out on 23.08.2026, races are edited in the table itself now, and
+       the sentence went with it: there is no second form to open over the first,
+       so there is nothing to put away and nothing to save first. */
     await openFirstEvent()
 
-    expect(
-      await screen.findByText(/Dok se trka uređuje, forma događaja se sklanja/),
-    ).toBeVisible()
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(screen.queryByText(/forma događaja se sklanja/)).toBeNull()
+    expect(screen.queryByText(/Sačuvajte izmene na događaju/)).toBeNull()
   })
 
   it('has no screen of its own any more', async () => {

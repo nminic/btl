@@ -115,15 +115,6 @@ export function EventRaces({
         {t('admin.racesOf', { event: event.name })}
       </h2>
 
-      {/* What opening a race costs, said before it is pressed. The event's own
-          form is put away while a race is open (AdminEvents.tsx), and a form
-          that is put away takes whatever was typed into it with it: an
-          administrator who changed the town and then reached for a distance
-          found the town back as it was. Said rather than solved, because
-          keeping two forms open is two save buttons and two questions at
-          once. */}
-      <p className="profile__empty">{t('admin.racesPutFormAway')}</p>
-
       <EntityBar entity={entity} onNew={() => setEditing({ mode: 'new' })} />
 
       {mine.length === 0 ? (

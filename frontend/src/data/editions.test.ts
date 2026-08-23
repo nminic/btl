@@ -18,6 +18,8 @@ function edition(id: string, copiedFrom = ''): BtlEvent {
     date: '2027-04-03',
     city: 'Beograd',
     country: 'RS',
+    description: '',
+    link: '',
     kind: 'race',
     featured: 'no',
     copiedFrom,

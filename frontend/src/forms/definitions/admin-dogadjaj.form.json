@@ -63,6 +63,21 @@
           "labelKey": "form.yes"
         }
       ]
+    },
+    {
+      "name": "description",
+      "type": "textarea",
+      "labelKey": "admin.field.eventDescription",
+      "hintKey": "admin.hint.eventDescription",
+      "maxLength": 600
+    },
+    {
+      "name": "link",
+      "type": "text",
+      "labelKey": "admin.field.eventLink",
+      "hintKey": "admin.hint.eventLink",
+      "pattern": "^https?:\\/\\/[^\\s]+$",
+      "maxLength": 500
     }
   ]
 }
