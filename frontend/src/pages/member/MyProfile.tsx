@@ -12,7 +12,13 @@ import './Member.css'
  * of every screen, rather than a second one at the foot of a single screen.
  *
  * A signed-in member sees no different front page and no different profile; what
- * differs is what the header offers them (PDL P14, P28a). */
+ * differs is what the header offers them (PDL P14, P28a).
+ *
+ * **And no wrapper of its own, since 23.08.2026.** `.member` held that row of five
+ * and went on standing empty around a single child; `Member.css` gives it a column
+ * with a gap, and with it `.member h1`, which outweighs `.profile__name` and made
+ * the same head 26px here and 28px on anybody else's profile at 360px. A wrapper
+ * that holds one thing and changes how it looks is a difference nobody decided. */
 export function MyProfile() {
   const { memberNumber } = useSession()
 
@@ -20,10 +26,5 @@ export function MyProfile() {
     return <SignedOut />
   }
 
-  return (
-    <div className="member">
-      <CompetitorProfile memberNumber={memberNumber} />
-
-    </div>
-  )
+  return <CompetitorProfile memberNumber={memberNumber} />
 }

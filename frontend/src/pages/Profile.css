@@ -105,7 +105,7 @@
  * Outside the query above, because the two arrangements need it for two different
  * reasons and both were measured on 23.08.2026 in Chrome. Above 700px the table is
  * laid out fixed, a column is a sixth of the box, and „Unesi rezultat" unbroken is
- * 114,75px against 95px of column at a screen of 700: it would stand outside its
+ * 114,75px against 92,86px of column at a screen of 700: it would stand outside its
  * own cell. Under 700px the table is laid out by its content and the column grows
  * for the button instead, so nothing leaves a cell, but the table grows with it:
  * on a 360px screen the box scrolled 41px with the button on one line and 3px with
@@ -146,7 +146,7 @@
      the reader's text: at 200% on a 360px screen it is 104px rather than 52px, and
      beside it the season's `select` has an intrinsic width of its own that
      `min-inline-size: 0` cannot talk down. Measured 23.08.2026: the page itself
-     scrolled sideways by 44px, which is the one thing the portal never does (WCAG
+     scrolled sideways by 59px, which is the one thing the portal never does (WCAG
      2.2 SC 1.4.10). Wrapped, the name and the line drop under the circle and the
      row is as wide as the screen again. */
   flex-wrap: wrap;
@@ -164,8 +164,12 @@
      this block asked for more than a phone has and the circle went above the name
      on **every** text size, which is not „sa leve strane" at all.
    *
-     8rem is the block's own smallest usable width, measured: 130px at a 16px root,
-     which is the widest word in it. Written as a basis, the row breaks only when
+     8rem is the block's own smallest usable width, rounded **down** to the scale:
+     measured, its `min-content` is 129,73px at a 16px root and 8rem is 128, so the
+     basis is a hair under it. That is on purpose and it costs nothing, because
+     `min-inline-size: 0` lets the block shrink past the basis anyway; the basis is
+     read for **whether the row breaks**, not for how narrow the block may get.
+     Written as a basis, the row breaks only when
      the circle, the gap and those 8rem no longer fit, and everything above that is
      shrinking rather than breaking. Measured on the box a 360px phone really gives
      (313px, `scrollbar-gutter` taken off): beside the name at 100%, 125% and 150%,

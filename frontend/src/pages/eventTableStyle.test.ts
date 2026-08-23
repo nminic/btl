@@ -55,6 +55,35 @@ function widthOf(
   return Math.max(Math.min(box, (columns * share * box) / 100), columns * floor * root)
 }
 
+/**
+ * How wide the column of content is, read off the shell rather than written here.
+ *
+ * `.shell__main` is what every screen draws inside, and it carries both numbers:
+ * `padding-inline` on each side, and a `max-width` past which the column stops
+ * growing. Written by hand as „32" for a day, and a round measured the cost on
+ * 23.08.2026: one step of the scale added to that padding put 11px of the race table
+ * outside its box at a screen of 700, on the ordinary text size, while this guard
+ * said nothing.
+ *
+ * The padding is a token, so the token is read too. Both come back in pixels at a
+ * 16px root, which is the size every sum here is written at.
+ */
+function shellBox(): { padding: number; ceiling: number } {
+  const shell = readFileSync(join(process.cwd(), 'src/app/Shell.css'), 'utf-8')
+  const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
+  const main = must(
+    unconditionalRules(shell, 'Shell.css').find((rule) =>
+      rule.selectorText.split(',').some((one) => one.trim() === '.shell__main'),
+    ),
+    'the rule every screen is drawn inside',
+  ).style
+  const named = main.getPropertyValue('padding-inline').replace('var(', '').replace(')', '')
+  const step = must(new RegExp(`${named}:\\s*([\\d.]+)rem`).exec(tokens), `the token ${named}`)
+  const ceiling = must(/^(\d+)px$/.exec(main.getPropertyValue('max-width')), 'the ceiling')
+
+  return { padding: Number(step[1]) * 16 * 2, ceiling: Number(ceiling[1]) }
+}
+
 describe('the table of races on an event', () => {
   it('is laid out in columns of one width', () => {
     expect(
@@ -104,10 +133,18 @@ describe('the table of races on an event', () => {
        17 and not the 15 that Chrome on Windows draws, because the widest classic
        scrollbar among the engines is what makes this hold everywhere; a browser
        with overlay scrollbars reserves nothing and has more room than this asks
-       for, never less. */
+       for, never less.
+
+       The padding and the ceiling are **read from the shell** rather than written
+       here. Held as a bare 32 for a day, and a round measured what that costs on
+       23.08.2026: widen `.shell__main` by one step of the scale and the table stands
+       11px outside its box at a screen of 700 on the ordinary text size, with this
+       guard silent. The ceiling matters at the other end: past 1132px the column
+       stops growing, so a screen of 1920 has the room of 1100 and no more. */
     const read = knobs()
     const GUTTER = 17
-    const room = (screen: number) => screen - 32 - GUTTER
+    const shell = shellBox()
+    const room = (screen: number) => Math.min(screen - GUTTER, shell.ceiling) - shell.padding
     const tooWide = []
 
     for (const columns of [4, 5, 6]) {
@@ -208,9 +245,13 @@ describe('the head of a competitor', () => {
        for more than a phone has: measured on the 313px a 360px phone really gives,
        the circle stood above the name at 100%, 125%, 150% and 200% alike.
 
-       A basis of 8rem is the block's own smallest usable width, 130px at a 16px
-       root. Measured after: beside the name at 100%, 125% and 150%, and above it at
-       200%, where breaking is what keeps the page from scrolling sideways. */
+       A basis of 8rem is the block's own smallest usable width rounded down to the
+       scale: its `min-content` is 129,73px at a 16px root and 8rem is 128. A hair
+       under, on purpose and at no cost, because `min-inline-size: 0` lets the block
+       shrink past its basis anyway and the basis is read for whether the row breaks
+       rather than for how narrow the block may get. Measured after: beside the name
+       at 100%, 125% and 150%, and above it at 200%, where breaking is what keeps the
+       page from scrolling sideways. */
     const identity = ruleFor(profile, '.profile__identity', 'Profile.css')
 
     expect(identity.getPropertyValue('flex-basis'), 'the row breaks on the length of the line')

@@ -780,3 +780,33 @@ describe('who the profile is about, above everything else', () => {
     expect(JSON.stringify(sr)).not.toContain('Osvojeno se nikad')
   })
 })
+
+describe('the head of my own profile', () => {
+  it('is drawn exactly as anybody else is, and by the same rule', async () => {
+    /* „Moj profil" is the same profile everybody else sees (PDL P14), and until
+       23.08.2026 it was not: a wrapper left over from the row of five buttons the
+       owner had taken out still stood around it, and `Member.css` gives `.member h1`
+       a size of its own that outweighs `.profile__name`. Measured at 360px: 26px
+       here against 28px on anybody else's profile, on every text size.
+
+       Held as „the same classes", because that is what decides which rule wins.
+       jsdom applies no stylesheet (ADL A18), so the size itself is a question for a
+       browser; what can be asked here is whether the two heads are the same thing. */
+    const me = '000007'
+
+    renderAt('/sr/moj-profil', 'competitor', me)
+
+    const mine = await screen.findByRole('heading', { level: 1 })
+    const classes = [...mine.classList]
+    const inside = mine.closest('.member')
+
+    cleanup()
+
+    renderAt(`/sr/takmicar/${me}`, 'visitor')
+
+    const theirs = await screen.findByRole('heading', { level: 1 })
+
+    expect(classes, 'my own head is drawn by another rule').toEqual([...theirs.classList])
+    expect(inside, "a wrapper stands around my own head and around nobody else").toBeNull()
+  })
+})

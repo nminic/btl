@@ -230,9 +230,17 @@ const Field = memo(function Field({
   const putBack = useRef(false)
   const change = useCallback(
     (next: string | boolean) => {
+      /* A locked control stays reachable, so it can still be pressed; what it must
+         not do is change. `readOnly` says that in markup for a box somebody types
+         into, and a `select`, a checkbox and a radio have no such attribute, so the
+         refusal is written once here for all of them. */
+      if (locked) {
+        return
+      }
+
       onChange(field, next)
     },
-    [field, onChange],
+    [field, locked, onChange],
   )
   const inputId = `field-${field.name}`
   const hintId = `${inputId}-hint`
@@ -271,10 +279,25 @@ const Field = memo(function Field({
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     className: 'field__control',
     autoFocus: open,
-    /* `undefined` and not `false`, so a control that is not locked carries no
-       attribute at all: `disabled={false}` is the same to a browser and one more
-       thing in the markup for a test to read as a decision somebody made. */
-    disabled: locked ? true : undefined,
+    /* Held, not switched off (PDL: „Odbijeno, ne ugaseno", and the same argument
+       is written out in `PlaceField.tsx` beside the country).
+     *
+       `disabled` takes a control out of the keyboard's path, so whoever reads by
+       keyboard never reaches it and is never told why. Measured on 23.08.2026 on
+       the real `unos-rezultata`: choose a race from the list and Tab goes from
+       „Naziv dogadjaja" straight to „Sati", with the date, the length, the climb
+       and the fall all skipped and nothing said about any of them.
+     *
+       And these four are not refused at all. They are **filled by the portal from
+       the race**, which is what `readOnly` says of a box somebody types into: still
+       reachable, still read out, still copied, and not the reader's to change.
+       `aria-disabled` beside it is what a screen reader announces, and `change`
+       above is what refuses the ones that have no `readOnly` of their own.
+     *
+       `undefined` and not `false`, so a control that is not locked carries no
+       attribute at all: one more thing in the markup is one more thing for a test
+       to read as a decision somebody made. */
+    'aria-disabled': locked ? true : undefined,
   }
 
   if (field.type === 'checkbox') {
@@ -394,7 +417,7 @@ const Field = memo(function Field({
                    would have locked nothing while the form said it had. Nothing
                    fills one today; a lock that is an ornament is worse than none,
                    because the screen says the value cannot be changed. */
-                disabled={locked}
+                aria-disabled={locked ? true : undefined}
                 aria-invalid={error !== undefined}
                 /* The rule and the error on every button, and both on the
                    group around them as well.
@@ -587,7 +610,12 @@ const Field = memo(function Field({
         />
       )}
 
-      {suggesting !== undefined && (
+      {/* And only on a field somebody types into. The condition below asks the
+          type and this one did not, so a `select`, a `textarea` or a picture given
+          a list would draw two controls carrying the same `id`. Nothing on the
+          portal does that today; the only list is on `eventName`, which is text.
+          Written so that it stays impossible rather than merely unused. */}
+      {suggesting !== undefined && field.type === 'text' && (
         <Suggesting
           shared={shared}
           value={String(value)}
@@ -597,13 +625,14 @@ const Field = memo(function Field({
         />
       )}
 
-      {suggesting === undefined &&
+      {(suggesting === undefined || field.type !== 'text') &&
         (field.type === 'text' ||
           field.type === 'email' ||
           field.type === 'password' ||
           field.type === 'number') && (
           <input
             {...shared}
+            readOnly={locked ? true : undefined}
             type={field.type}
             value={String(value)}
             onChange={(e) => change(e.target.value)}
@@ -837,8 +866,13 @@ export function FormRenderer({
          the one that needs no list. */
       setErrors(without([field.name]))
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [form],
+    /* Nothing to depend on. `form` was read in here while the list of rules by
+       which one field decides another lived in this callback; that went on
+       23.08.2026, and the dependency went with it. The suppression that stood here
+       went too: `react-hooks/exhaustive-deps` is not a rule this gate runs
+       (`.oxlintrc.json`), so it was silencing nothing and reading as though it
+       were. */
+    [],
   )
 
   /**
