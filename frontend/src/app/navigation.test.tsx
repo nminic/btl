@@ -435,6 +435,37 @@ const STATUTE = '/BTL%20Statut.pdf'
       .map((one) => one.textContent?.trim())
 
     expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
+    /* „Nothing else" counted in elements and not only in text, which catches what
+       is put beside the navigation rather than inside it and **carries no text of
+       its own**: a link carrying an icon and an `aria-label`, a sponsor's image, a
+       rule, an ornamental div. Each of those passed everything this test had before
+       and fails now.
+
+       Anything beside it that does carry text was already caught, by the line under
+       this one: a second navigation holding an ordinary link fails on
+       `footer.textContent` with or without this line, and saying otherwise was the
+       same mistake the round before had already corrected about the fourth link.
+     *
+       Asked as **this** navigation and not as the word „NAV", which is the whole
+       of the difference and was measured in both directions on 23.08.2026. Written
+       as the tag name, a second navigation wrapped **around** the real one passed:
+       the footer still had one child, that child was still a `NAV`, and a
+       sponsor's image inside it carried an `alt` a screen reader reads out. And in
+       the other direction the same line failed on a navigation written as `<div
+       role="navigation">`, which is the same landmark under another tag and is
+       what `getByRole` above already found. The element itself answers both.
+     *
+       A fourth link inside the navigation was caught before this line and still
+       is, by the three names above; a bare line of text anywhere in the footer is
+       caught by the line under this one. Said plainly because the comment here
+       claimed the fourth link, which was the one case that needed nothing new.
+     *
+       The count is one level deep, and that is where it stops: an image or a rule
+       put **inside** the navigation leaves the footer with the one child it had
+       and adds nothing to `textContent`, so it goes past all three lines. An image
+       is not silent, though: its `alt` is read out, so this is a gap and not a
+       thing that cannot matter. */
+    expect([...footer.children]).toEqual([nav])
     expect(footer.textContent?.trim()).toBe(links.join(''))
     expect(JSON.stringify(sr)).not.toContain('Portal je u izradi')
   })

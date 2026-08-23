@@ -2152,6 +2152,40 @@ function sectionOf(
   return found.body
 }
 
+/**
+ * The one section of a page that says something, where "one" is the claim.
+ *
+ * `sectionOf` above takes the first that matches, which is right for sixteen
+ * questions in this file that are anchored on a phrase: „Član lige je" is a
+ * definition in Član 10 and a sentence anybody may write in the code of ethics,
+ * and a guard that stopped the file over an ordinary edit to the rulebook would
+ * be a guard about itself.
+ *
+ * Here the count is the point. What is asked below is where a section **stops**,
+ * and a second section that ends on the same sentence quietly moves that question
+ * onto a section nobody meant: a guard reading the wrong section is worse than no
+ * guard, because it is green. Measured on 23.08.2026, a new section carrying the
+ * sentence „Za prenos van Evropske unije koristimo propisane mehanizme zaštite."
+ * used to move the guard under it and let the deleted sentence back.
+ *
+ * So the strictness lives with the two callers that need it and not with the
+ * sixteen that do not.
+ */
+function oneSectionOf(
+  slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
+  says: RegExp,
+): string {
+  const found = written[slug].sections.filter((section) => says.test(section.body))
+
+  if (found.length !== 1) {
+    throw new Error(
+      `${String(found.length)} sections of ${slug} say ${String(says)}, and this anchor has to be one section's own`,
+    )
+  }
+
+  return must(found[0], 'the one section that says it').body
+}
+
 describe('what the written pages say the fee buys', () => {
   /* The fee stays the ticket into the league (owner, 03.08.2026, PDL P32). The
      documents already behaved that way and described it two ways, once as
@@ -2365,10 +2399,13 @@ describe('what the written pages say the fee buys', () => {
       const sections = must(written[slug], slug).sections
       const last = must(sections[sections.length - 1], `the last section of ${slug}`).body
 
-      /* Anchored at both ends of the sign-off and not only at the end of the
-         text. Held with `$` alone, the same sign-off written twice one under the
-         other passed, because the last one closes the string: the reader sees two
-         and the gate sees one. Measured. */
+      /* The shape, and then the count. The pattern below is anchored only at the
+         end of the text, and that is all it can be: the sign-off is the last thing
+         in the document. So the same sign-off written twice one under the other
+         satisfies it — the last one closes the string, the reader sees two and the
+         pattern sees one. What catches that is the counting under it, and it is
+         written out rather than folded into the pattern because the two questions
+         are different: is it in the right shape, and is there one of it. */
       expect(last, `${slug} does not sign off the way the other two do`).toMatch(
         new RegExp(
           ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 15.09.2026.']
@@ -2393,23 +2430,119 @@ describe('what the written pages say the fee buys', () => {
        on complaining to the Commissioner, to another country's authority, and
        going to court.
 
-       Held as an absence, which is the half that rots: deleted and unheld, the two
-       come back the first time the policy is reworded and nobody learns of it. The
-       sentence that stays in their place is held too, so this does not pass on a
-       section somebody emptied. */
-    const policy = whole('politika-privatnosti')
+       Held as an absence, which is the half that rots: deleted and unheld, the
+       two come back the first time the policy is reworded and nobody learns of
+       it. Two questions are asked about them, and the pair is the point, because
+       each one alone was measured and found short.
 
-    expect(policy).toContain('Prvo nam pišite, jer se većina stvari reši u jednoj poruci.')
-    expect(policy).toContain('Za prenos van Evropske unije koristimo propisane mehanizme zaštite.')
+       **Where each section stops.** Both passages stood at the foot of a section,
+       which is where a deleted paragraph comes back, and a section held to the
+       sentence it ends on ends on it in every wording: nothing can follow it at
+       all. This is what marks on the wording cannot do. Written as marks alone
+       until 23.08.2026, „Povereniku za zaštitu podataka o ličnosti" walked past
+       „Povereniku za informacije" and „organu te zemlje koji nadzire zaštitu
+       podataka" walked past „nadzornom organu", because a paragraph can always
+       be said in one more wording than a guard has marks. It also holds the
+       sentence that stays, so this cannot pass on a section somebody emptied.
+
+       **And the words of the passages themselves, over the whole document.**
+       Written as the section's end alone, for one day, and a second round measured
+       that too: the offer to name a safeguard came back word for word in the middle
+       of section 5, at the foot of section 4, and as a section of its own between 5
+       and 6, and all three passed. The end of a section says nothing about the rest
+       of the page.
+
+       **What a mark is, said plainly, because three rounds were spent trying to
+       make it something better.** It is a tripwire and not a proof. Any sentence
+       that reuses one of these five phrases stops this file, whether it is the
+       deleted passage coming back or a lawful sentence the policy is entitled to,
+       and every one of the five has such a sentence. Measured on 23.08.2026:
+       „povredu prijavljujemo Povereniku za informacije od javnog značaja i zaštitu
+       podataka o ličnosti" is a breach reported to the authority, which the law
+       requires and which reads in the dative exactly as a complaint does;
+       „obaveze pojedinog pružaoca usluge su uređene ugovorom o obradi" offers
+       nobody anything; „povredu prijavljujemo nadzornom organu" is the same duty
+       under the general name. Grammar does not separate them and no narrowing did:
+       `Povereniku za informacije` was tried against `poverenik` and bought nothing
+       but a miss, since the same name in the nominative then walked past.
+
+       So the tripwire stays wide, and whoever it stops is meant to come here and
+       say which of the two they are writing. That is the whole design: the two
+       passages were deleted by a decision, and a sentence made of their words is
+       either that decision being undone or a new one that ought to be recorded.
+
+       `sudsku zaštitu` and not `sud` is the one narrowing that was kept, and for a
+       different reason: `sud` is a syllable of ordinary words rather than a phrase
+       of the passage. Measured, a sentence the policy could easily gain, „podatke
+       dajemo samo po nalogu suda ili po drugom zahtevu zasnovanom na zakonu", fails
+       on the syllable and passes on the phrase. `nadzor` is not a mark at all, for
+       the same reason: section 7 says „obaveštavamo vas i nadzorni organ" today.
+
+       **Three limits, said out loud rather than left to be discovered.**
+
+       One: a **reworded** passage put in the middle of a section, its own included.
+       The marks catch it word for word anywhere; the section end catches any
+       wording after the last sentence of these two; a rewording above that sentence
+       goes past both. Nothing shorter than pinning the whole document catches that.
+
+       Two: the count under `endsOn` compares strings, so two copies of the anchor
+       that differ by an invisible character are not two. Measured with a
+       non-breaking space between „propisane" and „mehanizme": the reader sees the
+       sentence twice and this sees it once.
+
+       Three, and it is outside this repository: the draft both passages were cut
+       from still holds them, word for word, in `btl-produkt/pravni/`. PDL says a
+       name can come back onto the portal from there, and no test can see that file.
+       It is written in PENDING instead. */
+    const endsOn = (sentence: string, named: string) => {
+      /* Found by the whole sentence it ends on, minus the full stop, which is the
+         only character in either of them a regular expression would read as
+         something else.
+
+         The whole sentence and not a phrase out of it, because `oneSectionOf`
+         refuses an anchor two sections share and a phrase is easy to share: „za
+         obrađivače van Evropske unije primenjujemo propisane mehanizme zaštite iz
+         sekcije 5", written anywhere in the policy as an ordinary cross
+         reference, would have stopped this file with three words in common. The
+         whole sentence is one section's own. */
+      const section = oneSectionOf('politika-privatnosti', new RegExp(sentence.slice(0, -1)))
+
+      expect(
+        section.trimEnd().endsWith(sentence),
+        `the policy carries on after "${sentence}", so ${named}`,
+      ).toBe(true)
+      /* And it is the end because it is said once. Ending on it is not the same
+         claim: a paragraph written in and the sentence repeated under it ends on
+         the sentence just as truly, and the whole of the deleted offer stood
+         between the two. Measured on 23.08.2026, that passed. The count is the
+         same shape the sign-off two tests above is held in, and for the same
+         reason. */
+      expect(
+        section.split(sentence).length - 1,
+        `the policy says "${sentence}" more than once, so what stands between them is unheld`,
+      ).toBe(1)
+    }
+
+    endsOn(
+      'Za prenos van Evropske unije koristimo propisane mehanizme zaštite.',
+      'it may be offering to name a safeguard once more',
+    )
+    endsOn(
+      'Prvo nam pišite, jer se većina stvari reši u jednoj poruci.',
+      'it may be offering a way to complain once more',
+    )
 
     for (const gone of [
-      /pojedinog pružaoca/,
-      /Povereniku za informacije/,
-      /AZOP/,
-      /sudsku zaštitu/,
-      /nadzornom organu/,
+      /pojedinog pružaoca/i,
+      /poverenik/i,
+      /azop/i,
+      /sudsku zaštitu/i,
+      /nadzornom organu/i,
     ]) {
-      expect(policy, `the policy offers ${String(gone)} again`).not.toMatch(gone)
+      expect(
+        whole('politika-privatnosti'),
+        `the policy carries ${String(gone)} again`,
+      ).not.toMatch(gone)
     }
   })
 
