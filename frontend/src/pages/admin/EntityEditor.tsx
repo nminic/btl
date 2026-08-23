@@ -162,11 +162,24 @@ export function EntityEditor({
     done.current?.focus()
   }, [saved])
 
+  /**
+   * What the press knows and the form does not, folded in before anything reads
+   * the values.
+   *
+   * Every reader of the values goes through here, and that is the whole point:
+   * the address, the derived text, the confirmation **and the check that refuses
+   * a clash** all have to be looking at the same thing. Folded only on the way
+   * out and not on the way into the check, the clash was measured against the
+   * date somebody typed while the save wrote another: an event moved onto a race
+   * of 05/04/2025 was let through as `beogradski-maraton-2027` and filed as
+   * `beogradski-maraton-2025`, which the event of 2025 already answers to. Two
+   * records on one address, and a result finds its event by the address.
+   * Measured 23.08.2026.
+   */
+  const folded = (values: FormValues): FormValues => alsoFolds?.(values) ?? values
+
   function handleSubmit(given: FormValues) {
-    /* What the press knows and the form does not, folded in before anything reads
-       the values: the address, the derived text and the confirmation all come off
-       what is below, so they say what was written rather than what was typed. */
-    const values = alsoFolds?.(given) ?? given
+    const values = folded(given)
 
     /* What the form asked for, and what is read off it.
      *
@@ -301,7 +314,12 @@ export function EntityEditor({
            address that would 404 (entityForms.ts, `addressOfEvent`). */
         was={editing.mode === 'one' ? editing.record : undefined}
         options={options}
-        check={(values) => ({ ...takenAddress(entity, values, others), ...also?.(values) })}
+        /* Over the folded values, not the typed ones: what is refused has to be
+           what would be written (see `folded`). */
+        check={(values) => ({
+          ...takenAddress(entity, folded(values), others),
+          ...also?.(folded(values)),
+        })}
         derived={entity.derived}
         openAt={openAt}
         /* What the screen draws between the fields and the button, and what it

@@ -30,10 +30,16 @@ describe('the races of an event', () => {
      at (owner, 06.08.2026). It had a screen of its own, where finding the event
      meant searching a list of eleven hundred, and a race made there could be
      saved against the wrong one. */
-  async function openFirstEvent() {
+  async function openList() {
     const user = setupUser()
 
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    return user
+  }
+
+  async function openFirstEvent() {
+    const user = await openList()
 
     const rows = await table('Događaji')
     const first = at(rows.getAllByRole('row'), 1)
@@ -331,6 +337,49 @@ describe('the races of an event', () => {
     )
 
     expect(address, 'the address kept a year the event is not in').toMatch(/-2026$/)
+  })
+
+  it('refuses the address it would write, not the one on the form', async () => {
+    /* The event follows its earliest race, so the year in its address is not the
+       year somebody typed. Checked against the typed date, the clash was measured
+       on a date the save never used: an event of 2027 moved onto a race of
+       05/04/2025 was let through and filed as `beogradski-maraton-2025`, which the
+       event of 2025 already answers to. Two records on one address, and a result
+       finds its event by the address. Measured 23.08.2026.
+
+       Two events of the same name are entered. The first is in 2026 and says so.
+       The second says 2027 on its form and runs its only race in 2026, so it
+       clashes with the first **only after the day is folded in**; asked about what
+       was typed, the two are a year apart and both are let through. */
+    const user = await openList()
+
+    async function enter(day: string, raceDay: string) {
+      await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+      await user.type(screen.getByLabelText(/^Naziv/), 'Probni događaj')
+      await user.type(screen.getByLabelText(/^Datum/), day)
+      await user.type(screen.getByLabelText(/^Mesto/), 'Beograd')
+      await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+      const row = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the day of the race')
+
+      /* Emptied first: a new row opens on the day of the event (owner, 23.08.2026),
+         so typing into it would append to a date that is already whole. */
+      await user.clear(row)
+      await user.type(row, raceDay)
+      await user.type(must(screen.getAllByLabelText(/^Dužina/)[0], 'the length'), '10')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    }
+
+    await enter('15012026', '30122026')
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await enter('15012027', '30122026')
+
+    expect(
+      screen.queryByRole('status', { name: 'Sačuvano' }),
+      'a second event was filed at an address the first one already answers to',
+    ).toBeNull()
+    expect(await screen.findByText(/već postoji/)).toBeVisible()
   })
 
   it('takes a race away when the row it was in is gone and the press lands', async () => {

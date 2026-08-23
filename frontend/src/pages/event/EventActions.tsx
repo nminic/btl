@@ -83,18 +83,23 @@ export function EventActions({
 
     create(EVENTS.id, id, copyOf(event))
 
-    for (const race of mine) {
-      /* Counted against the copies of this race, not against the copies of the
-         event. Deleting a copied event from the list of events takes it out of
-         the events it was created in and leaves its races where they are, so a
-         count of event copies goes back down while the races do not: copy,
-         delete the copy, copy again, and every race lands on an id that is
-         already taken. */
-      const before = (creations[RACES.id] ?? []).filter((one) =>
-        one.id.startsWith(`${race.id}-kopija`),
-      ).length
+    /* Every race there is, whichever way it came to be: one out of the file, one
+       entered under an event, and one copied along with its event all live in one
+       list, and a number in use is in use whichever of the three it is. */
+    const takenRaces = [...races.map((one) => String(one.id)), ...(creations[RACES.id] ?? []).map((one) => one.id)]
 
-      create(RACES.id, `${race.id}-kopija-${before + 1}`, {
+    for (const race of mine) {
+      /* Counted up from the highest number in use, over every race that exists
+         (`admin/raceIds.ts`).
+
+         Counted instead, this was the third home of one fault and the last to be
+         put right. Deleting the rows of a copy takes those races out of the list
+         while the numbers they held are gone from the count, so copying a third
+         time handed the third copy the ids the second copy's races answer to.
+         `editRecord` is filed by id, so saving the third copy moved **both** onto
+         it and the second copy was left with no races at all. Measured on
+         „Maraton maratona 2015" on 23.08.2026: four rows became none. */
+      create(RACES.id, `${race.id}-kopija-${String(nextNumber(takenRaces, `${race.id}-kopija-`))}`, {
         eventId: id,
         /* The day it was run on, kept as it was. The copy starts on the day the
            event was on, so the races start on the days they were on, and moving

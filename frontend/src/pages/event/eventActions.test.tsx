@@ -497,4 +497,79 @@ describe('copying an event', () => {
        so. */
     expect(at(within(copy).getAllByRole('cell'), 3).textContent).toBe(String(races))
   })
+
+  it('does not hand a third copy the races the second one answers to', async () => {
+    /* The third home of one fault, and the last to be put right: the identity of a
+       copied race was counted rather than measured. A count goes back down and the
+       numbers do not, so emptying one copy frees a number that another copy still
+       holds. Measured 23.08.2026 on „Maraton maratona 2015": copy, copy, empty the
+       first copy, copy again, and the third copy took the four ids the second copy
+       answers to. `editRecord` is filed by id, so saving the third moved **both**
+       onto it and the second was left with no races at all. */
+    const user = setupUser()
+    const { router } = await openEvent('superadmin')
+    const races = within(await screen.findByRole('table', { name: 'Trke' }))
+      .getAllByRole('row')
+      .slice(1).length
+
+    async function copyOnto(day: string) {
+      await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
+      const date = await screen.findByLabelText(/Datum/)
+      await user.clear(date)
+      await user.type(date, day)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    }
+
+    async function openCopy(year: string) {
+      const search = await screen.findByPlaceholderText('Naziv ili mesto')
+      await user.clear(search)
+      await user.type(search, 'Maraton maratona')
+
+      const row = must(
+        within(await screen.findByRole('table'))
+          .getAllByRole('row')
+          .find((one) => new RegExp(`${year}[.]`).test(one.textContent ?? '')),
+        `red kopije iz ${year}`,
+      )
+
+      await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    }
+
+    await copyOnto('14032027')
+    /* Back to the event that is being copied, for the second copy. The list of
+       events offers „Otvori" and not a link out to the calendar. */
+    await router.navigate(EVENT)
+    await screen.findByRole('heading', { level: 1 })
+    await copyOnto('14032028')
+
+    /* The first copy is emptied, which is what frees the numbers the second holds. */
+    await openCopy('2027')
+    for (const button of screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ }).reverse()) {
+      await user.click(button)
+    }
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+
+    /* And now a third copy, which counted would land on the second one's ids. */
+    await router.navigate(EVENT)
+    await screen.findByRole('heading', { level: 1 })
+    await copyOnto('14032029')
+
+    await openCopy('2029')
+
+    expect(screen.queryAllByLabelText(/^Dužina/).length, 'the third copy lost a row').toBe(races)
+
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await openCopy('2028')
+
+    expect(
+      screen.queryAllByLabelText(/^Dužina/).length,
+      'the second copy was left without the races it had',
+    ).toBe(races)
+  }, 30000)
 })

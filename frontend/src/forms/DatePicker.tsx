@@ -101,6 +101,29 @@ export function DatePicker({
     }
 
     const at = field.getBoundingClientRect()
+    /* The window as the reader sees it, which is not `window.innerWidth`: that
+       counts the scrollbar, and a sheet placed against it sits under the bar by
+       whatever the bar is wide. Measured 23.08.2026 on this machine, 19px. */
+    const room = {
+      across: document.documentElement.clientWidth,
+      down: document.documentElement.clientHeight,
+    }
+    /* Never wider than that, whatever the letters are: seven columns of `2rem` are
+       448px of grid at 200% text, and the columns give way under a cap
+       (`.datepicker__grid`). Written before the box is measured, so what is
+       measured is the box as it will be drawn. A `fixed` box that hangs over the
+       edge cannot be scrolled to, and ten days of the month came back `null` from
+       `elementFromPoint` on a 360px telephone: the whole weekend column, on every
+       date field on the portal. WCAG 2.2 SC 1.4.4 asks that nothing be lost up to
+       200%. */
+    /* Both written **before** the box is measured, because both change how wide it
+       is. Left in the sheet's own `absolute`, the box is as wide as the column of
+       the form allows and measures 320px where it will be drawn 344; the clamp
+       then reads a width that is not the width and places the sheet 16px under the
+       right edge. Measured 23.08.2026. */
+    drawn.style.position = 'fixed'
+    drawn.style.maxInlineSize = `${String(room.across - 16)}px`
+
     const its = drawn.getBoundingClientRect()
     /* Under the field where it fits under, over it otherwise, and then held inside
        the window whatever came of that: on a short window neither side has room,
@@ -111,16 +134,13 @@ export function DatePicker({
        window), and with both ends set the height resolved to nought. Measured on
        23.08.2026 at five sizes: 22 pixels tall, under the bottom edge, and
        `elementFromPoint` over a day answered `null`. */
-    const wanted = at.bottom + its.height <= window.innerHeight
-      ? at.bottom + 8
-      : at.top - its.height - 8
-    const top = Math.max(8, Math.min(wanted, window.innerHeight - its.height - 8))
+    const wanted = at.bottom + its.height <= room.down ? at.bottom + 8 : at.top - its.height - 8
+    const top = Math.max(8, Math.min(wanted, room.down - its.height - 8))
     /* And never out of the window sideways either. A calendar is wider than a cell
        of a table, and at 150% text on a 360px screen it stood 42px past the right
        edge with nothing to scroll it back: `fixed` does not move with the page. */
-    const across = Math.max(8, Math.min(at.left, window.innerWidth - its.width - 8))
+    const across = Math.max(8, Math.min(at.left, room.across - its.width - 8))
 
-    drawn.style.position = 'fixed'
     drawn.style.insetInlineStart = `${String(across)}px`
     drawn.style.top = `${String(top)}px`
     drawn.style.bottom = 'auto'
