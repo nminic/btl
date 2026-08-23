@@ -64,3 +64,22 @@ describe('the way out of a picture attached by mistake', () => {
     ).toBe('auto')
   })
 })
+
+describe('the box a town is typed into', () => {
+  it('takes the room it was given and no more', () => {
+    /* The column already refuses to grow for it (`min-inline-size: 0` on
+       `.place__town`); what was missing until 23.08.2026 is the box being told the
+       same. Measured that day at 200% text on a 360px screen: the box came out
+       417px inside 281px of column and the **page** scrolled sideways by 104px,
+       which is the one thing the portal never does (WCAG 2.2 SC 1.4.10).
+
+       jsdom applies no stylesheet and lays nothing out (ADL A18), so what is asked
+       here is that the rule is written; the number beside it is what a browser
+       measured. */
+    const place = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
+    const box = ruleFor(place, '.place__town .field__control', 'PlaceField.css')
+
+    expect(box.getPropertyValue('inline-size')).toBe('100%')
+    expect(box.getPropertyValue('min-inline-size')).toBe('0px')
+  })
+})
