@@ -34,6 +34,7 @@ export function EntityEditor({
   taken = [],
   also,
   alsoSave,
+  alsoFolds,
   seed = 0,
   openAt,
   onDone,
@@ -54,6 +55,22 @@ export function EntityEditor({
    * editor.
    */
   alsoSave?: (values: FormValues, written: string) => void
+  /**
+   * What the press changes about the values themselves, before anything is read
+   * off them.
+   *
+   * `alsoSave` runs after the record is written, so anything it changes about the
+   * record is already too late for the three things the values feed: the derived
+   * text (`textFrom`), the derived fields (`entity.derived`, which is where the
+   * address comes from), and the confirmation. An event follows its earliest race
+   * (owner, 10.08.2026), and moved there afterwards the screen said „Datum
+   * 30/01/2027 … Adresa podgoricka-desetka-2027" over a record that had just been
+   * filed on 30.12.2026 under last year's address. Measured 23.08.2026.
+   *
+   * So what the press knows about the values is folded in here, once, and
+   * everything downstream reads the same thing that was written.
+   */
+  alsoFolds?: (values: FormValues) => FormValues
   /**
    * A number that changes when the record has been changed by something else,
    * so the form is drawn again from what it now says.
@@ -145,7 +162,12 @@ export function EntityEditor({
     done.current?.focus()
   }, [saved])
 
-  function handleSubmit(values: FormValues) {
+  function handleSubmit(given: FormValues) {
+    /* What the press knows and the form does not, folded in before anything reads
+       the values: the address, the derived text and the confirmation all come off
+       what is below, so they say what was written rather than what was typed. */
+    const values = alsoFolds?.(given) ?? given
+
     /* What the form asked for, and what is read off it.
      *
      * The derived values were written when a record was created and never again,

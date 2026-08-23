@@ -291,6 +291,7 @@ describe('deleting an event', () => {
   })
 })
 
+
 describe('copying an event', () => {
   it('opens the copy on its own form, at the date', async () => {
     /* The date is the one thing that is certainly wrong on a copy, which is what

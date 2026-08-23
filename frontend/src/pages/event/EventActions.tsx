@@ -5,7 +5,8 @@ import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
-import { nextSeason } from '../admin/nextSeason'
+import { copyOf } from './copyOf'
+import { nextNumber } from '../admin/raceIds'
 import { daysBetween, shiftDate } from '../../forms/dateField'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
@@ -58,54 +59,29 @@ export function EventActions({
        number of days: the event, and every race under it. Done at the press
        rather than while somebody types over the date afterwards, which is the
        same rule applied once instead of once per keystroke. */
-    const moved = nextSeason(event.date)
+    const moved = copyOf(event).date
     const by = daysBetween(event.date, moved)
-    /* Counted against the copies of this event and not against its races, which
-       is what it was: the number of races does not change when a copy is made,
-       so pressing the button twice made two records under one id. Two records
-       under one id is the fault the whole numbering module exists to prevent
-       (entityForms.ts): the list draws them under one key, a lookup finds only
-       the first, and an edit to either changes both. */
-    const made = (creations[EVENTS.id] ?? []).filter((one) => one.id.startsWith(`${event.id}-kopija`))
-    const id = `${event.id}-kopija-${made.length + 1}`
+    /* Numbered from the highest already used and not from how many there are
+       (`admin/raceIds.ts`). Counted, the number a deleted copy freed went to the
+       next one made: measured on 23.08.2026, copy, copy, delete the first, copy,
+       and the third came out as `-kopija-2`, which the second still holds. Two
+       records under one id is the fault the whole numbering module exists to
+       prevent: the list draws them under one key, a lookup finds only the first,
+       and an edit to either changes both.
 
-    create(EVENTS.id, id, {
-      name: event.name,
-      /* The same day, and the form opens on it. Moving it a year forward here
-         would be a guess: a race that ran on the last Sunday in April does not
-         run on the same date next year, and a date nobody chose looks chosen.
+       Over the copies this visit has made, which is where every one of them is: a
+       copy of an event is only ever created here, so nothing in the file carries
+       that shape of id. Deleting one takes it out of that list, and taking the
+       highest still says three where counting said two. */
+    const under = `${event.id}-kopija-`
+    const id = `${under}${String(
+      nextNumber(
+        (creations[EVENTS.id] ?? []).map((one) => one.id),
+        under,
+      ),
+    )}`
 
-         In the shape a record keeps, which is what a creation is read as: the
-         list draws it, the address is made from it, and the form turns it into
-         what a member types when it opens (forms/records.ts, `valuesFor`). It
-         was handed over in the form's own shape, which no screen but that form
-         could read. */
-      /* A year on, in the same place in the calendar rather than on the same
-         date: a race held on the third Saturday of October is held on the third
-         Saturday of October next year, whatever date that is (owner, 23.08.2026,
-         `admin/nextSeason.ts`). A proposal and nothing more, and the form opens
-         with the cursor in it. */
-      date: moved,
-      city: event.city,
-      country: event.country,
-      kind: event.kind,
-      /* Not featured, whatever the one it was copied from was: being singled
-         out is a choice about this running of the race and not a property the
-         race carries (owner, 11.08.2026). */
-      featured: 'no',
-      /* Which edition this one came out of. The one place it is ever written,
-         and the reason the chain can be walked at all: an id nobody typed and
-         nobody can mistype, rather than a name that changes with a sponsor
-         (owner, 11.08.2026). */
-      copiedFrom: event.id,
-      /* And what the organiser says about it, and where they say the rest of it
-         (owner, 23.08.2026: „ako postoje i odem na kopiranje događaja, automatski
-         se učitavaju iz prethodne godine, pa ih dalje mogu menjati po želji").
-         Left out, the form of the copy opened both empty and the save wrote the
-         emptiness over them. */
-      description: event.description,
-      link: event.link,
-    })
+    create(EVENTS.id, id, copyOf(event))
 
     for (const race of mine) {
       /* Counted against the copies of this race, not against the copies of the

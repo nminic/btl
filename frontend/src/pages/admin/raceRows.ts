@@ -66,6 +66,23 @@ function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
   return Number.isFinite(number) && number >= least && number <= most
 }
 
+/**
+ * Whether that one cell of that row is wrong, whatever else in the row is.
+ *
+ * `whatIsMissing` answers with the **first** thing wrong, which is what the refusal
+ * needs; a cell needs to know about itself. Asked by the first, a climb of minus
+ * five hundred was marked and the fall of minus nine hundred beside it said
+ * `aria-invalid="false"`, so a reader was sent looking somewhere else
+ * (WCAG 2.2 SC 3.3.1). Measured 23.08.2026.
+ */
+export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date'): boolean {
+  if (field === 'date') {
+    return isoDate(row.date) === ''
+  }
+
+  return !withinBounds(row[field], field)
+}
+
 export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | undefined {
   if (isoDate(row.date) === '') {
     return 'date'

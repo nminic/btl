@@ -101,13 +101,29 @@ export function DatePicker({
     }
 
     const at = field.getBoundingClientRect()
-    const tall = drawn.getBoundingClientRect().height
-    const under = at.bottom + tall <= window.innerHeight || at.bottom - at.top >= at.top
+    const its = drawn.getBoundingClientRect()
+    /* Under the field where it fits under, over it otherwise, and then held inside
+       the window whatever came of that: on a short window neither side has room,
+       and a calendar half above the top edge is as unusable as one below the
+       bottom. Both ends are written every time, and `top` alone decides; leaving
+       one empty lets the rule in the sheet take over (`.datepicker__pop` carries
+       `top: calc(100% + …)`, which on a `fixed` element is the height of the
+       window), and with both ends set the height resolved to nought. Measured on
+       23.08.2026 at five sizes: 22 pixels tall, under the bottom edge, and
+       `elementFromPoint` over a day answered `null`. */
+    const wanted = at.bottom + its.height <= window.innerHeight
+      ? at.bottom + 8
+      : at.top - its.height - 8
+    const top = Math.max(8, Math.min(wanted, window.innerHeight - its.height - 8))
+    /* And never out of the window sideways either. A calendar is wider than a cell
+       of a table, and at 150% text on a 360px screen it stood 42px past the right
+       edge with nothing to scroll it back: `fixed` does not move with the page. */
+    const across = Math.max(8, Math.min(at.left, window.innerWidth - its.width - 8))
 
     drawn.style.position = 'fixed'
-    drawn.style.insetInlineStart = `${String(at.left)}px`
-    drawn.style.top = under ? `${String(at.bottom + 8)}px` : ''
-    drawn.style.bottom = under ? '' : `${String(window.innerHeight - at.top + 8)}px`
+    drawn.style.insetInlineStart = `${String(across)}px`
+    drawn.style.top = `${String(top)}px`
+    drawn.style.bottom = 'auto'
   }, [open])
   const [month, setMonth] = useState(() => monthOf(value, today))
   const box = useRef<HTMLDivElement>(null)

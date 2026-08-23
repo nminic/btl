@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
-import { isoDate } from '../../forms/dateField'
+import { fieldDate, isoDate } from '../../forms/dateField'
 import { Resource } from '../../components/Resource'
 import {
   RESULTS,
@@ -22,10 +22,9 @@ import type { Race } from '../../data/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { allFinished, rowsOf, storedRow, type RaceRow } from './raceRows'
-import { nextRaceNumber } from './raceIds'
+import { nextNumber } from './raceIds'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
-import { fieldDate } from '../../forms/dateField'
 import { useFilterParams } from '../../app/useFilterParams'
 
 /**
@@ -310,11 +309,10 @@ export function AdminEvents() {
                      * a line above, which is what the identity handed in is for: a
                      * new event has none until that moment.
                      *
-                     * Then the event follows its first morning (owner,
-                     * 10.08.2026): its date is the day it begins, so a race
-                     * entered on an earlier one makes that day the event's.
+                     * The day the event begins is folded into the values before
+                     * any of this, in `alsoFolds` below.
                      */
-                    alsoSave={(values, written) => {
+                    alsoSave={(_values, written) => {
                       const was = allRaces.filter((one) => String(one.eventId) === written)
                       const kept = new Set(
                         current.filter((row) => row.id !== '').map((row) => row.id),
@@ -331,9 +329,9 @@ export function AdminEvents() {
                          (`raceIds.ts`). Counted rather than measured, it handed a
                          new race the number a deleted one had freed and two records
                          answered to one id. */
-                      let next = nextRaceNumber(
+                      let next = nextNumber(
                         allRaces.map((one) => String(one.id)),
-                        written,
+                        `${written}-trka-`,
                       )
 
                       for (const row of current) {
@@ -345,14 +343,29 @@ export function AdminEvents() {
                         }
                       }
 
+                    }}
+                    /**
+                     * The event follows its first morning (owner, 10.08.2026): its
+                     * date is the day it begins, so a race entered on an earlier
+                     * one makes that day the event's.
+                     *
+                     * Folded into the values rather than written over the record
+                     * afterwards, because the address is derived from the date and
+                     * the confirmation is drawn from the values: moved after the
+                     * fact, the screen said „Datum 30/01/2027 … Adresa
+                     * podgoricka-desetka-2027" over a record filed on 30.12.2026,
+                     * and the address kept a year the event was no longer in.
+                     * Measured 23.08.2026.
+                     */
+                    alsoFolds={(values) => {
                       const first = current
                         .map((row) => isoDate(row.date))
                         .filter((day) => day !== '')
                         .sort()[0]
 
-                      if (first !== undefined && first !== isoDate(String(values.date))) {
-                        editRecord(written, { date: first })
-                      }
+                      return first === undefined || first === isoDate(String(values.date))
+                        ? values
+                        : { ...values, date: fieldDate(first) }
                     }}
                     onCreated={setJustMade}
                     onDone={() => {

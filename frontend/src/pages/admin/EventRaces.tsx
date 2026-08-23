@@ -3,7 +3,7 @@ import { categoryOf } from '../../data/raceCategory'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { BOUNDS, clashesWith, whatIsMissing, type RaceRow } from './raceRows'
+import { BOUNDS, clashesWith, isWrong, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -102,10 +102,11 @@ export function EventRaces({
     field: 'distanceKm' | 'ascentM' | 'descentM',
     asked: boolean,
   ) => {
-    /* Every kind of wrong this cell can be, not only „missing": a climb of minus
-       five hundred is as wrong as an empty length, and a cell that says it is fine
-       sends a reader looking somewhere else (WCAG 2.2 SC 3.3.1). */
-    const wrong = refused && whatIsMissing(row) === field
+    /* This cell and not „the first thing wrong in the row": a climb of minus five
+       hundred is as wrong as the fall of minus nine hundred beside it, and a cell
+       that says it is fine sends a reader looking somewhere else
+       (WCAG 2.2 SC 3.3.1). */
+    const wrong = refused && isWrong(row, field)
 
     return (
       <input
@@ -170,7 +171,7 @@ export function EventRaces({
                         which: String(at + 1),
                       })}`}
                       required
-                      invalid={refused && whatIsMissing(row) === 'date'}
+                      invalid={refused && isWrong(row, 'date')}
                       describedBy={undefined}
                       onChange={(next) => change(at, { date: next })}
                     />

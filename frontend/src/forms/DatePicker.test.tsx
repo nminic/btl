@@ -153,9 +153,9 @@ describe('DatePicker', () => {
 })
 
 describe('where the calendar stands', () => {
-  /** A field of the given shape, and a calendar of the given height. jsdom lays
-   *  nothing out and answers nought to every rect (ADL A18), so the two are said
-   *  here; what is measured is the arithmetic that chooses a side. */
+  /** A field of the given shape and a calendar of the given height, said out loud:
+   *  jsdom lays nothing out and answers nought to every rect (ADL A18), so what is
+   *  measured here is the arithmetic that places it. */
   async function openAt({ top, height, tall }: { top: number; height: number; tall: number }) {
     const user = setupUser()
 
@@ -181,9 +181,7 @@ describe('where the calendar stands', () => {
 
     await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
 
-    const pop = htmlElement(
-      must(document.querySelector('.datepicker__pop'), 'the calendar'),
-    )
+    const pop = htmlElement(must(document.querySelector('.datepicker__pop'), 'the calendar'))
 
     vi.restoreAllMocks()
 
@@ -191,23 +189,47 @@ describe('where the calendar stands', () => {
   }
 
   it('stands under the field where the room under it is enough', async () => {
-    /* 768 of window, a field ending at 200, a calendar 245 tall: it fits under. */
     const pop = await openAt({ top: 160, height: 40, tall: 245 })
 
     expect(pop.style.position).toBe('fixed')
     expect(pop.style.top).toBe('208px')
-    expect(pop.style.bottom).toBe('')
+    /* Both ends written, and the one not in use is `auto` rather than empty:
+       emptied, `.datepicker__pop` in the sheet carries `top: calc(100% + …)`, and on
+       a `fixed` element that is the height of the window. */
+    expect(pop.style.bottom).toBe('auto')
   })
 
-  it('stands over the field where there is more room over it', async () => {
-    /* The row of a race far down a long screen: nothing fits under it, and the
-       calendar was cut to a strip of twenty pixels by the box that scrolls around
-       the table (`admin/EventRaces.tsx`). Anchored by its bottom edge, so its own
-       height is not needed to place it. */
+  it('stands over the field where there is no room under it', async () => {
+    /* The row of a race far down a long screen: nothing fits under it, and inside a
+       box that scrolls the calendar was cut to a strip of twenty pixels. */
     const pop = await openAt({ top: 700, height: 40, tall: 245 })
 
-    expect(pop.style.position).toBe('fixed')
-    expect(pop.style.top).toBe('')
-    expect(pop.style.bottom).toBe(`${String(window.innerHeight - 700 + 8)}px`)
+    expect(pop.style.top).toBe(`${String(700 - 245 - 8)}px`)
+    expect(pop.style.bottom).toBe('auto')
+  })
+
+  it('stays inside the window where neither side has room', async () => {
+    /* A short window, and a field near the top of it: under would run past the
+       bottom edge and over would run past the top. Measured on 23.08.2026 on a
+       window 500 tall: the calendar stood 25px above the top edge and its first row
+       of days was cut off. */
+    const pop = await openAt({ top: 20, height: 40, tall: 245 })
+    const placed = Number(pop.style.top.replace('px', ''))
+
+    expect(placed).toBeGreaterThanOrEqual(8)
+    expect(placed + 245).toBeLessThanOrEqual(window.innerHeight - 8)
+  })
+
+  it('stays inside the window sideways as well', async () => {
+    /* A calendar is wider than the cell it belongs to, and `fixed` does not move
+       with the page: at 150% text on a 360px screen it stood 42px past the right
+       edge with nothing to scroll it back. */
+    const wide = window.innerWidth
+
+    const pop = await openAt({ top: 160, height: 40, tall: 245 })
+    const across = Number(pop.style.insetInlineStart.replace('px', ''))
+
+    expect(across).toBeGreaterThanOrEqual(8)
+    expect(across + 200).toBeLessThanOrEqual(wide - 8)
   })
 })

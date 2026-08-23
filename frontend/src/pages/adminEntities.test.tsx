@@ -126,6 +126,55 @@ describe('the races of an event', () => {
     expect(lastRow().getByLabelText(/^Dužina/)).toHaveValue(17)
   })
 
+  it('names every control in a row by the row it is in', async () => {
+    /* „Dužina" twelve times over is twelve controls a screen reader cannot tell
+       apart, and the table has no row heading to read them with. Written without
+       the row for a day, and a round measured it: three rows, twelve controls, four
+       names between them. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const named = within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('textbox')
+      .concat(
+        within(screen.getByRole('table', { name: /^Trke na događaju/ })).getAllByRole('spinbutton'),
+      )
+      .map((one) => one.getAttribute('aria-label') ?? '')
+
+    expect(named.length).toBeGreaterThan(4)
+    expect(new Set(named).size, 'two controls of the table answer to one name').toBe(named.length)
+    /* And the row is in the name, rather than the name merely being unique by
+       accident of the column. */
+    for (const one of named) {
+      expect(one).toMatch(/\d+\. trka$/)
+    }
+  })
+
+  it('marks every kind of wrong in a row, not only the first thing missing', async () => {
+    /* A climb of minus five hundred is as wrong as an empty length, and a cell that
+       says it is fine sends a reader looking somewhere else (WCAG 2.2 SC 3.3.1).
+       Measured before: the climb was marked and the fall beside it, equally wrong,
+       said `aria-invalid="false"`. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const climb = must(screen.getAllByLabelText(/^Uspon/)[0], 'the climb of the first race')
+    const fall = must(screen.getAllByLabelText(/^Spust/)[0], 'the fall of the first race')
+
+    await user.clear(climb)
+    await user.type(climb, '-500')
+    await user.clear(fall)
+    await user.type(fall, '-900')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(/Svaka trka mora da ima/)).toBeVisible()
+    expect(climb).toHaveAttribute('aria-invalid', 'true')
+    expect(fall, 'the second wrong cell says it is fine').toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('will not save while a row is missing its day or its length', async () => {
     /* Owner, 23.08.2026: „validacija mi ne da da nastavim dalje dok svaki red nema
        sve obavezne podatke". One press writes the event and every one of its
@@ -238,6 +287,50 @@ describe('the races of an event', () => {
       must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event'),
       'the event stayed on a morning nothing runs on',
     ).toHaveValue(before)
+  })
+
+  it('confirms the day and the address it really wrote, not the ones on the form', async () => {
+    /* The event follows its earliest race (owner, 10.08.2026), and until this was
+       measured it followed it **after** the record was written: the confirmation
+       and the address were both read off the form, which still said the day
+       somebody typed. Measured 23.08.2026: „Datum 30/01/2027 … Adresa
+       podgoricka-desetka-2027" over a record filed on 30.12.2026, so the address
+       carried a year the event was no longer in and a copy made from it would have
+       gone on carrying it.
+
+       A month earlier and not a day, so the year moves too and the address has to
+       move with it. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+    const was = isoDate(inputElement(day).value)
+
+    await user.clear(day)
+    await user.type(day, '15012027'.replace(/\D/g, ''))
+
+    const race = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')
+
+    await user.clear(race)
+    await user.type(race, '30122026')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = within(await screen.findByRole('status', { name: 'Sačuvano' }))
+
+    expect(was, 'the walk starts from a day it does not move to').not.toBe('2026-12-30')
+    /* The day it was filed on, rather than the day the form was left holding. */
+    expect(said.getByText('30/12/2026'), 'the confirmation shows a day nothing was written on')
+      .toBeVisible()
+    expect(said.queryByText('15/01/2027')).toBeNull()
+    /* And the address, which is built out of that day, is in the year the event is
+       really in. */
+    const address = must(
+      said.getByText(/^Adresa događaja/).nextElementSibling?.textContent,
+      'the address of the event',
+    )
+
+    expect(address, 'the address kept a year the event is not in').toMatch(/-2026$/)
   })
 
   it('takes a race away when the row it was in is gone and the press lands', async () => {
