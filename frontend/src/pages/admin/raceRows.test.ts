@@ -109,6 +109,21 @@ describe('the races of an event while they are being entered', () => {
     expect(allFinished([row(), row({ distanceKm: '' })])).toBe(false)
   })
 
+  it('reads a name of nothing but spaces as no name at all', () => {
+    /* A name is what a race is picked out by, so „   " is not one: it looks answered
+       and is not. Measured by a sweep on 23.08.2026: taking the `trim` out of all
+       three places that read the name walks through 2151 tests, and a race saves
+       under a name nobody can see.
+
+       Both ends, because the row is asked twice: once to refuse the press, and once
+       to write the record. */
+    expect(whatIsMissing(row({ name: '   ' }))).toBe('name')
+    expect(allFinished([row({ name: '   ' })])).toBe(false)
+    /* And what is written is the name without the spaces around it, so „ Trka " and
+       „Trka" are one race and not two. */
+    expect(storedRow(row({ name: '  Trka  ' }), 'evt').name).toBe('Trka')
+  })
+
   it('writes an empty climb and fall as nought', () => {
     expect(storedRow(row(), 'evt')).toEqual({
       eventId: 'evt',

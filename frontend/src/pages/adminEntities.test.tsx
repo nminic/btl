@@ -196,6 +196,34 @@ describe('the races of an event', () => {
     )
   })
 
+  it('opens a row somebody adds under the event too, and lets it go on following', async () => {
+    /* The row „Nova trka" makes starts out following its event, and until this was
+       written nothing measured it: a round set `renamed: 'yes'` into the new row and
+       all 2150 tests stayed green. What that costs is worse on a new event, where
+       the name is still empty when the row is added and the row would keep the
+       screen's own fallback, „Događaji", as the name of a race.
+
+       Measured here without touching the row's name, which is what the other guard
+       does and why it cannot see this. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const event = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name of the event')
+
+    await user.clear(event)
+    await user.type(event, 'Drugo ime')
+
+    const named = screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
+
+    expect(named.length).toBeGreaterThan(1)
+    expect(
+      named.every((one) => one === 'Drugo ime'),
+      `a row entered by hand did not follow its event: ${named.join(' | ')}`,
+    ).toBe(true)
+  })
+
   it('will not save a race with no name at all', async () => {
     /* It opens as the name of its event and may be changed, not taken away: a row
        with no name is a row nobody can pick out of a list of races. */
@@ -210,6 +238,31 @@ describe('the races of an event', () => {
 
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
     expect(first).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('puts the name first and the category second, which is what the floor is written on', async () => {
+    /* Owner, 23.08.2026: „u okviru događaja editabilno polje Trka treba da bude u
+       prvoj koloni, dok će se druga kolona zvati Kategorija, a zatim slede dužina,
+       uspon, spust itd."
+
+       Asked here and not only in the stylesheet, because the floor that makes the
+       name readable is written on `td:first-child` (`Entity.css`): which column that
+       is lives in this file, and nothing compared the two. A round swapped „Trka"
+       and „Kategorija" and all 2151 tests stayed green while the floor moved onto a
+       column that is only read, and the name fell back to 47,27px on a 360px screen. */
+    await openFirstEvent()
+
+    const table = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+
+    expect(table.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
+      'Trka',
+      'Kategorija',
+      'Dan trke',
+      'Dužina',
+      'Uspon',
+      'Spust',
+      'Zapis',
+    ])
   })
 
   it('names every control in a row by the row it is in', async () => {
