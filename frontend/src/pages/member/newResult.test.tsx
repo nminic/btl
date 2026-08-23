@@ -356,6 +356,52 @@ describe('a message about a field the form has stopped asking for', () => {
       'the comment is still refused after the picture went',
     ).toBeNull()
   })
+
+  it('comes back the moment the field is asked for again, without another press', async () => {
+    /* The other half of what the derivation says about itself, and it is worth
+       measuring rather than believing: the message is not thrown away when a field
+       is freed, it is not drawn while the field is free. So the picture that freed
+       the link is taken back and the message is there again, over a field nobody
+       has touched in between and without the form being sent a second time.
+
+       Written after a round on 23.08.2026 measured the same sentence in a comment
+       and found it false: while the message was also being swept out of the state
+       when a picture arrived, there was nothing left to come back. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    const underLink = () =>
+      within(htmlElement(must(screen.getByLabelText(/^Link/).closest('.field'), 'the link field')))
+    const picture = () =>
+      within(
+        htmlElement(
+          must(screen.getByLabelText(/Slika kao dokaz/).closest('.field'), 'the picture field'),
+        ),
+      )
+
+    expect(underLink().getByText('Ovo polje je obavezno.')).toBeVisible()
+
+    await user.upload(
+      screen.getByLabelText(/Slika kao dokaz/),
+      new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }),
+    )
+
+    expect(underLink().queryByText('Ovo polje je obavezno.')).toBeNull()
+
+    await user.click(picture().getByRole('button', { name: 'Obriši' }))
+
+    expect(
+      underLink().getByText('Ovo polje je obavezno.'),
+      'the link is obligatory again and the screen says nothing about it',
+    ).toBeVisible()
+    /* And it is the same message the next press would write, so nothing here is
+       telling the reader something the form does not think. */
+    expect(screen.getByLabelText(/^Link/)).toHaveAttribute('aria-required', 'true')
+  })
 })
 
 describe('an error that is not about a field being obligatory', () => {
