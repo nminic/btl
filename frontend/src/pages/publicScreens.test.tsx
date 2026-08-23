@@ -1333,15 +1333,28 @@ describe('CompetitorProfile', () => {
   })
 
   it('chooses the season at the top of the page, level with the name', async () => {
-    /* It has been three things in two days: a band of its own with a sentence
-       under it, then inside the control that names the part, and now beside the
-       name (owner, 31.07.2026). It governs both parts, so it stands over both. */
+    /* It has been four things in three weeks: a band of its own with a sentence
+       under it, then inside the control that names the part, then beside the name
+       (owner, 31.07.2026), and since 23.08.2026 one of three boxes in a grid that
+       holds the head, the parts and it, so it can stand beside the name on a wide
+       screen and in the row with the parts on a narrow one.
+
+       Asked here as „one of the three, and only one": which row it lands in is a
+       question for a browser and jsdom lays nothing out (ADL A18), so the numbers
+       live in `Profile.css` where they were measured. */
     renderAt('/sr/takmicar/000007')
 
     const heading = await screen.findByRole('heading', { level: 1 })
-    const title = must(heading.parentElement, 'a parent')
+    const top = htmlElement(
+      must(heading.closest('.profile__top'), 'the head, the parts and the season'),
+    )
 
-    expect(within(title).getByLabelText('Sezona')).toBeVisible()
+    expect(within(top).getAllByLabelText('Sezona')).toHaveLength(1)
+    /* Not inside either of the other two, which is what lets one grid put it in
+       either row without drawing it twice. */
+    expect(
+      within(must(heading.parentElement, 'a parent')).queryByLabelText('Sezona'),
+    ).not.toBeInTheDocument()
     expect(
       within(screen.getByRole('navigation', { name: 'Delovi profila' })).queryByLabelText('Sezona'),
     ).not.toBeInTheDocument()
@@ -1860,7 +1873,13 @@ describe('the row a screen opens with', () => {
     ['/sr/timovi', 'the teams'],
     ['/sr/top-liste', 'the top boards'],
     ['/sr/kalendar', 'the calendar'],
-    ['/sr/takmicar/000007', 'a profile'],
+    /* A profile is **not** on this list since 23.08.2026, and that is the owner's
+       decision rather than an oversight: its season has to stand beside the name on
+       a wide screen and in the row with the parts on a narrow one, so the head, the
+       parts and the season are one grid and the season is a child of that grid
+       rather than of the row around the heading (`profile/ProfileHead.tsx`,
+       `ProfileTop`). What it does keep is asked two blocks up, in „chooses the
+       season at the top of the page". */
     ['/sr/tim/dunavski-trkaci', 'a team'],
   ] as const) {
     it(`is the shared one on ${screenName}`, async () => {

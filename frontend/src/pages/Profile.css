@@ -701,3 +701,60 @@
   font-style: italic;
 }
 
+/* The head of a profile, the parts of it, and the season, as one grid.
+ *
+ * Where the season stands depends on how much room there is: in the row with the
+ * parts once the screen is narrow, beside the name when it is not (owner,
+ * 23.08.2026). One home in the markup and the grid decides the row, rather than two
+ * copies hidden by turns.
+ *
+ * Measured before the change: at 760px the name and the season shared a row and the
+ * member's number stood **6px** under the name; at 520 and at 360 the season fell
+ * between them and pushed the number **60px** down. That fall is the „ogroman
+ * prazan prostor" the owner saw.
+ *
+ * Measured after, in Chrome, page never scrolling sideways at any of the three:
+ *
+ * | screen | name to number | where the season is |
+ * |---|---|---|
+ * | 1280 | 6px | beside the name, x=1037 |
+ * | 520 | 8px | in the row with the parts, x=374 |
+ * | 360 | 8px | in the row with the parts, x=214 |
+ *
+ * The two pixels the narrow screens gained over the wide one are the row's own
+ * `--head-end`, which the head spends under itself; they are not the gap. */
+.profile__top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'head head'
+    'parts season';
+  /* Each item centred in its own row: the season against the parts beside it here,
+     and against the whole head above the breakpoint. Centring lines up margin boxes,
+     which is why the row below spends the same `--head-end` the head does
+     (Rankings.css). */
+  align-items: center;
+  column-gap: var(--space-16);
+}
+
+.profile__top > .profile__head {
+  grid-area: head;
+}
+
+.profile__top > .profile__season {
+  grid-area: season;
+}
+
+.profile__top > .parts {
+  grid-area: parts;
+}
+
+/* The same breakpoint the shared row uses for the same question (`Rankings.css`),
+   so a profile and a ranking change shape at one width rather than at two. */
+@media (min-width: 35em) {
+  .profile__top {
+    grid-template-areas:
+      'head season'
+      'parts parts';
+  }
+}
