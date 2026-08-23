@@ -1,4 +1,4 @@
-import { allFinished, clashesWith, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
+import { allFinished, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
 import { fieldDate } from '../../forms/dateField'
 import type { Race } from '../../data/types'
 
@@ -88,28 +88,21 @@ describe('the races of an event while they are being entered', () => {
     expect(allFinished([])).toBe(true)
   })
 
-  it('refuses a second race of the same length on the same morning', () => {
-    /* A race has no name of its own: two of 42,2 km on one morning of one event
-       are two entries a member chooses between blindly, and whichever they pick
-       decides where their time is filed. The rule lived on the race's own form
-       until 23.08.2026; the form went and the rule stayed.
+  it('takes a second race of the same length on the same morning', () => {
+    /* Refused until 23.08.2026, on the reasoning that a race has no name of its own
+       so two of 42,2 km on one morning are two entries nothing tells apart. The
+       owner said that day: „u teoriji dve trke iste dužine mogu biti na istom
+       događaju, čak mogu imati iste i vertikalne nagibe, ali to se retko dešava.
+       Zavisi od staze koja se trči. Nemoj to da zabranjuješ."
 
-       Both rows are refused rather than the second one only, because neither is
-       the wrong one: what is wrong is that there are two. */
-    const two = [row(), row()]
-
-    expect(clashesWith(two, 0)).toBe(true)
-    expect(clashesWith(two, 1)).toBe(true)
-    expect(allFinished(two)).toBe(false)
-
-    /* Another morning is another race, and so is another length. */
-    expect(allFinished([row(), row({ date: '18/10/2026' })])).toBe(true)
-    expect(allFinished([row(), row({ distanceKm: '21.1' })])).toBe(true)
-    /* And a row still being typed into is not a clash yet: it is not a race at
-       all until it has a day and a length. */
-    expect(clashesWith([row({ distanceKm: '' }), row({ distanceKm: '' })], 0)).toBe(false)
-    /* Read as numbers, so „10" and „10.0" are one length rather than two. */
-    expect(allFinished([row(), row({ distanceKm: '10.0' })])).toBe(false)
+       So the portal takes it. What tells two such races apart is the name the
+       seventh round gives every race (PDL, 23.08.2026), not a rule that says one of
+       them cannot exist. */
+    expect(allFinished([row(), row()])).toBe(true)
+    /* Down to the climb and the fall as well, which the owner named. */
+    expect(allFinished([row({ ascentM: '250' }), row({ ascentM: '250' })])).toBe(true)
+    /* What is still refused is a row that is not a race: no day, or no length. */
+    expect(allFinished([row(), row({ distanceKm: '' })])).toBe(false)
   })
 
   it('writes an empty climb and fall as nought', () => {

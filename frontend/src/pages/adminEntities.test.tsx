@@ -104,14 +104,15 @@ describe('the races of an event', () => {
     expect(screen.queryByRole('button', { name: /^Otvori:/ })).toBeNull()
   })
 
-  it('refuses a second race of the same length on the same morning', async () => {
-    /* There is nothing left to tell the two apart by: a race has no name
-       (PDL P6), so both rows would read „10,0 km, 1. 6. 2027." and a member
-       reporting a result would choose between them blindly.
+  it('takes a second race of the same length on the same morning', async () => {
+    /* Refused until 23.08.2026, on the reasoning that a race has no name so two of
+       one length on one morning are two entries a member would choose between
+       blindly. The owner said that day: „u teoriji dve trke iste dužine mogu biti
+       na istom događaju, čak mogu imati iste i vertikalne nagibe, ali to se retko
+       dešava. Zavisi od staze koja se trči. Nemoj to da zabranjuješ."
 
-       The rule lived on the race's own form until 23.08.2026 and the form went
-       with the owner's change; it is asked of the rows now, on the press that
-       would save them. */
+       Measured here through the press, because it is the press that used to refuse
+       it. */
     const user = await openFirstEvent()
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
@@ -122,14 +123,11 @@ describe('the races of an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    /* On both rows, because neither is the wrong one: what is wrong is that there
-       are two. */
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
     expect(
-      await screen.findAllByText(/Ovaj događaj već ima trku te dužine tog dana/),
-    ).toHaveLength(2)
-    /* Nothing was written: the rows are still on the screen holding what was
-       typed, which is what „ne da mi da nastavim dalje" means. */
-    expect(lastRow().getByLabelText(/^Dužina/)).toHaveValue(17)
+      screen.queryByText(/već ima trku te dužine/),
+      'the portal still forbids two races of one length',
+    ).toBeNull()
   })
 
   it('names every control in a row by the row it is in', async () => {
@@ -179,39 +177,6 @@ describe('the races of an event', () => {
     expect(await screen.findByText(/Svaka trka mora da ima/)).toBeVisible()
     expect(climb).toHaveAttribute('aria-invalid', 'true')
     expect(fall, 'the second wrong cell says it is fine').toHaveAttribute('aria-invalid', 'true')
-  })
-
-  it('marks the two lengths that clash, and says why on the cell itself', async () => {
-    /* A clash is a fact about two rows, so neither length is out of bounds and the
-       cell that carries it answered `aria-invalid="false"`. Measured 23.08.2026:
-       the press was refused, a reader in forms mode walked every control of the
-       table, and every one of them said it was fine. There was nothing to stand on
-       and no way to learn why (WCAG 2.2 SC 4.1.2, SC 3.3.1). */
-    const user = await openFirstEvent()
-
-    await screen.findByRole('heading', { name: /^Trke na događaju/ })
-
-    const first = must(screen.getAllByLabelText(/^Dužina/)[0], 'the length of the first race')
-    const was = inputElement(first).value
-
-    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-
-    const second = must(screen.getAllByLabelText(/^Dužina/)[1], 'the length of the second race')
-
-    await user.clear(second)
-    await user.type(second, was)
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-
-    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-    /* Both, because neither is the wrong one; what is wrong is that there are
-       two. */
-    expect(first, 'the first of the two says it is fine').toHaveAttribute('aria-invalid', 'true')
-    expect(second, 'the second of the two says it is fine').toHaveAttribute('aria-invalid', 'true')
-
-    /* And the reason is read with the cell rather than left standing beside it. */
-    const said = must(second.getAttribute('aria-describedby'), 'the reason on the cell')
-
-    expect(must(document.getElementById(said), 'the sentence').textContent).toMatch(/već ima trku/)
   })
 
   it('will not save while a row is missing its day or its length', async () => {

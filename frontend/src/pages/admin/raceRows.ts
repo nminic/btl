@@ -101,33 +101,18 @@ export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | unde
 }
 
 /**
- * Whether two rows are the same race, which is what nothing may tell apart.
+ * Whether every row is finished, which is what the one save button asks before it
+ * writes anything at all.
  *
- * A race is one length of one morning, and it has no name of its own: two of
- * 42,2 km on the same day of one event leave a member choosing between two
- * entries that read alike, and whichever they pick decides where their time is
- * filed. The rule lived on the race's own form until 23.08.2026
- * (`entityForms.ts`, `raceClash`); the form is gone and the rule is not.
+ * Finished and nothing more. Two rows of one length on one morning were refused
+ * until 23.08.2026, on the reasoning that a race has no name so nothing tells them
+ * apart; the owner said that day that a course can genuinely be run twice over the
+ * same distance and the same climb, rarely but really, and that the portal must not
+ * forbid it. What tells them apart is the race's own name, which the seventh round
+ * gives it (PDL, 23.08.2026).
  */
-export function clashesWith(rows: RaceRow[], at: number): boolean {
-  const row = rows[at]
-
-  if (row === undefined || whatIsMissing(row) !== undefined) {
-    return false
-  }
-
-  return rows.some(
-    (other, index) =>
-      index !== at &&
-      isoDate(other.date) === isoDate(row.date) &&
-      Number(other.distanceKm) === Number(row.distanceKm),
-  )
-}
-
-/** Whether every row is finished and no two of them are the same race, which is
- *  what the one save button asks before it writes anything at all. */
 export function allFinished(rows: RaceRow[]): boolean {
-  return rows.every((row, at) => whatIsMissing(row) === undefined && !clashesWith(rows, at))
+  return rows.every((row) => whatIsMissing(row) === undefined)
 }
 
 /** What a row is worth as a record: the three measurements as they will be

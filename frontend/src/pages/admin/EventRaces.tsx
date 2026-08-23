@@ -3,7 +3,7 @@ import { categoryOf } from '../../data/raceCategory'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { BOUNDS, clashesWith, isWrong, type RaceRow } from './raceRows'
+import { BOUNDS, isWrong, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -101,22 +101,12 @@ export function EventRaces({
     at: number,
     field: 'distanceKm' | 'ascentM' | 'descentM',
     asked: boolean,
-    /** What is wrong about this cell that the cell itself cannot see, and where the
-     *  sentence about it stands. A clash is a fact about two rows, so neither value
-     *  is out of bounds and `isWrong` answers no about both. */
-    outside?: { wrong: boolean; said: string },
   ) => {
     /* This cell and not „the first thing wrong in the row": a climb of minus five
        hundred is as wrong as the fall of minus nine hundred beside it, and a cell
        that says it is fine sends a reader looking somewhere else
-       (WCAG 2.2 SC 3.3.1).
-
-       And not only what the value itself can be wrong about. Two races of one
-       length on one morning are what stops the press, and both lengths answered
-       `aria-invalid="false"`: a reader in forms mode heard the refusal, walked every
-       control, and every one of them said it was fine. There was nothing to stand
-       on and nothing to read (WCAG 2.2 SC 4.1.2). Measured 23.08.2026. */
-    const wrong = refused && (isWrong(row, field) || (outside?.wrong ?? false))
+       (WCAG 2.2 SC 3.3.1). */
+    const wrong = refused && isWrong(row, field)
 
     return (
       <input
@@ -135,9 +125,6 @@ export function EventRaces({
         })}`}
         aria-required={asked}
         aria-invalid={wrong}
-        /* The sentence that says why, tied to the control that carries it, so a
-           reader standing on the cell is read the reason without hunting for it. */
-        aria-describedby={outside !== undefined && outside.wrong && refused ? outside.said : undefined}
         onChange={(event) => change(at, { [field]: event.target.value })}
       />
     )
@@ -190,20 +177,12 @@ export function EventRaces({
                     />
                   </td>
                   <td>
-                    {measure(row, at, 'distanceKm', true, {
-                      wrong: clashesWith(rows, at),
-                      said: `race-twice-${String(at)}`,
-                    })}
-                    {/* And that this row is not the row above it. A race has no
-                        name of its own, so two of one length on one morning are
-                        two entries nothing tells apart (raceRows.ts). Said on
-                        both, because neither is the wrong one; what is wrong is
-                        that there are two. */}
-                    {refused && clashesWith(rows, at) && (
-                      <span className="field__error" id={`race-twice-${String(at)}`}>
-                        {t('admin.form.raceTwice')}
-                      </span>
-                    )}
+                    {/* And nothing about the row above it. Two races of one length
+                        on one morning were refused until 23.08.2026; the owner said
+                        that day that a course can genuinely be run twice over the
+                        same distance and the same climb, rarely but really, and
+                        that the portal must not forbid it. */}
+                    {measure(row, at, 'distanceKm', true)}
                   </td>
                   <td>{measure(row, at, 'ascentM', false)}</td>
                   <td>{measure(row, at, 'descentM', false)}</td>
