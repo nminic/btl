@@ -1139,9 +1139,17 @@ describe('the errors a form is holding while somebody types', () => {
 
 /* A form on which nothing is obligatory as it is written, and one field becomes
  * obligatory once another is answered. Nothing on the portal is built this way
- * today, which is exactly why it is built here: the two faults below were found
- * by a review of the fourth reading on 22.08.2026 and recorded rather than fixed,
- * because the content could not reach them. */
+ * today, which is why the second of the two faults below could not be reached
+ * through the content and is measured here instead.
+ *
+ * The first one could be, and was: `unos-rezultata` and `prijava-sa-trke` both ask
+ * for a link that a picture frees (Član 37), so a member who sent the form without
+ * one, read „Ovo polje je obavezno." and then attached a picture was left with the
+ * message under a field the form had stopped asking for. What kept it out of the
+ * PR that found it was the risk, not the reach: `PENDING.md` records „popravka
+ * dira stanje `FormRenderer`-a... izmena sa realnim rizikom regresije, a PR se
+ * zatvarao". Both are held here, because a form built for the purpose can put the
+ * second field's obligation on the first without any content at all. */
 const askedByAnswer: FormDef = {
   id: 'proba',
   titleKey: 'proba.naslov',
