@@ -71,14 +71,27 @@ function RaceTable({ event }: { event: BtlEvent }) {
            the floor that keeps a date unbroken is 6,75rem, so seven of them ask for
            756px of a box that is 653 at 700px and 721 at 768. The column that fell
            outside was the one holding „Unesi rezultat", and nothing on the screen said
-           it was cut. The owner's answer was to take the category out here as well as
-           in the administration (23.08.2026), which it can afford: the length stands
-           beside it and the category is read off the length.
+           it was cut. The owner's answer was to take the category out here (23.08.2026),
+           which this table can afford: the length stands beside it and the category is
+           read off the length. The same column goes from the administration too, but
+           in its own delivery; this one is only about the public page.
 
            Written by hand three lines from the headings it counts, and that too was
            measured: with the two disagreeing the table drew five columns in the width
            of four and ended 253px short of the edge. */
         const columns = (overDays ? 1 : 0) + 4 + (options ? 1 : 0)
+        /* How many the fullest reading of this same event would have, which is what a
+           column's share of the box is worked out from: „tabela ostaje kraća za tu
+           kolonu, pa se prethodne četiri završavaju gde i kad ih ima 5" (owner,
+           23.08.2026).
+
+           The share used to be a fifth written into the stylesheet, and a round
+           measured what that cost once the count could reach six: on an event over two
+           mornings the visitor's five columns and the member's six were both the whole
+           box, so nothing stayed where it was and the first column moved by up to
+           35,59px. Worked out here, beside the count it belongs to, there is one place
+           that knows how many columns this table can have. */
+        const full = (overDays ? 1 : 0) + 5
 
         return (
           <div className="table-scroll">
@@ -89,7 +102,7 @@ function RaceTable({ event }: { event: BtlEvent }) {
                 render knows it; the sheet turns it into a width (Profile.css). */}
             <table
               className="table table--races"
-              style={{ '--race-columns': columns }}
+              style={{ '--race-columns': columns, '--race-full': full }}
             >
               {/* Named, like every other table on the portal. Two tables stand on
                   this screen once anybody has run the event, and a screen reader
