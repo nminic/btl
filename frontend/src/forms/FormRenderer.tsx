@@ -2,6 +2,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useRef,
   useState,
   type FormEvent,
 } from 'react'
@@ -205,6 +206,7 @@ const Field = memo(function Field({
      the file standing beside an empty field. Drawn again under a new key, the
      browser builds a new box and its copy goes with the old one. */
   const [cleared, setCleared] = useState(0)
+  const putBack = useRef(false)
   const change = useCallback(
     (next: string | boolean) => {
       onChange(field, next)
@@ -454,6 +456,12 @@ const Field = memo(function Field({
           <input
             {...shared}
             key={cleared}
+            ref={(node) => {
+              if (node !== null && putBack.current) {
+                putBack.current = false
+                node.focus()
+              }
+            }}
             type="file"
             accept="image/*"
             onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
@@ -464,6 +472,14 @@ const Field = memo(function Field({
               type="button"
               className="button button--secondary button--compact field__clear"
               onClick={() => {
+                /* The box is remounted in the same stroke (`key` above) and the
+                   button itself stops being drawn, so the cursor would fall to the
+                   document and a screen reader would read that as leaving the form
+                   (WCAG 2.2 SC 2.4.3). Measured on 23.08.2026: after the press,
+                   `document.activeElement` was `<body>`. It goes back onto the box
+                   the button just emptied, which is what the reader was working
+                   on. */
+                putBack.current = true
                 setCleared((was) => was + 1)
                 change('')
               }}

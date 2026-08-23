@@ -110,9 +110,8 @@ export function ReportResult() {
              A race has no time of day, so the day it is on counts from its own
              morning: „rezultat na trku moguće uneti na kalendarski dan te trke
              ili kasnije". */
-          const mineHere = races.filter(
-            (race) => race.eventId === event.id && race.date <= today,
-          )
+          const here = races.filter((race) => race.eventId === event.id)
+          const mineHere = here.filter((race) => race.date <= today)
           /* Which of them, decided by the row the reader pressed rather than by a
              field at the top of this form (owner, 23.08.2026: „ne treba onda ni
              dropdown na vrhu za izbor trke nego to zavisi od reda iz kog je
@@ -185,7 +184,14 @@ export function ReportResult() {
                     after the chooser has gone. */}
                 {t('report.note', {
                   event: event.name,
-                  race: raceLabel(race, mineHere, locale),
+                  /* Among **all** the races of the event and not only the run
+                     ones, because that is what the table on the event says
+                     (EventDetail.tsx) and a race must not change its name between
+                     the row somebody pressed and the form it opened. Measured on
+                     23.08.2026: the row read „42,2 km, 14. 3. 2022." and the form
+                     said „42,2 km", which is two names for one race in two steps
+                     of one flow. */
+                  race: raceLabel(race, here, locale),
                 })}
               </p>
 

@@ -68,15 +68,34 @@
     overflow-wrap: anywhere;
   }
 
-  /* And the headings wrap rather than run out of their cells. A fixed layout with
-     a ceiling of the whole width means a column cannot grow, and `.table th` is
-     `nowrap` everywhere else because everywhere else the table may grow instead
-     and scroll in its own box (PDL P24). Here it may not, so the words fold.
-     Measured at 200% text: „KATEGORIJA TRKE" needs 227px against a column of
-     202px at 1024 and 137px at 700, and wrote itself over „DUŽINA" beside it. */
-  .table.table--races th {
-    white-space: normal;
-  }
+}
+
+/* And the headings of this table fold rather than run out of their cells.
+ * `.table th` is `nowrap` everywhere else, and both arrangements of this one need
+ * the opposite, for two different reasons.
+ *
+ * Above 700px the layout is fixed, so a column cannot grow for its heading.
+ * Measured at 200% text: „KATEGORIJA TRKE" needs 227px against a column of 202px
+ * at 1024 and 137px at 700, and wrote itself over „DUŽINA" beside it.
+ *
+ * Under 700px the table grows for its content instead, and the heading is what it
+ * grew by: at 360px „KATEGORIJA TRKE" on one line took 121,33px of a table 331px
+ * wide in a box of 313, so 18px of it stood outside and what was cut was the
+ * „Unesi rezultat" button. PDL P24 forbids exactly that: a table on a phone does
+ * not scroll sideways at the ordinary text size, and the reader has no way of
+ * knowing the button is longer than the row. Measured after: 313px of table in
+ * 313px of box, nothing cut. Held out of the query for that second reason, and
+ * measured on the box a real browser gives, which is 15px narrower than the screen
+ * minus the padding (`scrollbar-gutter: stable`, index.css).
+ *
+ * Only the heading folds under 700px, and the cells do not: `overflow-wrap:
+ * anywhere` stays inside the query above. Above it a fixed column has no other way
+ * out; here the table may grow and the box may scroll, which is what every table on
+ * the portal does above the ordinary text size. Measured with the cells breaking
+ * too: at 200% the date „14. 3. 2022." came apart into ten pieces to make the table
+ * fit, and a date in ten pieces is worse than a box that scrolls. */
+.table.table--races th {
+  white-space: normal;
 }
 
 /* And the button folds rather than pushing its column wider than the table has.
@@ -139,7 +158,20 @@
    width the longest name asks for and the page scrolls sideways on a telephone
    (WCAG 2.2 SC 1.4.10). */
 .profile__identity {
-  flex: 1 1 auto;
+  /* The basis is what decides whether the row breaks, and „auto" reads it off the
+     content: a flex line breaks on the hypothetical size of its items, before any
+     of them is allowed to shrink. The line under the name is long, so at „auto"
+     this block asked for more than a phone has and the circle went above the name
+     on **every** text size, which is not „sa leve strane" at all.
+   *
+     8rem is the block's own smallest usable width, measured: 130px at a 16px root,
+     which is the widest word in it. Written as a basis, the row breaks only when
+     the circle, the gap and those 8rem no longer fit, and everything above that is
+     shrinking rather than breaking. Measured on the box a 360px phone really gives
+     (313px, `scrollbar-gutter` taken off): beside the name at 100%, 125% and 150%,
+     and broken at 200%, where breaking is what keeps the page itself from scrolling
+     sideways (WCAG 2.2 SC 1.4.10). */
+  flex: 1 1 8rem;
   min-inline-size: 0;
 }
 

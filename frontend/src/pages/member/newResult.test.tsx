@@ -300,6 +300,62 @@ describe('a picture attached to a result', () => {
   })
 })
 
+describe('where the cursor stands after a press that takes the control away', () => {
+  it('puts it back in the box when a race is chosen with the keyboard', async () => {
+    /* The row is taken off the page in the same stroke that presses it, so what was
+       standing on it falls to the document and a screen reader reads that as leaving
+       the form: the whole page to walk again (WCAG 2.2 SC 2.4.3). Measured on
+       23.08.2026, before: Tab onto the first row, Enter, and `document.activeElement`
+       was `<body>`.
+
+       With the pointer it never arises, because `mousedown` on the list is cancelled
+       and the cursor never leaves the box; the keyboard is the reading that has to
+       say this. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const box = await screen.findByLabelText(/Naziv događaja/)
+
+    await user.type(box, 'Be')
+    await user.tab()
+
+    expect(document.activeElement, 'the keyboard cannot reach the list at all').toHaveClass(
+      'suggests__one',
+    )
+
+    await user.keyboard('{Enter}')
+
+    expect(document.activeElement, 'the cursor fell out of the form').toBe(box)
+    /* And the press did what it was for, so this is not a guard over a button that
+       does nothing. */
+    expect(box).toHaveValue('10K Belgrade')
+  })
+
+  it('puts it back in the box when the picture is taken away', async () => {
+    /* The same fault at the other button of this batch: „Obriši" stops being drawn
+       and the box beside it is remounted in the same stroke, so the cursor had
+       nowhere to stand. Measured on 23.08.2026, before: `document.activeElement`
+       was `<body>` after the press. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const picture = await screen.findByLabelText(/Slika kao dokaz/)
+
+    await user.upload(picture, new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }))
+    await user.click(
+      within(
+        htmlElement(must(picture.closest('.field'), 'the picture field')),
+      ).getByRole('button', { name: 'Obriši' }),
+    )
+
+    expect(document.activeElement, 'the cursor fell out of the form').toBe(
+      screen.getByLabelText(/Slika kao dokaz/),
+    )
+  })
+})
+
 describe('a message about a field the form has stopped asking for', () => {
   it('goes when the picture that freed it goes, and when one arrives', async () => {
     /* Both directions of Član 37, and the „Obriši" button of this batch is what

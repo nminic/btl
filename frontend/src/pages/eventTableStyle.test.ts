@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
-import { ruleFor, ruleInMedia } from '../test/stylesheet'
+import { ruleFor, ruleInMedia, rulesInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * Two arrangements that no rendered test can see, both found by an independent
@@ -90,9 +90,24 @@ describe('the table of races on an event', () => {
        1280. Both agreed to the pixel.
 
        Every count of columns the render can produce (EventDetail.tsx: four, five or
-       six) and every box from the narrowest the query covers up to a wide desk. */
+       six) and every box from the narrowest the query covers up to a wide desk.
+
+       The box is the screen less the shell's padding **and less the scrollbar**.
+       `index.css` sets `scrollbar-gutter: stable` on the root, so the room is
+       reserved whether or not the page is long enough to need it, and a round
+       measured on 23.08.2026 what leaving it out costs: with the box read as
+       `screen − 32`, a floor of 6,9rem passed this guard and put 9,39px of the
+       table outside its box at a screen of 700 on the ordinary text size, with the
+       „Unesi rezultat" button cut. Measured in Chrome on Windows: 653px of box at
+       a screen of 700, 721 at 768, 1068 at 1280, none of them `screen − 32`.
+
+       17 and not the 15 that Chrome on Windows draws, because the widest classic
+       scrollbar among the engines is what makes this hold everywhere; a browser
+       with overlay scrollbars reserves nothing and has more room than this asks
+       for, never less. */
     const read = knobs()
-    const room = (screen: number) => screen - 32
+    const GUTTER = 17
+    const room = (screen: number) => screen - 32 - GUTTER
     const tooWide = []
 
     for (const columns of [4, 5, 6]) {
@@ -147,9 +162,62 @@ describe('the table of races on an event', () => {
     expect(button.getPropertyValue('block-size'), 'the second line has nowhere to go').toBe('auto')
     expect(button.getPropertyValue('min-block-size')).toBe('2.4rem')
   })
+
+  it('folds its headings on a phone as well, where the table grows instead', () => {
+    /* Written inside the query for one day, and a round measured what that cost:
+       at 360px „KATEGORIJA TRKE" on one line took 121,33px of a table 331px wide
+       in a box of 313, so 18px stood outside and what was cut was the „Unesi
+       rezultat" button. PDL P24 forbids a table that scrolls sideways on a phone
+       at the ordinary text size. Measured after: 313 in 313.
+
+       Held as „unconditional", which is the whole of the change: `ruleFor` refuses
+       a rule that lives inside a query (test/stylesheet.ts), so putting it back
+       under `min-width: 700px` fails here. */
+    expect(ruleFor(profile, '.table.table--races th', 'Profile.css').getPropertyValue('white-space'))
+      .toBe('normal')
+  })
+
+  it('lets the cells keep their words whole under 700px', () => {
+    /* The other half of it, and the reason breaking is not the answer on a phone:
+       a fixed column above 700px cannot grow, so a word longer than it has to
+       break; under 700px the table grows and the box scrolls instead, which is
+       what every table on the portal does above the ordinary text size. Measured
+       with the cells breaking there too: at 200% the date „14. 3. 2022." came
+       apart into ten pieces to make the table fit. */
+    const breaking = (rules: { selectorText: string }[]) =>
+      rules
+        .map((rule) => rule.selectorText.replace(/\s+/g, ' '))
+        .filter((one) => one.includes('.table.table--races td'))
+
+    expect(
+      breaking(rulesInMedia(profile, '(min-width: 700px)', 'Profile.css')),
+      'the cells no longer break their words even where a column cannot grow',
+    ).toEqual(['.table.table--races th, .table.table--races td'])
+    expect(
+      breaking(unconditionalRules(profile, 'Profile.css')),
+      'the cells break their words everywhere, dates on a phone included',
+    ).toEqual([])
+  })
 })
 
 describe('the head of a competitor', () => {
+  it('keeps the face beside the name until the text is twice its size', () => {
+    /* Owner, 23.08.2026: „sa leve strane povelika okrugla slika". A flex line
+       breaks on the hypothetical size of its items and not on what they could
+       shrink to, so a basis of `auto` reads the whole line under the name and asks
+       for more than a phone has: measured on the 313px a 360px phone really gives,
+       the circle stood above the name at 100%, 125%, 150% and 200% alike.
+
+       A basis of 8rem is the block's own smallest usable width, 130px at a 16px
+       root. Measured after: beside the name at 100%, 125% and 150%, and above it at
+       200%, where breaking is what keeps the page from scrolling sideways. */
+    const identity = ruleFor(profile, '.profile__identity', 'Profile.css')
+
+    expect(identity.getPropertyValue('flex-basis'), 'the row breaks on the length of the line')
+      .toBe('8rem')
+    expect(identity.getPropertyValue('flex-shrink')).toBe('1')
+  })
+
   it('may break into two rows rather than push the page sideways', () => {
     /* The circle is sized in `rem`, so it grows with the reader's text: at 200% on
        a 360px screen it is 104px rather than 52px, and beside it the season's

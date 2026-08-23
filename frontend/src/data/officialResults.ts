@@ -35,9 +35,18 @@ export const OFFICIAL_RESULTS = /^https?:\/\/[^\s]+$/
  * Asked of Unicode rather than listed. Listed for one day, six of them written out
  * by hand, and a round found seven more that do the same thing and were not on it:
  * U+0085, U+00AD, U+200C, U+200E, U+202E, U+2066 and U+180E each let
- * `https://primer.rs␥@zlo.example/p` through, and `new URL` resolves every one of
- * them to `zlo.example`. „What is invisible" has a home of its own, and a list
- * written from memory is a list that is short.
+ * `https://primer.rs␥@zlo.example/p` through. „What is invisible" has a home of its
+ * own, and a list written from memory is a list that is short.
+ *
+ * **What these do is hide, not redirect.** `https://primer.rs@zlo.example/p` opens
+ * `zlo.example` with or without them, because `@` is what ends the user part of an
+ * address; this refuses the ones that make such an address **read** as `primer.rs`
+ * to somebody checking it. The portal draws the name of the event as the words of
+ * the link and never the address itself (`admin/ReviewQueue.tsx`), so nobody is
+ * reading it there today; a member may also simply type the attacker's address, so
+ * refusing `@` would buy nothing. Said plainly because the sentence here claimed
+ * for a while that the invisible character was what split the host, and a round
+ * measured that it is not.
  *
  * `Cc` is the control characters and `Cf` the formatting ones, which is exactly
  * the two kinds: something the terminal acts on, and something the text engine

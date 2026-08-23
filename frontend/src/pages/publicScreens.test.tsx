@@ -272,28 +272,40 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
   })
 
-  it('drops a search out of an address that still carries one', async () => {
-    /* Somebody has this bookmarked from before the search went, and nothing
-       reads `trazi` any more. Left alone it is carried into every filter
+  it('drops a search out of an address that still carries one, on arrival', async () => {
+    /* Somebody has this bookmarked from before the search went, and nothing on this
+       screen reads `trazi` any more. Left alone it is carried into every filter
        pressed after it and every link shared from there, so the address goes on
-       naming a control that is not on the screen. The table itself is drawn
-       from the season and the category, so it was right either way; the address
-       is what a reader copies. */
+       naming a control that is not on the screen. The table itself is drawn from
+       the season and the category, so it was right either way; the address is what
+       a reader copies.
+
+       On arrival and not on the way past, which is what a round measured on
+       23.08.2026: written into this screen's own `change`, pressing a category
+       dropped it and changing the season did not, because the season is drawn by a
+       shared control that writes the address for itself. Both controls are pressed
+       below, and the address is read before either of them. */
     const user = setupUser()
     const { router } = renderAt('/sr/tabela?sezona=2020&trazi=nesto')
+    const address = () => new URLSearchParams(router.state.location.search)
 
     await screen.findByRole('table')
+
+    expect(address().get('trazi'), 'the address still names a control that is gone').toBeNull()
+    expect(address().get('sezona'), 'the rest of the address went with it').toBe('2020')
 
     await user.click(
       within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')[1] ??
         screen.getByRole('button', { name: 'Sve' }),
     )
 
-    const address = new URLSearchParams(router.state.location.search)
+    expect(address().get('trazi')).toBeNull()
+    expect(address().get('kategorija')).not.toBeNull()
 
-    expect(address.get('trazi')).toBeNull()
-    expect(address.get('sezona')).toBe('2020')
-    expect(address.get('kategorija')).not.toBeNull()
+    await user.selectOptions(screen.getByLabelText('Sezona'), '2019')
+
+    expect(address().get('trazi'), 'the season wrote it back').toBeNull()
+    expect(address().get('sezona')).toBe('2019')
   })
 
   it('marks the chosen category as chosen, and not only to a screen reader', async () => {
@@ -1521,6 +1533,25 @@ describe('CompetitorProfile', () => {
     /* And it really did fill: the loop is allowed to run out, and a reading taken
        from a table still half drawn would pass while saying nothing. */
     expect(screen.queryByRole('button', { name: 'Učitaj još rezultata' })).toBeNull()
+
+    /* And the wall says it ended without writing it on the screen (owner,
+       23.08.2026: „Linija na dnu To je sve, 78 rezultata ne treba da postoji").
+       Read off the class, because jsdom applies no stylesheet and `toBeVisible`
+       cannot tell a hidden paragraph from a drawn one (ADL A18); the sentence
+       itself stays, because the focus lands on it after the last press and it is
+       what tells a reader who cannot see the wall that it ended rather than broke
+       (components/LoadMore.tsx).
+
+       The same sentence over the coins has its own guard in
+       `profile/profile.test.tsx`; this is the wall the owner named, and until
+       23.08.2026 it had none: taking `endShown` off it left the whole suite
+       green. */
+    const end = screen.getByText(/^To je sve, \d+ rezultat/)
+
+    expect([...end.classList], 'the end of the wall is written on the screen').toEqual([
+      'visually-hidden',
+    ])
+
     // Everything the ring names, less the total, which is not a length.
     const named = within(chart)
       .getAllByRole('rowheader')

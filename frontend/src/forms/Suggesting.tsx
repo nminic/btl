@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import type { Suggestion } from './types'
 import './Suggesting.css'
@@ -79,6 +79,17 @@ export function Suggesting({
      Not a copy of what is in the box: the list itself is worked out from the
      value every time, so there is nothing here that can disagree with it. */
   const [shut, setShut] = useState(true)
+  /* Where the cursor goes back to once a row is pressed. The row is taken off the
+     page in the same stroke that presses it, so whatever was standing on it falls
+     to the document, and a screen reader reads that as leaving the form
+     (WCAG 2.2 SC 2.4.3). Measured on 23.08.2026: Tab onto the first row, Enter, and
+     `document.activeElement` was `<body>`.
+   *
+     Only the keyboard ever gets there. A press with the pointer never moves the
+     focus at all, because `mousedown` is cancelled on the list below; put back on
+     the box either way, which is where the pointer had left it too. */
+  const box = useRef<HTMLInputElement | null>(null)
+  const putBack = useRef(false)
   const found = matching(value, suggestions)
   const showing = shut ? [] : found
 
@@ -98,6 +109,14 @@ export function Suggesting({
     >
       <input
         {...shared}
+        ref={(node) => {
+          box.current = node
+
+          if (node !== null && putBack.current) {
+            putBack.current = false
+            node.focus()
+          }
+        }}
         type="text"
         value={value}
         /* The browser's own list of what was typed here before would stand over
@@ -145,6 +164,7 @@ export function Suggesting({
                 type="button"
                 className="suggests__one"
                 onClick={() => {
+                  putBack.current = true
                   setShut(true)
                   onChoose(one)
                 }}

@@ -15,6 +15,9 @@ const EVENT = '/sr/kalendar/maraton-maratona-2015'
  *  reading in which the count of columns has a part for it. */
 const ONE_DAY = EVENT
 const TWO_DAYS = '/sr/kalendar/balkansko-prvenstvo-veterana-2021'
+/** Four mornings and the same length on each of them, which is the only shape in
+ *  which a race is known by more than its length (data/raceLabel.ts). */
+const FOUR_MORNINGS = '/sr/kalendar/danube-maraton-2022-03'
 
 /** The table of races, which is the one named after them. */
 function races(): HTMLElement {
@@ -121,6 +124,33 @@ describe('who is offered what on an event', () => {
     }
   })
 
+  it('offers nothing on a race that has not been run yet', async () => {
+    /* PDL P9 refuses a result dated in the future, and a race carries its own day,
+       so on the Saturday of a weekend the Saturday races can be reported and the
+       Sunday one cannot. A button that leads to a form which then refuses the date
+       is a dead end the reader was invited into.
+
+       Measured on 23.08.2026: with the day dropped from that decision, the whole
+       suite stayed green while every race of every future event carried a button.
+       This is the reading that says otherwise, and it needs a weekend to say it:
+       one morning of an event cannot tell whether the decision reads the day at
+       all. */
+    renderAt(TWO_DAYS, 'competitor', '000007', undefined, '2021-09-17')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const rows = within(races()).getAllByRole('row').slice(1)
+    const offered = rows.map((row) => within(row).queryByRole('link', { name: /^Unesi rezultat/ }))
+
+    /* Two races on the Friday and two on the Saturday after it. */
+    expect(offered.filter(Boolean)).toHaveLength(2)
+    expect(offered.filter((one) => one === null)).toHaveLength(2)
+    /* And the column is still drawn, because some race on this event can be
+       reported: what is empty is the cell, not the table. */
+    expect(within(races()).getAllByRole('columnheader').map((one) => one.textContent))
+      .toContain('Opcije')
+  })
+
   it('offers an administrator who is also a member all three', async () => {
     /* An administrator runs too, so the two sets do not exclude one another. */
     await openEvent('superadmin', '000007')
@@ -135,6 +165,38 @@ describe('who is offered what on an event', () => {
 })
 
 describe('reporting a result from the event', () => {
+  it('calls a race the same thing in the row and in the form the row opens', async () => {
+    /* A race has no name of its own, so it is known by its length, and by its day
+       as well where the event ran the same length on several mornings. What it is
+       known among decides that, and the two screens were reading two different
+       sets: the table read every race of the event and the form read only those
+       already run.
+
+       Measured on 23.08.2026 on this event, on the day of its first morning: the
+       row said „42,2 km, 14. 3. 2022." and the form said „42,2 km". One race, two
+       names, two steps of one flow, and a screen reader hears both. */
+    const user = setupUser()
+
+    renderAt(FOUR_MORNINGS, 'competitor', '000007', undefined, '2022-03-14')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const row = must(within(races()).getAllByRole('row')[1], 'the first race')
+    const link = within(row).getByRole('link', { name: /^Unesi rezultat/ })
+    const named = must(link.getAttribute('aria-label'), 'what the row calls the race').replace(
+      'Unesi rezultat: ',
+      '',
+    )
+
+    /* The day is part of it here, which is what makes this reading worth having:
+       on an event of one length a morning the two sets cannot disagree. */
+    expect(named).toMatch(/\d{1,2}\. \d{1,2}\. \d{4}\./)
+
+    await user.click(link)
+
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(named)
+  })
+
   it('carries the race into the form, so it asks neither which event nor which race', async () => {
     const user = setupUser()
     const { router } = await openEvent('competitor', '000007')

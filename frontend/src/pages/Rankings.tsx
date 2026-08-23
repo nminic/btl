@@ -1,5 +1,5 @@
 import { categoryLabel } from '../data/categories'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
 import { Resource } from '../components/Resource'
@@ -258,9 +258,44 @@ function Standing({
   )
 }
 
+/**
+ * A key this screen's address may still carry and nothing on it reads.
+ *
+ * The standing had a search box until 31.07.2026 (owner). Somebody has this page
+ * bookmarked with `?trazi=` in it from before, and left alone it rides into every
+ * filter pressed after it and every link shared from there, naming a control that
+ * is not on the screen.
+ *
+ * Dropped on arrival and not on the way past, which is the difference a round
+ * measured on 23.08.2026: it was written into this screen's own `change`, so
+ * pressing a category dropped it and changing the season did not, because the
+ * season is drawn by a shared control that writes the address for itself
+ * (`components/SeasonPicker`). Dropped once here, and every control on the screen
+ * is right afterwards without knowing anything about it.
+ *
+ * On this screen and nowhere near `useFilterParams`, because the key is stale
+ * **here** and nowhere else: the list of competitors reads `trazi` as its own
+ * search and dropping it there empties the search box while somebody is typing in
+ * it. Measured, by putting the drop in the shared hook: 31 rows where 1 was asked
+ * for (`publicScreens.test.tsx`).
+ *
+ * `replace` so the address a reader arrived at is corrected rather than added to,
+ * and the browser's own back button still leaves the screen in one press.
+ */
+const STALE = 'trazi'
+
 export function Rankings() {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
+
+  useEffect(() => {
+    if (params.has(STALE)) {
+      const cleaned = new URLSearchParams(params)
+
+      cleaned.delete(STALE)
+      setParams(cleaned, { replace: true })
+    }
+  }, [params, setParams])
   /* Only what the standing shows. Waiting on the events as well meant the whole
    * table turned into an error message if that one file failed, over data no row
    * in it has ever read. */
@@ -268,13 +303,6 @@ export function Rankings() {
 
   function change(next: Record<string, string>) {
     const merged = new URLSearchParams(params)
-
-    /* Dropped on the way past, rather than carried for ever. Somebody has a
-       standing bookmarked with `?trazi=` in it from before the search went
-       (owner, 31.07.2026), and nothing reads it: the table draws correctly and
-       the address goes on naming a control that is not on the screen, into
-       every filter pressed after it and every link shared from there. */
-    merged.delete('trazi')
 
     for (const [key, value] of Object.entries(next)) {
       if (value === '') {
