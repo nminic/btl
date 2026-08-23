@@ -21,14 +21,19 @@ function renderWidget(ui: React.ReactNode) {
 }
 
 describe('CalendarExtract', () => {
-  const event = (id: string, name: string, date: string): BtlEvent => ({
+  const event = (
+    id: string,
+    name: string,
+    date: string,
+    kind: BtlEvent['kind'] = 'race',
+  ): BtlEvent => ({
     id,
     slug: id,
     name,
     date,
     city: 'Beograd',
     country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
+    kind, description: '', link: '', copiedFrom: '', featured: 'no',
   })
 
   const races: Race[] = [
@@ -62,6 +67,29 @@ describe('CalendarExtract', () => {
     renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" />)
 
     expect(screen.getByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
+  })
+
+  it('offers races and neither gatherings nor trainings', () => {
+    /* Owner, 23.08.2026: „na priprema pozor sad widgetu ne treba da postoje ni
+       Skupovi ni treninzi. Samo tip događaja Trka." A gathering and a training are
+       days of the league's own life rather than something anybody enters a result
+       for, and this widget is the front page's answer to „what do I run next". They
+       stay in the calendar, where they are found by looking. */
+    renderWidget(
+      <CalendarExtract
+        events={[
+          event('t', 'Trka koja se trči', '2027-04-03'),
+          event('s', 'Sreda koja se ne trči', '2027-04-04', 'gathering'),
+          event('v', 'Trening koji se ne trči', '2027-04-05', 'training'),
+        ]}
+        races={[]}
+        today="2027-01-01"
+      />,
+    )
+
+    expect(screen.getByText('Trka koja se trči')).toBeVisible()
+    expect(screen.queryByText('Sreda koja se ne trči'), 'a gathering is offered').toBeNull()
+    expect(screen.queryByText('Trening koji se ne trči'), 'a training is offered').toBeNull()
   })
 
   it('leads to the calendar on the month today is in', () => {
