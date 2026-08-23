@@ -1,4 +1,4 @@
-import { allFinished, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
+import { allFinished, isWrong, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
 import { fieldDate } from '../../forms/dateField'
 import type { Race } from '../../data/types'
 
@@ -122,6 +122,11 @@ describe('the races of an event while they are being entered', () => {
     /* And what is written is the name without the spaces around it, so „ Trka " and
        „Trka" are one race and not two. */
     expect(storedRow(row({ name: '  Trka  ' }), 'evt').name).toBe('Trka')
+    /* And the cell says the same thing the press says. Asked of the other three and
+       not of this one, the two answers drifted apart: the press refused a name of
+       three spaces and the cell that carried it reported itself fine. A round
+       measured that, and this line is the reason it cannot come back. */
+    expect(isWrong(row({ name: '   ' }), 'name')).toBe(true)
   })
 
   it('writes an empty climb and fall as nought', () => {

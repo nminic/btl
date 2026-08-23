@@ -88,7 +88,13 @@ function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
  */
 export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'name'): boolean {
   if (field === 'name') {
-    return row.name === ''
+    /* Cut the same way the press cuts it. Asked without `trim`, a name of three
+       spaces was refused by the press and the cell that carried it said
+       `aria-invalid="false"`: the reader was told the row is wrong and every control
+       in it said it was fine, which in a table of twelve rows leaves nowhere to look
+       (WCAG 2.2 SC 3.3.1). Measured 23.08.2026. Of the four fields this knows, the
+       name was the only one whose two answers disagreed. */
+    return row.name.trim() === ''
   }
 
   if (field === 'date') {

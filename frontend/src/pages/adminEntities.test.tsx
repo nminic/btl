@@ -281,26 +281,39 @@ describe('the races of an event', () => {
        `styles/tableWidths.test.ts`. */
     expect(cells.length, 'the row and the heading are not the same width').toBe(7)
 
+    /* Every one of the seven, not five of them: two were left out as „has no control
+       of its own", and a round measured what that cost — swapping the category and
+       the „Obriši" button leaves the heading „Kategorija … Zapis" over cells reading
+       „Obriši … Maraton", and all 2154 tests stay green. The two without controls are
+       asked by what they hold instead. */
     const named = [
       /^Trka,/,
-      undefined,
       /^Dan trke,/,
       /^Dužina \(km\),/,
       /^Uspon \(m\),/,
       /^Spust \(m\),/,
-      undefined,
     ] as const
+    const at = [0, 2, 3, 4, 5] as const
 
-    for (const [at, asked] of named.entries()) {
-      if (asked === undefined) {
-        continue
-      }
+    for (const [which, asked] of named.entries()) {
+      const where = at[which] ?? 0
 
       expect(
-        within(must(cells[at], `cell ${String(at + 1)}`)).queryByLabelText(asked),
-        `cell ${String(at + 1)} of a row does not answer to its own heading`,
+        within(must(cells[where], `cell ${String(where + 1)}`)).queryByLabelText(asked),
+        `cell ${String(where + 1)} of a row does not answer to its own heading`,
       ).not.toBeNull()
     }
+
+    /* The category is read off the length and has no control; the last cell is the
+       one button of the row. */
+    expect(
+      must(cells[1], 'the category').textContent,
+      'the second cell is not the category',
+    ).toBe('Maraton')
+    expect(
+      within(must(cells[6], 'the record')).queryByRole('button', { name: /^Obriši/ }),
+      'the last cell is not the one that removes the row',
+    ).not.toBeNull()
   })
 
   it('names every control in a row by the row it is in', async () => {
