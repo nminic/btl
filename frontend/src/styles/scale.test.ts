@@ -183,19 +183,6 @@ const IN_PIXELS = new Map([
        window width and the arithmetic about them at another. */
     'gives the table of races equal columns, and has to fire where `table__hide-phone` hands two of them back',
   ],
-  [
-    'components/Markdown.css 699.98',
-    /* In pixels for the same reason as the four above, though what it costs is
-       not a column but the shape of one. `overflow-wrap: anywhere` changes how a
-       table decides its columns, not only how it behaves when it runs out of
-       room: measured on the privacy policy at 360, the four columns went from
-       106/109/121/80 to 119/67/78/64. On a 1280 desk at 200% text an `em` query
-       here would fire and redistribute the columns of a table that has room to
-       spare, which is the same reader and the same complaint as WCAG 2.2 SC
-       1.4.4. What decides here is how much room the screen has for columns, not
-       how large the letters are. */
-    'breaks the words of a written table, which the columns of a wide table do not need',
-  ],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {

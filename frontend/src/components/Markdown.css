@@ -199,34 +199,3 @@
 .table.markdown__table tbody tr:hover {
   background: transparent;
 }
-
-/* On a telephone a written table breaks its words rather than pushing itself out
- * of the box it stands in.
- *
- * A written table is prose in columns, so its width is the sum of the longest
- * word in each column and nothing smaller. Measured on 23.08.2026 on a real 360px
- * phone, where the content column is 328px: four of the seven tables on the
- * privacy policy stood wider than that, by 26, 88, 10 and 35 pixels, and the
- * widest asked for 416. The box scrolled sideways and the page did not, so
- * nothing on the screen said that the last column was there at all. PDL P24
- * forbids exactly that, and it names the exceptions; a written table is not one.
- *
- * The price is height and a broken word: the widest table goes from 970 to 1268
- * pixels tall, and a word longer than its column is cut where it runs out rather
- * than where a hyphen would go. The trade is deliberate. A column the reader
- * cannot see is content lost; a word broken in a table of prose is content read.
- *
- * Only under 700px, where the columns are actually too narrow. Above it the same
- * tables fit and the rule would break words for no reason.
- *
- * In pixels and not in `em`, which is the same choice `styles/table.css` makes one
- * breakpoint over and for the same reason: what decides here is how much room the
- * screen has for columns, not how large the reader's letters are. An `em` query
- * would fire on a wide desk at 200% text and break words in a table with room to
- * spare. */
-@media (max-width: 699.98px) {
-  .table.markdown__table thead th,
-  .table.markdown__table tbody td {
-    overflow-wrap: anywhere;
-  }
-}

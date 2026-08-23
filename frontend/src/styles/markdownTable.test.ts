@@ -291,32 +291,3 @@ describe('the row of a written table', () => {
     expect(hover.filter((one) => loses(one, sharedHover()))).toEqual([])
   })
 })
-
-describe('a written table on a telephone', () => {
-  it('breaks its words rather than pushing itself out of its box', () => {
-    /* A written table is prose in columns, so its width is the sum of the longest
-       word in each column and nothing smaller. Measured on 23.08.2026 on a 360px
-       phone, where the content column is 328px: four of the seven tables on the
-       privacy policy stood wider, by 26, 88, 10 and 35 pixels, and the widest asked
-       for 416. The box scrolled sideways and the page did not, so nothing said the
-       last column was there at all. PDL P24 forbids that and names its exceptions;
-       a written table is not one. Measured after: no box on the privacy policy, the
-       rulebook or the terms scrolls at all.
-
-       jsdom applies no stylesheet and lays nothing out (ADL A18), so what is asked
-       here is that the rule is written, that it declares what it is meant to
-       declare, and that it is under the query where the columns are actually too
-       narrow. Above 700px the same tables fit, and the rule would break words in a
-       table with room to spare. */
-    const sheet = read(join('components', 'Markdown.css'))
-    const phone = sheet.slice(sheet.indexOf('@media (max-width: 699.98px)'))
-
-    expect(sheet, 'the phone query is gone, so the rule draws everywhere or nowhere')
-      .toContain('@media (max-width: 699.98px)')
-    expect(phone, 'the cells no longer break their words').toContain('overflow-wrap: anywhere')
-    expect(
-      phone.slice(0, phone.indexOf('overflow-wrap: anywhere')),
-      'the rule names something other than the cells of a written table',
-    ).toContain('.table.markdown__table')
-  })
-})

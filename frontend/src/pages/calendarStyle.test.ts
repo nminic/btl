@@ -20,9 +20,16 @@ describe('a day of the month', () => {
 
        A grid item refuses to shrink under its own `min-content` unless it is told
        to, and under 780px the month is one column, so the longest event name of the
-       month set the width of every day: 407,94px inside a box of 328. Measured
-       after: nothing moves at 100, 125, 150 or 200 per cent, and no content leaves
-       its day either, because the chips inside a day wrap on their own.
+       month set the width of every day: 407,94px inside a box of 296px, which is
+       `360 - 2 x 32` at 200% text, where the padding grows with the letters. (328
+       is that same box at the default size; the two are not interchangeable, ADL
+       A26.) Measured after: nothing moves at 100, 125, 150 or 200 per cent.
+
+       Not claimed: that no content leaves its day. It does. At 780px a day with
+       five length dots is 74,47px and the dots are 59,98px, overflowing by 11,52px
+       onto the frame of the next day; five days in the archive have that many.
+       Written down and waiting, because without this line the page itself scrolls
+       179px, which is worse for the same reader.
 
        Held on `.day` and not on the grid, because the grid is what asks and the item
        is what refuses. */
