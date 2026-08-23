@@ -139,6 +139,23 @@ describe('who is offered what on an event', () => {
         `the table shown to ${who} counts itself wrong`,
       ).toBe(String(headings.length))
 
+      /* And how many the fullest reading of this same event would have, which is what
+         a column's share of the box is worked out from: „tabela ostaje kraća za tu
+         kolonu, pa se prethodne završavaju gde i kad ih ima više" (owner,
+         23.08.2026). The fullest reading is this one plus the way in, where the way
+         in is not drawn.
+
+         Asked because a round measured what its absence costs: with the part that
+         counts the second morning left out of that sum, all 2157 tests stayed green
+         while the first column of a weekend event moved 35,59px between a visitor and
+         a member, which is exactly the fault the sum was added to remove. */
+      const wayIn = headings.some((one) => one.textContent === 'Opcije')
+
+      expect(
+        table.style.getPropertyValue('--race-full'),
+        `the table shown to ${who} does not know how wide it can get`,
+      ).toBe(String(headings.length + (wayIn ? 0 : 1)))
+
       cleanup()
     }
   })
