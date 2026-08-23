@@ -10,6 +10,11 @@ import { setupUser } from '../../test/user'
 
 /** An event with races on it, by the address the calendar links to. */
 const EVENT = '/sr/kalendar/maraton-maratona-2015'
+/** The same event, named for what it is where that matters, and one that runs over
+ *  two mornings. The second is what the day column is drawn for, and the only
+ *  reading in which the count of columns has a part for it. */
+const ONE_DAY = EVENT
+const TWO_DAYS = '/sr/kalendar/balkansko-prvenstvo-veterana-2021'
 
 /** The table of races, which is the one named after them. */
 function races(): HTMLElement {
@@ -20,8 +25,9 @@ async function openEvent(
   role: Parameters<typeof renderAt>[1],
   member: string | null = null,
   moderator?: Parameters<typeof renderAt>[3],
+  where: string = EVENT,
 ) {
-  const rendered = renderAt(EVENT, role, member, moderator)
+  const rendered = renderAt(where, role, member, moderator)
   await screen.findByRole('heading', { level: 1 })
 
   return rendered
@@ -91,11 +97,17 @@ describe('who is offered what on an event', () => {
 
        Both readings, because the count is what changes between them: five for
        somebody who may enter a result, four for a visitor. */
-    for (const [who, member] of [
-      ['a member', '000007'],
-      ['a visitor', null],
+    /* Three readings and not two, because the count has three parts and one of
+       them was uncovered until 23.08.2026: dropping `overDays` from the sum left
+       all 2073 tests green while a visitor to an event of two mornings got a table
+       213px short of where the owner asked it to end. An event that runs over one
+       morning cannot say anything about the part that counts the second. */
+    for (const [who, where, member] of [
+      ['a member', ONE_DAY, '000007'],
+      ['a visitor', ONE_DAY, null],
+      ['a visitor of a weekend', TWO_DAYS, null],
     ] as const) {
-      await openEvent(who === 'a member' ? 'competitor' : 'visitor', member)
+      await openEvent(who === 'a member' ? 'competitor' : 'visitor', member, undefined, where)
 
       const table = races()
       const headings = within(table).getAllByRole('columnheader')

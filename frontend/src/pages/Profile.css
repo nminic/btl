@@ -32,7 +32,27 @@
      and the rule looked as though it worked. */
   .table.table--races {
     table-layout: fixed;
-    inline-size: min(100%, calc(var(--race-columns) * 20%));
+    /* Equal columns, and never narrower than the words in them. The ceiling alone
+       was measured wrong on 23.08.2026: a fixed column cannot grow, so at 200% text
+       „Ultramaraton" wrote itself 14px over „324,00" at 1280 and 83px over it at
+       700, and the button in „Opcije" stood 70px outside its own cell. The floor
+       is in `rem`, so it grows with the reader's text exactly as the content does;
+       when it wins, the table is wider than its box and the box scrolls, which is
+       what PDL P24 asks for and what every other table on the portal already does.
+
+       At the ordinary text size the ceiling wins everywhere the table is drawn, so
+       nothing moves: five columns of 7,5rem are 600px against 1068px of room. */
+    inline-size: max(
+      min(100%, calc(var(--race-columns) * 20%)),
+      calc(var(--race-columns) * 7.5rem)
+    );
+  }
+
+  /* And a word longer than its column breaks rather than leaving it. A fixed
+     layout has no other way out: the column will not grow for it. */
+  .table.table--races th,
+  .table.table--races td {
+    overflow-wrap: anywhere;
   }
 
   /* And the headings wrap rather than run out of their cells. A fixed layout with
@@ -62,6 +82,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-16);
+  /* And it may break into two rows. The circle is sized in `rem`, so it grows with
+     the reader's text: at 200% on a 360px screen it is 104px rather than 52px, and
+     beside it the season's `select` has an intrinsic width of its own that
+     `min-inline-size: 0` cannot talk down. Measured 23.08.2026: the page itself
+     scrolled sideways by 44px, which is the one thing the portal never does (WCAG
+     2.2 SC 1.4.10). Wrapped, the name and the line drop under the circle and the
+     row is as wide as the screen again. */
+  flex-wrap: wrap;
 }
 
 /* Everything that is not the face takes the rest of the row. `min-inline-size: 0`

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
@@ -206,6 +206,36 @@ describe('a race chosen out of that list', () => {
     expect(within(field).getByRole('button', { name: 'Otvori kalendar' })).toBeDisabled()
   })
 
+  it('never takes the cursor out of the box it is typed in', async () => {
+    /* Two things hang on the pointer not moving the focus, and both were measured
+       on 23.08.2026. A press anywhere in the list that is not itself a button, the
+       scrollbar it used to have above all, was a blur first and a press second, so
+       the list shut before the press landed. And a press on a row moves the focus
+       onto a row that the same stroke removes from the page, so it falls to the
+       document and a screen reader reads that as leaving the form.
+
+       Held as the refusal itself, because that is the whole mechanism: a `mousedown`
+       inside the list is cancelled, so the focus never leaves the box. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'beogradski maraton')
+
+    const list = screen.getByRole('list', { name: '' })
+
+    expect(
+      fireEvent.mouseDown(list),
+      'a press inside the list is allowed to move the focus',
+    ).toBe(false)
+
+    /* And the row still answers a press, which is the half a cancelled event could
+       have taken with it. */
+    await user.click(first(within(list).getAllByRole('button')))
+
+    expect(eventName()).toHaveFocus()
+    expect(offered()).toEqual([])
+  })
+
   it('hands all four back, empty, the moment the name is edited', async () => {
     /* Owner: „Naziv događaja mogu da editujem, ali onda puca konekcija sa ostalim
        poljima". Emptied and not merely unlocked, which is what he chose when
@@ -267,6 +297,64 @@ describe('a picture attached to a result', () => {
 
     expect(inputElement(after).files).toHaveLength(0)
     expect(within(photoField()).queryByRole('button', { name: 'Obriši' })).toBeNull()
+  })
+})
+
+describe('a message about a field the form has stopped asking for', () => {
+  it('goes when the picture that freed it goes, and when one arrives', async () => {
+    /* Both directions of Član 37, and the „Obriši" button of this batch is what
+       makes the first of them a thing a member can do in one press.
+
+       Attach a picture and the comment becomes obligatory while the link stops
+       being; take it back and both turn round again. Until 23.08.2026 only the
+       field that was touched had its message cleared, so „Ovo polje je obavezno."
+       stood under a field the form was no longer asking about, and the summary над
+       it said the same (WCAG 2.2 SC 3.3.1). */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    /* The link is obligatory as the form is written, so it is refused. */
+    const underLink = () =>
+      within(htmlElement(must(screen.getByLabelText(/^Link/).closest('.field'), 'the link field')))
+
+    expect(underLink().getByText('Ovo polje je obavezno.')).toBeVisible()
+
+    await user.upload(
+      screen.getByLabelText(/Slika kao dokaz/),
+      new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }),
+    )
+
+    expect(
+      underLink().queryByText('Ovo polje je obavezno.'),
+      'the link is still refused after a picture freed it',
+    ).toBeNull()
+
+    /* And the other way: the comment is what the picture makes obligatory. */
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    const underComment = () =>
+      within(
+        htmlElement(must(screen.getByLabelText(/Komentar/).closest('.field'), 'the comment field')),
+      )
+
+    expect(underComment().getByText('Ovo polje je obavezno.')).toBeVisible()
+
+    await user.click(
+      within(
+        htmlElement(
+          must(screen.getByLabelText(/Slika kao dokaz/).closest('.field'), 'the picture field'),
+        ),
+      ).getByRole('button', { name: 'Obriši' }),
+    )
+
+    expect(
+      underComment().queryByText('Ovo polje je obavezno.'),
+      'the comment is still refused after the picture went',
+    ).toBeNull()
   })
 })
 

@@ -31,8 +31,12 @@
   margin: var(--space-4) 0 0;
   padding: 0;
   list-style: none;
-  max-block-size: 17rem;
-  overflow-y: auto;
+  /* No height of its own and nothing to scroll. It had both while it stood over
+     the form, and with the list back in the flow they only made trouble: eight rows
+     are 326px against the 270px that box allowed, so the last row and a half were
+     reachable only by scrolling, and pressing that scrollbar moved the focus out of
+     the box and shut the list in the same instant. Measured 23.08.2026. Eight rows
+     is what the list is capped at, so its height is bounded by the cap. */
   background: var(--surface);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-8);

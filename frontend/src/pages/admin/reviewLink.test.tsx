@@ -64,6 +64,17 @@ describe('the shape an address of official results must have', () => {
       /* And the one an anchored pattern is for: read to the first line break this
          is `primer.rs`, and a browser resolves the whole of it to `zlo.example`. */
       'https://primer.rs\n@zlo.example/p',
+      /* The same trick with something that is not a blank at all. `\s` does not
+         cover these, and every one of them splits a host exactly as a line break
+         does: measured in Chrome, each resolves to `zlo.example`. Built rather than
+         written out, because a control character in a source file is a character
+         nobody reading it can see. */
+      `https://primer.rs${String.fromCharCode(0)}@zlo.example/p`,
+      `https://primer.rs${String.fromCharCode(1)}@zlo.example/p`,
+      `https://primer.rs${String.fromCharCode(31)}@zlo.example/p`,
+      `https://primer.rs${String.fromCharCode(127)}@zlo.example/p`,
+      'https://primer.rs\u200b@zlo.example/p',
+      'https://primer.rs\u2060@zlo.example/p',
     ]) {
       expect(officialResultsLink(said), `${said} was accepted as an address`).toBeUndefined()
     }

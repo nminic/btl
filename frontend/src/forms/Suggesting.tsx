@@ -12,9 +12,10 @@ const FROM_LETTERS = 2
  *
  * The list is a list of buttons and every one of them is a stop on the way
  * through the form with a keyboard, so an unbounded list is a form somebody has
- * to tab through a hundred times to reach the next field. Eight is what fits
- * under the box without covering the field below it, and the list is the newest
- * eight, so typing a third letter is how the older ones are reached.
+ * to tab through a hundred times to reach the next field. Eight of them stand in
+ * about twenty rem, which is what the fields under the box move down by while it
+ * is open; the list is the newest eight, so typing a third letter is how the older
+ * ones are reached.
  */
 const AT_MOST = 8
 
@@ -121,7 +122,22 @@ export function Suggesting({
       </p>
 
       {showing.length > 0 && (
-        <ul className="suggests__list">
+        <ul
+          className="suggests__list"
+          /* The pointer does not take the focus out of the box. Without this, any
+             press inside the list is a blur first and a press second, and the list
+             is gone before the press lands: measured on the scrollbar it used to
+             have, and true of any part of it that is not itself focusable.
+           *
+             It is also what keeps the cursor where a reader left it. The row is
+             taken off the page in the same stroke that presses it, so a focus that
+             had moved onto the row would fall to the document and a screen reader
+             would read that as leaving the form; because it never moves, there is
+             nothing to put back. The press still reaches the button. */
+          onMouseDown={(event) => {
+            event.preventDefault()
+          }}
+        >
           {showing.map((one) => (
             <li key={one.id}>
               <button

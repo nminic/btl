@@ -2448,7 +2448,12 @@ describe('what the written pages say the fee buys', () => {
        left as it was, and nothing here read it, because this guard knew one form.
        A member who did what Član 37 told them, and put the address into the
        comment, met „Ovo polje je obavezno." */
-    expect(article).toMatch(/link uključujući/)
+    expect(article).toMatch(/Vi unosite vreme, link ka zvaničnim rezultatima/)
+    /* And it names what that form does **not** ask for, which the sentence before
+       this one got wrong on the first try: „sve ostalo unosite isto kao sa profila"
+       promised the name of the event and the date as well, and the form on the
+       event asks for neither. */
+    expect(article).toMatch(/naziv, datum, dužinu, uspon i spust portal uzima iz nje/)
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
     )

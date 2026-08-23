@@ -712,17 +712,38 @@ export function FormRenderer({
   const without = (names: string[]) => (current: Record<string, FieldError>) =>
     Object.fromEntries(Object.entries(current).filter(([name]) => !names.includes(name)))
 
+  /**
+   * The fields whose obligation hangs on the answer to this one.
+   *
+   * `optionalWhenFilled` and `requiredWhenFilled` name a field, and answering that
+   * field changes what is asked of another (ADL A21). Read here so that touching
+   * one clears the message on the other: attach a picture and the comment becomes
+   * obligatory while the link stops being; take the picture back and both turn
+   * round again. Until 23.08.2026 only the field that was touched had its message
+   * cleared, so „Ovo polje je obavezno." stood under a field the form had just
+   * stopped asking for, and the „Obriši" button beside the picture made that a
+   * thing a member can do in one press.
+   */
+  const hangingOn = (name: string): string[] =>
+    form.fields
+      .filter(
+        (one) => one.optionalWhenFilled?.field === name || one.requiredWhenFilled?.field === name,
+      )
+      .map((one) => one.name)
+
   const handleChange = useCallback(
     (field: FieldDef, next: string | boolean, also?: Record<string, string>) => {
       /* `also` is what a place field writes beside itself: the country the town
          came with. One field, two values, and the second has no field of its own
          to be typed into (src/forms/types.ts). */
       setValues((current) => ({ ...current, [field.name]: next, ...also }))
-      // The message goes away as soon as the field is touched. Leaving it up
-      // tells a screen reader the field is still wrong after it was fixed.
-      setErrors(({ [field.name]: _fixed, ...rest }) => rest)
+      // The message goes away as soon as the field is touched, and so does the
+      // message on whatever field this one decides the obligation of. Leaving
+      // either up tells a screen reader a field is still wrong after it was fixed.
+      setErrors(without([field.name, ...hangingOn(field.name)]))
     },
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form],
   )
 
   /**

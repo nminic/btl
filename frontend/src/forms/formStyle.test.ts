@@ -38,6 +38,13 @@ describe('the box a list is typed into', () => {
     const list = ruleFor(suggests, '.suggests__list', 'Suggesting.css')
 
     expect(list.getPropertyValue('position')).toBe('')
+    /* And no height of its own, so it has nothing to scroll. It had both while it
+       stood over the form, and with the list back in the flow they only made
+       trouble: eight rows are 326px against the 270px that box allowed, so the last
+       row and a half were reachable only by scrolling, and pressing that scrollbar
+       shut the list in the same instant. */
+    expect(list.getPropertyValue('max-block-size'), 'the list has a height of its own').toBe('')
+    expect(list.getPropertyValue('overflow-y'), 'the list has something to scroll').toBe('')
   })
 })
 

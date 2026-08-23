@@ -14,13 +14,34 @@
  * the person filling it in and says so in `forms/validate.ts` („nothing here is a
  * security measure"), and a store is a place things arrive in by other roads.
  *
- * Anchored at both ends, and no blank of any kind inside. Unanchored at the end,
- * `.` does not cross a line break, so `https://primer.rs\n@zlo.example/p` passed
- * as an address of `primer.rs` while a browser resolves it to `zlo.example`:
- * whoever read the stored value to the first break saw one host and the moderator
- * went to another. Measured 23.08.2026.
+ * Anchored at both ends, and nothing invisible inside. Unanchored at the end, `.`
+ * does not cross a line break, so `https://primer.rs\n@zlo.example/p` passed as an
+ * address of `primer.rs` while a browser resolves it to `zlo.example`: whoever read
+ * the stored value to the first break saw one host and the moderator went to
+ * another.
+ *
+ * `\s` alone was measured short of what this comment promised: it does not cover
+ * the control characters below U+0020 that are not blanks, nor the zero width space
+ * and the word joiner, and every one of those splits a host the same way. Those are
+ * refused beside this pattern rather than inside it (`INVISIBLE` below).
+ * Measured 23.08.2026, both ways.
  */
 export const OFFICIAL_RESULTS = /^https?:\/\/[^\s]+$/
+
+/**
+ * The characters that are neither a blank nor anything a reader can see, and that
+ * split a host exactly the way a blank does.
+ *
+ * Beside the pattern rather than inside it, for two reasons. The pattern is copied
+ * into the two form definitions as a string and a definition is data, so it has to
+ * stay something a JSON file can carry and a browser's own `pattern` attribute
+ * could read. And a control character typed into a source file is a character
+ * nobody reading the file can see, which is the very fault this refuses, so the
+ * range is built rather than written out.
+ */
+const INVISIBLE = new RegExp(
+  `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}\u200b\u2060]`,
+)
 
 /**
  * What was stored, where the portal is willing to hand it to a browser, and
@@ -31,5 +52,5 @@ export const OFFICIAL_RESULTS = /^https?:\/\/[^\s]+$/
  * reader ends up somewhere neither of them chose.
  */
 export function officialResultsLink(said: string): string | undefined {
-  return OFFICIAL_RESULTS.test(said) ? said : undefined
+  return OFFICIAL_RESULTS.test(said) && !INVISIBLE.test(said) ? said : undefined
 }
