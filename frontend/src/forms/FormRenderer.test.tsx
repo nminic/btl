@@ -1136,3 +1136,165 @@ describe('the errors a form is holding while somebody types', () => {
     expect(screen.queryByRole('alert'), 'the summary went with it').not.toBeNull()
   })
 })
+
+/* A form on which nothing is obligatory as it is written, and one field becomes
+ * obligatory once another is answered. Nothing on the portal is built this way
+ * today, which is exactly why it is built here: the two faults below were found
+ * by a review of the fourth reading on 22.08.2026 and recorded rather than fixed,
+ * because the content could not reach them. */
+const askedByAnswer: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'slika', type: 'photo', labelKey: 'proba.slika' },
+    {
+      name: 'rec',
+      type: 'text',
+      labelKey: 'proba.rec',
+      requiredWhenFilled: { field: 'slika' },
+    },
+  ],
+}
+
+/* And the other way round: obligatory as written, and let go once a picture
+ * arrives, which is what Član 37 says about the link to the official results. */
+const freedByPicture: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    {
+      name: 'veza',
+      type: 'text',
+      labelKey: 'proba.veza',
+      required: true,
+      /* A shape as well as a demand, because the two are what the filter has to
+         tell apart: one goes with the demand and the other does not. */
+      pattern: '^https?://.+',
+      optionalWhenFilled: { field: 'slika' },
+    },
+    { name: 'slika', type: 'photo', labelKey: 'proba.slika' },
+  ],
+}
+
+/** A picture chosen in the box of that name. */
+async function attach(user: ReturnType<typeof setupUser>) {
+  await user.upload(
+    screen.getByLabelText(/proba.slika/),
+    new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }),
+  )
+}
+
+describe('the legend that explains the star', () => {
+  it('is drawn for a star that only another answer brings', async () => {
+    /* Recorded 22.08.2026: the legend was read off the written definition and the
+       star off `asAsked`, so a form whose only star arrives from another answer
+       drew the mark and never the sentence that says what it means. Unreachable on
+       the portal, because `link` is written `required: true` and the sentence
+       therefore always stood. */
+    const user = setupUser()
+
+    renderWithI18n(<FormRenderer form={askedByAnswer} onSubmit={() => undefined} />)
+
+    expect(screen.queryByText(sr.form.requiredNote)).toBeNull()
+
+    await attach(user)
+
+    expect(screen.getByLabelText(/proba.rec/)).toHaveAttribute('aria-required', 'true')
+    expect(screen.getByText(sr.form.requiredNote)).toBeVisible()
+  })
+})
+
+describe('an error that says a field is obligatory', () => {
+  it('goes when the form stops asking for that field', async () => {
+    /* Recorded 22.08.2026: a member sends the form without the link, is told the
+       link is obligatory, and then attaches a picture, which by Član 37 lets the
+       link go. The star and `aria-required` went; the red line under the box and
+       the entry in the summary stayed, so the screen said in one breath that the
+       field need not be answered and that it is wrong to have left it. */
+    const user = setupUser()
+
+    renderWithI18n(<FormRenderer form={freedByPicture} onSubmit={() => undefined} />)
+
+    await user.click(screen.getByRole('button', { name: sr.form.submit }))
+
+    const summary = screen.getByRole('alert')
+
+    expect(within(summary).getByRole('link')).toBeVisible()
+    expect(screen.getByText(sr.form.errors.required)).toBeVisible()
+
+    await attach(user)
+
+    expect(screen.getByLabelText(/proba.veza/), 'the field is still said to be obligatory')
+      .not.toHaveAttribute('aria-required')
+    expect(screen.queryByText(sr.form.errors.required), 'the message stayed').toBeNull()
+    expect(screen.queryByRole('alert'), 'the summary stayed').toBeNull()
+  })
+
+  it('stays where the field is still obligatory', async () => {
+    /* The other direction, and the half that would be lost by simply emptying the
+       errors: a field nothing has freed is still refused, and still says so. */
+    const user = setupUser()
+
+    renderWithI18n(<FormRenderer form={freedByPicture} onSubmit={() => undefined} />)
+
+    await user.click(screen.getByRole('button', { name: sr.form.submit }))
+    await user.type(screen.getByLabelText(/proba.veza/), 'a')
+    await user.clear(screen.getByLabelText(/proba.veza/))
+    await user.click(screen.getByRole('button', { name: sr.form.submit }))
+
+    expect(screen.getByText(sr.form.errors.required)).toBeVisible()
+  })
+})
+
+describe('an error that is not about a field being obligatory', () => {
+  it('stays after the form stops asking for that field', () => {
+    /* The half the comment over `shown` promises and nothing measured until
+       23.08.2026: „a badly written address is still a badly written address". Read
+       through a filter that dropped every error of a field the form no longer
+       asks for, a member who typed `trka.rs/rezultati` and then attached a picture
+       would press Pošalji and see nothing happen at all: the form refuses, because
+       the shape is still wrong, and says so nowhere. */
+    const user = setupUser()
+    const sent: FormValues[] = []
+
+    renderWithI18n(<FormRenderer form={freedByPicture} onSubmit={(one) => sent.push(one)} />)
+
+    return (async () => {
+      await user.type(screen.getByLabelText(/proba.veza/), 'trka.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: sr.form.submit }))
+
+      expect(screen.getByText(sr.form.errors.pattern)).toBeVisible()
+
+      await attach(user)
+
+      /* No longer obligatory: the star is gone. Still wrong: the message is not. */
+      expect(screen.getByLabelText(/proba.veza/)).not.toHaveAttribute('aria-required')
+      expect(screen.getByText(sr.form.errors.pattern), 'the shape stopped being wrong')
+        .toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: sr.form.submit }))
+
+      expect(sent, 'the form was sent with an address it refuses').toEqual([])
+    })()
+  })
+})
+
+describe('the legend, once the last star goes', () => {
+  it('goes with it', async () => {
+    /* The other direction of the same reading, and the one a form of nothing but
+       optional fields exists to prevent: a sentence explaining a mark that is not
+       drawn anywhere. `freedByPicture` has exactly one obligatory field and a
+       picture lets it go, so attaching one takes the last star off the form. */
+    const user = setupUser()
+
+    renderWithI18n(<FormRenderer form={freedByPicture} onSubmit={() => undefined} />)
+
+    expect(screen.getByText(sr.form.requiredNote)).toBeVisible()
+
+    await attach(user)
+
+    expect(screen.queryByText(sr.form.requiredNote)).toBeNull()
+  })
+})

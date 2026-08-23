@@ -633,7 +633,41 @@ export function FormRenderer({
   const drawn = Object.entries(filled).flatMap(([name, value]) =>
     visible.filter((field) => field.name === name).map((field) => ({ field, value })),
   )
-  const broken = visible.filter((field) => errors[field.name] !== undefined)
+  /**
+   * The errors this form still stands behind.
+   *
+   * An error that says a field is obligatory is dropped the moment the form stops
+   * asking for that field. A member who sends the form without a link is told the
+   * link is obligatory, and then attaches a picture, which by Član 37 makes the
+   * link optional: the star beside the name goes, `aria-required` goes, and until
+   * 23.08.2026 the red line under the box and the entry in the summary above it
+   * stayed. The screen said in one breath that the field need not be answered and
+   * that it is wrong to have left it.
+   *
+   * Only that one kind of error, and only while the field is not asked for. A
+   * badly written address is still a badly written address whether or not the form
+   * insists on having one, so a pattern error stays.
+   *
+   * Derived rather than swept out of the state, because there is nothing to sweep:
+   * the state is what the last submission found, and what is drawn is what is true
+   * now. That has one visible consequence and it is worth saying rather than
+   * discovering: a field that becomes obligatory again is refused again **at
+   * once**, without another submission. Attach a picture and the message goes;
+   * press „Obriši" on that picture and it is back, over a field nobody has touched
+   * since. It is true, and it is the same sentence the form would say on the next
+   * press; sweeping the state instead would have said nothing until then, over a
+   * field that is obligatory and empty.
+   */
+  const shown: Record<string, FieldError> = Object.fromEntries(
+    visible.flatMap((field) => {
+      const error = errors[field.name]
+
+      return error === undefined || (error.key === REQUIRED_KEY && field.required !== true)
+        ? []
+        : [[field.name, error] as const]
+    }),
+  )
+  const broken = visible.filter((field) => shown[field.name] !== undefined)
   const titleId = `form-${form.id}-title`
 
   /**
@@ -836,7 +870,7 @@ export function FormRenderer({
           explaining a mark it never draws. Every form the portal has draws at
           least one, the registration included, where „Svojim rečima" is the one
           field that may be left empty. */}
-      {form.fields.some((one) => one.required === true) && <RequiredNote />}
+      {visible.some((one) => one.required === true) && <RequiredNote />}
 
       {/* Announced the moment it appears. Without it, pressing the button with
           a broken form does nothing perceivable for a blind visitor. */}
@@ -853,8 +887,8 @@ export function FormRenderer({
                     and led to a box that had already been filled in, while the
                     one marked wrong could not be reached from here at all
                     (WCAG 2.2 SC 2.4.3). */}
-                <a href={`#field-${field.name}${aboutCountry(errors[field.name]) ? '-country' : ''}`}>
-                  {aboutCountry(errors[field.name])
+                <a href={`#field-${field.name}${aboutCountry(shown[field.name]) ? '-country' : ''}`}>
+                  {aboutCountry(shown[field.name])
                     ? t('form.country')
                     : /* Without the mark, and without a link inside this link
                          (forms/worded.tsx). */
@@ -873,7 +907,7 @@ export function FormRenderer({
             field={field}
             value={value}
             beside={String(filled.country ?? '')}
-            error={errors[field.name]}
+            error={shown[field.name]}
             choices={optionsFor(field, options)}
             onChange={handleChange}
             open={field.name === openAt}
