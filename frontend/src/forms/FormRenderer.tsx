@@ -613,7 +613,7 @@ const Field = memo(function Field({
       {/* And only on a field somebody types into. The condition below asks the
           type and this one did not, so a `select`, a `textarea` or a picture given
           a list would draw two controls carrying the same `id`. Nothing on the
-          portal does that today; the only list is on `eventName`, which is text.
+          portal does that today; the only list is on `raceName`, which is text.
           Written so that it stays impossible rather than merely unused. */}
       {suggesting !== undefined && field.type === 'text' && (
         <Suggesting

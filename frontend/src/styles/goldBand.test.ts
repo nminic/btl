@@ -641,6 +641,23 @@ describe('what the owner asked for on 04.08.2026', () => {
       why: 'the races of an event are set off from the form that names it',
     },
     {
+      of: 'src/pages/admin/Entity.css',
+      rule: '.entity-races .table td:first-child',
+      /* The name is what the row is read by (owner, 23.08.2026), and shared out by
+         what each column holds it came out narrowest of the seven: measured in
+         Chrome at 360px with the default letters, the cell was 47,27px and the box
+         inside it 31,27px, some three letters of „Šidski novogodišnji maraton",
+         while „Kategorija", which is only read, had 88,34. With the floor: 128 and
+         112, and at 200% text 256 and 224, because it is written in the reader's own
+         letters. The page does not scroll at either size; the box does, which is the
+         pattern this table already uses, and the owner chose that of three offered.
+
+         Held here because jsdom lays nothing out (ADL A18): what is asked is that the
+         rule is written, and the numbers beside it are what a browser measured. */
+      holds: /min-inline-size:\s*8rem/,
+      why: 'the column a name is typed into is narrower than the one that is only read',
+    },
+    {
       of: 'src/pages/admin/SectionNav.css',
       rule: '.adminsection__sectors',
       /* On the column of both sectors and not on either nav. Written on the nav

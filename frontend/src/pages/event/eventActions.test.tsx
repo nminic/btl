@@ -576,6 +576,51 @@ describe('copying an event', () => {
     ).toContain('Mrazijada, polumaraton')
   }, 15_000)
 
+  it('lets a copied race that was never renamed go on following its event', async () => {
+    /* The other half of the rule, and the half the guard above cannot reach: the
+       event it measures on has exactly one race and that race is renamed, so
+       `renamed: 'yes'` written flat into the copy passes it. A round measured that:
+       with the flag hard-coded, all 2148 tests stayed green while every copied race
+       stopped following its event.
+
+       „Maraton maratona 2015" has four races and not one of them is renamed, so
+       renaming the copy must move all four. */
+    const user = setupUser()
+    await openEvent('superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
+
+    const date = await screen.findByLabelText(/Datum/)
+    await user.clear(date)
+    await user.type(date, '14032032')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Maraton maratona')
+
+    const listed = within(await screen.findByRole('table'))
+    const copy = must(
+      listed.getAllByRole('row').find((row) => /2032[.]/.test(row.textContent ?? '')),
+      'red kopije u spisku događaja',
+    )
+
+    await user.click(within(copy).getByRole('button', { name: /^Otvori:/ }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const named = must(screen.getAllByLabelText(/^Naziv događaja/)[0], 'the name of the copy')
+
+    await user.clear(named)
+    await user.type(named, 'Novo ime')
+
+    const names = screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
+
+    expect(names.length).toBeGreaterThan(1)
+    expect(
+      names.every((one) => one === 'Novo ime'),
+      `the copy stopped following its event: ${names.join(' | ')}`,
+    ).toBe(true)
+  }, 15_000)
+
   it('does not hand a third copy the races the second one answers to', async () => {
     /* The third home of one fault, and the last to be put right: the identity of a
        copied race was counted rather than measured. A count goes back down and the
