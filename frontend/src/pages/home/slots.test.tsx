@@ -28,7 +28,7 @@ describe('CalendarExtract', () => {
     date,
     city: 'Beograd',
     country: 'RS',
-    kind: 'race', copiedFrom: '', featured: 'no',
+    kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
   })
 
   const races: Race[] = [

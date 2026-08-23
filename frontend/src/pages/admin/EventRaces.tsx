@@ -1,132 +1,142 @@
-import { useMemo } from 'react'
-import { isoDate } from '../../forms/dateField'
-import { raceLabel } from '../../data/raceLabel'
-import { formatNumber, formatShortDate } from '../../i18n/format'
+import { DatePicker } from '../../forms/DatePicker'
+import { categoryOf } from '../../data/raceCategory'
+import { useEffect, useRef } from 'react'
+import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
-import type { BtlEvent, Race } from '../../data/types'
-import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { raceClash, racesOf, type Editing } from './entityForms'
+import { BOUNDS, isWrong, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
- * The races of one event, on the event's own screen.
+ * The races of one event, entered in the table itself.
  *
  * A race is one length of one morning, so it is defined inside the event and
- * nowhere else (owner, 06.08.2026). It had a screen of its own, which meant a
- * list of one thousand one hundred and eighty-seven rows opened in order to
- * find the event somebody already had open, and a race made there could be
- * saved against the wrong one.
+ * nowhere else (owner, 06.08.2026). It had a screen of its own, then a form of
+ * its own that opened over the event's, and since 23.08.2026 it has neither: „u
+ * redu ne postoji dugme Otvori, nego je dan trke datepicker... a dužina, uspon i
+ * spust mogu da se unesu u samoj tabeli".
  *
- * Which event it belongs to is therefore not asked. The screen already answers
- * that, and a question whose answer is on the page above it is a question with
- * a wrong answer available (entityForms.ts, `racesOf`).
+ * Nothing here saves. The rows are held by the screen above and written when the
+ * one button under them is pressed (AdminEvents.tsx), which is what makes the
+ * whole thing one question rather than two: an event and the mornings it runs on
+ * are entered together and refused together.
  */
 export function EventRaces({
-  event,
-  races,
-  editing,
-  setEditing,
-  onEventMoved,
+  eventName,
+  eventDate,
+  rows,
+  onRows,
+  refused,
 }: {
-  event: BtlEvent
-  races: Race[]
-  /** Which race is open, held by the screen above rather than here: while one
-   *  is open the event's own form is put away, and two forms with two save
-   *  buttons on one screen is two questions asked at once. */
-  editing: Editing | null
-  setEditing: (editing: Editing | null) => void
-  /** Said when a race has moved the event, so the event's own form is drawn
-   *  again from the day it is on now (AdminEvents). */
-  onEventMoved: () => void
+  eventName: string
+  /** The day the form above is showing, which is what a new row opens on: „dan
+   *  trke... se prvo menja default u sve što pokazuje Datum događaja gore (mogu
+   *  promeniti naknadno ako želim)". Read as it stands rather than off the record,
+   *  so a race entered under a date that has not been saved yet still lands on
+   *  it. */
+  eventDate: string
+  rows: RaceRow[]
+  onRows: (rows: RaceRow[]) => void
+  /** Whether the last press was refused, which is when a row that is unfinished
+   *  starts saying so. Before that it is merely unfinished, which is the ordinary
+   *  state of a row somebody is still typing into. */
+  refused: boolean
 }) {
-  const { locale, t } = useI18n()
-  const { editRecord } = useSession()
-  /* Held across renders. Every other screen hands the renderer a definition made
-     once at module level; this is the only one that builds its own, since the
-     form is the races' form with the event taken out of it and put back as a
-     derived field, which cannot be known before the screen knows its event.
-     Nothing depends on that identity today, and the memo is here so that nothing
-     has to: a definition rebuilt on every keystroke is the sort of prop a memo
-     downstream is one day written against. */
-  const entity = useMemo(
-    () => racesOf(event.id, event.name, event.date),
-    [event.id, event.name, event.date],
-  )
-  const mine = races
-    .filter((race) => race.eventId === event.id)
-    /* By the day first and the distance inside it, which is the order they are
-       run in: an event over two mornings reads as two mornings. */
-    .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
+  const { t } = useI18n()
+  /* The day the form was showing when these rows were last lined up with it. */
+  const wasOn = useRef(eventDate)
 
-  if (editing !== null) {
+  /**
+   * The races move with the event, by the same number of days (owner,
+   * 10.08.2026): two races on the Saturday and one on the Sunday stay two and one
+   * after the date is moved, and whichever of them did not want to move is
+   * corrected in its own row.
+   *
+   * On the screen and not at the save, which is the difference the owner's change
+   * of 23.08.2026 makes: the mornings move in the table while somebody watches.
+   *
+   * **Only on a day that is finished being typed.** A date box is typed into a
+   * digit at a time, and „07/06/19" is a date as far as a parser is concerned:
+   * moving on every keystroke moved the rows once per digit and left a race in
+   * 1971. Both the day before and the day after have to be whole, which is what
+   * the width says.
+   */
+  useEffect(() => {
+    const whole = (day: string) => day.length === 10 && isoDate(day) !== ''
+
+    if (!whole(eventDate) || eventDate === wasOn.current) {
+      return
+    }
+
+    const from = wasOn.current
+
+    wasOn.current = eventDate
+
+    if (!whole(from)) {
+      return
+    }
+
+    /* Never nought: both days are whole and they are not the same one. */
+    const by = daysBetween(isoDate(from), isoDate(eventDate))
+
+    onRows(
+      rows.map((row) =>
+        /* A row whose day has been emptied stays empty; it is a row somebody is
+           still typing into, and there is nothing to move it from. */
+        isoDate(row.date) === ''
+          ? row
+          : { ...row, date: fieldDate(shiftDate(isoDate(row.date), by)) },
+      ),
+    )
+  }, [eventDate, onRows, rows])
+
+  const change = (at: number, over: Partial<RaceRow>) => {
+    onRows(rows.map((row, index) => (index === at ? { ...row, ...over } : row)))
+  }
+
+  /** One measurement of one race, in its own cell. Labelled by row and column,
+   *  because „Dužina" twenty times over is twenty controls a screen reader cannot
+   *  tell apart. */
+  const measure = (
+    row: RaceRow,
+    at: number,
+    field: 'distanceKm' | 'ascentM' | 'descentM',
+    asked: boolean,
+  ) => {
+    /* This cell and not „the first thing wrong in the row": a climb of minus five
+       hundred is as wrong as the fall of minus nine hundred beside it, and a cell
+       that says it is fine sends a reader looking somewhere else
+       (WCAG 2.2 SC 3.3.1). */
+    const wrong = refused && isWrong(row, field)
+
     return (
-      <section className="entity-races" aria-labelledby="races-of-event">
-        <h2 id="races-of-event" className="profile__section">
-          {t('admin.racesOf', { event: event.name })}
-        </h2>
-
-        <EntityEditor
-          entity={entity}
-          editing={editing}
-          /* Not a second race of this event on the same morning and of the same
-             length: there is nothing left to tell the two apart by
-             (entityForms.ts, `raceClash`). */
-          also={(values) =>
-            raceClash(
-              values,
-              (editing.mode === 'new'
-                ? mine
-                : mine.filter((race) => race.id !== String(editing.record[entity.idField]))
-              ).map((race) => ({ date: race.date, distanceKm: race.distanceKm })),
-            )
-          }
-          /* The event follows its first race (owner, 10.08.2026): its date is
-             the day it begins, so a race entered or moved to an earlier day
-             makes that day the event's. Written here rather than in the race's
-             own form, because it is a fact about the event and the form knows
-             only the race.
-
-             The other way round is not done here: a race moved later leaves the
-             event where it is, because some other race is still the first one,
-             and where it was the only race the event moves with it. */
-          alsoSave={(values) => {
-            const day = isoDate(String(values.date))
-            const others =
-              editing.mode === 'new'
-                ? mine
-                : mine.filter((race) => race.id !== String(editing.record[entity.idField]))
-            const first = [...others.map((race) => race.date), day].sort()[0]
-
-            if (first !== undefined && first !== event.date) {
-              editRecord(event.id, { date: first })
-              onEventMoved()
-            }
-          }}
-          onDone={() => setEditing(null)}
-        />
-      </section>
+      <input
+        className="field__control"
+        type="number"
+        inputMode="decimal"
+        min={BOUNDS[field].least}
+        max={BOUNDS[field].most}
+        step="any"
+        value={row[field]}
+        /* Named by its row as well as its column. „Dužina" twenty times over is
+           twenty controls a screen reader cannot tell apart, and the table has no
+           row heading to read it with. */
+        aria-label={`${t(`admin.field.${field}`)}, ${t('admin.form.raceNumber', {
+          which: String(at + 1),
+        })}`}
+        aria-required={asked}
+        aria-invalid={wrong}
+        onChange={(event) => change(at, { [field]: event.target.value })}
+      />
     )
   }
 
   return (
     <section className="entity-races" aria-labelledby="races-of-event">
       <h2 id="races-of-event" className="profile__section">
-        {t('admin.racesOf', { event: event.name })}
+        {t('admin.racesOf', { event: eventName })}
       </h2>
 
-      {/* What opening a race costs, said before it is pressed. The event's own
-          form is put away while a race is open (AdminEvents.tsx), and a form
-          that is put away takes whatever was typed into it with it: an
-          administrator who changed the town and then reached for a distance
-          found the town back as it was. Said rather than solved, because
-          keeping two forms open is two save buttons and two questions at
-          once. */}
-      <p className="profile__empty">{t('admin.racesPutFormAway')}</p>
-
-      <EntityBar entity={entity} onNew={() => setEditing({ mode: 'new' })} />
-
-      {mine.length === 0 ? (
+      {rows.length === 0 ? (
         /* Said rather than left as an empty table. An event with no races yet is
            the ordinary state of one entered a fortnight before its distances are
            known (reportResult.test), not a fault. */
@@ -135,13 +145,12 @@ export function EventRaces({
         <div className="table-scroll">
           <table className="table">
             <caption className="visually-hidden">
-              {t('admin.racesOf', { event: event.name })}
+              {t('admin.racesOf', { event: eventName })}
             </caption>
             <thead>
               <tr>
                 {/* The day, because an event may run over more than one (owner,
-                    10.08.2026). Beside the name rather than at the end: it is
-                    the thing that differs between two races of one weekend. */}
+                    10.08.2026). */}
                 <th scope="col">{t('admin.field.raceDate')}</th>
                 <th scope="col">{t('event.distance')}</th>
                 <th scope="col">{t('event.ascent')}</th>
@@ -151,45 +160,53 @@ export function EventRaces({
               </tr>
             </thead>
             <tbody>
-              {mine.map((race) => (
-                <tr key={race.id}>
-                  <td>{formatShortDate(race.date, locale)}</td>
-                  {/* Written the way this language writes a number, like every
-                      other table on the portal: read raw, a climb of 7120 metres
-                      is printed as four digits and a distance of 42.2 km with a
-                      full stop, neither of which is Serbian. */}
-                  <td>{formatNumber(race.distanceKm, locale, 2)}</td>
-                  <td>{formatNumber(race.ascentM, locale)}</td>
-                  <td>{formatNumber(race.descentM, locale)}</td>
-                  <td>{t(`category.${race.category}`)}</td>
+              {rows.map((row, at) => (
+                <tr key={row.id === '' ? `nova-${String(at)}` : row.id}>
                   <td>
-                    <RowActions
-                      entity={entity}
-                      record={race}
-                      /* Its measurements, and its day where the event holds
-                         another race of the same length (data/raceLabel.ts):
-                         four races of 42,2 km over four mornings gave four
-                         buttons called „Obriši: 42,2 km", and one of them
-                         deletes results. */
-                      name={raceLabel(race, mine, locale)}
-                      onOpen={() => setEditing({ mode: 'one', record: race })}
-                      /* And the event follows what is left, the same way it
-                         follows a race entered or moved: taking the first
-                         morning away moves the event onto the next one, and an
-                         event dated on a morning nothing runs on is the rule
-                         broken from the other end (owner, 10.08.2026). */
-                      alsoRemove={() => {
-                        const left = mine
-                          .filter((each) => each.id !== race.id)
-                          .map((each) => each.date)
-                          .sort()[0]
-
-                        if (left !== undefined && left !== event.date) {
-                          editRecord(event.id, { date: left })
-                          onEventMoved()
-                        }
-                      }}
+                    <DatePicker
+                      id={`race-date-${String(at)}`}
+                      name={`race-date-${String(at)}`}
+                      value={row.date}
+                      label={`${t('admin.field.raceDate')}, ${t('admin.form.raceNumber', {
+                        which: String(at + 1),
+                      })}`}
+                      required
+                      invalid={refused && isWrong(row, 'date')}
+                      describedBy={undefined}
+                      onChange={(next) => change(at, { date: next })}
                     />
+                  </td>
+                  <td>
+                    {/* And nothing about the row above it. Two races of one length
+                        on one morning were refused until 23.08.2026; the owner said
+                        that day that a course can genuinely be run twice over the
+                        same distance and the same climb, rarely but really, and
+                        that the portal must not forbid it. */}
+                    {measure(row, at, 'distanceKm', true)}
+                  </td>
+                  <td>{measure(row, at, 'ascentM', false)}</td>
+                  <td>{measure(row, at, 'descentM', false)}</td>
+                  {/* Read off the length and never asked for, which is the rule
+                      the portal has always kept: there is nothing to decide and
+                      nothing to get wrong (data/raceCategory.ts). An empty length
+                      has no category yet, and a dash says so without pretending to
+                      one. */}
+                  <td>
+                    {Number(row.distanceKm) > 0
+                      ? t(`category.${categoryOf(Number(row.distanceKm))}`)
+                      : '–'}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="entity-open entity-delete"
+                      aria-label={t('admin.form.removeRow', {
+                        which: String(at + 1),
+                      })}
+                      onClick={() => onRows(rows.filter((_, index) => index !== at))}
+                    >
+                      {t('admin.form.delete')}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -197,6 +214,29 @@ export function EventRaces({
           </table>
         </div>
       )}
+
+      {/* Opens a row rather than a form (owner, 23.08.2026: „klik na Nova trka
+          otvara novi red u tabeli"), on the day the event above is showing.
+          `type="button"`, because it stands inside the event's own form and a
+          button without one sends it. */}
+      <button
+        type="button"
+        className="button button--secondary"
+        onClick={() =>
+          onRows([
+            ...rows,
+            {
+              id: '',
+              date: isoDate(eventDate) === '' ? '' : eventDate,
+              distanceKm: '',
+              ascentM: '',
+              descentM: '',
+            },
+          ])
+        }
+      >
+        {t('admin.form.new.races')}
+      </button>
     </section>
   )
 }

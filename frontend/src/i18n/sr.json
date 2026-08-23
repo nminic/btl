@@ -983,7 +983,6 @@
     "no": "Ne",
     "eventTaken": "Događaj sa tim nazivom već postoji te godine. Promenite naziv ili godinu: adresa se pravi od naziva i godine.",
     "racesOf": "Trke na događaju {event}",
-    "racesPutFormAway": "Dok se trka uređuje, forma događaja se sklanja, a brisanje trke je ponovo iscrtava. Sačuvajte izmene na događaju pre nego što otvorite ili obrišete trku.",
     "noRaces": "Ovaj događaj još nema nijednu trku.",
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
@@ -1020,6 +1019,7 @@
         "pages": "Nova strana",
         "moderators": "Nov moderator"
       },
+      "copying": "Kopiranje događaja",
       "edit": {
         "members": "Izmena člana",
         "events": "Izmena događaja",
@@ -1031,6 +1031,9 @@
         "moderators": "Izmena moderatora"
       },
       "delete": "Obriši",
+      "removeRow": "Obriši {which}. trku",
+      "raceNumber": "{which}. trka",
+      "racesRefused": "Svaka trka mora da ima dan i dužinu. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",
@@ -1070,6 +1073,8 @@
       "kind": "Vrsta događaja",
       "country": "Država",
       "featured": "Istaknuto",
+      "eventDescription": "Opis događaja",
+      "eventLink": "Link ka strani organizatora",
       "rowLabel": "Naziv"
     },
     "hint": {
@@ -1079,6 +1084,8 @@
       "firstSeason2027": "Član sezonu 2027. provodi u početničkoj kategoriji, a ne u svojoj starosnoj. Sme samo onaj ko nijednu zvaničnu sezonu, počev od 2027, nije završio sa 12 i više bodova.",
       "membershipBasis": "Nikad se ne prikazuje javno. Vide ga samo Superadmin i moderatori sa pravom nad članovima.",
       "eventName": "Jedan događaj ima više trka. Ovde ide naziv manifestacije, ne dužina.",
+      "eventDescription": "Neobavezno. Kratak opis trke, onako kako je organizator opisuje. Pri kopiranju se prenosi sa prošlogodišnjeg događaja.",
+      "eventLink": "Neobavezno. Adresa strane organizatora sa detaljima ove trke, sa http:// ili https://. Pri kopiranju se prenosi sa prošlogodišnjeg događaja.",
       "date": "Oblik dd/mm/gggg. Datum se unosi tek kad je potvrđen.",
       "event": "Trka pripada jednom događaju. Spisak je poređan od najnovijeg datuma.",
       "raceDate": "Podrazumevano je dan događaja. Događaj koji traje dva dana ima trke sa različitim danima; dan događaja je dan prve trke.",

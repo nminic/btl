@@ -160,6 +160,21 @@ export type BtlEvent = {
    */
   featured: Featured
   /**
+   * What the organiser says this race is, and where they say the rest of it.
+   *
+   * Neither is asked for (owner, 23.08.2026): an event entered a fortnight before
+   * its distances are known has neither, and the calendar is drawn from the name,
+   * the day and the town. Both are carried onto a copy, because next year's
+   * running of a race is described the same way and points at the same page, and
+   * whoever is copying edits them from there.
+   *
+   * The link is an address of somebody else's page, which is the second such
+   * value the portal keeps; the first is the link to official results on a
+   * result. It is refused the same way, by the shape the form asks for.
+   */
+  description: string
+  link: string
+  /**
    * The event this one was copied from, or an empty string.
    *
    * Written the moment a copy is made and never again (owner, 11.08.2026), so

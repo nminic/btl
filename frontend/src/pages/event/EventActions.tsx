@@ -5,6 +5,9 @@ import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
+import { copyOf } from './copyOf'
+import { nextNumber } from '../admin/raceIds'
+import { daysBetween, shiftDate } from '../../forms/dateField'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
 
@@ -52,67 +55,73 @@ export function EventActions({
    * form mentions them.
    */
   function copy() {
-    /* Counted against the copies of this event and not against its races, which
-       is what it was: the number of races does not change when a copy is made,
-       so pressing the button twice made two records under one id. Two records
-       under one id is the fault the whole numbering module exists to prevent
-       (entityForms.ts): the list draws them under one key, a lookup finds only
-       the first, and an edit to either changes both. */
-    const made = (creations[EVENTS.id] ?? []).filter((one) => one.id.startsWith(`${event.id}-kopija`))
-    const id = `${event.id}-kopija-${made.length + 1}`
+    /* Worked out once, here, and everything that follows is moved by the same
+       number of days: the event, and every race under it. Done at the press
+       rather than while somebody types over the date afterwards, which is the
+       same rule applied once instead of once per keystroke. */
+    const moved = copyOf(event).date
+    const by = daysBetween(event.date, moved)
+    /* Numbered from the highest already used and not from how many there are
+       (`admin/raceIds.ts`). Counted, the number a deleted copy freed went to the
+       next one made: measured on 23.08.2026, copy, copy, delete the first, copy,
+       and the third came out as `-kopija-2`, which the second still holds. Two
+       records under one id is the fault the whole numbering module exists to
+       prevent: the list draws them under one key, a lookup finds only the first,
+       and an edit to either changes both.
 
-    create(EVENTS.id, id, {
-      name: event.name,
-      /* The same day, and the form opens on it. Moving it a year forward here
-         would be a guess: a race that ran on the last Sunday in April does not
-         run on the same date next year, and a date nobody chose looks chosen.
+       Over the copies this visit has made, which is where every one of them is: a
+       copy of an event is only ever created here, so nothing in the file carries
+       that shape of id. Deleting one takes it out of that list, and taking the
+       highest still says three where counting said two. */
+    const under = `${event.id}-kopija-`
+    const id = `${under}${String(
+      nextNumber(
+        (creations[EVENTS.id] ?? []).map((one) => one.id),
+        under,
+      ),
+    )}`
 
-         In the shape a record keeps, which is what a creation is read as: the
-         list draws it, the address is made from it, and the form turns it into
-         what a member types when it opens (forms/records.ts, `valuesFor`). It
-         was handed over in the form's own shape, which no screen but that form
-         could read. */
-      date: event.date,
-      city: event.city,
-      country: event.country,
-      kind: event.kind,
-      /* Not featured, whatever the one it was copied from was: being singled
-         out is a choice about this running of the race and not a property the
-         race carries (owner, 11.08.2026). */
-      featured: 'no',
-      /* Which edition this one came out of. The one place it is ever written,
-         and the reason the chain can be walked at all: an id nobody typed and
-         nobody can mistype, rather than a name that changes with a sponsor
-         (owner, 11.08.2026). */
-      copiedFrom: event.id,
-    })
+    create(EVENTS.id, id, copyOf(event))
+
+    /* Every race there is, whichever way it came to be: one out of the file, one
+       entered under an event, and one copied along with its event all live in one
+       list, and a number in use is in use whichever of the three it is. */
+    const takenRaces = [...races.map((one) => String(one.id)), ...(creations[RACES.id] ?? []).map((one) => one.id)]
 
     for (const race of mine) {
-      /* Counted against the copies of this race, not against the copies of the
-         event. Deleting a copied event from the list of events takes it out of
-         the events it was created in and leaves its races where they are, so a
-         count of event copies goes back down while the races do not: copy,
-         delete the copy, copy again, and every race lands on an id that is
-         already taken. */
-      const before = (creations[RACES.id] ?? []).filter((one) =>
-        one.id.startsWith(`${race.id}-kopija`),
-      ).length
+      /* Counted up from the highest number in use, over every race that exists
+         (`admin/raceIds.ts`).
 
-      create(RACES.id, `${race.id}-kopija-${before + 1}`, {
+         Counted instead, this was the third home of one fault and the last to be
+         put right. Deleting the rows of a copy takes those races out of the list
+         while the numbers they held are gone from the count, so copying a third
+         time handed the third copy the ids the second copy's races answer to.
+         `editRecord` is filed by id, so saving the third copy moved **both** onto
+         it and the second copy was left with no races at all. Measured on
+         „Maraton maratona 2015" on 23.08.2026: four rows became none. */
+      create(RACES.id, `${race.id}-kopija-${String(nextNumber(takenRaces, `${race.id}-kopija-`))}`, {
         eventId: id,
         /* The day it was run on, kept as it was. The copy starts on the day the
            event was on, so the races start on the days they were on, and moving
            the event's date afterwards moves them all by the same number of days
            (admin/AdminEvents.tsx): two races on the Saturday and one on the
            Sunday stay two and one, a year on (owner, 10.08.2026). */
-        date: race.date,
+        /* Moved with the event, by the same number of days: two races on the
+           Saturday and one on the Sunday stay two and one, a year on (owner,
+           10.08.2026). */
+        date: shiftDate(race.date, by),
         distanceKm: String(race.distanceKm),
         ascentM: String(race.ascentM),
         descentM: String(race.descentM),
       })
     }
 
-    void navigate(`/${locale}/${EVENTS.path}?zapis=${id}`)
+    /* And the screen is told what it is doing, rather than left to work it out
+       from the shape of the id or from `copiedFrom`. A copy is edited again like
+       any other event a season later, and both of those would still say „copy"
+       then: what is true only now is that this press is the copy being made
+       (owner, 23.08.2026, the title at the top). */
+    void navigate(`/${locale}/${EVENTS.path}?zapis=${id}&kopija=1`)
   }
 
   /**

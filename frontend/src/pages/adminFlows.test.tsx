@@ -1982,12 +1982,14 @@ describe('the six queues read from the file', () => {
 
     await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
 
+    /* Read out of the boxes rather than off the text of the cells: since
+       23.08.2026 a race's day is a picker in its own row and holds `dd/mm/gggg`
+       (owner). */
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
+      .getAllByLabelText(/^Dan trke/)
+      .map((box) => inputElement(box).value)
 
-    expect(races).toEqual(['10. 4. 2027.', '11. 4. 2027.'])
+    expect(races).toEqual(['10/04/2027', '11/04/2027'])
   })
 
   it('folds a card open and shut, one at a time', async () => {
@@ -2052,6 +2054,14 @@ describe('the six queues read from the file', () => {
     expect(document.getElementById(String(opens))).not.toBeNull()
   })
 
+  /* Its own limit, because it really does walk a screen: it opens the calendar from
+     the administration, enters a race in the table, moves the event, answers two
+     reports in the queue and opens the event again to read the days. Four seconds
+     and a half here, and the machine that decides is about half again slower, which
+     put it over the package's five and failed a branch that had nothing to do with
+     it. A test that genuinely waits carries its own limit rather than raising the
+     package's (the same rule is written over the turning chart in
+     `publicScreens.test.tsx`). */
   it('moves a race entered during the visit, and moves it from the day it now has', async () => {
     /* Two things the queue reads through the session rather than off the file:
        a race entered or re-dated during this visit is moved with its event, and
@@ -2081,14 +2091,18 @@ describe('the six queues read from the file', () => {
     /* A race added to it this visit, on the day the event begins. */
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
     await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
-    await user.type(screen.getByLabelText(/^Dužina/), '5')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Into the row that was just opened, which is the last one: since 23.08.2026
+       every race of the event has a box of its own in the table (owner). */
+    const lengths = () => screen.getAllByLabelText(/^Dužina/)
+
+    await user.type(must(lengths()[lengths().length - 1], 'the row just opened'), '5')
 
     /* And the event moved a day on before the report is answered, so the day the
-       report names is a day the event has already left. */
+       report names is a day the event has already left. In the same sitting as the
+       race above, because one press saves the whole screen since 23.08.2026: two
+       sittings would be two opens of a list of eleven hundred, and this test was
+       over five seconds on the machine that decides. */
     const date = screen.getByLabelText(/^Datum/)
 
     await user.clear(date)
@@ -2119,13 +2133,16 @@ describe('the six queues read from the file', () => {
        (data/types.ts). Five kilometres is a length no other race of this event
        has, which is why it was the one entered. */
     const mine = must(
-      races.getAllByRole('row').find((one) => (one.textContent ?? '').includes('5,00')),
+      races
+        .getAllByRole('row')
+        .find((one) => within(one).queryByDisplayValue('5') !== null),
       'the race entered during the visit',
     )
 
     /* Moved with everything else, rather than left on the day it was entered on,
-       and moved by six days rather than seven. */
-    expect(within(mine).getByText('10. 4. 2027.')).toBeVisible()
+       and moved by six days rather than seven. Read out of the box, because the
+       day of a race is a picker in its own row since 23.08.2026. */
+    expect(within(mine).getByLabelText(/^Dan trke/)).toHaveValue('10/04/2027')
 
     /* And the second report of the same change moves nothing more. Two
        independent reports are what a reported change is made of (PDL P10), so
@@ -2148,12 +2165,11 @@ describe('the six queues read from the file', () => {
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
 
     const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
+      .getAllByLabelText(/^Dan trke/)
+      .map((box) => inputElement(box).value)
 
-    expect(after).toEqual(['10. 4. 2027.', '10. 4. 2027.', '11. 4. 2027.'])
-  })
+    expect(after).toEqual(['10/04/2027', '10/04/2027', '11/04/2027'])
+  }, 20_000)
 
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')

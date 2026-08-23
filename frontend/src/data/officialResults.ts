@@ -32,11 +32,17 @@ export const OFFICIAL_RESULTS = /^https?:\/\/[^\s]+$/
  * The characters that are neither a blank nor anything a reader can see, and that
  * split a host exactly the way a blank does.
  *
- * Asked of Unicode rather than listed. Listed for one day, six of them written out
- * by hand, and a round found seven more that do the same thing and were not on it:
- * U+0085, U+00AD, U+200C, U+200E, U+202E, U+2066 and U+180E each let
- * `https://primer.rs␥@zlo.example/p` through. „What is invisible" has a home of its
- * own, and a list written from memory is a list that is short.
+ * Asked of Unicode rather than listed, and **not** a claim to hold every character
+ * a reader cannot see. Measured on 23.08.2026 across the whole of Unicode: `Cc`,
+ * `Cf` and `\s` together still let through 4037 code points that leave no mark,
+ * `Default_Ignorable_Code_Point` and U+2800 among them. None of those 4037 splits a
+ * host, 267 are dropped by IDNA and 3769 are refused by `new URL`, so what is
+ * refused here is the set that actually costs something.
+ *
+ * Listed by hand for one day, six of them written out, and a round found seven more
+ * that do the same thing and were not on it: U+0085, U+00AD, U+200C, U+200E,
+ * U+202E, U+2066 and U+180E each let `https://primer.rs␥@zlo.example/p` through.
+ * A list written from memory is a list that is short.
  *
  * **What these do is hide, not redirect.** `https://primer.rs@zlo.example/p` opens
  * `zlo.example` with or without them, because `@` is what ends the user part of an
@@ -70,4 +76,39 @@ const INVISIBLE = /[\p{Cc}\p{Cf}]/u
  */
 export function officialResultsLink(said: string): string | undefined {
   return OFFICIAL_RESULTS.test(said) && !INVISIBLE.test(said) ? said : undefined
+}
+
+/**
+ * The host an address of official results would actually open, or nothing where
+ * the value is not an address at all.
+ *
+ * Drawn beside the link on the moderator's queue, because the words of that link
+ * are the name of the event and the name is written by the member who sent the
+ * result. A round on 23.08.2026 measured what that costs: a result named
+ * „Zvanicni rezultati BTL 2026" pointing at `btl-rezultati.zlo.example` put the
+ * host **nowhere** in the page, not in the text, not in `title`, not in an
+ * `aria-label`, so a moderator reading with a screen reader heard only the name.
+ * `rel="noreferrer noopener"` keeps the attacker's page from learning anything;
+ * what it cannot do is tell the moderator where the press leads.
+ *
+ * The host and not the whole address, because the host is the part that decides
+ * where a press lands and the rest is noise on a narrow screen. Read through the
+ * browser's own parser rather than off the text, since `@` ends the user part of
+ * an address and a host read by eye is exactly the trick this is drawn against.
+ */
+export function officialResultsHost(said: string): string | undefined {
+  const link = officialResultsLink(said)
+
+  if (link === undefined) {
+    return undefined
+  }
+
+  /* `URL` throws on an address whose shape passes the pattern and whose authority
+     a browser refuses, `https://` with nothing after it among them. Nothing to
+     draw then, and nothing to say beyond that. */
+  try {
+    return new URL(link).host
+  } catch {
+    return undefined
+  }
 }

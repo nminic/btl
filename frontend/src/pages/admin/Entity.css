@@ -195,3 +195,22 @@
 .entity-races {
   margin-block-start: var(--space-32);
 }
+
+/* A control in a cell takes the cell, and no more.
+ *
+ * A number box carries a width of its own, about twenty characters, and six of
+ * them side by side asked for 1101px of table where the screen had 483: the last
+ * three columns stood outside the box on every width, on a wide desk as much as on
+ * a phone. Measured 23.08.2026. Told to fill the cell instead, the table is laid
+ * out by what is in it and the columns come out the size of what they hold. */
+.entity-races .field__control,
+.entity-races .datepicker {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* And the table is the width of its box before it is anything else, so the cells
+   are shared out rather than added up. */
+.entity-races .table {
+  inline-size: 100%;
+}

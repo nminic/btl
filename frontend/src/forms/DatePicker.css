@@ -79,7 +79,11 @@
 
 .datepicker__grid {
   display: grid;
-  grid-template-columns: repeat(7, 2rem);
+  /* Seven columns that would like to be `2rem` and give way when the sheet is
+     capped at the width of the window (`.datepicker__pop`). Without the `minmax`
+     the columns keep their `2rem` whatever the box says and the grid simply
+     overflows it. */
+  grid-template-columns: repeat(7, minmax(0, 2rem));
   gap: var(--space-2);
   text-align: center;
 }

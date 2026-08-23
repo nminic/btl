@@ -854,6 +854,13 @@ describe('a result from entry to decision', () => {
     expect(screen.getByRole('button', { name: 'Pošalji na proveru' })).toBeVisible()
   })
 
+  /* Its own limit, because it really does walk the whole way: a member enters a
+     result, a moderator sends it back, the member corrects it and sends it again,
+     and the queue is read at every step. Measured 23.08.2026: 1,6 seconds of test
+     time on a warm run and 4,4 under the load of the whole package, against the
+     package's five, and the machine that decides is about half again slower. A test
+     that genuinely walks carries its own limit rather than raising everybody's (the
+     same rule is written over the turning chart in `publicScreens.test.tsx`). */
   it('is corrected and sent again, as the same result rather than a second one', async () => {
     /* Owner, 06.08.2026. A refusal is not the end of a result: the member is
        told why, corrects it and sends the same race again, and it goes back into
@@ -946,9 +953,14 @@ describe('a result from entry to decision', () => {
     )
     const said = within(corrected)
 
-    expect(said.getByRole('link', { name: 'Probna trka' })).toHaveAttribute(
-      'href',
-      'https://primer.rs/ispravno',
+    /* By the name and by where it says it leads, because since 23.08.2026 the link
+       carries both: the words of it are a name the member wrote, so the host is read
+       out with them (`admin/ReviewQueue.tsx`). */
+    const official = said.getByRole('link', { name: /^Probna trka/ })
+
+    expect(official).toHaveAttribute('href', 'https://primer.rs/ispravno')
+    expect(official, 'the moderator cannot see where the link leads').toHaveAccessibleName(
+      /primer\.rs/,
     )
     expect(said.getByText('Sat mi je stao.')).toBeVisible()
     /* The date of the race as well, which the row prints and which the walk did not
@@ -964,7 +976,7 @@ describe('a result from entry to decision', () => {
     expect(said.getAllByText('540')).toHaveLength(2)
     expect(said.getByText('1:52:10')).toBeVisible()
     expect(said.getByText('23,55')).toBeVisible()
-  })
+  }, 20_000)
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
     const user = setupUser()

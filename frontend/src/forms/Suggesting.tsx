@@ -88,7 +88,6 @@ export function Suggesting({
      Only the keyboard ever gets there. A press with the pointer never moves the
      focus at all, because `mousedown` is cancelled on the list below; put back on
      the box either way, which is where the pointer had left it too. */
-  const box = useRef<HTMLInputElement | null>(null)
   const putBack = useRef(false)
   const found = matching(value, suggestions)
   const showing = shut ? [] : found
@@ -110,8 +109,6 @@ export function Suggesting({
       <input
         {...shared}
         ref={(node) => {
-          box.current = node
-
           if (node !== null && putBack.current) {
             putBack.current = false
             node.focus()

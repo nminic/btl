@@ -13,6 +13,17 @@
   min-inline-size: 0;
 }
 
+/* And the box inside it takes the room it was given, rather than the width a text
+   input carries of its own. Measured 23.08.2026 at 200% text on a 360px screen: the
+   box came out 417px inside 281px of column, and the **page** scrolled sideways by
+   104px, which is the one thing the portal never does (WCAG 2.2 SC 1.4.10). The
+   column already refuses to grow for it (`min-inline-size: 0` above); what was
+   missing is the box being told the same. */
+.place__town .field__control {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
 /* Its own small name over it, since the field's own label names the town. */
 .place__country-pick {
   display: flex;
@@ -104,17 +115,6 @@
 .field__control--held {
   background: var(--surface-hover);
   cursor: default;
-}
-
-/* Why it is held. Under the control, in the size of the small print it is. */
-.place__held {
-  display: block;
-  margin-block-start: var(--space-4);
-  font-size: 0.75rem;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--text-muted);
 }
 
 /* On a telephone the list of towns stands in the flow rather than over it.

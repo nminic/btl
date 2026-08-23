@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { unwritten } from '../test/unwritten'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -16,7 +17,7 @@ import { SessionProvider } from '../session/SessionProvider'
 import { RESOURCE_NAMES } from '../data/client'
 import { renderAt } from '../test/render'
 import { must } from '../test/at'
-import { sources } from '../test/sources'
+import { sources, WHOLE_PORTAL } from '../test/sources'
 import { PageSectionBody } from '../components/PageSectionBody'
 import { ROW } from '../components/Markdown'
 import type { BtlEvent, PageSection, Result } from '../data/types'
@@ -1053,13 +1054,34 @@ function wordsBefore(before: string): string {
    i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz Člana 99"
    walked out of the check on a page where a bare number is a fault, and Član 99 does
    not exist. Measured. */
-/* And the whole word, not a stem inside one. „zakonskog zastupnika" is an adjective
-   about a person and „nezakonito" is not a document at all; read as substrings, both
-   made a sentence that names one document look like a sentence that names two, and
-   the message said so out loud. The ending is bounded rather than refused, because a
-   document is written in cases: „Pravilnika", „pravilniku", „zakonom", „statuta".
-   Measured 24.08.2026, both ways. */
-const NAMED = /\b(pravilnik|statut|zakon)(?!sk)\w{0,3}\b/i
+/* Each of the three documents, in the cases it is written in, and one pattern per
+   document rather than one pattern with a bounded ending.
+ *
+   „zakonskog zastupnika" is an adjective about a person and „nezakonito" is not a
+   document at all; read as substrings, both made a sentence that names one document
+   look like a sentence that names two, and the message said so out loud.
+
+   A bounded ending was the first answer to that and a round measured it wrong on
+   23.08.2026: `(pravilnik|statut|zakon)(?!sk)\\w{0,3}\\b` refused only the `-sk-`
+   family of three letters, so „Obrada je zakonita, Član 74 se primenjuje." read as
+   naming a law, and the reference to Član 74 was skipped and never checked again.
+   The refusal was itself measured by nothing: „zakonskog" has a four-letter ending
+   and the bound alone refused it, so `(?!sk)` could be deleted with every test
+   staying green.
+
+   The cases of a masculine noun are a closed list and a short one, so they are
+   written out. „pravilnici" changes its stem, which is the other reason this is not
+   a stem with an ending: no bound on an ending of „pravilnik" reaches it.
+
+   One pattern per document, and the one used for „does anything here name a
+   document" built out of the three, so the two cannot drift apart. `namedAmong`
+   below asks each of them by name, which is also what takes the case out: it reads
+   which document a word is a form of instead of cutting an ending off it. */
+const NAMED_EACH = {
+  pravilnik: /\bpravilni(?:k(?:a|u|e|om)?|c(?:i|ima))\b/i,
+  statut: /\bstatut(?:a|u|e|om|i|ima)?\b/i,
+  zakon: /\bzakon(?:a|u|e|om|i|ima)?\b/i,
+}
 
 /** Every document named among some words, in lower case and without repeats.
  *
@@ -1070,15 +1092,16 @@ const NAMED = /\b(pravilnik|statut|zakon)(?!sk)\w{0,3}\b/i
  *  between the sides and inside one of them alike. */
 function namedAmong(words: string[]): Set<string> {
   return new Set(
-    words.flatMap((word) => {
-      const found = NAMED.exec(word)
-
-      /* The stem and not the word: „Pravilnika" and „pravilniku" are one document,
-         and the whole match would make them two. The ending is matched only so that
-         a word which merely begins with the stem is not read as the document
-         (`NAMED` says which). */
-      return found === null ? [] : [must(found[1], 'the document a word names').toLowerCase()]
-    }),
+    /* The document and not the case it is written in: „Pravilnika" and „pravilniku"
+       are one document, and the words themselves would make them two. Asked one
+       document at a time, because that is what takes the case out without cutting an
+       ending off a word: „pravilnici" is a form of „pravilnik" and shares no ending
+       with it. */
+    words.flatMap((word) =>
+      Object.entries(NAMED_EACH)
+        .filter(([, spelt]) => spelt.test(word))
+        .map(([document]) => document),
+    ),
   )
 }
 
@@ -1131,7 +1154,23 @@ function documentOf(inFront: string, ahead: string): string {
   const [only] = named
 
   if (named.size > 1) {
-    return named.has('pravilnik') ? AMBIGUOUS : (only ?? '')
+    /* `must` and not `?? ''`, because inside this branch the set holds at least two
+       and the empty string is unreachable: an unreachable branch is a claim nothing
+       checks (`Rulebook.tsx` keeps the same rule, and a round found this one on
+       23.08.2026). The empty string is also the one answer that does **not** skip a
+       reference, so a fallback here would be the opposite of what this returns.
+
+       Said plainly: **the gate does not see this, and the reason matters.** Measured
+       on 23.08.2026 with `?? ''` put back: coverage still reports 100% of branches.
+       Not because v8 forgives an unreachable branch, but because **no test file is
+       measured at all** — `coverage/lcov.info` holds the portal's own files and
+       nothing from `*.test.*`. The same construction written in a file that ships
+       would be seen, and would fail the threshold.
+
+       So this is not a guard; it is a claim written where it can throw if it ever
+       stops being true, instead of a fallback that would quietly hand back the one
+       answer this branch must never give. */
+    return named.has('pravilnik') ? AMBIGUOUS : must(only, 'one of the two documents')
   }
 
   return only ?? ''
@@ -1483,7 +1522,7 @@ describe('the rulebook', () => {
       if (document === '') {
         expect(
           one.slug,
-          `${one.slug} names an article ${one.number} and nothing beside it says ${String(NAMED)}`,
+          `${one.slug} names an article ${one.number} and nothing beside it names one of ${Object.keys(NAMED_EACH).join(', ')}`,
         ).toBe('pravilnik')
 
         return one.slug === 'pravilnik'
@@ -2253,16 +2292,6 @@ describe('the guard over the written pages', () => {
   })
 })
 
-/**
- * One source file with its comments taken out.
- *
- * A rule described in prose is not a rule, and a sweep that reads prose finds the
- * very sentences that explain what it is looking for. `styles/scale.test.ts` keeps
- * the same rule over stylesheets and for the same reason.
- */
-function unwritten(code: string): string {
-  return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '')
-}
 
 /** The whole of one written page, as one piece of text. */
 function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti'): string {
@@ -2858,9 +2887,43 @@ describe('which document a numbered reference belongs to', () => {
        published privacy policy, so this is a word the portal writes. */
     expect(documentOf('Saglasnost zakonskog zastupnika iz', ' Pravilnika lige')).toBe('pravilnik')
     expect(documentOf('prema pravilniku,', ' nezakonito je')).toBe('pravilnik')
-    /* And the document itself is still read in every case it is written in. */
-    for (const said of [' Pravilnika', ' pravilniku', ' pravilnikom', ' Zakona', ' zakonom']) {
-      expect(documentOf('iz', said), `${said} is not read as the document it names`).not.toBe('')
+
+    /* Every form of every document is read, and no adjective is. Written out
+       rather than sampled, because a bounded ending was sampled for one day and a
+       round measured what it missed: `-sk-` of three letters was refused and the
+       whole `-it-` family was not, so „Obrada je zakonita, Član 74 se primenjuje."
+       read as naming a law and the reference was skipped and never checked again.
+       The refusal itself was measured by nothing, since „zakonskog" has a
+       four-letter ending and the bound alone refused it.
+
+       The accusative plural was missing from the list for one day, and a round
+       measured that it is a form the portal already writes: „to je izmena u odnosu na
+       ranije **pravilnike**" stands on the rulebook today. A reference standing beside
+       that word handed itself to whatever other document the sentence named, and was
+       skipped silently rather than failing loudly as ambiguous, which is the very
+       fault this list was written to close. */
+    const cases = {
+      pravilnik: [
+        'Pravilnik', 'Pravilnika', 'pravilniku', 'pravilnike', 'pravilnikom', 'pravilnici',
+        'pravilnicima',
+      ],
+      statut: ['Statut', 'Statuta', 'statutu', 'statute', 'statutom', 'statuti', 'statutima'],
+      zakon: ['Zakon', 'Zakona', 'zakonu', 'zakone', 'zakonom', 'zakoni', 'zakonima'],
+    }
+
+    for (const [document, forms] of Object.entries(cases)) {
+      for (const said of forms) {
+        expect(documentOf('iz', ` ${said}`), `${said} is not read as ${document}`).toBe(document)
+      }
+    }
+
+    const adjectives = [
+      'zakonita', 'zakonito', 'zakonite', 'zakonitost', 'zakonski', 'zakonska', 'zakonske',
+      'zakonskog', 'zakonskom', 'zakonodavac', 'statutarni', 'statutarna', 'pravilno',
+    ]
+
+    for (const said of adjectives) {
+      expect(documentOf('iz', ` ${said}`), `${said} is read as a document`).toBe('')
     }
   })
 
@@ -2944,15 +3007,63 @@ describe('what is read as a row of a table', () => {
     const everywhere = [...sources(), mine]
 
     /* The sweep is not empty and does reach the file the pattern lives in, so an
-       empty answer below is an answer and not a search that found nothing. */
-    expect(everywhere.length).toBeGreaterThan(80)
+       empty answer below is an answer and not a search that found nothing. The floor
+       comes from `test/sources.ts`, where that fact lives and where the reason for
+       the number is written; held here as 80 for one day, which is a number written
+       by hand in a guard, and this same section of ADL A20 forbids exactly that.
+       Measured: `sources()` narrowed to three quarters of its folders, with an
+       offender in one of the skipped ones, left this sweep green while the floor
+       catches it. No count is written here on purpose; the floor is the one that
+       has a home. */
+    expect(everywhere.length).toBeGreaterThan(WHOLE_PORTAL)
     expect(everywhere.some(({ path }) => path.endsWith(HOME))).toBe(true)
 
     const elsewhere = everywhere
       .filter(({ path }) => !path.endsWith(HOME))
       .filter(({ code }) => asks.test(unwritten(code)))
 
+    /* Two limits, written down because a sweep that is quiet about its reach reads as
+       one that has none. It asks for two spellings of the question, and it reads the
+       portal's own files plus this one, so a third spelling, or the same spelling in
+       another test file, goes past it. Both were measured on 23.08.2026 and both
+       stayed green. What it does hold is the way the question is written in this repo
+       today; the day somebody writes it a third way here, the two homes it guards
+       against are already two. */
     expect(elsewhere.map(({ path }) => path)).toEqual([])
+  })
+
+  it('reads the code of a file and not the prose around it', () => {
+    /* What this sweep reads. The blanker has one home (`test/unwritten.ts`) and two
+       readers, this and `styles/hooks.test.ts`; it was written a second time here
+       from memory on 23.08.2026 as „from `//` to the end of the line", and that was
+       measured wrong the same day: `//` inside a string is not a comment, so
+       `src/app/head.ts` came out reading `export const SITE_ORIGIN = 'https:` and an
+       offender written after that string on the same line was invisible.
+
+       Four shapes, and the last two are the ones that cost something. */
+    const quote = String.fromCharCode(39)
+    const asks = `startsWith(${quote}|${quote})`
+
+    expect(unwritten(`  // ${asks}\nconst a = 1`), 'a comment survives the blanker')
+      .not.toContain(asks)
+    expect(unwritten(`const a = 1 // ${asks}`), 'a trailing comment survives the blanker')
+      .not.toContain(asks)
+    /* An address is not a comment, which is the whole of the first fault. */
+    expect(unwritten(`export const SITE_ORIGIN = ${quote}https://primer.rs${quote}`)).toContain(
+      'primer.rs',
+    )
+    /* And neither is the value of an `accept` attribute. Measured: read as the
+       opening of a comment, it hid sixteen lines of `forms/FormRenderer.tsx` and
+       thirteen of `components/CropChooser.tsx` from this sweep. */
+    const upload = [
+      '<input accept="image/*" />',
+      `const a = ${asks}`,
+      '/* an ordinary comment, which is what closes the window */',
+    ].join('\n')
+
+    expect(unwritten(upload), 'the code between an `accept` and the next comment is gone').toContain(
+      asks,
+    )
   })
 
   it('is answered the same way by both readers, so nothing falls between them', () => {

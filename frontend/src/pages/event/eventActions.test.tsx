@@ -1,5 +1,5 @@
 import { cleanup, screen, within } from '@testing-library/react'
-import { at, first, must } from '../../test/at'
+import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 
@@ -122,6 +122,33 @@ describe('who is offered what on an event', () => {
 
       cleanup()
     }
+  })
+
+  it('draws no control box at all where there is nothing to press', async () => {
+    /* Being signed in stopped being enough on 23.08.2026, when the report moved
+       into the rows of the table. What the row beside the name can still hold is
+       the administrator's pair and the rating, and the rating asks for a result of
+       one's own on this event.
+
+       An empty box is not nothing: `.rankings--tooled:has(> .rankings__head-tool)`
+       turns the head into a grid of `1fr auto` with a gap, so the heading loses
+       16px to a control nobody can see. Measured on 23.08.2026 with the condition
+       written as „signed in": the box was drawn with no children and the `h1` came
+       out 1052px wide against 1068. */
+    /* A member who did not run this one. `000007` did, so the rating is offered to
+       them and there is a box to hold it; the reading that says anything is the one
+       where a signed-in member has nothing at all. */
+    await openEvent('competitor', '000001', undefined, ONE_DAY)
+
+    const head = must(
+      screen.getByRole('heading', { level: 1 }).closest('.rankings--tooled'),
+      'the head of the event',
+    )
+
+    expect(
+      head.querySelector('.rankings__head-tool'),
+      'a control box is drawn for a member with nothing to press',
+    ).toBeNull()
   })
 
   it('offers nothing on a race that has not been run yet', async () => {
@@ -291,6 +318,7 @@ describe('deleting an event', () => {
   })
 })
 
+
 describe('copying an event', () => {
   it('opens the copy on its own form, at the date', async () => {
     /* The date is the one thing that is certainly wrong on a copy, which is what
@@ -402,6 +430,45 @@ describe('copying an event', () => {
     expect(router.state.location.search).not.toBe(first)
   })
 
+  it('opens the copy as a copy: named so, without the three it keeps, on next season', async () => {
+    /* Three of the owner's own sentences from 23.08.2026, and none of them was
+       measured by anything until a round said so: the whole of the screen could be
+       taken out and the package stayed green.
+
+       „Kopiranje dogadjaja treba da se zove u vrhu Kopiranje a ne Izmena, I ne
+       treba da se pominju Mesto, Drzava, Vrsta dogadjaja nego se kopiraju po
+       default-u. Istaknuto moze da ostane." And: „Datum treba automatski da postane
+       proporcionalan datumu kopiranog dogadjaja u narednoj godini." */
+    const user = setupUser()
+
+    renderAt(EVENT, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
+
+    /* The screen says what it is doing, rather than „Izmena", which was the truth
+       about the record and not about the work. */
+    expect(await screen.findByRole('heading', { name: 'Kopiranje događaja' })).toBeVisible()
+
+    /* The three it keeps are not put in question. */
+    expect(screen.queryByLabelText(/^Mesto/), 'the copy is asked for its town').toBeNull()
+    expect(screen.queryByLabelText(/^Država/), 'the copy is asked for its country').toBeNull()
+    expect(screen.queryByLabelText(/^Vrsta/), 'the copy is asked what kind it is').toBeNull()
+    /* And the one that does change from season to season stays. */
+    expect(screen.getByLabelText(/^Istaknuto/)).toBeVisible()
+
+    /* The same place in next year's calendar, worked out from the day it was
+       copied from. „Maraton maratona" of 2015 ran on the second Saturday of March;
+       the second Saturday of March 2016 is the twelfth. */
+    expect(screen.getByLabelText(/^Datum/)).toHaveValue('12/03/2016')
+
+    /* And every race under it moved by the same number of days, so two mornings
+       stay two mornings. */
+    for (const day of screen.getAllByLabelText(/^Dan trke/)) {
+      expect(inputElement(day).value, 'a race stayed in the season it was copied from')
+        .toMatch(/\/2016$/)
+    }
+  })
+
   it('takes the races with it, and gives the copy an address of its own', async () => {
     /* Entering an event and its five races again by hand is the work this exists
        to remove, so a copy without the races is a button that saves nothing.
@@ -457,4 +524,92 @@ describe('copying an event', () => {
        so. */
     expect(at(within(copy).getAllByRole('cell'), 3).textContent).toBe(String(races))
   })
+
+  it('does not hand a third copy the races the second one answers to', async () => {
+    /* The third home of one fault, and the last to be put right: the identity of a
+       copied race was counted rather than measured. A count goes back down and the
+       numbers do not, so emptying one copy frees a number that another copy still
+       holds. Measured 23.08.2026 on „Maraton maratona 2015": copy, copy, empty the
+       first copy, copy again, and the third copy took the four ids the second copy
+       answers to. `editRecord` is filed by id, so saving the third moved **both**
+       onto it and the second was left with no races at all. */
+    const user = setupUser()
+    const { router } = await openEvent('superadmin')
+    const races = within(await screen.findByRole('table', { name: 'Trke' }))
+      .getAllByRole('row')
+      .slice(1).length
+
+    async function copyOnto(day: string) {
+      await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
+      const date = await screen.findByLabelText(/Datum/)
+      await user.clear(date)
+      await user.type(date, day)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    }
+
+    async function openCopy(year: string) {
+      const search = await screen.findByPlaceholderText('Naziv ili mesto')
+      await user.clear(search)
+      await user.type(search, 'Maraton maratona')
+
+      const row = must(
+        within(await screen.findByRole('table'))
+          .getAllByRole('row')
+          .find((one) => new RegExp(`${year}[.]`).test(one.textContent ?? '')),
+        `red kopije iz ${year}`,
+      )
+
+      await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    }
+
+    await copyOnto('14032027')
+    /* Back to the event that is being copied, for the second copy. The list of
+       events offers „Otvori" and not a link out to the calendar. */
+    await router.navigate(EVENT)
+    await screen.findByRole('heading', { level: 1 })
+    await copyOnto('14032028')
+
+    /* The first copy is emptied, which is what frees the numbers the second one
+       holds. Emptied in the administration and not deleted from its own page,
+       which would be shorter: nothing the administration creates reaches a public
+       screen, so the copy has no page of its own to delete it from. Measured, and
+       written down because it is the obvious shortcut. */
+    await openCopy('2027')
+    for (const button of screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ }).reverse()) {
+      await user.click(button)
+    }
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* And now a third copy, which counted would land on the second one's ids. */
+    await router.navigate(EVENT)
+    await screen.findByRole('heading', { level: 1 })
+    await copyOnto('14032029')
+
+    await openCopy('2029')
+
+    expect(screen.queryAllByLabelText(/^Dužina/).length, 'the third copy lost a row').toBe(races)
+
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await openCopy('2028')
+
+    expect(
+      screen.queryAllByLabelText(/^Dužina/).length,
+      'the second copy was left without the races it had',
+    ).toBe(races)
+    /* Its own budget, and the reason for it. ADL A2 keeps the package at 5000ms as
+       a **performance** budget rather than a guard against hanging, so a longer one
+       has to say what it is paying for. This walk makes three copies of an event of
+       four races, opens two forms and saves them, which is the shortest sequence
+       that reaches the fault at all: measured 1390ms warm on this machine, and a
+       package under load has been measured at three to four times its warm time
+       (`adminFlows.test.tsx`, 1,6s warm against 4,4s loaded), which is 4,2 to 5,6s
+       and either side of the default. Fifteen seconds is ten times warm; a fourfold
+       slowdown of the copy itself would still be caught by the other tests of this
+       file, which keep the default. */
+  }, 15_000)
 })

@@ -6,6 +6,19 @@
   max-width: 34rem;
 }
 
+/* A form that carries a table under its fields is as wide as the screen gives it.
+ *
+ * The ceiling above is a measure for reading: a line of fields wider than about
+ * thirty four characters of label is a line the eye loses. A table of races is not
+ * prose, and it went under the fields on 23.08.2026 (owner). Measured that day, at
+ * the ceiling: the table wanted 1101px inside 544 of form, so 557px of it stood
+ * outside its box on a wide desk, where before it had stood whole. On a phone the
+ * table still scrolls in its own box, which is what every table on the portal
+ * does. */
+.form--wide {
+  max-width: none;
+}
+
 /* A row of fields, and one field to a line until there is room for more.
  *
  * Written the other way round, as columns undone by a query, the two rules met

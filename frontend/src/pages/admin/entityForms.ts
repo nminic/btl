@@ -2,7 +2,6 @@ import { fieldDate } from '../../forms/dateField'
 import { WHOLE } from '../../components/crop'
 import { cena, clan, dogadjaj, liga, moderator, strana, tim, trka } from '../../forms/definitions'
 import { nextMemberNumber } from '../../data/memberNumber'
-import { categoryOf } from '../../data/raceCategory'
 import { isoDate } from '../../forms/dateField'
 import { slugify } from '../rulebookToc'
 import { applyChanges, fieldValue, recordValue } from '../../forms/records'
@@ -243,33 +242,6 @@ export function eventClash(
   return taken.includes(address) ? { date: { key: 'admin.eventTaken' } } : {}
 }
 
-/**
- * Two races of one event on one morning and of one length.
- *
- * A race has no name (PDL P6), so it is known by its event, its day and its
- * length, and two that share all three are two records nothing can tell apart:
- * the row of one and the row of the other carry the same words, and one of the
- * two buttons deletes results. The same pair stands twice in the list a member
- * reports a result from, and whichever is picked is picked blindly.
- *
- * Refused where it is made rather than drawn around afterwards. A duplicate like
- * this is a mistake in the entering, not a shape the calendar has: an event that
- * really runs two races of one length on one morning gives them different
- * lengths, because they are different races.
- *
- * Said on the length, which is the field somebody would change to fix it.
- */
-export function raceClash(
-  values: FormValues,
-  others: { date: string; distanceKm: number }[],
-): Record<string, FieldError> {
-  const day = isoDate(String(values.date))
-  const length = Number(values.distanceKm)
-
-  const same = others.some((one) => one.date === day && one.distanceKm === length)
-
-  return same ? { distanceKm: { key: 'admin.raceTaken' } } : {}
-}
 
 /**
  * The address an event answers at: its name, then the year it is run in.
@@ -314,25 +286,6 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
  * beside the distance, which let a marathon be saved as a short race and made
  * the board of most marathons lie.
  */
-/** The category, read off the distance. Its own function because two definitions
- *  share it: the races, and the races of one event (`racesOf`). */
-function categoryFrom(values: FormValues): DerivedValue[] {
-  /* Words and an empty field both come out as not a number, and every
-     comparison against that is false, so one comparison covers both. */
-  const distance = Number(String(values.distanceKm))
-  const known = distance > 0
-  const category = known ? categoryOf(distance) : ''
-
-  return [
-    {
-      name: 'category',
-      labelKey: 'admin.field.category',
-      hintKey: 'admin.hint.category',
-      value: category,
-      shownKey: known ? `category.${category}` : 'admin.field.categoryFromDistance',
-    },
-  ]
-}
 
 export const RACES: EntityDef = {
   id: 'races',
@@ -347,46 +300,12 @@ export const RACES: EntityDef = {
   form: trka,
   idField: 'id',
   blank: {},
-  derived: categoryFrom,
+  /* Nothing derives anything here any more. The category of a race is read off
+     its length where the row is drawn (`EventRaces.tsx`), which is the same rule
+     in the one place a race is now entered; the form this entity carries is not
+     rendered by any screen since 23.08.2026. */
 }
 
-/**
- * The races of one event, as the event's own screen edits them.
- *
- * The same records as `RACES`, minus the one question the screen has already
- * answered: which event this is. A race is one length of one morning and is
- * defined inside its event (owner, 06.08.2026), so offering a list of one
- * thousand events beside it is offering a wrong answer.
- *
- * The event is written on the record all the same, through `derived`, which is
- * where everything that is not asked for is written (the address of an event,
- * the category of a race). The link lives on the race and nowhere else, so this
- * is the only place it is set.
- */
-export function racesOf(eventId: string, eventName: string, eventDate: string): EntityDef {
-  return {
-    ...RACES,
-    form: {
-      ...RACES.form,
-      fields: RACES.form.fields.filter((field) => field.name !== 'eventId'),
-    },
-    /* The day of the event, in a race being entered rather than changed. One
-       event may run over more than one morning, and most do not: the day that is
-       right nine times in ten is the one already on the screen, and the form
-       says so under the field (owner, 10.08.2026). */
-    start: { date: fieldDate(eventDate) },
-    derived: (values) => [
-      ...categoryFrom(values),
-      {
-        name: 'eventId',
-        labelKey: 'admin.field.event',
-        hintKey: 'admin.hint.eventFromScreen',
-        value: eventId,
-        shownKey: eventName,
-      },
-    ],
-  }
-}
 
 export const TEAMS: EntityDef = {
   id: 'teams',

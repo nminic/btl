@@ -309,10 +309,16 @@ describe('the town on a form', () => {
   })
 
   it('keeps the name of the country control the same, held or not', async () => {
-    /* The sentence saying why it is held stands outside the label. Inside it,
-       everything in a label is the name of the control: the name changed with
-       the state, and a reader was told the same words twice, once as the name
-       and once as the description. */
+    /* The name of the control does not move with its state. It never carried the
+       reason: everything inside a label is the name, so a sentence put there
+       changed the name with the state and a reader was told the same words twice,
+       once as the name and once as the description.
+
+       Since 23.08.2026 there is no sentence at all (owner: „Ne ispisuje se poruka
+       Mesto je iz šifarnika, pa državu nosi sa sobom."), because it was drawn
+       under the box and pushed the country out of line with the town beside it.
+       What is left in its place is the rule on the town itself, which says the
+       country comes with a town out of the codebook. */
     const user = setupUser()
     const { box } = renderField()
 
@@ -323,8 +329,11 @@ describe('the town on a form', () => {
 
     const country = screen.getByRole('combobox', { name: /^Država/ })
 
-    expect(country).toHaveAttribute('aria-disabled', 'true')
-    expect(country).toHaveAccessibleDescription('Mesto je iz šifarnika, pa državu nosi sa sobom.')
+    expect(country).toBeDisabled()
+    expect(country, 'the sentence is back, and with it the box moves').toHaveAccessibleDescription(
+      '',
+    )
+    expect(screen.queryByText(/Mesto je iz šifarnika/)).toBeNull()
   })
 
   it('will not let the country of a town it recognises be changed', async () => {
@@ -343,7 +352,7 @@ describe('the town on a form', () => {
     const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveValue('CH')
-    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toBeDisabled()
   })
 
   it('takes no answer while it is held, however it is reached', async () => {
@@ -380,7 +389,7 @@ describe('the town on a form', () => {
 
     const country = screen.getByRole('combobox', { name: /^Država/ })
 
-    expect(country).not.toHaveAttribute('aria-disabled', 'true')
+    expect(country).not.toBeDisabled()
 
     /* And it answers, by the keyboard as well as by the pointer: what stops the
        keys while it is held must not stop them once it is not. */
@@ -407,7 +416,7 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(country).toHaveValue('CH')
     })
-    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toBeDisabled()
     expect(onCountry).toHaveBeenLastCalledWith('CH')
   })
 
@@ -427,7 +436,7 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(country).toHaveValue('CH')
     })
-    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toBeDisabled()
     expect(onCountry).toHaveBeenLastCalledWith('CH')
   })
 
@@ -439,7 +448,7 @@ describe('the town on a form', () => {
 
     await user.type(box, 'London')
 
-    expect(screen.getByRole('combobox', { name: /^Država/ })).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('combobox', { name: /^Država/ })).not.toBeDisabled()
   })
 
   it('holds the country of the London that was pressed', async () => {
@@ -458,7 +467,7 @@ describe('the town on a form', () => {
     const country = screen.getByRole('combobox', { name: /^Država/ })
 
     expect(country).toHaveValue('US')
-    expect(country).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toBeDisabled()
   })
 
   it('fills a country the record has none of, without being touched', async () => {
@@ -490,7 +499,7 @@ describe('the town on a form', () => {
        is answered before the first request goes out and would pass with no rule
        here at all. Recognising Beograd is what the arrival changes. */
     await waitFor(() => {
-      expect(country).toHaveAttribute('aria-disabled', 'true')
+      expect(country).toBeDisabled()
     })
 
     expect(country).toHaveValue('AT')
