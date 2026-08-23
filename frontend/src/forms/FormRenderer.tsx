@@ -665,8 +665,16 @@ export function FormRenderer({
    * insists on having one, so a pattern error stays.
    *
    * Derived rather than swept out of the state, because there is nothing to sweep:
-   * the state is what the last submission found, and what is drawn is what is true
-   * now. That has one visible consequence and it is worth saying rather than
+   * the state is what the last submission found, and this reads it again on every
+   * draw. **Only for this one kind of error**, and the rest of the state is as
+   * stale as it ever was: correct the first of two passwords that did not match
+   * and „Ne poklapa se sa prethodnim poljem." goes on standing under the second
+   * until the form is sent again, because `handleChange` clears the error of the
+   * field that was typed into and of no other. That is older than this filter and
+   * it is not what this filter is about; it is written down so the sentence above
+   * is not read as a promise about everything.
+   *
+   * The filter has one visible consequence and it is worth saying rather than
    * discovering: a field that becomes obligatory again is refused again **at
    * once**, without another submission. Attach a picture and the message goes;
    * press „Obriši" on that picture and it is back, over a field nobody has touched

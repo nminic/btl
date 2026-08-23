@@ -1249,35 +1249,33 @@ describe('an error that says a field is obligatory', () => {
 })
 
 describe('an error that is not about a field being obligatory', () => {
-  it('stays after the form stops asking for that field', () => {
+  it('stays after the form stops asking for that field', async () => {
     /* The half the comment over `shown` promises and nothing measured until
-       23.08.2026: „a badly written address is still a badly written address". Read
-       through a filter that dropped every error of a field the form no longer
-       asks for, a member who typed `trka.rs/rezultati` and then attached a picture
-       would press Pošalji and see nothing happen at all: the form refuses, because
-       the shape is still wrong, and says so nowhere. */
+     23.08.2026: „a badly written address is still a badly written address". Read
+     through a filter that dropped every error of a field the form no longer
+     asks for, a member who typed `trka.rs/rezultati` and then attached a picture
+     would press Pošalji and see nothing happen at all: the form refuses, because
+     the shape is still wrong, and says so nowhere. */
     const user = setupUser()
     const sent: FormValues[] = []
 
     renderWithI18n(<FormRenderer form={freedByPicture} onSubmit={(one) => sent.push(one)} />)
 
-    return (async () => {
-      await user.type(screen.getByLabelText(/proba.veza/), 'trka.rs/rezultati')
-      await user.click(screen.getByRole('button', { name: sr.form.submit }))
+    await user.type(screen.getByLabelText(/proba.veza/), 'trka.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: sr.form.submit }))
 
-      expect(screen.getByText(sr.form.errors.pattern)).toBeVisible()
+    expect(screen.getByText(sr.form.errors.pattern)).toBeVisible()
 
-      await attach(user)
+    await attach(user)
 
-      /* No longer obligatory: the star is gone. Still wrong: the message is not. */
-      expect(screen.getByLabelText(/proba.veza/)).not.toHaveAttribute('aria-required')
-      expect(screen.getByText(sr.form.errors.pattern), 'the shape stopped being wrong')
-        .toBeVisible()
+    /* No longer obligatory: the star is gone. Still wrong: the message is not. */
+    expect(screen.getByLabelText(/proba.veza/)).not.toHaveAttribute('aria-required')
+    expect(screen.getByText(sr.form.errors.pattern), 'the shape stopped being wrong')
+      .toBeVisible()
 
-      await user.click(screen.getByRole('button', { name: sr.form.submit }))
+    await user.click(screen.getByRole('button', { name: sr.form.submit }))
 
-      expect(sent, 'the form was sent with an address it refuses').toEqual([])
-    })()
+    expect(sent, 'the form was sent with an address it refuses').toEqual([])
   })
 })
 
