@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -115,8 +115,36 @@ export function Calculator() {
   )
 
   /* The one listener, and `heldBy` above says why it is a listener of ours rather
-     than React's. */
-  useEffect(() => {
+     than React's.
+   *
+     A layout effect and not an ordinary one, which is not a preference: a passive
+     effect is scheduled rather than run, so between the commit that puts these
+     boxes on the screen and the flush that attaches this listener there is a
+     window in which the boxes exist and nothing is listening. Writing that lands
+     in it is not lost from the box, where it stands where anybody can see it, but
+     from the widget, which goes on saying it holds nothing: Reset stays refused
+     over a box with a number in it.
+   *
+     It is narrow and it is not empty, and the reason is measured rather than
+     assumed. The gate failed twice on this widget on 22.08.2026, on two different
+     tests, both times on the first assertion after the first typing of that test,
+     which is the shape this window makes. Instrumented on 23.08.2026 in the form
+     `Home.test.tsx` has: with a passive effect the listener was not yet attached
+     in one pass of fifteen, and with this one in none of ten.
+
+     What is **not** a reason here, though it would be one elsewhere: a browser
+     restoring a form on reload, or an autofill. Both write into a box and fire
+     `input` of their own accord, and neither reaches these six: every one of them
+     says `autoComplete="off"` for the reason written above, and they are built by
+     React after the page has loaded, so a form restored from session history never
+     sees them.
+   *
+     Measured in both directions, deterministically, in `calculatorEarly.test.tsx`:
+     a probe mounted before this widget writes into a box from its own passive
+     effect, which React runs before this component's would. With `useEffect` here
+     that writing is missed; with the layout effect it is caught, because a layout
+     effect runs inside the commit itself. */
+  useLayoutEffect(() => {
     /* At most one node, walked rather than tested for null: a ref is set by the
        time an effect runs, and an unreachable branch is a claim nothing checks
        (`Rulebook.tsx` keeps the same rule). */

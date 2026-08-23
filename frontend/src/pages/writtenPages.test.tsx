@@ -17,6 +17,7 @@ import { renderAt } from '../test/render'
 import { must } from '../test/at'
 import { sources } from '../test/sources'
 import { PageSectionBody } from '../components/PageSectionBody'
+import { ROW } from '../components/Markdown'
 import type { BtlEvent, PageSection, Result } from '../data/types'
 import { StaticPage } from './StaticPage'
 
@@ -35,6 +36,39 @@ const WRITTEN: Record<
    the code agrees with it whatever it is changed to, and what this holds is the
    content and the code saying the same word. */
 const PLACE = '[[gallery]]'
+
+/**
+ * Whether a line is a row of a table, asked in one place.
+ *
+ * Matched whole, the way the portal matches a row. Asked as „begins and ends with a
+ * pipe", a lone `|` answered yes to both and, having no cells at all, answered yes to
+ * being a line of dashes as well, so the search for the dashes stopped on a line the
+ * portal draws as a paragraph.
+ *
+ * One question and two readers, since 23.08.2026. The table reader asked it this way
+ * and the reader of prose asked „does it begin with a pipe", so a row missing its
+ * closing pipe fell out of both at once: not a row here, not prose there, read by
+ * nobody. A reader sees it as an ordinary paragraph, because the renderer draws it as
+ * one (components/Markdown.tsx).
+ */
+function isTableRow(line: string): boolean {
+  return ROW.test(line.trim())
+}
+
+/**
+ * Everything in a block that is not a row of a table.
+ *
+ * The other half of `isTableRow`, and it has a name so that both halves can be
+ * measured: a row missing its closing pipe used to fall out of the table reader and
+ * out of this one at once, so nothing read it at all, and neither reader could be
+ * asked about it from a test.
+ */
+function proseOf(block: string): string {
+  return block
+    .split(NEWLINE)
+    .filter((line) => !isTableRow(line))
+    .join(NEWLINE)
+}
 
 /**
  * Every table of one block of the policy, each read as a table: its header, and the
@@ -63,14 +97,10 @@ function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   const tables: string[][] = []
   let table: string[] = []
 
-  /* Matched whole, the way the portal matches a row. Asked as „begins and ends with a
-     pipe", a lone `|` answered yes to both and, having no cells at all, answered yes to
-     being a line of dashes as well, so the search for the dashes stopped on a line the
-     portal draws as a paragraph. */
   for (const raw of block.split(NEWLINE)) {
     const line = raw.trim()
 
-    if (/^\|.*\|$/.test(line)) {
+    if (isTableRow(line)) {
       table.push(line)
 
       continue
@@ -1017,8 +1047,43 @@ function wordsBefore(before: string): string {
   return before.replace(/[\s([„”"'—-]+$/u, '')
 }
 
+/* The code of ethics is deliberately not on this list. It looks like another
+   document and is not one: the terms say in so many words „To je etički kodeks lige
+   i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz Člana 99"
+   walked out of the check on a page where a bare number is a fault, and Član 99 does
+   not exist. Measured. */
+/* And the whole word, not a stem inside one. „zakonskog zastupnika" is an adjective
+   about a person and „nezakonito" is not a document at all; read as substrings, both
+   made a sentence that names one document look like a sentence that names two, and
+   the message said so out loud. The ending is bounded rather than refused, because a
+   document is written in cases: „Pravilnika", „pravilniku", „zakonom", „statuta".
+   Measured 24.08.2026, both ways. */
+const NAMED = /\b(pravilnik|statut|zakon)(?!sk)\w{0,3}\b/i
+
+/** Every document named among some words, in lower case and without repeats.
+ *
+ *  Every, and not the nearest, which is what this looked for until 23.08.2026 and
+ *  what a round measured the cost of: „po pravilniku i zakonu, Član 74" has both
+ *  names on one side, and taking the nearer handed the reference to the law and
+ *  never looked for Član 74 again. Nearness was a guess wherever it was applied,
+ *  between the sides and inside one of them alike. */
+function namedAmong(words: string[]): Set<string> {
+  return new Set(
+    words.flatMap((word) => {
+      const found = NAMED.exec(word)
+
+      /* The stem and not the word: „Pravilnika" and „pravilniku" are one document,
+         and the whole match would make them two. The ending is matched only so that
+         a word which merely begins with the stem is not read as the document
+         (`NAMED` says which). */
+      return found === null ? [] : [must(found[1], 'the document a word names').toLowerCase()]
+    }),
+  )
+}
+
 /** Which document a numbered reference says it belongs to, in lower case, or the
- *  empty string when it names none.
+ *  empty string when it names none, or `AMBIGUOUS` where more than one is named and
+ *  the rulebook is among them.
  *
  *  Read from the words of the reference itself, three on either side, and not from
  *  the sentence around it. A legal text names the law in passing all the time:
@@ -1028,25 +1093,47 @@ function wordsBefore(before: string): string {
  *  it. Three words is the reference; the rest of the sentence is not.
  *
  *  Both sides, because a sentence names its document on whichever side it likes:
- *  „Pravilnik lige, Član 74" in front, „Član 74 opšteg pravilnika lige" behind with
- *  a Serbian letter `\w` does not reach, „član 74 pravilnika" in lower case. Ahead
- *  is read first, and inside three words that is also the nearer one. */
-function documentOf(before: string, after: string): string {
-  /* The code of ethics is deliberately not on this list. It looks like another
-     document and is not one: the terms say in so many words „To je etički kodeks
-     lige i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz
-     Člana 99" walked out of the check on a page where a bare number is a fault,
-     and Član 99 does not exist. Measured. */
-  const named = /pravilnik|statut|zakon/i
-  /* Emptied of blanks before the three are taken, not after. The words behind a
-     number open with the space that separates them from it, so counted with the
+ *  „Pravilnik lige, Član 74" in front of the number, „Član 74 opšteg pravilnika
+ *  lige" after it with a Serbian letter `\w` does not reach, „član 74 pravilnika"
+ *  in lower case.
+ *
+ *  **Every name in those six words counts, and none of them wins over another.**
+ *  Three rules were tried before this one and all three were measured wrong within
+ *  a day. Ahead-first let „Prema Pravilniku lige Član 99 u smislu zakona" go to the
+ *  law, and Član 99 does not exist. Nearer-wins let „U skladu sa zakonom, Član 74
+ *  opšteg pravilnika lige" go to the law just as quietly, because a comma is not a
+ *  wall. Nearest-within-a-side, which survived the second correction by accident,
+ *  did the same to „po pravilniku i zakonu, Član 74". Every one of them is a guess
+ *  about which of two names the writer meant, and a wrong guess is silent.
+ *
+ *  So nothing this guard could be wrong about is guessed. One name is the answer;
+ *  none is the empty string; and several is `AMBIGUOUS`, **but only where the
+ *  rulebook is among them**. Where several are named and none is ours, one of them
+ *  comes back and which one is indeed arbitrary; it changes nothing, because the
+ *  reader below asks only whether the answer begins with „pravilnik". That last
+ *  clause is the difference between a guard and a nuisance: „Prijem u članstvo vrši
+ *  se u skladu sa Statutom i Članom 12 Zakona o sportu." names two documents and
+ *  neither is ours, so there is nothing here to be wrong about and the reference is
+ *  skipped, exactly as ADL A20 says a reference to another document is. Where the
+ *  rulebook **is** one of the two, the sentence cannot be read either way and it
+ *  fails loudly: it is a sentence to rewrite, not a rule to refine. There is none
+ *  on the portal today. */
+const AMBIGUOUS = 'dva dokumenta'
+
+function documentOf(inFront: string, ahead: string): string {
+  /* Emptied of blanks before the three are taken, not after. The words in front of
+     a number end with the space that separates them from it, so counted with the
      blank in hand only two of them were ever read, and „(Član 74 stav 2
      Pravilnika)" failed as a reference that does not say of what. */
   const words = (text: string): string[] => text.split(/\s+/).filter(Boolean)
-  const ahead = named.exec(words(after).slice(0, 3).join(' '))
-  const behind = named.exec(words(before).slice(-3).join(' '))
+  const named = namedAmong([...words(inFront).slice(-3), ...words(ahead).slice(0, 3)])
+  const [only] = named
 
-  return (ahead?.[0] ?? behind?.[0] ?? '').toLowerCase()
+  if (named.size > 1) {
+    return named.has('pravilnik') ? AMBIGUOUS : (only ?? '')
+  }
+
+  return only ?? ''
 }
 
 /** An article named by number, and a section named by number.
@@ -1065,6 +1152,13 @@ function documentOf(before: string, after: string): string {
  *  At most three figures and never a leading zero, because a member number is
  *  written `000001` and the terms describe that very shape: read as a number, „član
  *  000001" became a reference to Član 1. */
+/* An age is still read as a reference, and that stays a limit rather than becoming
+   a fix. „od člana 16 godina i mlađeg" is a sentence about a person and this reads
+   it as Član 16; refusing every number followed by „godin" was tried on 23.08.2026
+   and measured worse, because „Zapis iz Člana 74 godinu dana ostaje dostupan" is an
+   ordinary reference and went invisible. A false alarm is a sentence somebody
+   rewrites; a reference nobody looks at is an article that quietly stops existing.
+   Measured both ways, and the loud side kept. */
 const ARTICLE = /(?:[Čč]lan\w*|[Čč]l\.) *(?!0)(\d{1,3})(?!\d)/g
 const SECTION = /[Ss]ekcij\w+ *(?!0)(\d{1,3})(?!\d)/g
 
@@ -1083,11 +1177,14 @@ function mentionsIn(
 ): { before: string; number: number; after: string }[] {
   return [...text.matchAll(what)].map((found) => {
     const at = found.index ?? 0
-    const behind = text.slice(0, at)
+    /* `inFront` and not `behind`, which is what this was called while holding the
+       words **in front of** the number: a name that says the opposite of what it
+       holds is one more thing to get wrong, and the JSDoc above says so too. */
+    const inFront = text.slice(0, at)
     const ahead = text.slice(at + found[0].length)
 
     return {
-      before: wordsBefore(/[^.\n]{0,60}$/.exec(behind)?.[0] ?? ''),
+      before: wordsBefore(/[^.\n]{0,60}$/.exec(inFront)?.[0] ?? ''),
       number: Number(found[1]),
       after: /^[^.\n]{0,60}/.exec(ahead)?.[0] ?? '',
     }
@@ -1374,10 +1471,18 @@ describe('the rulebook', () => {
     const ours = referenced.filter((one) => {
       const document = documentOf(one.before, one.after)
 
+      /* Two documents named around one number, and no rule that picks between them
+         is anything but a guess (`documentOf` says why). It fails here rather than
+         being handed to either. */
+      expect(
+        document,
+        `${one.slug} names two documents around article ${one.number}: „${one.before} Član ${one.number}${one.after}"`,
+      ).not.toBe(AMBIGUOUS)
+
       if (document === '') {
         expect(
           one.slug,
-          `${one.slug} names an article ${one.number} without saying of what document`,
+          `${one.slug} names an article ${one.number} and nothing beside it says ${String(NAMED)}`,
         ).toBe('pravilnik')
 
         return one.slug === 'pravilnik'
@@ -1760,10 +1865,13 @@ describe('how a written page is set', () => {
       }
 
       for (const section of page.sections) {
-        const prose = section.body
-          .split(NEWLINE)
-          .filter((line) => !line.trimStart().startsWith('|'))
-          .join(NEWLINE)
+        /* Everything that is not a row of a table, asked exactly the way `tablesOf`
+           asks it. Asked as „does not begin with a pipe", a row missing its closing
+           pipe fell out of both paths at once: not a row to the table reader, not
+           prose here, and so read by nobody. A reader sees it as an ordinary
+           paragraph, because the renderer draws it as one (components/Markdown.tsx),
+           so this reads it as one too. The fifth recorded limit of 22.08.2026. */
+        const prose = proseOf(section.body)
 
         for (const { before, number } of mentionsIn(prose, SECTION)) {
           const rule = inProse.find(
@@ -2126,6 +2234,17 @@ describe('the guard over the written pages', () => {
     ).toEqual([])
   })
 })
+
+/**
+ * One source file with its comments taken out.
+ *
+ * A rule described in prose is not a rule, and a sweep that reads prose finds the
+ * very sentences that explain what it is looking for. `styles/scale.test.ts` keeps
+ * the same rule over stylesheets and for the same reason.
+ */
+function unwritten(code: string): string {
+  return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '')
+}
 
 /** The whole of one written page, as one piece of text. */
 function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti'): string {
@@ -2628,5 +2747,183 @@ describe('what the written pages say the fee buys', () => {
     for (const slug of ['uslovi-koriscenja', 'pravilnik'] as const) {
       expect(whole(slug)).not.toMatch(/telefon/i)
     }
+  })
+})
+
+describe('which document a numbered reference belongs to', () => {
+  /* The five limits recorded on 22.08.2026. Two of them are closed here, two stay
+     open on purpose with the measurement that kept them open, and the fifth is the
+     message under this block.
+
+     Asked of the reader itself and not through the content, and that is a
+     limitation rather than a choice: a sentence added to a page to try one of
+     these is either **accepted** by the reader, and then it fails on the pinning
+     of references before it proves anything, or **refused** by it, and then it
+     passes in silence, which is the very fault being measured. The content cannot
+     tell the two apart; the reader can. */
+  it('refuses to choose wherever the rulebook is one of two names', () => {
+    /* Three rules were tried before this one and all three were measured wrong
+       within a day. Ahead-first sent „Prema Pravilniku lige Član 99 u smislu
+       zakona" to the law, and Član 99 does not exist. Nearer-wins sent „U skladu sa
+       zakonom, Član 74 opšteg pravilnika lige" to the law just as quietly.
+       Nearest-within-a-side survived that correction by accident and did the same
+       to „po pravilniku i zakonu, Član 74", where both names stand on one side.
+       Every such rule is a guess, and a wrong guess is silent. */
+    expect(documentOf('Prema Pravilniku lige', ' u smislu zakona')).toBe(AMBIGUOUS)
+    expect(documentOf('U skladu sa zakonom,', ' opšteg pravilnika lige')).toBe(AMBIGUOUS)
+    /* Both names on one side, in either order. */
+    expect(documentOf('po pravilniku i zakonu,', ' se primenjuje')).toBe(AMBIGUOUS)
+    expect(documentOf('iz', ' Zakona i Pravilnika lige')).toBe(AMBIGUOUS)
+  })
+
+  it('skips a reference of two other documents rather than stopping the file', () => {
+    /* „Prijem u članstvo vrši se u skladu sa Statutom i Članom 12 Zakona o sportu."
+       names two documents and neither is ours. There is nothing here for this guard
+       to be wrong about, so it is skipped exactly as a reference to one other
+       document is (ADL A20). Failing on it would be a guard that stops the file over
+       a sentence it has no business reading.
+
+       Held as „it names one of those two" and not as „it is not ambiguous", which is
+       what this said for one day: the empty string satisfies every denial, and the
+       empty string is the one answer that does **not** skip. Where a reference names
+       nothing at all, a page other than the rulebook fails, which is the whole of
+       ADL A20's rule about a bare number. Measured: `return '' `in place of the name
+       left this test green and took the skipping away. */
+    expect(['statut', 'zakon']).toContain(documentOf('u skladu sa Statutom i', ' Zakona o sportu'))
+  })
+
+  it('answers plainly where only one side names one', () => {
+    expect(documentOf('iz', ' Pravilnika lige')).toBe('pravilnik')
+    expect(documentOf('Prema Pravilniku lige', ' stoji ovo')).toBe('pravilnik')
+    /* And the same word on both sides is one document, not two. */
+    expect(documentOf('po pravilniku', ' pravilnika')).toBe('pravilnik')
+  })
+
+  it('says nothing where neither side names one', () => {
+    expect(documentOf('Prema', ' postupa se dalje')).toBe('')
+  })
+
+  it('does not read an adjective as a document', () => {
+    /* „Saglasnost zakonskog zastupnika iz Člana 12 Pravilnika lige" names one
+       document and says so plainly. Read as substrings, „zakonskog" counted as the
+       law, the sentence looked like a sentence naming two, and the file stopped with
+       a message that said exactly that. „zakonski rok" already stands in the
+       published privacy policy, so this is a word the portal writes. */
+    expect(documentOf('Saglasnost zakonskog zastupnika iz', ' Pravilnika lige')).toBe('pravilnik')
+    expect(documentOf('prema pravilniku,', ' nezakonito je')).toBe('pravilnik')
+    /* And the document itself is still read in every case it is written in. */
+    for (const said of [' Pravilnika', ' pravilniku', ' pravilnikom', ' Zakona', ' zakonom']) {
+      expect(documentOf('iz', said), `${said} is not read as the document it names`).not.toBe('')
+    }
+  })
+
+  it('still reads an enumeration as a reference that names nothing', () => {
+    /* „Član 74 i Član 75 Pravilnika" names the document once, behind the last of
+       them, so the first of the two sees three words that name nothing. Stepping
+       over the rest of the list was tried on 23.08.2026 and taken back the same
+       day: the pattern that finds a further reference also finds „članarina" and
+       „članstvo", so it swallowed ordinary words and, worse, handed the first
+       reference whatever document stood past them. Measured: with the step,
+       „Uslovi iz Člana 67 i Člana 3 Zakona o sportu se primenjuju." left Član 67
+       unchecked and the suite green.
+
+       So the limit stays, and it fails loudly rather than quietly, which is the
+       side to be on. */
+    expect(documentOf('iz', ' i Član 75 Pravilnika')).toBe('')
+  })
+})
+
+describe('what is read as a reference to an article', () => {
+  it('is a number that follows the word, an age included', () => {
+    /* „od člana 16 godina i mlađeg" is a sentence about a person and this reads it
+       as Član 16, which is the fourth recorded limit. Refusing every number
+       followed by „godin" was tried on 23.08.2026 and measured worse: „Zapis iz
+       Člana 74 godinu dana ostaje dostupan" is an ordinary reference and went
+       invisible. A false alarm is a sentence somebody rewrites; a reference nobody
+       looks at is an article that quietly stops existing. */
+    expect([...'od člana 16 godina i mlađeg'.matchAll(ARTICLE)].map((one) => one[1])).toEqual([
+      '16',
+    ])
+    expect([...'Zapis iz Člana 74 godinu dana'.matchAll(ARTICLE)].map((one) => one[1])).toEqual([
+      '74',
+    ])
+  })
+})
+
+describe('what is read as a row of a table', () => {
+  /** A block with one whole table in it and one line that opens a row and never
+   *  closes it, which is the shape the fifth recorded limit was about. */
+  const BROKEN = [
+    '| Ko | Šta |',
+    '|---|---|',
+    '| Hetzner | Smeštaj |',
+    '',
+    '| Sekcija 5 kaže ovo i nikad se ne zatvori',
+  ].join(NEWLINE)
+
+  it('is a line that closes as well as opens', () => {
+    expect(isTableRow('| Dok ste član | Čuvamo dok traje članstvo |')).toBe(true)
+    expect(isTableRow('| Dok ste član | Čuvamo dok traje članstvo')).toBe(false)
+    expect(isTableRow('Rečenica o sekciji 5.')).toBe(false)
+    /* A lone pipe is not a row either, which is what the whole match is for. */
+    expect(isTableRow('|')).toBe(false)
+  })
+
+  it('is asked in one place, and nowhere else asks it for itself', () => {
+    /* The two readers share a question, and sharing it is the fix rather than the
+       fact: either of them can stop asking it, and a round measured exactly that on
+       23.08.2026, putting the old inline filter back at the place the sections are
+       read and leaving the file green.
+
+       So a sweep, in the shape `app/filterParams.test.ts` uses for its own one hook:
+       the list of files that ask it for themselves, held against an empty list. Not
+       a count of matches, which is what this was for one day and what a second round
+       took apart: a count is a number written by hand, and it counted a sentence of
+       prose in the renderer's own comment while the import it claimed to be counting
+       gave no match at all. Rewording that comment failed the file, and deleting the
+       import did not.
+
+       Comments are blanked before the question is asked, because a rule described in
+       prose is not a rule (`styles/scale.test.ts` keeps the same rule over CSS).
+
+       `Markdown.tsx` is where the pattern lives and is therefore not an offender;
+       everything else, this file included, must import it. */
+    const HOME = join('components', 'Markdown.tsx')
+    const asks = /startsWith\('\|'\)|\/\^\\\|/
+    const mine = {
+      path: join('pages', 'writtenPages.test.tsx'),
+      code: readFileSync(join(process.cwd(), 'src/pages/writtenPages.test.tsx'), 'utf-8'),
+    }
+    const everywhere = [...sources(), mine]
+
+    /* The sweep is not empty and does reach the file the pattern lives in, so an
+       empty answer below is an answer and not a search that found nothing. */
+    expect(everywhere.length).toBeGreaterThan(80)
+    expect(everywhere.some(({ path }) => path.endsWith(HOME))).toBe(true)
+
+    const elsewhere = everywhere
+      .filter(({ path }) => !path.endsWith(HOME))
+      .filter(({ code }) => asks.test(unwritten(code)))
+
+    expect(elsewhere.map(({ path }) => path)).toEqual([])
+  })
+
+  it('is answered the same way by both readers, so nothing falls between them', () => {
+    /* The fifth recorded limit, and the whole of it: the table reader asked „does
+       it begin and end with a pipe" and the reader of prose asked „does it begin
+       with a pipe", so a row missing its closing pipe was not a row to one and not
+       prose to the other, and no guard on this portal ever read it. A reader sees
+       it as an ordinary paragraph, because the renderer draws it as one.
+
+       Held on both readers rather than on the question they share, because sharing
+       a question is the fix and not the fact: either of them can stop asking it,
+       and until 23.08.2026 one of them had. */
+    const tables = tablesOf(BROKEN)
+
+    expect(tables).toHaveLength(1)
+    expect(tables[0]?.rows).toHaveLength(1)
+
+    expect(proseOf(BROKEN), 'the broken row is read by nobody').toContain('Sekcija 5 kaže ovo')
+    expect(proseOf(BROKEN), 'a whole row was read as prose').not.toContain('Hetzner')
   })
 })
