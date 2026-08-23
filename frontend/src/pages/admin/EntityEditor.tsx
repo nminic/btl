@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
-import type { FieldError, FieldOption, FormValues } from '../../forms/types'
+import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
@@ -34,10 +34,15 @@ export function EntityEditor({
   taken = [],
   also,
   alsoSave,
+  alsoFolds,
   seed = 0,
   openAt,
   onDone,
   onCreated,
+  beneath,
+  alsoRefuses,
+  titleKey,
+  form: drawn,
 }: {
   entity: EntityDef
   editing: Editing
@@ -49,7 +54,23 @@ export function EntityEditor({
    * because what belongs to what is a fact about the screen and not about the
    * editor.
    */
-  alsoSave?: (values: FormValues) => void
+  alsoSave?: (values: FormValues, written: string) => void
+  /**
+   * What the press changes about the values themselves, before anything is read
+   * off them.
+   *
+   * `alsoSave` runs after the record is written, so anything it changes about the
+   * record is already too late for the three things the values feed: the derived
+   * text (`textFrom`), the derived fields (`entity.derived`, which is where the
+   * address comes from), and the confirmation. An event follows its earliest race
+   * (owner, 10.08.2026), and moved there afterwards the screen said „Datum
+   * 30/01/2027 … Adresa podgoricka-desetka-2027" over a record that had just been
+   * filed on 30.12.2026 under last year's address. Measured 23.08.2026.
+   *
+   * So what the press knows about the values is folded in here, once, and
+   * everything downstream reads the same thing that was written.
+   */
+  alsoFolds?: (values: FormValues) => FormValues
   /**
    * A number that changes when the record has been changed by something else,
    * so the form is drawn again from what it now says.
@@ -101,12 +122,36 @@ export function EntityEditor({
    * list, find the event they had just made, and open it again.
    */
   onCreated?: (id: string) => void
+  /** What the screen draws between the fields and the button that sends them,
+   *  and what it refuses that no field of the form can (FormRenderer.tsx). */
+  beneath?: (values: FormValues) => ReactNode
+  alsoRefuses?: () => string | undefined
+  /**
+   * Words for the heading, where what the screen is doing is not what the mode
+   * says. Copying an event is technically an edit of a record that was written a
+   * moment ago, and „Izmena događaja" is the truth about the code rather than
+   * about the work (owner, 23.08.2026: „Kopiranje događaja treba da se zove u vrhu
+   * Kopiranje a ne Izmena").
+   */
+  titleKey?: string
+  /**
+   * The form to draw, where the screen asks for less than the entity does.
+   *
+   * A copy is not asked for its town, its country or its kind: it has them from
+   * the event it was copied out of and they are not in question (owner,
+   * 23.08.2026). Left off the form, they are left out of what the save writes, and
+   * a save writes over the fields it carries rather than the whole record, so what
+   * is not asked stays as it was.
+   */
+  form?: FormDef
 }) {
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
   const [saved, setSaved] = useState<FormValues | null>(null)
   const done = useRef<HTMLDivElement>(null)
-  const form = entity.form
+  /* What the screen asked for, or what the entity holds. A copy is drawn without
+     the three fields it does not put in question (see `form` above). */
+  const form = drawn ?? entity.form
 
   /* The confirmation has just replaced the form, so whatever had the focus is no
    * longer on the page and the next Tab would start it from the top. The focus
@@ -117,7 +162,25 @@ export function EntityEditor({
     done.current?.focus()
   }, [saved])
 
-  function handleSubmit(values: FormValues) {
+  /**
+   * What the press knows and the form does not, folded in before anything reads
+   * the values.
+   *
+   * Every reader of the values goes through here, and that is the whole point:
+   * the address, the derived text, the confirmation **and the check that refuses
+   * a clash** all have to be looking at the same thing. Folded only on the way
+   * out and not on the way into the check, the clash was measured against the
+   * date somebody typed while the save wrote another: an event moved onto a race
+   * of 05/04/2025 was let through as `beogradski-maraton-2027` and filed as
+   * `beogradski-maraton-2025`, which the event of 2025 already answers to. Two
+   * records on one address, and a result finds its event by the address.
+   * Measured 23.08.2026.
+   */
+  const folded = (values: FormValues): FormValues => alsoFolds?.(values) ?? values
+
+  function handleSubmit(given: FormValues) {
+    const values = folded(given)
+
     /* What the form asked for, and what is read off it.
      *
      * The derived values were written when a record was created and never again,
@@ -135,6 +198,8 @@ export function EntityEditor({
       ),
     }
 
+    let written: string
+
     if (editing.mode === 'new') {
       const made = idFor(
         entity,
@@ -145,14 +210,17 @@ export function EntityEditor({
 
       create(entity.id, made, text)
       onCreated?.(made)
+      written = made
     } else {
-      editRecord(String(editing.record[entity.idField]), text)
+      written = String(editing.record[entity.idField])
+      editRecord(written, text)
     }
 
     /* On both, because what else a save changes does not depend on whether the
-       record is new: a race entered on an earlier day than its event moves the
-       event exactly as a race changed onto one does (EventRaces). */
-    alsoSave?.(values)
+       record is new. With the identity of what was written, which a new record
+       does not have until this moment: the races of an event are saved in the
+       same press and have to be filed under it (AdminEvents.tsx). */
+    alsoSave?.(values, written)
 
     setSaved(values)
   }
@@ -226,9 +294,10 @@ export function EntityEditor({
         key={seed}
         form={form}
         title={t(
-          editing.mode === 'new'
-            ? `admin.form.new.${entity.id}`
-            : `admin.form.edit.${entity.id}`,
+          titleKey ??
+            (editing.mode === 'new'
+              ? `admin.form.new.${entity.id}`
+              : `admin.form.edit.${entity.id}`),
         )}
         initial={
           editing.mode === 'new'
@@ -245,9 +314,19 @@ export function EntityEditor({
            address that would 404 (entityForms.ts, `addressOfEvent`). */
         was={editing.mode === 'one' ? editing.record : undefined}
         options={options}
-        check={(values) => ({ ...takenAddress(entity, values, others), ...also?.(values) })}
+        /* Over the folded values, not the typed ones: what is refused has to be
+           what would be written (see `folded`). */
+        check={(values) => ({
+          ...takenAddress(entity, folded(values), others),
+          ...also?.(folded(values)),
+        })}
         derived={entity.derived}
         openAt={openAt}
+        /* What the screen draws between the fields and the button, and what it
+           refuses that no field of the form can (forms/FormRenderer.tsx). The
+           races of an event are entered there and saved with it. */
+        beneath={beneath}
+        alsoRefuses={alsoRefuses}
         onSubmit={handleSubmit}
       />
     </div>

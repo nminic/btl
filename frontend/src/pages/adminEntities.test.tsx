@@ -10,9 +10,10 @@ import { at, inputElement, must, selectElement } from '../test/at'
 import { Saved } from '../test/saved'
 import { loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
-import { formatNumber, formatShortDate } from '../i18n/format'
+import { formatShortDate } from '../i18n/format'
 import type { BtlEvent, Race, Result } from '../data/types'
-import { expectFrontPage, renderAt } from '../test/render'
+import { fieldDate, isoDate, shiftDate } from '../forms/dateField'
+import { renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
 
 /* The screens behind Podaci: the races inside their event, the teams, the
@@ -29,10 +30,16 @@ describe('the races of an event', () => {
      at (owner, 06.08.2026). It had a screen of its own, where finding the event
      meant searching a list of eleven hundred, and a race made there could be
      saved against the wrong one. */
-  async function openFirstEvent() {
+  async function openList() {
     const user = setupUser()
 
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    return user
+  }
+
+  async function openFirstEvent() {
+    const user = await openList()
 
     const rows = await table('Događaji')
     const first = at(rows.getAllByRole('row'), 1)
@@ -51,111 +58,153 @@ describe('the races of an event', () => {
     expect(screen.queryByLabelText('Događaj')).toBeNull()
   })
 
-  it('names the buttons of a race that has no name by its length', async () => {
-    /* Since 11.08.2026 a race may be entered without one, and then it is known
-       by how long it is (PDL P6). Read straight off the field, every such row
-       gave „Otvori: " and „Obriši: ", so an event whose three races are told
-       apart by their lengths had six buttons with two names between them, and
-       one of the two deletes results. */
+  /** The table of races on the open event, and one row of it. */
+  function races() {
+    return within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+  }
+
+  function rowsOfRaces() {
+    return races().getAllByRole('row').slice(1)
+  }
+
+  function lastRow() {
+    const all = rowsOfRaces()
+
+    return within(must(all[all.length - 1], 'the row just opened'))
+  }
+
+  /** Everything a row is asked for, typed into the row itself. */
+  async function fill(
+    user: ReturnType<typeof setupUser>,
+    row: ReturnType<typeof lastRow>,
+    { day, km }: { day?: string; km: string },
+  ) {
+    if (day !== undefined) {
+      await user.clear(row.getByLabelText(/^Dan trke/))
+      await user.type(row.getByLabelText(/^Dan trke/), day)
+    }
+
+    await user.clear(row.getByLabelText(/^Dužina/))
+    await user.type(row.getByLabelText(/^Dužina/), km)
+  }
+
+  it('names the button that removes a row by which row it is', async () => {
+    /* A race has no name of its own (PDL P6), and in a table of rows the number
+       of the row is what tells one „Obriši" from another. Read off the length, as
+       it was until 23.08.2026, a row still being typed into gave „Obriši: ", and
+       one of those buttons takes results with it. */
     const user = await openFirstEvent()
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-    /* Everything the form asks for except the name, which it no longer does. */
-    await user.type(screen.getByLabelText(/^Dužina/), '10')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    /* The length as this language writes it, and nothing hanging off a colon. */
-    expect(await screen.findByRole('button', { name: 'Otvori: 10,0 km' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Obriši: 10,0 km' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Otvori: ' })).toBeNull()
+    expect(lastRow().getByRole('button', { name: /^Obriši \d+\. trku$/ })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Obriši: ' })).toBeNull()
+    /* And nothing opens a row any more: the row is open. */
+    expect(screen.queryByRole('button', { name: /^Otvori:/ })).toBeNull()
   })
 
-  it('refuses a second race of the same length on the same morning', async () => {
-    /* There is nothing left to tell the two apart by: a race has no name
-       (PDL P6), so both rows would read „10,0 km, 1. 6. 2027." and one of the
-       two buttons beside them deletes results. The same pair would stand twice
-       in the list a member reports a result from. */
+  it('takes a second race of the same length on the same morning', async () => {
+    /* Refused until 23.08.2026, on the reasoning that a race has no name so two of
+       one length on one morning are two entries a member would choose between
+       blindly. The owner said that day: „u teoriji dve trke iste dužine mogu biti
+       na istom događaju, čak mogu imati iste i vertikalne nagibe, ali to se retko
+       dešava. Zavisi od staze koja se trči. Nemoj to da zabranjuješ."
+
+       Measured here through the press, because it is the press that used to refuse
+       it. */
     const user = await openFirstEvent()
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
-
-    const found = screen.queryByLabelText(/^Dan trke/)
-    const day = found === null ? '' : inputElement(found).value
-
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-
-    const opened = String(inputElement(screen.getByLabelText(/^Dan trke/)).value)
-
-    expect(day).toBe('')
-    await user.type(screen.getByLabelText(/^Dužina/), '17')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    /* And now the same thing again, on the same morning. */
+    await fill(user, lastRow(), { km: '17' })
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-    await user.clear(screen.getByLabelText(/^Dan trke/))
-    await user.type(screen.getByLabelText(/^Dan trke/), opened.replace(/\D/g, ''))
-    await user.type(screen.getByLabelText(/^Dužina/), '17')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await fill(user, lastRow(), { km: '17' })
+
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-
-    expect(
-      await screen.findByText(/Ovaj događaj već ima trku te dužine tog dana/),
-    ).toBeVisible()
-    /* And nothing was saved: the form is still open on what was typed. */
-    expect(screen.getByLabelText(/^Dužina/)).toHaveValue(17)
-  })
-
-  it('takes a race saved again with nothing changed', async () => {
-    /* The other side of the rule above, and the one nothing was holding: a race
-       is refused when another one of its event shares its day and its length,
-       and it must not be refused for sharing them with itself. Every other test
-       that saves an existing race changes the day or the length first, so the
-       moment a race is left exactly as it was went untried. */
-    const user = await openFirstEvent()
-
-    await screen.findByRole('heading', { name: /^Trke na događaju/ })
-
-    const rows = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-    const first = within(at(rows, 0))
-
-    await user.click(first.getByRole('button', { name: /^Otvori:/ }))
-    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
-    expect(screen.queryByText(/već ima trku te dužine tog dana/)).toBeNull()
-  })
-
-  it('says that opening a race puts the event form away', async () => {
-    /* The form is unmounted while a race is open, so what was typed into it and
-       not saved is gone. Said before the button rather than discovered after
-       it. */
-    await openFirstEvent()
-
     expect(
-      await screen.findByText(/Dok se trka uređuje, forma događaja se sklanja/),
-    ).toBeVisible()
+      screen.queryByText(/već ima trku te dužine/),
+      'the portal still forbids two races of one length',
+    ).toBeNull()
   })
 
-  it('has no screen of its own any more', async () => {
-    renderAt('/sr/administracija/trke', 'superadmin')
+  it('names every control in a row by the row it is in', async () => {
+    /* „Dužina" twelve times over is twelve controls a screen reader cannot tell
+       apart, and the table has no row heading to read them with. Written without
+       the row for a day, and a round measured it: three rows, twelve controls, four
+       names between them. */
+    const user = await openFirstEvent()
 
-    await expectFrontPage()
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const named = within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+      .getAllByRole('textbox')
+      .concat(
+        within(screen.getByRole('table', { name: /^Trke na događaju/ })).getAllByRole('spinbutton'),
+      )
+      .map((one) => one.getAttribute('aria-label') ?? '')
+
+    expect(named.length).toBeGreaterThan(4)
+    expect(new Set(named).size, 'two controls of the table answer to one name').toBe(named.length)
+    /* And the row is in the name, rather than the name merely being unique by
+       accident of the column. */
+    for (const one of named) {
+      expect(one).toMatch(/\d+\. trka$/)
+    }
+  })
+
+  it('marks every kind of wrong in a row, not only the first thing missing', async () => {
+    /* A climb of minus five hundred is as wrong as an empty length, and a cell that
+       says it is fine sends a reader looking somewhere else (WCAG 2.2 SC 3.3.1).
+       Measured before: the climb was marked and the fall beside it, equally wrong,
+       said `aria-invalid="false"`. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const climb = must(screen.getAllByLabelText(/^Uspon/)[0], 'the climb of the first race')
+    const fall = must(screen.getAllByLabelText(/^Spust/)[0], 'the fall of the first race')
+
+    await user.clear(climb)
+    await user.type(climb, '-500')
+    await user.clear(fall)
+    await user.type(fall, '-900')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(/Svaka trka mora da ima/)).toBeVisible()
+    expect(climb).toHaveAttribute('aria-invalid', 'true')
+    expect(fall, 'the second wrong cell says it is fine').toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('will not save while a row is missing its day or its length', async () => {
+    /* Owner, 23.08.2026: „validacija mi ne da da nastavim dalje dok svaki red nema
+       sve obavezne podatke". One press writes the event and every one of its
+       mornings, so one unfinished row is the whole press refused.
+
+       The climb and the fall are not asked for; empty they are read as 0/0. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(/Svaka trka mora da ima dan i dužinu/)).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    await fill(user, lastRow(), { km: '12' })
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
 
   it('attaches a race entered there to that event and to no other', async () => {
+    /* The screen already answers which event it is, so nothing asks. What is
+       measured is that the answer is the right one: the row lands under the event
+       whose form it was entered under. */
     const user = await openFirstEvent()
-
-    await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
     const named = must(
       screen.getByRole('heading', { name: /^Trke na događaju/ }).textContent,
@@ -163,379 +212,315 @@ describe('the races of an event', () => {
     ).replace('Trke na događaju ', '')
 
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-    await user.type(screen.getByLabelText(/^Dužina/), '13')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await fill(user, lastRow(), { km: '33' })
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-
-    /* The confirmation says what was written down, the event among it, because
-       the event is written on the record without being asked for. Found by its
-       own heading: a form carries live regions of its own while it is being
-       filled in. */
-    const said = await screen.findByRole('status', { name: 'Sačuvano' })
-
-    /* By its length, which is what a race is written by (data/types.ts). */
-    expect(said).toHaveTextContent('13')
-    expect(said).toHaveTextContent(named)
-
-    /* And it is on the event, not merely named beside it. The confirmation reads
-       the words for the event off `shownKey`, which is a different thing from the
-       `value` written onto the record; the table of races is filtered by that
-       value, so this is the half that holds the attachment (entityForms.ts,
-       `racesOf`). */
+    await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    const races = within(
-      await screen.findByRole('table', { name: `Trke na događaju ${named}` }),
+    const again = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    await user.click(
+      within(
+        must(
+          again.getAllByRole('row').find((row) => (row.textContent ?? '').includes(named)),
+          'the event it was entered under',
+        ),
+      ).getByRole('button', { name: /^Otvori:/ }),
     )
 
-    expect(races.getByText(formatNumber(13, 'sr-Latn', 2))).toBeVisible()
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(
+      rowsOfRaces().some((row) => within(row).queryByDisplayValue('33') !== null),
+      'the race is not under the event it was entered on',
+    ).toBe(true)
   })
 
-  it('gives a race its own day, starting on the day of its event', async () => {
-    /* One event may run over more than one morning: two races on the Saturday
-       and one on the Sunday are one event with three races (owner, 10.08.2026).
-       The day of the event is the day it begins, and a race entered under it
-       starts on that day, because that is the right answer nine times in ten. */
+  it('gives a new row the day the form above is showing', async () => {
+    /* Owner, 23.08.2026: „dan trke datepicker koji se prvo menja default u sve što
+       pokazuje Datum događaja gore (mogu promeniti naknadno ako želim)". Read off
+       the form as it stands rather than off the record, so a race entered under a
+       day that has not been saved yet still lands on it. */
     const user = await openFirstEvent()
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const day = screen.getAllByLabelText(/^Datum/)[0]
+
+    await user.clear(must(day, 'the date of the event'))
+    await user.type(must(day, 'the date of the event'), '05061999')
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
-    /* Whatever the day of the event on the screen is: the list opens on what is
-       still ahead, so which event is first depends on the day the tests run. */
-    const day = screen.getByLabelText(/^Dan trke/)
-    const startsOn = must(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(day).value)),
-      'the day the form opened on',
-    )
-
-    await user.clear(day)
-    await user.type(day, `${String(Number(startsOn[1]) + 1).padStart(2, '0')}${startsOn[2]}${startsOn[3]}`)
-    await user.type(screen.getByLabelText(/^Dužina/), '12')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-    /* Found by its length: a race carries no name of its own (data/types.ts). */
-    const row = within(
-      must(races.getByText(formatNumber(12, 'sr-Latn', 2)).closest('tr'), 'the new race'),
-    )
-
-    expect(
-      row.getByText(`${Number(startsOn[1]) + 1}. ${Number(startsOn[2])}. ${startsOn[3]}.`),
-    ).toBeVisible()
+    expect(lastRow().getByLabelText(/^Dan trke/)).toHaveValue('05/06/1999')
   })
 
-  it('takes the day of its first race, when a race is entered before it', async () => {
-    /* Owner, 10.08.2026: the event's date is the day it begins, and that is the
-       day of its first race. So a race entered on an earlier day is not a race
-       before its event; it is the event starting earlier. */
-    const user = setupUser()
+  it('takes the day of its first race, when a row is moved before it', async () => {
+    /* The event is the day it begins (owner, 10.08.2026), so a race moved onto an
+       earlier morning makes that day the event's. Written when the one press
+       saves, because that is when the mornings are known.
 
-    const { router } = renderAt('/sr/administracija/dogadjaji', 'superadmin')
+       Moving the event's own date is the other direction and moves the rows with
+       it (see the test above), so what is measured here is a **row** moved on its
+       own. */
+    const user = await openFirstEvent()
 
-    const open2027 = async () => {
-      const search = await screen.findByLabelText(/Pretraga/)
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-      await user.clear(search)
-      await user.type(search, 'Beogradski maraton')
+    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+    /* One morning earlier and no more: the list opens on what is still ahead, so
+       a race moved into the past would take its event out of the list with it and
+       there would be nothing left to open. */
+    const before = fieldDate(shiftDate(isoDate(inputElement(day).value), -1))
 
-      return must(
-        within(await screen.findByRole('table', { name: 'Događaji' }))
-          .getAllByRole('row')
-          .find(
-            (one) =>
-              /Beogradski maraton/.test(one.textContent ?? '') &&
-              /2027/.test(one.textContent ?? ''),
-          ),
-        'the event of 2027',
-      )
-    }
+    const race = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')
 
-    await user.click(within(await open2027()).getByRole('button', { name: /^Otvori/ }))
-    await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
-
-    /* The day before the one the form opened on, which is the event's own. */
-    const day = screen.getByLabelText(/^Dan trke/)
-    const was = must(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(day).value)),
-      'the day the form opened on',
-    )
-
-    await user.clear(day)
-    await user.type(
-      day,
-      `${String(Number(was[1]) - 1).padStart(2, '0')}${was[2]}${was[3]}`,
-    )
-    await user.type(screen.getByLabelText(/^Dužina/), '5')
-    await user.type(screen.getByLabelText(/^Uspon/), '0')
-    await user.type(screen.getByLabelText(/^Spust/), '0')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    /* Out of the race and then out of the event, because leaving the race leaves
-       the event's own form standing. Read where the list draws it, which is the
-       whole point: the event now begins a day earlier. */
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-    await router.navigate('/sr/administracija/dogadjaji')
-
-    const moved = await open2027()
-
-    expect(
-      within(moved).getByText(`${Number(was[1]) - 1}. ${Number(was[2])}. ${was[3]}.`),
-    ).toBeVisible()
-  })
-
-  it('keeps the confirmation of a save when a race is deleted after it', async () => {
-    /* The form is drawn again when a race moves the event, so that saving it
-       does not drag the races back. The confirmation must survive that: a
-       moderator who has just saved and then deletes a race would otherwise watch
-       "Sačuvano" disappear, the empty form come back, and the focus fall to the
-       page. */
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    const search = await screen.findByLabelText(/Pretraga/)
-
-    await user.type(search, 'Beogradski maraton')
-
-    const listed = must(
-      within(await screen.findByRole('table', { name: 'Događaji' }))
-        .getAllByRole('row')
-        .find(
-          (one) =>
-            /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? ''),
-        ),
-      'the event of 2027',
-    )
-
-    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
-    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
-    await screen.findByRole('status', { name: 'Sačuvano' })
-
-    const first_race = within(
-      at(
-        within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-          .getAllByRole('row')
-          .slice(1),
-        0,
-      ),
-    )
-
-    await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
-    await user.click(first_race.getByRole('button', { name: /^Potvrdi brisanje/ }))
-
-    expect(screen.getByRole('status', { name: 'Sačuvano' })).toBeVisible()
-  })
-
-  it('does not drag the races back when the event is saved after one of them moved it', async () => {
-    /* The workflow the screen invites: change something about the races, then
-       correct the town on the event and save. The form was seeded when it was
-       drawn, so it still held the day the event was on before the race moved it,
-       and the save measured the move from there: a two-day event whose first
-       race had just been deleted had the race that was left dragged back onto
-       the morning nothing runs on any more. */
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    const find2027 = async () => {
-      const search = await screen.findByLabelText(/Pretraga/)
-
-      await user.clear(search)
-      await user.type(search, 'Beogradski maraton')
-
-      return must(
-        within(await screen.findByRole('table', { name: 'Događaji' }))
-          .getAllByRole('row')
-          .find(
-            (one) =>
-              /Beogradski maraton/.test(one.textContent ?? '') &&
-              /2027/.test(one.textContent ?? ''),
-          ),
-        'the event of 2027',
-      )
-    }
-
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-
-    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 0).textContent)
-    const first_race = within(at(races, 0))
-
-    await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
-    await user.click(first_race.getByRole('button', { name: /^Potvrdi brisanje/ }))
-
-    /* The event's own form is still on screen. Saved without a word changed. */
+    await user.clear(race)
+    await user.type(race, before.replace(/\D/g, ''))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    /* Opened again from the list, so what is read is what the session now
-       holds. */
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
+    const again = within(await screen.findByRole('table', { name: 'Događaji' }))
 
-    const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
-
-    expect(after).toEqual([second_day])
-  })
-
-  it('stays where it is when a race that is not the first is deleted', async () => {
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    const find2027 = async () => {
-      const search = await screen.findByLabelText(/Pretraga/)
-
-      await user.clear(search)
-      await user.type(search, 'Beogradski maraton')
-
-      return must(
-        within(await screen.findByRole('table', { name: 'Događaji' }))
-          .getAllByRole('row')
-          .find(
-            (one) =>
-              /Beogradski maraton/.test(one.textContent ?? '') &&
-              /2027/.test(one.textContent ?? ''),
-          ),
-        'the event of 2027',
-      )
-    }
-
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-
-    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-
-    /* Two mornings, which is what makes either end of the rule sayable. */
-    expect(new Set(races.map((row) => at(within(row).getAllByRole('cell'), 0).textContent)).size).toBe(2)
-
-    const first_day = String(at(within(at(races, 0)).getAllByRole('cell'), 0).textContent)
-
-    /* The last one first, which must move nothing: the event begins when it
-       began, whatever is taken off the end of it. */
-    const last = within(at(races, races.length - 1))
-
-    await user.click(last.getByRole('button', { name: /^Obriši/ }))
-    await user.click(last.getByRole('button', { name: /^Potvrdi brisanje/ }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    expect(within(await find2027()).getByText(first_day)).toBeVisible()
-  })
-
-  it('follows what is left when the first race is deleted', async () => {
-    /* The other end of the same rule: an event dated on a morning nothing runs
-       on is as wrong as one dated before its first race (owner, 10.08.2026). */
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    const find2027 = async () => {
-      const search = await screen.findByLabelText(/Pretraga/)
-
-      await user.clear(search)
-      await user.type(search, 'Beogradski maraton')
-
-      return must(
-        within(await screen.findByRole('table', { name: 'Događaji' }))
-          .getAllByRole('row')
-          .find(
-            (one) =>
-              /Beogradski maraton/.test(one.textContent ?? '') &&
-              /2027/.test(one.textContent ?? ''),
-          ),
-        'the event of 2027',
-      )
-    }
-
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-
-    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByRole('row')
-      .slice(1)
-    const second_day = String(at(within(at(races, 1)).getAllByRole('cell'), 0).textContent)
-    const first_race = within(at(races, 0))
-
-    await user.click(first_race.getByRole('button', { name: /^Obriši/ }))
-    await user.click(first_race.getByRole('button', { name: /^Potvrdi brisanje/ }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    expect(within(await find2027()).getByText(second_day)).toBeVisible()
-  })
-
-  it('moves the races with the event, by the same number of days', async () => {
-    /* Owner, 10.08.2026: this is what makes copying last season's event worth
-       doing. Two races on the Saturday and one on the Sunday stay two and one
-       after the date is moved a year on, and a single race is corrected on its
-       own form afterwards.
-
-       An event that really does run over two mornings, because one whose races
-       are all on the same day passes whatever the move does to them. */
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    await user.type(await screen.findByLabelText(/Pretraga/), 'Beogradski maraton')
-
-    const listed = must(
-      within(await screen.findByRole('table', { name: 'Događaji' }))
-        .getAllByRole('row')
-        /* The 2027 one: the name has been run every year since 2010 and the
-           list holds every year of it, oldest first. */
-        .find((one) => /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? '')),
-      'the event that runs over two mornings',
+    await user.click(
+      within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
     )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
+    expect(
+      must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event'),
+      'the event stayed on a morning nothing runs on',
+    ).toHaveValue(before)
+  })
 
-    const daysOf = async () =>
-      within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-        .getAllByRole('row')
-        .slice(1)
-        .map((row) => String(at(within(row).getAllByRole('cell'), 0).textContent))
+  it('confirms the day and the address it really wrote, not the ones on the form', async () => {
+    /* The event follows its earliest race (owner, 10.08.2026), and until this was
+       measured it followed it **after** the record was written: the confirmation
+       and the address were both read off the form, which still said the day
+       somebody typed. Measured 23.08.2026: „Datum 30/01/2027 … Adresa
+       podgoricka-desetka-2027" over a record filed on 30.12.2026, so the address
+       carried a year the event was no longer in and a copy made from it would have
+       gone on carrying it.
 
-    const before = await daysOf()
+       A month earlier and not a day, so the year moves too and the address has to
+       move with it. */
+    const user = await openFirstEvent()
 
-    expect(new Set(before).size).toBe(2)
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const date = screen.getByLabelText(/^Datum/)
-    const was = must(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(inputElement(date).value)),
-      'the day the event is on',
-    )
+    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+    const was = isoDate(inputElement(day).value)
 
-    await user.clear(date)
-    await user.type(date, `${was[1]}${was[2]}${String(Number(was[3]) + 1)}`)
+    await user.clear(day)
+    await user.type(day, '15012027'.replace(/\D/g, ''))
+
+    const race = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')
+
+    await user.clear(race)
+    await user.type(race, '30122026')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    /* Opened again, because leaving the form leaves the event: what is being
-       read is the state the list now holds, not what the form remembered. */
-    const moved = must(
-      within(await screen.findByRole('table', { name: 'Događaji' }))
-        .getAllByRole('row')
-        .find((one) => /Beogradski maraton/.test(one.textContent ?? '') && /2028/.test(one.textContent ?? '')),
-      'the event that was just moved',
+    const said = within(await screen.findByRole('status', { name: 'Sačuvano' }))
+
+    expect(was, 'the walk starts from a day it does not move to').not.toBe('2026-12-30')
+    /* The day it was filed on, rather than the day the form was left holding. */
+    expect(said.getByText('30/12/2026'), 'the confirmation shows a day nothing was written on')
+      .toBeVisible()
+    expect(said.queryByText('15/01/2027')).toBeNull()
+    /* And the address, which is built out of that day, is in the year the event is
+       really in. */
+    const address = must(
+      said.getByText(/^Adresa događaja/).nextElementSibling?.textContent,
+      'the address of the event',
     )
 
-    await user.click(within(moved).getByRole('button', { name: /^Otvori/ }))
+    expect(address, 'the address kept a year the event is not in').toMatch(/-2026$/)
+  })
 
-    const after = await daysOf()
+  it('refuses the address it would write, not the one on the form', async () => {
+    /* The event follows its earliest race, so the year in its address is not the
+       year somebody typed. Checked against the typed date, the clash was measured
+       on a date the save never used: an event of 2027 moved onto a race of
+       05/04/2025 was let through and filed as `beogradski-maraton-2025`, which the
+       event of 2025 already answers to. Two records on one address, and a result
+       finds its event by the address. Measured 23.08.2026.
 
-    // Every day a year on, and the two mornings still two mornings.
-    expect(after).toEqual(before.map((day) => day.replace(String(was[3]), String(Number(was[3]) + 1))))
-    expect(new Set(after).size).toBe(2)
+       Two events of the same name are entered. The first is in 2026 and says so.
+       The second says 2027 on its form and runs its only race in 2026, so it
+       clashes with the first **only after the day is folded in**; asked about what
+       was typed, the two are a year apart and both are let through. */
+    const user = await openList()
+
+    async function enter(day: string, raceDay: string) {
+      await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+      await user.type(screen.getByLabelText(/^Naziv/), 'Probni događaj')
+      await user.type(screen.getByLabelText(/^Datum/), day)
+      await user.type(screen.getByLabelText(/^Mesto/), 'Beograd')
+      await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+      const row = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the day of the race')
+
+      /* Emptied first: a new row opens on the day of the event (owner, 23.08.2026),
+         so typing into it would append to a date that is already whole. */
+      await user.clear(row)
+      await user.type(row, raceDay)
+      await user.type(must(screen.getAllByLabelText(/^Dužina/)[0], 'the length'), '10')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    }
+
+    await enter('15012026', '30122026')
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await enter('15012027', '30122026')
+
+    expect(
+      screen.queryByRole('status', { name: 'Sačuvano' }),
+      'a second event was filed at an address the first one already answers to',
+    ).toBeNull()
+    expect(await screen.findByText(/već postoji/)).toBeVisible()
+  })
+
+  it('takes a race away when the row it was in is gone and the press lands', async () => {
+    /* A row removed from the table is a race removed from the event, and the store
+       hears about it in the same press that writes the rest. Held apart from the
+       test below, which is about the table before anything is pressed. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const before = screen.getAllByLabelText(/^Dužina/).length
+
+    expect(before).toBeGreaterThan(0)
+
+    await user.click(
+      must(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })[0], 'the first row'),
+    )
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const again = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    await user.click(
+      within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+    )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(screen.queryAllByLabelText(/^Dužina/)).toHaveLength(before - 1)
+  })
+
+  it('opens a row with no day at all where the event has none yet', async () => {
+    /* A new event is entered name first, and a race may be added before the date
+       is typed. The row then opens empty rather than on „NaN", and the press is
+       refused until it is filled in. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the row just opened')).toHaveValue('')
+  })
+
+  it('leaves a row whose day was emptied where it is when the event moves', async () => {
+    /* The rows move with the event (owner, 10.08.2026), and a row that has no day
+       has nothing to move from: it is one somebody is still typing into. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.clear(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race'))
+
+    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+
+    await user.clear(day)
+    await user.type(day, '11062035')
+
+    expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')).toHaveValue('')
+  })
+
+  it('gives a race entered after a deletion an identity nothing else holds', async () => {
+    /* Counted rather than measured, the number a deleted race freed was handed to
+       the next one entered: two records answered to one id, the table drew them
+       under one key, and an edit to either reached both. Measured on this screen on
+       23.08.2026, before the fix: React said „two children with the same key" and
+       the third race was not drawn at all.
+
+       Walked through the screen rather than over `nextRaceNumber` alone, because
+       what was wrong was the list the number was counted from. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const put = async (km: string) => {
+      await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+      const all = screen.getAllByLabelText(/^Dužina/)
+
+      await user.type(must(all[all.length - 1], 'the row just opened'), km)
+    }
+
+    await put('77')
+    await put('88')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const open = async () => {
+      const list = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+      await user.click(
+        within(at(list.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    }
+
+    await open()
+
+    /* The row of 77, gone. */
+    const seventy = must(
+      screen.getAllByLabelText(/^Dužina/).findIndex((box) => inputElement(box).value === '77'),
+      'the row of 77 km',
+    )
+
+    await user.click(
+      must(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })[seventy], 'its button'),
+    )
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await open()
+    await put('99')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await open()
+
+    const left = screen.getAllByLabelText(/^Dužina/).map((box) => inputElement(box).value)
+
+    expect(left, 'a race took the number a deleted one had freed').toContain('99')
+    expect(left.filter((km) => km === '88'), 'two records answer to one identity')
+      .toHaveLength(1)
+  }, 20_000)
+
+  it('takes a row off the table without touching what is saved until the press', async () => {
+    /* Nothing here saves. A row taken off the table is gone from the table, and
+       the store hears about it when the one button under it is pressed: the event
+       and its mornings are one question, asked once. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const before = rowsOfRaces().length
+
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    expect(rowsOfRaces()).toHaveLength(before + 1)
+
+    await user.click(lastRow().getByRole('button', { name: /^Obriši \d+\. trku$/ }))
+
+    expect(rowsOfRaces()).toHaveLength(before)
   })
 
   it('leaves the results alone while two events answer at one address', async () => {
@@ -699,11 +684,17 @@ describe('the races of an event', () => {
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
 
-  it('writes the distances and the climbs the way this language writes them', async () => {
-    /* Like every other table on the portal (EventDetail, ReviewQueue, the top
-       boards). Read raw, a climb of 7120 metres printed as four digits and a
-       distance as 42.2, neither of which is Serbian, and nothing on the portal
-       said so. */
+  it('holds the measurements as numbers, because they are typed into the row', async () => {
+    /* Every table on the portal writes a number the way this language writes one:
+       a climb of 7120 metres as „7.120" and a distance as „42,20". This one does
+       not, and that is the cost of the owner's change on 23.08.2026: the cells are
+       boxes somebody types into, and a box holds the number it will be saved as.
+       „42,20" typed into a number box is not a number at all.
+
+       Said out loud rather than discovered: what a member reads is the event's own
+       page, and that one still writes them this language's way
+       (`pages/EventDetail.tsx`, held by its own tests). What is read here is a
+       working screen, by whoever is entering the calendar. */
     const user = setupUser()
     const races = await loadResource<Race[]>('races')
     const steep = must(
@@ -729,23 +720,17 @@ describe('the races of an event', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Otvori: ${its.name}` }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-    const mine = must(
-      under
-        .getAllByRole('row')
-        .slice(1)
-        /* Found by its climb, since a race has no name to look for it by
-           (data/types.ts) and the climb is what this test is about. */
-        .find((each) => (each.textContent ?? '').includes(formatNumber(steep.ascentM, 'sr-Latn'))),
-      'that race under its event',
-    )
+    const climbs = screen.getAllByLabelText(/^Uspon/)
 
-    expect(within(mine).getByText(formatNumber(steep.distanceKm, 'sr-Latn', 2))).toBeVisible()
-    expect(within(mine).getByText(formatNumber(steep.ascentM, 'sr-Latn'))).toBeVisible()
-    /* And the raw number is not what stands there, which is what the assertions
-       above would still allow for a climb under a thousand. */
-    expect(within(mine).queryByText(String(steep.ascentM))).toBeNull()
+    expect(
+      climbs.some((box) => inputElement(box).value === String(steep.ascentM)),
+      'the climb is not in the row as the number it will be saved as',
+    ).toBe(true)
+    /* And nothing in the row is written with a thousands separator, which would be
+       a value no number box could take back. */
+    expect(climbs.every((box) => !inputElement(box).value.includes('.'))).toBe(true)
   })
 
   it('says so where an event has none yet', async () => {
@@ -955,47 +940,79 @@ describe('what the form for a new event asks for', () => {
     expect(screen.getByLabelText(/^Država/)).toHaveValue('RS')
   })
 
-  it('opens the races of the event it has just made, without going back for it', async () => {
-    /* A race is entered inside the event it belongs to, and a new event has no
-       identity to hang one on until it is saved. Until this the moderator had
-       to save, go back to a list of eleven hundred, and find the event they had
-       made a moment ago. */
+  it('offers the races before anything is saved, and saves them with the event', async () => {
+    /* Owner, 23.08.2026: „kad se pravi novi događaj, isto treba da dodajem trke pre
+       nego što sačuvam sve odjednom". The table stands under the form from the
+       moment it opens, on an event that does not exist yet, and one press writes
+       both.
+
+       It used to be the other way round: a race could be hung only on a record
+       that already had an identity, so the moderator saved, went back to a list of
+       eleven hundred, and found the event they had made a moment ago. */
     const user = await openNew()
+
+    expect(screen.getByRole('button', { name: 'Nova trka' })).toBeVisible()
 
     await user.type(screen.getByLabelText(/^Naziv događaja/), 'Trka sa trkama')
     await user.type(screen.getByLabelText(/^Datum/), '01062027')
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const rows = screen.getAllByLabelText(/^Dužina/)
+
+    /* The row opened on the day the form above is showing. */
+    expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the day of the race')).toHaveValue(
+      '01/06/2027',
+    )
+
+    await user.type(must(rows[0], 'the length of the race'), '21.1')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    await screen.findByRole('status', { name: 'Sačuvano' })
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
 
-    /* A heading and the way to add one, not a table: an event entered a moment
-       ago has no races yet, which is the ordinary state of one entered a
-       fortnight before its distances are known. */
+    /* And the race is under the event rather than merely announced. „Sačuvano" is
+       what the form says about itself, and it says it whether or not the rows were
+       written: measured 23.08.2026, an `alsoSave` that skipped an event with no
+       races of its own lost every row and the screen still said it was saved. The
+       list is opened again and the event reopened, because that is the only thing
+       that reads the record back. */
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Trka sa trkama')
+
+    const found = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+    await user.click(
+      within(at(found.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+    )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
     expect(
-      await screen.findByRole('heading', { name: 'Trke na događaju Trka sa trkama' }),
-    ).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Nova trka' })).toBeVisible()
+      screen.getAllByLabelText(/^Dužina/).map((one) => inputElement(one).value),
+      'the race entered beside the new event was not written under it',
+    ).toEqual(['21.1'])
   })
 
   it('takes a race with no name at all, since the length is what names it', async () => {
+    /* A race is known by how long it is (owner, 11.08.2026), so nothing asks for a
+       name; the row has no box for one. */
     const user = await openNew()
 
     await user.type(screen.getByLabelText(/^Naziv događaja/), 'Trka bez imena')
     await user.type(screen.getByLabelText(/^Datum/), '02062027')
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
-    await user.type(await screen.findByLabelText(/^Dan trke/), '02062027')
-    await user.type(screen.getByLabelText(/^Dužina/), '21.1')
-    await user.type(screen.getByLabelText(/^Uspon/), '120')
-    await user.type(screen.getByLabelText(/^Spust/), '120')
+    const under = within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+
+    expect(under.queryByLabelText(/^Naziv/), 'a race is asked for a name').toBeNull()
+
+    await user.type(
+      must(screen.getAllByLabelText(/^Dužina/)[0], 'the length of the race'),
+      '21.1',
+    )
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    /* And it saved with the name left empty, which is what the length is for
-       (owner, 11.08.2026). */
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
 })

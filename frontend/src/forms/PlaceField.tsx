@@ -93,7 +93,6 @@ export function PlaceField({
 
   const offered = open ? placesLike(places, value) : []
   const listId = `${id}-places`
-  const heldId = `${id}-held`
   /**
    * Which country this town is in, where the codebook answers that on its own.
    *
@@ -355,7 +354,6 @@ export function PlaceField({
              errors leads here when the country is what is unanswered. */
           id={`${id}-country`}
           className={known === undefined ? 'field__control' : 'field__control field__control--held'}
-          disabled={locked}
           value={country}
           /* Locked on a town the codebook knows, for the reason written where
              `known` is worked out. Held rather than switched off: `disabled`
@@ -365,47 +363,47 @@ export function PlaceField({
              thing, which is the shape the portal uses wherever a control is held
              back (admin/PendingQueue.tsx). Hidden it is not: the country is
              still the answer, and an answer that disappears reads as a question
-             nobody asked. */
-          aria-disabled={known !== undefined}
+             nobody asked.
+
+             **Switched off and not merely told off**, which is the one place on
+             the portal where that is so (owner, 23.08.2026: „Ukoliko se upari
+             država prepoznavanjem mesta, ne mogu da kliknem i otvorim dropdown,
+             postaje potpuno disabled"). The rule everywhere else is „odbijeno,
+             ne ugašeno", and the cost here is the ordinary one: a reader working
+             by keyboard walks past the country without being told why. What is
+             left to them is the value itself, which is drawn and read like any
+             other, and the rule on the town above it, which says the country
+             comes with a town from the codebook. */
+          /* And the whole form being locked switches it off too, which it did
+             before this and does still (`FormRenderer.tsx`, a race chosen from
+             the list). Two reasons, either enough. */
+          disabled={known !== undefined || locked}
           aria-required={required}
           aria-invalid={countryInvalid}
           /* What is wrong with it, or why it is held, and never the rule that
              belongs to the town beside it: given the whole of that, the country
              was read out as „Država, od drugog slova portal nudi mesta iz
              svetskog šifarnika...", which is a rule about the other control. */
-          aria-describedby={
-            countryInvalid ? errorOnly : known === undefined ? undefined : heldId
-          }
+          /* Nothing to describe while it is switched off: the sentence that
+             stood here went on 23.08.2026 with the control it explained (owner:
+             „Ne ispisuje se poruka Mesto je iz šifarnika, pa državu nosi sa
+             sobom."), because it was drawn under the box and pushed it out of
+             line with the town beside it. */
+          aria-describedby={countryInvalid ? errorOnly : undefined}
+          /* Nothing here refuses the change any more, because the control is
+             switched off and a switched-off select is handed neither a change nor
+             a keypress. Two guards stood here while it was merely told off, one
+             against the pointer and one against the arrow keys; with `disabled`
+             they became branches nothing could reach, and an unreachable branch is
+             a claim nothing checks. */
           onChange={(event) => {
-            /* And it does not take one, since it says it cannot. */
-            if (known !== undefined) {
-              return
-            }
-
             onChange(value, event.target.value)
-          }}
-          onKeyDown={(pressed) => {
-            /* A held select still opens on a keypress and would change with the
-               arrows, which is the one way round the guard above. */
-            if (known !== undefined) {
-              pressed.preventDefault()
-            }
           }}
         >
           <CountryOptions holding={country} />
         </select>
       </span>
 
-      {/* Why it cannot be answered, where it cannot be answered. Outside the
-          label and not inside it: everything inside a label is the name of the
-          control, so put there this sentence became part of the name, the name
-          changed with the state, and a screen reader said the same words twice,
-          once as the name and once as the description. */}
-      {known !== undefined && (
-        <p className="place__held" id={heldId}>
-          {t('form.countryFromPlace')}
-        </p>
-      )}
     </div>
   )
 }

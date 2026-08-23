@@ -28,7 +28,7 @@ const event = (id: string, date: string): BtlEvent => ({
   date,
   city: 'Beograd',
   country: 'RS',
-  kind: 'race', copiedFrom: '', featured: 'no',
+  kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
 })
 
 const race = (id: string, eventId: string, distanceKm = 10, date = '2027-04-03'): Race => ({
