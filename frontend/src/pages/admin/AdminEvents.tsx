@@ -22,6 +22,7 @@ import type { Race } from '../../data/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { allFinished, rowsOf, storedRow, type RaceRow } from './raceRows'
+import { nextRaceNumber } from './raceIds'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 import { fieldDate } from '../../forms/dateField'
@@ -72,7 +73,7 @@ function racesUnder(all: Record<string, unknown>[], event: string): Race[] {
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { editRecord, remove, create, creations } = useSession()
+  const { editRecord, remove, create } = useSession()
   const overlay = useOverlay()
   const [search, setSearch] = useState('')
   /* And what was opened by pressing something somewhere else. The calendar
@@ -325,19 +326,20 @@ export function AdminEvents() {
                         }
                       }
 
-                      /* Counted against the races already created in this visit and
-                         not against the rows on the table, which is what it was for
-                         a moment: a row deleted and another entered gives two rows
-                         and one creation, and the second would land on an id the
-                         first already has. */
-                      let made = (creations[RACES.id] ?? []).filter((one) =>
-                        one.id.startsWith(`${written}-trka-`),
-                      ).length
+                      /* Counted up from the highest number already used, over every
+                         race that exists rather than over what this visit made
+                         (`raceIds.ts`). Counted rather than measured, it handed a
+                         new race the number a deleted one had freed and two records
+                         answered to one id. */
+                      let next = nextRaceNumber(
+                        allRaces.map((one) => String(one.id)),
+                        written,
+                      )
 
                       for (const row of current) {
                         if (row.id === '') {
-                          made += 1
-                          create(RACES.id, `${written}-trka-${String(made)}`, storedRow(row, written))
+                          create(RACES.id, `${written}-trka-${String(next)}`, storedRow(row, written))
+                          next += 1
                         } else {
                           editRecord(row.id, storedRow(row, written))
                         }

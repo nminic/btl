@@ -298,6 +298,72 @@ describe('the races of an event', () => {
     expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')).toHaveValue('')
   })
 
+  it('gives a race entered after a deletion an identity nothing else holds', async () => {
+    /* Counted rather than measured, the number a deleted race freed was handed to
+       the next one entered: two records answered to one id, the table drew them
+       under one key, and an edit to either reached both. Measured on this screen on
+       23.08.2026, before the fix: React said „two children with the same key" and
+       the third race was not drawn at all.
+
+       Walked through the screen rather than over `nextRaceNumber` alone, because
+       what was wrong was the list the number was counted from. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const put = async (km: string) => {
+      await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+      const all = screen.getAllByLabelText(/^Dužina/)
+
+      await user.type(must(all[all.length - 1], 'the row just opened'), km)
+    }
+
+    await put('77')
+    await put('88')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const open = async () => {
+      const list = within(await screen.findByRole('table', { name: 'Događaji' }))
+
+      await user.click(
+        within(at(list.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }),
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    }
+
+    await open()
+
+    /* The row of 77, gone. */
+    const seventy = must(
+      screen.getAllByLabelText(/^Dužina/).findIndex((box) => inputElement(box).value === '77'),
+      'the row of 77 km',
+    )
+
+    await user.click(
+      must(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })[seventy], 'its button'),
+    )
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await open()
+    await put('99')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await open()
+
+    const left = screen.getAllByLabelText(/^Dužina/).map((box) => inputElement(box).value)
+
+    expect(left, 'a race took the number a deleted one had freed').toContain('99')
+    expect(left.filter((km) => km === '88'), 'two records answer to one identity')
+      .toHaveLength(1)
+  }, 20_000)
+
   it('takes a row off the table without touching what is saved until the press', async () => {
     /* Nothing here saves. A row taken off the table is gone from the table, and
        the store hears about it when the one button under it is pressed: the event

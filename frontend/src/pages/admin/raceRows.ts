@@ -51,12 +51,36 @@ export function rowsOf(races: Race[], fieldDate: (iso: string) => string): RaceR
  * A length of nought is refused rather than kept: it passes „not empty" and is
  * not a distance, and the whole standing is worked out from it.
  */
-export function whatIsMissing(row: RaceRow): 'date' | 'distanceKm' | undefined {
+export const BOUNDS = {
+  distanceKm: { least: 0.1, most: 1000 },
+  ascentM: { least: 0, most: 30000 },
+  descentM: { least: 0, most: 30000 },
+}
+
+/** Whether a measurement is inside what a race can be. An empty climb or fall is
+ *  nought and is inside it; an empty length is not a length. */
+function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
+  const { least, most } = BOUNDS[field]
+  const number = said === '' && field !== 'distanceKm' ? 0 : Number(said)
+
+  return Number.isFinite(number) && number >= least && number <= most
+}
+
+export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | undefined {
   if (isoDate(row.date) === '') {
     return 'date'
   }
 
-  return Number(row.distanceKm) > 0 ? undefined : 'distanceKm'
+  /* The bounds the race's own form carried until 23.08.2026
+     (`definitions/admin-trka.form.json`). The form went with the owner's change
+     and the bounds nearly went with it: `min` on a number box is decoration here,
+     because the form is `noValidate` and nothing reads `checkValidity`. Measured
+     on the real screen: a climb of **minus five hundred** metres saved. `Le = L +
+     (1.25×AP + 0.75×AN)/200` then works out a profile that was never run, and the
+     whole standing is worked out from it. */
+  return (['distanceKm', 'ascentM', 'descentM'] as const).find(
+    (field) => !withinBounds(row[field], field),
+  )
 }
 
 /**

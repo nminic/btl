@@ -440,17 +440,17 @@ describe('the category of a race', () => {
 
     /* Nothing chooses it and nothing asks which event this is: the screen it is
        entered on already answers that. */
-    expect(last().queryByLabelText(t('admin.field.category'))).toBeNull()
-    expect(last().queryByLabelText(t('admin.field.event'))).toBeNull()
+    expect(last().queryByLabelText(/^Kategorija/)).toBeNull()
+    expect(last().queryByLabelText(/^Događaj/)).toBeNull()
     /* And with no length yet it says so rather than naming one. */
     expect(last().getByText('\u2013')).toBeVisible()
 
-    await user.type(last().getByLabelText(t('admin.field.distanceKm')), '42.2')
+    await user.type(last().getByLabelText(/^Dužina/), '42.2')
 
     expect(last().getByText(t('category.marathon'))).toBeVisible()
 
-    await user.clear(last().getByLabelText(t('admin.field.distanceKm')))
-    await user.type(last().getByLabelText(t('admin.field.distanceKm')), '10')
+    await user.clear(last().getByLabelText(/^Dužina/))
+    await user.type(last().getByLabelText(/^Dužina/), '10')
 
     expect(
       last().getByText(t('category.short')),
@@ -471,7 +471,7 @@ describe('the category of a race', () => {
     )
     const last = within(must(rows[rows.length - 1], 'the row just opened'))
 
-    await user.type(last.getByLabelText(t('admin.field.distanceKm')), '42.1')
+    await user.type(last.getByLabelText(/^Dužina/), '42.1')
 
     expect(last.queryByText(t('category.marathon'))).toBeNull()
     expect(last.getByText(t('category.long'))).toBeVisible()

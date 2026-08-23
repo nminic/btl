@@ -884,7 +884,10 @@ export function FormRenderer({
   /* The form is named after its own heading, so it is a region a screen reader
    * can be taken to and land in, rather than a run of fields in the page. */
   return (
-    <form className="form" aria-labelledby={titleId} onSubmit={handleSubmit} noValidate>
+    <form /* Wide where the screen has put a table under the fields: the ceiling on
+         a form is a measure for reading, and a table is not prose
+         (FormRenderer.css). */
+      className={beneath === undefined ? 'form' : 'form form--wide'} aria-labelledby={titleId} onSubmit={handleSubmit} noValidate>
       {title === undefined ? (
         <h1 className="form__title" id={titleId}>
           {t(form.titleKey)}

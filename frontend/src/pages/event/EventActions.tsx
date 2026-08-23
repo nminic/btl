@@ -98,6 +98,13 @@ export function EventActions({
          nobody can mistype, rather than a name that changes with a sponsor
          (owner, 11.08.2026). */
       copiedFrom: event.id,
+      /* And what the organiser says about it, and where they say the rest of it
+         (owner, 23.08.2026: „ako postoje i odem na kopiranje događaja, automatski
+         se učitavaju iz prethodne godine, pa ih dalje mogu menjati po želji").
+         Left out, the form of the copy opened both empty and the save wrote the
+         emptiness over them. */
+      description: event.description,
+      link: event.link,
     })
 
     for (const race of mine) {

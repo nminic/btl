@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { outsideOf } from '../components/outsideOf'
 import { useToday } from '../clock/useClock'
 import { monthGrid, monthNumbers, shiftMonth } from '../data/derive'
@@ -71,6 +71,44 @@ export function DatePicker({
   const { locale, t } = useI18n()
   const today = useToday()
   const [open, setOpen] = useState(false)
+  /* The calendar itself, so it can be placed once it is drawn and its height is
+     known. */
+  const pop = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * Where the calendar stands: against the window, under the box or over it.
+   *
+   * Against the window and not inside the field, because a calendar drawn inside
+   * its own field is cut off by whatever scrolls around that field. Since
+   * 23.08.2026 one of them stands in a cell of a table whose box scrolls sideways,
+   * and `overflow-x: auto` makes the other axis `auto` too by the rule of the
+   * property itself: measured that day, 20 pixels of 245 were left of it.
+   *
+   * Placed after it is drawn rather than while it is: the side it goes on depends
+   * on how tall it came out, and pressing the button may itself move the page, so a
+   * measurement taken before the draw is a measurement of where things used to be.
+   *
+   * Nothing follows it afterwards. The calendar closes on a choice, on Escape and
+   * on the way out, so there is no state in which it is open and the page has moved
+   * under it.
+   */
+  useLayoutEffect(() => {
+    const drawn = pop.current
+    const field = box.current
+
+    if (drawn === null || field === null) {
+      return
+    }
+
+    const at = field.getBoundingClientRect()
+    const tall = drawn.getBoundingClientRect().height
+    const under = at.bottom + tall <= window.innerHeight || at.bottom - at.top >= at.top
+
+    drawn.style.position = 'fixed'
+    drawn.style.insetInlineStart = `${String(at.left)}px`
+    drawn.style.top = under ? `${String(at.bottom + 8)}px` : ''
+    drawn.style.bottom = under ? '' : `${String(window.innerHeight - at.top + 8)}px`
+  }, [open])
   const [month, setMonth] = useState(() => monthOf(value, today))
   const box = useRef<HTMLDivElement>(null)
 
@@ -150,7 +188,22 @@ export function DatePicker({
       </button>
 
       {open && (
-        <div className="datepicker__pop">
+        /**
+         * Placed against the window and not against the box above it.
+         *
+         * A calendar drawn inside its own field is cut off by whatever scrolls
+         * around that field, and since 23.08.2026 one of them stands in a cell of a
+         * table whose box scrolls sideways: `overflow-x: auto` makes the other axis
+         * `auto` too, by the rule of the property itself, so the calendar was cut
+         * to a strip of 20 pixels out of 245 and could only be reached by scrolling
+         * inside the table. Measured that day, at four sizes.
+         *
+         * Read at the moment it opens, off the box it belongs to, which is where it
+         * has to stand. Nothing follows it afterwards: the calendar closes on a
+         * choice, on Escape and on the way out, so there is no state in which it is
+         * open and the page has moved under it.
+         */
+        <div className="datepicker__pop" ref={pop}>
           <div className="datepicker__bar">
             <button
               type="button"

@@ -3,7 +3,7 @@ import { categoryOf } from '../../data/raceCategory'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { clashesWith, whatIsMissing, type RaceRow } from './raceRows'
+import { BOUNDS, clashesWith, whatIsMissing, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -102,17 +102,26 @@ export function EventRaces({
     field: 'distanceKm' | 'ascentM' | 'descentM',
     asked: boolean,
   ) => {
-    const wrong = refused && asked && whatIsMissing(row) === field
+    /* Every kind of wrong this cell can be, not only „missing": a climb of minus
+       five hundred is as wrong as an empty length, and a cell that says it is fine
+       sends a reader looking somewhere else (WCAG 2.2 SC 3.3.1). */
+    const wrong = refused && whatIsMissing(row) === field
 
     return (
       <input
         className="field__control"
         type="number"
         inputMode="decimal"
-        min="0"
+        min={BOUNDS[field].least}
+        max={BOUNDS[field].most}
         step="any"
         value={row[field]}
-        aria-label={t(`admin.field.${field}`)}
+        /* Named by its row as well as its column. „Dužina" twenty times over is
+           twenty controls a screen reader cannot tell apart, and the table has no
+           row heading to read it with. */
+        aria-label={`${t(`admin.field.${field}`)}, ${t('admin.form.raceNumber', {
+          which: String(at + 1),
+        })}`}
         aria-required={asked}
         aria-invalid={wrong}
         onChange={(event) => change(at, { [field]: event.target.value })}
@@ -157,7 +166,9 @@ export function EventRaces({
                       id={`race-date-${String(at)}`}
                       name={`race-date-${String(at)}`}
                       value={row.date}
-                      label={t('admin.field.raceDate')}
+                      label={`${t('admin.field.raceDate')}, ${t('admin.form.raceNumber', {
+                        which: String(at + 1),
+                      })}`}
                       required
                       invalid={refused && whatIsMissing(row) === 'date'}
                       describedBy={undefined}

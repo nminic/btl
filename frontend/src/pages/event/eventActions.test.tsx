@@ -1,5 +1,5 @@
 import { cleanup, screen, within } from '@testing-library/react'
-import { at, first, must } from '../../test/at'
+import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 
@@ -400,6 +400,45 @@ describe('copying an event', () => {
     await screen.findByLabelText(/Datum/)
 
     expect(router.state.location.search).not.toBe(first)
+  })
+
+  it('opens the copy as a copy: named so, without the three it keeps, on next season', async () => {
+    /* Three of the owner's own sentences from 23.08.2026, and none of them was
+       measured by anything until a round said so: the whole of the screen could be
+       taken out and the package stayed green.
+
+       „Kopiranje dogadjaja treba da se zove u vrhu Kopiranje a ne Izmena, I ne
+       treba da se pominju Mesto, Drzava, Vrsta dogadjaja nego se kopiraju po
+       default-u. Istaknuto moze da ostane." And: „Datum treba automatski da postane
+       proporcionalan datumu kopiranog dogadjaja u narednoj godini." */
+    const user = setupUser()
+
+    renderAt(EVENT, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
+
+    /* The screen says what it is doing, rather than „Izmena", which was the truth
+       about the record and not about the work. */
+    expect(await screen.findByRole('heading', { name: 'Kopiranje događaja' })).toBeVisible()
+
+    /* The three it keeps are not put in question. */
+    expect(screen.queryByLabelText(/^Mesto/), 'the copy is asked for its town').toBeNull()
+    expect(screen.queryByLabelText(/^Država/), 'the copy is asked for its country').toBeNull()
+    expect(screen.queryByLabelText(/^Vrsta/), 'the copy is asked what kind it is').toBeNull()
+    /* And the one that does change from season to season stays. */
+    expect(screen.getByLabelText(/^Istaknuto/)).toBeVisible()
+
+    /* The same place in next year's calendar, worked out from the day it was
+       copied from. „Maraton maratona" of 2015 ran on the second Saturday of March;
+       the second Saturday of March 2016 is the twelfth. */
+    expect(screen.getByLabelText(/^Datum/)).toHaveValue('12/03/2016')
+
+    /* And every race under it moved by the same number of days, so two mornings
+       stay two mornings. */
+    for (const day of screen.getAllByLabelText(/^Dan trke/)) {
+      expect(inputElement(day).value, 'a race stayed in the season it was copied from')
+        .toMatch(/\/2016$/)
+    }
   })
 
   it('takes the races with it, and gives the copy an address of its own', async () => {

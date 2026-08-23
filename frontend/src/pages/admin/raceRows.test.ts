@@ -52,6 +52,31 @@ describe('the races of an event while they are being entered', () => {
     expect(whatIsMissing(row({ distanceKm: '0' }))).toBe('distanceKm')
   })
 
+  it('keeps a measurement inside what a race can be', () => {
+    /* The bounds the race's own form carried until 23.08.2026, which nearly went
+       with it. `min` on a number box is decoration here: the form is `noValidate`
+       and nothing reads `checkValidity`, so a round measured a climb of minus five
+       hundred metres saved on the real screen. The formula then works out a profile
+       nobody ran: `Le = L + (1.25×AP + 0.75×AN)/200` with a negative climb takes
+       three kilometres off the effective length. */
+    expect(whatIsMissing(row({ ascentM: '-500' }))).toBe('ascentM')
+    expect(whatIsMissing(row({ descentM: '-1' }))).toBe('descentM')
+    expect(whatIsMissing(row({ distanceKm: '9999999' }))).toBe('distanceKm')
+    expect(whatIsMissing(row({ distanceKm: '0.05' })), 'fifty metres is not a race').toBe(
+      'distanceKm',
+    )
+    expect(whatIsMissing(row({ ascentM: '30001' }))).toBe('ascentM')
+
+    /* And the ends of the range are inside it. */
+    expect(whatIsMissing(row({ distanceKm: '0.1' }))).toBeUndefined()
+    expect(whatIsMissing(row({ distanceKm: '1000' }))).toBeUndefined()
+    expect(whatIsMissing(row({ ascentM: '30000', descentM: '0' }))).toBeUndefined()
+    /* Empty is nought for a climb and a fall, and nought is inside the range. */
+    expect(whatIsMissing(row({ ascentM: '', descentM: '' }))).toBeUndefined()
+    /* Something that is not a number at all is refused rather than read as one. */
+    expect(whatIsMissing(row({ ascentM: 'sto' }))).toBe('ascentM')
+  })
+
   it('holds the save back until every row is finished', () => {
     /* Owner: „validacija mi ne da da nastavim dalje dok svaki red nema sve obavezne
        podatke". One press writes the event and all of its races, so one unfinished

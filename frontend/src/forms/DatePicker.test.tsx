@@ -151,3 +151,63 @@ describe('DatePicker', () => {
     expect(within(grid).getAllByRole('button', { name: /^\d+$/ })).toHaveLength(31)
   })
 })
+
+describe('where the calendar stands', () => {
+  /** A field of the given shape, and a calendar of the given height. jsdom lays
+   *  nothing out and answers nought to every rect (ADL A18), so the two are said
+   *  here; what is measured is the arithmetic that chooses a side. */
+  async function openAt({ top, height, tall }: { top: number; height: number; tall: number }) {
+    const user = setupUser()
+
+    renderPicker()
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const asked = this.classList.contains('datepicker__pop')
+
+      return {
+        top: asked ? 0 : top,
+        bottom: asked ? tall : top + height,
+        left: 40,
+        right: 240,
+        width: 200,
+        height: asked ? tall : height,
+        x: 40,
+        y: asked ? 0 : top,
+        toJSON: () => ({}),
+      }
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+
+    const pop = htmlElement(
+      must(document.querySelector('.datepicker__pop'), 'the calendar'),
+    )
+
+    vi.restoreAllMocks()
+
+    return pop
+  }
+
+  it('stands under the field where the room under it is enough', async () => {
+    /* 768 of window, a field ending at 200, a calendar 245 tall: it fits under. */
+    const pop = await openAt({ top: 160, height: 40, tall: 245 })
+
+    expect(pop.style.position).toBe('fixed')
+    expect(pop.style.top).toBe('208px')
+    expect(pop.style.bottom).toBe('')
+  })
+
+  it('stands over the field where there is more room over it', async () => {
+    /* The row of a race far down a long screen: nothing fits under it, and the
+       calendar was cut to a strip of twenty pixels by the box that scrolls around
+       the table (`admin/EventRaces.tsx`). Anchored by its bottom edge, so its own
+       height is not needed to place it. */
+    const pop = await openAt({ top: 700, height: 40, tall: 245 })
+
+    expect(pop.style.position).toBe('fixed')
+    expect(pop.style.top).toBe('')
+    expect(pop.style.bottom).toBe(`${String(window.innerHeight - 700 + 8)}px`)
+  })
+})
