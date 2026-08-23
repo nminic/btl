@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { at, first, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -36,7 +36,7 @@ describe('who is offered what on an event', () => {
     }
 
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Unesi rezultat' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Unesi rezultat/ })).toBeNull()
     /* And the table is four columns rather than five with an empty one: „tabela
        ostaje kraca za tu kolonu" (owner, 23.08.2026). */
     expect(
@@ -75,11 +75,38 @@ describe('who is offered what on an event', () => {
     expect(rows.length).toBeGreaterThan(1)
 
     for (const row of rows) {
-      expect(within(row).getByRole('link', { name: 'Unesi rezultat' })).toBeVisible()
+      expect(within(row).getByRole('link', { name: /^Unesi rezultat/ })).toBeVisible()
     }
 
     expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
+  })
+
+  it('counts the columns it says it has, with the way in and without it', async () => {
+    /* The count rides on the element and the sheet turns it into a width
+       (Profile.css). It is written by hand three lines from the headings it
+       counts, and measured on 23.08.2026: changing the four to a three left the
+       whole suite green while the table drew five columns in the width of four and
+       ended 253px short of the edge the owner asked for.
+
+       Both readings, because the count is what changes between them: five for
+       somebody who may enter a result, four for a visitor. */
+    for (const [who, member] of [
+      ['a member', '000007'],
+      ['a visitor', null],
+    ] as const) {
+      await openEvent(who === 'a member' ? 'competitor' : 'visitor', member)
+
+      const table = races()
+      const headings = within(table).getAllByRole('columnheader')
+
+      expect(
+        table.style.getPropertyValue('--race-columns'),
+        `the table shown to ${who} counts itself wrong`,
+      ).toBe(String(headings.length))
+
+      cleanup()
+    }
   })
 
   it('offers an administrator who is also a member all three', async () => {
@@ -90,7 +117,7 @@ describe('who is offered what on an event', () => {
     expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
     /* A link, because it leads to another screen, and in the table because that
        is where the race is (EventDetail.tsx). */
-    expect(within(races()).getAllByRole('link', { name: 'Unesi rezultat' }).length)
+    expect(within(races()).getAllByRole('link', { name: /^Unesi rezultat/ }).length)
       .toBeGreaterThan(0)
   })
 })
@@ -102,7 +129,7 @@ describe('reporting a result from the event', () => {
 
     const row = must(within(races()).getAllByRole('row')[1], 'the first race')
 
-    await user.click(within(row).getByRole('link', { name: 'Unesi rezultat' }))
+    await user.click(within(row).getByRole('link', { name: /^Unesi rezultat/ }))
 
     expect(router.state.location.pathname).toBe(`${EVENT}/prijava`)
     expect(router.state.location.search).toMatch(/^[?]trka=/)

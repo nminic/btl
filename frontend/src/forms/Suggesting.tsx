@@ -44,8 +44,18 @@ function matching(value: string, all: readonly Suggestion[]): Suggestion[] {
  * Tab reaches each entry, Enter and Space press it, Escape closes the list, and
  * the count is said out loud the moment the list opens.
  *
- * Escape closes it and typing opens it again, so a reader who wants the box and
- * not the list is never trapped between the two.
+ * It opens on what is typed and on nothing else. Shut is where it starts, since
+ * 23.08.2026: derived from the value alone it opened by itself on a form that
+ * arrives already filled in, which is the form somebody reaches by pressing
+ * „Ispravi i pošalji ponovo" on a refused result. Eight rows fell over the fields
+ * under the box, and a reader who had typed nothing was told „8 trka iz kalendara
+ * odgovara".
+ *
+ * Escape closes it, choosing closes it, and leaving the box closes it, so a reader
+ * who wants the box and not the list is never trapped between the two. Leaving is
+ * the one that matters for the keyboard: the list stands over the fields below, so
+ * a list left open while the cursor walks past it hides the box it lands on
+ * (WCAG 2.2 SC 2.4.11). It closes on the way out rather than on the way in.
  */
 export function Suggesting({
   value,
@@ -66,12 +76,24 @@ export function Suggesting({
   /* Shut by Escape and by choosing, and opened again by the next letter typed.
      Not a copy of what is in the box: the list itself is worked out from the
      value every time, so there is nothing here that can disagree with it. */
-  const [shut, setShut] = useState(false)
+  const [shut, setShut] = useState(true)
   const found = matching(value, suggestions)
   const showing = shut ? [] : found
 
   return (
-    <div className="suggests">
+    <div
+      className="suggests"
+      /* Shut on the way out of the whole box, the list included, so tabbing from
+         the last row of the list into the field under it does not close it before
+         it has been reached. `relatedTarget` is where the focus is going; it is
+         null when the focus leaves the document altogether, and that closes it
+         too. */
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setShut(true)
+        }
+      }}
+    >
       <input
         {...shared}
         type="text"

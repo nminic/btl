@@ -358,6 +358,13 @@ const Field = memo(function Field({
                 className="choice__input"
                 value={option.value}
                 checked={String(value) === option.value}
+                /* The lock reaches these too. `shared` carries it for every other
+                   kind of control and this branch is written before `shared` is
+                   used at all, so a suggestion that filled a group of buttons
+                   would have locked nothing while the form said it had. Nothing
+                   fills one today; a lock that is an ornament is worse than none,
+                   because the screen says the value cannot be changed. */
+                disabled={locked}
                 aria-invalid={error !== undefined}
                 /* The rule and the error on every button, and both on the
                    group around them as well.
@@ -503,6 +510,7 @@ const Field = memo(function Field({
              filled in (WCAG 2.2 SC 3.3.1). */
           invalid={error !== undefined && !aboutCountry(error)}
           countryInvalid={aboutCountry(error)}
+          locked={locked}
           describedBy={describedBy === '' ? undefined : describedBy}
           /* What is left of that when the error belongs to the country: the
              town keeps saying how it works, and stops carrying somebody else's
@@ -691,6 +699,19 @@ export function FormRenderer({
      handed a new handler every time counts as changed and redraws with it, which
      is the one thing the memo above cannot see through. Both setters are stable
      and both updates read the current state, so there is nothing to depend on. */
+  /**
+   * The errors of the fields that were just touched, gone, and the rest left
+   * standing.
+   *
+   * `setErrors({})` stood here until 23.08.2026 and emptied the whole form: one
+   * letter typed into the name of an event took away nine messages and the summary
+   * over them, while the same letter typed into „Sati" took away one. A reader
+   * walking the summary with a screen reader lost it on touching the first field
+   * and had to send the form unfinished again to get it back (WCAG 2.2 SC 3.3.1).
+   */
+  const without = (names: string[]) => (current: Record<string, FieldError>) =>
+    Object.fromEntries(Object.entries(current).filter(([name]) => !names.includes(name)))
+
   const handleChange = useCallback(
     (field: FieldDef, next: string | boolean, also?: Record<string, string>) => {
       /* `also` is what a place field writes beside itself: the country the town
@@ -733,14 +754,12 @@ export function FormRenderer({
           ...Object.fromEntries(led.map((name) => [name, ''])),
           [field.name]: next,
         }))
-        setErrors({})
+        setErrors(without([field.name, ...led]))
         setLed([])
       },
       onChoose: (one: Suggestion) => {
         setValues((current) => ({ ...current, [field.name]: one.value, ...one.fills }))
-        /* Whatever was wrong with those fields is no longer this reader's to
-           read: they hold what the record holds. */
-        setErrors({})
+        setErrors(without([field.name, ...Object.keys(one.fills)]))
         setLed(Object.keys(one.fills))
       },
     }

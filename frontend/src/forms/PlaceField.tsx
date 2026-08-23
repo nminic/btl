@@ -49,6 +49,7 @@ export function PlaceField({
   errorOnly,
   onChange,
   openAt = false,
+  locked = false,
 }: {
   id: string
   name: string
@@ -70,6 +71,9 @@ export function PlaceField({
   describedBy: string | undefined
   onChange: (place: string, country: string) => void
   openAt?: boolean
+  /** Whether both halves came off a record rather than from this reader, in which
+   *  case neither takes anything (FormRenderer.tsx). */
+  locked?: boolean
 }) {
   const { locale, t } = useI18n()
   /* Asked for on the second letter and not before: the codebook is nine hundred
@@ -256,6 +260,7 @@ export function PlaceField({
         className="field__control"
         type="text"
         role="combobox"
+        disabled={locked}
         autoComplete="off"
         aria-expanded={offered.length > 0}
         aria-controls={listId}
@@ -350,6 +355,7 @@ export function PlaceField({
              errors leads here when the country is what is unanswered. */
           id={`${id}-country`}
           className={known === undefined ? 'field__control' : 'field__control field__control--held'}
+          disabled={locked}
           value={country}
           /* Locked on a town the codebook knows, for the reason written where
              `known` is worked out. Held rather than switched off: `disabled`

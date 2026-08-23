@@ -8,6 +8,7 @@ import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
 import newResult from '../forms/definitions/unos-rezultata.form.json'
+import fromEvent from '../forms/definitions/prijava-sa-trke.form.json'
 import written from '../../public/mock/pages.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
@@ -1413,7 +1414,7 @@ describe('the rulebook', () => {
       /* Where the climb comes from, pointed at by the article that says the
          values are typed rather than read out of a track file (16.08.2026). */
       ['pravilnik', 'prednost ima podatak organizatora', 29, /Uspon i spust/],
-      ['pravilnik', 'portal uzima iz same trke', 37, /Ko prijavljuje i šta/],
+      ['pravilnik', 'izaberete trku iz ponuđenog spiska', 37, /Ko prijavljuje i šta/],
       ['pravilnik', 'Prijava rezultata posle roka iz', 38, /^Rok$/],
       /* „Top liste iz Člana 48" stood in the list of what is kept per sex until
          22.08.2026, and the owner struck it: the top boards are combined and the
@@ -2440,26 +2441,50 @@ describe('what the written pages say the fee buys', () => {
       /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
     )
 
-    /* Read off the form the member meets, field by field and not through a
-       loop over a shape asserted into being: a rule nobody has written yet is
-       simply absent from the type the JSON import gives, and asserting past that
-       is asserting past the very thing this guard is for.
+    /* And it says so of both ways in, since 23.08.2026. The article described the
+       form on the event as a different thing for three weeks: „birate trku iz
+       spiska", „link nije zasebno polje: ako ga imate, ide u komentar". The owner
+       had that form given the same foot as the one on a profile, the rulebook was
+       left as it was, and nothing here read it, because this guard knew one form.
+       A member who did what Član 37 told them, and put the address into the
+       comment, met „Ovo polje je obavezno." */
+    expect(article).toMatch(/link uključujući/)
+    expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
+      /link nije zasebno polje|ide u komentar/,
+    )
+
+    /* Read off the forms the member meets, field by field and not through a loop
+       over a shape asserted into being: a rule nobody has written yet is simply
+       absent from the type the JSON import gives, and asserting past that is
+       asserting past the very thing this guard is for.
 
        The field each rule names is checked to be on the form as well, because a
-       typo in it is silent: a rule pointing at nothing never fires. */
-    const named = new Set(newResult.fields.map((field) => field.name))
-    const link = must(
-      newResult.fields.find((one) => one.name === 'link'),
-      'the link field of the result form',
-    )
-    const comment = must(
-      newResult.fields.find((one) => one.name === 'comment'),
-      'the comment field of the result form',
-    )
+       typo in it is silent: a rule pointing at nothing never fires.
 
-    expect(must(link.optionalWhenFilled, 'the link carries no rule').field).toBe('photo')
-    expect(must(comment.requiredWhenFilled, 'the comment carries no rule').field).toBe('photo')
-    expect(named.has('photo'), 'the rules name a field the form does not ask').toBe(true)
+       Both forms, and by name, so a rule taken off one of them fails here rather
+       than quietly making the rulebook wrong about half the portal. */
+    for (const [what, form] of [
+      ['the result form', newResult],
+      ['the form on the event', fromEvent],
+    ] as const) {
+      const named = new Set(form.fields.map((field) => field.name))
+      const link = must(
+        form.fields.find((one) => one.name === 'link'),
+        `the link field of ${what}`,
+      )
+      const comment = must(
+        form.fields.find((one) => one.name === 'comment'),
+        `the comment field of ${what}`,
+      )
+
+      expect(must(link.optionalWhenFilled, `the link of ${what} carries no rule`).field).toBe(
+        'photo',
+      )
+      expect(
+        must(comment.requiredWhenFilled, `the comment of ${what} carries no rule`).field,
+      ).toBe('photo')
+      expect(named.has('photo'), `the rules of ${what} name a field it does not ask`).toBe(true)
+    }
   })
 
   it('summarises in the terms only the measures the rulebook still knows', () => {

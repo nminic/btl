@@ -34,6 +34,16 @@
     table-layout: fixed;
     inline-size: min(100%, calc(var(--race-columns) * 20%));
   }
+
+  /* And the headings wrap rather than run out of their cells. A fixed layout with
+     a ceiling of the whole width means a column cannot grow, and `.table th` is
+     `nowrap` everywhere else because everywhere else the table may grow instead
+     and scroll in its own box (PDL P24). Here it may not, so the words fold.
+     Measured at 200% text: „KATEGORIJA TRKE" needs 227px against a column of
+     202px at 1024 and 137px at 700, and wrote itself over „DUŽINA" beside it. */
+  .table.table--races th {
+    white-space: normal;
+  }
 }
 
 /* The head of a competitor's profile, and of no other screen with this class.

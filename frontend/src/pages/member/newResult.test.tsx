@@ -1,9 +1,11 @@
 import { screen, within } from '@testing-library/react'
+import { useEffect, useRef } from 'react'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { useSession } from '../../session/useSession'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -283,5 +285,72 @@ describe('the foot of the form', () => {
     const foot = asked.slice(-3).map((one) => one.replace(/\s*\(neobavezno\)\s*$/, '').trim())
 
     expect(foot).toEqual(['Link ka zvaničnim rezultatima', 'Slika kao dokaz', 'Komentar'])
+  })
+})
+
+/**
+ * Puts one refused result into the store before the screen is looked at, under
+ * whichever member is named.
+ *
+ * Written straight into the session, because the walk through the form and the
+ * queue is a different test's subject and this one is about who may open what.
+ */
+function Refused({ whose }: { whose: string }) {
+  const session = useSession()
+  const done = useRef(false)
+
+  useEffect(() => {
+    if (!done.current) {
+      done.current = true
+      session.submit({
+        memberNumber: whose,
+        eventName: 'Tuđa trka',
+        date: '2026-05-10',
+        distanceKm: 21.1,
+        ascentM: 540,
+        descentM: 540,
+        photo: '',
+        seconds: 6730,
+        points: 12.34,
+        category: 'half',
+        link: 'https://primer.rs/tudje',
+        comment: 'Tuđi komentar.',
+      })
+      session.decide('sub-1', 'rejected', 'Link ne otvara rezultate.')
+    }
+  }, [session, whose])
+
+  return null
+}
+
+describe('a refused result somebody else is correcting', () => {
+  /** The address the list of my results writes for a refusal of mine. */
+  const AGAIN = `${NEW}?ponovo=sub-1`
+
+  it('opens for the member it belongs to', async () => {
+    /* The half that has to work, so the other half is not a screen that refuses
+       everybody. */
+    renderAt(AGAIN, 'competitor', ME, undefined, TODAY, <Refused whose={ME} />)
+
+    /* The moderator's own words about why it was refused, which is what the screen
+       shows and what somebody else must not see. The fields themselves are seeded
+       once, when the form mounts, and here the result is written into the store
+       one turn later than that, so what is read is the sentence over the form and
+       not the boxes under it. */
+    expect(await screen.findByText(/Link ne otvara rezultate/)).toBeVisible()
+  })
+
+  it('opens for nobody else, however the address is typed', async () => {
+    /* The only rule this screen has, and until 23.08.2026 nothing measured it:
+       removing the owner from the condition left all 2059 tests green. The ids
+       are `sub-1`, `sub-2` and so on, so the address is guessed from the first
+       try, and what stands behind it is somebody else's race and the moderator's
+       own words about why it was refused. */
+    renderAt(AGAIN, 'competitor', ME, undefined, TODAY, <Refused whose="000021" />)
+
+    await screen.findByLabelText(/Naziv događaja/)
+
+    expect(screen.queryByText(/Link ne otvara rezultate/), 'the reason was shown').toBeNull()
+    expect(screen.queryByText(/Tuđa trka/), 'the race was shown').toBeNull()
   })
 })

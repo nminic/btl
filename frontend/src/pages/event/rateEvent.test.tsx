@@ -1112,7 +1112,7 @@ describe('what an event nobody has run yet offers', () => {
     /* In the row of the race since 23.08.2026, rather than over the table. */
     const table = await screen.findByRole('table', { name: 'Trke' })
 
-    expect(within(table).getAllByRole('link', { name: 'Unesi rezultat' }).length)
+    expect(within(table).getAllByRole('link', { name: /^Unesi rezultat/ }).length)
       .toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
   })
@@ -1196,7 +1196,7 @@ describe('what an event nobody has run yet offers', () => {
     const table = await screen.findByRole('table', { name: 'Trke' })
 
     await user.click(
-      first(within(table).getAllByRole('link', { name: 'Unesi rezultat' })),
+      first(within(table).getAllByRole('link', { name: /^Unesi rezultat/ })),
     )
 
     expect(await screen.findByLabelText(/Sati/)).toBeVisible()
@@ -1215,7 +1215,7 @@ describe('what an event nobody has run yet offers', () => {
        event, so this is not the empty row a visitor gets. */
     expect(await screen.findByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Unesi rezultat' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Unesi rezultat/ })).toBeNull()
   })
 })
 

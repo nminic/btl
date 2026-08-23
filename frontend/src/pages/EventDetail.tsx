@@ -19,6 +19,7 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
+import { raceLabel } from '../data/raceLabel'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
@@ -117,6 +118,17 @@ function RaceTable({ event }: { event: BtlEvent }) {
                                asking which one it was. */
                             <Link
                               className="button button--secondary button--compact"
+                              /* Named by the race it leads to, because three of
+                                 these stand in one table and „Unesi rezultat"
+                                 three times over is one entry said three times in
+                                 a screen reader's list of links (WCAG 2.2 SC
+                                 2.4.4). The row does not name itself: it has no
+                                 `th`, so nothing else tells them apart. Said the
+                                 way every screen says a race, by its length
+                                 (data/raceLabel.ts). */
+                              aria-label={t('event.enterResultNamed', {
+                                race: raceLabel(race, mine, locale),
+                              })}
                               to={`/${locale}/kalendar/${event.slug}/prijava?trka=${race.id}`}
                             >
                               {t('event.enterResult')}

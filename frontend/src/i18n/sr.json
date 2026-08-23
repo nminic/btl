@@ -575,6 +575,7 @@
     "raceCategory": "Kategorija trke",
     "options": "Opcije",
     "enterResult": "Unesi rezultat",
+    "enterResultNamed": "Unesi rezultat: {race}",
     "results": "Rezultati članova",
     "noResults": "Sa ovog događaja nema unetih rezultata.",
     "notFound": "Ovog događaja nema.",
@@ -832,7 +833,6 @@
     "needsSomebody": "Izaberi člana da bi mogao da se prijaviš."
   },
   "myProfile": {
-    "actions": "Moje stvari",
     "signOut": "Odjavi se",
     "notifications": "Obaveštenja",
     "notificationsNote": "Šest obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru i krupna izmena na portalu. Ispod je sve ostalo.",

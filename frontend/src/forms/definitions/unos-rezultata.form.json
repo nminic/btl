@@ -73,10 +73,11 @@
       "labelKey": "newResult.link",
       "hintKey": "newResult.linkHint",
       "required": true,
-      "pattern": "^https?://.+",
+      "pattern": "^https?:\\/\\/[^\\s]+$",
       "optionalWhenFilled": {
         "field": "photo"
-      }
+      },
+      "maxLength": 500
     },
     {
       "name": "photo",

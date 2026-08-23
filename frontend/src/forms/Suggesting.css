@@ -1,15 +1,33 @@
 /* The box and the list under it.
-   The list is taken out of the flow, so a form does not grow and shrink by the
-   height of eight rows as somebody types. */
+
+   The box takes the whole width of its field, and that has to be said here: every
+   other control on a form is a direct child of `.field`, which is a flex column
+   and stretches them; this one is a child of the box around it, so left alone it
+   fell back to the browser's own twenty characters. Measured on 23.08.2026 at
+   1280: „Naziv događaja" was 207px while „Link ka zvaničnim rezultatima" under it
+   was 544px, and at 200% text on a 360px screen the box stood 72px past the right
+   edge of its own column (WCAG 2.2 SC 1.4.10). */
 .suggests {
-  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
+.suggests > .field__control {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* In the flow and not over it, since 23.08.2026. Taken out of the flow it stood
+   over the fields under the box: at 360px the panel covered „Datum trke" whole, so
+   the focus ring on that box could not be seen once the cursor walked past the
+   list (WCAG 2.2 SC 2.4.11), and a click aimed at the date pressed a suggestion
+   instead and locked four fields to somebody else's race. Measured in Chrome, at
+   360, 700 and 1280.
+
+   The price is that the fields under it move while the list is open, and that is
+   the smaller of the two: the list is open only while somebody is typing into the
+   box above it, and it closes on the choice, on Escape and on the way out. */
 .suggests__list {
-  position: absolute;
-  inset-inline: 0;
-  inset-block-start: 100%;
-  z-index: 20;
   margin: var(--space-4) 0 0;
   padding: 0;
   list-style: none;
