@@ -935,6 +935,16 @@ describe('a result from entry to decision', () => {
     const sent = within(await screen.findByRole('list'))
     expect(sent.getAllByRole('listitem')).toHaveLength(2)
 
+    /* Named by the race, like everything else that names a result since 23.08.2026.
+       A sweep of mutations found this one and six rounds of review did not: the name
+       inside the accessible label was the only place left reading the event, and
+       nothing measured it. A member with two refused results hears „Ispravi i pošalji
+       ponovo" twice over otherwise. */
+    expect(
+      screen.queryByRole('link', { name: 'Ispravi i pošalji ponovo: Probna trka' }),
+      'the link is named after something other than the race',
+    ).not.toBeNull()
+
     await user.click(screen.getByRole('link', { name: /Ispravi i pošalji ponovo: / }))
 
     /* The form opens on what was refused, and says why it is full. */

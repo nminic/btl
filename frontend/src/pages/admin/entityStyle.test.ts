@@ -67,8 +67,26 @@ function unconditional(): { selector: string; style: CSSStyleDeclaration }[] {
 
 /** The one rule written for exactly this selector, and a failure naming it where
  *  there is none. */
+/** A selector as one line with single spaces, whichever way the file was checked
+ *  out and however it was wrapped.
+ *
+ *  `selectorText` gives back the line breaks the sheet is written with, and on
+ *  Windows those are `
+` while a template literal in this file is `
+` by the
+ *  language's own rule. A guard written against the one is red on the machine the
+ *  portal is developed on and green on CI, which is the worst of both: the gate
+ *  `CLAUDE.md` asks for before every PR fails on something that has nothing to do
+ *  with what is being guarded, and the natural answer to a false alarm is to switch
+ *  the guard off. Measured 23.08.2026 on a clean checkout of this branch: one test
+ *  failed of 2154, and the same wording appeared for the fault the guard exists for.
+ */
+function oneLine(selector: string): string {
+  return selector.replace(/\s+/g, ' ').trim()
+}
+
 function ruleFor(selector: string): CSSStyleDeclaration {
-  const found = unconditional().filter((rule) => rule.selector === selector)
+  const found = unconditional().filter((rule) => oneLine(rule.selector) === oneLine(selector))
 
   expect(found.length, `${selector} is not an unconditional rule of Entity.css`).toBe(1)
 
@@ -336,8 +354,7 @@ describe('the column a race is read by', () => {
        line break the sheet is written with rather than folding the two selectors onto
        one line. */
     const floor = ruleFor(
-      `.entity-races .table th:first-child,
-.entity-races .table td:first-child`,
+      '.entity-races .table th:first-child, .entity-races .table td:first-child',
     )
 
     expect(floor.getPropertyValue('min-inline-size')).toBe('8rem')

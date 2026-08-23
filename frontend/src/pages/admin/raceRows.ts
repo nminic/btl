@@ -88,7 +88,7 @@ function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
  */
 export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'name'): boolean {
   if (field === 'name') {
-    return row.name.trim() === ''
+    return row.name === ''
   }
 
   if (field === 'date') {

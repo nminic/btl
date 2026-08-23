@@ -273,10 +273,34 @@ describe('the races of an event', () => {
     const first = must(table.getAllByRole('row')[1], 'the first race')
     const cells = within(first).getAllByRole('cell')
 
-    expect(
-      within(must(cells[0], 'the first cell')).queryByLabelText(/^Trka,/),
-      'the first cell of a row is not the name',
-    ).not.toBeNull()
+    /* The whole row against the whole heading, not only its first cell. Asked of the
+       first alone, swapping any other pair leaves the heading saying one thing over
+       cells saying another: a round swapped the day and the length and 52 tests
+       stayed green while a screen reader read „Dužina: 17/10/2026" (WCAG 2.2 SC
+       1.3.1). The same shape is already used for the tables of the portal in
+       `styles/tableWidths.test.ts`. */
+    expect(cells.length, 'the row and the heading are not the same width').toBe(7)
+
+    const named = [
+      /^Trka,/,
+      undefined,
+      /^Dan trke,/,
+      /^Dužina \(km\),/,
+      /^Uspon \(m\),/,
+      /^Spust \(m\),/,
+      undefined,
+    ] as const
+
+    for (const [at, asked] of named.entries()) {
+      if (asked === undefined) {
+        continue
+      }
+
+      expect(
+        within(must(cells[at], `cell ${String(at + 1)}`)).queryByLabelText(asked),
+        `cell ${String(at + 1)} of a row does not answer to its own heading`,
+      ).not.toBeNull()
+    }
   })
 
   it('names every control in a row by the row it is in', async () => {
