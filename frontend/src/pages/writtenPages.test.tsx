@@ -2008,8 +2008,25 @@ describe('how a written page is set', () => {
 
         /* A constant: find where it is given its value, anywhere in the portal.
            The name goes into the pattern escaped, because it is read out of a
-           file and this test has no say in what it looks like. */
-        const gives = new RegExp(`${escaped(handed)}\\s*=\\s*['"\`](.*?)['"\`]`, 'g')
+           file and this test has no say in what it looks like.
+         *
+           The whole name, and that is not a nicety. The clock's store is opened by
+           a constant called `KEY` (clock/ClockProvider.tsx), and written without
+           the boundary this pattern matched every identifier ending in those three
+           letters: `THEME_STORAGE_KEY` all along, and on 23.08.2026 a new
+           `REQUIRED_KEY` in forms/validate.ts, whose value is the name of an error
+           message rather than of any store. The guard then asked the privacy policy
+           to disclose a store the portal does not have, and would as happily have
+           let the clock's own store be disclosed under somebody else's name.
+         *
+           A constant given a written type, `const KEY: string = '…'`, is matched by
+           neither the old pattern nor this one, and that is the safe side: it fails
+           loudly with „nothing in the portal gives `KEY` a value" rather than
+           quietly reading nothing. Measured both ways. */
+        const gives = new RegExp(
+          `(?:^|[^\\w$])${escaped(handed)}\\s*=\\s*['"\`](.*?)['"\`]`,
+          'g',
+        )
         const named = everywhere
           .flatMap((one) => [...one.matchAll(gives)])
           .map((one) => one[1] ?? '')

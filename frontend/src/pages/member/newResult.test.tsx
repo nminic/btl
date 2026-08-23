@@ -358,6 +358,37 @@ describe('a message about a field the form has stopped asking for', () => {
   })
 })
 
+describe('an error that is not about a field being obligatory', () => {
+  it('survives the picture that made the field optional', () => {
+    /* The other half of the rule above, and the one a wider fix would have taken
+       with it: a badly written address is still badly written after a picture has
+       made it optional. Measured on 23.08.2026 with the wider fix in place: the
+       message went, the form went on refusing to send, and nothing on the screen
+       said why. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    return (async () => {
+      await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+      await user.type(screen.getByLabelText(/^Link/), 'trka.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+      expect(screen.getByText('Vrednost nije u očekivanom obliku.')).toBeVisible()
+
+      await user.upload(
+        screen.getByLabelText(/Slika kao dokaz/),
+        new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }),
+      )
+
+      expect(
+        screen.getByText('Vrednost nije u očekivanom obliku.'),
+        'the shape stopped being wrong when the field stopped being obligatory',
+      ).toBeVisible()
+    })()
+  })
+})
+
 describe('the foot of the form', () => {
   it('asks for the link, then the picture, then the comment', async () => {
     /* Owner, 23.08.2026: „Slika kao dokaz treba da se nađe iznad komentara, a

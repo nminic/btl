@@ -25,7 +25,14 @@ import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
 import { Suggesting } from './Suggesting'
 import { optionsFor } from './records'
-import { asAsked, emptyValues, isVisible, trimValues, validateForm } from './validate'
+import {
+  asAsked,
+  emptyValues,
+  isVisible,
+  REQUIRED_KEY,
+  trimValues,
+  validateForm,
+} from './validate'
 import './FormRenderer.css'
 
 type Props = {
@@ -737,10 +744,25 @@ export function FormRenderer({
          came with. One field, two values, and the second has no field of its own
          to be typed into (src/forms/types.ts). */
       setValues((current) => ({ ...current, [field.name]: next, ...also }))
-      // The message goes away as soon as the field is touched, and so does the
-      // message on whatever field this one decides the obligation of. Leaving
-      // either up tells a screen reader a field is still wrong after it was fixed.
-      setErrors(without([field.name, ...hangingOn(field.name)]))
+      /* The message goes away as soon as the field is touched, and so does the
+         message about **obligation** on whatever field this one decides the
+         obligation of. Leaving either up tells a screen reader a field is still
+         wrong after it was fixed.
+       *
+         Only that message on the other field, and that is the whole of the
+         difference: a badly written address is still a badly written address after
+         a picture has made it optional, and taking its message away with the
+         obligation would leave the form refusing to send with nothing on the screen
+         to say why. Measured on 23.08.2026, on the real `unos-rezultata` form. */
+      setErrors((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([name, error]) =>
+              name !== field.name &&
+              !(hangingOn(field.name).includes(name) && error.key === REQUIRED_KEY),
+          ),
+        ),
+      )
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form],

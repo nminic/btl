@@ -30,13 +30,13 @@ function compile(pattern: string): RegExp {
  */
 export function validateField(field: FieldDef, value: string | boolean): FieldError | null {
   if (typeof value === 'boolean') {
-    return field.required === true && !value ? { key: 'form.errors.required' } : null
+    return field.required === true && !value ? { key: REQUIRED_KEY } : null
   }
 
   const text = value.trim()
 
   if (text === '') {
-    return field.required === true ? { key: 'form.errors.required' } : null
+    return field.required === true ? { key: REQUIRED_KEY } : null
   }
 
   if (field.minLength !== undefined && text.length < field.minLength) {
@@ -96,6 +96,10 @@ export function isVisible(field: FieldDef, values: FormValues, today: Date): boo
 
   return birth !== null && ageOn(birth, today) < rule.years
 }
+
+/** What an unanswered obligatory field is told, named once so a caller can ask
+ *  whether an error is that one rather than comparing to a written string. */
+export const REQUIRED_KEY = 'form.errors.required'
 
 /**
  * The field as it is actually asked, which is not always as it is written.
