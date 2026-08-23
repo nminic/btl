@@ -62,13 +62,23 @@ function RaceTable({ event }: { event: BtlEvent }) {
            empty cells would say the opposite. */
         const canEnter = (race: Race) => memberNumber !== null && race.date <= today
         const options = mine.some(canEnter)
-        /* Five that are always there since isporuka 125: the name, the category, the
-           length, the climb and the fall. The day is a sixth on an event that runs
-           over more than one morning, and the way in a seventh for somebody who may
-           report a result. Written by hand three lines from the headings it counts,
-           and a round measured what that costs when the two disagree: the table drew
-           five columns in the width of four and ended 253px short of the edge. */
-        const columns = (overDays ? 1 : 0) + 5 + (options ? 1 : 0)
+        /* Four that are always there: the name, the length, the climb and the fall.
+           The day is a fifth on an event that runs over more than one morning, and the
+           way in a sixth for somebody who may report a result.
+
+           It was five for a few hours, when the name arrived and the category was
+           still here, and a round measured what a seventh column costs this table:
+           the floor that keeps a date unbroken is 6,75rem, so seven of them ask for
+           756px of a box that is 653 at 700px and 721 at 768. The column that fell
+           outside was the one holding „Unesi rezultat", and nothing on the screen said
+           it was cut. The owner's answer was to take the category out here as well as
+           in the administration (23.08.2026), which it can afford: the length stands
+           beside it and the category is read off the length.
+
+           Written by hand three lines from the headings it counts, and that too was
+           measured: with the two disagreeing the table drew five columns in the width
+           of four and ended 253px short of the edge. */
+        const columns = (overDays ? 1 : 0) + 4 + (options ? 1 : 0)
 
         return (
           <div className="table-scroll">
@@ -103,7 +113,6 @@ function RaceTable({ event }: { event: BtlEvent }) {
                       what the name is for. */}
                   <th scope="col">{t('event.raceName')}</th>
                   {overDays && <th scope="col">{t('event.raceDay')}</th>}
-                  <th scope="col">{t('event.raceCategory')}</th>
                   <th scope="col">{t('event.distance')}</th>
                   <th scope="col" className="table__hide-phone">
                     {t('event.ascent')}
@@ -119,7 +128,6 @@ function RaceTable({ event }: { event: BtlEvent }) {
                     <tr key={race.id}>
                       <td>{race.name}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
-                      <td>{t(`category.${race.category}`)}</td>
                       <td>{formatNumber(race.distanceKm, locale, 2)}</td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>

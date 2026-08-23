@@ -50,7 +50,7 @@ describe('who is offered what on an event', () => {
        ostaje kraca za tu kolonu" (owner, 23.08.2026). */
     expect(
       within(races()).getAllByRole('columnheader').map((one) => one.textContent),
-    ).toEqual(['Trka', 'Kategorija trke', 'Dužina', 'Uspon', 'Spust'])
+    ).toEqual(['Trka', 'Dužina', 'Uspon', 'Spust'])
   })
 
   it('names each race in the first column, not only the category it falls in', async () => {
