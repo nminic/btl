@@ -90,6 +90,14 @@
 .day {
   /* What the shortcut in the corner is placed against (owner, 12.08.2026). */
   position: relative;
+  /* And it may be narrower than the longest name in it. A grid item refuses to
+     shrink under its own `min-content` unless it is told to, and under 780px the
+     month is one column: at 200% text the longest event name of the month grew
+     that column to 407,94px inside a box of 281 and **the page itself** scrolled
+     sideways by 95px, which is the one thing the portal never does (WCAG 2.2
+     SC 1.4.10). Measured 23.08.2026, before and after; the chips inside a day wrap
+     on their own, so nothing leaves its day either. */
+  min-inline-size: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
