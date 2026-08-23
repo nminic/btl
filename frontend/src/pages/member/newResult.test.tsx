@@ -58,6 +58,26 @@ describe('the list of races under the name of an event', () => {
     expect(offered().length).toBeGreaterThan(0)
   })
 
+  it('offers the name of the race, not the name of the event it is run at', async () => {
+    /* Owner, 23.08.2026: „sad je postalo logičnije da se pretražuje zapravo naziv
+       trke sa datumom i dužinom." Measured against the one race in the data with a
+       name of its own; with every other one named after its event the two are the
+       same string, and a round measured that putting the event's name back walks
+       through the whole package. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'mrazijada')
+
+    const said = offered()
+
+    expect(said.length).toBeGreaterThan(0)
+    expect(
+      said.some((one) => one.startsWith('Mrazijada, polumaraton')),
+      said.join(' | '),
+    ).toBe(true)
+  })
+
   it('writes each race as its event, its day and its length', async () => {
     /* „Beogradski maraton – 19.04.2026. – 42.2" (owner). The day is the one
        numeric date shape on the portal, and it is here because he named it

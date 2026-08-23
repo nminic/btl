@@ -166,6 +166,37 @@ describe('signing in', () => {
   })
 })
 
+describe('what the results of a member are named by', () => {
+  it('names the race, and says so in the heading above it', async () => {
+    /* Owner, 23.08.2026: „u listi rezultata treba da se prikazuju nazivi trka na
+       kojima je čovek učestvovao, a ne događaja." „Moji rezultati" is one of the
+       three screens he named.
+
+       Measured against the one race in the data that carries a name of its own,
+       „Mrazijada, polumaraton" under the event „Mrazijada": every other race is
+       named after its event, so a screen drawing the wrong one of the two looks
+       right. A round measured what that costs — four mutations that put the event's
+       name back walked through all 2139 tests, this screen among them. */
+    renderAt('/sr/moji-rezultati', 'competitor', '000002')
+
+    const counted = within(await screen.findByRole('table', { name: 'Uračunato' }))
+
+    expect(
+      counted.getAllByRole('columnheader').map((one) => one.textContent),
+      'the heading says the column holds events',
+    ).toContain('Trka')
+
+    const named = counted
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[1]?.textContent ?? '')
+
+    expect(named.some((one) => one.includes('Mrazijada, polumaraton')), named.join(' | ')).toBe(
+      true,
+    )
+  })
+})
+
 describe('member screens without a session', () => {
   it.each([
     ['/sr/moj-profil'],
