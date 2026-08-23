@@ -54,6 +54,24 @@ const PLACE = '[[gallery]]'
  * personal field could then be declared published while the policy said nothing about
  * it. Measured.
  */
+/**
+ * Whether a line is a row of a table, asked in one place.
+ *
+ * Matched whole, the way the portal matches a row. Asked as „begins and ends with a
+ * pipe", a lone `|` answered yes to both and, having no cells at all, answered yes to
+ * being a line of dashes as well, so the search for the dashes stopped on a line the
+ * portal draws as a paragraph.
+ *
+ * One question and two readers, since 23.08.2026. The table reader asked it this way
+ * and the reader of prose asked „does it begin with a pipe", so a row missing its
+ * closing pipe fell out of both at once: not a row here, not prose there, read by
+ * nobody. A reader sees it as an ordinary paragraph, because the renderer draws it as
+ * one (components/Markdown.tsx).
+ */
+function isTableRow(line: string): boolean {
+  return /^\|.*\|$/.test(line.trim())
+}
+
 function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   const cellsOf = (line: string) => line.split('|').map((cell) => cell.trim())
   const dashes = (line: string) =>
@@ -63,14 +81,10 @@ function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   const tables: string[][] = []
   let table: string[] = []
 
-  /* Matched whole, the way the portal matches a row. Asked as „begins and ends with a
-     pipe", a lone `|` answered yes to both and, having no cells at all, answered yes to
-     being a line of dashes as well, so the search for the dashes stopped on a line the
-     portal draws as a paragraph. */
   for (const raw of block.split(NEWLINE)) {
     const line = raw.trim()
 
-    if (/^\|.*\|$/.test(line)) {
+    if (isTableRow(line)) {
       table.push(line)
 
       continue
@@ -1017,6 +1031,27 @@ function wordsBefore(before: string): string {
   return before.replace(/[\s([„”"'—-]+$/u, '')
 }
 
+/* The code of ethics is deliberately not on this list. It looks like another
+   document and is not one: the terms say in so many words „To je etički kodeks lige
+   i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz Člana 99"
+   walked out of the check on a page where a bare number is a fault, and Član 99 does
+   not exist. Measured. */
+const NAMED = /pravilnik|statut|zakon/i
+
+/** The naming word nearest the number on one side, and how many words away it
+ *  stands, counting from the number outwards. Undefined where that side names none. */
+function nearestNamed(words: string[]): { named: string; away: number } | undefined {
+  for (const [at, word] of words.entries()) {
+    const found = NAMED.exec(word)
+
+    if (found !== null) {
+      return { named: found[0], away: at + 1 }
+    }
+  }
+
+  return undefined
+}
+
 /** Which document a numbered reference says it belongs to, in lower case, or the
  *  empty string when it names none.
  *
@@ -1029,24 +1064,42 @@ function wordsBefore(before: string): string {
  *
  *  Both sides, because a sentence names its document on whichever side it likes:
  *  „Pravilnik lige, Član 74" in front, „Član 74 opšteg pravilnika lige" behind with
- *  a Serbian letter `\w` does not reach, „član 74 pravilnika" in lower case. Ahead
- *  is read first, and inside three words that is also the nearer one. */
+ *  a Serbian letter `\w` does not reach, „član 74 pravilnika" in lower case.
+ *
+ *  **The nearer of the two wins**, and that is a correction of 23.08.2026, recorded
+ *  as a limit on 22.08.2026 and measured then: read ahead-first, „Prema Pravilniku
+ *  lige Član 99 u smislu zakona" was handed to the law by a word three places behind
+ *  it, while the rulebook stood one place in front, and Član 99 does not exist. Ties
+ *  go ahead, which is where a document is named when it is named on both sides.
+ *
+ *  An enumeration names its document once, for the whole list: „Član 74 i Član 75
+ *  Pravilnika" says it behind the last of them, so a further reference standing in
+ *  the way is stepped over rather than read as three words that name nothing. That
+ *  was the third recorded limit, and it failed loudly rather than quietly, which is
+ *  the safe direction and still a false alarm. */
 function documentOf(before: string, after: string): string {
-  /* The code of ethics is deliberately not on this list. It looks like another
-     document and is not one: the terms say in so many words „To je etički kodeks
-     lige i deo je pravilnika". Listed, „Postupak zbog kršenja etičkog kodeksa iz
-     Člana 99" walked out of the check on a page where a bare number is a fault,
-     and Član 99 does not exist. Measured. */
-  const named = /pravilnik|statut|zakon/i
   /* Emptied of blanks before the three are taken, not after. The words behind a
      number open with the space that separates them from it, so counted with the
      blank in hand only two of them were ever read, and „(Član 74 stav 2
      Pravilnika)" failed as a reference that does not say of what. */
   const words = (text: string): string[] => text.split(/\s+/).filter(Boolean)
-  const ahead = named.exec(words(after).slice(0, 3).join(' '))
-  const behind = named.exec(words(before).slice(-3).join(' '))
+  /* Over any further references of the same list, and over the comma or the „i"
+     that joins them. */
+  const listed = after.replace(/^(?:[\s,]*(?:i +)?(?:[Čč]lan\w*|[Čč]l\.) *\d{1,3})+/, '')
+  const ahead = nearestNamed(words(listed).slice(0, 3))
+  /* Reversed, so the word nearest the number is the first one looked at. And named
+     `inFront` rather than `behind`, which is what it was called until 23.08.2026
+     while holding the words **in front of** the number: a name that says the
+     opposite of what it holds is one more thing to get wrong. */
+  const inFront = nearestNamed(words(before).slice(-3).reverse())
 
-  return (ahead?.[0] ?? behind?.[0] ?? '').toLowerCase()
+  if (inFront === undefined) {
+    return (ahead?.named ?? '').toLowerCase()
+  }
+
+  return (
+    ahead !== undefined && ahead.away <= inFront.away ? ahead.named : inFront.named
+  ).toLowerCase()
 }
 
 /** An article named by number, and a section named by number.
@@ -1065,7 +1118,12 @@ function documentOf(before: string, after: string): string {
  *  At most three figures and never a leading zero, because a member number is
  *  written `000001` and the terms describe that very shape: read as a number, „član
  *  000001" became a reference to Član 1. */
-const ARTICLE = /(?:[Čč]lan\w*|[Čč]l\.) *(?!0)(\d{1,3})(?!\d)/g
+/* And never a number that is an age rather than an article. „od člana 16 godina i
+   mlađeg" is a sentence about a person, and read as a reference it sends a reader to
+   an article of the rulebook that has nothing to do with them; the fourth recorded
+   limit of 22.08.2026, measured then. A year is the only unit that follows a number
+   here, so it is the only one refused. */
+const ARTICLE = /(?:[Čč]lan\w*|[Čč]l\.) *(?!0)(\d{1,3})(?!\d)(?! *godin)/g
 const SECTION = /[Ss]ekcij\w+ *(?!0)(\d{1,3})(?!\d)/g
 
 /** Every place a text names one of those: the words in front of it, the number, and
@@ -1377,7 +1435,7 @@ describe('the rulebook', () => {
       if (document === '') {
         expect(
           one.slug,
-          `${one.slug} names an article ${one.number} without saying of what document`,
+          `${one.slug} names an article ${one.number} and nothing in the three words on either side of it says pravilnik, statut or zakon`,
         ).toBe('pravilnik')
 
         return one.slug === 'pravilnik'
@@ -1760,9 +1818,15 @@ describe('how a written page is set', () => {
       }
 
       for (const section of page.sections) {
+        /* Everything that is not a row of a table, asked exactly the way `tablesOf`
+           asks it. Asked as „does not begin with a pipe", a row missing its closing
+           pipe fell out of both paths at once: not a row to the table reader, not
+           prose here, and so read by nobody. A reader sees it as an ordinary
+           paragraph, because the renderer draws it as one (components/Markdown.tsx),
+           so this reads it as one too. The fifth recorded limit of 22.08.2026. */
         const prose = section.body
           .split(NEWLINE)
-          .filter((line) => !line.trimStart().startsWith('|'))
+          .filter((line) => !isTableRow(line))
           .join(NEWLINE)
 
         for (const { before, number } of mentionsIn(prose, SECTION)) {
@@ -2628,5 +2692,59 @@ describe('what the written pages say the fee buys', () => {
     for (const slug of ['uslovi-koriscenja', 'pravilnik'] as const) {
       expect(whole(slug)).not.toMatch(/telefon/i)
     }
+  })
+})
+
+describe('which document a numbered reference belongs to', () => {
+  /* The five limits recorded on 22.08.2026 and closed on 23.08.2026, each held by
+     the sentence it was measured on. They are asked of the readers themselves and
+     not through the content, because the content is pinned reference by reference:
+     a sentence added to a page to try one of these fails on the pinning long before
+     it reaches the reader under test. */
+  it('takes the nearer of two names rather than the one ahead', () => {
+    /* „Prema Pravilniku lige Član 99 u smislu zakona": the rulebook stands one word
+       in front, the law three words behind, and read ahead-first the reference was
+       handed to the law and Član 99 was never looked for. */
+    expect(documentOf('Prema Pravilniku lige', ' u smislu zakona')).toBe('pravilnik')
+    /* And ahead still answers where it is the nearer, which is the ordinary shape. */
+    expect(documentOf('u skladu sa zakonom stoji', ' Pravilnika lige')).toBe('pravilnik')
+    /* A tie goes ahead, which is where a document is named when both sides do. */
+    expect(documentOf('po zakonu', ' pravilnika')).toBe('pravilnik')
+  })
+
+  it('reads the document an enumeration names once, at the end of the list', () => {
+    /* „Član 74 i Član 75 Pravilnika" names it behind the last of them. The first
+       reference used to see three words that name nothing and fail loudly, which is
+       the safe direction and still a false alarm. */
+    expect(documentOf('iz', ' i Član 75 Pravilnika')).toBe('pravilnik')
+    expect(documentOf('iz', ', Član 75 i Član 76 Pravilnika')).toBe('pravilnik')
+  })
+
+  it('says nothing where neither side names a document', () => {
+    expect(documentOf('Prema', ' postupa se dalje')).toBe('')
+  })
+})
+
+describe('what is read as a reference to an article', () => {
+  it('is not an age that happens to follow the word', () => {
+    /* „od člana 16 godina i mlađeg" is a sentence about a person. Read as a
+       reference it sent a reader to an article that has nothing to do with them. */
+    expect([...'od člana 16 godina i mlađeg'.matchAll(ARTICLE)]).toEqual([])
+    /* And the reference beside it is still read. */
+    expect([...'iz Člana 16 ovog pravilnika'.matchAll(ARTICLE)].map((one) => one[1])).toEqual([
+      '16',
+    ])
+  })
+})
+
+describe('what is read as a row of a table', () => {
+  it('is a line that closes as well as opens, and one question answers for both readers', () => {
+    /* A row missing its closing pipe used to fall out of the table reader and out of
+       the prose beside it at once, so nothing read it at all. */
+    expect(isTableRow('| Dok ste član | Čuvamo dok traje članstvo |')).toBe(true)
+    expect(isTableRow('| Dok ste član | Čuvamo dok traje članstvo')).toBe(false)
+    expect(isTableRow('Rečenica o sekciji 5.')).toBe(false)
+    /* A lone pipe is not a row either, which is what the whole match is for. */
+    expect(isTableRow('|')).toBe(false)
   })
 })
