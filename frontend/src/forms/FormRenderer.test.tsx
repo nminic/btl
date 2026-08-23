@@ -1030,13 +1030,29 @@ describe('a field filled from a list', () => {
     await user.type(screen.getByLabelText(/proba.trka/), 'pr')
     await user.click(screen.getByRole('button', { name: /Probna trka/ }))
 
-    /* Every button of the group, not the group: `disabled` is a property of a
+    /* Every button of the group, not the group: being held is a property of a
        control and a group of radio buttons is not one. */
     for (const one of screen.getAllByRole('radio')) {
-      expect(one, 'a button of the group takes an answer it was not given').toBeDisabled()
+      expect(one, 'a button of the group is not said to be held').toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(one, 'a button of the group is out of the keyboard\'s path').not.toBeDisabled()
     }
 
-    expect(screen.getByLabelText(/proba.mesto/), 'the town still takes typing').toBeDisabled()
+    /* A radio has no `readOnly`, so what refuses it is the change itself. */
+    await user.click(must(screen.getAllByRole('radio')[1], 'the other answer'))
+
+    expect(
+      must(screen.getAllByRole('radio')[1], 'the other answer'),
+      'a held group took an answer it was not given',
+    ).not.toBeChecked()
+
+    const town = screen.getByLabelText(/proba.mesto/)
+
+    expect(town, 'the town is not said to be held').toHaveAttribute('aria-disabled', 'true')
+    expect(town, 'the town still takes typing').toHaveAttribute('readonly')
+    expect(town, "the town is out of the keyboard's path").not.toBeDisabled()
   })
 })
 

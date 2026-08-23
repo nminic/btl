@@ -1,6 +1,10 @@
 import { cleanup, screen, within } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
-import { OFFICIAL_RESULTS, officialResultsLink } from '../../data/officialResults'
+import {
+  OFFICIAL_RESULTS,
+  officialResultsHost,
+  officialResultsLink,
+} from '../../data/officialResults'
 import fromEvent from '../../forms/definitions/prijava-sa-trke.form.json'
 import newResult from '../../forms/definitions/unos-rezultata.form.json'
 import { must } from '../../test/at'
@@ -87,6 +91,15 @@ describe('the shape an address of official results must have', () => {
       'https://primer.rs\u200e@zlo.example/p',
       'https://primer.rs\u202e@zlo.example/p',
       'https://primer.rs\u2066@zlo.example/p',
+      /* And the one the anchor is for, which nothing else here refuses. U+00A0 is a
+         blank as far as `\s` is concerned, so `[^\s]+` stops in front of it and the
+         address ends there; it is **not** `Cc` or `Cf`, so `INVISIBLE` never sees
+         it. Without `$` the shape would match the part in front of the blank and the
+         whole value would be handed to a browser, which resolves it to
+         `zlo.example`. Measured on 23.08.2026: the case the comment above names, a
+         line break, is refused by `INVISIBLE` rather than by the anchor, so the
+         anchor was written and measured by nothing. */
+      'https://primer.rs\u00a0@zlo.example/p',
     ]) {
       expect(officialResultsLink(said), `${said} was accepted as an address`).toBeUndefined()
     }
@@ -96,6 +109,19 @@ describe('the shape an address of official results must have', () => {
     )
     expect(officialResultsLink('HTTPS://primer.rs/ok'), 'the scheme is read as written')
       .toBeUndefined()
+  })
+
+  it('names the host a browser would open, and nothing where there is none', () => {
+    /* What the moderator's queue draws beside the name. Read through `new URL`
+       rather than off the text, because `@` ends the user part of an address and a
+       host read by eye is the trick this is drawn against. */
+    expect(officialResultsHost('https://primer.rs@zlo.example/p')).toBe('zlo.example')
+    expect(officialResultsHost('https://primer.rs:8443/rezultati')).toBe('primer.rs:8443')
+    /* Not an address at all, so there is nothing to name. */
+    expect(officialResultsHost('javascript:alert(1)')).toBeUndefined()
+    /* And a shape this pattern lets through which a browser still refuses: an
+       unclosed IPv6 authority. Nothing to draw, and nothing to say beyond that. */
+    expect(officialResultsHost('https://[::1')).toBeUndefined()
   })
 })
 
@@ -146,7 +172,7 @@ describe('the queue the moderator decides in', () => {
 
   it('opens the address the member sent, and says nothing of this screen on the way', async () => {
     const table = await queueWith('https://primer.rs/rezultati')
-    const link = table.getByRole('link', { name: 'Probna trka' })
+    const link = table.getByRole('link', { name: /Probna trka/ })
 
     expect(link).toHaveAttribute('href', 'https://primer.rs/rezultati')
     /* `noreferrer`, because the host on the other end is one the member chose and
@@ -154,6 +180,28 @@ describe('the queue the moderator decides in', () => {
        the whole value, so dropping either word fails here. */
     expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('says where the press leads, because the words of the link are not the address', async () => {
+    /* The words of this link are the name of the event, and the member who sent the
+       result wrote them. Measured on 23.08.2026, before: a result named „Zvanicni
+       rezultati BTL 2026" pointing at `btl-rezultati.zlo.example` put the host
+       **nowhere** in the page, not in the text, not in `title`, not in an
+       `aria-label`, so a moderator reading with a screen reader heard only the name.
+
+       `rel="noreferrer noopener"` keeps the attacker's page from learning anything,
+       and it is held above; what it cannot do is tell the moderator where the press
+       leads. This does.
+
+       The host and not the whole address, and read through `new URL` rather than off
+       the text, because `@` ends the user part of an address and a host read by eye
+       is exactly the trick this is drawn against. */
+    const table = await queueWith('https://primer.rs@zlo.example/rezultati')
+    const link = table.getByRole('link', { name: /Probna trka/ })
+
+    expect(link).toHaveTextContent('zlo.example')
+    expect(link, 'the name the member wrote is still what is read first')
+      .toHaveTextContent(/^Probna trka/)
   })
 
   it('draws a name and no link at all where what was stored is not an address', async () => {
@@ -164,7 +212,7 @@ describe('the queue the moderator decides in', () => {
       const table = await queueWith(said)
 
       expect(
-        table.queryByRole('link', { name: 'Probna trka' }),
+        table.queryByRole('link', { name: /Probna trka/ }),
         `${said} was drawn as a link`,
       ).toBeNull()
       expect(table.getByText(/Probna trka/)).toBeVisible()

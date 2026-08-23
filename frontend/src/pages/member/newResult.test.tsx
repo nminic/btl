@@ -183,8 +183,29 @@ describe('a race chosen out of that list', () => {
       const box = screen.getByLabelText(asked)
 
       expect(box, `${String(asked)} was not filled from the race`).not.toHaveValue('')
-      expect(box, `${String(asked)} is not locked`).toBeDisabled()
+      /* Held and not switched off, which is three separate things and each is
+         worth asking for. Written as `disabled` for one day, and a round measured
+         what that costs on 23.08.2026: Tab went from „Naziv dogadjaja" straight to
+         „Sati" and the four filled boxes were not on the way at all, with nothing
+         said about any of them (PDL: „Odbijeno, ne ugaseno"). */
+      expect(box, `${String(asked)} is not said to be held`).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(box, `${String(asked)} may still be typed into`).toHaveAttribute('readonly')
+      expect(box, `${String(asked)} is out of the keyboard's path`).not.toBeDisabled()
     }
+
+    /* And typing into one changes nothing, which is the half `readOnly` promises
+       and `aria-disabled` only announces. */
+    const held = screen.getByLabelText(FILLED[1] ?? /^Dužina/)
+    const was = must(inputElement(held).value, 'what the race filled in')
+
+    await user.type(held, '999')
+
+    /* Read back as a number, because the box is one: `toHaveValue` compares what
+       the control holds and a number box holds a number. */
+    expect(held, 'a held box took what was typed into it').toHaveValue(Number(was))
 
     /* The time is still the member's to type: it is the one thing the calendar
        does not know. */
@@ -203,7 +224,19 @@ describe('a race chosen out of that list', () => {
       must(screen.getByLabelText(/^Datum/).closest('.field'), 'the date field'),
     )
 
-    expect(within(field).getByRole('button', { name: 'Otvori kalendar' })).toBeDisabled()
+    const opener = within(field).getByRole('button', { name: 'Otvori kalendar' })
+
+    /* Reachable and refused, like the box beside it: `disabled` would take it out
+       of the keyboard's path and say nothing. */
+    expect(opener).toHaveAttribute('aria-disabled', 'true')
+    expect(opener).not.toBeDisabled()
+
+    await user.click(opener)
+
+    expect(
+      within(field).queryByRole('application'),
+      'the calendar opened over a date the portal filled in',
+    ).toBeNull()
   })
 
   it('never takes the cursor out of the box it is typed in', async () => {

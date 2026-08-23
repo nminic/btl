@@ -124,6 +124,33 @@ describe('who is offered what on an event', () => {
     }
   })
 
+  it('draws no control box at all where there is nothing to press', async () => {
+    /* Being signed in stopped being enough on 23.08.2026, when the report moved
+       into the rows of the table. What the row beside the name can still hold is
+       the administrator's pair and the rating, and the rating asks for a result of
+       one's own on this event.
+
+       An empty box is not nothing: `.rankings--tooled:has(> .rankings__head-tool)`
+       turns the head into a grid of `1fr auto` with a gap, so the heading loses
+       16px to a control nobody can see. Measured on 23.08.2026 with the condition
+       written as „signed in": the box was drawn with no children and the `h1` came
+       out 1052px wide against 1068. */
+    /* A member who did not run this one. `000007` did, so the rating is offered to
+       them and there is a box to hold it; the reading that says anything is the one
+       where a signed-in member has nothing at all. */
+    await openEvent('competitor', '000001', undefined, ONE_DAY)
+
+    const head = must(
+      screen.getByRole('heading', { level: 1 }).closest('.rankings--tooled'),
+      'the head of the event',
+    )
+
+    expect(
+      head.querySelector('.rankings__head-tool'),
+      'a control box is drawn for a member with nothing to press',
+    ).toBeNull()
+  })
+
   it('offers nothing on a race that has not been run yet', async () => {
     /* PDL P9 refuses a result dated in the future, and a race carries its own day,
        so on the Saturday of a weekend the Saturday races can be reported and the

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
-import { officialResultsLink } from '../../data/officialResults'
+import { officialResultsHost, officialResultsLink } from '../../data/officialResults'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
@@ -153,6 +153,12 @@ export function ReviewQueue() {
                          is a rule nobody can read. */
                       <a href={officialResultsLink(one.link)} rel="noreferrer noopener" target="_blank">
                         {one.eventName}
+                        {/* And where it leads, because the words of this link are a
+                            name the member wrote. Inside the link so that it is read
+                            with it rather than after it, and drawn from the address
+                            through the browser's own parser rather than off the
+                            text. */}
+                        <span className="review__host">{officialResultsHost(one.link)}</span>
                       </a>
                     )}
                     {one.comment !== '' && <span className="review__said">{one.comment}</span>}

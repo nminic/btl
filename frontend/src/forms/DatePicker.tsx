@@ -197,7 +197,11 @@ export function DatePicker({
         aria-invalid={invalid}
         aria-describedby={describedBy}
         autoFocus={openAt}
-        disabled={locked}
+        /* Held rather than switched off, for the reason written in
+           `FormRenderer.tsx` beside `aria-disabled`: the portal filled this in from
+           the race, so it is not refused, it is not the reader's to change. */
+        aria-disabled={locked ? true : undefined}
+        readOnly={locked ? true : undefined}
         value={value}
         onChange={(event) => onChange(maskDate(event.target.value))}
       />
@@ -205,7 +209,7 @@ export function DatePicker({
       <button
         type="button"
         className="datepicker__open"
-        disabled={locked}
+        aria-disabled={locked ? true : undefined}
         aria-expanded={open}
         aria-label={t('form.openCalendar')}
         onClick={() => {

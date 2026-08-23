@@ -259,7 +259,8 @@ export function PlaceField({
         className="field__control"
         type="text"
         role="combobox"
-        disabled={locked}
+        aria-disabled={locked ? true : undefined}
+        readOnly={locked ? true : undefined}
         autoComplete="off"
         aria-expanded={offered.length > 0}
         aria-controls={listId}
@@ -365,19 +366,26 @@ export function PlaceField({
              still the answer, and an answer that disappears reads as a question
              nobody asked.
 
-             **Switched off and not merely told off**, which is the one place on
-             the portal where that is so (owner, 23.08.2026: „Ukoliko se upari
-             država prepoznavanjem mesta, ne mogu da kliknem i otvorim dropdown,
-             postaje potpuno disabled"). The rule everywhere else is „odbijeno,
-             ne ugašeno", and the cost here is the ordinary one: a reader working
-             by keyboard walks past the country without being told why. What is
-             left to them is the value itself, which is drawn and read like any
-             other, and the rule on the town above it, which says the country
-             comes with a town from the codebook. */
-          /* And the whole form being locked switches it off too, which it did
-             before this and does still (`FormRenderer.tsx`, a race chosen from
-             the list). Two reasons, either enough. */
-          disabled={known !== undefined || locked}
+             **Switched off where the town decided it, and merely held where the
+             form is locked.** Two rules meet here and they are not the same one.
+
+             The town from the codebook switches it off, and that is the owner's
+             own exception (23.08.2026: „Ukoliko se upari država prepoznavanjem
+             mesta, ne mogu da kliknem i otvorim dropdown, postaje potpuno
+             disabled"). The rule everywhere else is „odbijeno, ne ugašeno", and
+             the cost is the ordinary one: a reader working by keyboard walks past
+             the country without being told why.
+
+             The form being locked because a race was chosen from the list is the
+             other rule, and there the country stays reachable: `disabled` takes
+             the control out of the keyboard's path, so a reader tabbing through
+             went from the name of the event straight to the hours and never saw
+             the four fields the portal had filled in for them. `aria-disabled`
+             says the same thing and leaves it readable, which is the shape the
+             portal uses wherever a control is held back
+             (admin/PendingQueue.tsx). */
+          disabled={known !== undefined}
+          aria-disabled={known !== undefined || locked}
           aria-required={required}
           aria-invalid={countryInvalid}
           /* What is wrong with it, or why it is held, and never the rule that

@@ -953,9 +953,14 @@ describe('a result from entry to decision', () => {
     )
     const said = within(corrected)
 
-    expect(said.getByRole('link', { name: 'Probna trka' })).toHaveAttribute(
-      'href',
-      'https://primer.rs/ispravno',
+    /* By the name and by where it says it leads, because since 23.08.2026 the link
+       carries both: the words of it are a name the member wrote, so the host is read
+       out with them (`admin/ReviewQueue.tsx`). */
+    const official = said.getByRole('link', { name: /^Probna trka/ })
+
+    expect(official).toHaveAttribute('href', 'https://primer.rs/ispravno')
+    expect(official, 'the moderator cannot see where the link leads').toHaveAccessibleName(
+      /primer\.rs/,
     )
     expect(said.getByText('Sat mi je stao.')).toBeVisible()
     /* The date of the race as well, which the row prints and which the walk did not
