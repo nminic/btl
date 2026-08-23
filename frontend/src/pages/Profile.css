@@ -713,6 +713,21 @@
  * between them and pushed the number 60px down. That fall is the „ogroman prazan
  * prostor" the owner saw.
  *
+ * Measured after, each size read on the screen rather than reasoned from the one
+ * before it, which is a correction: the first version of this comment carried 8px
+ * for all three sizes on a telephone, and every distance here is in `rem`, so one
+ * number for three sizes cannot be right.
+ *
+ * | screen / text | page scrolls | name to number | season |
+ * |---|---|---|---|
+ * | 1280 / 100% | 0 | 6px | beside the name, centres level to the pixel |
+ * | 360 / 100% | 0 | 8px | in the belt with the parts |
+ * | 360 / 150% | 0 | 12px | under the parts |
+ * | 360 / 200% | 0 | 16px | under the parts |
+ *
+ * Six above the breakpoint is what the portal has always had, and the telephone's
+ * eight, twelve and sixteen are the same `--space-8` read at three sizes of text.
+ *
  * **Two things carry it, and both are corrections a round measured.** The head and
  * the identity are `display: contents`, so the portrait, the name, the line and the
  * belt are children of one grid: the season has to be level with the **name**, and
@@ -730,7 +745,12 @@
     'portrait meta'
     'belt belt';
   column-gap: var(--space-16);
-  row-gap: var(--space-8);
+  /* No row gap. The distance between the name and the line under it is already the
+     heading's own `--head-end`, and a gap on the grid adds a second one: measured
+     14px above the breakpoint where the portal has 6, and the rule the owner set for
+     this change is that above the breakpoint nothing moves. What the belt needs
+     under the head it carries itself, below. */
+  row-gap: 0;
   align-items: center;
 }
 
@@ -751,8 +771,6 @@
 
 .profile__top .profile__meta {
   grid-area: meta;
-  /* The row gap carries the distance now, so the line does not carry it twice. */
-  margin-block-end: 0;
 }
 
 /* The parts give way before the season does, down to a floor, and the season goes
@@ -779,6 +797,8 @@
 
 .profile__belt {
   grid-area: belt;
+  /* Its own distance from the head, since the grid gives it none. */
+  margin-block-start: var(--space-12);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
