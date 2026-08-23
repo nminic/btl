@@ -25,11 +25,13 @@ describe('a day of the month', () => {
        is that same box at the default size; the two are not interchangeable, ADL
        A26.) Measured after: nothing moves at 100, 125, 150 or 200 per cent.
 
-       Not claimed: that no content leaves its day. It does. At 780px a day with
-       five length dots is 74,47px and the dots are 59,98px, overflowing by 11,52px
-       onto the frame of the next day; five days in the archive have that many.
-       Written down and waiting, because without this line the page itself scrolls
-       179px, which is worse for the same reader.
+       Not claimed: that no content leaves its day. It does, on three days in the
+       data, and by 11,52px on a **desk** window of 780px where the content column
+       is 733; the same day on a telephone of 780 gives 9,91, because which box is
+       the box depends on whose scrollbar is drawn where (ADL A26). Written down in
+       `PENDING.md` and waiting, because on every width where it happens the page
+       itself used to scroll instead, by 141 to 261px, which is worse for the same
+       reader. The whole of it is in `Calendar.css` beside the rule.
 
        Held on `.day` and not on the grid, because the grid is what asks and the item
        is what refuses. */

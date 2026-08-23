@@ -104,12 +104,29 @@
      window with its scrollbar left in. Whose scrollbar is drawn where decides
      which box is the box (ADL A26).
 
-     What this does not claim: that nothing leaves its day. It does, and it is
-     written down. At 780px a day with five length dots is 74,47px wide and the
-     dots are 59,98px that overflow the right edge by 11,52px, so the last dot
-     falls over the frame of the next day. Five days in the archive have that many
-     dots. Without this line the page itself scrolls 179px, so the line is still
-     the better of the two; the overflow is recorded in PENDING and waits. */
+     What this does not claim: that nothing leaves its day. It does. The chips do
+     not wrap - `.chip__name` carries `nowrap` and `.chip__lengths` does not shrink
+     - so a day with five length dots pushes them over its own right edge and onto
+     the frame of the next day.
+
+     On a **desk** window of 780px, where the content column is 733 because the
+     scrollbar is deducted, the day is 74,47px and the dots 59,98px, which is
+     11,52px over. On a telephone of the same 780px the column is 748 and the same
+     day gives 76,08 and 9,91: which box is the box depends on whose scrollbar is
+     drawn where (ADL A26), and neither number is the other one's. It is not only
+     780 either: 7,17px at 820/100%, 10,31px at 1000/125%, and 20,42px at 1200,
+     1280 and 1440 at 150%.
+
+     Three days in the data, not five: 17.07.2015, 22.07.2016 and 13.07.2018, all
+     three „BTL Round 'n' Around", the only events with five different length
+     categories. Five is how many have four or more, and four dots stay inside.
+
+     The trade is still the right way round, and that is measured rather than
+     assumed: on every width where the dots now overflow, the **page itself** used
+     to scroll instead, by 179, 139, 189, 261, 221 and 141px. There is no width
+     where this line introduces a fault that was not there, and structurally there
+     cannot be: the `min-content` of a day holds the whole name in `nowrap`, which
+     is always wider than the dots alone. Recorded in `PENDING.md`, section 4a. */
   min-inline-size: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
