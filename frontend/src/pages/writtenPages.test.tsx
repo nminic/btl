@@ -17,6 +17,7 @@ import { renderAt } from '../test/render'
 import { must } from '../test/at'
 import { sources } from '../test/sources'
 import { PageSectionBody } from '../components/PageSectionBody'
+import { ROW } from '../components/Markdown'
 import type { BtlEvent, PageSection, Result } from '../data/types'
 import { StaticPage } from './StaticPage'
 
@@ -51,7 +52,22 @@ const PLACE = '[[gallery]]'
  * one (components/Markdown.tsx).
  */
 function isTableRow(line: string): boolean {
-  return /^\|.*\|$/.test(line.trim())
+  return ROW.test(line.trim())
+}
+
+/**
+ * Everything in a block that is not a row of a table.
+ *
+ * The other half of `isTableRow`, and it has a name so that both halves can be
+ * measured: a row missing its closing pipe used to fall out of the table reader and
+ * out of this one at once, so nothing read it at all, and neither reader could be
+ * asked about it from a test.
+ */
+function proseOf(block: string): string {
+  return block
+    .split(NEWLINE)
+    .filter((line) => !isTableRow(line))
+    .join(NEWLINE)
 }
 
 /**
@@ -72,21 +88,6 @@ function isTableRow(line: string): boolean {
  * personal field could then be declared published while the policy said nothing about
  * it. Measured.
  */
-/**
- * Everything in a block that is not a row of a table.
- *
- * The other half of `isTableRow`, and it has a name so that both halves can be
- * measured: a row missing its closing pipe used to fall out of the table reader and
- * out of this one at once, so nothing read it at all, and neither reader could be
- * asked about it from a test.
- */
-function proseOf(block: string): string {
-  return block
-    .split(NEWLINE)
-    .filter((line) => !isTableRow(line))
-    .join(NEWLINE)
-}
-
 function tablesOf(block: string): { head: string[]; rows: string[][] }[] {
   const cellsOf = (line: string) => line.split('|').map((cell) => cell.trim())
   const dashes = (line: string) =>
@@ -1053,18 +1054,21 @@ function wordsBefore(before: string): string {
    not exist. Measured. */
 const NAMED = /pravilnik|statut|zakon/i
 
-/** The naming word nearest the number on one side, and how many words away it
- *  stands, counting from the number outwards. Undefined where that side names none. */
-function nearestNamed(words: string[]): { named: string; away: number } | undefined {
-  for (const [at, word] of words.entries()) {
-    const found = NAMED.exec(word)
+/** Every document named among some words, in lower case and without repeats.
+ *
+ *  Every, and not the nearest, which is what this looked for until 23.08.2026 and
+ *  what a round measured the cost of: „po pravilniku i zakonu, Član 74" has both
+ *  names on one side, and taking the nearer handed the reference to the law and
+ *  never looked for Član 74 again. Nearness was a guess wherever it was applied,
+ *  between the sides and inside one of them alike. */
+function namedAmong(words: string[]): Set<string> {
+  return new Set(
+    words.flatMap((word) => {
+      const found = NAMED.exec(word)
 
-    if (found !== null) {
-      return { named: found[0], away: at + 1 }
-    }
-  }
-
-  return undefined
+      return found === null ? [] : [found[0].toLowerCase()]
+    }),
+  )
 }
 
 /** Which document a numbered reference says it belongs to, in lower case, or the
@@ -1078,41 +1082,44 @@ function nearestNamed(words: string[]): { named: string; away: number } | undefi
  *  it. Three words is the reference; the rest of the sentence is not.
  *
  *  Both sides, because a sentence names its document on whichever side it likes:
- *  „Pravilnik lige, Član 74" in front, „Član 74 opšteg pravilnika lige" behind with
- *  a Serbian letter `\w` does not reach, „član 74 pravilnika" in lower case.
+ *  „Pravilnik lige, Član 74" in front of the number, „Član 74 opšteg pravilnika
+ *  lige" after it with a Serbian letter `\w` does not reach, „član 74 pravilnika"
+ *  in lower case.
  *
- *  **Where the two sides name different documents, neither wins.** That is the
- *  third answer this had, and the first two were measured wrong on the same day.
- *  Ahead-first let „Prema Pravilniku lige Član 99 u smislu zakona" go to the law,
- *  and Član 99 does not exist. Nearer-wins let „U skladu sa zakonom, Član 74
+ *  **Every name in those six words counts, and none of them wins over another.**
+ *  Three rules were tried before this one and all three were measured wrong within
+ *  a day. Ahead-first let „Prema Pravilniku lige Član 99 u smislu zakona" go to the
+ *  law, and Član 99 does not exist. Nearer-wins let „U skladu sa zakonom, Član 74
  *  opšteg pravilnika lige" go to the law just as quietly, because a comma is not a
- *  wall and „zakonom," stood one word from the number while „pravilnika" stood two.
- *  Both rules are a guess about which of two names the writer meant, and a wrong
- *  guess is silent: the reference is handed to another document and never looked
- *  for again.
+ *  wall. Nearest-within-a-side, which survived the second correction by accident,
+ *  did the same to „po pravilniku i zakonu, Član 74". Every one of them is a guess
+ *  about which of two names the writer meant, and a wrong guess is silent.
  *
- *  So a sentence that names two documents around one number is a sentence nobody
- *  can read either, and it fails loudly. There is none on the portal today, and
- *  the day one is written it is a sentence to rewrite rather than a rule to
- *  refine. */
-export const AMBIGUOUS = 'dva dokumenta'
+ *  So nothing is guessed. One name is the answer; none is the empty string; and
+ *  several is `AMBIGUOUS`, **but only where the rulebook is among them**. That last
+ *  clause is the difference between a guard and a nuisance: „Prijem u članstvo vrši
+ *  se u skladu sa Statutom i Članom 12 Zakona o sportu." names two documents and
+ *  neither is ours, so there is nothing here to be wrong about and the reference is
+ *  skipped, exactly as ADL A20 says a reference to another document is. Where the
+ *  rulebook **is** one of the two, the sentence cannot be read either way and it
+ *  fails loudly: it is a sentence to rewrite, not a rule to refine. There is none
+ *  on the portal today. */
+const AMBIGUOUS = 'dva dokumenta'
 
-function documentOf(before: string, after: string): string {
-  /* Emptied of blanks before the three are taken, not after. The words behind a
-     number open with the space that separates them from it, so counted with the
+function documentOf(inFront: string, ahead: string): string {
+  /* Emptied of blanks before the three are taken, not after. The words in front of
+     a number end with the space that separates them from it, so counted with the
      blank in hand only two of them were ever read, and „(Član 74 stav 2
      Pravilnika)" failed as a reference that does not say of what. */
   const words = (text: string): string[] => text.split(/\s+/).filter(Boolean)
-  const ahead = nearestNamed(words(after).slice(0, 3))
-  /* Reversed, so the word nearest the number is the first one looked at. And named
-     `inFront` rather than `behind`, which is what it was called until 23.08.2026
-     while holding the words **in front of** the number: a name that says the
-     opposite of what it holds is one more thing to get wrong. */
-  const inFront = nearestNamed(words(before).slice(-3).reverse())
-  const both = [ahead?.named, inFront?.named].filter((one) => one !== undefined)
-  const named = new Set(both.map((one) => one.toLowerCase()))
+  const named = namedAmong([...words(inFront).slice(-3), ...words(ahead).slice(0, 3)])
+  const [only] = named
 
-  return named.size > 1 ? AMBIGUOUS : (both[0] ?? '').toLowerCase()
+  if (named.size > 1) {
+    return named.has('pravilnik') ? AMBIGUOUS : (only ?? '')
+  }
+
+  return only ?? ''
 }
 
 /** An article named by number, and a section named by number.
@@ -1156,11 +1163,14 @@ function mentionsIn(
 ): { before: string; number: number; after: string }[] {
   return [...text.matchAll(what)].map((found) => {
     const at = found.index ?? 0
-    const behind = text.slice(0, at)
+    /* `inFront` and not `behind`, which is what this was called while holding the
+       words **in front of** the number: a name that says the opposite of what it
+       holds is one more thing to get wrong, and the JSDoc above says so too. */
+    const inFront = text.slice(0, at)
     const ahead = text.slice(at + found[0].length)
 
     return {
-      before: wordsBefore(/[^.\n]{0,60}$/.exec(behind)?.[0] ?? ''),
+      before: wordsBefore(/[^.\n]{0,60}$/.exec(inFront)?.[0] ?? ''),
       number: Number(found[1]),
       after: /^[^.\n]{0,60}/.exec(ahead)?.[0] ?? '',
     }
@@ -2726,14 +2736,29 @@ describe('which document a numbered reference belongs to', () => {
      of references before it proves anything, or **refused** by it, and then it
      passes in silence, which is the very fault being measured. The content cannot
      tell the two apart; the reader can. */
-  it('refuses to choose where the two sides name different documents', () => {
-    /* Two rules were tried before this one and both were measured wrong on
-       23.08.2026. Ahead-first sent „Prema Pravilniku lige Član 99 u smislu zakona"
-       to the law, and Član 99 does not exist. Nearer-wins sent „U skladu sa
-       zakonom, Član 74 opšteg pravilnika lige" to the law just as quietly. Every
-       such rule is a guess, and a wrong guess is silent. */
+  it('refuses to choose wherever the rulebook is one of two names', () => {
+    /* Three rules were tried before this one and all three were measured wrong
+       within a day. Ahead-first sent „Prema Pravilniku lige Član 99 u smislu
+       zakona" to the law, and Član 99 does not exist. Nearer-wins sent „U skladu sa
+       zakonom, Član 74 opšteg pravilnika lige" to the law just as quietly.
+       Nearest-within-a-side survived that correction by accident and did the same
+       to „po pravilniku i zakonu, Član 74", where both names stand on one side.
+       Every such rule is a guess, and a wrong guess is silent. */
     expect(documentOf('Prema Pravilniku lige', ' u smislu zakona')).toBe(AMBIGUOUS)
     expect(documentOf('U skladu sa zakonom,', ' opšteg pravilnika lige')).toBe(AMBIGUOUS)
+    /* Both names on one side, in either order. */
+    expect(documentOf('po pravilniku i zakonu,', ' se primenjuje')).toBe(AMBIGUOUS)
+    expect(documentOf('iz', ' Zakona i Pravilnika lige')).toBe(AMBIGUOUS)
+  })
+
+  it('skips a reference of two other documents rather than stopping the file', () => {
+    /* „Prijem u članstvo vrši se u skladu sa Statutom i Članom 12 Zakona o sportu."
+       names two documents and neither is ours. There is nothing here for this guard
+       to be wrong about, so it is skipped exactly as a reference to one other
+       document is (ADL A20). Failing on it would be a guard that stops the file
+       over a sentence it has no business reading. */
+    expect(documentOf('u skladu sa Statutom i', ' Zakona o sportu')).not.toBe(AMBIGUOUS)
+    expect(documentOf('u skladu sa Statutom i', ' Zakona o sportu')).not.toBe('pravilnik')
   })
 
   it('answers plainly where only one side names one', () => {
@@ -2797,6 +2822,28 @@ describe('what is read as a row of a table', () => {
     expect(isTableRow('Rečenica o sekciji 5.')).toBe(false)
     /* A lone pipe is not a row either, which is what the whole match is for. */
     expect(isTableRow('|')).toBe(false)
+  })
+
+  it('is asked in one place, by everything that asks it', () => {
+    /* The two readers share a question, and sharing it is the fix rather than the
+       fact: either of them can stop asking it, and a round measured exactly that
+       on 23.08.2026, putting the old inline filter back at the place the sections
+       are read and leaving the file green.
+
+       So the sweep, in the shape `app/filterParams.test.ts` uses for its own one
+       hook: nothing in the portal or in this file may ask „does the line begin with
+       a pipe" for itself. `isTableRow` is the one place, and it reads the pattern
+       the renderer draws with (`components/Markdown.tsx`), so a third home cannot
+       appear either. */
+    const mine = readFileSync(join(process.cwd(), 'src/pages/writtenPages.test.tsx'), 'utf-8')
+    const everywhere = [...sources().map(({ code }) => code), mine]
+    const asked = everywhere.flatMap((code) => [
+      ...code.matchAll(/startsWith\('\|'\)|\/\^\\\|/g),
+    ])
+
+    /* Two: the one in `Markdown.tsx` where the pattern lives, and the one here where
+       it is imported. Anything more is a third copy of the question. */
+    expect(asked).toHaveLength(2)
   })
 
   it('is answered the same way by both readers, so nothing falls between them', () => {

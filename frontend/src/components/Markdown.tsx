@@ -30,7 +30,14 @@ const RULE = /^-{3,}$/
 const HEADING = /^#{2,6}\s+(?=\S)/
 const BULLET = /^[-*]\s+(?=\S)/
 const NUMBERED = /^\d+\.\s+(?=\S)/
-const ROW = /^\|.*\|$/
+/** A row of a table, matched whole.
+ *
+ *  Exported because a guard over the written pages asks the same question and asked
+ *  it with its own copy of this pattern until 23.08.2026, which is two homes for one
+ *  fact: loosening this one to `/^\|/` there and here would have let a line that
+ *  opens a row and never closes it be drawn as a row and read as prose at once, and
+ *  nothing would have said so (pages/writtenPages.test.tsx). */
+export const ROW = /^\|.*\|$/
 const SEPARATOR = /^:?-{2,}:?$/
 /* The one that does capture, because splitting on it is what the group is for:
  * it hands back the marked segments along with the plain text between them. */
