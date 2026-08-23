@@ -98,7 +98,10 @@ export function MyResults() {
                 <thead>
                   <tr>
                     <th scope="col">{t('profile.columns.date')}</th>
-                    <th scope="col">{t('profile.columns.event')}</th>
+                    {/* „Trka" and not „Događaj": what stands in this column is the name of
+                      the race (owner, 23.08.2026), and a heading that says otherwise
+                      is read out with every cell under it. */}
+                  <th scope="col">{t('profile.columns.race')}</th>
                     <th scope="col">{t('rankings.columns.category')}</th>
                     <th scope="col" className="table__hide-phone">
                       {t('profile.columns.time')}

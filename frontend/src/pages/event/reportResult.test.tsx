@@ -210,6 +210,34 @@ describe('a result reported this way', () => {
     expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
   })
 
+  it('sends the name of the race, not the name of the event it is run at', async () => {
+    /* Owner, 23.08.2026: the result carries the race's name, and that is what the
+       queue and „Moji rezultati" show. The field was renamed and the value was left
+       behind for a day: a race the administrator had called „Mrazijada,
+       polumaraton" reached the moderator as „Mrazijada".
+
+       Measured on the one race in the data that carries a name of its own, because
+       every other one is named after its event and the fault is invisible against
+       them. */
+    const { races } = await racesOf('mrazijada-2020')
+    const own = must(
+      races.find((race) => race.name.includes('polumaraton')),
+      'the race with a name of its own',
+    )
+    const user = setupUser()
+    const { router } = renderAt(reportAddress('mrazijada-2020', own), 'superadmin', ME)
+
+    await fillIn(user)
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+    await screen.findByRole('heading', { level: 1 })
+
+    await router.navigate('/sr/administracija/verifikacija/rezultati')
+
+    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
+
+    expect(within(table).getByText(own.name), 'the queue was sent the event name').toBeVisible()
+  })
+
   it('reaches the queue the moderator decides in, with the points already worked out', async () => {
     const { races } = await racesOf(EVENT)
     const user = setupUser()

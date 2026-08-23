@@ -149,7 +149,13 @@ export function ReportResult() {
 
             submit({
               memberNumber: mine,
-              raceName: event.name,
+              /* The race, not the event it is run at. The field was renamed and the
+                 value was left behind, so a race the administrator had called
+                 „Beogradski polumaraton" reached the moderator as „Beogradski
+                 maraton", on two of the three screens the owner named. Measured
+                 23.08.2026, and nothing in the package saw it because every race in
+                 the file carries its event's name. */
+              raceName: race.name,
               date: event.date,
               /* Off the race, not off the member. These are the official figures
                  and a moderator corrects them on the race itself, where the

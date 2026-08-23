@@ -273,7 +273,7 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/Svaka trka mora da ima dan i dužinu/)).toBeVisible()
+    expect(await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/)).toBeVisible()
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     await fill(user, lastRow(), { km: '12' })
@@ -460,7 +460,15 @@ describe('the races of an event', () => {
       'a second event was filed at an address the first one already answers to',
     ).toBeNull()
     expect(await screen.findByText(/već postoji/)).toBeVisible()
-  })
+    /* Its own budget, and the reason for it. ADL A2 keeps the package at 5000ms as a
+       **performance** budget rather than a guard against hanging, so a longer one has
+       to say what it is paying for. This walk enters two whole events, each with a
+       name, a date, a town and a race of its own, which is the shortest sequence that
+       reaches the fault: measured 1526ms warm, and 5036ms under coverage, which is
+       the run that failed. Ten seconds is six times warm; a fourfold slowdown of the
+       form itself would still be caught by the other walks of this file, which keep
+       the default. */
+  }, 10_000)
 
   it('takes a race away when the row it was in is gone and the press lands', async () => {
     /* A row removed from the table is a race removed from the event, and the store

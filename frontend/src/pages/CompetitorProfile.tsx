@@ -273,7 +273,10 @@ function ProfileBody({
               <thead>
                 <tr>
                   <th scope="col">{t('profile.columns.date')}</th>
-                  <th scope="col">{t('profile.columns.event')}</th>
+                  {/* „Trka" and not „Događaj": what stands in this column is the name of
+                      the race (owner, 23.08.2026), and a heading that says otherwise
+                      is read out with every cell under it. */}
+                  <th scope="col">{t('profile.columns.race')}</th>
                   {/* The length has no column of its own any more (owner,
                       31.07.2026). It is the colour of the dot beside the
                       distance, and the distance already says which length it is:

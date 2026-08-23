@@ -664,6 +664,7 @@
     "columns": {
       "date": "Datum",
       "event": "Događaj",
+      "race": "Trka",
       "distance": "d (km)",
       "time": "Vreme",
       "points": "Bodovi",
@@ -1033,7 +1034,7 @@
       "delete": "Obriši",
       "removeRow": "Obriši {which}. trku",
       "raceNumber": "{which}. trka",
-      "racesRefused": "Svaka trka mora da ima dan i dužinu. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
+      "racesRefused": "Svaka trka mora da ima naziv, dan i dužinu. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",

@@ -1420,6 +1420,35 @@ describe('CompetitorProfile', () => {
     expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2010')
   })
 
+  it('names the race a result was run in, not the event it belonged to', async () => {
+    /* Owner, 23.08.2026: „u listi rezultata na profilu npr. treba da se prikazuju
+       nazivi trka na kojima je čovek učestvovao, a ne događaja."
+
+       Measurable only because one race in the data carries a name of its own:
+       „Mrazijada, polumaraton" under the event „Mrazijada". Every other race is
+       named after its event, so a screen drawing the wrong one of the two would
+       look right everywhere else, and a round measured exactly that — three
+       mutations that put the event's name back went unnoticed by 2137 tests. */
+    renderAt('/sr/takmicar/000002?sezona=2020')
+
+    const results = await screen.findByRole('table', { name: /Rezultati/ })
+    const inside = within(results)
+
+    expect(
+      inside.getAllByRole('columnheader').map((one) => one.textContent),
+      'the heading says the column holds events',
+    ).toContain('Trka')
+
+    const named = inside
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[1]?.textContent ?? '')
+
+    expect(named.some((one) => one.includes('Mrazijada, polumaraton')), named.join(' | ')).toBe(
+      true,
+    )
+  })
+
   it('gives the heading back to the name and puts the club in the line below', async () => {
     /* Owner, 31.07.2026. The club spent a day in brackets inside the heading and
        now stands after how long this person has been in the league: "U ligi od
