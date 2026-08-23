@@ -213,6 +213,19 @@ export function DatePicker({
         aria-expanded={open}
         aria-label={t('form.openCalendar')}
         onClick={() => {
+          /* And a button that says it is refused refuses. `aria-disabled` says so
+             and leaves the button in the keyboard's path, which is the whole point
+             of it here, but saying so is not doing so: a control that answers to a
+             press it has just declared refused is worse than one that is switched
+             off, because the reader is told one thing and shown another (PDL: „a
+             lock that is an ornament is worse than none"). Measured 23.08.2026: the
+             calendar opened over a date the portal had filled in, thirty-one days
+             of it, and pressing one of them closed it again without changing
+             anything and without a word. */
+          if (locked) {
+            return
+          }
+
           /* The clock is read when the calendar is opened, never when the field
              last drew. A field draws again only when something about that field
              changed (src/forms/FormRenderer.tsx), so a form filled in across

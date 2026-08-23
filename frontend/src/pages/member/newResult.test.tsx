@@ -233,10 +233,20 @@ describe('a race chosen out of that list', () => {
 
     await user.click(opener)
 
+    /* Asked of the sheet itself, and of what the button says about itself. It was
+       asked of `role="application"` for a day, and `DatePicker.tsx` carries no
+       `role` at all, so the query answered `null` whether the calendar was open or
+       shut: the test was green while the button was opening a calendar over a date
+       nobody could change. Measured 23.08.2026, and the sheet counted thirty-one
+       days while the test said there was none. */
     expect(
-      within(field).queryByRole('application'),
+      field.querySelector('.datepicker__pop'),
       'the calendar opened over a date the portal filled in',
     ).toBeNull()
+    expect(opener, 'the button says it opened something').toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 
   it('never takes the cursor out of the box it is typed in', async () => {
