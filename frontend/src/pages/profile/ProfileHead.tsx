@@ -193,10 +193,21 @@ export function ProfileTop({
           reasoning that beside a name a labelled field reads as a second heading;
           the owner has since asked for the one shape everywhere, and one shape is
           one thing to learn. */}
-      <div className="rankings__head-tool profile__season">
-        <SeasonPicker seasons={seasons} season={season} />
+      {/* The parts and the season as one belt, so that on a narrow screen they share
+          a line and **wrap** when they cannot: „Priznanja i nagrade" and the season
+          together ask for 435px at 200% text in a box of 328, and a row that cannot
+          give way pushes the page sideways instead. Measured on the first attempt at
+          this: 107px of page scroll at 200%, starting from 162%.
+
+          Above the breakpoint the belt gives up its box (`Profile.css`), so the two
+          become children of the grid and the season goes up beside the name. One
+          markup, two arrangements, and no copy of the control. */}
+      <div className="profile__belt">
+        <ProfileParts competitor={competitor} />
+        <div className="rankings__head-tool profile__season">
+          <SeasonPicker seasons={seasons} season={season} />
+        </div>
       </div>
-      <ProfileParts competitor={competitor} />
     </div>
   )
 }

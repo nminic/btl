@@ -701,60 +701,126 @@
   font-style: italic;
 }
 
-/* The head of a profile, the parts of it, and the season, as one grid.
+/* The head of a profile, the parts of it, and the season, as one arrangement.
  *
  * Where the season stands depends on how much room there is: in the row with the
- * parts once the screen is narrow, beside the name when it is not (owner,
- * 23.08.2026). One home in the markup and the grid decides the row, rather than two
- * copies hidden by turns.
+ * parts once the screen is narrow, level with the name when it is not (owner,
+ * 23.08.2026). One home in the markup and the layout decides the row, rather than
+ * two copies hidden by turns.
  *
  * Measured before the change: at 760px the name and the season shared a row and the
- * member's number stood **6px** under the name; at 520 and at 360 the season fell
- * between them and pushed the number **60px** down. That fall is the „ogroman
- * prazan prostor" the owner saw.
+ * member's number stood 6px under the name; at 520 and at 360 the season fell
+ * between them and pushed the number 60px down. That fall is the „ogroman prazan
+ * prostor" the owner saw.
  *
- * Measured after, in Chrome, page never scrolling sideways at any of the three:
- *
- * | screen | name to number | where the season is |
- * |---|---|---|
- * | 1280 | 6px | beside the name, x=1037 |
- * | 520 | 8px | in the row with the parts, x=374 |
- * | 360 | 8px | in the row with the parts, x=214 |
- *
- * The two pixels the narrow screens gained over the wide one are the row's own
- * `--head-end`, which the head spends under itself; they are not the gap. */
+ * **Two things carry it, and both are corrections a round measured.** The head and
+ * the identity are `display: contents`, so the portrait, the name, the line and the
+ * belt are children of one grid: the season has to be level with the **name**, and
+ * centred against the whole head it sat 10,16px below it, which breaks the rule of
+ * 05.08.2026 that this control stands where it stands on the teams. And the parts
+ * and the season sit in a belt that **wraps**: at 200% text the two ask for 435px of
+ * a box that is 328, and a row that cannot give way pushed the page sideways by
+ * 107px, from 162% text upward, which is the one thing the portal never does
+ * (WCAG 2.2 SC 1.4.10). */
 .profile__top {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
-    'head head'
-    'parts season';
-  /* Each item centred in its own row: the season against the parts beside it here,
-     and against the whole head above the breakpoint. Centring lines up margin boxes,
-     which is why the row below spends the same `--head-end` the head does
-     (Rankings.css). */
-  align-items: center;
+    'portrait name'
+    'portrait meta'
+    'belt belt';
   column-gap: var(--space-16);
+  row-gap: var(--space-8);
+  align-items: center;
 }
 
-.profile__top > .profile__head {
-  grid-area: head;
+/* Both wrappers give up their boxes so their children land in the grid above. The
+   elements stay in the markup, so the `header` is still a `header`. */
+.profile__top > .profile__head,
+.profile__top .profile__identity {
+  display: contents;
 }
 
-.profile__top > .profile__season {
-  grid-area: season;
+.profile__top .portrait {
+  grid-area: portrait;
 }
 
-.profile__top > .parts {
-  grid-area: parts;
+.profile__top .profile__title {
+  grid-area: name;
 }
 
-/* The same breakpoint the shared row uses for the same question (`Rankings.css`),
-   so a profile and a ranking change shape at one width rather than at two. */
+.profile__top .profile__meta {
+  grid-area: meta;
+  /* The row gap carries the distance now, so the line does not carry it twice. */
+  margin-block-end: 0;
+}
+
+/* The parts give way before the season does, down to a floor, and the season goes
+   under them only when even that floor will not fit.
+ *
+ * Three arrangements were measured on a 360px screen before this one, and each broke
+ * a different way. Asked for their natural width the two wrap at once, because a flex
+ * line wraps **before** it shrinks: 229 + 130 + 8 against a box of 328, so the season
+ * fell under the parts even at the default size, which is not what was asked for.
+ * Held on one line with no floor, the page stays put but at 200% text the parts are
+ * squeezed to **44px** and their labels are unreadable. Held on one line with a floor,
+ * the line overflows and the page scrolls, which is the one thing the portal never
+ * does.
+ *
+ * `flex: 1 1 8rem` says all three at once: eight rem is what the line is planned
+ * around, so at the default size the parts take the room left over (190px) and the
+ * season sits beside them; at 200% the same eight rem is 256px, the two no longer
+ * plan onto one line, and the belt wraps rather than crushing either. The floor is in
+ * `rem` because what has to fit inside it is words. */
+.profile__belt > .parts {
+  flex: 1 1 8rem;
+  min-inline-size: 0;
+}
+
+.profile__belt {
+  grid-area: belt;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.profile__belt > .profile__season {
+  /* Nothing of its own: whatever it shares a line with centres it, and a bottom
+     margin of twelve against a heading's six drew it three pixels low. */
+  margin-block-end: 0;
+}
+
+/* The same breakpoint the shared row uses for the same question (`Rankings.css`), so
+   a profile and a ranking change shape at one width rather than at two. Above it the
+   belt gives up its box too, and its two children take their own places: the season
+   beside the name, where it has stood since 05.08.2026, and the parts across the
+   foot of the head. */
 @media (min-width: 35em) {
   .profile__top {
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      'head season'
-      'parts parts';
+      'portrait name season'
+      'portrait meta meta'
+      'parts parts parts';
+  }
+
+  .profile__belt {
+    display: contents;
+  }
+
+  .profile__top .parts {
+    grid-area: parts;
+  }
+
+  .profile__top .profile__season {
+    grid-area: season;
+    /* Level with the name to the pixel, which is where this control has stood since
+       05.08.2026. Centring lines up margin boxes, so the season spends the same
+       `--head-end` the heading beside it does; left with its own twelve against the
+       heading's six it was drawn three pixels low, and a round measured exactly that
+       before the belt existed. */
+    margin-block-end: var(--space-6);
   }
 }
