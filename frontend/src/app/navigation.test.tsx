@@ -436,10 +436,15 @@ const STATUTE = '/BTL%20Statut.pdf'
 
     expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
     /* „Nothing else" counted in elements and not only in text, which catches what
-       is put beside the navigation rather than inside it: a link carrying an icon
-       and an `aria-label`, a sponsor's image, a rule, an ornamental div, a second
-       navigation. Every one of those passed everything this test had before and
-       fails now.
+       is put beside the navigation rather than inside it and **carries no text of
+       its own**: a link carrying an icon and an `aria-label`, a sponsor's image, a
+       rule, an ornamental div. Each of those passed everything this test had before
+       and fails now.
+
+       Anything beside it that does carry text was already caught, by the line under
+       this one: a second navigation holding an ordinary link fails on
+       `footer.textContent` with or without this line, and saying otherwise was the
+       same mistake the round before had already corrected about the fourth link.
      *
        Asked as **this** navigation and not as the word „NAV", which is the whole
        of the difference and was measured in both directions on 23.08.2026. Written

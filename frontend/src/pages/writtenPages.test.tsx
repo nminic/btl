@@ -2445,42 +2445,55 @@ describe('what the written pages say the fee buys', () => {
        be said in one more wording than a guard has marks. It also holds the
        sentence that stays, so this cannot pass on a section somebody emptied.
 
-       **And the passages themselves, over the whole document.** Written as the
-       section's end alone, for one day, and a second round measured that too: the
-       offer to name a safeguard came back word for word in the middle of section
-       5, at the foot of section 4, and as a section of its own between 5 and 6,
-       and all three passed. The end of a section says nothing about the rest of
-       the page. So the marks stay, lower cased, which is more than they were:
-       three of them are the phrases these two passages are made of, and two are
-       the names of the authorities, which are facts rather than wordings.
+       **And the words of the passages themselves, over the whole document.**
+       Written as the section's end alone, for one day, and a second round measured
+       that too: the offer to name a safeguard came back word for word in the middle
+       of section 5, at the foot of section 4, and as a section of its own between 5
+       and 6, and all three passed. The end of a section says nothing about the rest
+       of the page.
 
-       Each mark is as narrow as the passage it is made of, and two of them were
-       measured wider and taken back on 23.08.2026. `sudsku zaštitu` and not
-       `sud`, because a ban on the word failed „Državnom organu podatke dajemo samo
-       po nalogu suda", which is the policy saying on what basis it hands data over
-       rather than offering anybody a court. `Povereniku za informacije` and not
-       `poverenik`, because the Commissioner is also the authority a breach is
-       reported **to**, and section 7 may one day name it properly instead of
-       saying „nadzorni organ": in the dative it is a complaint, in the accusative
-       it is a notification, and only the first is what the owner deleted.
+       **What a mark is, said plainly, because three rounds were spent trying to
+       make it something better.** It is a tripwire and not a proof. Any sentence
+       that reuses one of these five phrases stops this file, whether it is the
+       deleted passage coming back or a lawful sentence the policy is entitled to,
+       and every one of the five has such a sentence. Measured on 23.08.2026:
+       „povredu prijavljujemo Povereniku za informacije od javnog značaja i zaštitu
+       podataka o ličnosti" is a breach reported to the authority, which the law
+       requires and which reads in the dative exactly as a complaint does;
+       „obaveze pojedinog pružaoca usluge su uređene ugovorom o obradi" offers
+       nobody anything; „povredu prijavljujemo nadzornom organu" is the same duty
+       under the general name. Grammar does not separate them and no narrowing did:
+       `Povereniku za informacije` was tried against `poverenik` and bought nothing
+       but a miss, since the same name in the nominative then walked past.
 
-       Two limits, said out loud rather than left to be discovered.
+       So the tripwire stays wide, and whoever it stops is meant to come here and
+       say which of the two they are writing. That is the whole design: the two
+       passages were deleted by a decision, and a sentence made of their words is
+       either that decision being undone or a new one that ought to be recorded.
 
-       `nadzornom organu` is the one mark that can still fail a sentence the policy
-       is entitled to. Section 7 says today „obaveštavamo vas i nadzorni organ";
-       written as „povredu prijavljujemo nadzornom organu", which is the same duty
-       in the dative, this stops the file. It is kept because it is what the
-       deleted paragraph offered another country's reader, and because it is what
-       `origin/main` held before this PR: dropping it would be less reach than the
-       branch it is replacing. Whoever meets that failure is writing a breach
-       notice, not an offer to complain, and should say so here.
+       `sudsku zaštitu` and not `sud` is the one narrowing that was kept, and for a
+       different reason: `sud` is a syllable of ordinary words rather than a phrase
+       of the passage. Measured, a sentence the policy could easily gain, „podatke
+       dajemo samo po nalogu suda ili po drugom zahtevu zasnovanom na zakonu", fails
+       on the syllable and passes on the phrase. `nadzor` is not a mark at all, for
+       the same reason: section 7 says „obaveštavamo vas i nadzorni organ" today.
 
-       And what neither half holds: a **reworded** passage put in the middle of a
-       section, its own included. The marks catch it word for word anywhere; the
-       section end catches any wording after the last sentence of these two; a
-       rewording above that sentence, or in any other section, goes past both.
-       Nothing shorter than pinning the whole document catches that, and the whole
-       document is what the rest of this file already reads. */
+       **Three limits, said out loud rather than left to be discovered.**
+
+       One: a **reworded** passage put in the middle of a section, its own included.
+       The marks catch it word for word anywhere; the section end catches any
+       wording after the last sentence of these two; a rewording above that sentence
+       goes past both. Nothing shorter than pinning the whole document catches that.
+
+       Two: the count under `endsOn` compares strings, so two copies of the anchor
+       that differ by an invisible character are not two. Measured with a
+       non-breaking space between „propisane" and „mehanizme": the reader sees the
+       sentence twice and this sees it once.
+
+       Three, and it is outside this repository: the draft both passages were cut
+       from still holds them, word for word, in `btl-produkt/pravni/`. PDL says a
+       name can come back onto the portal from there, and no test can see that file.
+       It is written in PENDING instead. */
     const endsOn = (sentence: string, named: string) => {
       /* Found by the whole sentence it ends on, minus the full stop, which is the
          only character in either of them a regular expression would read as
@@ -2521,7 +2534,7 @@ describe('what the written pages say the fee buys', () => {
 
     for (const gone of [
       /pojedinog pružaoca/i,
-      /Povereniku za informacije/i,
+      /poverenik/i,
       /azop/i,
       /sudsku zaštitu/i,
       /nadzornom organu/i,
