@@ -32,16 +32,24 @@ export const OFFICIAL_RESULTS = /^https?:\/\/[^\s]+$/
  * The characters that are neither a blank nor anything a reader can see, and that
  * split a host exactly the way a blank does.
  *
- * Beside the pattern rather than inside it, for two reasons. The pattern is copied
- * into the two form definitions as a string and a definition is data, so it has to
- * stay something a JSON file can carry and a browser's own `pattern` attribute
- * could read. And a control character typed into a source file is a character
- * nobody reading the file can see, which is the very fault this refuses, so the
- * range is built rather than written out.
+ * Asked of Unicode rather than listed. Listed for one day, six of them written out
+ * by hand, and a round found seven more that do the same thing and were not on it:
+ * U+0085, U+00AD, U+200C, U+200E, U+202E, U+2066 and U+180E each let
+ * `https://primer.rs␥@zlo.example/p` through, and `new URL` resolves every one of
+ * them to `zlo.example`. „What is invisible" has a home of its own, and a list
+ * written from memory is a list that is short.
+ *
+ * `Cc` is the control characters and `Cf` the formatting ones, which is exactly
+ * the two kinds: something the terminal acts on, and something the text engine
+ * acts on. Neither leaves a mark on the screen.
+ *
+ * Beside the pattern rather than inside it. The pattern is copied into the two form
+ * definitions as a string and a definition is data, so it has to stay something a
+ * JSON file can carry and a browser's own `pattern` attribute could read; this is
+ * asked in TypeScript, where a Unicode property is available and a JSON string
+ * cannot go.
  */
-const INVISIBLE = new RegExp(
-  `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}\u200b\u2060]`,
-)
+const INVISIBLE = /[\p{Cc}\p{Cf}]/u
 
 /**
  * What was stored, where the portal is willing to hand it to a browser, and

@@ -54,9 +54,10 @@ function matching(value: string, all: readonly Suggestion[]): Suggestion[] {
  *
  * Escape closes it, choosing closes it, and leaving the box closes it, so a reader
  * who wants the box and not the list is never trapped between the two. Leaving is
- * the one that matters for the keyboard: the list stands over the fields below, so
- * a list left open while the cursor walks past it hides the box it lands on
- * (WCAG 2.2 SC 2.4.11). It closes on the way out rather than on the way in.
+ * the one that matters for the keyboard: the list is in the flow (Suggesting.css),
+ * so a list left open while the cursor walks past it holds the fields under it a
+ * screen's worth of rows further down than where they were read. It closes on the
+ * way out rather than on the way in.
  */
 export function Suggesting({
   value,

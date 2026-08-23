@@ -40,8 +40,10 @@
   background: var(--surface);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-8);
-  /* The same lift the calendar panel has (DatePicker.css), because it is the
-     same kind of thing: a panel that stands over the form for a moment. */
+  /* The same lift the calendar panel has (DatePicker.css), because a reader has
+     to see the two as one kind of thing. This one is in the flow and that one is
+     over the form; what they share is being open for a moment and answering the
+     box above them. */
   box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
 }
 

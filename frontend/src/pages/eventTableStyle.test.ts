@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { must } from '../test/at'
 import { ruleFor, ruleInMedia } from '../test/stylesheet'
 
 /**
@@ -13,35 +14,138 @@ import { ruleFor, ruleInMedia } from '../test/stylesheet'
  */
 const profile = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
 
+/**
+ * The two numbers the width of the race table is made of, read out of the rule
+ * rather than written here a second time.
+ *
+ * Anchored at both ends on purpose. Held as „the value contains `min(100%` and
+ * contains `7.5rem`" for one day, and a round put back exactly the fault the rule
+ * was written for: `min(100%, calc(var(--race-columns) * 7.5rem))` carries both of
+ * those strings, turns the floor into a second ceiling, and left this file green
+ * while the button „Unesi rezultat" stood 70,78px outside its cell at 200% text.
+ * A rule of any other shape does not match here, and the failure says so.
+ */
+const SHAPE =
+  /^max\( min\(100%, calc\(var\(--race-columns\) \* ([\d.]+)%\)\), calc\(var\(--race-columns\) \* ([\d.]+)rem\) \)$/
+
+/** The share of the box one column takes while the ceiling wins, and the width a
+ *  column may never fall under, in `rem`. */
+function knobs(): { share: number; floor: number } {
+  /* In the query that says every column is drawn, and named as such: under 700px
+     the climb and the descent are hidden (styles/table.css), so a width worked out
+     from the count of columns would describe a table that is not there. */
+  const races = ruleInMedia(profile, '(min-width: 700px)', '.table.table--races', 'Profile.css')
+  const written = races.getPropertyValue('inline-size').replace(/\s+/g, ' ').trim()
+  const read = SHAPE.exec(written)
+
+  expect(read, `the width reads \`${written}\`, which is not a shape this guard knows`).not.toBeNull()
+
+  const [, share, floor] = must(read, 'the width of the race table')
+
+  return { share: Number(share), floor: Number(floor) }
+}
+
+/** What that rule works out to, in px, for a box of `box` px at a root of `root`. */
+function widthOf(
+  { share, floor }: { share: number; floor: number },
+  columns: number,
+  box: number,
+  root: number,
+): number {
+  return Math.max(Math.min(box, (columns * share * box) / 100), columns * floor * root)
+}
+
 describe('the table of races on an event', () => {
-  it('is never narrower than the words in it', () => {
-    /* Equal columns were asked for and a ceiling alone gave them: `min(100%, …)`.
-       Measured at 200% text, that ceiling is also a floor a column cannot rise
-       above, and a fixed layout will not grow for its content, so „Ultramaraton"
-       wrote itself 14px over „324,00" at 1280 and 83px over it at 700, and the
-       button in „Opcije" stood 70px outside its own cell.
+  it('is laid out in columns of one width', () => {
+    expect(
+      ruleInMedia(profile, '(min-width: 700px)', '.table.table--races', 'Profile.css')
+        .getPropertyValue('table-layout'),
+    ).toBe('fixed')
+  })
 
-       A floor in `rem` grows with the reader's text exactly as the content does.
-       When it wins the table is wider than its box and the box scrolls, which is
-       what PDL P24 asks of every other table on the portal. Measured after: zero
-       overflow at 700 and at 1280, at 100% and at 200%, and the page itself never
-       scrolls sideways. */
-    /* In the query that says every column is drawn, and named as such: under 700px
-       the climb and the descent are hidden (styles/table.css), so a width worked
-       out from the count of columns would describe a table that is not there. */
-    const races = ruleInMedia(profile, '(min-width: 700px)', '.table.table--races', 'Profile.css')
-    const width = races.getPropertyValue('inline-size')
+  it('gives four columns the width they would have had as five', () => {
+    /* Owner, 23.08.2026: „tabela ostaje kraca za tu kolonu, pa se prethodne cetiri
+       zavrsavaju gde i kad ih ima 5". A share of one fifth of the box is what says
+       that, and it says it whether the table draws four columns or five: without
+       the options the table is four fifths of its box and stops there, rather than
+       spreading four columns over the whole of it. */
+    const read = knobs()
 
-    expect(races.getPropertyValue('table-layout')).toBe('fixed')
-    /* Both halves, because either alone is one of the two faults: the ceiling
-       alone is what overflowed, and the floor alone would make a table of two
-       columns take the width of five. */
-    expect(width, 'the ceiling is gone, so the table may be wider than its box').toContain(
-      'min(100%',
+    expect(widthOf(read, 4, 1000, 16) / 4).toBe(widthOf(read, 5, 1000, 16) / 5)
+    expect(read.share * 5, 'a column is not a fifth of the box').toBe(100)
+  })
+
+  it('stays inside its box at the ordinary text size', () => {
+    /* The fault a round measured on 23.08.2026 and the reason the floor is not a
+       number picked to be safe: at 7,5rem, an event over two mornings read by a
+       signed-in member is six columns of 120px, which is 720px of table against
+       668px of box at a screen of 700. 55px of it stood outside, the „Unesi
+       rezultat" button was what stood there, and the page did not scroll, so
+       nothing on the screen said anything had been cut.
+
+       Worked out rather than rendered, because jsdom lays nothing out (ADL A18)
+       and a browser shows one width at a time. The arithmetic is `max`/`min`/`calc`
+       and nothing else, and it was held against Chrome on this branch at both ends
+       of the range: 668px of table in 668px of box at 700, and 1068 in 1068 at
+       1280. Both agreed to the pixel.
+
+       Every count of columns the render can produce (EventDetail.tsx: four, five or
+       six) and every box from the narrowest the query covers up to a wide desk. */
+    const read = knobs()
+    const room = (screen: number) => screen - 32
+    const tooWide = []
+
+    for (const columns of [4, 5, 6]) {
+      for (let screen = 700; screen <= 1920; screen += 1) {
+        const box = room(screen)
+
+        if (widthOf(read, columns, box, 16) > box) {
+          tooWide.push(`${columns} columns at ${screen}px`)
+        }
+      }
+    }
+
+    expect(tooWide).toEqual([])
+  })
+
+  it('holds the widest date unbroken wherever the floor wins', () => {
+    /* What the floor is for. Both sides of it are `rem`, so one measurement at a
+       16px root holds at every text size: „31. 12. 2022." is 88,17px of type, and
+       the cell keeps var(--space-8) either side, which is 1rem of the column. */
+    const DATE = 88.17 / 16
+    const CELL = 1
+
+    expect(knobs().floor - CELL, 'a column at the floor breaks the date in two').toBeGreaterThanOrEqual(
+      DATE,
     )
-    expect(width, 'the floor is gone, so a column may be narrower than its words').toContain(
-      '7.5rem',
-    )
+  })
+
+  it('is narrower than the button in it, which is why the button folds', () => {
+    /* The two rules are one arrangement and this is the seam between them. „Unesi
+       rezultat" on one line is 114,75px at a 16px root, more than a column at the
+       floor has to give, so the button has to fold; folded it needs 76,86px and
+       fits. Raising the floor to hold it unbroken is the other way out and it is
+       the wrong one: 8,17rem puts six columns at 785px against 668px of box, which
+       is the scroll the test above refuses.
+
+       The fold is written outside the query, because under 700px the table is laid
+       out by its content instead and the column grows for the button rather than
+       cutting it. It grows the table with it: measured on a 360px screen, the box
+       scrolled 41px with the button on one line and 3px with it folded. */
+    const BUTTON = 114.75 / 16
+    const FOLDED = 76.86 / 16
+    const CELL = 1
+    const { floor } = knobs()
+    const button = ruleFor(profile, '.table--races .button--compact', 'Profile.css')
+
+    expect(floor - CELL).toBeLessThan(BUTTON)
+    expect(floor - CELL).toBeGreaterThanOrEqual(FOLDED)
+    expect(button.getPropertyValue('white-space'), 'the button cannot fold').toBe('normal')
+    /* And a height that grows with the second line. `.button--compact` is 2,4rem
+       tall exactly, and left alone the two lines write themselves over the border
+       of their own button. */
+    expect(button.getPropertyValue('block-size'), 'the second line has nowhere to go').toBe('auto')
+    expect(button.getPropertyValue('min-block-size')).toBe('2.4rem')
   })
 })
 

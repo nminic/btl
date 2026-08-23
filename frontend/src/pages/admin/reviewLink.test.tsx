@@ -66,15 +66,27 @@ describe('the shape an address of official results must have', () => {
       'https://primer.rs\n@zlo.example/p',
       /* The same trick with something that is not a blank at all. `\s` does not
          cover these, and every one of them splits a host exactly as a line break
-         does: measured in Chrome, each resolves to `zlo.example`. Built rather than
-         written out, because a control character in a source file is a character
-         nobody reading it can see. */
+         does: measured with `new URL`, each resolves to `zlo.example`. Built rather
+         than written out, because a control character in a source file is a
+         character nobody reading it can see.
+
+         The last seven were found by a round on 23.08.2026, over a rule that named
+         six by hand and called them „the characters that split a host". They are
+         here so the next hand-written list fails rather than passes: measured, each
+         of the seven was accepted while the six were refused. */
       `https://primer.rs${String.fromCharCode(0)}@zlo.example/p`,
       `https://primer.rs${String.fromCharCode(1)}@zlo.example/p`,
       `https://primer.rs${String.fromCharCode(31)}@zlo.example/p`,
       `https://primer.rs${String.fromCharCode(127)}@zlo.example/p`,
       'https://primer.rs\u200b@zlo.example/p',
       'https://primer.rs\u2060@zlo.example/p',
+      `https://primer.rs${String.fromCharCode(133)}@zlo.example/p`,
+      'https://primer.rs\u00ad@zlo.example/p',
+      'https://primer.rs\u180e@zlo.example/p',
+      'https://primer.rs\u200c@zlo.example/p',
+      'https://primer.rs\u200e@zlo.example/p',
+      'https://primer.rs\u202e@zlo.example/p',
+      'https://primer.rs\u2066@zlo.example/p',
     ]) {
       expect(officialResultsLink(said), `${said} was accepted as an address`).toBeUndefined()
     }

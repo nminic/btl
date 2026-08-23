@@ -722,20 +722,26 @@ export function FormRenderer({
   /**
    * The fields whose obligation hangs on the answer to this one.
    *
-   * `optionalWhenFilled` and `requiredWhenFilled` name a field, and answering that
-   * field changes what is asked of another (ADL A21). Read here so that touching
-   * one clears the message on the other: attach a picture and the comment becomes
-   * obligatory while the link stops being; take the picture back and both turn
-   * round again. Until 23.08.2026 only the field that was touched had its message
-   * cleared, so „Ovo polje je obavezno." stood under a field the form had just
-   * stopped asking for, and the „Obriši" button beside the picture made that a
-   * thing a member can do in one press.
+   * Four rules make one field's obligation depend on another's answer (ADL A21),
+   * and this reads all four by asking the definition rather than by listing them:
+   * any rule on a field that names another field by name. Written as a list of two
+   * for one day, and a round measured what the other two cost: on the real
+   * registration form, a date of birth under sixteen frees the number of an
+   * identity document, and „Ovo polje je obavezno." went on standing under it with
+   * `aria-invalid` still true while the form had stopped asking. A list written by
+   * hand is a list that goes stale the day a fifth rule is written.
+   *
+   * Read so that touching one field clears the message on the other: attach a
+   * picture and the comment becomes obligatory while the link stops being; take the
+   * picture back and both turn round again. The „Obriši" button beside the picture
+   * is what made that a thing a member can do in one press.
    */
+  const namesField = (rule: unknown, name: string): boolean =>
+    typeof rule === 'object' && rule !== null && 'field' in rule && rule.field === name
+
   const hangingOn = (name: string): string[] =>
     form.fields
-      .filter(
-        (one) => one.optionalWhenFilled?.field === name || one.requiredWhenFilled?.field === name,
-      )
+      .filter((one) => Object.values(one).some((rule) => namesField(rule, name)))
       .map((one) => one.name)
 
   const handleChange = useCallback(
@@ -751,9 +757,11 @@ export function FormRenderer({
        *
          Only that message on the other field, and that is the whole of the
          difference: a badly written address is still a badly written address after
-         a picture has made it optional, and taking its message away with the
-         obligation would leave the form refusing to send with nothing on the screen
-         to say why. Measured on 23.08.2026, on the real `unos-rezultata` form. */
+         a picture has made it optional. Taking its message away with the obligation
+         says the shape has been put right when it has not, and the next press
+         refuses the form and writes the same message again, over a field nobody has
+         touched in between. Measured on 23.08.2026 on the real `unos-rezultata`
+         form: the count of messages went 1, then 0, then 1 again. */
       setErrors((current) =>
         Object.fromEntries(
           Object.entries(current).filter(

@@ -308,7 +308,7 @@ describe('a message about a field the form has stopped asking for', () => {
        Attach a picture and the comment becomes obligatory while the link stops
        being; take it back and both turn round again. Until 23.08.2026 only the
        field that was touched had its message cleared, so „Ovo polje je obavezno."
-       stood under a field the form was no longer asking about, and the summary над
+       stood under a field the form was no longer asking about, and the summary over
        it said the same (WCAG 2.2 SC 3.3.1). */
     const user = setupUser()
 
@@ -359,33 +359,40 @@ describe('a message about a field the form has stopped asking for', () => {
 })
 
 describe('an error that is not about a field being obligatory', () => {
-  it('survives the picture that made the field optional', () => {
+  it('survives the picture that made the field optional', async () => {
     /* The other half of the rule above, and the one a wider fix would have taken
        with it: a badly written address is still badly written after a picture has
        made it optional. Measured on 23.08.2026 with the wider fix in place: the
-       message went, the form went on refusing to send, and nothing on the screen
-       said why. */
+       message went, the next press refused the form and wrote it again, and in
+       between the screen said the shape had been put right.
+
+       The premise is measured beside it, because without that this test passes on a
+       form where the picture frees nothing at all: the link has to stop being
+       obligatory for there to be anything here worth asking. */
     const user = setupUser()
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    return (async () => {
-      await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
-      await user.type(screen.getByLabelText(/^Link/), 'trka.rs/rezultati')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.type(await screen.findByLabelText(/Naziv događaja/), 'Probna trka')
+    await user.type(screen.getByLabelText(/^Link/), 'trka.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-      expect(screen.getByText('Vrednost nije u očekivanom obliku.')).toBeVisible()
+    expect(screen.getByText('Vrednost nije u očekivanom obliku.')).toBeVisible()
+    expect(screen.getByLabelText(/^Link/)).toHaveAttribute('aria-required', 'true')
 
-      await user.upload(
-        screen.getByLabelText(/Slika kao dokaz/),
-        new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }),
-      )
+    await user.upload(
+      screen.getByLabelText(/Slika kao dokaz/),
+      new File(['proba'], 'dokaz.jpg', { type: 'image/jpeg' }),
+    )
 
-      expect(
-        screen.getByText('Vrednost nije u očekivanom obliku.'),
-        'the shape stopped being wrong when the field stopped being obligatory',
-      ).toBeVisible()
-    })()
+    expect(
+      screen.getByLabelText(/^Link/),
+      'the picture did not free the link, so this test asks nothing',
+    ).not.toHaveAttribute('aria-required')
+    expect(
+      screen.getByText('Vrednost nije u očekivanom obliku.'),
+      'the shape stopped being wrong when the field stopped being obligatory',
+    ).toBeVisible()
   })
 })
 
