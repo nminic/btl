@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
+import { WHOLE_PORTAL } from '../test/sources'
 import { join } from 'node:path'
 
 /* Every filter on the portal writes itself into the address, and to the router
@@ -47,7 +48,13 @@ describe('writing a filter into the address', () => {
   const files = sourceFiles(SRC)
 
   it('reads the whole of the application, so it cannot pass on an empty list', () => {
-    expect(files.length).toBeGreaterThan(80)
+    /* The floor comes from `test/sources.ts`, where that fact lives and where the
+       reason for the number is written: the largest single folder holds under a
+       hundred, so no one folder can meet it on its own. Held here as 80 for a while,
+       which is a number written by hand, and a round measured what it cost on
+       23.08.2026: with `pages` skipped the sweep still counted 118 and stayed green
+       while an offender sat in the folder it had stopped reading. */
+    expect(files.length).toBeGreaterThan(WHOLE_PORTAL)
     expect(files.some((path) => path.endsWith(HOME))).toBe(true)
   })
 

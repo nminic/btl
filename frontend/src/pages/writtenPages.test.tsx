@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { unwritten } from '../test/unwritten'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -1077,17 +1078,10 @@ function wordsBefore(before: string): string {
    below asks each of them by name, which is also what takes the case out: it reads
    which document a word is a form of instead of cutting an ending off it. */
 const NAMED_EACH = {
-  pravilnik: /\bpravilni(?:k(?:a|u|om)?|c(?:i|ima))\b/i,
-  statut: /\bstatut(?:a|u|om|i|ima)?\b/i,
-  zakon: /\bzakon(?:a|u|om|i|ima)?\b/i,
+  pravilnik: /\bpravilni(?:k(?:a|u|e|om)?|c(?:i|ima))\b/i,
+  statut: /\bstatut(?:a|u|e|om|i|ima)?\b/i,
+  zakon: /\bzakon(?:a|u|e|om|i|ima)?\b/i,
 }
-
-const NAMED = new RegExp(
-  Object.values(NAMED_EACH)
-    .map((one) => one.source)
-    .join('|'),
-  'i',
-)
 
 /** Every document named among some words, in lower case and without repeats.
  *
@@ -1166,12 +1160,16 @@ function documentOf(inFront: string, ahead: string): string {
        23.08.2026). The empty string is also the one answer that does **not** skip a
        reference, so a fallback here would be the opposite of what this returns.
 
-       Said plainly: **the gate does not see this.** Measured on 23.08.2026, with
-       `?? ''` put back, coverage still reports 100% of branches, because v8 counts
-       each sub-expression on its own and both outcomes of `??` are met elsewhere in
-       the file. So this is not a guard; it is a claim written where it can throw if
-       it ever stops being true, instead of a fallback that would quietly hand back
-       the one answer this branch must never give. */
+       Said plainly: **the gate does not see this, and the reason matters.** Measured
+       on 23.08.2026 with `?? ''` put back: coverage still reports 100% of branches.
+       Not because v8 forgives an unreachable branch, but because **no test file is
+       measured at all** — `coverage/lcov.info` holds the portal's own files and
+       nothing from `*.test.*`. The same construction written in a file that ships
+       would be seen, and would fail the threshold.
+
+       So this is not a guard; it is a claim written where it can throw if it ever
+       stops being true, instead of a fallback that would quietly hand back the one
+       answer this branch must never give. */
     return named.has('pravilnik') ? AMBIGUOUS : must(only, 'one of the two documents')
   }
 
@@ -1524,7 +1522,7 @@ describe('the rulebook', () => {
       if (document === '') {
         expect(
           one.slug,
-          `${one.slug} names an article ${one.number} and nothing beside it says ${String(NAMED)}`,
+          `${one.slug} names an article ${one.number} and nothing beside it names one of ${Object.keys(NAMED_EACH).join(', ')}`,
         ).toBe('pravilnik')
 
         return one.slug === 'pravilnik'
@@ -2294,30 +2292,6 @@ describe('the guard over the written pages', () => {
   })
 })
 
-/**
- * One source file with its comments taken out.
- *
- * A rule described in prose is not a rule, and a sweep that reads prose finds the
- * very sentences that explain what it is looking for. `styles/scale.test.ts` keeps
- * the same rule over stylesheets and for the same reason.
- */
-function unwritten(code: string): string {
-  /* A line comment only where the line begins with one. Held as „from `//` to the end
-     of the line" for one day, and a round measured what that costs: `//` inside a
-     string is not a comment, so `src/app/head.ts` came out of here reading
-     `export const SITE_ORIGIN = 'https:` and an offender written after that string on
-     the same line was invisible.
-
-     Telling a comment from a string needs a scanner that knows quotes, escapes and
-     regular expressions, which is more machinery than this sweep is worth. The
-     line-leading rule errs in the safe direction instead: a rule written in a
-     trailing comment is now **counted** as an offender rather than missed, and a
-     false alarm is a sentence somebody rewrites while an invisible offender is a rule
-     that quietly dies. Measured: no trailing comment in the portal carries the
-     question this sweep asks. The block form keeps the same shape and the same
-     caveat, that `/*` inside a string would take the rest of the file with it. */
-  return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')
-}
 
 /** The whole of one written page, as one piece of text. */
 function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti'): string {
@@ -2905,34 +2879,6 @@ describe('which document a numbered reference belongs to', () => {
     expect(documentOf('Prema', ' postupa se dalje')).toBe('')
   })
 
-  it('takes the comments out of a source file and leaves the code standing', () => {
-    /* What the sweep below reads. Held as „from `//` to the end of the line" for one
-       day, and a round measured what that costs: `//` inside a string is not a
-       comment, so `src/app/head.ts` came out of here reading
-       `export const SITE_ORIGIN = 'https:` and an offender written after that string
-       on the same line was invisible.
-
-       The line-leading rule errs the other way: a rule written in a **trailing**
-       comment is counted as an offender rather than missed. That is a false alarm
-       somebody rewrites, where the other direction is a rule that quietly dies. */
-    /* Put together rather than written out, because the sweep below reads this
-       very file and a literal here would be an offender by its own rule. */
-    const quote = String.fromCharCode(39)
-    const asks = `startsWith(${quote}|${quote})`
-
-    expect(unwritten(`export const SITE_ORIGIN = 'https://primer.rs'`)).toContain(
-      `${'https://primer.rs'}`,
-    )
-    expect(unwritten(`  // ${asks}
-const a = 1`)).not.toContain(asks)
-    expect(unwritten(`/* ${asks} */
-const a = 1`)).not.toContain(asks)
-    expect(
-      unwritten(`const a = 1 // ${asks}`),
-      'a rule hidden in a trailing comment is counted rather than missed',
-    ).toContain(asks)
-  })
-
   it('does not read an adjective as a document', () => {
     /* „Saglasnost zakonskog zastupnika iz Člana 12 Pravilnika lige" names one
        document and says so plainly. Read as substrings, „zakonskog" counted as the
@@ -2948,11 +2894,21 @@ const a = 1`)).not.toContain(asks)
        whole `-it-` family was not, so „Obrada je zakonita, Član 74 se primenjuje."
        read as naming a law and the reference was skipped and never checked again.
        The refusal itself was measured by nothing, since „zakonskog" has a
-       four-letter ending and the bound alone refused it. */
+       four-letter ending and the bound alone refused it.
+
+       The accusative plural was missing from the list for one day, and a round
+       measured that it is a form the portal already writes: „to je izmena u odnosu na
+       ranije **pravilnike**" stands on the rulebook today. A reference standing beside
+       that word handed itself to whatever other document the sentence named, and was
+       skipped silently rather than failing loudly as ambiguous, which is the very
+       fault this list was written to close. */
     const cases = {
-      pravilnik: ['Pravilnik', 'Pravilnika', 'pravilniku', 'pravilnikom', 'pravilnici', 'pravilnicima'],
-      statut: ['Statut', 'Statuta', 'statutu', 'statutom', 'statuti', 'statutima'],
-      zakon: ['Zakon', 'Zakona', 'zakonu', 'zakonom', 'zakoni', 'zakonima'],
+      pravilnik: [
+        'Pravilnik', 'Pravilnika', 'pravilniku', 'pravilnike', 'pravilnikom', 'pravilnici',
+        'pravilnicima',
+      ],
+      statut: ['Statut', 'Statuta', 'statutu', 'statute', 'statutom', 'statuti', 'statutima'],
+      zakon: ['Zakon', 'Zakona', 'zakonu', 'zakone', 'zakonom', 'zakoni', 'zakonima'],
     }
 
     for (const [document, forms] of Object.entries(cases)) {
@@ -3055,8 +3011,10 @@ describe('what is read as a row of a table', () => {
        comes from `test/sources.ts`, where that fact lives and where the reason for
        the number is written; held here as 80 for one day, which is a number written
        by hand in a guard, and this same section of ADL A20 forbids exactly that.
-       Measured: `sources()` narrowed to 149 of 199 files, with an offender in one of
-       the skipped folders, left this sweep green. */
+       Measured: `sources()` narrowed to three quarters of its folders, with an
+       offender in one of the skipped ones, left this sweep green while the floor
+       catches it. No count is written here on purpose; the floor is the one that
+       has a home. */
     expect(everywhere.length).toBeGreaterThan(WHOLE_PORTAL)
     expect(everywhere.some(({ path }) => path.endsWith(HOME))).toBe(true)
 
@@ -3072,6 +3030,40 @@ describe('what is read as a row of a table', () => {
        today; the day somebody writes it a third way here, the two homes it guards
        against are already two. */
     expect(elsewhere.map(({ path }) => path)).toEqual([])
+  })
+
+  it('reads the code of a file and not the prose around it', () => {
+    /* What this sweep reads. The blanker has one home (`test/unwritten.ts`) and two
+       readers, this and `styles/hooks.test.ts`; it was written a second time here
+       from memory on 23.08.2026 as „from `//` to the end of the line", and that was
+       measured wrong the same day: `//` inside a string is not a comment, so
+       `src/app/head.ts` came out reading `export const SITE_ORIGIN = 'https:` and an
+       offender written after that string on the same line was invisible.
+
+       Four shapes, and the last two are the ones that cost something. */
+    const quote = String.fromCharCode(39)
+    const asks = `startsWith(${quote}|${quote})`
+
+    expect(unwritten(`  // ${asks}\nconst a = 1`), 'a comment survives the blanker')
+      .not.toContain(asks)
+    expect(unwritten(`const a = 1 // ${asks}`), 'a trailing comment survives the blanker')
+      .not.toContain(asks)
+    /* An address is not a comment, which is the whole of the first fault. */
+    expect(unwritten(`export const SITE_ORIGIN = ${quote}https://primer.rs${quote}`)).toContain(
+      'primer.rs',
+    )
+    /* And neither is the value of an `accept` attribute. Measured: read as the
+       opening of a comment, it hid sixteen lines of `forms/FormRenderer.tsx` and
+       thirteen of `components/CropChooser.tsx` from this sweep. */
+    const upload = [
+      '<input accept="image/*" />',
+      `const a = ${asks}`,
+      '/* an ordinary comment, which is what closes the window */',
+    ].join('\n')
+
+    expect(unwritten(upload), 'the code between an `accept` and the next comment is gone').toContain(
+      asks,
+    )
   })
 
   it('is answered the same way by both readers, so nothing falls between them', () => {
