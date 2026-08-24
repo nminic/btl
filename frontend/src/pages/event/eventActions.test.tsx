@@ -370,7 +370,7 @@ describe('copying an event', () => {
     expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
     expect(router.state.location.search).toMatch(/zapis=/)
 
-    const date = await screen.findByLabelText(/Datum/)
+    const date = await screen.findByLabelText('Datum')
 
     expect(date).toHaveFocus()
     /* Everything else came across, so the only thing to do is the date. */
@@ -398,7 +398,7 @@ describe('copying an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText(/Datum/)
+    const date = await screen.findByLabelText('Datum')
     await user.clear(date)
     await user.type(date, '14032027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -437,7 +437,7 @@ describe('copying an event', () => {
     renderAt('/sr/kalendar/beogradski-maraton-2027', 'superadmin')
     await screen.findByRole('heading', { level: 1 })
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-    await screen.findByLabelText(/Datum/)
+    await screen.findByLabelText('Datum')
 
     expect(screen.getByLabelText(/^Istaknuto/)).toHaveValue('no')
   })
@@ -452,7 +452,7 @@ describe('copying an event', () => {
     const { router } = await openEvent('superadmin')
 
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-    await screen.findByLabelText(/Datum/)
+    await screen.findByLabelText('Datum')
 
     const first = router.state.location.search
 
@@ -461,7 +461,7 @@ describe('copying an event', () => {
        behind has one of its own and it is there while this one is loading. */
     await screen.findByRole('button', { name: 'Kopiranje' })
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-    await screen.findByLabelText(/Datum/)
+    await screen.findByLabelText('Datum')
 
     expect(router.state.location.search).not.toBe(first)
   })
@@ -495,11 +495,11 @@ describe('copying an event', () => {
     /* The same place in next year's calendar, worked out from the day it was
        copied from. „Maraton maratona" of 2015 ran on the second Saturday of March;
        the second Saturday of March 2016 is the twelfth. */
-    expect(screen.getByLabelText(/^Datum/)).toHaveValue('12/03/2016')
+    expect(screen.getByLabelText('Datum')).toHaveValue('12/03/2016')
 
     /* And every race under it moved by the same number of days, so two mornings
        stay two mornings. */
-    for (const day of screen.getAllByLabelText(/^Dan trke/)) {
+    for (const day of screen.getAllByLabelText(/^Datum, /)) {
       expect(inputElement(day).value, 'a race stayed in the season it was copied from')
         .toMatch(/\/2016$/)
     }
@@ -529,7 +529,7 @@ describe('copying an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText(/Datum/)
+    const date = await screen.findByLabelText('Datum')
     await user.clear(date)
     await user.type(date, '14032027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -576,7 +576,7 @@ describe('copying an event', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText(/Datum/)
+    const date = await screen.findByLabelText('Datum')
     await user.clear(date)
     await user.type(date, '05012031')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -626,7 +626,7 @@ describe('copying an event', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText(/Datum/)
+    const date = await screen.findByLabelText('Datum')
     await user.clear(date)
     await user.type(date, '14032032')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -673,7 +673,7 @@ describe('copying an event', () => {
 
     async function copyOnto(day: string) {
       await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
-      const date = await screen.findByLabelText(/Datum/)
+      const date = await screen.findByLabelText('Datum')
       await user.clear(date)
       await user.type(date, day)
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))

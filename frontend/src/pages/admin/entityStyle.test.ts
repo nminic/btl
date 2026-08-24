@@ -373,12 +373,19 @@ describe('the column a race is read by', () => {
          „17/10/2026" running 81px past its own edge. At 9,5rem the field was 88px and
          still 19px short. At 11rem it is 112px and nothing runs over.
        - the three measures hold „42.20" and „1250" and no more, and the box inside
-         them is told to fill its cell, so without a ceiling they take a share as wide
-         as the name they crowd out: 85,61px each at 1280px, against 5,5rem.
+         them is told to fill its cell, so left to themselves they take a share as wide
+         as the name they crowd out: 120,2 and 116,75 and 113,86px at 1280px, against
+         5,5rem asked for here.
 
-       Measured after both: the page does not scroll sideways at 360, 700 or 768, the
-       box scrolls 222px at 360 and not at all at 700 or 768, and the button at the end
-       of the row is drawn whole at every one of the three. */
+       A width and not a ceiling, which a round measured: `max-inline-size` is a wall
+       and a column cannot pass it however much it holds, so the fields were cut, „42.2"
+       drawn as „42." and „506" as „50(" at 768px and worse at 700px, with all 2158
+       tests green. A width on a cell is a suggestion the table may outgrow, so the
+       column is 5,5rem while the numbers fit in it and wider when they do not.
+
+       Measured after both: the page does not scroll sideways at 360, 700 or 768, no
+       field runs over at any of the three, the box scrolls 237px at 360 and not at all
+       at 700 or 768, and the button at the end of the row is drawn whole. */
     expect(
       ruleFor('.entity-races .table th:nth-child(2), .entity-races .table td:nth-child(2)')
         .getPropertyValue('min-inline-size'),
@@ -389,8 +396,35 @@ describe('the column a race is read by', () => {
       ruleFor(
         '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
           '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
-      ).getPropertyValue('max-inline-size'),
-      'the three measures lost their ceiling',
+      ).getPropertyValue('inline-size'),
+      'the three measures lost their width',
     ).toBe('5.5rem')
+
+    /* And a width it is, not a ceiling. Asked by name because the two read the same
+       in a diff and behave differently on the screen: a ceiling cut „42.2" down to
+       „42." at 768px while every test stayed green. */
+    expect(
+      ruleFor(
+        '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
+          '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
+      ).getPropertyValue('max-inline-size'),
+      'the three measures were walled in again',
+    ).toBe('')
+  })
+
+  it('reads the length from the right, like the two measures beside it', () => {
+    /* The portal reads the first three columns of a table from the left, because in
+       every other table those three are words (`styles/table.css`). Here they were
+       words too until the category came out from between the date and the length, and
+       the length moved into third place: „Dužina" then stood against the left edge
+       while „Uspon" and „Spust" stood against the right.
+
+       Measured in Chrome on the screen of an event: before, the heading of the length
+       computed `text-align: left` and the other two `right`; after, all three read
+       `right`, and 2158 tests were green either way. */
+    expect(
+      ruleFor('.entity-races .table th:nth-child(3)').getPropertyValue('text-align'),
+      'the length reads from the left again, alone among the three measures',
+    ).toBe('right')
   })
 })

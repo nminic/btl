@@ -20,7 +20,6 @@ import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
 import { canSendBack, countFor, QUEUE, QUEUES, returned } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
-import { categoryOf } from '../data/raceCategory'
 import {
   ipsPayload,
   methodsFor,
@@ -624,21 +623,6 @@ describe('the price list', () => {
     expect(table.getByText('33')).toBeVisible()
     // And the period it belongs to is where it was.
     expect(table.getByText('1.10. - 5.10.')).toBeVisible()
-  })
-})
-
-describe('categoryOf', () => {
-  it('recognises a marathon and a half by the exact value, with no tolerance', () => {
-    expect(categoryOf(42.2)).toBe('marathon')
-    expect(categoryOf(21.1)).toBe('half')
-    // A hundred metres short of a marathon is a long race, not a marathon.
-    expect(categoryOf(42.19)).toBe('long')
-    expect(categoryOf(21.09)).toBe('short')
-  })
-
-  it('puts everything longer than a marathon into the ultras', () => {
-    expect(categoryOf(42.21)).toBe('ultra')
-    expect(categoryOf(100)).toBe('ultra')
   })
 })
 
@@ -1987,7 +1971,7 @@ describe('the six queues read from the file', () => {
        23.08.2026 a race's day is a picker in its own row and holds `dd/mm/gggg`
        (owner). */
     const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByLabelText(/^Dan trke/)
+      .getAllByLabelText(/^Datum/)
       .map((box) => inputElement(box).value)
 
     expect(races).toEqual(['10/04/2027', '11/04/2027'])
@@ -2104,7 +2088,12 @@ describe('the six queues read from the file', () => {
        race above, because one press saves the whole screen since 23.08.2026: two
        sittings would be two opens of a list of eleven hundred, and this test was
        over five seconds on the machine that decides. */
-    const date = screen.getByLabelText(/^Datum/)
+    /* The date of the event itself, named by nothing else: since the column of a race
+       was renamed „Datum" on 24.08.2026 („Treći kao sada, i nije dan nego datum!",
+       owner) every row of the table answers to that name as well, each carrying the
+       race it belongs to („Datum, 1. trka"). The event's own field carries nothing
+       after it, so it is asked for whole. */
+    const date = screen.getByLabelText('Datum')
 
     await user.clear(date)
     await user.type(date, '04042027')
@@ -2143,7 +2132,7 @@ describe('the six queues read from the file', () => {
     /* Moved with everything else, rather than left on the day it was entered on,
        and moved by six days rather than seven. Read out of the box, because the
        day of a race is a picker in its own row since 23.08.2026. */
-    expect(within(mine).getByLabelText(/^Dan trke/)).toHaveValue('10/04/2027')
+    expect(within(mine).getByLabelText(/^Datum/)).toHaveValue('10/04/2027')
 
     /* And the second report of the same change moves nothing more. Two
        independent reports are what a reported change is made of (PDL P10), so
@@ -2166,7 +2155,7 @@ describe('the six queues read from the file', () => {
     await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
 
     const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByLabelText(/^Dan trke/)
+      .getAllByLabelText(/^Datum/)
       .map((box) => inputElement(box).value)
 
     expect(after).toEqual(['10/04/2027', '10/04/2027', '11/04/2027'])

@@ -266,5 +266,22 @@
  * 360, 700 and 768 with the default letters. */
 .entity-races .table th:nth-child(n + 3):nth-child(-n + 5),
 .entity-races .table td:nth-child(n + 3):nth-child(-n + 5) {
-  max-inline-size: 5.5rem;
+  inline-size: 5.5rem;
+}
+
+/* And the length reads from the right like the two measures beside it. The portal
+   reads the first three columns of a table from the left, because in every other
+   table those three are words (`styles/table.css`). Here they were words too, until
+   the category came out from between the date and the length and the length moved
+   into third place: „Dužina" then stood against the left edge while „Uspon" and
+   „Spust" stood against the right, three columns of one kind read three ways.
+ *
+ * Measured in Chrome on this screen: before, the heading of the length computed
+ * `text-align: left` and the other two `right`; after, all three read `right`.
+ *
+ * The heading and not the cell, because the cell holds a control rather than text:
+ * measured on the same screen, all three fields compute `text-align: start` whatever
+ * the cell around them says, so moving the cell would change nothing anybody sees. */
+.entity-races .table th:nth-child(3) {
+  text-align: right;
 }
