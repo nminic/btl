@@ -41,6 +41,7 @@ export function DatePicker({
   onChange,
   openAt = false,
   locked = false,
+  steps = [],
   label,
 }: {
   id: string
@@ -58,6 +59,15 @@ export function DatePicker({
   /** Whether the date came off a record rather than from this reader, in which
    *  case neither the box nor the calendar takes anything (FormRenderer.tsx). */
   locked?: boolean
+  /**
+   * Days this box offers beside the calendar, each as a button that writes one.
+   *
+   * Empty everywhere but on the copy of an event, which offers next season and a
+   * week on (owner, 23.08.2026: „veoma zgodno za treninge i nedeljne trkice").
+   * Each carries the day it writes rather than a press to run, so a step is
+   * pressed exactly while the box holds its day.
+   */
+  steps?: { label: string; title: string; to: string }[]
   /**
    * What to call this box, where nothing else does.
    *
@@ -205,6 +215,33 @@ export function DatePicker({
         value={value}
         onChange={(event) => onChange(maskDate(event.target.value))}
       />
+
+      {/* Steps beside the calendar, where a screen has days worth offering rather
+          than only a calendar to find them in: copying an event offers next season
+          and a week on (owner, 23.08.2026).
+
+          Each step carries the day it writes rather than a press to run, and that is
+          what makes it mean the same thing twice: the button is pressed when the box
+          already holds its day, so two presses give what one press gives, and a day
+          typed by hand simply leaves both of them unpressed. */}
+      {steps.map((step) => (
+        <button
+          key={step.label}
+          type="button"
+          className="datepicker__step"
+          aria-disabled={locked ? true : undefined}
+          aria-pressed={value === step.to}
+          aria-label={step.label}
+          title={step.title}
+          onClick={() => {
+            if (!locked) {
+              onChange(step.to)
+            }
+          }}
+        >
+          {step.label}
+        </button>
+      ))}
 
       <button
         type="button"

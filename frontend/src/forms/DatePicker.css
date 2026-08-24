@@ -30,6 +30,41 @@
   color: var(--accent);
 }
 
+/* A day the box offers, beside the calendar and in the same row as the date
+   (owner, 23.08.2026). The same height as the button beside it, because they are
+   one row of controls and not two: the height comes from the row rather than from
+   a length written here, so a reader's larger letters take all three together.
+
+   The one that holds the day now is filled rather than merely marked, since
+   `aria-pressed` is read by a screen reader and seen by nobody. */
+.datepicker__step {
+  flex: 0 0 auto;
+  padding-inline: var(--space-8);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-8);
+  transition:
+    border-color var(--fast),
+    background var(--fast),
+    color var(--fast);
+}
+
+.datepicker__step:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.datepicker__step[aria-pressed='true'] {
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
 .datepicker__open svg {
   width: 17px;
   height: 17px;

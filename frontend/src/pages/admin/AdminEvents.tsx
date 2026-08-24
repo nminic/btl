@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToday } from '../../clock/useClock'
-import { fieldDate, isoDate } from '../../forms/dateField'
+import { fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { Resource } from '../../components/Resource'
 import {
   RESULTS,
@@ -23,6 +23,7 @@ import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { allFinished, rowsOf, storedRow, type RaceRow } from './raceRows'
 import { nextNumber } from './raceIds'
+import { nextSeason } from './nextSeason'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 import { useFilterParams } from '../../app/useFilterParams'
@@ -256,6 +257,39 @@ export function AdminEvents() {
              * has the event it was copied from. A fallback of „race" written here
              * was a branch no test could reach.
              */
+            /**
+             * The two days a copy offers beside its calendar: next season, and a
+             * week on (owner, 23.08.2026: „veoma zgodno za treninge i nedeljne
+             * trkice").
+             *
+             * Both counted **from the event this was copied from**, never from what
+             * the box holds now (owner, same day). That is what makes a button mean
+             * one thing: a date changed by hand and then a press goes back to the
+             * count from the original, and two presses give what one press gives.
+             *
+             * The event it came from is found by `copiedFrom`, which the copy writes
+             * and nobody types (`event/copyOf.ts`). Empty where there is nothing to
+             * count from, which is every screen but this one.
+             */
+            const from = copying
+              ? all.find((one) => String(one.id) === String(openEvent?.copiedFrom))
+              : undefined
+            const steps =
+              from === undefined
+                ? undefined
+                : [
+                    {
+                      label: '+1y',
+                      title: t('admin.form.nextSeason'),
+                      to: fieldDate(nextSeason(String(from.date))),
+                    },
+                    {
+                      label: '+1w',
+                      title: t('admin.form.nextWeek'),
+                      to: fieldDate(shiftDate(String(from.date), 7)),
+                    },
+                  ]
+
             const kindOf = (values: FormValues): string =>
               String(values.kind ?? openEvent?.kind)
 
@@ -302,6 +336,7 @@ export function AdminEvents() {
                        one unfinished row is the whole press refused (owner,
                        23.08.2026: „validacija mi ne da da nastavim dalje dok svaki
                        red nema sve obavezne podatke"). */
+                    steps={steps}
                     alsoRefuses={(values) => {
                       /* And nothing to refuse where there are no races to finish:
                          a gathering or a training has no table at all, so a row

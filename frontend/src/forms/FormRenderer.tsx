@@ -60,6 +60,14 @@ type Props = {
    * it.
    */
   alsoRefuses?: (values: FormValues) => string | undefined
+  /**
+   * Days the date field offers beside its calendar, each a button that writes one.
+   *
+   * Only the copy of an event has any: next season and a week on (owner,
+   * 23.08.2026). Handed in rather than read from the definition, because which days
+   * they are depends on the record being copied and a definition knows no records.
+   */
+  steps?: { label: string; title: string; to: string }[]
   /** What the fields start out holding. Empty when nothing is handed in, which
    *  is a form that creates something rather than one that changes it. */
   initial?: FormValues
@@ -184,6 +192,7 @@ const Field = memo(function Field({
   onChange,
   open = false,
   locked = false,
+  steps,
   suggesting,
 }: {
   field: FieldDef
@@ -212,6 +221,9 @@ const Field = memo(function Field({
    * the name breaks the link and hands all four back (FormRenderer below).
    */
   locked?: boolean
+  /** Days the date box offers beside its calendar, where the screen has any to
+   *  offer. Only a date field is ever given them. */
+  steps?: { label: string; title: string; to: string }[]
   /** The list this field is typed against, where it has one, and what to do with
    *  what is typed and what is chosen (forms/Suggesting.tsx). */
   suggesting?: {
@@ -606,6 +618,7 @@ const Field = memo(function Field({
           describedBy={describedBy === '' ? undefined : describedBy}
           openAt={open}
           locked={locked}
+          steps={steps}
           onChange={change}
         />
       )}
@@ -661,6 +674,7 @@ export function FormRenderer({
   openAt,
   beneath,
   alsoRefuses,
+  steps,
 }: Props) {
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
@@ -985,6 +999,7 @@ export function FormRenderer({
             onChange={handleChange}
             open={field.name === openAt}
             locked={led.includes(field.name)}
+            steps={field.type === 'date' ? steps : undefined}
             suggesting={suggestingOn(field)}
           />
         ))
