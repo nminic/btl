@@ -80,8 +80,8 @@ describe('the races of an event', () => {
     { day, km }: { day?: string; km: string },
   ) {
     if (day !== undefined) {
-      await user.clear(row.getByLabelText(/^Dan trke/))
-      await user.type(row.getByLabelText(/^Dan trke/), day)
+      await user.clear(row.getByLabelText(/^Datum/))
+      await user.type(row.getByLabelText(/^Datum/), day)
     }
 
     await user.clear(row.getByLabelText(/^Dužina/))
@@ -240,10 +240,11 @@ describe('the races of an event', () => {
     expect(first).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('puts the name first and the category second, which is what the floor is written on', async () => {
+  it('puts the name first and no category at all, which is what the floor is written on', async () => {
     /* Owner, 23.08.2026: „u okviru događaja editabilno polje Trka treba da bude u
-       prvoj koloni, dok će se druga kolona zvati Kategorija, a zatim slede dužina,
-       uspon, spust itd."
+       prvoj koloni". The category stood second until the same day, when it was taken
+       back out: „U dodavanju trka na događaju (administriranje) ne treba da postoji
+       Kategorija kolona ipak."
 
        Asked here and not only in the stylesheet, because the floor that makes the
        name readable is written on `td:first-child` (`Entity.css`): which column that
@@ -256,8 +257,7 @@ describe('the races of an event', () => {
 
     expect(table.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
       'Trka',
-      'Kategorija',
-      'Dan trke',
+      'Datum',
       'Dužina',
       'Uspon',
       'Spust',
@@ -279,21 +279,21 @@ describe('the races of an event', () => {
        stayed green while a screen reader read „Dužina: 17/10/2026" (WCAG 2.2 SC
        1.3.1). The same shape is already used for the tables of the portal in
        `styles/tableWidths.test.ts`. */
-    expect(cells.length, 'the row and the heading are not the same width').toBe(7)
+    expect(cells.length, 'the row and the heading are not the same width').toBe(6)
 
-    /* Every one of the seven, not five of them: two were left out as „has no control
-       of its own", and a round measured what that cost — swapping the category and
-       the „Obriši" button leaves the heading „Kategorija … Zapis" over cells reading
-       „Obriši … Maraton", and all 2154 tests stay green. The two without controls are
-       asked by what they hold instead. */
+    /* Every one of the six, not five of them: the last was left out as „has no control
+       of its own", and a round measured what that cost — swapping a read-only cell and
+       the „Obriši" button leaves the heading standing over cells that say something
+       else, and all 2154 tests stay green. The one without a control is asked by what
+       it holds instead. */
     const named = [
       /^Trka,/,
-      /^Dan trke,/,
+      /^Datum,/,
       /^Dužina \(km\),/,
       /^Uspon \(m\),/,
       /^Spust \(m\),/,
     ] as const
-    const at = [0, 2, 3, 4, 5] as const
+    const at = [0, 1, 2, 3, 4] as const
 
     for (const [which, asked] of named.entries()) {
       const where = at[which] ?? 0
@@ -304,16 +304,19 @@ describe('the races of an event', () => {
       ).not.toBeNull()
     }
 
-    /* The category is read off the length and has no control; the last cell is the
-       one button of the row. */
+    /* The last cell is the one button of the row. */
     expect(
-      must(cells[1], 'the category').textContent,
-      'the second cell is not the category',
-    ).toBe('Maraton')
-    expect(
-      within(must(cells[6], 'the record')).queryByRole('button', { name: /^Obriši/ }),
+      within(must(cells[5], 'the record')).queryByRole('button', { name: /^Obriši/ }),
       'the last cell is not the one that removes the row',
     ).not.toBeNull()
+
+    /* And no cell of the row says a category any more, which is the thing the owner
+       took out. Asked by what it would hold: „Maraton" is what the first race of the
+       fixture read before. */
+    expect(
+      cells.map((one) => one.textContent),
+      'a cell still reads a category',
+    ).not.toContain('Maraton')
   })
 
   it('names every control in a row by the row it is in', async () => {
@@ -431,13 +434,13 @@ describe('the races of an event', () => {
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const day = screen.getAllByLabelText(/^Datum/)[0]
+    const day = screen.getAllByLabelText('Datum')[0]
 
     await user.clear(must(day, 'the date of the event'))
     await user.type(must(day, 'the date of the event'), '05061999')
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
-    expect(lastRow().getByLabelText(/^Dan trke/)).toHaveValue('05/06/1999')
+    expect(lastRow().getByLabelText(/^Datum/)).toHaveValue('05/06/1999')
   })
 
   it('takes the day of its first race, when a row is moved before it', async () => {
@@ -452,13 +455,13 @@ describe('the races of an event', () => {
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+    const day = must(screen.getAllByLabelText('Datum')[0], 'the date of the event')
     /* One morning earlier and no more: the list opens on what is still ahead, so
        a race moved into the past would take its event out of the list with it and
        there would be nothing left to open. */
     const before = fieldDate(shiftDate(isoDate(inputElement(day).value), -1))
 
-    const race = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')
+    const race = must(screen.getAllByLabelText(/^Datum, /)[0], 'the first race')
 
     await user.clear(race)
     await user.type(race, before.replace(/\D/g, ''))
@@ -474,7 +477,7 @@ describe('the races of an event', () => {
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
     expect(
-      must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event'),
+      must(screen.getAllByLabelText('Datum')[0], 'the date of the event'),
       'the event stayed on a morning nothing runs on',
     ).toHaveValue(before)
   })
@@ -494,13 +497,13 @@ describe('the races of an event', () => {
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+    const day = must(screen.getAllByLabelText('Datum')[0], 'the date of the event')
     const was = isoDate(inputElement(day).value)
 
     await user.clear(day)
     await user.type(day, '15012027'.replace(/\D/g, ''))
 
-    const race = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')
+    const race = must(screen.getAllByLabelText(/^Datum, /)[0], 'the first race')
 
     await user.clear(race)
     await user.type(race, '30122026')
@@ -543,7 +546,7 @@ describe('the races of an event', () => {
       await user.type(screen.getByLabelText(/^Datum/), day)
       await user.type(screen.getByLabelText(/^Mesto/), 'Beograd')
       await user.click(screen.getByRole('button', { name: 'Nova trka' }))
-      const row = must(screen.getAllByLabelText(/^Dan trke/)[0], 'the day of the race')
+      const row = must(screen.getAllByLabelText(/^Datum, /)[0], 'the day of the race')
 
       /* Emptied first: a new row opens on the day of the event (owner, 23.08.2026),
          so typing into it would append to a date that is already whole. */
@@ -613,7 +616,7 @@ describe('the races of an event', () => {
     await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
-    expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the row just opened')).toHaveValue('')
+    expect(must(screen.getAllByLabelText(/^Datum, /)[0], 'the row just opened')).toHaveValue('')
   })
 
   it('leaves a row whose day was emptied where it is when the event moves', async () => {
@@ -622,14 +625,14 @@ describe('the races of an event', () => {
     const user = await openFirstEvent()
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
-    await user.clear(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race'))
+    await user.clear(must(screen.getAllByLabelText(/^Datum, /)[0], 'the first race'))
 
-    const day = must(screen.getAllByLabelText(/^Datum/)[0], 'the date of the event')
+    const day = must(screen.getAllByLabelText('Datum')[0], 'the date of the event')
 
     await user.clear(day)
     await user.type(day, '11062035')
 
-    expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the first race')).toHaveValue('')
+    expect(must(screen.getAllByLabelText(/^Datum, /)[0], 'the first race')).toHaveValue('')
   })
 
   it('gives a race entered after a deletion an identity nothing else holds', async () => {
@@ -1156,7 +1159,7 @@ describe('what the form for a new event asks for', () => {
     const rows = screen.getAllByLabelText(/^Dužina/)
 
     /* The row opened on the day the form above is showing. */
-    expect(must(screen.getAllByLabelText(/^Dan trke/)[0], 'the day of the race')).toHaveValue(
+    expect(must(screen.getAllByLabelText(/^Datum, /)[0], 'the day of the race')).toHaveValue(
       '01/06/2027',
     )
 

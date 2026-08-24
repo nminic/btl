@@ -359,4 +359,102 @@ describe('the column a race is read by', () => {
 
     expect(floor.getPropertyValue('min-inline-size')).toBe('8rem')
   })
+
+  it('shares the room with the date, and takes it from the three measures', () => {
+    /* Owner, 23.08.2026, on the picture: „dužina, uspon i spust se sužavaju" so that
+       the name of the race and its date have room. The category came out of the table
+       the same day, which is where that room comes from.
+
+       Both numbers are measured in Chrome at 360px with the default letters, on the
+       screen of an event, and neither is chosen:
+
+       - the date without a floor came out 89,59px, and after the button that opens
+         the calendar and the padding there were 26px left for the field, with
+         „17/10/2026" running 81px past its own edge. At 9,5rem the field was 88px and
+         still 19px short. At 11rem it is 112px and nothing runs over.
+       - the three measures hold „42.20" and „1250" and no more, and the box inside
+         them is told to fill its cell, so left to themselves they take a share as wide
+         as the name they crowd out: 109 and 105 and 101px at 1280px, against 5,5rem
+         asked for here, and the name 162px against the 205px it has now.
+
+       Two rounds measured what the obvious ways cost, and both are worth keeping here
+       because both looked right and were green:
+
+       - `max-inline-size` is a wall the column cannot pass however much it holds, so
+         the values were cut: „42.2" drawn „42." and „506" „50(" from 700px up.
+       - `inline-size` alone is no better, because the field is told to fill its cell
+         and to have no floor of its own: the cell then has no width to push the column
+         with, the column stood at exactly 88,00px on every screen, and „59.27" lost
+         its last digit on the very first race of the very first event.
+
+       What works is to take the room out of the padding rather than out of the digits.
+       At 5,5rem the field is 70px inside its border and was keeping 12px of padding on
+       each side, leaving 46px for a value that a number field also spends some of on
+       its arrows. Four pixels a side hands 16px back. The floor on the field is what
+       keeps the column from falling under that on a narrow screen, where the table is
+       at its smallest and a suggested width loses.
+
+       Measured after all three, with „163.29" and „12345" typed into the row, which is
+       the longest the portal holds: the page does not scroll sideways at 360, 700, 768
+       or 1280, no field runs over at any of them, the columns are 88px at every one,
+       and the box scrolls 313px at 360 and not at all above it. */
+    expect(
+      ruleFor('.entity-races .table th:nth-child(2), .entity-races .table td:nth-child(2)')
+        .getPropertyValue('min-inline-size'),
+      'the date lost its floor',
+    ).toBe('11rem')
+
+    expect(
+      ruleFor(
+        '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
+          '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
+      ).getPropertyValue('inline-size'),
+      'the three measures lost their width',
+    ).toBe('5.5rem')
+
+    /* And a width it is, not a ceiling. Asked by name because the two read the same
+       in a diff and behave differently on the screen: a ceiling cut „42.2" down to
+       „42." at 768px while every test stayed green. */
+    expect(
+      ruleFor(
+        '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
+          '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
+      ).getPropertyValue('max-inline-size'),
+      'the three measures were walled in again',
+    ).toBe('')
+
+    /* And the room comes out of the padding, with a floor under the field so the
+       column cannot fall below what it holds when the table is at its smallest. Both
+       are asked here because the width above is only a suggestion, and a suggestion
+       without these two is what let „59.27" lose a digit with every test green. */
+    const field = ruleFor(
+      '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) .field__control',
+    )
+
+    expect(
+      field.getPropertyValue('padding-inline'),
+      'the measures took their padding back and the digits pay for it',
+    ).toBe('var(--space-4)')
+
+    expect(
+      field.getPropertyValue('min-inline-size'),
+      'the measures lost the floor that holds them open on a narrow screen',
+    ).toBe('4.5rem')
+  })
+
+  it('reads the length from the right, like the two measures beside it', () => {
+    /* The portal reads the first three columns of a table from the left, because in
+       every other table those three are words (`styles/table.css`). Here they were
+       words too until the category came out from between the date and the length, and
+       the length moved into third place: „Dužina" then stood against the left edge
+       while „Uspon" and „Spust" stood against the right.
+
+       Measured in Chrome on the screen of an event: before, the heading of the length
+       computed `text-align: left` and the other two `right`; after, all three read
+       `right`, and 2158 tests were green either way. */
+    expect(
+      ruleFor('.entity-races .table th:nth-child(3)').getPropertyValue('text-align'),
+      'the length reads from the left again, alone among the three measures',
+    ).toBe('right')
+  })
 })

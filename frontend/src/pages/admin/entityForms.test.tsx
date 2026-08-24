@@ -442,39 +442,27 @@ describe('the category of a race', () => {
        entered on already answers that. */
     expect(last().queryByLabelText(/^Kategorija/)).toBeNull()
     expect(last().queryByLabelText(/^Događaj/)).toBeNull()
-    /* And with no length yet it says so rather than naming one. */
-    expect(last().getByText('\u2013')).toBeVisible()
 
+    /* And since 24.08.2026 nothing says it either, because the owner took the column
+       back out („U dodavanju trka na događaju (administriranje) ne treba da postoji
+       Kategorija kolona ipak"). A length typed into the row must add no category.
+
+       Asked after the length is typed and not only before it: the cell was worked out
+       as it was typed, so a row with no length reads the same whether the column is
+       there or not, and asking only the empty row would pass either way. */
     await user.type(last().getByLabelText(/^Dužina/), '42.2')
 
-    expect(last().getByText(t('category.marathon'))).toBeVisible()
+    expect(last().queryByText(t('category.marathon')), 'the row still says a category').toBeNull()
 
     await user.clear(last().getByLabelText(/^Dužina/))
     await user.type(last().getByLabelText(/^Dužina/), '10')
 
-    expect(
-      last().getByText(t('category.short')),
-      'the category is worked out once and then left where it was',
-    ).toBeVisible()
-  })
+    expect(last().queryByText(t('category.short')), 'the row still says a category').toBeNull()
 
-  it('is a hundred metres short of a marathon and says so', async () => {
-    /* PDL P5: by the exact value and with no tolerance. 42,1 km is not a marathon
-       and the board of most marathons must not count it as one. */
-    const user = setupUser()
-
-    await openFirstEvent(user)
-    await user.click(screen.getByRole('button', { name: t('admin.form.new.races') }))
-
-    const rows = within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ })).getAllByRole(
-      'row',
-    )
-    const last = within(must(rows[rows.length - 1], 'the row just opened'))
-
-    await user.type(last.getByLabelText(/^Dužina/), '42.1')
-
-    expect(last.queryByText(t('category.marathon'))).toBeNull()
-    expect(last.getByText(t('category.long'))).toBeVisible()
+    /* The reading itself did not go out with the column. It is asked of the rule
+       rather than of a screen now (`data/raceCategory.test.ts`), which is where it
+       belongs: the boards, the filters and the ducats read it too, and none of them
+       goes through this table. */
   })
 })
 
