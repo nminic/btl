@@ -41,6 +41,7 @@ export function EntityEditor({
   onCreated,
   beneath,
   alsoRefuses,
+  steps,
   titleKey,
   form: drawn,
 }: {
@@ -126,6 +127,9 @@ export function EntityEditor({
    *  and what it refuses that no field of the form can (FormRenderer.tsx). */
   beneath?: (values: FormValues) => ReactNode
   alsoRefuses?: (values: FormValues) => string | undefined
+  /** Days the date field offers beside its calendar; only the copy of an event
+   *  has any (FormRenderer.tsx). */
+  steps?: { label: string; title: string; to: string }[]
   /**
    * Words for the heading, where what the screen is doing is not what the mode
    * says. Copying an event is technically an edit of a record that was written a
@@ -327,6 +331,7 @@ export function EntityEditor({
            races of an event are entered there and saved with it. */
         beneath={beneath}
         alsoRefuses={alsoRefuses}
+        steps={steps}
         onSubmit={handleSubmit}
       />
     </div>

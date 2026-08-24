@@ -2,6 +2,10 @@ import { cleanup, screen, within } from '@testing-library/react'
 import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { loadResource } from '../../data/client'
+import type { BtlEvent } from '../../data/types'
+import { fieldDate, shiftDate } from '../../forms/dateField'
+import { nextSeason } from '../admin/nextSeason'
 
 /* What can be done with an event, from the event's own page (owner,
  * 03.08.2026): copied and deleted by whoever administers events, and reported a
@@ -375,6 +379,64 @@ describe('copying an event', () => {
     expect(date).toHaveFocus()
     /* Everything else came across, so the only thing to do is the date. */
     expect(screen.getByLabelText(/Naziv događaja/)).toHaveValue(name)
+  })
+
+  it('offers a season on and a week on, both counted from the event copied', async () => {
+    /* Owner, 23.08.2026: two buttons of the same height as the calendar's, in the
+       row with the date, „+1y" chosen to begin with and „+1w" exactly seven days
+       after the event being copied. His reason: „veoma zgodno za treninge i
+       nedeljne trkice".
+
+       And both always counted from that event, never from what the box holds now
+       (owner, same day). That is the half that is easy to lose, and it is what makes
+       a button mean one thing: after a day typed by hand, a press goes back to the
+       count from the original, and two presses give what one press gives. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+
+    await openEvent('superadmin')
+
+    /* Found by its address and not by its name: the same race is run every season,
+       so eight events carry this name and only one of them is the morning open. */
+    const copied = must(
+      events.find((one) => one.slug === EVENT.slice(EVENT.lastIndexOf('/') + 1)),
+      'the event being copied',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+
+    const date = await screen.findByLabelText('Datum')
+    const season = screen.getByRole('button', { name: '+1y' })
+    const week = screen.getByRole('button', { name: '+1w' })
+
+    /* A season on to begin with, which is the day the copy already carries. */
+    expect(season).toHaveAttribute('aria-pressed', 'true')
+    expect(week).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(week)
+
+    expect(date, 'a week on is not seven days after the event copied').toHaveValue(
+      fieldDate(shiftDate(copied.date, 7)),
+    )
+    expect(week).toHaveAttribute('aria-pressed', 'true')
+    expect(season).toHaveAttribute('aria-pressed', 'false')
+
+    /* Pressed twice is pressed once. */
+    await user.click(week)
+
+    expect(date).toHaveValue(fieldDate(shiftDate(copied.date, 7)))
+
+    /* And a day typed by hand does not become the thing the buttons count from. */
+    await user.clear(date)
+    await user.type(date, '01012099')
+    expect(season).toHaveAttribute('aria-pressed', 'false')
+    expect(week).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(season)
+
+    expect(date, 'the season on was counted from the day typed by hand').toHaveValue(
+      fieldDate(nextSeason(copied.date)),
+    )
   })
 
   it('keeps the structure: every race copied, and every copy on the copied event', async () => {

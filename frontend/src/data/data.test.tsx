@@ -8,7 +8,7 @@ import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import countries from './countries.json'
 import { plainly } from './places'
-import { FEATURED, ITEM_KINDS } from './types'
+import { EVENT_KINDS, FEATURED, ITEM_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
@@ -422,17 +422,25 @@ describe('the generated data', () => {
        portal is on. The generator lives outside the repo, so this is the only
        place that can notice it writing a word no screen knows.
 
-       All three kinds are asked for, because the calendar carries training and
-       gatherings as well as races (PDL P10) and a generator that quietly wrote
-       every event as a race would leave both untested on every screen. */
+       Two of the three kinds are in the data, and that is the state as of
+       24.08.2026 rather than a weakening: seven events used to be trainings because
+       the generator read the kind out of the name, „BTL trening trek" among them,
+       and every one of them had races and results that people really ran. Once a
+       gathering and a training stopped having races, such an event contradicted
+       itself, and the owner chose to let them be what they were rather than delete
+       seventeen races and forty-four results. No training is left in the archive.
+
+       Written out rather than counted, and both halves asked: no word the portal
+       does not know, and the gathering still there. A count taken off the data would
+       be satisfied by the data itself, and „every kind is known" alone would pass on
+       a file of nothing but races. */
     const events = await loadResource<{ kind: string; status?: string }[]>('events')
+    const kinds = [...new Set(events.map((one) => one.kind))].sort()
 
     expect(events.length).toBeGreaterThan(0)
-    expect([...new Set(events.map((one) => one.kind))].sort()).toEqual([
-      'gathering',
-      'race',
-      'training',
-    ])
+    expect(kinds.every((one) => EVENT_KINDS.some((known) => known === one))).toBe(true)
+    expect(kinds).toContain('gathering')
+    expect(kinds).toContain('race')
     expect(events.filter((one) => one.status !== undefined)).toEqual([])
   })
 

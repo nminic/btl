@@ -28,6 +28,59 @@ function renderPicker(value = '', onChange = vi.fn()) {
   return onChange
 }
 
+describe('a day the box offers beside its calendar', () => {
+  const STEPS = [{ label: '+1w', title: 'sedam dana', to: '15/11/2027' }]
+
+  function renderWithSteps(locked: boolean) {
+    const onChange = vi.fn()
+
+    render(
+      <ClockProvider simulatedDay={TODAY}>
+        <I18nProvider locale="sr">
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            locked={locked}
+            steps={STEPS}
+            onChange={onChange}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    return onChange
+  }
+
+  it('writes its day when the box is open to it', async () => {
+    const user = setupUser()
+    const onChange = renderWithSteps(false)
+
+    await user.click(screen.getByRole('button', { name: '+1w' }))
+
+    expect(onChange).toHaveBeenCalledWith('15/11/2027')
+  })
+
+  it('refuses when the box is held, rather than saying so and doing it anyway', async () => {
+    /* „A lock that is an ornament is worse than none" (PDL). The button stays in the
+       keyboard's path and says it is held, which is what `aria-disabled` is for here,
+       but saying so is not doing so: a control that answers to a press it has just
+       declared refused tells the reader one thing and shows another. The same fault
+       was measured on the calendar button of this very box on 23.08.2026. */
+    const user = setupUser()
+    const onChange = renderWithSteps(true)
+    const step = screen.getByRole('button', { name: '+1w' })
+
+    expect(step).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(step)
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
 describe('DatePicker', () => {
   it('takes a typed date and puts the slashes in', async () => {
     const user = setupUser()
