@@ -58,6 +58,172 @@ describe('the races of an event', () => {
     expect(screen.queryByLabelText('Događaj')).toBeNull()
   })
 
+  it('takes the table away for a gathering, and gives it back for a race', async () => {
+    /* Owner, 23.08.2026, on what changing the kind does: „prvo se sakriju sve trke
+       sa ekrana, ali mogu da se vrate ukoliko vratiš da je tip Trka." So this is
+       two facts and not one, and the second is the one that is easy to lose: the
+       rows are held while the table is hidden rather than thrown away, so coming
+       back finds them as they were. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const was = rowsOfRaces().length
+
+    expect(was).toBeGreaterThan(0)
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+
+    expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Nova trka' })).toBeNull()
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
+
+    expect(rowsOfRaces()).toHaveLength(was)
+  })
+
+  it('will not hold the save over a half typed race the kind has taken away', async () => {
+    /* A row entered and left unfinished stops the press while the event is a race
+       („validacija mi ne da da nastavim dalje"), and must not stop it once the
+       event is a training: there is no table to finish, and that same press is
+       what deletes the rows. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.clear(lastRow().getByLabelText(/^Dužina/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'training')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+
+  it('keeps the day that was typed when the event is saved with no races', async () => {
+    /* An event follows its earliest morning, so a race on an earlier day makes that
+       day the event's (owner, 10.08.2026). A gathering has no mornings to follow,
+       and the same press that saves it takes the rows away.
+
+       Measured by a round before this was guarded: an event on 16/01/2027 saved as a
+       gathering with 15/11/2027 typed in kept January, because a race said so, and
+       the address is derived from the date, so a year's difference left the event
+       answering at the wrong one. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    /* A morning put before the event, which is what the fold is for: on a race this
+       is exactly right, the event moves back to meet it. Typed while the table is
+       still on screen, because that is the only way a row can hold a day of its own
+       rather than the one it followed the event to. */
+    const day = lastRow().getByLabelText(/^Datum, /)
+
+    await user.clear(day)
+    await user.type(day, '01012020')
+
+    const date = screen.getByLabelText('Datum')
+    const asked = inputElement(date).value
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const saved = await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(
+      within(saved).getByText(asked),
+      'a race that this very save deletes moved the day of the event',
+    ).toBeVisible()
+    expect(within(saved).queryByText('01/01/2020')).toBeNull()
+  })
+
+  it('keeps the races following the event while the table is off the screen', async () => {
+    /* The races move with the event by the same number of days (owner, 10.08.2026),
+       and the screen remembers the day they were last lined up with. Taking the
+       table away used to take that memory with it, so the same two moves gave two
+       answers: with the table on screen a date change moved every row, with the kind
+       touched in between they all stayed where they were. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const before = inputElement(lastRow().getByLabelText(/^Datum, /)).value
+
+    expect(before).not.toBe('')
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+
+    const date = screen.getByLabelText('Datum')
+
+    await user.clear(date)
+    await user.type(date, '15112027')
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
+
+    /* On the very day, and not merely somewhere else. The rule is that the rows move
+       **by the same number of days** as the event (owner, 10.08.2026), and a round
+       measured what „somewhere else" costs: the shift changed to one day more left
+       all 2163 tests green, because nothing on any screen said where a row lands.
+       The event went from its own day to 15/11/2027 and this row was the last of
+       them, which is the day it lands on. */
+    expect(
+      inputElement(lastRow().getByLabelText(/^Datum, /)).value,
+      'the row did not follow the event, or did not follow it by the same days',
+    ).toBe('15/11/2027')
+  })
+
+  it('deletes the races it had when it is saved as something other than a race', async () => {
+    /* The other half of the owner's sentence, and the half that writes: „Ako se
+       sačuva kao neki drugi tip, u to čuvanje spada i brisanje svih trka koje su
+       bile povezane."
+
+       Measured through the screen rather than over the store, because what is
+       being asked is that the save does it: hiding the table is not deleting, and
+       the two were one moment in the first version of this. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    expect(rowsOfRaces().length).toBeGreaterThan(0)
+
+    /* And a row opened but never saved goes with them rather than becoming one.
+       Measured by a round: with the write left unguarded, this row was created as a
+       real race under the gathering, and all 214 tests of the administration stayed
+       green. It is typed into, so it is a row somebody meant. */
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await fill(user, lastRow(), { km: '12' })
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Opened again off the list already on the screen rather than by rendering
+       the screen a second time: what is being asked is what the save left behind,
+       and a second render would answer with a second copy of the list. */
+    const again = await table('Događaji')
+
+    await user.click(within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori/ }))
+
+    const form = within(await screen.findByRole('form', { name: /^Izmena događaja/ }))
+
+    expect(form.getByLabelText(/^Vrsta događaja/), 'the kind did not survive the save').toHaveValue(
+      'gathering',
+    )
+
+    await user.selectOptions(form.getByLabelText(/^Vrsta događaja/), 'race')
+
+    /* And the section says there are none rather than drawing an empty table,
+       which is what an event with no races looks like anywhere else. Asked for the
+       words, because the table this test began with is gone: `rowsOfRaces` would
+       fail to find it and say so as though the section itself were missing. */
+    expect(await screen.findByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
+    expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+    expect(screen.getByText('Ovaj događaj još nema nijednu trku.')).toBeVisible()
+  })
+
   /** The table of races on the open event, and one row of it. */
   function races() {
     return within(screen.getByRole('table', { name: /^Trke na događaju/ }))
@@ -1624,6 +1790,88 @@ describe('an event that is deleted', () => {
 
     for (const result of scored) {
       expect(dropped, `${result} went with its event`).toContain(result)
+    }
+  })
+
+  it('takes the results too when an event is saved as something with no races', async () => {
+    /* Saving an event as a gathering or a training deletes the races it had (owner,
+       23.08.2026: „u to čuvanje spada i brisanje svih trka koje su bile povezane").
+       The results of those races are not named in that sentence, and they are taken
+       as well, because the portal already does it at both of its other mass
+       deletions and says why: a result of a race that does not exist goes on
+       counting in the standing and in the boards.
+
+       Measured by a round before this was here: an event with twelve races saved as
+       a gathering deleted all twelve and left thirteen results behind. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const scoredAt = await loadResource<Result[]>('results')
+    const one = must(
+      events.find(
+        (each) =>
+          each.kind === 'race' &&
+          races.some((race) => race.eventId === each.id) &&
+          scoredAt.some((result) => result.eventSlug === each.slug) &&
+          !events.some((other) => other.id !== each.id && other.slug === each.slug),
+      ),
+      'a race with both races and results, answering at an address of its own',
+    )
+    const its = races.filter((race) => race.eventId === one.id).map((race) => race.id)
+    const scored = scoredAt.filter((each) => each.eventSlug === one.slug).map((each) => each.id)
+
+    expect(its.length).toBeGreaterThan(0)
+    expect(scored.length).toBeGreaterThan(0)
+
+    render(
+      <ClockProvider>
+        <I18nProvider locale="sr">
+          <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
+            <RoleProvider initialRole="superadmin" initialModerator={null}>
+              <SessionProvider>
+                <Removed />
+                <Routes>
+                  <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
+                </Routes>
+              </SessionProvider>
+            </RoleProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), one.name)
+
+    const shown = formatShortDate(one.date, 'sr-Latn')
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(one.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      'that event in the list',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+
+    const form = within(await screen.findByRole('form', { name: /^Izmena događaja/ }))
+
+    await user.selectOptions(form.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    const removed = (screen.getByTestId('removed').textContent ?? '').split(',')
+    const dropped = (screen.getByTestId('removed-results').textContent ?? '').split(',')
+
+    for (const race of its) {
+      expect(removed, `${race} stayed under an event that has no races`).toContain(race)
+    }
+
+    for (const result of scored) {
+      expect(dropped, `${result} was left pointing at a race that is gone`).toContain(result)
     }
   })
 })

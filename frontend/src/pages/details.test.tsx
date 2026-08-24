@@ -1,5 +1,5 @@
 import { slugify } from './rulebookToc'
-import { act, screen, within } from '@testing-library/react'
+import { act, cleanup, screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import type { BtlEvent, Race } from '../data/types'
 import { at, first, last, must } from '../test/at'
@@ -231,6 +231,40 @@ describe('EventDetail, the results of the league members who ran it', () => {
          change in the generated data says so instead of quietly moving the link. */
       expect(one).toHaveAttribute('href', `/sr/takmicar/000001-${slugify(runner)}`)
     }
+  })
+
+  it('draws no table of races for an event that has none', async () => {
+    /* Owner, 23.08.2026: a gathering and a training „i dalje stoji u kalendaru, može
+       se otvoriti, i pokazuje detalje, opis i link ka strani organizatora ako
+       postoji, ali bez trka".
+
+       Measured by a round before this was here: a gathering drew a table with four
+       headings and no rows, which is exactly the „a race whose distances nobody has
+       entered yet" that its tile in the calendar was given its own colour to deny,
+       so the tile and the page said opposite things. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const gathering = must(
+      events.find((one) => one.kind === 'gathering'),
+      'a gathering in the data',
+    )
+
+    renderAt(`/sr/kalendar/${gathering.slug}`)
+
+    expect(await screen.findByRole('heading', { level: 1, name: gathering.name })).toBeVisible()
+    expect(screen.queryByRole('table', { name: /^Trke/ })).toBeNull()
+    expect(screen.queryByRole('columnheader', { name: 'Dužina' })).toBeNull()
+
+    /* And a race still has one, so this is not a page that lost its table for
+       everybody. */
+    const race = must(
+      events.find((one) => one.kind === 'race'),
+      'a race in the data',
+    )
+
+    cleanup()
+    renderAt(`/sr/kalendar/${race.slug}`)
+
+    expect(await screen.findByRole('table', { name: /^Trke/ })).toBeVisible()
   })
 })
 

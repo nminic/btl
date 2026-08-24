@@ -59,7 +59,7 @@ type Props = {
    * saving the event without it would file a morning that has nothing running on
    * it.
    */
-  alsoRefuses?: () => string | undefined
+  alsoRefuses?: (values: FormValues) => string | undefined
   /** What the fields start out holding. Empty when nothing is handed in, which
    *  is a form that creates something rather than one that changes it. */
   initial?: FormValues
@@ -821,7 +821,7 @@ export function FormRenderer({
     /* Asked on the press and not while typing, like every other rule this form
        keeps: a row half entered is not a fault until somebody says they are
        finished. */
-    const beyond = alsoRefuses?.()
+    const beyond = alsoRefuses?.(onScreen(filled))
 
     setRefused(beyond)
 

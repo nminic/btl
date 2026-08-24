@@ -200,8 +200,48 @@ describe('Calendar', () => {
     const dots = container.querySelectorAll('.chip .length-dot')
     expect(dots.length).toBeGreaterThan(0)
     expect([...dots].every((dot) => dot.getAttribute('aria-hidden') === 'true')).toBe(true)
-    expect(within(screen.getByRole('list', { name: 'Legenda:' })).getAllByRole('listitem'))
-      .toHaveLength(5)
+    /* Eight and not five since 24.08.2026: the three kinds of event stand over the
+       five lengths, because the colour of the whole tile says which kind it is and
+       the dots on it say which lengths it holds (owner: „Za Skup i Trening koristi
+       druge boje i objasni ih u legendi"). Written out rather than counted off the
+       two lists this reads from, since a count taken from them would be satisfied
+       by either list falling to nothing. */
+    const legend = within(screen.getByRole('list', { name: 'Legenda:' }))
+
+    expect(legend.getAllByRole('listitem')).toHaveLength(8)
+    expect(legend.getAllByRole('listitem').map((one) => one.textContent).slice(0, 3)).toEqual([
+      'Trka',
+      'Trening',
+      'Skup',
+    ])
+  })
+
+  it('says which kind a tile is, in words as well as in colour', async () => {
+    /* Owner, 23.08.2026: „Za Skup i Trening koristi druge boje i objasni ih u
+       legendi", and clearly different from a race rather than a near shade of it.
+       A gathering and a training carry no lengths, so without this they read as a
+       race whose distances nobody has entered yet.
+
+       The colour is measured in a browser and cannot be measured here (ADL A18).
+       What is asked here is the half jsdom can hold, and it is the half that makes
+       the colour lawful: the word travels with it. Without the word the tile rests
+       on colour alone, which SC 1.4.1 forbids, and a reader who cannot separate a
+       violet from a blue has nothing at all. */
+    const { container } = renderAt('/sr/kalendar?mesec=2027-03')
+
+    await screen.findByRole('heading', { level: 2, name: 'mart 2027.' })
+
+    const gathering = container.querySelector('.chip--gathering')
+
+    expect(gathering, 'no tile of a gathering to look at').not.toBeNull()
+    expect(gathering?.textContent, 'the tile does not say it is a gathering').toContain('Skup')
+
+    /* And a race says nothing of the sort, which is the other half: the calendar
+       is made of races, and a word on every one of them would be read out on every
+       tile of every day. */
+    const race = container.querySelector('.chip:not(.chip--gathering):not(.chip--training)')
+
+    expect(race?.textContent, 'a race tile names its kind').not.toContain('Trka')
   })
 
   it('leads from a chip to the event', async () => {

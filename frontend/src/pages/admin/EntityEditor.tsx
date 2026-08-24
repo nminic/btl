@@ -125,7 +125,7 @@ export function EntityEditor({
   /** What the screen draws between the fields and the button that sends them,
    *  and what it refuses that no field of the form can (FormRenderer.tsx). */
   beneath?: (values: FormValues) => ReactNode
-  alsoRefuses?: () => string | undefined
+  alsoRefuses?: (values: FormValues) => string | undefined
   /**
    * Words for the heading, where what the screen is doing is not what the mode
    * says. Copying an event is technically an edit of a record that was written a

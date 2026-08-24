@@ -34,8 +34,23 @@ export function EventChip({ event, races }: { event: BtlEvent; races: Race[] }) 
   const lengths = categoriesAt(event, races)
 
   return (
-    <Link className="chip" to={`/${locale}/kalendar/${event.slug}`} title={event.name}>
+    <Link
+      /* A gathering and a training take a colour of their own, because they carry
+         no lengths and would otherwise read as a race whose distances nobody has
+         entered yet (owner, 23.08.2026). A race keeps the tile it always had, so
+         it takes no modifier. */
+      className={event.kind === 'race' ? 'chip' : `chip chip--${event.kind}`}
+      to={`/${locale}/kalendar/${event.slug}`}
+      title={event.name}
+    >
       <span className="chip__name">{event.name}</span>
+      {/* And the word beside the colour, for whoever cannot separate two of them
+          (WCAG 2.2 SC 1.4.1). Only where the tile is not a race: a race is what
+          the calendar is made of, and saying so on every one of them would be
+          read out on every tile of every day. */}
+      {event.kind !== 'race' && (
+        <span className="visually-hidden">{t(`event.kind.${event.kind}`)}</span>
+      )}
       <span className="chip__lengths">
         {lengths.map((one) => (
           <span key={one} className={`length-dot length-dot--${one}`} aria-hidden="true" />

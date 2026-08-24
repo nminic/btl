@@ -17,7 +17,7 @@ import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { dogadjaj } from '../../forms/definitions'
-import type { FormDef } from '../../forms/types'
+import type { FormDef, FormValues } from '../../forms/types'
 import type { Race } from '../../data/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
@@ -240,6 +240,25 @@ export function AdminEvents() {
               setHeld({ of: under, rows: next })
             }
 
+            /**
+             * Which kind of event the form in front of us is, on a screen where
+             * the form does not always ask.
+             *
+             * A copy is not asked for its town, its country or its kind: it has
+             * all three from the event it was copied from and none of them is in
+             * question (owner, 23.08.2026), so `copyOfEvent` leaves the field out
+             * and the values carry no kind at all. Read off the form where it is
+             * there and off the record behind it where it is not.
+             *
+             * No third answer, and that is measured rather than assumed: a new
+             * event is asked for its kind and opens on Trka (`entityForms.ts`,
+             * `start`), and the one form that does not ask is a copy, which always
+             * has the event it was copied from. A fallback of „race" written here
+             * was a branch no test could reach.
+             */
+            const kindOf = (values: FormValues): string =>
+              String(values.kind ?? openEvent?.kind)
+
             return (
               <>
                 {(
@@ -251,6 +270,17 @@ export function AdminEvents() {
                        fields it carries, so what is not asked stays as it was. */
                     form={copying ? copyOfEvent : undefined}
                     titleKey={copying ? 'admin.form.copying' : undefined}
+                    /* And nothing at all beneath a gathering or a training, which
+                       have no races (owner, 23.08.2026). The rows are kept where
+                       they are rather than thrown away, because the owner said in
+                       the same breath what changing the kind does and does not do:
+                       „prvo se sakriju sve trke sa ekrana, ali mogu da se vrate
+                       ukoliko vratiš da je tip Trka. Ako se sačuva kao neki drugi
+                       tip, u to čuvanje spada i brisanje svih trka koje su bile
+                       povezane."
+
+                       So this hides and the save deletes, and the two are not the
+                       same moment. */
                     beneath={(values) => (
                       <EventRaces
                         eventName={
@@ -260,18 +290,79 @@ export function AdminEvents() {
                         rows={current}
                         onRows={setCurrent}
                         refused={refused}
+                        /* Handed the kind rather than left off the screen when it is
+                           not a race: it draws nothing either way, but kept here it
+                           goes on remembering the day the rows were lined up with.
+                           Taken off, it forgets, and the rows stop following the
+                           event as soon as somebody touches the kind. */
+                        hasRaces={kindOf(values) === 'race'}
                       />
                     )}
                     /* One press writes the event and every one of its mornings, so
                        one unfinished row is the whole press refused (owner,
                        23.08.2026: „validacija mi ne da da nastavim dalje dok svaki
                        red nema sve obavezne podatke"). */
-                    alsoRefuses={() => {
-                      const short = !allFinished(current)
+                    alsoRefuses={(values) => {
+                      /* And nothing to refuse where there are no races to finish:
+                         a gathering or a training has no table at all, so a row
+                         left half typed before the kind was changed must not hold
+                         the save. It is deleted by that save rather than asked
+                         about (owner, 23.08.2026). */
+                      const short = kindOf(values) === 'race' && !allFinished(current)
 
                       setRefused(short)
 
-                      return short ? 'admin.form.racesRefused' : undefined
+                      if (short) {
+                        return 'admin.form.racesRefused'
+                      }
+
+                      /* And a save that would take the races away waits for the
+                         results, exactly as the row that deletes the whole event
+                         does (`admin.waitingForResults` below). Until that file is
+                         here there is nothing to take along, and a round measured
+                         what that costs: with the results refused, every race went
+                         and every result stayed, each still counting in the standing
+                         and pointing at a race that does not exist, while the screen
+                         said „Sačuvano".
+
+                         Asked of the state and not of the list: an empty list is the
+                         same answer for a file still on its way, a file that failed,
+                         and an event that truly has no results.
+
+                         And only where this save would really take something away.
+                         Measured by a round: asked of the kind alone, a gathering
+                         with no races at all, and a gathering being entered for the
+                         first time, were both refused while the file of results was
+                         on its way, over a deletion that was never going to happen,
+                         with a message about deleting. That file is the largest the
+                         portal has, and this screen is built to work without it.
+
+                         The two words the delete row uses, and for the same reason:
+                         a file on its way and a file that failed are not the same
+                         news, and „waiting" over a file that will never come is a
+                         screen that asks somebody to wait forever. */
+                      /* Counted over what the save really deletes, which is the list
+                         as it was filed and not the rows on the screen. Measured by a
+                         round when it was counted over the rows: delete the one row
+                         of an event, change the kind, press Sačuvaj, and the guard
+                         let it through while the save still took that race down and
+                         left its result behind, counting in the standing and pointing
+                         at a race that is gone.
+
+                         Races and not results, and that is the whole of it: a result
+                         only exists where a race did, so an event with no filed race
+                         has nothing on its address either. Which is also why the case
+                         of results without races is closed here rather than measured:
+                         the only way to make one was the fault above. */
+                      const takesAway =
+                        kindOf(values) !== 'race' &&
+                        allRaces.some((one) => String(one.eventId) === under)
+
+                      if (!takesAway || results !== null) {
+                        return undefined
+                      }
+
+                      return resultsFailed ? 'admin.resultsFailed' : 'admin.waitingForResults'
                     }}
                     editing={
                       openEvent === undefined ? editing : { mode: 'one', record: openEvent }
@@ -321,16 +412,60 @@ export function AdminEvents() {
                      * The day the event begins is folded into the values before
                      * any of this, in `alsoFolds` below.
                      */
-                    alsoSave={(_values, written) => {
+                    alsoSave={(values, written) => {
                       const was = allRaces.filter((one) => String(one.eventId) === written)
-                      const kept = new Set(
-                        current.filter((row) => row.id !== '').map((row) => row.id),
-                      )
+
+                      /* A gathering or a training has no races, and saving one as
+                         such is what takes the races it used to have away. Owner,
+                         23.08.2026, on what changing the kind does and does not do:
+                         „prvo se sakriju sve trke sa ekrana, ali mogu da se vrate
+                         ukoliko vratiš da je tip Trka. Ako se sačuva kao neki drugi
+                         tip, u to čuvanje spada i brisanje svih trka koje su bile
+                         povezane."
+
+                         So the rows are kept on the screen while the table is
+                         hidden, and nothing is written for them here: they are all
+                         unkept, and the loop below has nothing to walk. */
+                      const kept =
+                        kindOf(values) === 'race'
+                          ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
+                          : new Set<string>()
 
                       for (const race of was) {
                         if (!kept.has(race.id)) {
                           remove(RACES.id, race.id)
                         }
+                      }
+
+                      /* And the results of the races that just went, because a result
+                         of a race that does not exist still counts in the standings
+                         and in the boards. Measured by a round before this was here:
+                         an event with twelve races saved as a gathering deleted all
+                         twelve and left thirteen results behind.
+                       *
+                         Not asked of the owner, because it follows from what the
+                         portal already does at both of its other mass deletions: the
+                         row that removes an event and the button on the event's own
+                         page each take the results down with the races, and each says
+                         why. Written here in the same shape, including the one guard
+                         those two carry: while two events answer at one address there
+                         is no telling whose result is whose, so the results are left
+                         rather than taken with somebody else's. */
+                      /* The address is read off the record and not off the values:
+                         it is derived rather than asked for, so the form carries no
+                         `slug` at all. Written out of the values it was `undefined`,
+                         nothing matched it, and every result stayed while the races
+                         went. Changing the kind does not move the address, so the
+                         record's own is the one the results point at. */
+                      const address = String(openEvent?.slug ?? '')
+                      const shares =
+                        address === '' ||
+                        all.some((each) => String(each.id) !== written && each.slug === address)
+
+                      for (const result of kindOf(values) === 'race' || shares
+                        ? []
+                        : allResults.filter((each) => each.eventSlug === address)) {
+                        remove(RESULTS, result.id)
                       }
 
                       /* Counted up from the highest number already used, over every
@@ -343,7 +478,7 @@ export function AdminEvents() {
                         `${written}-trka-`,
                       )
 
-                      for (const row of current) {
+                      for (const row of kindOf(values) === 'race' ? current : []) {
                         if (row.id === '') {
                           create(RACES.id, `${written}-trka-${String(next)}`, storedRow(row, written))
                           next += 1
@@ -367,7 +502,18 @@ export function AdminEvents() {
                      * Measured 23.08.2026.
                      */
                     alsoFolds={(values) => {
-                      const first = current
+                      /* And only where there are races to follow. A gathering or a
+                         training has none, and the same press that saves it takes
+                         the rows away, so a row still standing must not decide the
+                         day.
+
+                         Measured by a round before this line was here: an event on
+                         16/01/2027 saved as a gathering with 15/11/2027 typed in
+                         kept 16/01/2027, because the earliest race said so, and the
+                         address is derived from the date, so a year's difference
+                         left the event answering at the wrong one. The day a person
+                         typed was overruled by a race that press deleted. */
+                      const first = (kindOf(values) === 'race' ? current : [])
                         .map((row) => isoDate(row.date))
                         .filter((day) => day !== '')
                         .sort()[0]

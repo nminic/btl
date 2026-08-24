@@ -1,4 +1,5 @@
 import { CATEGORIES } from '../../data/derive'
+import { EVENT_KINDS } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 /* For the five colours of `.length-dot`, which live in the table sheet because
    the results table draws them too (styles/table.css). Asked for here rather
@@ -32,6 +33,20 @@ export function LengthLegend() {
       {/* Named by the words beside it, so a screen reader meets the list already
           knowing what it is a list of rather than after five colours. */}
       <ul className="legend__items" aria-labelledby="legend-title">
+        {/* The three kinds of event first, because that is what the whole tile is
+            coloured by, and the lengths are the dots on it. Owner, 23.08.2026:
+            „Za Skup i Trening koristi druge boje i objasni ih u legendi." All
+            three and not only the two that are new: a reader learns a code by
+            seeing it whole, and the colour of a race was never named either. */}
+        {EVENT_KINDS.map((one) => (
+          <li key={one} className="legend__item">
+            <span
+              className={one === 'race' ? 'legend__tile' : `legend__tile legend__tile--${one}`}
+              aria-hidden="true"
+            />
+            {t(`event.kind.${one}`)}
+          </li>
+        ))}
         {CATEGORIES.map((one) => (
           <li key={one} className="legend__item">
             <span className={`length-dot length-dot--${one}`} aria-hidden="true" />

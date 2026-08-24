@@ -28,13 +28,21 @@ describe('a day of the month', () => {
 
        **The value is measured, and both of its parts are.** What has to fit inside a
        day is five length dots and the gap before them, drawn in the reader's own
-       letters, **plus four pixels that are not**: one of the day's border and three
-       of the tile's. A floor written wholly in `rem` is right at exactly one size of
-       text, and that is not a detail: `5.5rem` removed the overflow and brought the
-       page scroll back, 38px at 1560px on 200% text, on every one of the 216 months,
-       because the grid gets `.shell__main` and its `max-width: 1100px` is in pixels
-       and does not grow with the letters. `calc(5.125rem + 4px)` gives zero of both
-       across all 216 months at 1560/200% and across 72 further combinations.
+       letters, **plus the pixels that are not**: one of the day's border and the
+       tile's left edge. A floor written wholly in `rem` is right at exactly one size
+       of text, and that is not a detail: `5.5rem` removed the overflow and brought
+       the page scroll back, 38px at 1560px on 200% text, on every one of the 216
+       months, because the grid gets `.shell__main` and its `max-width: 1100px` is in
+       pixels and does not grow with the letters. `calc(5.125rem + 4px)` gave zero of
+       both across all 216 months at 1560/200% and across 72 further combinations.
+
+       Four, and it stayed four when the tiles of a gathering and a training took a
+       wider edge on 24.08.2026. It was raised to seven for a day, since a border of
+       six pixels makes the tile three wider and the day three wider again. Measured,
+       that cost more than it bought: at 1560px on 200% text the page began to scroll
+       sideways by 3px, which is what this floor exists to prevent. The wider edge is
+       painted inside the tile instead, so the tile keeps its width and four goes on
+       describing it.
 
        Asked as the string the parser gives back, which puts the pixels first: jsdom
        normalises `calc()` and reorders its terms, so what is written in the sheet

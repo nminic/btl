@@ -386,8 +386,17 @@ export function EventDetail() {
 
               {/* No heading over it since 23.08.2026 (owner: „Naslov TRKE ne
                   treba da postoji"). The table names itself in a caption a
-                  screen reader reads and nobody sees. */}
-              <RaceTable event={event} />
+                  screen reader reads and nobody sees.
+
+                  And nothing at all for a gathering or a training, which have no
+                  races (owner, 23.08.2026): such an event „i dalje stoji u
+                  kalendaru, može se otvoriti, i pokazuje detalje, opis i link ka
+                  strani organizatora ako postoji, ali bez trka". Measured by a
+                  round before this line was here: a gathering drew a table with
+                  four headings and no rows, which is exactly the „a race whose
+                  distances nobody has entered yet" that its tile was given its own
+                  colour to deny, so the tile and the page said opposite things. */}
+              {event.kind === 'race' && <RaceTable event={event} />}
 
               <EventResults slug={event.slug} date={event.date} />
 
