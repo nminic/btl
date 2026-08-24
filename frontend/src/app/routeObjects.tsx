@@ -142,12 +142,15 @@ const DETAILS: RouteObject[] = [
   { path: 'liga/:slug/rezultati', element: <LeagueDetail part="results" /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
-  /* The seven verification queues (PDL P28a). The addresses live in QUEUES,
-     which is also what the list of queues links with, so a queue cannot end up
-     with a row that points nowhere. */
+  /* The six verification queues (PDL P28a). The addresses live in QUEUES, which
+     is also what the list of queues links with, so a queue cannot end up with a
+     row that points nowhere.
+
+     Seven until 24.08.2026, when the proposed leagues left: a league is not
+     proposed by anybody, the Administrator makes it (owner, 23.08.2026), so a
+     queue for deciding on proposals had nothing that could ever reach it. */
   { path: QUEUE.results.path, element: <ReviewQueue /> },
   { path: QUEUE.payments.path, element: <Payments /> },
-  { path: QUEUE.leagues.path, element: <PendingQueue queue={QUEUE.leagues} /> },
   { path: QUEUE.teams.path, element: <PendingQueue queue={QUEUE.teams} /> },
   { path: QUEUE.profiles.path, element: <PendingQueue queue={QUEUE.profiles} /> },
   { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },

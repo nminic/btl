@@ -81,60 +81,6 @@
     }
   },
   {
-    "id": "ver-lig-1",
-    "queue": "leagues",
-    "date": "2026-07-21",
-    "memberNumber": "000004",
-    "who": "Časlav Radenković",
-    "subject": "Zimska planinska liga 2027",
-    "body": "Šest zimskih planinskih trka, od decembra do marta. Bodovanje je isto kao u glavnoj ligi, a poredak se vodi odvojeno po polu.",
-    "currentDate": "",
-    "proposedDate": "",
-    "email": "",
-    "city": "",
-    "country": "",
-    "subjectId": "",
-    "rating": {
-      "organisation": 0,
-      "value": 0,
-      "ambience": 0
-    },
-    "kind": "",
-    "picture": "",
-    "crop": {
-      "x": 0.5,
-      "y": 0.5,
-      "size": 1
-    }
-  },
-  {
-    "id": "ver-lig-2",
-    "queue": "leagues",
-    "date": "2026-07-21",
-    "memberNumber": "000005",
-    "who": "Bogoljub Nikolajević",
-    "subject": "Liga stepenika",
-    "body": "Trke uz stepenište kroz celu godinu, na kulama i stadionima.",
-    "currentDate": "",
-    "proposedDate": "",
-    "email": "",
-    "city": "",
-    "country": "",
-    "subjectId": "",
-    "rating": {
-      "organisation": 0,
-      "value": 0,
-      "ambience": 0
-    },
-    "kind": "",
-    "picture": "",
-    "crop": {
-      "x": 0.5,
-      "y": 0.5,
-      "size": 1
-    }
-  },
-  {
     "id": "ver-tim-1",
     "queue": "teams",
     "date": "2026-07-24",
