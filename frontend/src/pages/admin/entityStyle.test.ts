@@ -359,4 +359,38 @@ describe('the column a race is read by', () => {
 
     expect(floor.getPropertyValue('min-inline-size')).toBe('8rem')
   })
+
+  it('shares the room with the date, and takes it from the three measures', () => {
+    /* Owner, 23.08.2026, on the picture: „dužina, uspon i spust se sužavaju" so that
+       the name of the race and its date have room. The category came out of the table
+       the same day, which is where that room comes from.
+
+       Both numbers are measured in Chrome at 360px with the default letters, on the
+       screen of an event, and neither is chosen:
+
+       - the date without a floor came out 89,59px, and after the button that opens
+         the calendar and the padding there were 26px left for the field, with
+         „17/10/2026" running 81px past its own edge. At 9,5rem the field was 88px and
+         still 19px short. At 11rem it is 112px and nothing runs over.
+       - the three measures hold „42.20" and „1250" and no more, and the box inside
+         them is told to fill its cell, so without a ceiling they take a share as wide
+         as the name they crowd out: 85,61px each at 1280px, against 5,5rem.
+
+       Measured after both: the page does not scroll sideways at 360, 700 or 768, the
+       box scrolls 222px at 360 and not at all at 700 or 768, and the button at the end
+       of the row is drawn whole at every one of the three. */
+    expect(
+      ruleFor('.entity-races .table th:nth-child(2), .entity-races .table td:nth-child(2)')
+        .getPropertyValue('min-inline-size'),
+      'the date lost its floor',
+    ).toBe('11rem')
+
+    expect(
+      ruleFor(
+        '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
+          '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
+      ).getPropertyValue('max-inline-size'),
+      'the three measures lost their ceiling',
+    ).toBe('5.5rem')
+  })
 })

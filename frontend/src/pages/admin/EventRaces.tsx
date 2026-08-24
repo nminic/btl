@@ -1,5 +1,4 @@
 import { DatePicker } from '../../forms/DatePicker'
-import { categoryOf } from '../../data/raceCategory'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
@@ -172,13 +171,17 @@ export function EventRaces({
             </caption>
             <thead>
               <tr>
-                {/* The name first, because it is what the row is read by, and the
-                    category beside it (owner, 23.08.2026: „u okviru događaja
-                    editabilno polje Trka treba da bude u prvoj koloni, dok će se
-                    druga kolona zvati Kategorija, a zatim slede dužina, uspon,
-                    spust itd."). */}
+                {/* The name first, because it is what the row is read by (owner,
+                    23.08.2026: „u okviru događaja editabilno polje Trka treba da
+                    bude u prvoj koloni").
+
+                    The category used to stand beside it and was taken back out the
+                    same day: „U dodavanju trka na događaju (administriranje) ne
+                    treba da postoji Kategorija kolona ipak." It was read off the
+                    length and never asked for, so nothing is lost that the length
+                    beside it does not already say, and the room it took is what the
+                    button at the end of the row was missing. */}
                 <th scope="col">{t('admin.field.raceName')}</th>
-                <th scope="col">{t('event.category')}</th>
                 {/* The day, because an event may run over more than one (owner,
                     10.08.2026). */}
                 <th scope="col">{t('admin.field.raceDate')}</th>
@@ -208,15 +211,6 @@ export function EventRaces({
                          (owner, 23.08.2026). */
                       onChange={(event) => change(at, { name: event.target.value, renamed: 'yes' })}
                     />
-                  </td>
-                  {/* Read off the length and never asked for, which is the rule the
-                      portal has always kept: there is nothing to decide and nothing
-                      to get wrong (data/raceCategory.ts). An empty length has no
-                      category yet, and a dash says so without pretending to one. */}
-                  <td>
-                    {Number(row.distanceKm) > 0
-                      ? t(`category.${categoryOf(Number(row.distanceKm))}`)
-                      : '–'}
                   </td>
                   <td>
                     <DatePicker

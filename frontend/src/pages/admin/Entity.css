@@ -236,3 +236,35 @@
 .entity-races .table td:first-child {
   min-inline-size: 8rem;
 }
+
+/* And the date beside it, which the owner named in the same breath as the name
+   („dužina, uspon i spust se sužavaju toliko da ostane dovoljno mesta za naziv trke
+   i datum", 23.08.2026, uz sliku).
+ *
+ * Measured in Chrome at 360px with the default letters, before the floor: the column
+ * came out 89,59px, and after the button that opens the calendar and the padding
+ * there were 26px left for the field, with „17/10/2026" running 81px past its own
+ * edge. A date that cannot be read is worse than one that is not shown.
+ *
+ * Eleven rem is the field, the button beside it and the padding at the default size,
+ * measured rather than chosen: at 9,5rem the field came out 88px and „17/10/2026"
+ * still ran 19px past its own edge. It grows with the reader's letters like every
+ * other floor here. */
+.entity-races .table th:nth-child(2),
+.entity-races .table td:nth-child(2) {
+  min-inline-size: 11rem;
+}
+
+/* And the three measures give room back, because they never hold much: a length is
+   „42.20", a climb „1250", and the box is told to fill its cell, so without a ceiling
+   they take a share as wide as the name they crowd out. Owner, 23.08.2026, on the
+   picture: the length, the climb and the drop narrow enough that the name of the race
+   and its date have room.
+ *
+ * A ceiling and not a fixed width, so a reader with larger letters still gets a box
+ * that fits what is typed into it. Measured in Chrome, page not scrolling sideways at
+ * 360, 700 and 768 with the default letters. */
+.entity-races .table th:nth-child(n + 3):nth-child(-n + 5),
+.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) {
+  max-inline-size: 5.5rem;
+}

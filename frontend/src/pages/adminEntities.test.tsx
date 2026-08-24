@@ -240,10 +240,11 @@ describe('the races of an event', () => {
     expect(first).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('puts the name first and the category second, which is what the floor is written on', async () => {
+  it('puts the name first and no category at all, which is what the floor is written on', async () => {
     /* Owner, 23.08.2026: „u okviru događaja editabilno polje Trka treba da bude u
-       prvoj koloni, dok će se druga kolona zvati Kategorija, a zatim slede dužina,
-       uspon, spust itd."
+       prvoj koloni". The category stood second until the same day, when it was taken
+       back out: „U dodavanju trka na događaju (administriranje) ne treba da postoji
+       Kategorija kolona ipak."
 
        Asked here and not only in the stylesheet, because the floor that makes the
        name readable is written on `td:first-child` (`Entity.css`): which column that
@@ -256,7 +257,6 @@ describe('the races of an event', () => {
 
     expect(table.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
       'Trka',
-      'Kategorija',
       'Dan trke',
       'Dužina',
       'Uspon',
@@ -279,13 +279,13 @@ describe('the races of an event', () => {
        stayed green while a screen reader read „Dužina: 17/10/2026" (WCAG 2.2 SC
        1.3.1). The same shape is already used for the tables of the portal in
        `styles/tableWidths.test.ts`. */
-    expect(cells.length, 'the row and the heading are not the same width').toBe(7)
+    expect(cells.length, 'the row and the heading are not the same width').toBe(6)
 
-    /* Every one of the seven, not five of them: two were left out as „has no control
-       of its own", and a round measured what that cost — swapping the category and
-       the „Obriši" button leaves the heading „Kategorija … Zapis" over cells reading
-       „Obriši … Maraton", and all 2154 tests stay green. The two without controls are
-       asked by what they hold instead. */
+    /* Every one of the six, not five of them: the last was left out as „has no control
+       of its own", and a round measured what that cost — swapping a read-only cell and
+       the „Obriši" button leaves the heading standing over cells that say something
+       else, and all 2154 tests stay green. The one without a control is asked by what
+       it holds instead. */
     const named = [
       /^Trka,/,
       /^Dan trke,/,
@@ -293,7 +293,7 @@ describe('the races of an event', () => {
       /^Uspon \(m\),/,
       /^Spust \(m\),/,
     ] as const
-    const at = [0, 2, 3, 4, 5] as const
+    const at = [0, 1, 2, 3, 4] as const
 
     for (const [which, asked] of named.entries()) {
       const where = at[which] ?? 0
@@ -304,16 +304,19 @@ describe('the races of an event', () => {
       ).not.toBeNull()
     }
 
-    /* The category is read off the length and has no control; the last cell is the
-       one button of the row. */
+    /* The last cell is the one button of the row. */
     expect(
-      must(cells[1], 'the category').textContent,
-      'the second cell is not the category',
-    ).toBe('Maraton')
-    expect(
-      within(must(cells[6], 'the record')).queryByRole('button', { name: /^Obriši/ }),
+      within(must(cells[5], 'the record')).queryByRole('button', { name: /^Obriši/ }),
       'the last cell is not the one that removes the row',
     ).not.toBeNull()
+
+    /* And no cell of the row says a category any more, which is the thing the owner
+       took out. Asked by what it would hold: „Maraton" is what the first race of the
+       fixture read before. */
+    expect(
+      cells.map((one) => one.textContent),
+      'a cell still reads a category',
+    ).not.toContain('Maraton')
   })
 
   it('names every control in a row by the row it is in', async () => {
