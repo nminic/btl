@@ -115,6 +115,13 @@ describe('the races of an event', () => {
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
     expect(rowsOfRaces().length).toBeGreaterThan(0)
 
+    /* And a row opened but never saved goes with them rather than becoming one.
+       Measured by a round: with the write left unguarded, this row was created as a
+       real race under the gathering, and all 214 tests of the administration stayed
+       green. It is typed into, so it is a row somebody meant. */
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await fill(user, lastRow(), { km: '12' })
+
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -1712,6 +1719,88 @@ describe('an event that is deleted', () => {
 
     for (const result of scored) {
       expect(dropped, `${result} went with its event`).toContain(result)
+    }
+  })
+
+  it('takes the results too when an event is saved as something with no races', async () => {
+    /* Saving an event as a gathering or a training deletes the races it had (owner,
+       23.08.2026: „u to čuvanje spada i brisanje svih trka koje su bile povezane").
+       The results of those races are not named in that sentence, and they are taken
+       as well, because the portal already does it at both of its other mass
+       deletions and says why: a result of a race that does not exist goes on
+       counting in the standing and in the boards.
+
+       Measured by a round before this was here: an event with twelve races saved as
+       a gathering deleted all twelve and left thirteen results behind. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const scoredAt = await loadResource<Result[]>('results')
+    const one = must(
+      events.find(
+        (each) =>
+          each.kind === 'race' &&
+          races.some((race) => race.eventId === each.id) &&
+          scoredAt.some((result) => result.eventSlug === each.slug) &&
+          !events.some((other) => other.id !== each.id && other.slug === each.slug),
+      ),
+      'a race with both races and results, answering at an address of its own',
+    )
+    const its = races.filter((race) => race.eventId === one.id).map((race) => race.id)
+    const scored = scoredAt.filter((each) => each.eventSlug === one.slug).map((each) => each.id)
+
+    expect(its.length).toBeGreaterThan(0)
+    expect(scored.length).toBeGreaterThan(0)
+
+    render(
+      <ClockProvider>
+        <I18nProvider locale="sr">
+          <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
+            <RoleProvider initialRole="superadmin" initialModerator={null}>
+              <SessionProvider>
+                <Removed />
+                <Routes>
+                  <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
+                </Routes>
+              </SessionProvider>
+            </RoleProvider>
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), one.name)
+
+    const shown = formatShortDate(one.date, 'sr-Latn')
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(one.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      'that event in the list',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+
+    const form = within(await screen.findByRole('form', { name: /^Izmena događaja/ }))
+
+    await user.selectOptions(form.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    const removed = (screen.getByTestId('removed').textContent ?? '').split(',')
+    const dropped = (screen.getByTestId('removed-results').textContent ?? '').split(',')
+
+    for (const race of its) {
+      expect(removed, `${race} stayed under an event that has no races`).toContain(race)
+    }
+
+    for (const result of scored) {
+      expect(dropped, `${result} was left pointing at a race that is gone`).toContain(result)
     }
   })
 })

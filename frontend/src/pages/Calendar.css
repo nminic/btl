@@ -112,13 +112,23 @@
      had no page scroll at all, and nought pushed five dots 20,42px past the edge of
      their day; at 1560px on 200% seven days overflowed, the worst by 65,80px.
 
-     **`calc(5.125rem + 4px)` and not a round number of `rem`, and that is measured
+     **`calc(5.125rem + 7px)` and not a round number of `rem`, and that is measured
      rather than chosen.** What has to fit is five dots and the gap before them,
-     which are drawn in the reader's letters, **plus four pixels that are not**: one
-     of the day's own border and three of the tile's. A floor written wholly in
+     which are drawn in the reader's letters, **plus the pixels that are not**: one
+     of the day's own border and the tile's left edge. A floor written wholly in
      `rem` is therefore right at exactly one size of text. Measured at 780/100%, the
      overflow of the fullest day by floor: `0rem` 11,52px, `4rem` 11,52px (it does
      not even bind there), `5rem` 5,98px, `5,25rem` 1,98px, `5,5rem` 0.
+
+     **Seven and not four since 24.08.2026.** The tile's edge was three pixels on
+     every event; a gathering and a training now carry six, so that a reader who
+     cannot separate two colours still sees which tile is not a race
+     (`.chip--gathering`, `.chip--training`). Measured on the fullest day at
+     780/100%, sitting exactly on the old floor of 86px: as a race the dots ended
+     0,02px inside the day, and the same tile as a training ran 2,98px outside it.
+     Nothing in the data reaches that today, since no gathering or training has five
+     lengths, but the floor had no margin left at all and the arithmetic written
+     above no longer described it.
 
      And too much is its own fault, which is the correction of 23.08.2026: `5.5rem`
      removed the overflow and **brought the page scroll back**, 38px at 1560px on
@@ -131,7 +141,7 @@
      of against that box. With `calc(5.125rem + 4px)` neither fault appears: zero
      page scroll and zero overflow across all 216 months at 1560/200%, and across 72
      further combinations of width, zoom and month. */
-  min-inline-size: calc(5.125rem + 4px);
+  min-inline-size: calc(5.125rem + 7px);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
@@ -384,14 +394,24 @@
 /* What a tile of the calendar looks like, small enough to stand in a line of
    words. A rectangle and not a dot, because it stands for the tile itself while a
    dot stands for a length on one, and the two must not be read as one code. The
-   left edge is the same three pixels the tile carries, so the swatch is the tile
-   in miniature rather than a square somebody chose a colour for. */
+   left edge is the same width the tile it stands for carries, three pixels on a
+   race and six on the two that are not, so the swatch is the tile in miniature
+   rather than a square somebody chose a colour for.
+ *
+   And it carries an edge all the way round, not only on the left. Measured by a
+   round: the tint of a tile against the ground of the legend is 1,08 to 1,37 to 1
+   depending on the kind and the theme, so the swatch itself was all but invisible
+   and only its left bar could be seen. A legend is the key that teaches the code,
+   which makes it a graphic somebody needs in order to understand what is on the
+   screen, and SC 1.4.11 asks 3:1 of that. The tile on the grid needs no such edge:
+   it is a link with a name in it, not a shape somebody has to make out. */
 .legend__tile {
   display: inline-block;
   inline-size: 1.1rem;
   block-size: 0.7rem;
   border-radius: var(--radius-4);
   background: var(--kind-race-face);
+  border: 1px solid var(--control-border);
   border-left: 3px solid var(--kind-race-edge);
   flex: none;
 }

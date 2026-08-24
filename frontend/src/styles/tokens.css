@@ -307,13 +307,13 @@
        says only which of the three a tile takes and the theme is decided once. */
     --kind-race-ink: #cfe0ff;
     --kind-race-face: #10203c;
-    --kind-race-edge: var(--blue-600);
-    --kind-gathering-ink: #d9c9f6;
-    --kind-gathering-face: #241a3a;
-    --kind-gathering-edge: #8b6fd0;
-    --kind-training-ink: #bfe6e9;
-    --kind-training-face: #0d2a2d;
-    --kind-training-edge: #4aa8b2;
+    --kind-race-edge: #7aa8f0;
+    --kind-gathering-ink: #e3d7fb;
+    --kind-gathering-face: #33244f;
+    --kind-gathering-edge: #a68ce0;
+    --kind-training-ink: #c9eff2;
+    --kind-training-face: #0b3a40;
+    --kind-training-edge: #62c3ce;
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
     --heading: var(--white);
@@ -352,13 +352,13 @@
      says only which of the three a tile takes and the theme is decided once. */
   --kind-race-ink: #cfe0ff;
   --kind-race-face: #10203c;
-  --kind-race-edge: var(--blue-600);
-  --kind-gathering-ink: #d9c9f6;
-  --kind-gathering-face: #241a3a;
-  --kind-gathering-edge: #8b6fd0;
-  --kind-training-ink: #bfe6e9;
-  --kind-training-face: #0d2a2d;
-  --kind-training-edge: #4aa8b2;
+  --kind-race-edge: #7aa8f0;
+  --kind-gathering-ink: #e3d7fb;
+  --kind-gathering-face: #33244f;
+  --kind-gathering-edge: #a68ce0;
+  --kind-training-ink: #c9eff2;
+  --kind-training-face: #0b3a40;
+  --kind-training-edge: #62c3ce;
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
   --heading: var(--white);

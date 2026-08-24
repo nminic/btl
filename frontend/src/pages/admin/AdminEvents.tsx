@@ -281,19 +281,23 @@ export function AdminEvents() {
 
                        So this hides and the save deletes, and the two are not the
                        same moment. */
-                    beneath={(values) =>
-                      kindOf(values) === 'race' ? (
-                        <EventRaces
-                          eventName={
-                            String(values.name) === '' ? t('admin.events') : String(values.name)
-                          }
-                          eventDate={String(values.date)}
-                          rows={current}
-                          onRows={setCurrent}
-                          refused={refused}
-                        />
-                      ) : null
-                    }
+                    beneath={(values) => (
+                      <EventRaces
+                        eventName={
+                          String(values.name) === '' ? t('admin.events') : String(values.name)
+                        }
+                        eventDate={String(values.date)}
+                        rows={current}
+                        onRows={setCurrent}
+                        refused={refused}
+                        /* Handed the kind rather than left off the screen when it is
+                           not a race: it draws nothing either way, but kept here it
+                           goes on remembering the day the rows were lined up with.
+                           Taken off, it forgets, and the rows stop following the
+                           event as soon as somebody touches the kind. */
+                        hasRaces={kindOf(values) === 'race'}
+                      />
+                    )}
                     /* One press writes the event and every one of its mornings, so
                        one unfinished row is the whole press refused (owner,
                        23.08.2026: „validacija mi ne da da nastavim dalje dok svaki
@@ -383,6 +387,37 @@ export function AdminEvents() {
                         }
                       }
 
+                      /* And the results of the races that just went, because a result
+                         of a race that does not exist still counts in the standings
+                         and in the boards. Measured by a round before this was here:
+                         an event with twelve races saved as a gathering deleted all
+                         twelve and left thirteen results behind.
+                       *
+                         Not asked of the owner, because it follows from what the
+                         portal already does at both of its other mass deletions: the
+                         row that removes an event and the button on the event's own
+                         page each take the results down with the races, and each says
+                         why. Written here in the same shape, including the one guard
+                         those two carry: while two events answer at one address there
+                         is no telling whose result is whose, so the results are left
+                         rather than taken with somebody else's. */
+                      /* The address is read off the record and not off the values:
+                         it is derived rather than asked for, so the form carries no
+                         `slug` at all. Written out of the values it was `undefined`,
+                         nothing matched it, and every result stayed while the races
+                         went. Changing the kind does not move the address, so the
+                         record's own is the one the results point at. */
+                      const address = String(openEvent?.slug ?? '')
+                      const shares =
+                        address === '' ||
+                        all.some((each) => String(each.id) !== written && each.slug === address)
+
+                      for (const result of kindOf(values) === 'race' || shares
+                        ? []
+                        : allResults.filter((each) => each.eventSlug === address)) {
+                        remove(RESULTS, result.id)
+                      }
+
                       /* Counted up from the highest number already used, over every
                          race that exists rather than over what this visit made
                          (`raceIds.ts`). Counted rather than measured, it handed a
@@ -417,7 +452,18 @@ export function AdminEvents() {
                      * Measured 23.08.2026.
                      */
                     alsoFolds={(values) => {
-                      const first = current
+                      /* And only where there are races to follow. A gathering or a
+                         training has none, and the same press that saves it takes
+                         the rows away, so a row still standing must not decide the
+                         day.
+
+                         Measured by a round before this line was here: an event on
+                         16/01/2027 saved as a gathering with 15/11/2027 typed in
+                         kept 16/01/2027, because the earliest race said so, and the
+                         address is derived from the date, so a year's difference
+                         left the event answering at the wrong one. The day a person
+                         typed was overruled by a race that press deleted. */
+                      const first = (kindOf(values) === 'race' ? current : [])
                         .map((row) => isoDate(row.date))
                         .filter((day) => day !== '')
                         .sort()[0]

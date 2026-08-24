@@ -28,19 +28,25 @@ describe('a day of the month', () => {
 
        **The value is measured, and both of its parts are.** What has to fit inside a
        day is five length dots and the gap before them, drawn in the reader's own
-       letters, **plus four pixels that are not**: one of the day's border and three
-       of the tile's. A floor written wholly in `rem` is right at exactly one size of
-       text, and that is not a detail: `5.5rem` removed the overflow and brought the
-       page scroll back, 38px at 1560px on 200% text, on every one of the 216 months,
-       because the grid gets `.shell__main` and its `max-width: 1100px` is in pixels
-       and does not grow with the letters. `calc(5.125rem + 4px)` gives zero of both
-       across all 216 months at 1560/200% and across 72 further combinations.
+       letters, **plus the pixels that are not**: one of the day's border and the
+       tile's left edge. A floor written wholly in `rem` is right at exactly one size
+       of text, and that is not a detail: `5.5rem` removed the overflow and brought
+       the page scroll back, 38px at 1560px on 200% text, on every one of the 216
+       months, because the grid gets `.shell__main` and its `max-width: 1100px` is in
+       pixels and does not grow with the letters. `calc(5.125rem + 4px)` gave zero of
+       both across all 216 months at 1560/200% and across 72 further combinations.
+
+       Seven and not four since 24.08.2026: the tile's edge is three pixels on a race
+       and six on a gathering or a training, so that a reader who cannot separate two
+       colours still sees which tile is not a race. Measured on the fullest day at
+       780/100%, sitting exactly on the old floor of 86px: as a race the dots ended
+       0,02px inside the day, the same tile as a training ran 2,98px outside it.
 
        Asked as the string the parser gives back, which puts the pixels first: jsdom
        normalises `calc()` and reorders its terms, so what is written in the sheet
        and what is read out of it are not the same characters. */
     const day = ruleFor(calendar, '.day', 'Calendar.css')
 
-    expect(day.getPropertyValue('min-inline-size')).toBe('calc(4px + 5.125rem)')
+    expect(day.getPropertyValue('min-inline-size')).toBe('calc(7px + 5.125rem)')
   })
 })
