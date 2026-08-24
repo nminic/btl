@@ -28,10 +28,11 @@ import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
-/* One screen for five queues: proposed leagues, new teams, racing profiles,
- * comments, and reported changes of date.
+/* One screen for four queues: new teams, racing profiles, comments, and reported
+ * changes of date. Five until 24.08.2026, when the proposed leagues left, because
+ * a league is made by the Administrator and nobody proposes one (owner).
  *
- * One screen rather than five because the work is the same work every time. The
+ * One screen rather than four because the work is the same work every time. The
  * moderator reads a piece of text somebody wrote, and then decides what becomes
  * of it. What differs is the word for the text, whether there are two dates to
  * compare, and what the decision other than "yes" is, and none of those is a

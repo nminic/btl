@@ -1277,8 +1277,18 @@ describe('verification', () => {
     const name = await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
 
     expect(name).toHaveClass('visually-hidden')
+
+    /* And the sentence that stands over the queue is read from the queue itself
+       rather than written out here. Written out, this assertion moved with the test
+       from one queue to another on 24.08.2026 and went on naming the sentence of
+       the queue it had left, which the same change had deleted from the dictionary:
+       the words then existed nowhere but in the assertion saying they were absent,
+       so putting the sentence back on the screen left every one of the 2154 tests
+       green. */
     expect(
-      within(screen.getByRole('main')).queryByText('Nova liga se objavljuje tek kad je odobrena'),
+      within(screen.getByRole('main')).queryByText(
+        translate(dictionary, 'sr', QUEUE.teams.sourceKey),
+      ),
     ).not.toBeInTheDocument()
   })
 
@@ -2793,7 +2803,12 @@ describe('the six queues read from the file', () => {
   })
 
   it('leads from one queue straight to the next', async () => {
-    const user = await open('teams', 'Novi timovi')
+    /* From one queue to a different one, which is the whole of what this measures.
+       Moved off the queue of proposed leagues on 24.08.2026, it started and ended
+       on the same queue for a while, and `open` had already waited for that very
+       heading before the press: the assertion was satisfied before the action, and
+       taking the press away left it green. */
+    const user = await open('schedule', 'Prijave promene termina')
 
     await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
 
