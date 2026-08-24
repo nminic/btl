@@ -22,7 +22,7 @@ import {
 } from '../data/useResource'
 import { awardsOf } from './profile/awards'
 import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
-import { ProfileHead, ProfileParts } from './profile/ProfileHead'
+import { ProfileTop } from './profile/ProfileHead'
 import './Profile.css'
 
 /**
@@ -98,7 +98,7 @@ function AwardsFor({
   competitors: Parameters<typeof awardsOf>[1]
   results: Parameters<typeof awardsOf>[2]
   ducats: Parameters<typeof earnedDucats>[2]
-  team: Parameters<typeof ProfileHead>[0]['team']
+  team: Parameters<typeof ProfileTop>[0]['team']
 }) {
   const { locale, t } = useI18n()
   const { search } = useLocation()
@@ -186,8 +186,7 @@ function AwardsFor({
         description={t('seo.competitor.awardsDescription', { name })}
       />
 
-      <ProfileHead competitor={competitor} team={team} seasons={seasons} season={season} />
-      <ProfileParts competitor={competitor} />
+      <ProfileTop competitor={competitor} team={team} seasons={seasons} season={season} />
 
       <section aria-labelledby="awards-trophies">
         <h2 className="profile__section" id="awards-trophies">
