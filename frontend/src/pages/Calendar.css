@@ -426,21 +426,15 @@
    whose width is measured, but two ways of drawing one thing is how they drift
    apart. */
 .legend__tile--gathering {
-  box-shadow: inset 3px 0 0 0 var(--kind-gathering-edge);
-}
-
-.legend__tile--training {
-  box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
-}
-
-.legend__tile--gathering {
   background: var(--kind-gathering-face);
   border-left-color: var(--kind-gathering-edge);
+  box-shadow: inset 3px 0 0 0 var(--kind-gathering-edge);
 }
 
 .legend__tile--training {
   background: var(--kind-training-face);
   border-left-color: var(--kind-training-edge);
+  box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
 }
 
 .legend__item {

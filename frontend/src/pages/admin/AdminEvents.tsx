@@ -341,8 +341,22 @@ export function AdminEvents() {
                          a file on its way and a file that failed are not the same
                          news, and „waiting" over a file that will never come is a
                          screen that asks somebody to wait forever. */
+                      /* Counted over what the save really deletes, which is the list
+                         as it was filed and not the rows on the screen. Measured by a
+                         round when it was counted over the rows: delete the one row
+                         of an event, change the kind, press Sačuvaj, and the guard
+                         let it through while the save still took that race down and
+                         left its result behind, counting in the standing and pointing
+                         at a race that is gone.
+
+                         Races and not results, and that is the whole of it: a result
+                         only exists where a race did, so an event with no filed race
+                         has nothing on its address either. Which is also why the case
+                         of results without races is closed here rather than measured:
+                         the only way to make one was the fault above. */
                       const takesAway =
-                        kindOf(values) !== 'race' && current.some((row) => row.id !== '')
+                        kindOf(values) !== 'race' &&
+                        allRaces.some((one) => String(one.eventId) === under)
 
                       if (!takesAway || results !== null) {
                         return undefined

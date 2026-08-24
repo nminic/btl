@@ -93,6 +93,48 @@ describe('an event saved with no races, before the results are here', () => {
     }
   })
 
+  it('waits even when the rows were taken off the screen first', async () => {
+    /* The save deletes what was filed, not what is on the screen, so the refusal has
+       to count the same thing. Measured by a round when it counted the rows instead:
+       delete the one row of an event, change the kind, press Sačuvaj, and it went
+       through while the save still took that race down and left its result behind,
+       counting in the standing and pointing at a race that is gone. */
+    const served = globalThis.fetch
+    const user = setupUser()
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
+    )
+
+    try {
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
+        'row',
+      )
+
+      await user.click(
+        within(must(at(rows, 1), 'the first event')).getByRole('button', { name: /^Otvori/ }),
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      /* Every row off the screen, so nothing is left there to count. */
+      for (const button of screen.queryAllByRole('button', { name: /^Obriši \d/ })) {
+        await user.click(button)
+      }
+
+      expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+
+      await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+      expect(screen.getByText('Brisanje nije moguće: rezultati se ne mogu učitati')).toBeVisible()
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
   it('lets through a gathering that has no races to take away', async () => {
     /* The refusal is about a deletion, so where there is nothing to delete there is
        nothing to wait for. Measured by a round before this was here: asked of the
