@@ -327,10 +327,28 @@ export function AdminEvents() {
 
                          Asked of the state and not of the list: an empty list is the
                          same answer for a file still on its way, a file that failed,
-                         and an event that truly has no results. */
-                      return kindOf(values) !== 'race' && results === null
-                        ? 'admin.waitingForResults'
-                        : undefined
+                         and an event that truly has no results.
+
+                         And only where this save would really take something away.
+                         Measured by a round: asked of the kind alone, a gathering
+                         with no races at all, and a gathering being entered for the
+                         first time, were both refused while the file of results was
+                         on its way, over a deletion that was never going to happen,
+                         with a message about deleting. That file is the largest the
+                         portal has, and this screen is built to work without it.
+
+                         The two words the delete row uses, and for the same reason:
+                         a file on its way and a file that failed are not the same
+                         news, and „waiting" over a file that will never come is a
+                         screen that asks somebody to wait forever. */
+                      const takesAway =
+                        kindOf(values) !== 'race' && current.some((row) => row.id !== '')
+
+                      if (!takesAway || results !== null) {
+                        return undefined
+                      }
+
+                      return resultsFailed ? 'admin.resultsFailed' : 'admin.waitingForResults'
                     }}
                     editing={
                       openEvent === undefined ? editing : { mode: 'one', record: openEvent }

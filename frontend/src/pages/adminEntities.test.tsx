@@ -161,10 +161,16 @@ describe('the races of an event', () => {
     await user.type(date, '15112027')
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
 
+    /* On the very day, and not merely somewhere else. The rule is that the rows move
+       **by the same number of days** as the event (owner, 10.08.2026), and a round
+       measured what „somewhere else" costs: the shift changed to one day more left
+       all 2163 tests green, because nothing on any screen said where a row lands.
+       The event went from its own day to 15/11/2027 and this row was the last of
+       them, which is the day it lands on. */
     expect(
       inputElement(lastRow().getByLabelText(/^Datum, /)).value,
-      'the row stayed where it was while the table was away',
-    ).not.toBe(before)
+      'the row did not follow the event, or did not follow it by the same days',
+    ).toBe('15/11/2027')
   })
 
   it('deletes the races it had when it is saved as something other than a race', async () => {

@@ -420,9 +420,17 @@
   flex: none;
 }
 
-.legend__tile--gathering,
+/* Painted inward, the same way the tile on the grid is, so the two are made by one
+   method and a change to either is a change to both. A real border of six pixels
+   would do here, since the swatch stands in a line of words and not in the grid
+   whose width is measured, but two ways of drawing one thing is how they drift
+   apart. */
+.legend__tile--gathering {
+  box-shadow: inset 3px 0 0 0 var(--kind-gathering-edge);
+}
+
 .legend__tile--training {
-  border-left-width: 6px;
+  box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
 }
 
 .legend__tile--gathering {
