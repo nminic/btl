@@ -7,7 +7,7 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, inputElement, must, selectElement } from '../test/at'
-import { Saved } from '../test/saved'
+import { Deleted, Saved } from '../test/saved'
 import { loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
 import { formatShortDate } from '../i18n/format'
@@ -268,6 +268,60 @@ describe('the races of an event', () => {
     expect(screen.queryByRole('button', { name: 'Obriši: ' })).toBeNull()
     /* And nothing opens a row any more: the row is open. */
     expect(screen.queryByRole('button', { name: /^Otvori:/ })).toBeNull()
+  })
+
+  it('takes the results of the one race it removes, and leaves the rest of them', async () => {
+    /* Owner, 24.08.2026: „Brisanje trke treba da pobriše i njene rezultate." A
+       result of a race that does not exist still counts in the standings and in
+       the boards, and until this it stayed: the sweep beside this one goes by the
+       address of the event and only fires where the event stops being a race, so
+       a race taken off an event that stays a race left everything behind.
+
+       Bešnjaja trek of 15.04.2017, because the two halves have to be told apart
+       and there the counts differ: one result on the 21,3 km and three on the
+       32,2 km. Removing the shorter must take exactly one record, so a sweep that
+       took the event's results by the address rather than the race would fail
+       here on the three it should not have touched.
+
+       Read off the session rather than off a screen. The results of these two
+       races are drawn under a name they share, so counting look-alike rows on a
+       profile would pass just as well with the wrong one deleted. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, <Deleted />)
+
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Bešnjaja')
+
+    const listed = await table('Događaji')
+
+    await user.click(within(at(listed.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori/ }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const km = (row: HTMLElement) =>
+      Number(inputElement(within(row).getByLabelText(/^Dužina/)).value.replace(',', '.'))
+
+    expect(rowsOfRaces().length, 'the event no longer has its two races').toBe(2)
+
+    const shorter = must(
+      rowsOfRaces().find((one) => km(one) === 21.3),
+      'the 21,3 km race',
+    )
+
+    await user.click(within(shorter).getByRole('button', { name: /^Obriši \d+\. trku$/ }))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+
+    const gone = within(screen.getByRole('list', { name: 'session deletions' }))
+
+    expect(gone.getByText('gone races evt-besnjaja-trek-2017-04-15-2130')).toBeInTheDocument()
+    expect(gone.getByText('gone results res-01240')).toBeInTheDocument()
+
+    /* And the other race, which nobody touched, keeps every one of its three. */
+    expect(gone.queryByText(/^gone races evt-besnjaja-trek-2017-04-15-3220$/)).toBeNull()
+    expect(gone.queryByText('gone results res-00498')).toBeNull()
+    expect(gone.queryByText('gone results res-01512')).toBeNull()
+    expect(gone.queryByText('gone results res-03242')).toBeNull()
   })
 
   it('takes a second race of the same length on the same morning', async () => {

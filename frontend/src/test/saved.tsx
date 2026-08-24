@@ -33,6 +33,31 @@ export function Saved() {
   )
 }
 
+/**
+ * And what the session was told to remove, for the same reason.
+ *
+ * A deletion that follows another deletion is the case with no screen of its
+ * own: a race taken off the table of an event is gone from that table whether
+ * or not its results went with it, and the results themselves are drawn on
+ * other screens, under a name two races of one event share. Measured there, the
+ * assertion is a count of look-alike rows; measured here, it is the record
+ * itself, by the identity the deletion used.
+ *
+ * One line per record, listed by entity and identity, so a test says what went
+ * and equally what stayed.
+ */
+export function Deleted() {
+  const { deletions } = useSession()
+
+  return (
+    <ul aria-label="session deletions">
+      {Object.entries(deletions).flatMap(([entity, ids]) =>
+        ids.map((id) => <li key={`${entity}-${id}`}>{`gone ${entity} ${id}`}</li>),
+      )}
+    </ul>
+  )
+}
+
 /** The values in one line, in the order they were written, so a test can say
  *  what is there and equally what is not. */
 function written(values: Record<string, string>): string {

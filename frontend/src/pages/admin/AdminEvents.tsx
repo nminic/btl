@@ -389,9 +389,22 @@ export function AdminEvents() {
                          has nothing on its address either. Which is also why the case
                          of results without races is closed here rather than measured:
                          the only way to make one was the fault above. */
-                      const takesAway =
-                        kindOf(values) !== 'race' &&
-                        allRaces.some((one) => String(one.eventId) === under)
+                      /* Counted the way the save counts: a filed race that no surviving
+                         row keeps is a race this save takes away, whatever the kind.
+                         Asked of the kind alone it covered only the sweep that empties
+                         a whole event, and let a single deleted row through while that
+                         row's results were still on their way, which is the same fault
+                         the round above measured, one race at a time instead of twelve.
+                         Where the kind is not a race nothing survives at all, so every
+                         filed race counts, exactly as it did before. */
+                      const survives =
+                        kindOf(values) === 'race'
+                          ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
+                          : new Set<string>()
+
+                      const takesAway = allRaces.some(
+                        (one) => String(one.eventId) === under && !survives.has(one.id),
+                      )
 
                       if (!takesAway || results !== null) {
                         return undefined
@@ -466,9 +479,12 @@ export function AdminEvents() {
                           ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
                           : new Set<string>()
 
+                      const gone = new Set<string>()
+
                       for (const race of was) {
                         if (!kept.has(race.id)) {
                           remove(RACES.id, race.id)
+                          gone.add(race.id)
                         }
                       }
 
@@ -497,10 +513,39 @@ export function AdminEvents() {
                         address === '' ||
                         all.some((each) => String(each.id) !== written && each.slug === address)
 
-                      for (const result of kindOf(values) === 'race' || shares
-                        ? []
-                        : allResults.filter((each) => each.eventSlug === address)) {
-                        remove(RESULTS, result.id)
+                      const byAddress =
+                        kindOf(values) === 'race' || shares
+                          ? []
+                          : allResults.filter((each) => each.eventSlug === address)
+
+                      /* And by the race rather than by the address, which is what a
+                         single row deleted from the table needs. The sweep above only
+                         fires where the event stops being a race, so a race taken off
+                         an event that stays a race left its results behind, each still
+                         counting in the standings and pointing at a race that is gone.
+                         Measured on a live event: delete one of two race rows, save,
+                         and both results are still there. Owner, 24.08.2026: „Brisanje
+                         trke treba da pobriše i njene rezultate."
+
+                         No `shares` guard on this route, and that is not an omission.
+                         The guard above exists because one address can answer for two
+                         events and there is then no telling whose result is whose; a
+                         race identity answers for one race, so a result that names it
+                         is that race's and nobody else's.
+
+                         Gathered into one set rather than removed twice: a save that
+                         turns an event with races into a gathering walks both routes
+                         over the same records. */
+                      const taken = new Set(byAddress.map((each) => each.id))
+
+                      for (const result of allResults) {
+                        if (gone.has(result.raceId)) {
+                          taken.add(result.id)
+                        }
+                      }
+
+                      for (const id of taken) {
+                        remove(RESULTS, id)
                       }
 
                       /* Counted up from the highest number already used, over every

@@ -512,7 +512,7 @@
     "columns": {
       "position": "#",
       "member": "Član",
-      "event": "Događaj",
+      "race": "Trka",
       "points": "Bodovi",
       "gain": "Prirast",
       "previousSeason": "Prethodna sezona",

@@ -135,6 +135,58 @@ describe('an event saved with no races, before the results are here', () => {
     }
   })
 
+  it('waits for them for one race taken off an event that stays a race', async () => {
+    /* The same hold, one race at a time. Until 24.08.2026 the refusal asked the
+       kind alone, so it covered only the save that empties a whole event, and a
+       single row deleted from the table went through while its results waited on
+       a file that had not come: the race went, the result stayed, still counting
+       in the standing and pointing at a race that is gone, and the screen said
+       „Sačuvano".
+
+       Bešnjaja trek of 15.04.2017, which has two races, so the event is still a
+       race with a race left on it after the row goes. Nothing here is about the
+       kind: it is never touched. */
+    const served = globalThis.fetch
+    const user = setupUser()
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
+    )
+
+    try {
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+      await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Bešnjaja')
+
+      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
+        'row',
+      )
+
+      await user.click(
+        within(must(at(rows, 1), 'the event searched for')).getByRole('button', { name: /^Otvori/ }),
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      const race = must(
+        at(screen.queryAllByRole('button', { name: /^Obriši \d+\. trku$/ }), 0),
+        'the first race of the event',
+      )
+
+      await user.click(race)
+
+      /* Still a race, and still a table: this is the case the old shape missed. */
+      expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
+      expect(screen.getByRole('table', { name: /^Trke na događaju/ })).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+      expect(screen.getByText('Brisanje nije moguće: rezultati se ne mogu učitati')).toBeVisible()
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
   it('lets through a gathering that has no races to take away', async () => {
     /* The refusal is about a deletion, so where there is nothing to delete there is
        nothing to wait for. Measured by a round before this was here: asked of the
