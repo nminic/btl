@@ -99,6 +99,30 @@
   --length-long: #8a6a08;
   --length-marathon: #b8531a;
   --length-ultra: #c0362b;
+
+  /* An event that is not a race, on the tile it gets in the calendar.
+   *
+   * A gathering and a training carry no lengths, so without a colour of their own
+   * they read as a race whose distances nobody has entered yet. Owner, 23.08.2026:
+   * „Za Skup i Trening koristi druge boje i objasni ih u legendi", and clearly
+   * different rather than a near shade of the race, so it is plain at a glance that
+   * this is not one.
+   *
+   * Violet and teal because neither is anywhere else on the portal: the five
+   * lengths already hold blue, green, gold, orange and red, and the race tile holds
+   * the league's own blue. The colour is never the only thing that says which it is:
+   * the tile carries the word for a screen reader and the legend under the grid
+   * names all three (SC 1.4.1). */
+  --kind-race-ink: var(--blue-800);
+  --kind-race-face: var(--blue-100);
+  --kind-race-edge: var(--blue-700);
+  --kind-gathering-ink: #3b1f70;
+  --kind-gathering-face: #dccdf7;
+  --kind-gathering-edge: #4a2790;
+  --kind-training-ink: #0a4b52;
+  --kind-training-face: #b3dde3;
+  --kind-training-edge: #0d626b;
+
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
   /* The name of a widget or of a card: navy on the light page, white on the
@@ -278,6 +302,18 @@
     --length-long: #e3c04a;
     --length-marathon: #f0904a;
     --length-ultra: #f4726a;
+    /* On a near black card the tint becomes the deep end of the same hue and the
+       word the light end. The race tile flips here as well, so the calendar sheet
+       says only which of the three a tile takes and the theme is decided once. */
+    --kind-race-ink: #cfe0ff;
+    --kind-race-face: #10203c;
+    --kind-race-edge: var(--blue-600);
+    --kind-gathering-ink: #d9c9f6;
+    --kind-gathering-face: #241a3a;
+    --kind-gathering-edge: #8b6fd0;
+    --kind-training-ink: #bfe6e9;
+    --kind-training-face: #0d2a2d;
+    --kind-training-edge: #4aa8b2;
     --accent-hover: #7aa8f0;
     --accent-contrast: #06214a;
     --heading: var(--white);
@@ -311,6 +347,18 @@
   --length-long: #e3c04a;
   --length-marathon: #f0904a;
   --length-ultra: #f4726a;
+  /* On a near black card the tint becomes the deep end of the same hue and the
+     word the light end. The race tile flips here as well, so the calendar sheet
+     says only which of the three a tile takes and the theme is decided once. */
+  --kind-race-ink: #cfe0ff;
+  --kind-race-face: #10203c;
+  --kind-race-edge: var(--blue-600);
+  --kind-gathering-ink: #d9c9f6;
+  --kind-gathering-face: #241a3a;
+  --kind-gathering-edge: #8b6fd0;
+  --kind-training-ink: #bfe6e9;
+  --kind-training-face: #0d2a2d;
+  --kind-training-edge: #4aa8b2;
   --accent-hover: #7aa8f0;
   --accent-contrast: #06214a;
   --heading: var(--white);

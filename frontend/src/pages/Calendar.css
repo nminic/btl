@@ -232,25 +232,44 @@
   margin-top: var(--space-6);
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-6);
-  background: var(--blue-100);
-  color: var(--blue-800);
+  background: var(--kind-race-face);
+  color: var(--kind-race-ink);
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
-  border-left: 3px solid var(--blue-700);
+  border-left: 3px solid var(--kind-race-edge);
   transition: transform var(--fast);
 }
 
-:root[data-theme='dark'] .chip {
-  background: #10203c;
-  color: #cfe0ff;
+/* A gathering and a training, which carry no lengths and would otherwise read as
+   a race whose distances nobody has entered yet (owner, 23.08.2026). Written on
+   the tile rather than per theme here, because the two colours each flip once in
+   the tokens and this rule says only which of them a tile takes.
+
+   The word travels with the colour: the tile names the kind for a screen reader
+   and the legend under the grid names all three, so nothing here rests on the
+   colour alone (WCAG 2.2 SC 1.4.1). */
+/* And the edge is twice as wide on both of them, which is the part that does not
+   depend on telling two colours apart. Measured in the light theme: the tile of a
+   race and the tile of a gathering are two tints of a near white and differed by
+   1,03 to 1 in lightness before the tints were deepened, so hue was carrying the
+   whole difference. It is deeper now, and the edge says the same thing again in
+   another way (WCAG 2.2 SC 1.4.1). */
+.chip--gathering,
+.chip--training {
+  border-left-width: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .chip {
-    background: #10203c;
-    color: #cfe0ff;
-  }
+.chip--gathering {
+  background: var(--kind-gathering-face);
+  color: var(--kind-gathering-ink);
+  border-left-color: var(--kind-gathering-edge);
+}
+
+.chip--training {
+  background: var(--kind-training-face);
+  color: var(--kind-training-ink);
+  border-left-color: var(--kind-training-edge);
 }
 
 .chip:hover {
@@ -360,6 +379,36 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* What a tile of the calendar looks like, small enough to stand in a line of
+   words. A rectangle and not a dot, because it stands for the tile itself while a
+   dot stands for a length on one, and the two must not be read as one code. The
+   left edge is the same three pixels the tile carries, so the swatch is the tile
+   in miniature rather than a square somebody chose a colour for. */
+.legend__tile {
+  display: inline-block;
+  inline-size: 1.1rem;
+  block-size: 0.7rem;
+  border-radius: var(--radius-4);
+  background: var(--kind-race-face);
+  border-left: 3px solid var(--kind-race-edge);
+  flex: none;
+}
+
+.legend__tile--gathering,
+.legend__tile--training {
+  border-left-width: 6px;
+}
+
+.legend__tile--gathering {
+  background: var(--kind-gathering-face);
+  border-left-color: var(--kind-gathering-edge);
+}
+
+.legend__tile--training {
+  background: var(--kind-training-face);
+  border-left-color: var(--kind-training-edge);
 }
 
 .legend__item {

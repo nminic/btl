@@ -58,6 +58,94 @@ describe('the races of an event', () => {
     expect(screen.queryByLabelText('Događaj')).toBeNull()
   })
 
+  it('takes the table away for a gathering, and gives it back for a race', async () => {
+    /* Owner, 23.08.2026, on what changing the kind does: „prvo se sakriju sve trke
+       sa ekrana, ali mogu da se vrate ukoliko vratiš da je tip Trka." So this is
+       two facts and not one, and the second is the one that is easy to lose: the
+       rows are held while the table is hidden rather than thrown away, so coming
+       back finds them as they were. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const was = rowsOfRaces().length
+
+    expect(was).toBeGreaterThan(0)
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+
+    expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Nova trka' })).toBeNull()
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
+
+    expect(rowsOfRaces()).toHaveLength(was)
+  })
+
+  it('will not hold the save over a half typed race the kind has taken away', async () => {
+    /* A row entered and left unfinished stops the press while the event is a race
+       („validacija mi ne da da nastavim dalje"), and must not stop it once the
+       event is a training: there is no table to finish, and that same press is
+       what deletes the rows. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.clear(lastRow().getByLabelText(/^Dužina/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'training')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+  })
+
+  it('deletes the races it had when it is saved as something other than a race', async () => {
+    /* The other half of the owner's sentence, and the half that writes: „Ako se
+       sačuva kao neki drugi tip, u to čuvanje spada i brisanje svih trka koje su
+       bile povezane."
+
+       Measured through the screen rather than over the store, because what is
+       being asked is that the save does it: hiding the table is not deleting, and
+       the two were one moment in the first version of this. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    expect(rowsOfRaces().length).toBeGreaterThan(0)
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Opened again off the list already on the screen rather than by rendering
+       the screen a second time: what is being asked is what the save left behind,
+       and a second render would answer with a second copy of the list. */
+    const again = await table('Događaji')
+
+    await user.click(within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori/ }))
+
+    const form = within(await screen.findByRole('form', { name: /^Izmena događaja/ }))
+
+    expect(form.getByLabelText(/^Vrsta događaja/), 'the kind did not survive the save').toHaveValue(
+      'gathering',
+    )
+
+    await user.selectOptions(form.getByLabelText(/^Vrsta događaja/), 'race')
+
+    /* And the section says there are none rather than drawing an empty table,
+       which is what an event with no races looks like anywhere else. Asked for the
+       words, because the table this test began with is gone: `rowsOfRaces` would
+       fail to find it and say so as though the section itself were missing. */
+    expect(await screen.findByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
+    expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+    expect(screen.getByText('Ovaj događaj još nema nijednu trku.')).toBeVisible()
+  })
+
   /** The table of races on the open event, and one row of it. */
   function races() {
     return within(screen.getByRole('table', { name: /^Trke na događaju/ }))

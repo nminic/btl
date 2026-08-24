@@ -17,7 +17,7 @@ import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { dogadjaj } from '../../forms/definitions'
-import type { FormDef } from '../../forms/types'
+import type { FormDef, FormValues } from '../../forms/types'
 import type { Race } from '../../data/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
@@ -240,6 +240,25 @@ export function AdminEvents() {
               setHeld({ of: under, rows: next })
             }
 
+            /**
+             * Which kind of event the form in front of us is, on a screen where
+             * the form does not always ask.
+             *
+             * A copy is not asked for its town, its country or its kind: it has
+             * all three from the event it was copied from and none of them is in
+             * question (owner, 23.08.2026), so `copyOfEvent` leaves the field out
+             * and the values carry no kind at all. Read off the form where it is
+             * there and off the record behind it where it is not.
+             *
+             * No third answer, and that is measured rather than assumed: a new
+             * event is asked for its kind and opens on Trka (`entityForms.ts`,
+             * `start`), and the one form that does not ask is a copy, which always
+             * has the event it was copied from. A fallback of „race" written here
+             * was a branch no test could reach.
+             */
+            const kindOf = (values: FormValues): string =>
+              String(values.kind ?? openEvent?.kind)
+
             return (
               <>
                 {(
@@ -251,23 +270,41 @@ export function AdminEvents() {
                        fields it carries, so what is not asked stays as it was. */
                     form={copying ? copyOfEvent : undefined}
                     titleKey={copying ? 'admin.form.copying' : undefined}
-                    beneath={(values) => (
-                      <EventRaces
-                        eventName={
-                          String(values.name) === '' ? t('admin.events') : String(values.name)
-                        }
-                        eventDate={String(values.date)}
-                        rows={current}
-                        onRows={setCurrent}
-                        refused={refused}
-                      />
-                    )}
+                    /* And nothing at all beneath a gathering or a training, which
+                       have no races (owner, 23.08.2026). The rows are kept where
+                       they are rather than thrown away, because the owner said in
+                       the same breath what changing the kind does and does not do:
+                       „prvo se sakriju sve trke sa ekrana, ali mogu da se vrate
+                       ukoliko vratiš da je tip Trka. Ako se sačuva kao neki drugi
+                       tip, u to čuvanje spada i brisanje svih trka koje su bile
+                       povezane."
+
+                       So this hides and the save deletes, and the two are not the
+                       same moment. */
+                    beneath={(values) =>
+                      kindOf(values) === 'race' ? (
+                        <EventRaces
+                          eventName={
+                            String(values.name) === '' ? t('admin.events') : String(values.name)
+                          }
+                          eventDate={String(values.date)}
+                          rows={current}
+                          onRows={setCurrent}
+                          refused={refused}
+                        />
+                      ) : null
+                    }
                     /* One press writes the event and every one of its mornings, so
                        one unfinished row is the whole press refused (owner,
                        23.08.2026: „validacija mi ne da da nastavim dalje dok svaki
                        red nema sve obavezne podatke"). */
-                    alsoRefuses={() => {
-                      const short = !allFinished(current)
+                    alsoRefuses={(values) => {
+                      /* And nothing to refuse where there are no races to finish:
+                         a gathering or a training has no table at all, so a row
+                         left half typed before the kind was changed must not hold
+                         the save. It is deleted by that save rather than asked
+                         about (owner, 23.08.2026). */
+                      const short = kindOf(values) === 'race' && !allFinished(current)
 
                       setRefused(short)
 
@@ -321,11 +358,24 @@ export function AdminEvents() {
                      * The day the event begins is folded into the values before
                      * any of this, in `alsoFolds` below.
                      */
-                    alsoSave={(_values, written) => {
+                    alsoSave={(values, written) => {
                       const was = allRaces.filter((one) => String(one.eventId) === written)
-                      const kept = new Set(
-                        current.filter((row) => row.id !== '').map((row) => row.id),
-                      )
+
+                      /* A gathering or a training has no races, and saving one as
+                         such is what takes the races it used to have away. Owner,
+                         23.08.2026, on what changing the kind does and does not do:
+                         „prvo se sakriju sve trke sa ekrana, ali mogu da se vrate
+                         ukoliko vratiš da je tip Trka. Ako se sačuva kao neki drugi
+                         tip, u to čuvanje spada i brisanje svih trka koje su bile
+                         povezane."
+
+                         So the rows are kept on the screen while the table is
+                         hidden, and nothing is written for them here: they are all
+                         unkept, and the loop below has nothing to walk. */
+                      const kept =
+                        kindOf(values) === 'race'
+                          ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
+                          : new Set<string>()
 
                       for (const race of was) {
                         if (!kept.has(race.id)) {
@@ -343,7 +393,7 @@ export function AdminEvents() {
                         `${written}-trka-`,
                       )
 
-                      for (const row of current) {
+                      for (const row of kindOf(values) === 'race' ? current : []) {
                         if (row.id === '') {
                           create(RACES.id, `${written}-trka-${String(next)}`, storedRow(row, written))
                           next += 1
