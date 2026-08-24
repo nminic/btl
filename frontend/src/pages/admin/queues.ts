@@ -119,14 +119,6 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
     path: `${ADDRESS}/uplate`,
     outcome: 'sendBack',
   },
-  leagues: {
-    id: 'leagues',
-    returnedKey: 'verification.leagueReturned',
-    labelKey: 'verification.leagues',
-    sourceKey: 'verification.fromLeagues',
-    path: `${ADDRESS}/lige`,
-    outcome: 'sendBack',
-  },
   teams: {
     id: 'teams',
     returnedKey: 'verification.teamReturned',

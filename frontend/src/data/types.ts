@@ -399,7 +399,6 @@ export type StaticPage = {
  */
 export const PENDING_QUEUE_IDS = [
   'payments',
-  'leagues',
   'teams',
   'profiles',
   'comments',

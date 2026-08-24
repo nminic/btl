@@ -13,7 +13,6 @@
       "entity:pricing",
       "queue:results",
       "queue:payments",
-      "queue:leagues",
       "queue:teams",
       "queue:profiles",
       "queue:comments",

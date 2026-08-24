@@ -210,7 +210,7 @@ describe('the panel', () => {
 
     const said = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })
 
-    expect(said).toHaveAccessibleName('Administracija, 18 na čekanju')
+    expect(said).toHaveAccessibleName('Administracija, 16 na čekanju')
   })
 })
 
@@ -1269,12 +1269,12 @@ describe('verification', () => {
   })
 
   it('names the queue for the tab and the screen reader, and nowhere on the screen', async () => {
-    renderAt(`/sr/${QUEUE.leagues.path}`, 'superadmin')
+    renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin')
 
     /* Everything above the work is gone (owner, 30.07.2026). The name stays in
        the markup, because a page with no name is a page a screen reader cannot
        announce and a browser tab cannot title. */
-    const name = await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
+    const name = await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
 
     expect(name).toHaveClass('visually-hidden')
     expect(
@@ -1396,7 +1396,7 @@ describe('verification', () => {
          06.08.2026 and the numbers are in the navigation beside every screen: a
          moderator who opens a queue directly sees eight quiet noughts in the
          column beside him and reads them as an afternoon's work already done. */
-      renderAt(`/sr/${QUEUE.leagues.path}`, 'moderator')
+      renderAt(`/sr/${QUEUE.teams.path}`, 'moderator')
 
       const nav = within(
         await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }),
@@ -1500,9 +1500,12 @@ describe('verification', () => {
        the last decision, and they are left standing on a screen the navigation
        beside them says is not there. */
     const user = setupUser()
-    renderAt(`/sr/${QUEUE.leagues.path}`, 'moderator')
+    /* The reported dates and not the new teams, for the reason written out where
+       the same swap was made below: a team whose name is taken keeps its button
+       after an approval, so this loop would never end. */
+    renderAt(`/sr/${QUEUE.schedule.path}`, 'moderator')
 
-    await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
+    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
 
     const nav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
@@ -1511,7 +1514,7 @@ describe('verification', () => {
     }
 
     expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
-    expect(nav().getByRole('link', { name: /Predložene lige/ })).toBeVisible()
+    expect(nav().getByRole('link', { name: /Prijave promene termina/ })).toBeVisible()
   })
 
   it('says nothing beside Verification while nothing is waiting', async () => {
@@ -1856,7 +1859,6 @@ describe('the six queues read from the file', () => {
   const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
   const QUEUES: [PendingQueueId, string, number][] = [
-    ['leagues', 'Predložene lige', 2],
     ['teams', 'Novi timovi', 2],
     ['schedule', 'Prijave promene termina', 3],
   ]
@@ -2337,7 +2339,7 @@ describe('the six queues read from the file', () => {
        behaviour and the name did not, which is worse than a wrong assertion,
        because a reader scanning the list of tests is told the opposite of what
        the portal does. */
-    const user = await open('leagues', 'Predložene lige')
+    const user = await open('teams', 'Novi timovi')
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
 
@@ -2441,7 +2443,6 @@ describe('the six queues read from the file', () => {
      vraćena". The headings of the screens were measured; the headings of the
      messages were not, and those are the ones a member reads. */
   const WRITES_TO = [
-    { queue: QUEUE.leagues, who: 'Časlav Radenković', member: '000004', heading: 'Predlog lige je vraćen' },
     { queue: QUEUE.teams, who: 'Strahinja Vukićević', member: '000007', heading: 'Predlog tima je vraćen' },
     {
       queue: QUEUE.schedule,
@@ -2727,15 +2728,15 @@ describe('the six queues read from the file', () => {
        work, and its numbers come down as the work is settled, without leaving
        the screen. Before this the only place that said how much was left
        anywhere was the list of queues, which meant walking back to it. */
-    const user = await open('leagues', 'Predložene lige')
+    const user = await open('teams', 'Novi timovi')
 
-    expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('2'))
+    expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('2'))
       .toBeVisible()
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
-    expect(within(sectionNav().getByRole('link', { name: /Predložene lige/ })).getByText('1'))
+    expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('1'))
       .toBeVisible()
   })
 
@@ -2792,7 +2793,7 @@ describe('the six queues read from the file', () => {
   })
 
   it('leads from one queue straight to the next', async () => {
-    const user = await open('leagues', 'Predložene lige')
+    const user = await open('teams', 'Novi timovi')
 
     await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
 
@@ -2805,21 +2806,21 @@ describe('the six queues read from the file', () => {
        this one down with it. Now both are the same element in the same place in
        the tree, and React Router does not key what it renders, so the state of
        one would be waiting on the next. */
-    const user = await open('leagues', 'Predložene lige')
+    const user = await open('teams', 'Novi timovi')
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
     expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
 
     // Away without cancelling, then back.
-    await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
-    await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
+    await user.click(sectionNav().getByRole('link', { name: /Prijave promene termina/ }))
+    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
 
     // The box must not be standing open on a screen just arrived at, with the
     // focus taken into it (SendBack takes the focus as it appears).
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
 
-    await user.click(sectionNav().getByRole('link', { name: /Predložene lige/ }))
-    await screen.findByRole('heading', { level: 1, name: 'Predložene lige' })
+    await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
+    await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
 
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
   })
@@ -2951,8 +2952,13 @@ describe('the six queues read from the file', () => {
        there is the reason's, so when the sweep takes the card away the line has
        to go too, or it explains a mark that is nowhere on the screen. The box
        was left standing open over nothing, which is also a reason half written
-       about a proposal already decided. */
-    const user = await open('leagues', 'Predložene lige')
+       about a proposal already decided.
+
+       The reported dates and not the new teams, for the reason written out twice
+       above: a team whose name is taken is left standing by the sweep, so the
+       card the box belongs to would still be there and the test would pass for
+       the wrong reason. */
+    const user = await open('schedule', 'Prijave promene termina')
 
     const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
@@ -2997,8 +3003,14 @@ describe('the six queues read from the file', () => {
   })
 
   it('says so when the last item has been decided', async () => {
-    const user = await open('leagues', 'Predložene lige')
+    /* Asked of the reported dates rather than of the new teams, which is where
+       this stood until the queue of proposed leagues left on 24.08.2026: a team
+       whose name is already taken is left standing by an approval rather than
+       settled (`refusal` in PendingQueue), so a queue of two would not empty in
+       two presses and the emptiness this test is about would never be reached. */
+    const user = await open('schedule', 'Prijave promene termina')
 
+    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
