@@ -112,23 +112,23 @@
      had no page scroll at all, and nought pushed five dots 20,42px past the edge of
      their day; at 1560px on 200% seven days overflowed, the worst by 65,80px.
 
-     **`calc(5.125rem + 7px)` and not a round number of `rem`, and that is measured
+     **`calc(5.125rem + 4px)` and not a round number of `rem`, and that is measured
      rather than chosen.** What has to fit is five dots and the gap before them,
-     which are drawn in the reader's letters, **plus the pixels that are not**: one
-     of the day's own border and the tile's left edge. A floor written wholly in
+     which are drawn in the reader's letters, **plus four pixels that are not**: one
+     of the day's own border and three of the tile's. A floor written wholly in
      `rem` is therefore right at exactly one size of text. Measured at 780/100%, the
      overflow of the fullest day by floor: `0rem` 11,52px, `4rem` 11,52px (it does
      not even bind there), `5rem` 5,98px, `5,25rem` 1,98px, `5,5rem` 0.
 
-     **Seven and not four since 24.08.2026.** The tile's edge was three pixels on
-     every event; a gathering and a training now carry six, so that a reader who
-     cannot separate two colours still sees which tile is not a race
-     (`.chip--gathering`, `.chip--training`). Measured on the fullest day at
-     780/100%, sitting exactly on the old floor of 86px: as a race the dots ended
-     0,02px inside the day, and the same tile as a training ran 2,98px outside it.
-     Nothing in the data reaches that today, since no gathering or training has five
-     lengths, but the floor had no margin left at all and the arithmetic written
-     above no longer described it.
+     **Four, and it stayed four when the tiles of a gathering and a training took a
+     wider edge on 24.08.2026.** It was raised to seven for a day, because a border
+     of six pixels makes the tile three wider and the day under it three wider again.
+     Measured, that cost more than it bought: at 1560px on 200% text the page began
+     to scroll sideways by 3px, which is the very thing this floor exists to prevent,
+     and seven columns of three pixels is where it came from. The wider edge is
+     painted inside the tile instead (`box-shadow: inset` on `.chip--gathering` and
+     `.chip--training`), so the tile keeps the width it always had and this number
+     goes on describing it.
 
      And too much is its own fault, which is the correction of 23.08.2026: `5.5rem`
      removed the overflow and **brought the page scroll back**, 38px at 1560px on
@@ -141,7 +141,7 @@
      of against that box. With `calc(5.125rem + 4px)` neither fault appears: zero
      page scroll and zero overflow across all 216 months at 1560/200%, and across 72
      further combinations of width, zoom and month. */
-  min-inline-size: calc(5.125rem + 7px);
+  min-inline-size: calc(5.125rem + 4px);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
@@ -259,27 +259,31 @@
    The word travels with the colour: the tile names the kind for a screen reader
    and the legend under the grid names all three, so nothing here rests on the
    colour alone (WCAG 2.2 SC 1.4.1). */
-/* And the edge is twice as wide on both of them, which is the part that does not
+/* And the edge reads twice as wide on both of them, which is the part that does not
    depend on telling two colours apart. Measured in the light theme: the tile of a
    race and the tile of a gathering are two tints of a near white and differed by
    1,03 to 1 in lightness before the tints were deepened, so hue was carrying the
    whole difference. It is deeper now, and the edge says the same thing again in
-   another way (WCAG 2.2 SC 1.4.1). */
-.chip--gathering,
-.chip--training {
-  border-left-width: 6px;
-}
-
+   another way (WCAG 2.2 SC 1.4.1).
+ *
+   Drawn inside the tile rather than added to its border, and that is measured. A
+   border of six pixels makes the tile three pixels wider, the day under it three
+   wider again, and seven of those across the grid: the floor was raised to match
+   and the page began to scroll sideways by 3px at 1560px on 200% text, which is the
+   very thing the floor exists to prevent. Painted inward the tile keeps the width it
+   always had, the floor stays where it was measured, and the edge looks the same. */
 .chip--gathering {
   background: var(--kind-gathering-face);
   color: var(--kind-gathering-ink);
   border-left-color: var(--kind-gathering-edge);
+  box-shadow: inset 3px 0 0 0 var(--kind-gathering-edge);
 }
 
 .chip--training {
   background: var(--kind-training-face);
   color: var(--kind-training-ink);
   border-left-color: var(--kind-training-edge);
+  box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
 }
 
 .chip:hover {

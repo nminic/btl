@@ -312,7 +312,25 @@ export function AdminEvents() {
 
                       setRefused(short)
 
-                      return short ? 'admin.form.racesRefused' : undefined
+                      if (short) {
+                        return 'admin.form.racesRefused'
+                      }
+
+                      /* And a save that would take the races away waits for the
+                         results, exactly as the row that deletes the whole event
+                         does (`admin.waitingForResults` below). Until that file is
+                         here there is nothing to take along, and a round measured
+                         what that costs: with the results refused, every race went
+                         and every result stayed, each still counting in the standing
+                         and pointing at a race that does not exist, while the screen
+                         said „Sačuvano".
+
+                         Asked of the state and not of the list: an empty list is the
+                         same answer for a file still on its way, a file that failed,
+                         and an event that truly has no results. */
+                      return kindOf(values) !== 'race' && results === null
+                        ? 'admin.waitingForResults'
+                        : undefined
                     }}
                     editing={
                       openEvent === undefined ? editing : { mode: 'one', record: openEvent }

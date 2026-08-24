@@ -36,17 +36,19 @@ describe('a day of the month', () => {
        pixels and does not grow with the letters. `calc(5.125rem + 4px)` gave zero of
        both across all 216 months at 1560/200% and across 72 further combinations.
 
-       Seven and not four since 24.08.2026: the tile's edge is three pixels on a race
-       and six on a gathering or a training, so that a reader who cannot separate two
-       colours still sees which tile is not a race. Measured on the fullest day at
-       780/100%, sitting exactly on the old floor of 86px: as a race the dots ended
-       0,02px inside the day, the same tile as a training ran 2,98px outside it.
+       Four, and it stayed four when the tiles of a gathering and a training took a
+       wider edge on 24.08.2026. It was raised to seven for a day, since a border of
+       six pixels makes the tile three wider and the day three wider again. Measured,
+       that cost more than it bought: at 1560px on 200% text the page began to scroll
+       sideways by 3px, which is what this floor exists to prevent. The wider edge is
+       painted inside the tile instead, so the tile keeps its width and four goes on
+       describing it.
 
        Asked as the string the parser gives back, which puts the pixels first: jsdom
        normalises `calc()` and reorders its terms, so what is written in the sheet
        and what is read out of it are not the same characters. */
     const day = ruleFor(calendar, '.day', 'Calendar.css')
 
-    expect(day.getPropertyValue('min-inline-size')).toBe('calc(7px + 5.125rem)')
+    expect(day.getPropertyValue('min-inline-size')).toBe('calc(4px + 5.125rem)')
   })
 })

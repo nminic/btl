@@ -102,6 +102,71 @@ describe('the races of an event', () => {
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
 
+  it('keeps the day that was typed when the event is saved with no races', async () => {
+    /* An event follows its earliest morning, so a race on an earlier day makes that
+       day the event's (owner, 10.08.2026). A gathering has no mornings to follow,
+       and the same press that saves it takes the rows away.
+
+       Measured by a round before this was guarded: an event on 16/01/2027 saved as a
+       gathering with 15/11/2027 typed in kept January, because a race said so, and
+       the address is derived from the date, so a year's difference left the event
+       answering at the wrong one. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    /* A morning put before the event, which is what the fold is for: on a race this
+       is exactly right, the event moves back to meet it. Typed while the table is
+       still on screen, because that is the only way a row can hold a day of its own
+       rather than the one it followed the event to. */
+    const day = lastRow().getByLabelText(/^Datum, /)
+
+    await user.clear(day)
+    await user.type(day, '01012020')
+
+    const date = screen.getByLabelText('Datum')
+    const asked = inputElement(date).value
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const saved = await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(
+      within(saved).getByText(asked),
+      'a race that this very save deletes moved the day of the event',
+    ).toBeVisible()
+    expect(within(saved).queryByText('01/01/2020')).toBeNull()
+  })
+
+  it('keeps the races following the event while the table is off the screen', async () => {
+    /* The races move with the event by the same number of days (owner, 10.08.2026),
+       and the screen remembers the day they were last lined up with. Taking the
+       table away used to take that memory with it, so the same two moves gave two
+       answers: with the table on screen a date change moved every row, with the kind
+       touched in between they all stayed where they were. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const before = inputElement(lastRow().getByLabelText(/^Datum, /)).value
+
+    expect(before).not.toBe('')
+
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+
+    const date = screen.getByLabelText('Datum')
+
+    await user.clear(date)
+    await user.type(date, '15112027')
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
+
+    expect(
+      inputElement(lastRow().getByLabelText(/^Datum, /)).value,
+      'the row stayed where it was while the table was away',
+    ).not.toBe(before)
+  })
+
   it('deletes the races it had when it is saved as something other than a race', async () => {
     /* The other half of the owner's sentence, and the half that writes: „Ako se
        sačuva kao neki drugi tip, u to čuvanje spada i brisanje svih trka koje su
