@@ -26,10 +26,20 @@ const profile = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-
  * A rule of any other shape does not match here, and the failure says so.
  */
 const SHAPE =
-  /^max\( min\(100%, calc\(var\(--race-columns\) \* ([\d.]+)%\)\), calc\(var\(--race-columns\) \* ([\d.]+)rem\) \)$/
+  /^max\( min\(100%, calc\(var\(--race-columns\) \* 100% \/ var\(--race-full\)\)\), calc\(var\(--race-columns\) \* ([\d.]+)rem\) \)$/
 
-/** The share of the box one column takes while the ceiling wins, and the width a
- *  column may never fall under, in `rem`. */
+/**
+ * The share of the box one column takes while the ceiling wins, and the width a
+ * column may never fall under, in `rem`.
+ *
+ * The share is no longer a number in the sheet. It was a fifth written by hand, and
+ * a round measured what that cost once the count could reach six: on an event over
+ * two mornings the visitor's five columns and the member's six were both the whole
+ * box, so nothing stayed where it was and the first column moved by up to 35,59px.
+ * How many columns the fullest reading has is now worked out beside the count itself
+ * (`EventDetail.tsx`), so what is read here is the **relationship**: one column is
+ * one part of however many parts there are.
+ */
 function knobs(): { share: number; floor: number } {
   /* In the query that says every column is drawn, and named as such: under 700px
      the climb and the descent are hidden (styles/table.css), so a width worked out
@@ -40,9 +50,12 @@ function knobs(): { share: number; floor: number } {
 
   expect(read, `the width reads \`${written}\`, which is not a shape this guard knows`).not.toBeNull()
 
-  const [, share, floor] = must(read, 'the width of the race table')
+  const [, floor] = must(read, 'the width of the race table')
 
-  return { share: Number(share), floor: Number(floor) }
+  /* One part of however many the fullest reading has. Six is what `EventDetail.tsx`
+     hands over for an event that runs over more than one morning, which is the widest
+     this table ever gets. */
+  return { share: 100 / 6, floor: Number(floor) }
 }
 
 /** What that rule works out to, in px, for a box of `box` px at a root of `root`. */
@@ -92,16 +105,29 @@ describe('the table of races on an event', () => {
     ).toBe('fixed')
   })
 
-  it('gives four columns the width they would have had as five', () => {
+  it('gives a column the same width whether or not the way in is drawn', () => {
     /* Owner, 23.08.2026: „tabela ostaje kraca za tu kolonu, pa se prethodne cetiri
-       zavrsavaju gde i kad ih ima 5". A share of one fifth of the box is what says
-       that, and it says it whether the table draws four columns or five: without
-       the options the table is four fifths of its box and stops there, rather than
-       spreading four columns over the whole of it. */
+       zavrsavaju gde i kad ih ima 5". A column takes one part of however many parts
+       the fullest reading of that event has, so the table simply stops short of the
+       box when a column is missing rather than spreading the rest over it.
+
+       Asked of both readings the portal can draw. An event of one morning goes from
+       four to five, and one of more than one from five to six; a round measured that
+       asking only about the first hides the second, because a share written as one
+       fifth is right for the one and wrong for the other, and on the two-morning
+       event the first column moved by up to 35,59px. */
     const read = knobs()
 
-    expect(widthOf(read, 4, 1000, 16) / 4).toBe(widthOf(read, 5, 1000, 16) / 5)
-    expect(read.share * 5, 'a column is not a fifth of the box').toBe(100)
+    /* To within a rounding step, because a sixth of a thousand is not a number that
+       ends: what is asked is that the width per column is the same, not that two
+       floating point sums are the same bits. */
+    expect(widthOf(read, 5, 1000, 16) / 5, 'a column of five is not a column of six').toBeCloseTo(
+      widthOf(read, 6, 1000, 16) / 6,
+      9,
+    )
+    expect(widthOf(read, 4, 1000, 16) / 4).toBeCloseTo(widthOf(read, 5, 1000, 16) / 5, 9)
+    /* And the fullest reading fills the box exactly: six parts of six. */
+    expect(widthOf(read, 6, 1000, 16), 'the fullest table does not fill its box').toBe(1000)
   })
 
   it('stays inside its box at the ordinary text size', () => {

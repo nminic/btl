@@ -56,7 +56,7 @@
        668px of box, which is the same fault twice over. The button folds instead;
        see the rule under this one. */
     inline-size: max(
-      min(100%, calc(var(--race-columns) * 20%)),
+      min(100%, calc(var(--race-columns) * 100% / var(--race-full))),
       calc(var(--race-columns) * 6.75rem)
     );
   }

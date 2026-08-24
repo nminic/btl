@@ -50,7 +50,26 @@ describe('who is offered what on an event', () => {
        ostaje kraca za tu kolonu" (owner, 23.08.2026). */
     expect(
       within(races()).getAllByRole('columnheader').map((one) => one.textContent),
-    ).toEqual(['Kategorija trke', 'Dužina', 'Uspon', 'Spust'])
+    ).toEqual(['Trka', 'Dužina', 'Uspon', 'Spust'])
+  })
+
+  it('names each race in the first column, not only the category it falls in', async () => {
+    /* Owner, 23.08.2026: „u opisu događaja gde su izlistane trke nedostaje naziv trke
+       u prvoj koloni." A race carries a name since isporuka 121, and this table was
+       the one place that still read a race by the category it falls in.
+
+       Measured on the one race in the data that carries a name of its own,
+       „Mrazijada, polumaraton" under the event „Mrazijada": every other race is named
+       after its event, so a table drawing the wrong one of the two looks right. */
+    await openEvent('visitor', null, undefined, '/sr/kalendar/mrazijada-2020')
+
+    const table = within(await screen.findByRole('table', { name: 'Trke' }))
+    const first = must(table.getAllByRole('row')[1], 'the first race')
+
+    expect(
+      must(within(first).getAllByRole('cell')[0], 'the first cell').textContent,
+      'the first column is not the name of the race',
+    ).toBe('Mrazijada, polumaraton')
   })
 
   it('offers the superadmin the copy and the deletion', async () => {
@@ -119,6 +138,23 @@ describe('who is offered what on an event', () => {
         table.style.getPropertyValue('--race-columns'),
         `the table shown to ${who} counts itself wrong`,
       ).toBe(String(headings.length))
+
+      /* And how many the fullest reading of this same event would have, which is what
+         a column's share of the box is worked out from: „tabela ostaje kraća za tu
+         kolonu, pa se prethodne završavaju gde i kad ih ima više" (owner,
+         23.08.2026). The fullest reading is this one plus the way in, where the way
+         in is not drawn.
+
+         Asked because a round measured what its absence costs: with the part that
+         counts the second morning left out of that sum, all 2157 tests stayed green
+         while the first column of a weekend event moved 35,59px between a visitor and
+         a member, which is exactly the fault the sum was added to remove. */
+      const wayIn = headings.some((one) => one.textContent === 'Opcije')
+
+      expect(
+        table.style.getPropertyValue('--race-full'),
+        `the table shown to ${who} does not know how wide it can get`,
+      ).toBe(String(headings.length + (wayIn ? 0 : 1)))
 
       cleanup()
     }
