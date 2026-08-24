@@ -423,7 +423,12 @@ function Boards({
          scroll nobody reads (PDL P12). What is left is the place, the name, the
          event and the points. */
       columns: [
-        { text: t('topBoards.columns.event'), words: true },
+        /* The race and not the event it belonged to, as everywhere else a result
+           is listed (owner, 23.08.2026, extended to this board 24.08.2026: „treba
+           da bude naziv trke onda"). This board was not in the list when that was
+           decided, so it went on naming the event, and an event with nine races on
+           one day printed nine rows of the same text. */
+        { text: t('topBoards.columns.race'), words: true },
         { text: t('rankings.columns.distance'), hidePhone: true },
         { text: t('rankings.columns.ascent'), hidePhone: true },
         { text: t('rankings.columns.descent'), hidePhone: true },
@@ -438,7 +443,7 @@ function Boards({
         name: nameOf(row.competitor),
         members: [row.competitor.memberNumber],
         cells: [
-          { text: row.result.eventName, words: true },
+          { text: row.result.raceName, words: true },
           { text: formatNumber(row.result.distanceKm, locale, 2), hidePhone: true },
           { text: formatNumber(row.result.ascentM, locale), hidePhone: true },
           { text: formatNumber(row.result.descentM, locale), hidePhone: true },

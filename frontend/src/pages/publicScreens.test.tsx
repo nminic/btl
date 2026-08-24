@@ -62,7 +62,12 @@ async function racesOf(season: number, locale = 'sr'): Promise<Map<string, strin
     rows.set(points, [
       ...(rows.get(points) ?? []),
       [
-        one.eventName,
+        /* The race, which is what the column holds since 24.08.2026. Read off the
+           record so a test about which column is which cannot be satisfied by
+           whatever text happens to stand there; the two names agree on nearly
+           every generated result, so this alone does not measure the change and
+           the test below serves a race renamed by hand. */
+        one.raceName,
         formatNumber(one.distanceKm, locale, 2),
         formatNumber(one.ascentM, locale),
         formatNumber(one.descentM, locale),
@@ -811,7 +816,7 @@ describe('TopBoards', () => {
     expect(races.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
       '#',
       'Član',
-      'Događaj',
+      'Trka',
       'd (km)',
       '+ (m)',
       '− (m)',
@@ -848,6 +853,54 @@ describe('TopBoards', () => {
     }
   })
 
+  it('names the race a runner ran, not the event it was run at', async () => {
+    /* Owner, 23.08.2026, about the lists of results: „treba da se prikazuju nazivi
+       trka na kojima je čovek učestvovao, a ne događaja", and on 24.08.2026 about
+       this board, which was not in the list when that was decided: „treba da bude
+       naziv trke onda". Until then it printed the event, so an event with nine
+       races on one morning was nine rows of one text.
+
+       Served rather than read, and that is the point of the round: a race opens
+       under the name of its event and only a hand parts them (owner, 23.08.2026),
+       so in the generated data the two agree on every one of the best results of
+       every season, measured. Read off the file as it is, this test passes just as
+       well with the event in the column, which is a test that cannot fail. One
+       record is given a race renamed by hand, which is the case the column exists
+       for. */
+    const served = globalThis.fetch
+    const best = 'res-01815'
+    const own = 'Sri Chinmoy Šamorin, 125 km'
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await served(input, init)
+
+      if (!String(input).endsWith('/results.json')) {
+        return answer
+      }
+
+      const results: Result[] = await answer.json()
+
+      return new Response(
+        JSON.stringify(results.map((one) => (one.id === best ? { ...one, raceName: own } : one))),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    })
+
+    try {
+      renderAt('/sr/top-liste?sezona=2019')
+
+      await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
+      const races = board('Najbolji pojedinačni rezultati')
+
+      expect(races.getByText(own)).toBeVisible()
+      /* Exactly, so the event's own name standing alone in that cell is what
+         fails here rather than the row simply being found twice. */
+      expect(races.queryByText('Sri Chinmoy Šamorin')).toBeNull()
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
   it('keeps four columns on a telephone, the way the standing does', async () => {
     /* Eight columns in 360 pixels is 211 pixels of sideways scroll inside the
        card, which is the thing PDL P12 forbids in as many words: what a phone
@@ -874,11 +927,11 @@ describe('TopBoards', () => {
         .getAllByRole('columnheader')
         .filter((_, index) => kept.includes(index))
         .map((one) => one.textContent),
-    ).toEqual(['#', 'Član', 'Događaj', 'Bodovi'])
+    ).toEqual(['#', 'Član', 'Trka', 'Bodovi'])
 
     /* The same columns, not merely the same number of them. Counted, the
-       distance could hide while the event stayed and the heading "Događaj" would
-       sit over a figure: four columns either way, and nothing would say so. */
+       distance could hide while the race stayed and the heading "Trka" would sit
+       over a figure: four columns either way, and nothing would say so. */
     expect(onPhone(at(rows, 1), 'cell')).toEqual(kept)
   })
 
