@@ -300,7 +300,7 @@ describe('the races of an event', () => {
     const km = (row: HTMLElement) =>
       Number(inputElement(within(row).getByLabelText(/^Dužina/)).value.replace(',', '.'))
 
-    expect(rowsOfRaces().length, 'the event no longer has its two races').toBe(2)
+    expect(rowsOfRaces().length, 'the event was filed with exactly two races').toBe(2)
 
     const shorter = must(
       rowsOfRaces().find((one) => km(one) === 21.3),

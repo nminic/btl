@@ -930,8 +930,8 @@ describe('TopBoards', () => {
     ).toEqual(['#', 'Član', 'Trka', 'Bodovi'])
 
     /* The same columns, not merely the same number of them. Counted, the
-       distance could hide while the event stayed and the heading "Događaj" would
-       sit over a figure: four columns either way, and nothing would say so. */
+       distance could hide while the race stayed and the heading "Trka" would sit
+       over a figure: four columns either way, and nothing would say so. */
     expect(onPhone(at(rows, 1), 'cell')).toEqual(kept)
   })
 

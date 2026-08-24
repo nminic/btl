@@ -187,6 +187,53 @@ describe('an event saved with no races, before the results are here', () => {
     }
   })
 
+  it('lets through a race whose races are all still there', async () => {
+    /* The other direction of the same guard, and the one that was missing when it
+       was widened on 24.08.2026: measured only for what it refuses, a guard can be
+       made to refuse everything and no test says so. Mutation measured: with
+       `survives` ignored, every filed race counts as taken away, this press is
+       refused over a deletion that never happens, and the whole screen of events
+       becomes unusable for as long as the largest file the portal has is broken,
+       while 283 tests in six files stay green.
+
+       Nothing is touched here on purpose. A press that changes nothing is the
+       press that must never wait for a file, and it is also the shortest way to
+       ask the question. */
+    const served = globalThis.fetch
+    const user = setupUser()
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
+    )
+
+    try {
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+      await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Bešnjaja')
+
+      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
+        'row',
+      )
+
+      await user.click(
+        within(must(at(rows, 1), 'the event searched for')).getByRole('button', { name: /^Otvori/ }),
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      /* Still a race, and every row it was filed with is still on the table, so
+         this save has nothing to take away. */
+      expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
+      expect(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })).toHaveLength(2)
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+      expect(screen.queryByText(/^Brisanje/)).toBeNull()
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
   it('lets through a gathering that has no races to take away', async () => {
     /* The refusal is about a deletion, so where there is nothing to delete there is
        nothing to wait for. Measured by a round before this was here: asked of the
