@@ -256,17 +256,43 @@
 }
 
 /* And the three measures give room back, because they never hold much: a length is
-   „42.20", a climb „1250", and the box is told to fill its cell, so without a ceiling
-   they take a share as wide as the name they crowd out. Owner, 23.08.2026, on the
-   picture: the length, the climb and the drop narrow enough that the name of the race
-   and its date have room.
+   „42.20" and a climb „1250", while the name beside them holds „Šidski novogodišnji
+   maraton". Owner, 23.08.2026, on the picture: the length, the climb and the drop
+   narrow enough that the name of the race and its date have room.
  *
- * A ceiling and not a fixed width, so a reader with larger letters still gets a box
- * that fits what is typed into it. Measured in Chrome, page not scrolling sideways at
- * 360, 700 and 768 with the default letters. */
+ * Two rounds measured what the obvious ways cost. A ceiling (`max-inline-size`) is a
+ * wall the column cannot pass however much it holds, so „42.2" was drawn „42." and
+ * „506" „50(" from 700px up. A width alone is no better here: the field is told to
+ * fill its cell and to have no minimum of its own (above), so the cell has no width
+ * of its own to push the column with, and the column stood at exactly 88,00px on
+ * every screen while „59.27" lost its last digit. Both times every one of the 2158
+ * tests was green.
+ *
+ * So the floor goes where the reading is, on the field, and the width above stays a
+ * suggestion: the column is 5,5rem while what is typed fits in it, and as wide as it
+ * must be when it does not. */
 .entity-races .table th:nth-child(n + 3):nth-child(-n + 5),
 .entity-races .table td:nth-child(n + 3):nth-child(-n + 5) {
   inline-size: 5.5rem;
+}
+
+/* And the room the column gives up comes out of the padding rather than out of the
+   digits, which is the part two rounds got wrong.
+ *
+ * Measured on this screen at 5,5rem: the field is 70px wide inside its border and
+ * keeps 12px of padding on each side, so 46px are left for the value and a number
+ * field spends some of that on the arrows that step it. „59.27" ran 7px past that and
+ * „2253" 4px, on the very first race of the very first event. Read back to back, the
+ * two ways to make that fit are a wider column or a narrower padding, and only the
+ * second one is room the reader was not using.
+ *
+ * Four pixels each side, which is the smallest that still separates the digits from
+ * the border, hands 16px back to every value: measured after, nothing runs over at
+ * 360, 700, 768 or 1280, „163.29" included. The other columns keep the padding the
+ * portal uses everywhere, because words need the air and numbers do not. */
+.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) .field__control {
+  padding-inline: var(--space-4);
+  min-inline-size: 4.5rem;
 }
 
 /* And the length reads from the right like the two measures beside it. The portal

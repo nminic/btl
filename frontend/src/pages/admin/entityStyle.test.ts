@@ -374,18 +374,30 @@ describe('the column a race is read by', () => {
          still 19px short. At 11rem it is 112px and nothing runs over.
        - the three measures hold „42.20" and „1250" and no more, and the box inside
          them is told to fill its cell, so left to themselves they take a share as wide
-         as the name they crowd out: 120,2 and 116,75 and 113,86px at 1280px, against
-         5,5rem asked for here.
+         as the name they crowd out: 109 and 105 and 101px at 1280px, against 5,5rem
+         asked for here, and the name 162px against the 205px it has now.
 
-       A width and not a ceiling, which a round measured: `max-inline-size` is a wall
-       and a column cannot pass it however much it holds, so the fields were cut, „42.2"
-       drawn as „42." and „506" as „50(" at 768px and worse at 700px, with all 2158
-       tests green. A width on a cell is a suggestion the table may outgrow, so the
-       column is 5,5rem while the numbers fit in it and wider when they do not.
+       Two rounds measured what the obvious ways cost, and both are worth keeping here
+       because both looked right and were green:
 
-       Measured after both: the page does not scroll sideways at 360, 700 or 768, no
-       field runs over at any of the three, the box scrolls 237px at 360 and not at all
-       at 700 or 768, and the button at the end of the row is drawn whole. */
+       - `max-inline-size` is a wall the column cannot pass however much it holds, so
+         the values were cut: „42.2" drawn „42." and „506" „50(" from 700px up.
+       - `inline-size` alone is no better, because the field is told to fill its cell
+         and to have no floor of its own: the cell then has no width to push the column
+         with, the column stood at exactly 88,00px on every screen, and „59.27" lost
+         its last digit on the very first race of the very first event.
+
+       What works is to take the room out of the padding rather than out of the digits.
+       At 5,5rem the field is 70px inside its border and was keeping 12px of padding on
+       each side, leaving 46px for a value that a number field also spends some of on
+       its arrows. Four pixels a side hands 16px back. The floor on the field is what
+       keeps the column from falling under that on a narrow screen, where the table is
+       at its smallest and a suggested width loses.
+
+       Measured after all three, with „163.29" and „12345" typed into the row, which is
+       the longest the portal holds: the page does not scroll sideways at 360, 700, 768
+       or 1280, no field runs over at any of them, the columns are 88px at every one,
+       and the box scrolls 313px at 360 and not at all above it. */
     expect(
       ruleFor('.entity-races .table th:nth-child(2), .entity-races .table td:nth-child(2)')
         .getPropertyValue('min-inline-size'),
@@ -410,6 +422,24 @@ describe('the column a race is read by', () => {
       ).getPropertyValue('max-inline-size'),
       'the three measures were walled in again',
     ).toBe('')
+
+    /* And the room comes out of the padding, with a floor under the field so the
+       column cannot fall below what it holds when the table is at its smallest. Both
+       are asked here because the width above is only a suggestion, and a suggestion
+       without these two is what let „59.27" lose a digit with every test green. */
+    const field = ruleFor(
+      '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) .field__control',
+    )
+
+    expect(
+      field.getPropertyValue('padding-inline'),
+      'the measures took their padding back and the digits pay for it',
+    ).toBe('var(--space-4)')
+
+    expect(
+      field.getPropertyValue('min-inline-size'),
+      'the measures lost the floor that holds them open on a narrow screen',
+    ).toBe('4.5rem')
   })
 
   it('reads the length from the right, like the two measures beside it', () => {
