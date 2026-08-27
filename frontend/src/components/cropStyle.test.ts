@@ -20,8 +20,22 @@ import { ruleFor } from '../test/stylesheet'
  * 2.323 to 8.395 pixels and the bottom of the picture came out white.
  *
  * jsdom applies no stylesheet and lays nothing out (ADL A18), so what is asked
- * here is the shape of the rules. That the corners really are dimmed was measured
- * in a browser, on the same two sizes the review used.
+ * here is the shape of the rules. That the corners really are dimmed is a
+ * question for a browser, and it was measured in Chrome 151 headless at device
+ * scale 1, over the built stylesheet, with the markup taken from this very
+ * component and a white picture on a black page so the edges cannot lie.
+ *
+ * The numbers, so a later reading can be compared with this one rather than with
+ * a sentence. Bright pixels left outside the lit disc:
+ *
+ * - 360 by 640, picture 1080 by 2400: **163**, and every one of them on the two
+ *   pixel white outline itself, the brightest at 241 sitting on the ring;
+ * - 1280 by 800 with `html { font-size: 32px }`, picture 640 by 1422: **60**, the
+ *   same ring.
+ *
+ * Both are the antialiasing of the outline and nothing else, which is what „no
+ * undimmed remainder" looks like when it is counted. The reading this replaced,
+ * on the first of those two sizes, was 8.395.
  */
 const CROP = readFileSync(join(process.cwd(), 'src/components/Crop.css'), 'utf-8')
 
@@ -59,6 +73,22 @@ describe('the part of a picture the cropper lights up', () => {
 
     expect(shade.getPropertyValue('inset')).toBe('0px')
     expect(shade.getPropertyValue('position')).toBe('absolute')
+
+    /* And the other half of that same fact, which `inset: 0` alone does not
+       carry: what the sheet is inset against. `position: absolute` measures from
+       the nearest positioned ancestor, so the box has to be the positioned one.
+       Measured by a review in Chrome: with the box back to `static`, the sheet
+       went from 313 by 695 pixels, exactly the picture, to 345 by 640, the whole
+       window, and the undimmed part of the picture went from 163 pixels to
+       21.952 with the bottom of it white. Both readings passed every test,
+       because each rule was right on its own.
+
+       Asked here rather than beside the box, because it is this rule that needs
+       it: the box would be `relative` for the frame in any case, and the day
+       somebody decides it need not be, this is the case that says why it must. */
+    const box = ruleFor(CROP, '.crop__picture', 'Crop.css')
+
+    expect(box.getPropertyValue('position')).toBe('relative')
     expect(shade.getPropertyValue('background')).toBe('var(--crop-shade)')
     /* Nothing to press: a sheet over the whole picture would otherwise swallow
        every press aimed at what is underneath it. */

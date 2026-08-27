@@ -217,6 +217,23 @@ describe('choosing which square of a picture counts', () => {
     /* Half the width and all the height of a picture twice as wide as it is
        tall, a quarter of the way in: one square, said in two percentages. */
     expect(frame).toHaveStyle({ inlineSize: '50%', blockSize: '100%', insetInlineStart: '25%' })
+
+    /* And the shade over it, with the hole the frame just described cut out of
+       it. Asked for by the same two questions the frame is asked: that the
+       element is there under the name the stylesheet defines, and that the value
+       it carries is the value the arithmetic answered.
+
+       Both were missing until 27.08.2026, and a review counted what that let
+       through with the whole suite green: the class renamed by one letter, so
+       there was no shade at all and nothing was dimmed; and the mask under a
+       property name that does not exist, so the shade covered the picture whole
+       and there was no lit circle. Each of those is the opposite of what this
+       screen is for, and neither showed up anywhere. */
+    const shade = must(container.querySelector('.crop__shade'), 'the shade over the picture')
+
+    expect(shade).toHaveStyle({
+      maskImage: 'radial-gradient(ellipse 25% 50% at 50% 50%, transparent 99.5%, #000 100%)',
+    })
   })
 
   it('keeps a picture that decoded to nothing at the shape it can draw', async () => {

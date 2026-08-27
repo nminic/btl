@@ -1,5 +1,5 @@
 import { must } from '../test/at'
-import { CLOSEST, cropIn, fittedTo, frameOf, UNKNOWN, WHOLE } from './crop'
+import { CLOSEST, cropIn, fittedTo, frameOf, holeOf, UNKNOWN, WHOLE } from './crop'
 import type { CoverStyle, Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
@@ -309,5 +309,69 @@ describe('a crop read out of a record', () => {
        hair below it is not. */
     expect(cropIn({ x: 0.5, y: 0.5, size: CLOSEST }).size).toBe(CLOSEST)
     expect(cropIn({ x: 0.5, y: 0.5, size: CLOSEST - 0.01 })).toEqual(WHOLE)
+  })
+})
+
+describe('the hole the shade is cut with', () => {
+  /* Two reviews in a row found the same thing on this screen: a new mechanism
+     shipped without a guard, and every mutation of it stayed green. The second
+     of them counted five, among them a hole twice the size of the circle and a
+     hole that was an ellipse rather than a circle. What follows measures the
+     numbers themselves, which is what the review had to open a browser to see. */
+
+  it('is half the frame, around the middle of it', () => {
+    /* The whole picture on a landscape photograph: the frame is the middle half
+       of the width and all of the height, so the hole is a quarter of the width
+       and half the height, centred. Half and not the whole is the part a
+       mutation removed silently: doubled, the hole swallows the frame and the
+       lit part stops being what the outline draws. */
+    expect(holeOf(frameOf(WHOLE, landscape))).toEqual({
+      x: '50%',
+      y: '50%',
+      across: '25%',
+      down: '50%',
+    })
+  })
+
+  it('gives each axis its own share, which is what makes it a circle', () => {
+    /* The one form that says „circle" here. A radius written as a share of the
+       box is a different number of pixels across than down, so a circle in
+       pixels is an ellipse in percentages, and the two shares must not be the
+       same number. Swapped, the review measured the hole on a picture of 1080 by
+       2400 come out as 22,5 by 50 per cent, which is an ellipse half the height
+       of the picture. */
+    const hole = holeOf(frameOf(WHOLE, portrait))
+
+    expect(hole).toEqual({ x: '50%', y: '50%', across: '50%', down: '25%' })
+    expect(hole.across, 'both axes take the same share, so the hole is not a circle').not.toBe(
+      hole.down,
+    )
+  })
+
+  it('follows the frame into a corner rather than staying in the middle', () => {
+    /* The smallest circle pushed flush against the start of both axes. The hole
+       has to travel with the frame, and its middle is then its own radius in
+       from each edge, which is what „flush" means for a circle. */
+    const small: Crop = { x: 0, y: 0, size: CLOSEST }
+
+    expect(holeOf(frameOf(small, portrait))).toEqual({
+      x: '10%',
+      y: '5%',
+      across: '10%',
+      down: '5%',
+    })
+  })
+
+  it('sits in the middle of a picture nothing is known about yet', () => {
+    /* A photograph arrives after the first drawing, and until it does the shape
+       is a square of side one. The hole is then exactly the three fractions
+       themselves, and drawing it wrong here is drawing it wrong on every first
+       frame of every picture. */
+    expect(holeOf(frameOf(WHOLE, UNKNOWN))).toEqual({
+      x: '50%',
+      y: '50%',
+      across: '50%',
+      down: '50%',
+    })
   })
 })
