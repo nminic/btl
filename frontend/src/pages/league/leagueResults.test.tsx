@@ -102,6 +102,23 @@ async function withCompetitors(count: number) {
 
 const grid = async () => within(await screen.findByRole('table', { name: 'Poredak takmičenja' }))
 
+/**
+ * The rows that are people, out of a table that also has rows that are names of
+ * blocks.
+ *
+ * The standing has been split into blocks since 27.08.2026 (PDL P15), and each
+ * block is introduced by a row carrying one heading across the whole width. Those
+ * rows are not placings and must not be counted as any: `slice(1)` used to be
+ * enough because the only row that was not a person was the one at the top.
+ *
+ * Told apart by what a placing has and a block heading does not: a heading of its
+ * own row, which is the runner's name (`scope="row"`). A block heading is
+ * `scope="colgroup"`, which is a column header, so neither can be mistaken for
+ * the other by anything reading roles rather than positions.
+ */
+const placings = (table: ReturnType<typeof within>) =>
+  table.getAllByRole('row').filter((row) => within(row).queryAllByRole('rowheader').length > 0)
+
 describe('a competition with more placed than fit on one page', () => {
   it('draws fifty of them and no more', async () => {
     const undo = await withCompetitors(MANY)
@@ -202,12 +219,12 @@ describe('a competition with more placed than fit on one page', () => {
       const total = (row: HTMLElement) =>
         Number((at(within(row).getAllByRole('cell'), 0).textContent ?? '').replace(',', '.'))
 
-      const firstPage = (await grid()).getAllByRole('row').slice(1)
+      const firstPage = placings(await grid())
       const lastOfFirst = total(at(firstPage, PER_PAGE - 1))
 
       await user.click(screen.getByRole('button', { name: 'Sledeća' }))
 
-      const secondPage = (await grid()).getAllByRole('row').slice(1)
+      const secondPage = placings(await grid())
       const firstOfSecond = total(first(secondPage))
 
       expect(lastOfFirst).not.toBeNaN()
@@ -282,6 +299,45 @@ describe('a competition whose event runs over more than one morning', () => {
       expect(new Set(mine).size).toBe(mine.length)
     } finally {
       undo()
+    }
+  })
+})
+
+describe('the heading that names one block of the standing', () => {
+  it('reaches across every column, so the grid keeps one shape', async () => {
+    /* A block heading is one cell in a row of its own, and it has to be as wide
+       as the table or the table has two shapes: sixteen columns in every row of
+       people and one in every row that names a group. A browser then draws the
+       heading in the width of the first column and the rest of that row empty,
+       and a screen reader announcing „column 1 of 16" over a heading meant for
+       all sixteen tells the reader the wrong thing about where they are.
+
+       Counted against the headings the table actually has, rather than against a
+       number written here: the grid is as wide as the competition has races, and
+       a figure repeated here would be a second home for that count.
+
+       Measured by a mutation: with the span cut to one, every other test in this
+       file and in `details.test.tsx` stayed green. */
+    renderAt(RUN)
+
+    const table = await grid()
+    const columns = within(must(table.getAllByRole('rowgroup')[0], 'the head of the table'))
+      .getAllByRole('columnheader')
+
+    expect(columns.length).toBeGreaterThan(2)
+
+    const blocks = table.getAllByRole('rowgroup').slice(1)
+
+    expect(blocks.length, 'the standing is drawn as one block').toBeGreaterThan(1)
+
+    for (const block of blocks) {
+      const heading = must(within(block).getAllByRole('columnheader')[0], 'the name of the block')
+
+      expect(heading).toHaveAttribute('colspan', String(columns.length))
+      /* And it is a heading over a group of columns rather than over a row,
+         which is what tells it apart from a runner's name for anything reading
+         roles. */
+      expect(heading).toHaveAttribute('scope', 'colgroup')
     }
   })
 })
