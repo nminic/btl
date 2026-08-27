@@ -232,6 +232,31 @@
   font-weight: 400;
 }
 
+/* What the organiser says the event is, under its name and over its races.
+ *
+ * Prose, so it is measured the way prose is: a line that runs the width of a wide
+ * screen is a line the eye loses on the way back, and the portal caps it at the
+ * same 62 characters the written pages use. The field takes 600 characters, which
+ * is around ten lines here and two dozen on a telephone, so this is not a rule
+ * that will never fire.
+ *
+ * `overflow-wrap` because 600 characters may arrive as one word: the field asks
+ * for prose and refuses nothing, and a single unbroken word is the one input that
+ * pushes a page sideways, which is what the portal never does. */
+.event__said {
+  margin: 0 0 var(--space-8);
+  max-inline-size: 62ch;
+  overflow-wrap: anywhere;
+}
+
+/* And where the rest of it is said. A paragraph rather than a row of controls,
+   because it is one link and not a toolbar: the two buttons this page does have
+   act on the event itself, and leaving for somebody else's site is not one of
+   them. */
+.event__where {
+  margin: 0 0 var(--space-16);
+}
+
 .profile__text {
   margin: 0;
   color: var(--text-muted);

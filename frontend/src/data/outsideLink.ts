@@ -1,18 +1,27 @@
 /**
- * The address of the official results of a race, in one place.
+ * Every address of somebody else's page that the portal hands to a browser, in
+ * one place.
  *
- * A member types it, the portal stores it, and a moderator's screen draws it as a
+ * Two of them today: the official results of a race, typed by the member who sent
+ * the result, and the organiser's page for an event, typed by whoever entered the
+ * event. Somebody types it, the portal stores it, and a screen draws it as a
  * link. That last step is the one that matters: a link is the one thing on a page
  * that carries an instruction to the browser, and an address somebody else typed
  * is not the portal's to trust. `javascript:` in an `href` is a script running on
- * the portal, with the moderator's session around it.
+ * the portal, with the reader's session around it.
  *
- * Two readers, one shape. The forms refuse anything else before it is stored
- * (`unos-rezultata.form.json`, `prijava-sa-trke.form.json` carry this very source
- * as their `pattern`, and a test holds them to it), and the screen refuses it
- * again before it is drawn. Neither alone is enough: a form rule is a courtesy to
- * the person filling it in and says so in `forms/validate.ts` („nothing here is a
- * security measure"), and a store is a place things arrive in by other roads.
+ * Named for what it is rather than for where it started. It was
+ * `officialResultsLink` while a result was the only thing that carried an outside
+ * address; the day the event's page drew one too, that name was wrong at half of
+ * its call sites, and a name that is wrong half the time is worse than a long one.
+ *
+ * Three writers, one shape. The forms refuse anything else before it is stored
+ * (`unos-rezultata.form.json`, `prijava-sa-trke.form.json` and
+ * `admin-dogadjaj.form.json` carry this very source as their `pattern`, and a test
+ * holds all three to it), and the screen refuses it again before it is drawn.
+ * Neither alone is enough: a form rule is a courtesy to the person filling it in
+ * and says so in `forms/validate.ts` („nothing here is a security measure"), and a
+ * store is a place things arrive in by other roads.
  *
  * Anchored at both ends, and nothing invisible inside. Unanchored at the end, `.`
  * does not cross a line break, so `https://primer.rs\n@zlo.example/p` passed as an
@@ -26,7 +35,7 @@
  * refused beside this pattern rather than inside it (`INVISIBLE` below).
  * Measured 23.08.2026, both ways.
  */
-export const OFFICIAL_RESULTS = /^https?:\/\/[^\s]+$/
+export const OUTSIDE_ADDRESS = /^https?:\/\/[^\s]+$/
 
 /**
  * The characters that are neither a blank nor anything a reader can see, and that
@@ -74,13 +83,13 @@ const INVISIBLE = /[\p{Cc}\p{Cf}]/u
  * be safe is an address nobody wrote on purpose, and quietly mending it is how a
  * reader ends up somewhere neither of them chose.
  */
-export function officialResultsLink(said: string): string | undefined {
-  return OFFICIAL_RESULTS.test(said) && !INVISIBLE.test(said) ? said : undefined
+export function outsideLink(said: string): string | undefined {
+  return OUTSIDE_ADDRESS.test(said) && !INVISIBLE.test(said) ? said : undefined
 }
 
 /**
- * The host an address of official results would actually open, or nothing where
- * the value is not an address at all.
+ * The host an address would actually open, or nothing where the value is not an
+ * address at all.
  *
  * Drawn beside the link on the moderator's queue, because the words of that link
  * are the name of the event and the name is written by the member who sent the
@@ -91,13 +100,19 @@ export function officialResultsLink(said: string): string | undefined {
  * `rel="noreferrer noopener"` keeps the attacker's page from learning anything;
  * what it cannot do is tell the moderator where the press leads.
  *
+ * Drawn on the event's page for a reason of the same size but a different shape:
+ * there the words of the link are the portal's own („Strana organizatora"), so
+ * they cannot lie, and precisely because they cannot, they say nothing at all
+ * about where the press lands. A reader deciding whether to leave this site for
+ * somebody else's is entitled to know whose it is before pressing, not after.
+ *
  * The host and not the whole address, because the host is the part that decides
  * where a press lands and the rest is noise on a narrow screen. Read through the
  * browser's own parser rather than off the text, since `@` ends the user part of
  * an address and a host read by eye is exactly the trick this is drawn against.
  */
-export function officialResultsHost(said: string): string | undefined {
-  const link = officialResultsLink(said)
+export function outsideHost(said: string): string | undefined {
+  const link = outsideLink(said)
 
   if (link === undefined) {
     return undefined
