@@ -82,6 +82,62 @@ export function frameOf(crop: Crop, shape: Shape): Frame {
 
 export type Frame = { left: string; top: string; width: string; height: string }
 
+/**
+ * The same circle, written as a hole to cut out of a sheet of shade.
+ *
+ * The shade used to be a shadow spreading out of the frame itself, one element
+ * and no arithmetic. That works while the frame is a rectangle and stops working
+ * the moment it is round, because a shadow's own corners are rounded by the
+ * radius **plus** the spread: a circle of radius 32 with a spread of 640 is a
+ * circle of radius 672, not a square, so the corners of a tall picture fall
+ * outside it and are left with no shade at all. Measured by a review on
+ * 27.08.2026 in Chrome, on a 360 by 640 telephone with a picture of 1080 by
+ * 2400: the unshaded remainder grew from 2.323 to 8.395 pixels, three and a half
+ * times, and the bottom of the picture came out white. That is the opposite of
+ * what the shade is for (owner, 12.08.2026: „zatamnjen ali dovoljno vidljiv
+ * ostatak"), because a part that is not dimmed at all reads as the part that was
+ * kept.
+ *
+ * So the shade is now a sheet over the whole picture with a hole cut in it, and
+ * a sheet has no corners to miss. The hole is written as an **ellipse in
+ * percentages**, which is the one form that says „circle" here: the box is the
+ * picture, its two sides are different lengths, and a radius given as a share of
+ * each side is a circle in pixels. A `circle` keyword cannot take a percentage
+ * at all, and a length would have to be measured in a browser and kept in step
+ * with a box that changes with every window.
+ *
+ * Half of the frame, in each direction, around the middle of it: the same three
+ * numbers `frameOf` already answers with, so the lit part and the hole cannot
+ * drift apart.
+ */
+export function holeOf(frame: Frame): Hole {
+  return {
+    x: middle(frame.left, frame.width),
+    y: middle(frame.top, frame.height),
+    across: half(frame.width),
+    down: half(frame.height),
+  }
+}
+
+export type Hole = { x: string; y: string; across: string; down: string }
+
+/** The middle of a band, from where it starts and how wide it is. */
+function middle(start: string, length: string): string {
+  return `${round(percent(start) + percent(length) / 2)}%`
+}
+
+/** Half of a length. */
+function half(length: string): string {
+  return `${round(percent(length) / 2)}%`
+}
+
+/** The number out of a percentage this file wrote a moment ago. Read back rather
+ *  than carried alongside, so there is one place that turns a fraction into a
+ *  share and one shape for both readers to agree on. */
+function percent(said: string): number {
+  return Number(said.slice(0, -1))
+}
+
 /** One length against another, as a percentage a style can carry. A picture
  *  nothing is known about is a square of side 1, never a side of nought, so
  *  there is no dividing by nothing to guard against here. */

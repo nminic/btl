@@ -38,40 +38,71 @@
   object-fit: contain;
 }
 
-/* The lit circle, drawn as a hole in the shade.
+/* The edge of the lit circle. The shade it is cut out of is the rule below.
 
-   One element rather than four bands around a gap, and rather than a second
-   bright copy of the picture laid over a dimmed one. Four bands is four sets of
-   arithmetic to keep in agreement; two copies is two pictures that can fall out
-   of register by a pixel and are two downloads of the same file. A shadow
-   spreading outwards from a transparent box is the shade, and what shows
-   through the box is the photograph itself.
-
-   `100vmax` and not a pixel figure: the shade has to reach the corner of the
-   picture at every size, and the picture is as wide as the panel it stands in.
+   The two were one element until 27.08.2026, and the note that used to stand
+   here argued for that: one element rather than four bands around a gap, and
+   rather than a second bright copy of the picture laid over a dimmed one. Both
+   reasons still hold and both are kept, but the shade could not stay a shadow of
+   this box once the box became round; the rule below carries the measurement.
 
    A circle since 27.08.2026 (owner, 23.08.2026: „isečak je krug, ne kvadrat", and
    „Čuva se svakako cela slika, a bolje se vidi samo oblik kruga jer će to da
    završi na profilnoj slici"). It was a square while the cropper was the only
-   place the shape was decided, and the portal has drawn both of these pictures
-   as circles all along: a face wears `border-radius: 50%` (`Portrait.css`) and a
-   team's logo wears `face-circle` (`TeamMark.css`). So the square was never what
-   anybody was choosing; it was a rectangle around the thing they were choosing,
-   with the corners quietly thrown away afterwards.
+   place the shape was decided, and everything round on the portal is round by
+   the same rule: a face wears `border-radius: 50%` and a team's logo wears
+   `face-circle`, which is that same declaration (`Portrait.css`). So the square
+   was never what anybody was choosing; it was a rectangle around the thing they
+   were choosing, with the corners quietly thrown away afterwards.
 
-   One declaration, because both the shadow and the outline follow the border
-   radius: the hole in the shade is round for the same reason the box is. The
-   record is untouched by this and stays a square of three fractions
+   Counted rather than assumed, after a review counted it on 27.08.2026: the one
+   place a cropped picture is drawn today is a team's logo. No record of a member
+   carries a picture yet, so a face is drawn from initials and colour. Both will
+   use this, and only one does.
+
+   The record is untouched by this and stays a square of three fractions
    (`components/crop.ts`), with the circle inscribed in it. */
 .crop__frame {
   position: absolute;
   border-radius: 50%;
-  box-shadow: 0 0 0 100vmax var(--crop-shade);
   /* The edge of what is kept, so the boundary is a line and not only a change
      of brightness. White rather than the accent: it has to read against a
-     photograph of anything at all, and a photograph can be any colour. */
+     photograph of anything at all, and a photograph can be any colour. The
+     outline follows the radius, so the line is a circle for the same reason the
+     box is. */
   outline: 2px solid rgb(255 255 255 / 90%);
   outline-offset: -1px;
+}
+
+/* The shade itself, as a sheet over the whole picture with the circle cut out of
+   it.
+
+   It was a shadow spreading out of the frame until 27.08.2026, which is one
+   element and no arithmetic and is why it was written that way. That works while
+   the frame is a rectangle and fails the moment it is round: a shadow's corners
+   are rounded by the radius **plus** the spread, so a circle of radius 32 with a
+   spread of 640 is a circle of radius 672 rather than a square, and the corners
+   of a tall picture fall outside it entirely. Measured by a review in Chrome on
+   a 360 by 640 telephone with a picture of 1080 by 2400: the part left with no
+   shade at all grew from 2.323 to 8.395 pixels, and the bottom of the picture
+   came out white. A part that is not dimmed reads as the part that was kept,
+   which is the opposite of „zatamnjen ali dovoljno vidljiv ostatak" (owner,
+   12.08.2026).
+
+   A sheet has no corners to miss. `inset: 0` is the whole picture and the hole
+   is cut with a mask, whose ellipse in percentages is a circle in pixels
+   (`holeOf` in components/crop.ts says why that form and not `circle`).
+
+   Still one element and still the photograph itself showing through, so the two
+   reasons the old shape was chosen are both kept: no second copy to fall out of
+   register, and no four bands of arithmetic to hold in agreement. */
+.crop__shade {
+  position: absolute;
+  inset: 0;
+  background: var(--crop-shade);
+  /* Nothing to press. The picture underneath is what a pointer is aimed at, and
+     a sheet over all of it would otherwise swallow every press. */
+  pointer-events: none;
 }
 
 /* The sliders under the picture. */

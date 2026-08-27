@@ -192,8 +192,16 @@ describe('a crop drawn by the stylesheet', () => {
     expect(alpha).toBeGreaterThanOrEqual(35)
     expect(alpha).toBeLessThanOrEqual(70)
 
-    /* And it is actually laid over the picture, as a shadow spreading out of the
-       lit square rather than as four bands that can drift apart. */
-    expect(valueOf(cropping, '.crop__frame', 'box-shadow')).toContain('var(--crop-shade)')
+    /* And it is actually laid over the picture. It was a shadow spreading out of
+       the lit square until 27.08.2026, and this line held it there; the day the
+       square became a circle the shadow became a circle too, and the corners of a
+       tall picture were left undimmed. So the shade is now a sheet over the whole
+       picture with the circle cut out of it, and what is held here is the sheet.
+
+       `inset: 0` is the half that matters and is the half the old shape could not
+       promise: a sheet that covers the box covers its corners, whatever shape the
+       hole in it is. */
+    expect(valueOf(cropping, '.crop__shade', 'background')).toContain('var(--crop-shade)')
+    expect(valueOf(cropping, '.crop__shade', 'inset')).toBe('0')
   })
 })

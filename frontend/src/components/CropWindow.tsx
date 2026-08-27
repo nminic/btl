@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { cropIn, frameOf, UNKNOWN } from './crop'
+import { cropIn, frameOf, holeOf, UNKNOWN } from './crop'
 import type { Crop, Shape } from './crop'
 import { useI18n } from '../i18n/useI18n'
 import './Crop.css'
@@ -49,6 +49,7 @@ export function CropWindow({ picture, crop, alt, children }: {
   /* The same check, for the same reason: what a waiting item carries came out
      of a file on this portal today and out of a database tomorrow. */
   const frame = frameOf(cropIn(crop), shape)
+  const hole = holeOf(frame)
 
   return (
     <div className="crop">
@@ -69,13 +70,31 @@ export function CropWindow({ picture, crop, alt, children }: {
           }}
         />
 
-        {/* The lit square. Drawn as a hole in the shade rather than as a bright
-            copy of the picture: one element, and the part inside it is the
-            photograph itself rather than something laid over it, so nothing can
-            drift out of register.
+        {/* The shade, as a sheet over the whole picture with the circle cut out
+            of it. A sheet has no corners to miss, which is the whole reason it
+            is a sheet: the shade used to spread out of the frame itself, and a
+            shadow's corners are rounded by the radius plus the spread, so the
+            moment the frame became a circle the corners of a tall picture were
+            left with no shade at all (`holeOf` in components/crop.ts carries the
+            measurement).
+
+            What shows through the hole is the photograph itself rather than a
+            second copy of it laid over the first, exactly as before: nothing can
+            drift out of register, and the file is downloaded once. */}
+        <span
+          className="crop__shade"
+          aria-hidden="true"
+          style={{
+            maskImage: `radial-gradient(ellipse ${hole.across} ${hole.down} at ${hole.x} ${hole.y}, transparent 99.5%, #000 100%)`,
+          }}
+        />
+
+        {/* And the edge of what is kept, so the boundary is a line and not only
+            a change of brightness.
 
             Said out loud as well as drawn, because dimming is a colour and a
-            colour is nothing to a screen reader. */}
+            curve is a curve, and neither is anything at all to a screen
+            reader. */}
         <span
           className="crop__frame"
           style={{
