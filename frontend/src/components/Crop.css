@@ -38,7 +38,7 @@
   object-fit: contain;
 }
 
-/* The lit square, drawn as a hole in the shade.
+/* The lit circle, drawn as a hole in the shade.
 
    One element rather than four bands around a gap, and rather than a second
    bright copy of the picture laid over a dimmed one. Four bands is four sets of
@@ -48,9 +48,24 @@
    through the box is the photograph itself.
 
    `100vmax` and not a pixel figure: the shade has to reach the corner of the
-   picture at every size, and the picture is as wide as the panel it stands in. */
+   picture at every size, and the picture is as wide as the panel it stands in.
+
+   A circle since 27.08.2026 (owner, 23.08.2026: „isečak je krug, ne kvadrat", and
+   „Čuva se svakako cela slika, a bolje se vidi samo oblik kruga jer će to da
+   završi na profilnoj slici"). It was a square while the cropper was the only
+   place the shape was decided, and the portal has drawn both of these pictures
+   as circles all along: a face wears `border-radius: 50%` (`Portrait.css`) and a
+   team's logo wears `face-circle` (`TeamMark.css`). So the square was never what
+   anybody was choosing; it was a rectangle around the thing they were choosing,
+   with the corners quietly thrown away afterwards.
+
+   One declaration, because both the shadow and the outline follow the border
+   radius: the hole in the shade is round for the same reason the box is. The
+   record is untouched by this and stays a square of three fractions
+   (`components/crop.ts`), with the circle inscribed in it. */
 .crop__frame {
   position: absolute;
+  border-radius: 50%;
   box-shadow: 0 0 0 100vmax var(--crop-shade);
   /* The edge of what is kept, so the boundary is a line and not only a change
      of brightness. White rather than the accent: it has to read against a

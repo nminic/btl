@@ -170,11 +170,17 @@ describe('choosing which square of a picture counts', () => {
     await cropper()
 
     const whole = must(container.querySelector('.crop__whole'), 'the whole picture')
-    const frame = must(container.querySelector('.crop__frame'), 'the lit square')
+    const frame = must(container.querySelector('.crop__frame'), 'the lit circle')
 
     expect(whole).toHaveAttribute('alt', 'Slika koju si izabrao')
     expect(whole).toHaveAttribute('src', expect.stringContaining('data:image/jpeg'))
     expect(frame).toHaveTextContent(/Ostatak je zatamnjen/)
+    /* And the sentence names the shape, because the shape is the whole of what
+       changed on 27.08.2026 and a screen reader hears only these words: dimming
+       is a colour and a circle is a curve, and neither is anything at all
+       without being said. „Uokvireni deo" described a square and would go on
+       describing one after the rule that draws it became round. */
+    expect(frame).toHaveTextContent(/u krugu/)
   })
 
   it('draws the square over the picture the file turned out to be', async () => {

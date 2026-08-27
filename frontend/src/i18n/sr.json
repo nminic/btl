@@ -1347,7 +1347,7 @@
   },
   "crop": {
     "choosing": "Isecanje slike",
-    "framed": "Uokvireni deo slike je ono što će se videti. Ostatak je zatamnjen, ali se i dalje nazire.",
+      "framed": "Deo slike u krugu je ono što će se videti. Ostatak je zatamnjen, ali se i dalje nazire.",
     "x": "Pomeri levo i desno",
     "y": "Pomeri gore i dole",
     "size": "Veličina isečka",
